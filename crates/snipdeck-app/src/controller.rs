@@ -7,15 +7,13 @@
 
 use std::time::Duration;
 
-use snipdeck_core::{
-    BoardId, ItemId, ListId, Timestamp,
-    template::{Locale, TimeZone},
-};
+use snipdeck_core::{BoardId, ItemId, ListId, Timestamp, template::TimeZone};
 use snipdeck_platform::{
     pipeline::{Clipboard, Keyboard, Timing},
     system_look::SystemLook,
     tray::TrayEvent,
 };
+use snipdeck_store::Trashable;
 
 mod colour_ctl;
 mod colour_main;
@@ -58,8 +56,9 @@ pub use settings_ctl::{ImportKind, ImportPreview, ImportProblem, ImportSource};
 pub use symbol_ctl::{IconExport, IconSave, SaveOutcome, SymbolChoice, SymbolMenuEntry};
 pub use trigger_ctl::{HintOutcome, TypedOutcome};
 pub use views::{
-    BoardDeleteView, ChooseEntry, ChooseLabel, ChooseMenu, ClearListView, Effect, FillSubmission,
-    FillView, ListDeleteView, PickerView, StackView, ToastPhase, ToastView, UseResult, View,
+    BoardDeleteView, CalendarView, ChooseEntry, ChooseLabel, ChooseMenu, ClearListView, Effect,
+    FillSubmission, FillView, ListDeleteView, PickerView, StackView, ToastPhase, ToastView,
+    UseResult, View,
 };
 
 use crate::{
@@ -172,6 +171,17 @@ struct Undo {
     /// The list that save made (the first colour saved makes "Colours"): Undo trashes it too, so
     /// no empty list is left behind.
     list: Option<ListId>,
+    /// The toast reports an Undo of an add (the items are in the Trash now): its button is
+    /// "Delete forever", which removes them for good (a secret pasted by mistake must not stay
+    /// on disk for 30 days).
+    purge: Vec<Trashable>,
+}
+
+impl Undo {
+    /// An Undo that takes something back (as opposed to the "Delete forever" offer).
+    fn takes_back(&self) -> bool {
+        self.purge.is_empty()
+    }
 }
 
 struct ActiveToast {
@@ -229,6 +239,9 @@ pub struct Controller<S, C, K, T> {
     fill_seq: u64,
     /// A typed trigger to erase once the fill form is confirmed.
     fill_erase: Option<views::FillErase>,
+    /// The text selected in the Target, read before a fill form took the focus, for the use
+    /// that follows the form (`{selection}`).
+    selection_for_use: Option<String>,
     /// Where "paste next" is in its run.
     queue: PasteQueue,
     /// The items marked for a paste stack, in marking order.
@@ -295,6 +308,9 @@ pub struct Controller<S, C, K, T> {
     /// (the Main window's binding sets them; see [`Controller::set_new_name_bases`]).
     new_list_base: String,
     new_board_base: String,
+    /// What a duplicate is titled, `{title}` standing for the original's (translated by the
+    /// window layer, see [`Controller::set_copy_title`]).
+    copy_title: String,
     /// The Colours tab: the colour looked at, the second contrast colour, and the home list's
     /// name in the language shown.
     colour: snipdeck_colour::Rgba8,
@@ -505,6 +521,7 @@ where
             picker: None,
             fill: None,
             fill_erase: None,
+            selection_for_use: None,
             fill_seq: 0,
             queue: PasteQueue::default(),
             stack: Vec::new(),
@@ -538,6 +555,7 @@ where
             os_look: SystemLook::default(),
             new_list_base: crate::starter::NEW_LIST.to_owned(),
             new_board_base: crate::starter::NEW_BOARD.to_owned(),
+            copy_title: crate::starter::COPY_TITLE.to_owned(),
             colour,
             colour_other,
             colours_list_name: String::from("Colours"),
@@ -610,14 +628,26 @@ where
                 seq: self.fill_seq,
                 title: f.title().to_owned(),
                 fields: f.fields().to_vec(),
+                date_hint: f.date_hint(),
+                calendar: {
+                    let locale = f.locale();
+                    let today = self.clock.now().to_zoned(self.tz.clone());
+                    CalendarView {
+                        months: locale.lang.months().map(str::to_owned).to_vec(),
+                        weekdays: locale.lang.weekdays_abbr().map(str::to_owned).to_vec(),
+                        week_starts_sunday: locale.week_starts_sunday,
+                        today: (
+                            i32::from(today.year()),
+                            i32::from(today.month()),
+                            i32::from(today.day()),
+                        ),
+                    }
+                },
+                dates: (0..f.fields().len()).map(|i| f.date_parts(i)).collect(),
                 preview: if masked {
                     String::new()
                 } else {
-                    f.preview(
-                        self.clock.now(),
-                        &self.tz,
-                        Locale::for_tag(&self.settings.language),
-                    )
+                    f.preview(self.clock.now(), &self.tz)
                 },
                 masked,
             }
@@ -741,11 +771,18 @@ where
             kind: t.toast.kind,
             message: t.toast.message.clone(),
             phase: t.phase,
-            undo: self.undo.as_ref().is_some_and(|u| u.seq == t.seq),
+            undo: self
+                .undo
+                .as_ref()
+                .is_some_and(|u| u.seq == t.seq && u.takes_back()),
             edit: self
                 .undo
                 .as_ref()
                 .is_some_and(|u| u.seq == t.seq && u.adds.is_some()),
+            purge: self
+                .undo
+                .as_ref()
+                .is_some_and(|u| u.seq == t.seq && !u.takes_back()),
             open_log: t.toast.message == ToastMessage::CrashedLastTime,
         })
     }

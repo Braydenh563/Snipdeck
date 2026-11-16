@@ -436,6 +436,24 @@ fn paste_create_adds_to_the_shown_list_with_undo_and_edit() {
 }
 
 #[test]
+fn pasting_text_another_item_holds_says_where_it_is_and_still_saves() {
+    let mut w = pasting("a fresh note");
+    w.ctl.paste_create(Origin::Panel);
+    w.ctl.paste_create(Origin::Panel);
+    let view = w.ctl.view();
+    assert_eq!(view.rows.len(), 6, "saved anyway");
+    let toast = view.toast.expect("toast");
+    assert_eq!(
+        toast.message,
+        ToastMessage::SavedAgain {
+            list: "Replies".into(),
+            was_in: "Replies".into()
+        }
+    );
+    assert!(toast.undo && toast.edit, "Undo and Edit are still offered");
+}
+
+#[test]
 fn a_pasted_address_becomes_a_link() {
     let mut w = pasting("https://example.org/page");
     w.ctl.paste_create(Origin::Panel);

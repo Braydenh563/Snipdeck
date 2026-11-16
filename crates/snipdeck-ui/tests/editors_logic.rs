@@ -392,6 +392,138 @@ ui_tests! {
         assert!(missing(&ui, "Trigger and letter case", combo));
     }
 
+    fn the_text_tools_open_from_a_row_below_the_content_and_not_for_a_link_or_a_large_text() {
+        let (ui, _log) = item_editor();
+        let show = "Show the text tools";
+        assert!(!missing(&ui, show, AccessibleRole::Button), "a text item has the tools row");
+        assert!(missing(&ui, "Find", AccessibleRole::TextInput), "closed: no fields");
+        find(&ui, show, AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert!(ui.get_tools_open());
+        for label in ["Find", "Replace with"] {
+            find(&ui, label, AccessibleRole::TextInput);
+        }
+        find(&ui, "Replace all", AccessibleRole::Button);
+        find(&ui, "Monospace font", AccessibleRole::Switch);
+        find(&ui, "Line numbers", AccessibleRole::Switch);
+        find(&ui, "Change the text", AccessibleRole::Combobox);
+        ui.set_kind_index(2);
+        settle();
+        assert!(missing(&ui, "Hide the text tools", AccessibleRole::Button), "a link has no text tools");
+        ui.set_kind_index(0);
+        ui.set_content_large(true);
+        settle();
+        assert!(missing(&ui, "Hide the text tools", AccessibleRole::Button), "a read-only text has none");
+    }
+
+    fn replace_all_asks_the_host_counts_matches_and_one_undo_brings_the_text_back() {
+        let (ui, log) = item_editor();
+        ui.set_content("Cat cat\ndog CAT".into());
+        ui.set_tools_open(true);
+        ui.on_match_count(|text, find, match_case| {
+            let (t, f) = if match_case {
+                (text.to_string(), find.to_string())
+            } else {
+                (text.to_lowercase(), find.to_lowercase())
+            };
+            i32::try_from(t.matches(f.as_str()).count()).unwrap()
+        });
+        {
+            let log = log.clone();
+            let weak = ui.as_weak();
+            ui.on_replace_all_requested(move |find, with, match_case| {
+                log.borrow_mut().push(format!("replace:{find}>{with}:{match_case}"));
+                let w = weak.upgrade().unwrap();
+                w.set_content(w.get_content().to_lowercase().replace(find.as_str(), with.as_str()).into());
+            });
+        }
+        settle();
+        let replace = find(&ui, "Replace all", AccessibleRole::Button);
+        assert_eq!(replace.accessible_enabled(), Some(false), "nothing to find yet");
+        ui.set_find_text("cat".into());
+        ui.set_replace_text("fox".into());
+        settle();
+        assert_eq!(replace.accessible_enabled(), Some(true));
+        assert!(!missing(&ui, "3 matches", AccessibleRole::Text));
+        ui.set_match_case(true);
+        settle();
+        assert!(!missing(&ui, "1 match", AccessibleRole::Text), "case now counts: one");
+        ui.set_match_case(false);
+        take(&log);
+        click(&find(&ui, "Replace all", AccessibleRole::Button));
+        assert_eq!(take(&log), ["replace:cat>fox:false", "edited"]);
+        assert_eq!(ui.get_content(), "fox fox\ndog fox");
+        assert!(ui.get_has_backup());
+        assert!(!missing(&ui, "No matches", AccessibleRole::Text), "the text holds no cat now");
+        click(&find(&ui, "Undo the change", AccessibleRole::Button));
+        assert_eq!(ui.get_content(), "Cat cat\ndog CAT", "the text as it was");
+        assert!(!ui.get_has_backup());
+        assert_eq!(take(&log), ["edited"]);
+    }
+
+    fn a_tool_that_changes_nothing_does_not_count_as_an_edit_and_typing_forgets_the_undo() {
+        let (ui, log) = item_editor();
+        ui.set_content("same".into());
+        ui.set_tools_open(true);
+        ui.on_match_count(|_, _, _| 1);
+        ui.on_replace_all_requested(|_, _, _| {});
+        ui.set_find_text("same".into());
+        settle();
+        take(&log);
+        click(&find(&ui, "Replace all", AccessibleRole::Button));
+        assert_eq!(take(&log), Vec::<String>::new(), "no change, no edit");
+        assert!(!ui.get_has_backup());
+        ui.set_has_backup(true);
+        ui.set_tool_backup("old".into());
+        find(&ui, "Content", AccessibleRole::TextInput).invoke_accessible_default_action();
+        type_text(ui.window(), "x");
+        assert!(!ui.get_has_backup(), "typing forgets the undo");
+    }
+
+    fn line_numbers_follow_the_hosts_numbering_and_leave_with_the_switch() {
+        let (ui, _log) = item_editor();
+        ui.set_content("a\nb\nc".into());
+        ui.set_tools_open(true);
+        ui.on_numbered(|text| {
+            (1..=text.matches('\n').count() + 1)
+                .map(|n| n.to_string())
+                .collect::<Vec<_>>()
+                .join("\n")
+                .into()
+        });
+        settle();
+        let gutter = || {
+            ElementQuery::from_root(&ui)
+                .match_id("TextField::gutter-text")
+                .find_all()
+        };
+        assert!(gutter().is_empty(), "off: no column");
+        let switch = find(&ui, "Line numbers", AccessibleRole::Switch);
+        click(&switch);
+        assert!(ui.get_line_numbers());
+        assert_eq!(gutter().len(), 1);
+        assert!(gutter()[0].size().width > 0.0);
+        click(&find(&ui, "Line numbers", AccessibleRole::Switch));
+        assert!(!ui.get_line_numbers());
+        assert!(gutter().is_empty());
+    }
+
+    fn the_monospace_switch_starts_on_for_code_and_off_for_text_and_flips_either() {
+        let (ui, _log) = item_editor();
+        ui.set_tools_open(true);
+        settle();
+        let state = |ui: &ItemEditor| find(ui, "Monospace font", AccessibleRole::Switch).accessible_checked();
+        assert_eq!(state(&ui), Some(false), "text is in the UI font");
+        click(&find(&ui, "Monospace font", AccessibleRole::Switch));
+        assert_eq!(state(&ui), Some(true));
+        ui.set_mono_flip(false);
+        ui.set_kind_index(1);
+        settle();
+        assert_eq!(state(&ui), Some(true), "code is monospace");
+        click(&find(&ui, "Monospace font", AccessibleRole::Switch));
+        assert_eq!(state(&ui), Some(false), "and the switch turns that off");
+    }
+
     fn escape_leaves_a_clean_editor_and_asks_before_discarding_changes() {
         let (ui, log) = item_editor();
         press_key(&ui, Key::Escape);

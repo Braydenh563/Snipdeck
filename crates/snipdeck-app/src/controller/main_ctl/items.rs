@@ -1,6 +1,6 @@
 //! Item actions and the Trash with its Undo.
 
-use crate::history::{Action, Change};
+use crate::history::{Action, Change, Record};
 use snipdeck_core::template::transform::Transform;
 use snipdeck_core::{Item, ItemId, Name, Placement, Tag};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
@@ -160,6 +160,8 @@ where
         let now = self.clock.now();
         let locked = self.library_locked();
         let mut made = Vec::new();
+        let format = self.copy_title.clone();
+        let copy_title = |title: &str| crate::starter::copy_title(&format, title);
         let done = self.store.atomically(|b| {
             made.clear();
             for id in items {
@@ -168,8 +170,12 @@ where
                     return Err(snipdeck_store::Error::EncryptionLocked);
                 }
                 let formats = b.formats(*id)?;
-                let mut copy =
-                    Item::new(original.list_id, original.title.clone(), original.kind, now);
+                let mut copy = Item::new(
+                    original.list_id,
+                    copy_title(&original.title),
+                    original.kind,
+                    now,
+                );
                 copy.preview = original.preview;
                 copy.tags = original.tags;
                 copy.sensitive = original.sensitive;
@@ -199,6 +205,11 @@ where
             &done,
             (!made.is_empty()).then(|| success(ToastMessage::Duplicated)),
         );
+        // The cursor moves to the copy, so Enter or F2 acts on it.
+        if let Some(copy) = made.first() {
+            self.main_fresh();
+            self.follow_moved_row(*copy);
+        }
     }
 
     pub(in super::super) fn trash_items(&mut self, items: &[ItemId]) {
@@ -227,21 +238,26 @@ where
         }
     }
 
-    /// Brings `targets` back from the Trash.
+    /// Brings `targets` back from the Trash, as a step Undo can put back.
     pub(super) fn restore(&mut self, targets: &[Key]) {
+        let entries: Vec<Trashable> = targets.iter().filter_map(|k| k.trashable()).collect();
         let done = self.store.atomically(|b| {
-            for entry in targets.iter().filter_map(|k| k.trashable()) {
-                b.restore_reporting(entry)?;
+            for entry in &entries {
+                b.restore_reporting(*entry)?;
             }
             Ok(())
         });
         if done.is_ok() {
-            self.show_toast(Toast {
-                kind: ToastKind::Success,
-                message: ToastMessage::Restored {
-                    count: targets.len(),
+            let step = self.record_step(Action::Restore, vec![Change::Restore(entries)]);
+            self.show_undo_toast(
+                Toast {
+                    kind: ToastKind::Success,
+                    message: ToastMessage::Restored {
+                        count: targets.len(),
+                    },
                 },
-            });
+                step,
+            );
             self.library_changed();
         } else {
             self.show_toast(failed());
@@ -250,17 +266,23 @@ where
     }
 
     pub(super) fn delete_forever(&mut self, targets: &[Key]) {
-        // Steps may name what goes for good.
-        self.clear_history();
+        let entries: Vec<Trashable> = targets.iter().filter_map(|k| k.trashable()).collect();
+        self.purge_entries(&entries);
+    }
+
+    /// Removes `entries` from the Trash for good. The history forgets only the steps that needed
+    /// them; the rest stays.
+    pub(in crate::controller) fn purge_entries(&mut self, entries: &[Trashable]) {
         let done = self.store.atomically(|b| {
-            for entry in targets.iter().filter_map(|k| k.trashable()) {
-                b.purge_entry(entry)?;
+            for entry in entries {
+                b.purge_entry(*entry)?;
             }
             Ok(())
         });
         if done.is_ok() {
+            self.prune_history();
             self.show_toast(neutral_toast(ToastMessage::DeletedForever {
-                count: targets.len(),
+                count: entries.len(),
             }));
             self.library_changed();
         } else {
@@ -392,8 +414,19 @@ where
         let Some(tag) = self.main.tags().get(index).map(|t| t.id) else {
             return Ok(());
         };
-        match self.store.update_tag(&Tag { id: tag, name }) {
+        let before = self.stored_tag(tag);
+        let after = Tag { id: tag, name };
+        match self.store.update_tag(&after) {
             Ok(()) => {
+                if let Some(before) = before.filter(|b| *b != after) {
+                    self.record_step(
+                        Action::Tag,
+                        vec![Change::Rewrite {
+                            before: Record::Tag(before),
+                            after: Record::Tag(after),
+                        }],
+                    );
+                }
                 self.library_changed();
                 Ok(())
             }
@@ -411,8 +444,25 @@ where
         let Some(tag) = self.main.tags().get(index).map(|t| t.id) else {
             return;
         };
-        let done = self.store.delete_tag(tag);
-        self.finish(&done, None);
+        let Some(stored) = self.stored_tag(tag) else {
+            return;
+        };
+        let items = self.store.tag_items(tag).unwrap_or_default();
+        match self.store.delete_tag(tag) {
+            Ok(()) => {
+                let name = stored.name.as_str().to_owned();
+                let step =
+                    self.record_step(Action::Tag, vec![Change::DropTag { tag: stored, items }]);
+                self.show_undo_toast(neutral_toast(ToastMessage::TagDeleted { name }), step);
+                self.library_changed();
+            }
+            Err(e) => self.show_toast(change_failed(&e)),
+        }
+    }
+
+    /// Tag `id` as stored.
+    fn stored_tag(&self, id: snipdeck_core::TagId) -> Option<Tag> {
+        self.store.tags().ok()?.into_iter().find(|t| t.id == id)
     }
 
     // ---- The Trash and Undo --------------------------------------------------------------------
@@ -443,11 +493,27 @@ where
                     self.update_settings(|s| s.colour_save_list = None);
                 }
             }
-            self.toast = None;
             if done.is_err() {
+                self.toast = None;
                 self.show_toast(failed());
                 self.refresh_logged("a failed undo");
             } else {
+                // The item is in the Trash for 30 days: the toast offers to remove it for good.
+                self.show_toast(Toast {
+                    kind: ToastKind::Success,
+                    message: ToastMessage::Undone {
+                        action: Action::Add,
+                    },
+                });
+                let mut purge = vec![Trashable::Item(id)];
+                purge.extend(made.map(Trashable::List));
+                self.undo = Some(super::super::Undo {
+                    seq: self.toast_seq,
+                    step: None,
+                    adds: None,
+                    list: None,
+                    purge,
+                });
                 self.library_changed();
             }
         }
@@ -455,7 +521,6 @@ where
 
     /// "Empty Trash" after the window's confirmation.
     pub fn main_empty_trash(&mut self) {
-        self.clear_history();
         let Some(cutoff) = self.trash_cutoff(0) else {
             return;
         };
@@ -464,6 +529,7 @@ where
             .unwrap_or(cutoff);
         match self.store.purge(cutoff) {
             Ok(_) => {
+                self.prune_history();
                 self.show_toast(neutral_toast(ToastMessage::TrashEmptied));
                 self.library_changed();
             }
@@ -483,6 +549,7 @@ where
         };
         let purged = self.store.purge(cutoff)?;
         if purged > 0 {
+            self.prune_history();
             self.library_changed();
         }
         Ok(purged)

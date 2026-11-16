@@ -81,6 +81,7 @@ where
             step: Some(step),
             adds: None,
             list: None,
+            purge: Vec::new(),
         });
     }
 
@@ -104,6 +105,7 @@ where
             step: None,
             adds: Some(id),
             list,
+            purge: Vec::new(),
         });
     }
 
@@ -128,6 +130,20 @@ where
     /// The toast's button: "Switch" on the sort offer (the list goes to manual order), "Open log" on the crash toast (opens the reports folder and closes
     /// the toast; a folder that cannot be opened says so), "Undo" on any other.
     pub fn toast_action(&mut self) {
+        if self.undo.as_ref().is_some_and(|u| !u.takes_back())
+            && self
+                .toast
+                .as_ref()
+                .is_some_and(|t| Some(t.seq) == self.undo.as_ref().map(|u| u.seq))
+        {
+            // "Delete forever", after an Undo of an add.
+            let purge = self.undo.take().map(|u| u.purge).unwrap_or_default();
+            self.purge_entries(&purge);
+            // The add can never be redone now.
+            self.history
+                .retain(|step| !step.made().iter().any(|t| purge.contains(t)));
+            return;
+        }
         if self
             .toast
             .as_ref()

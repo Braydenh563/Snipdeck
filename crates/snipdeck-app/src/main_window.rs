@@ -9,12 +9,14 @@
 
 use std::collections::{HashMap, HashSet};
 
+use snipdeck_core::search::{Hit, Query, SearchIndex};
 use snipdeck_core::{
     Board, BoardId, GroupId, Item, ItemId, ItemKind, ItemLabel, List, ListAccent, ListIcon, ListId,
     ListSort, Placement, Tag, TagId,
 };
 use snipdeck_store::{
     BoardRepo, GroupRepo, GroupRun, ItemRepo, ListRepo, TagRepo, TrashEntry, TrashRepo, Trashable,
+    TriggerRepo,
 };
 
 use crate::panel::{GroupHeader, ListLabel};
@@ -25,6 +27,18 @@ use crate::settings::RowDensity;
 pub const TRASH_DAYS: u32 = 30;
 /// How many search results the Main window shows.
 const SEARCH_LIMIT: usize = 200;
+
+/// The best [`SEARCH_LIMIT`] matches of `query`: `index` for the names and the start of the
+/// content, the store's full-text index for the rest of it.
+fn search<S: ItemRepo>(
+    store: &S,
+    index: &SearchIndex,
+    query: &str,
+) -> snipdeck_store::Result<Vec<Hit>> {
+    let query = Query::parse(query);
+    let body = store.search(&query)?;
+    Ok(index.query(&query, &body, SEARCH_LIMIT))
+}
 /// The preview of a trashed list.
 pub const LIST_NOTE: &str = "List";
 /// The preview of a trashed board.
@@ -152,8 +166,8 @@ pub struct Row {
     pub label: Option<ItemLabel>,
     /// In the selection.
     pub selected: bool,
-    /// While searching: where the query matched (shared-look spec decision 3). The search hits
-    /// carry ids only, so there is no tag hit here.
+    /// While searching: where the query matched (shared-look spec decision 3), the matched tag
+    /// included when the title and preview do not show the match.
     pub marks: Marks,
     /// The row is a group's header, not an item: `title` is its name.
     pub header: Option<GroupHeader>,
@@ -301,7 +315,10 @@ pub struct MainModel {
     trash: Vec<TrashEntry>,
     section: Section,
     query: String,
-    hits: Vec<ItemId>,
+    /// The search index over `items` (with tag, list and trigger names), rebuilt by `reload`:
+    /// the same matcher as the Panel and the Picker.
+    index: SearchIndex,
+    hits: Vec<Hit>,
     view: ViewMode,
     label_filter: Option<ItemLabel>,
     selected: HashSet<Key>,
@@ -345,6 +362,7 @@ impl MainModel {
             trash: Vec::new(),
             section: Section::All,
             query: String::new(),
+            index: SearchIndex::default(),
             hits: Vec::new(),
             view: ViewMode::Comfortable,
             label_filter: None,
@@ -391,7 +409,7 @@ impl MainModel {
     /// Any store error; the model is left as it was.
     pub fn reload<S>(&mut self, store: &S) -> snipdeck_store::Result<()>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo + GroupRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo + GroupRepo + TriggerRepo,
     {
         let boards = store.boards()?;
         let board = self
@@ -410,6 +428,7 @@ impl MainModel {
         let tags = store.tags()?;
         let trash = store.trashed()?;
         let mut list_labels = HashMap::new();
+        let mut every_list = Vec::new();
         for b in &boards {
             for l in store.lists(b.id)? {
                 list_labels.insert(
@@ -420,10 +439,12 @@ impl MainModel {
                         accent: l.accent,
                     },
                 );
+                every_list.push(l);
             }
         }
+        let index = crate::index_cache::SearchNames::read(store, &every_list)?.index(&items);
         let hits = if self.searching() {
-            store.search(self.query.trim(), SEARCH_LIMIT)?
+            search(store, &index, &self.query)?
         } else {
             Vec::new()
         };
@@ -445,6 +466,7 @@ impl MainModel {
         self.groups = groups;
         self.list_labels = list_labels;
         self.trash = trash;
+        self.index = index;
         self.hits = hits;
         self.suggest = std::rc::Rc::new(crate::search_suggest::Index::build(
             &self.items,
@@ -719,7 +741,7 @@ impl MainModel {
             return self
                 .hits
                 .iter()
-                .filter_map(|id| by_id.get(id).copied())
+                .filter_map(|hit| by_id.get(&hit.id).copied())
                 .collect();
         }
         match self.section {
@@ -796,6 +818,11 @@ impl MainModel {
     #[must_use]
     pub fn rows(&self) -> Vec<Row> {
         let mixed = self.searching() || !matches!(self.section, Section::List(_));
+        let hit_tags: HashMap<ItemId, &str> = self
+            .hits
+            .iter()
+            .filter_map(|hit| Some((hit.id, hit.tag.as_deref()?)))
+            .collect();
         self.entries()
             .into_iter()
             .map(|entry| match entry {
@@ -806,7 +833,13 @@ impl MainModel {
                         item.title.clone()
                     };
                     let marks = if self.searching() {
-                        search_mark::marks(&title, &item.preview, item.sensitive, None, &self.query)
+                        search_mark::marks(
+                            &title,
+                            &item.preview,
+                            item.sensitive,
+                            hit_tags.get(&item.id).copied(),
+                            &self.query,
+                        )
                     } else {
                         Marks::default()
                     };
@@ -921,7 +954,7 @@ impl MainModel {
     /// Any store error from reading the board's lists.
     pub fn open_board<S>(&mut self, store: &S, id: BoardId) -> snipdeck_store::Result<()>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo + GroupRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo + GroupRepo + TriggerRepo,
     {
         if !self.boards.iter().any(|b| b.id == id) {
             return Ok(());
@@ -931,8 +964,8 @@ impl MainModel {
         self.reload(store)
     }
 
-    /// Sets the search text and reads the matches (every board) from the store. The
-    /// selection and cursor start over.
+    /// Sets the search text and finds the matches (every board): the shared index, with the
+    /// store's full-text index for the full content. The selection and cursor start over.
     ///
     /// # Errors
     ///
@@ -943,7 +976,7 @@ impl MainModel {
         self.clear_selection();
         self.cursor = 0;
         if self.searching() && self.section != Section::Trash {
-            self.hits = store.search(self.query.trim(), SEARCH_LIMIT)?;
+            self.hits = search(store, &self.index, &self.query)?;
         }
         Ok(())
     }
@@ -1039,6 +1072,15 @@ impl MainModel {
     pub fn chooser(&self) -> &[Key] {
         &self.chooser
     }
+}
+
+/// Where `order[index]` sits now, as a placement: after the one before it, or first.
+#[must_use]
+pub fn place_of<I: Copy>(order: &[I], index: usize) -> Placement<I> {
+    index
+        .checked_sub(1)
+        .and_then(|before| order.get(before))
+        .map_or(Placement::First, |id| Placement::After(*id))
 }
 
 /// Where moving the entry at `from` by `delta` places it among `order`, and its new position.

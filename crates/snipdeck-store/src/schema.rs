@@ -215,6 +215,11 @@ CREATE TABLE triggers (
 ) STRICT, WITHOUT ROWID;
 ";
 
+/// Version 10: the search index moves to the `trigram` tokenizer over folded text. The table
+/// is rebuilt from its own rows by [`crate::fts::rebuild_v10`]; the delete trigger refers to
+/// the table by name and keeps working.
+pub(crate) const V10: &str = "";
+
 /// Version 11: when a trigger fires (`immediate`, or at a `delimiter`) and how it reads case
 /// (`exact`, `ignore` or `adapt`). Every existing code keeps `immediate` and `exact`.
 pub(crate) const V11: &str = r"

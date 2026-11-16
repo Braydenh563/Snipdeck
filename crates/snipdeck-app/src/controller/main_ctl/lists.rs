@@ -11,9 +11,10 @@ use super::super::{
 use super::{BoardMenuEntry, neutral_toast};
 use crate::{
     failure::Cause,
+    history::{Action, Change, Record},
     host::ClipboardText,
     list_text,
-    main_window::{Key, Section, reorder, reorder_many},
+    main_window::{Key, Section, place_of, reorder, reorder_many},
     usecase,
 };
 
@@ -69,7 +70,7 @@ where
                     .date();
                 let path = list_text::path(folder, &name, date);
                 std::fs::create_dir_all(folder).map_err(|e| Cause::of_io(&e))?;
-                std::fs::write(&path, list_text::render(&name, &entries))
+                std::fs::write(&path, list_text::render(&name, &entries, cfg!(windows)))
                     .map_err(|e| Cause::of_io(&e))?;
                 Ok(path)
             });
@@ -97,8 +98,8 @@ where
         match self.store.trash(Trashable::List(id), now) {
             Ok(()) => {
                 let step = self.record_step(
-                    crate::history::Action::Delete,
-                    vec![crate::history::Change::Trash(vec![Trashable::List(id)])],
+                    Action::Delete,
+                    vec![Change::Trash(vec![Trashable::List(id)])],
                 );
                 self.show_undo_toast(neutral_toast(ToastMessage::ListTrashed { name }), step);
                 self.library_changed();
@@ -118,6 +119,16 @@ where
             return;
         };
         let done = self.store.move_list(order[index], board, placement);
+        if done.is_ok() {
+            self.record_step(
+                Action::Reorder,
+                vec![Change::MoveList {
+                    id: order[index],
+                    from: (board, place_of(&order, index)),
+                    to: (board, placement),
+                }],
+            );
+        }
         self.finish(&done, None);
     }
 
@@ -165,13 +176,22 @@ where
     /// all end here); a toast says it was saved. Nothing happens when it already has that sort.
     pub(in crate::controller) fn set_list_sort(&mut self, id: ListId, sort: ListSort) {
         let now = self.clock.now();
-        let done = self.store.list(id).and_then(|mut list| {
-            if list.sort == sort {
+        let done = self.store.list(id).and_then(|before| {
+            if before.sort == sort {
                 return Ok(false);
             }
+            let mut list = before.clone();
             list.sort = sort;
             list.updated_at = now;
-            self.store.update_list(&list).map(|()| true)
+            self.store.update_list(&list)?;
+            self.record_step(
+                Action::List,
+                vec![Change::Rewrite {
+                    before: Record::List(before),
+                    after: Record::List(list),
+                }],
+            );
+            Ok(true)
         });
         match done {
             Ok(true) => {
@@ -445,6 +465,16 @@ where
             return;
         };
         let done = self.store.move_board(order[from], placement);
+        if done.is_ok() {
+            self.record_step(
+                Action::Reorder,
+                vec![Change::MoveBoard {
+                    id: order[from],
+                    from: place_of(&order, from),
+                    to: placement,
+                }],
+            );
+        }
         self.finish(&done, None);
     }
 }

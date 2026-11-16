@@ -726,10 +726,10 @@ fn ui_group(window: &ui::HelpWindow, group: &shortcuts::Group) -> ui::ShortcutGr
         .unwrap_or_default();
     ui::ShortcutGroup {
         title,
-        note: if group.scope == Scope::Anywhere {
-            words.get_global_note()
-        } else {
-            SharedString::new()
+        note: match group.scope {
+            Scope::Anywhere => words.get_global_note(),
+            Scope::Main | Scope::Panel => words.get_history_note(),
+            _ => SharedString::new(),
         },
         lines: model(group.lines.iter().map(|line| ui::ShortcutLineData {
             title: line.title.as_str().into(),

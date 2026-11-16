@@ -279,7 +279,11 @@ fn duplicate_copies_each_selected_item_next_to_it_unpinned_and_unused() {
     let copy = &after[place + 1];
     assert_ne!(copy.id, id);
     assert_eq!(after[place].id, id, "the original stays put");
-    assert_eq!(copy.title, original.title);
+    assert_eq!(
+        copy.title,
+        format!("{} copy", original.title),
+        "titled as a copy"
+    );
     assert_eq!(copy.preview, original.preview);
     assert_eq!(copy.tags, original.tags);
     assert_eq!(
@@ -2026,9 +2030,11 @@ fn the_palette_duplicate_command_puts_a_copy_after_the_row_under_the_cursor() {
     );
     assert_eq!(
         titles(&after).iter().filter(|t| **t == target).count(),
-        2,
-        "the copy keeps the title"
+        1,
+        "the original keeps its title"
     );
+    assert_eq!(after.rows[2].title, format!("{target} copy"));
+    assert_eq!(after.cursor, 2, "the cursor is on the copy");
     assert_eq!(
         after.rows[1].key, before.rows[1].key,
         "the original stays where it was, the copy goes after it"

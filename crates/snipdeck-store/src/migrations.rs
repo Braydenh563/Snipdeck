@@ -85,12 +85,11 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         sql: schema::V9,
         post: None,
     },
-    // Version 10 belongs to the search index (trigram search); this branch keeps the number free.
     Migration {
         version: 10,
-        name: "reserved for the search index",
-        sql: "",
-        post: None,
+        name: "trigram search over folded text",
+        sql: schema::V10,
+        post: Some(crate::fts::rebuild_v10),
     },
     Migration {
         version: 11,
@@ -406,6 +405,46 @@ mod tests {
         assert_eq!((name.as_str(), colour), ("Work", None));
     }
 
+    /// Version 10 on an existing version-9 index: the rows are kept, folded, and found by any
+    /// three characters (the trigram tokenizer); secure delete stays on.
+    #[test]
+    fn v10_rebuilds_the_search_index_over_folded_text() {
+        let mut conn = fresh();
+        migrate(&mut conn, &MIGRATIONS[..9], Path::new(":memory:"), false).unwrap();
+        conn.execute(
+            "INSERT INTO item_fts (rowid, title, body) VALUES (7, 'Café Signature', 'ＡＢＣ Crème')",
+            [],
+        )
+        .unwrap();
+        let outcome = migrate(&mut conn, MIGRATIONS, Path::new(":memory:"), false).unwrap();
+        assert_eq!(outcome, Outcome { from: 9, to: 10 });
+        let row: (i64, String, String) = conn
+            .query_row("SELECT rowid, title, body FROM item_fts", [], |r| {
+                Ok((r.get(0)?, r.get(1)?, r.get(2)?))
+            })
+            .unwrap();
+        assert_eq!(
+            row,
+            (7, "cafe signature".to_owned(), "abc creme".to_owned())
+        );
+        let hits: i64 = conn
+            .query_row(
+                "SELECT count(*) FROM item_fts WHERE item_fts MATCH '\"natu\"'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(hits, 1, "mid-word");
+        let secure: i64 = conn
+            .query_row(
+                "SELECT v FROM item_fts_config WHERE k = 'secure-delete'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(secure, 1);
+    }
+
     #[test]
     fn a_failing_migration_rolls_back_completely() {
         let mut conn = fresh();
@@ -577,7 +616,7 @@ mod tests {
         let mut conn = Connection::open(&path).unwrap();
         migrate(&mut conn, MIGRATIONS, &path, true).unwrap();
         assert!(
-            !dir.path().join("snipdeck.db.pre-v8.bak").exists(),
+            !dir.path().join("snipdeck.db.pre-v9.bak").exists(),
             "nothing to back up on creation"
         );
         insert_board(&conn);

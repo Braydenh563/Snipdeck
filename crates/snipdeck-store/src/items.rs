@@ -3,6 +3,7 @@
 use std::collections::{BTreeSet, HashMap};
 
 use rusqlite::{Connection, ToSql, params};
+use snipdeck_core::search::{BodyMatches, Query};
 use snipdeck_core::{
     BlobRef, Content, FileEntry, Format, FormatKind, Formats, Item, ItemId, ListId, Placement,
     TagId, Timestamp,
@@ -24,10 +25,12 @@ const FROM_LIVE: &str =
     "items i JOIN lists l ON l.id = i.list_id JOIN boards b ON b.id = l.board_id";
 
 /// The same joins, for queries that start from another table that refers to `items i`.
-const JOIN_LIVE: &str = "JOIN lists l ON l.id = i.list_id JOIN boards b ON b.id = l.board_id";
+pub(crate) const JOIN_LIVE: &str =
+    "JOIN lists l ON l.id = i.list_id JOIN boards b ON b.id = l.board_id";
 
 /// A live item is out of the trash, and so are its list and board.
-const WHERE_LIVE: &str = "i.deleted_at IS NULL AND l.deleted_at IS NULL AND b.deleted_at IS NULL";
+pub(crate) const WHERE_LIVE: &str =
+    "i.deleted_at IS NULL AND l.deleted_at IS NULL AND b.deleted_at IS NULL";
 
 const COLUMNS: &str = "i.id, i.list_id, i.title, i.kind, i.preview, i.pinned, i.sensitive, \
      i.always_plain, i.use_count, i.last_used_at, i.source_app, i.created_at, i.updated_at, \
@@ -681,17 +684,6 @@ pub(crate) fn rich_item_ids(conn: &Connection) -> Result<Vec<ItemId>> {
     ids.map(|id| id_from(&id?)).collect()
 }
 
-pub(crate) fn search(conn: &Connection, query: &str, limit: usize) -> Result<Vec<ItemId>> {
-    let Some(expression) = fts::match_expression(query) else {
-        return Ok(Vec::new());
-    };
-    let limit = i64::try_from(limit).unwrap_or(i64::MAX);
-    let mut stmt = conn.prepare_cached(&format!(
-        "SELECT i.id FROM item_fts JOIN items i ON i.seq = item_fts.rowid {JOIN_LIVE}
-         WHERE item_fts MATCH ?1 AND {WHERE_LIVE}
-         ORDER BY bm25(item_fts, 10.0, 1.0), i.seq
-         LIMIT ?2"
-    ))?;
-    let ids = stmt.query_map(params![expression, limit], |r| r.get::<_, Vec<u8>>(0))?;
-    ids.map(|id| id_from(&id?)).collect()
+pub(crate) fn search(conn: &Connection, query: &Query) -> Result<BodyMatches> {
+    fts::body_matches(conn, query)
 }

@@ -29,6 +29,7 @@ pub mod instance_names;
 pub mod keys;
 pub mod payload;
 pub mod pipeline;
+pub mod regional;
 pub mod route;
 pub mod startup_task;
 pub mod system_look;

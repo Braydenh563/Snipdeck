@@ -370,7 +370,7 @@ impl Store {
             problems.push(format!("full-text index is damaged: {e}"));
         }
 
-        let counts: [(&str, &str); 7] = [
+        let counts: [(&str, &str); 6] = [
             (
                 "items missing from the search index",
                 "SELECT count(*) FROM items WHERE seq NOT IN (SELECT rowid FROM item_fts)",
@@ -378,10 +378,6 @@ impl Store {
             (
                 "search index rows without an item",
                 "SELECT count(*) FROM item_fts WHERE rowid NOT IN (SELECT seq FROM items)",
-            ),
-            (
-                "search index titles out of date",
-                "SELECT count(*) FROM item_fts f JOIN items i ON i.seq = f.rowid WHERE f.title <> i.title",
             ),
             (
                 "sensitive items with content in the search index",
@@ -409,6 +405,11 @@ impl Store {
             if n > 0 {
                 problems.push(format!("{n} {what}"));
             }
+        }
+
+        let stale = crate::fts::stale_titles(conn)?;
+        if stale > 0 {
+            problems.push(format!("{stale} search index titles out of date"));
         }
 
         self.security_problems(&mut problems)?;

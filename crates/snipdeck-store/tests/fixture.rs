@@ -132,16 +132,15 @@ fn a_version_1_database_opens_and_reads_back() {
 #[test]
 fn the_fixtures_search_index_and_trash_work() {
     let (_dir, mut s) = open_fixture();
-    assert_eq!(s.search("hello", 5).unwrap(), [id::<ItemId>(ITEM_RICH)]);
-    assert_eq!(s.search("hunter2", 5).unwrap().len(), 0);
-    assert!(s.search("obsolete", 5).unwrap().is_empty(), "trashed");
+    assert_eq!(found(&s, "hello"), [id::<ItemId>(ITEM_RICH)]);
+    // Version 10 rebuilt the index with trigrams over folded text: mid-word and any case.
+    assert_eq!(found(&s, "ELL"), [id::<ItemId>(ITEM_RICH)]);
+    assert_eq!(found(&s, "hunter2").len(), 0);
+    assert!(found(&s, "obsolete").is_empty(), "trashed");
     let trashed = s.trashed().unwrap();
     assert_eq!(trashed.len(), 1);
     s.restore(trashed[0].target).unwrap();
-    assert_eq!(
-        s.search("obsolete", 5).unwrap(),
-        [id::<ItemId>(ITEM_TRASHED)]
-    );
+    assert_eq!(found(&s, "obsolete"), [id::<ItemId>(ITEM_TRASHED)]);
 }
 
 /// The v1 to v2 migration (review H1, M6, N5) on the real version-1 file: every row survives,

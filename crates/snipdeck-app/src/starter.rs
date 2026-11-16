@@ -48,6 +48,24 @@ pub const NEW_LIST: &str = "New list";
 /// The name a new board's editor starts from (numbered when taken).
 pub const NEW_BOARD: &str = "New board";
 
+/// What a copy of an item is titled: `{title}` stands for the original's title.
+pub const COPY_TITLE: &str = "{title} copy";
+
+/// The title of a copy of an item titled `title`, from `format` (`{title}` stands for the title;
+/// [`COPY_TITLE`], translated by the window layer). An untitled item stays untitled (its row shows
+/// its text). A title that would pass the limit is cut so the copy fits.
+#[must_use]
+pub fn copy_title(format: &str, title: &str) -> String {
+    let title = title.trim();
+    if title.is_empty() {
+        return String::new();
+    }
+    let fixed = format.replace("{title}", "").chars().count();
+    let room = crate::item_editor::TITLE_MAX_CHARS.saturating_sub(fixed);
+    let kept: String = title.chars().take(room).collect();
+    format.replace("{title}", kept.trim_end())
+}
+
 /// The name the list and board editors start with for a new one: `base` and the first number
 /// (from 1) no name in `taken` already has, compared without regard to case. The editor selects
 /// it so typing replaces it.
@@ -304,5 +322,19 @@ mod tests {
         let (board, list) = add_list(&mut store, None, now()).unwrap();
         assert_eq!(store.boards().unwrap()[0].id, board);
         assert_eq!(store.lists(board).unwrap()[0].id, list);
+    }
+
+    #[test]
+    fn a_copy_is_titled_from_the_format_and_stays_within_the_limit() {
+        assert_eq!(copy_title(COPY_TITLE, "Race"), "Race copy");
+        assert_eq!(
+            copy_title("Kopie von {title}", "Rennen"),
+            "Kopie von Rennen"
+        );
+        assert_eq!(copy_title(COPY_TITLE, "  "), "", "untitled stays untitled");
+        let long = "x".repeat(crate::item_editor::TITLE_MAX_CHARS);
+        let copy = copy_title(COPY_TITLE, &long);
+        assert_eq!(copy.chars().count(), crate::item_editor::TITLE_MAX_CHARS);
+        assert!(copy.ends_with(" copy"));
     }
 }

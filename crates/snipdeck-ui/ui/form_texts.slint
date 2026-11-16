@@ -24,8 +24,16 @@ export global FormTexts {
     }
 
     // A date field that is not a real day; the format is the same hint the field shows.
-    pure public function bad-date() -> string {
-        return @tr("Enter a real date as YYYY-MM-DD, or leave it empty for today.");
+    pure public function bad-date(format: string) -> string {
+        return @tr("Enter a real date as {}, or leave it empty for today.", format);
+    }
+    // The placeholder of a date field: the locale's format, then what an empty field means.
+    pure public function date-hint(format: string) -> string {
+        return @tr("{}, empty for today", format);
+    }
+    // A number field holding something that is not a number.
+    pure public function bad-number() -> string {
+        return @tr("Enter a number, such as 12 or 3.5.");
     }
 
     // A required fill-form field left empty (or holding only spaces).

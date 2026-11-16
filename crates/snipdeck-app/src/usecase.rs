@@ -4,9 +4,11 @@
 use std::collections::BTreeMap;
 
 use snipdeck_core::{
-    CaseShape, Format, Formats, Item, ItemId, ItemKind, Timestamp, UseMode, UseOutcome,
+    CaseShape, Format, Formats, Item, ItemId, ItemKind, PasteFailure, Timestamp, UseMode,
+    UseOutcome,
     template::{
-        Locale, Prompt, RenderContext, RenderError, Template, TemplateError, TimeZone,
+        KeyStop, Locale, Prompt, RenderContext, RenderError, SnippetLookup, SnippetSource,
+        Template, TemplateError, TemplateKey, TimeZone,
         transform::{self, Transform},
     },
 };
@@ -16,7 +18,7 @@ use snipdeck_platform::{
     pipeline::{self, Clipboard, Env, Keyboard, Timing},
     route::Route,
 };
-use snipdeck_store::{BlobStore, ItemRepo};
+use snipdeck_store::{BlobStore, ItemRepo, TriggerRepo};
 
 /// Everything a use needs from the caller, resolved at the moment of the click.
 pub struct UseRequest {
@@ -32,6 +34,11 @@ pub struct UseRequest {
     pub answers: BTreeMap<String, String>,
     /// The clipboard text for `{clipboard}`, read by the caller before the pipeline touches it.
     pub clipboard_text: Option<String>,
+    /// The earlier entries of the clipboard history, newest first, for `{clipboard:2}` and on
+    /// (empty unless the template names a position; see `Template::max_clipboard_position`).
+    pub clipboard_history: Vec<String>,
+    /// The text selected in the Target, for `{selection}`, read before the form opened.
+    pub selection: Option<String>,
     /// The time zone for `{date}` and `{time}`.
     pub tz: TimeZone,
     /// The date and clock style for `{date}` and `{time}`.
@@ -136,7 +143,7 @@ pub fn use_item<S, C, K, T>(
     request: &UseRequest,
 ) -> Result<Used, UseError>
 where
-    S: ItemRepo + BlobStore,
+    S: ItemRepo + TriggerRepo + BlobStore,
     C: Clipboard,
     K: Keyboard,
     T: Timing,
@@ -157,23 +164,21 @@ pub fn use_item_guarded<S, C, K, T>(
     proceed: &dyn Fn() -> bool,
 ) -> Result<Used, UseError>
 where
-    S: ItemRepo + BlobStore,
+    S: ItemRepo + TriggerRepo + BlobStore,
     C: Clipboard,
     K: Keyboard,
     T: Timing,
 {
     let item = store.item(request.item)?;
     let formats = store.formats(request.item)?;
-    let (payload, cursor_from_end) = build_payload(store, &item, &formats, request)?;
-    let outcome = pipeline::use_item_erasing(
-        env,
-        &payload,
-        // An item set to "always paste as plain text" pastes plain whatever the caller asked.
-        item.effective_mode(request.mode),
-        &request.route,
-        request.erase,
-        proceed,
-    )?;
+    let (payload, cursor_from_end, keys) = build_payload(store, &item, &formats, request)?;
+    // An item set to "always paste as plain text" pastes plain whatever the caller asked.
+    let mode = item.effective_mode(request.mode);
+    let outcome = if keys.is_empty() || mode == UseMode::Copy {
+        pipeline::use_item_erasing(env, &payload, mode, &request.route, request.erase, proceed)?
+    } else {
+        paste_in_pieces(env, &payload, &keys, mode, request, proceed)?
+    };
     if matches!(outcome, UseOutcome::Pasted | UseOutcome::PastedNotRestored)
         && let Some(n) = cursor_from_end.filter(|n| *n > 0)
     {
@@ -198,6 +203,82 @@ where
         cursor_from_end,
         count_failed,
     })
+}
+
+/// A template with key presses (`{key:tab}`) goes out piece by piece: each piece is pasted as
+/// an ordinary use, and the key goes out between two pieces. A route that only copies has no
+/// key to press ([`UseMode::Copy`] and `Route::Copy` keep the text whole, without the keys).
+fn paste_in_pieces<C: Clipboard, K: Keyboard, T: Timing>(
+    env: &mut Env<'_, C, K, T>,
+    payload: &Payload,
+    keys: &[KeyStop],
+    mode: UseMode,
+    request: &UseRequest,
+    proceed: &dyn Fn() -> bool,
+) -> Result<UseOutcome, pipeline::Error> {
+    let Some(Data::Text(text)) = payload.data().first() else {
+        return pipeline::use_item_erasing(
+            env,
+            payload,
+            mode,
+            &request.route,
+            request.erase,
+            proceed,
+        );
+    };
+    if !matches!(request.route, Route::Paste { .. }) {
+        return pipeline::use_item_erasing(
+            env,
+            payload,
+            mode,
+            &request.route,
+            request.erase,
+            proceed,
+        );
+    }
+    let private = payload.is_private();
+    let mut start = 0;
+    let mut erase = request.erase;
+    let mut worst = UseOutcome::Pasted;
+    let always: &dyn Fn() -> bool = &|| true;
+    let mut asked = proceed;
+    for (i, end) in keys.iter().map(|k| k.at).chain([text.len()]).enumerate() {
+        let piece = &text[start..end];
+        start = end;
+        if !piece.is_empty() {
+            let one = Payload::new(vec![Data::Text(piece.to_owned())]);
+            let one = one.map(|p| if private { p.private() } else { p });
+            let Some(one) = one else { continue };
+            let outcome =
+                pipeline::use_item_erasing(env, &one, mode, &request.route, erase, asked)?;
+            erase = 0;
+            asked = always;
+            match outcome {
+                UseOutcome::Pasted => {}
+                UseOutcome::PastedNotRestored => worst = outcome,
+                // The pipeline fell back to a copy: the rest cannot be typed either.
+                other => return Ok(other),
+            }
+        }
+        if let Some(stop) = keys.get(i) {
+            let mut events = snipdeck_platform::keys::backspaces(erase);
+            erase = 0;
+            events.extend(key_events(stop.key));
+            if env.keyboard.send(&events).is_err() {
+                return Ok(UseOutcome::CopiedInstead(PasteFailure::TargetUnavailable));
+            }
+        }
+    }
+    Ok(worst)
+}
+
+/// The press and release of a template's key.
+fn key_events(key: TemplateKey) -> [KeyEvent; 2] {
+    let key = match key {
+        TemplateKey::Tab => Key::Tab,
+        TemplateKey::Enter => Key::Enter,
+    };
+    [true, false].map(|down| KeyEvent { key, down })
 }
 
 /// The source text of template `item`, with the item's title for the form's header (the first
@@ -253,13 +334,18 @@ fn text_of<S: BlobStore>(store: &S, formats: &Formats) -> Result<Option<String>,
     }
 }
 
-fn build_payload<S: BlobStore>(
+/// What a use puts on the clipboard: the payload, where the caret ends up, and the key presses
+/// that go between pieces of its text.
+type Built = (Payload, Option<usize>, Vec<KeyStop>);
+
+fn build_payload<S: ItemRepo + TriggerRepo + BlobStore>(
     store: &S,
     item: &Item,
     formats: &Formats,
     request: &UseRequest,
-) -> Result<(Payload, Option<usize>), UseError> {
+) -> Result<Built, UseError> {
     let mut cursor = None;
+    let mut keys = Vec::new();
     let mut data = Vec::new();
     for format in formats {
         match format {
@@ -275,16 +361,19 @@ fn build_payload<S: BlobStore>(
                 let bytes = store.read(content)?;
                 let text = String::from_utf8(bytes.into_owned()).map_err(|_| UseError::NotText)?;
                 let mut text = if item.kind == ItemKind::Template {
-                    let rendered = render_template(&text, request)?;
-                    cursor = rendered.1;
-                    rendered.0
+                    let rendered = render_template(store, &text, request)?;
+                    cursor = rendered.cursor_from_end;
+                    keys = rendered.keys;
+                    rendered.text
                 } else {
                     text
                 };
                 if let Some(transform) = request.transform {
                     text = transform::apply(transform, &text);
-                    // The transform can change lengths (`ß` is `SS`): no caret to restore.
+                    // The transform can change lengths (`ß` is `SS`): no caret to restore, and
+                    // no place for a key press.
                     cursor = None;
+                    keys.clear();
                 }
                 if request.retype.shape != CaseShape::AsIs {
                     text = request.retype.shape.apply(&text);
@@ -329,17 +418,25 @@ fn build_payload<S: BlobStore>(
             payload
         },
         cursor,
+        keys,
     ))
 }
 
-fn render_template(text: &str, request: &UseRequest) -> Result<(String, Option<usize>), UseError> {
-    let template = Template::parse(text)?;
+fn render_template<S: ItemRepo + TriggerRepo + BlobStore>(
+    store: &S,
+    text: &str,
+    request: &UseRequest,
+) -> Result<snipdeck_core::template::Rendered, UseError> {
+    let template = parse_template(store, text)?;
     // Any prompt without an answer opens the form, whatever its kind: a default only prefills
-    // it, and a choice, date or tick box alone must still be asked (empty date = today).
+    // it, and a choice, date or tick box alone must still be asked (empty date = today). A
+    // prompt inside an `{optional}` section the answers leave unticked is not asked.
     let prompts = template.prompts();
+    let active = template.active_prompts(&request.answers);
     if prompts
         .iter()
-        .any(|p| !request.answers.contains_key(&p.name))
+        .zip(&active)
+        .any(|(p, on)| *on && !request.answers.contains_key(&p.name))
     {
         return Err(UseError::NeedsAnswers(prompts));
     }
@@ -359,12 +456,99 @@ fn render_template(text: &str, request: &UseRequest) -> Result<(String, Option<u
     let mut ctx = RenderContext::new(request.now, &request.answers)
         .with_tz(request.tz.clone())
         .with_locale(request.locale)
-        .with_uuids(uuids);
+        .with_uuids(uuids)
+        .with_clipboard_history(&request.clipboard_history);
     if let Some(clipboard) = &request.clipboard_text {
         ctx = ctx.with_clipboard(clipboard);
     }
-    let rendered = template.try_render(&ctx)?;
-    Ok((rendered.text, rendered.cursor_from_end))
+    if let Some(selection) = &request.selection {
+        ctx = ctx.with_selection(selection);
+    }
+    Ok(template.try_render(&ctx)?)
+}
+
+/// How this user writes dates and times in a template: the language's names, with the numeric
+/// order and the clock taken from the PC's regional format when Windows tells it (SPEC §5.4).
+#[must_use]
+pub fn template_locale(language: &str) -> Locale {
+    let regional = snipdeck_platform::regional::read();
+    Locale::for_tag(language).with_regional(
+        regional.short_date.as_deref(),
+        regional.short_time.as_deref(),
+    )
+}
+
+/// `src` parsed as a template, with `{snippet:Title}` resolved against the library.
+///
+/// # Errors
+///
+/// The template's own error: a bad placeholder, or a snippet that is missing, ambiguous,
+/// sensitive, too deep or inside itself.
+pub fn parse_template<S: ItemRepo + TriggerRepo + BlobStore>(
+    store: &S,
+    src: &str,
+) -> Result<Template, TemplateError> {
+    Template::parse_with(src, &StoreSnippets::new(store))
+}
+
+/// The library as the place `{snippet:Title}` looks in: the item with that title (ignoring case
+/// and surrounding spaces), else the one with that trigger. A text snippet is inserted as it
+/// is, braces and all; a template snippet is inserted as a template. A Sensitive item, or one
+/// without text, is refused.
+pub struct StoreSnippets<'a, S> {
+    store: &'a S,
+    items: std::cell::OnceCell<Vec<Item>>,
+}
+
+impl<'a, S: ItemRepo + TriggerRepo + BlobStore> StoreSnippets<'a, S> {
+    /// The library of `store`; nothing is read until a snippet is asked for.
+    #[must_use]
+    pub fn new(store: &'a S) -> Self {
+        Self {
+            store,
+            items: std::cell::OnceCell::new(),
+        }
+    }
+
+    fn text_of_item(&self, item: &Item) -> SnippetLookup {
+        if item.sensitive || !matches!(item.kind, ItemKind::Text | ItemKind::Template) {
+            return SnippetLookup::Unusable;
+        }
+        let Ok(formats) = self.store.formats(item.id) else {
+            return SnippetLookup::Unusable;
+        };
+        match text_of(self.store, &formats) {
+            Ok(Some(text)) if item.kind == ItemKind::Template => SnippetLookup::Found(text),
+            Ok(Some(text)) => SnippetLookup::Found(snipdeck_core::template::escape(&text)),
+            _ => SnippetLookup::Unusable,
+        }
+    }
+}
+
+impl<S: ItemRepo + TriggerRepo + BlobStore> SnippetSource for StoreSnippets<'_, S> {
+    fn snippet(&self, name: &str) -> SnippetLookup {
+        let wanted = name.trim().to_lowercase();
+        let items = self
+            .items
+            .get_or_init(|| self.store.all_items().unwrap_or_default());
+        let mut titled = items
+            .iter()
+            .filter(|i| !i.title.trim().is_empty() && i.title.trim().to_lowercase() == wanted);
+        if let Some(first) = titled.next() {
+            return if titled.next().is_some() {
+                SnippetLookup::Ambiguous
+            } else {
+                self.text_of_item(first)
+            };
+        }
+        let by_trigger = snipdeck_core::Trigger::new(name.trim())
+            .ok()
+            .and_then(|t| self.store.trigger_holder(&t).ok().flatten());
+        match by_trigger.and_then(|id| items.iter().find(|i| i.id == id)) {
+            Some(item) => self.text_of_item(item),
+            None => SnippetLookup::NotFound,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -411,8 +595,18 @@ mod tests {
         }
 
         fn add(&mut self, kind: ItemKind, sensitive: bool, text: &str) -> ItemId {
+            self.add_titled("t", kind, sensitive, text)
+        }
+
+        fn add_titled(
+            &mut self,
+            title: &str,
+            kind: ItemKind,
+            sensitive: bool,
+            text: &str,
+        ) -> ItemId {
             let now = at("2026-10-17T09:00:00Z");
-            let mut item = Item::new(self.list, "t".into(), kind, now);
+            let mut item = Item::new(self.list, title.into(), kind, now);
             item.sensitive = sensitive;
             item.preview = Item::preview_of(text, sensitive);
             let content = Content::Inline(Inline::new(text.as_bytes().to_vec()).expect("inline"));
@@ -431,6 +625,8 @@ mod tests {
                 now: at("2026-10-17T10:30:00Z"),
                 answers: BTreeMap::new(),
                 clipboard_text: None,
+                clipboard_history: Vec::new(),
+                selection: None,
                 tz: TimeZone::UTC,
                 locale: Locale::for_tag("en"),
                 transform: None,
@@ -569,8 +765,36 @@ mod tests {
         fn record_use(&mut self, _id: ItemId, _at: Timestamp) -> snipdeck_store::Result<()> {
             Err(snipdeck_store::Error::Corrupt("disk full".to_owned()))
         }
-        fn search(&self, query: &str, limit: usize) -> snipdeck_store::Result<Vec<ItemId>> {
-            self.0.search(query, limit)
+        fn search(
+            &self,
+            query: &snipdeck_core::search::Query,
+        ) -> snipdeck_store::Result<snipdeck_core::search::BodyMatches> {
+            self.0.search(query)
+        }
+    }
+
+    impl TriggerRepo for NoCount<'_> {
+        fn triggers(&self) -> snipdeck_store::Result<Vec<(snipdeck_core::Trigger, ItemId)>> {
+            self.0.triggers()
+        }
+        fn trigger_of(
+            &self,
+            item: ItemId,
+        ) -> snipdeck_store::Result<Option<snipdeck_core::Trigger>> {
+            self.0.trigger_of(item)
+        }
+        fn trigger_holder(
+            &self,
+            trigger: &snipdeck_core::Trigger,
+        ) -> snipdeck_store::Result<Option<ItemId>> {
+            self.0.trigger_holder(trigger)
+        }
+        fn set_trigger(
+            &mut self,
+            item: ItemId,
+            trigger: Option<&snipdeck_core::Trigger>,
+        ) -> snipdeck_store::Result<Vec<snipdeck_core::Trigger>> {
+            self.0.set_trigger(item, trigger)
         }
     }
 
@@ -788,6 +1012,146 @@ mod tests {
         let copy = World::request(id, UseMode::Copy, Route::Copy(CopyReason::NoTarget));
         w.run(&copy).expect("used");
         assert!(w.keyboard.sent.is_empty(), "a copy sends no keys");
+    }
+
+    /// The Backspace, Tab and Enter presses of every batch the keyboard was sent, in order.
+    fn edit_keys(w: &World) -> Vec<Key> {
+        w.keyboard
+            .sent
+            .iter()
+            .flatten()
+            .filter(|e| e.down && matches!(e.key, Key::Backspace | Key::Tab | Key::Enter))
+            .map(|e| e.key)
+            .collect()
+    }
+
+    fn written_text(w: &World) -> Vec<String> {
+        w.clipboard
+            .written
+            .iter()
+            .filter_map(|p| match p.data().first() {
+                Some(Data::Text(t)) => Some(t.clone()),
+                _ => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn key_stops_paste_the_text_in_pieces_with_the_keys_between() {
+        let mut w = World::new();
+        let id = w.add(ItemKind::Template, false, "Ann{key:tab}Lee{key:enter}Done");
+        let mut request = World::request(id, UseMode::Paste, PASTE);
+        request.erase = 2;
+        let used = w.run(&request).expect("used");
+        assert_eq!(used.outcome, UseOutcome::Pasted);
+        assert_eq!(written_text(&w), ["Ann", "Lee", "Done"]);
+        // The typed trigger is erased once, before the first piece.
+        assert_eq!(
+            edit_keys(&w),
+            [Key::Backspace, Key::Backspace, Key::Tab, Key::Enter]
+        );
+    }
+
+    #[test]
+    fn a_template_that_starts_with_a_key_erases_the_trigger_before_it() {
+        let mut w = World::new();
+        let id = w.add(ItemKind::Template, false, "{key:tab}Lee");
+        let mut request = World::request(id, UseMode::Paste, PASTE);
+        request.erase = 1;
+        w.run(&request).expect("used");
+        assert_eq!(written_text(&w), ["Lee"]);
+        assert_eq!(edit_keys(&w), [Key::Backspace, Key::Tab]);
+    }
+
+    #[test]
+    fn a_copy_keeps_the_text_whole_and_presses_no_key() {
+        let mut w = World::new();
+        let id = w.add(ItemKind::Template, false, "Ann{key:tab}Lee");
+        let copy = World::request(id, UseMode::Copy, Route::Copy(CopyReason::NoTarget));
+        w.run(&copy).expect("used");
+        assert_eq!(written_text(&w), ["AnnLee"]);
+        assert!(edit_keys(&w).is_empty());
+        // A copy route with a paste mode is the same: there is nowhere to press a key.
+        let mut w = World::new();
+        let id = w.add(ItemKind::Template, false, "Ann{key:tab}Lee");
+        let routed = World::request(id, UseMode::Paste, Route::Copy(CopyReason::NoTarget));
+        w.run(&routed).expect("used");
+        assert_eq!(written_text(&w), ["AnnLee"]);
+        assert!(edit_keys(&w).is_empty());
+    }
+
+    #[test]
+    fn a_failed_key_press_leaves_the_text_copied_for_the_user() {
+        let mut w = World::new();
+        let id = w.add(ItemKind::Template, false, "Ann{key:tab}Lee");
+        w.keyboard.fail = true;
+        let used = w
+            .run(&World::request(id, UseMode::Paste, PASTE))
+            .expect("used");
+        assert!(
+            matches!(used.outcome, UseOutcome::CopiedInstead(_)),
+            "{:?}",
+            used.outcome
+        );
+        assert!(edit_keys(&w).is_empty());
+    }
+
+    #[test]
+    fn nested_snippets_resolve_by_title_or_trigger_and_refuse_what_is_unsafe() {
+        let mut w = World::new();
+        w.add_titled("Sig", ItemKind::Text, false, "Best {regards}");
+        w.add_titled("Wrapper", ItemKind::Template, false, "Hi,\n{snippet:sig}");
+        let wrapper = w.store.all_items().expect("items")[1].id;
+        let used = w
+            .run(&World::request(wrapper, UseMode::Paste, PASTE))
+            .expect("used");
+        assert_eq!(used.outcome, UseOutcome::Pasted);
+        // The plain text is taken literally: its braces are not placeholders.
+        assert_eq!(written_text(&w), ["Hi,\nBest {regards}"]);
+
+        // A Sensitive item is not a snippet.
+        let mut w = World::new();
+        w.add_titled("Secret", ItemKind::Text, true, "hunter2");
+        let id = w.add_titled("Uses", ItemKind::Template, false, "{snippet:secret}");
+        assert!(matches!(
+            w.run(&World::request(id, UseMode::Paste, PASTE)),
+            Err(UseError::Template(_))
+        ));
+        assert!(w.clipboard.written.is_empty());
+
+        // Two items with one title are ambiguous, not silently the first.
+        let mut w = World::new();
+        w.add_titled("Dup", ItemKind::Text, false, "one");
+        w.add_titled("dup ", ItemKind::Text, false, "two");
+        let id = w.add_titled("Uses", ItemKind::Template, false, "{snippet:DUP}");
+        assert!(matches!(
+            w.run(&World::request(id, UseMode::Paste, PASTE)),
+            Err(UseError::Template(_))
+        ));
+
+        // A snippet that contains itself is a cycle, not a hang.
+        let mut w = World::new();
+        let id = w.add_titled("Loop", ItemKind::Template, false, "a{snippet:loop}");
+        assert!(matches!(
+            w.run(&World::request(id, UseMode::Paste, PASTE)),
+            Err(UseError::Template(_))
+        ));
+    }
+
+    #[test]
+    fn clipboard_history_positions_and_the_selection_reach_the_render() {
+        let mut w = World::new();
+        let id = w.add(
+            ItemKind::Template,
+            false,
+            "{clipboard}|{clipboard:2}|{clipboard:3}|{selection}",
+        );
+        let mut request = World::request(id, UseMode::Paste, PASTE);
+        request.clipboard_text = Some("now".into());
+        request.clipboard_history = vec!["before".into(), "older".into()];
+        request.selection = Some("picked".into());
+        w.run(&request).expect("used");
+        assert_eq!(written_text(&w), ["now|before|older|picked"]);
     }
 
     #[test]

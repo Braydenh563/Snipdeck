@@ -93,6 +93,10 @@ pub struct StackView {
 
 /// The toast on screen.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "one flag per button the toast can show"
+)]
 pub struct ToastView {
     /// Changes with every new toast, so the host can tell a new one from a redraw.
     pub seq: u64,
@@ -104,6 +108,9 @@ pub struct ToastView {
     pub phase: ToastPhase,
     /// It carries an Undo button ([`Controller::main_undo`](crate::controller::Controller::main_undo)).
     pub undo: bool,
+    /// It carries a "Delete forever" button ([`Controller::toast_action`](crate::controller::Controller::toast_action)),
+    /// after an Undo of an add.
+    pub purge: bool,
     /// It carries an Edit button ([`Controller::toast_edit`](crate::controller::Controller::toast_edit)).
     pub edit: bool,
     /// It carries an "Open log" button ([`Controller::toast_action`](crate::controller::Controller::toast_action)).
@@ -135,11 +142,30 @@ pub struct FillView {
     pub title: String,
     /// One per prompt.
     pub fields: Vec<fill::Field>,
+    /// The date format as letters in this user's order (`DD.MM.YYYY`), for date fields.
+    pub date_hint: String,
+    /// What the month grid of a date field needs: the words, the first day of the week and today.
+    pub calendar: CalendarView,
+    /// Per field: the day it holds, for a date field with a real day typed in.
+    pub dates: Vec<Option<(i32, i32, i32)>>,
     /// The text as it would be pasted now; empty while `masked`.
     pub preview: String,
     /// The template item is sensitive: the preview would show its secret text, so it is left
     /// out and the window draws a mask instead.
     pub masked: bool,
+}
+
+/// The month grid's words and today, in the language and week of the user's locale.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CalendarView {
+    /// The twelve month names, January first.
+    pub months: Vec<String>,
+    /// The seven short weekday names, Monday first.
+    pub weekdays: Vec<String>,
+    /// The week starts on Sunday.
+    pub week_starts_sunday: bool,
+    /// Today as (year, month, day) in the user's time zone.
+    pub today: (i32, i32, i32),
 }
 
 /// A filled-in form, ready to be used: see [`Controller::take_fill`](crate::controller::Controller::take_fill).
@@ -149,6 +175,8 @@ pub struct FillSubmission {
     pub(super) mode: UseMode,
     pub(super) answers: BTreeMap<String, String>,
     pub(super) transform: Option<snipdeck_core::template::transform::Transform>,
+    /// The Target's selection, read before the form opened.
+    pub(super) selection: Option<String>,
     /// A typed trigger to erase with the paste, once the form is confirmed.
     pub(super) erase: Option<FillErase>,
 }

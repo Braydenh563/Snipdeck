@@ -37,10 +37,11 @@ Features that exist now (user-facing list in `README.md` and `docs/user-guide.md
 - Seven languages (en, es, de, fr, pt-BR, ja, zh-Hans); catalogues are checked by `scripts/i18n.py`.
 
 Not built yet (SPEC 5.4, library audit 29 and 30): the rope viewer for text of 16 KB to 5 MB (such text opens as a
-read-only prefix), find/replace, monospace toggle and line numbers in the text editor, the image editor (crop,
-rotate, resize, redact), decoding JPEG/WebP/GIF/BMP to a stored PNG, and Replace on an existing Image or File item.
-Reason: each is a large feature of its own (a virtualised text widget, an image pipeline, new crates) and was
-outside the time boxes of the audit fixes.
+read-only prefix, so find and the text tools do not reach it), the image editor (crop, rotate, resize, redact),
+decoding JPEG/WebP/GIF/BMP to a stored PNG, and Replace on an existing Image or File item. Reason: each is a large
+feature of its own (a virtualised text widget, an image pipeline, new crates) and was outside the time boxes of the
+audit fixes. Built since: find/replace, whole-text changes, the monospace switch and line numbers for text of 16 KB
+or less (the editor's Text tools row; `snipdeck_core::text_tools` holds the logic).
 
 ## Crate map
 

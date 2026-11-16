@@ -855,8 +855,11 @@ mod tests {
         fn record_use(&mut self, _: ItemId, _: Timestamp) -> snipdeck_store::Result<()> {
             unreachable!()
         }
-        fn search(&self, query: &str, limit: usize) -> snipdeck_store::Result<Vec<ItemId>> {
-            self.0.search(query, limit)
+        fn search(
+            &self,
+            query: &snipdeck_core::search::Query,
+        ) -> snipdeck_store::Result<snipdeck_core::search::BodyMatches> {
+            self.0.search(query)
         }
     }
 

@@ -194,6 +194,7 @@ where
         if let Some(window) = self.window.upgrade() {
             let words = window.global::<ui::CommandTexts<'_>>();
             ctl.set_new_name_bases(&words.get_new_list_name(), &words.get_new_board_name());
+            ctl.set_copy_title(&words.invoke_copy_title("{title}".into()));
         }
         let result = f(&mut ctl);
         drop(ctl);

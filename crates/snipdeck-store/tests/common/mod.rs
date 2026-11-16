@@ -17,6 +17,25 @@ use snipdeck_core::{
 };
 use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, Store};
 
+/// The live items whose title or content holds every word of `query` that the full-text
+/// index looks up (none if it looks up no word), in id order.
+pub fn found(store: &impl ItemRepo, query: &str) -> Vec<ItemId> {
+    let query = snipdeck_core::search::Query::parse(query);
+    let body = store.search(&query).unwrap();
+    let mut sets = (0..query.terms.len())
+        .filter(|&i| !query.terms[i].negated)
+        .filter_map(|i| body.term(i));
+    let Some(first) = sets.next() else {
+        return Vec::new();
+    };
+    let mut ids: Vec<ItemId> = first.iter().copied().collect();
+    for set in sets {
+        ids.retain(|id| set.contains(id));
+    }
+    ids.sort_unstable();
+    ids
+}
+
 pub fn at(seconds: i64) -> Timestamp {
     Timestamp::from_second(1_800_000_000 + seconds).unwrap()
 }

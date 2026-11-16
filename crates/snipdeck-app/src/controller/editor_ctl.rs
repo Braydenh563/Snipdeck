@@ -14,17 +14,18 @@
 
 use std::{collections::BTreeSet, path::PathBuf, rc::Rc, sync::Arc};
 
+use crate::usecase;
 use snipdeck_core::{
     CaseMode, Format, Formats, Item, ItemId, ItemKind, ListId, Tag, TagId, Trigger, TriggerEnd,
-    TriggerOptions, template::Locale,
+    TriggerOptions,
 };
 use snipdeck_platform::file_dialog::FilePicker;
 use snipdeck_store::{
-    BlobStore, ItemRepo,
+    BlobStore,
     crypto::{CryptoError, KeyProvider},
 };
 
-use super::{Controller, Library, Toast, ToastKind, ToastMessage, failed};
+use super::{Controller, Library, Toast, ToastKind, ToastMessage};
 use crate::{
     drafts::{Draft, DraftKey, Drafts},
     duplicate::Duplicate,
@@ -121,6 +122,14 @@ pub(super) struct ItemEditorSlot {
     /// The item keeps HTML or RTF next to its text: saving changed text drops them, and
     /// "Remove formatting" drops them alone.
     formatted: bool,
+    /// "Remove formatting" was pressed: Save drops the HTML and RTF, Cancel keeps them.
+    drop_formats: bool,
+    /// The item as it was when the editor opened: Save writes only the fields the person changed
+    /// since, so a colour, tag or move made elsewhere meanwhile is not overwritten.
+    opened: Option<snipdeck_core::Item>,
+    /// A new item goes after this one (the row the cursor was on) and joins its group, when the
+    /// list is in manual order and the item is saved to that same list.
+    insert_after: Option<ItemId>,
     /// `updated_at` of the item when it was opened, as text: a draft of an older state is stale.
     stamp: Option<String>,
     /// The size of a text over the editing cap, which is shown read-only.
@@ -295,7 +304,7 @@ where
             duplicate: slot.problems.duplicate.clone(),
             banner: slot.problems.banner.clone(),
             large: slot.large,
-            formatted: slot.formatted,
+            formatted: slot.formatted && !slot.drop_formats,
             saved_text: slot.original_text.clone().unwrap_or_default(),
             attachment: slot.attachment.clone(),
             can_browse: self.editor_env.picker.is_some(),
@@ -318,8 +327,9 @@ where
             input,
             self.clock.now(),
             &self.tz,
-            Locale::for_tag(&self.settings.language),
+            usecase::template_locale(&self.settings.language),
             words,
+            &usecase::StoreSnippets::new(&self.store),
         ))
     }
 
@@ -497,36 +507,15 @@ where
         }
     }
 
-    /// "Remove formatting": the open item keeps its text and loses its HTML and RTF at once, with
-    /// the editor left open and the fields as they are. Does nothing for an item without them.
+    /// "Remove formatting": the open item will keep its text and lose its HTML and RTF when it is
+    /// saved, like every other field of the editor (Cancel keeps them). Does nothing for an item
+    /// without them.
     pub fn item_editor_remove_formatting(&mut self) {
-        let Some(slot) = self.item_editor.as_ref() else {
+        let Some(slot) = self.item_editor.as_mut() else {
             return;
         };
-        let ItemTarget::Item(id) = slot.target else {
-            return;
-        };
-        if !slot.formatted {
-            return;
-        }
-        let done = self.store.formats(id).and_then(|formats| {
-            let kept: Vec<Format> = formats
-                .iter()
-                .filter(|f| !matches!(f, Format::Html(_) | Format::Rtf(_)))
-                .cloned()
-                .collect();
-            let item = self.store.item(id)?;
-            self.store
-                .atomically(|b| b.update_item(&item, Some(&Formats::new(kept.clone())?)))
-        });
-        match done {
-            Ok(()) => {
-                if let Some(slot) = self.item_editor.as_mut() {
-                    slot.formatted = false;
-                }
-                self.library_changed();
-            }
-            Err(_) => self.show_toast(failed()),
+        if matches!(slot.target, ItemTarget::Item(_)) && slot.formatted {
+            slot.drop_formats = true;
         }
     }
 

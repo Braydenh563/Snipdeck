@@ -8,6 +8,7 @@
 use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 
 use rusqlite::{Connection, Transaction};
+use snipdeck_core::search::{BodyMatches, Query};
 use snipdeck_core::{
     Board, BoardId, Content, Formats, Group, GroupId, Item, ItemId, List, ListId, Placement, Tag,
     TagId, Timestamp, Trigger,
@@ -489,8 +490,8 @@ macro_rules! repo_impls {
                 done
             }
 
-            fn search(&self, query: &str, limit: usize) -> Result<Vec<ItemId>> {
-                items::search(self.reader().conn, query, limit)
+            fn search(&self, query: &Query) -> Result<BodyMatches> {
+                items::search(self.reader().conn, query)
             }
         }
 
@@ -562,6 +563,14 @@ macro_rules! repo_impls {
             fn delete_tag(&mut self, id: TagId) -> Result<()> {
                 self.writer(|cx| tags::delete_tag(cx, id))
             }
+
+            fn tag_items(&self, id: TagId) -> Result<Vec<ItemId>> {
+                tags::tag_items(self.reader().conn, id)
+            }
+
+            fn link_tag(&mut self, id: TagId, items: &[ItemId]) -> Result<()> {
+                self.writer(|cx| tags::link_tag(cx, id, items))
+            }
         }
 
         impl TrashRepo for $ty {
@@ -584,6 +593,10 @@ macro_rules! repo_impls {
 
             fn purge_entry(&mut self, target: Trashable) -> Result<()> {
                 self.writer(|cx| trash::purge_entry(cx, target))
+            }
+
+            fn is_stored(&self, target: Trashable) -> Result<bool> {
+                trash::is_stored(self.reader().conn, target)
             }
         }
     };

@@ -421,8 +421,11 @@ fn looks_like_web_host(text: &str) -> bool {
 /// # Errors
 ///
 /// [`EditorProblem::Template`].
-pub fn check_template(text: &str) -> Result<(), EditorProblem> {
-    Template::parse(text)
+pub fn check_template(
+    text: &str,
+    snippets: &dyn snipdeck_core::template::SnippetSource,
+) -> Result<(), EditorProblem> {
+    Template::parse_with(text, snippets)
         .map(drop)
         .map_err(|e: TemplateError| EditorProblem::Template(TemplateProblem::Parse(e.kind)))
 }
@@ -598,7 +601,53 @@ pub fn prefix_of(text: &str, max: usize) -> &str {
 
 #[cfg(test)]
 mod tests {
+    /// Every chip of the editor's placeholder help inserts text that parses (with what a real
+    /// template would have around it), so a chip never writes a template the editor then
+    /// refuses. The chips are the `token:` lines of `editors.slint`.
+    #[test]
+    fn library_19_every_placeholder_chip_inserts_a_template_that_parses() {
+        struct Any;
+        impl snipdeck_core::template::SnippetSource for Any {
+            fn snippet(&self, _name: &str) -> snipdeck_core::template::SnippetLookup {
+                snipdeck_core::template::SnippetLookup::Found("x".into())
+            }
+        }
+        let slint = include_str!("../../snipdeck-ui/ui/editors.slint");
+        let tokens: Vec<&str> = slint
+            .lines()
+            .filter_map(|l| l.trim().strip_prefix("{ token: \""))
+            .filter_map(|l| l.split('"').next())
+            .collect();
+        assert!(tokens.len() >= 19, "the chips were not found: {tokens:?}");
+        for token in tokens {
+            let around = if token.starts_with("{value:") {
+                "{field:Name}"
+            } else if token.starts_with("{calc:") {
+                "{number:Qty}{number:Price}"
+            } else {
+                ""
+            };
+            let src = format!("{around}{token}");
+            let parsed = Template::parse_with(&src, &Any);
+            assert!(parsed.is_ok(), "{token}: {:?}", parsed.err());
+        }
+    }
+
+    #[test]
+    fn library_19_a_name_or_option_with_a_bar_or_brace_is_written_with_backslashes() {
+        use snipdeck_core::template::escape_arg;
+        let option = "a|b {c}";
+        let src = format!("{{choice:Size|{}|x}}", escape_arg(option));
+        let template = Template::parse(&src).expect("parses");
+        let prompts = template.prompts();
+        assert!(matches!(
+            &prompts[0].kind,
+            snipdeck_core::template::PromptKind::Choice { options, .. } if options[0] == option
+        ));
+    }
+
     use super::*;
+    use snipdeck_core::template::NoSnippets;
 
     #[test]
     fn both_ways_of_refusing_a_big_file_name_the_same_size() {
@@ -735,15 +784,15 @@ mod tests {
 
     #[test]
     fn templates_must_parse_and_prompts_are_allowed() {
-        assert!(check_template("Dear {field:Name}, {date}").is_ok());
-        assert!(check_template("Pick {choice:Size|S|M}").is_ok());
-        assert!(check_template("Today is {date}").is_ok());
+        assert!(check_template("Dear {field:Name}, {date}", &NoSnippets).is_ok());
+        assert!(check_template("Pick {choice:Size|S|M}", &NoSnippets).is_ok());
+        assert!(check_template("Today is {date}", &NoSnippets).is_ok());
         assert!(matches!(
-            check_template("Broken {nope}"),
+            check_template("Broken {nope}", &NoSnippets),
             Err(EditorProblem::Template(_))
         ));
         assert!(matches!(
-            check_template("Open { here"),
+            check_template("Open { here", &NoSnippets),
             Err(EditorProblem::Template(_))
         ));
     }

@@ -870,6 +870,45 @@ export component ItemEditor inherits Window {
     // A placeholder chip was chosen: the host inserts `token` into `content` at the caret (a UTF-8 byte
     // offset) and calls `place-caret` with the offset after it.
     callback placeholder-chosen(token: string, caret: int);
+
+    // Text tools (the Content field's disclosure): they change `content` as a whole, by what the host answers.
+    in-out property <bool> tools-open: false;
+    in-out property <string> find-text;
+    in-out property <string> replace-text;
+    in-out property <bool> match-case: false;
+    // Line numbers, and the font toggle: a Code item starts monospace and the toggle turns that off.
+    in-out property <bool> line-numbers: false;
+    in-out property <bool> mono-flip: false;
+    // The text before the last tool ran, so one press of Undo brings it back (any typing forgets it).
+    in-out property <string> tool-backup;
+    in-out property <bool> has-backup: false;
+    // The host applies the change to `content`: the transform at `index` of the list, or Replace all.
+    callback transform-requested(index: int);
+    callback replace-all-requested(find: string, with: string, match-case: bool);
+    // Answers for bindings: how many times `find` is in `text`, and the line numbers of `text` ("1\n2\n3").
+    pure callback match-count(text: string, find: string, match-case: bool) -> int;
+    pure callback numbered(text: string) -> string;
+    public function reset-tools() {
+        root.tools-open = false;
+        root.find-text = "";
+        root.replace-text = "";
+        root.match-case = false;
+        root.line-numbers = false;
+        root.mono-flip = false;
+        root.tool-backup = "";
+        root.has-backup = false;
+    }
+    // After a tool: keep what it replaced for Undo and count the form as edited, unless nothing changed.
+    function tool-ran() {
+        if (root.content != root.tool-backup) {
+            root.has-backup = true;
+            root.touch();
+        } else {
+            root.has-backup = false;
+        }
+    }
+    property <int> found: root.find-text == "" ? 0 : root.match-count(root.content, root.find-text, root.match-case);
+    property <[string]> transform-options: [@tr("UPPER CASE"), @tr("lower case"), @tr("Title Case"), @tr("Trim spaces and blank lines"), @tr("Remove repeated lines"), @tr("Sort lines A to Z")];
     public function place-caret(offset: int) {
         content-field.focus();
         content-field.set-cursor(offset);
@@ -948,18 +987,32 @@ export component ItemEditor inherits Window {
     property <string> source-shown-error: root.source-error != "" ? root.source-error
         : (root.show-errors && root.source-missing) ? @tr("Choose a file, or cancel.") : "";
     property <[PlaceholderHelp]> placeholders: [
-        { token: "{date}", help: @tr("Today's date") },
+        { token: "{date}", help: @tr("Today's date, in your regional format") },
         { token: "{time}", help: @tr("The time now") },
         { token: "{datetime:FORMAT}", help: @tr("Date and time in a format you choose") },
         { token: "{uuid}", help: @tr("A new random ID each time") },
         { token: "{clipboard}", help: @tr("What is on the clipboard") },
+        { token: "{clipboard:2}", help: @tr("The clipboard before the latest copy (2 to 25)") },
+        { token: "{selection}", help: @tr("The text selected in the app you paste into") },
         { token: "{cursor}", help: @tr("Where the text cursor lands after pasting") },
+        { token: "{key:tab}", help: @tr("Presses Tab here, to move between the fields of a form") },
+        { token: "{key:enter}", help: @tr("Presses Enter here") },
         { token: "{field:Name}", help: @tr("Asks for a value each time") },
         { token: "{choice:Name|a|b}", help: @tr("Asks you to pick one of the options") },
         { token: "{multiline:Name|default}", help: @tr("Asks for text over several lines") },
+        { token: "{number:Name}", help: @tr("Asks for a number") },
+        { token: "{calc:Qty*Price|2}", help: @tr("A sum of numbers and number names, with 2 decimals") },
         { token: "{pickdate:Name|FORMAT}", help: @tr("Asks for a date, today if left empty") },
         { token: "{optional:Name}...{/optional}", help: @tr("A tick box; the text inside is pasted only when ticked") },
+        { token: "{value:Name|upper}", help: @tr("An answer again, with a transform") },
+        { token: "{snippet:Title}", help: @tr("The text of another snippet") },
     ];
+
+    // The limits, the escapes, the choice default and the transform list, in words (from the engine's own constants).
+    in property <string> limits-help;
+    in property <string> escapes-help;
+    in property <string> transforms-help;
+    in property <string> choice-help;
 
     // The longest token (by text), whose chip sets the width of the placeholder chip column.
     property <string> widest-token: "{optional:Name}...{/optional}";
@@ -1153,11 +1206,16 @@ export component ItemEditor inherits Window {
                                 single-line: root.kind-index == 2;
                                 min-lines: 6;
                                 max-lines: 14;
-                                monospace: root.kind-index == 1;
+                                monospace: (root.kind-index == 1) != root.mono-flip;
+                                line-numbers: root.line-numbers;
+                                gutter: root.line-numbers ? root.numbered(root.content) : "";
                                 read-only: root.content-large;
                                 error: root.content-shown-error;
                                 text <=> root.content;
-                                edited(t) => { root.touch(); }
+                                edited(t) => {
+                                    root.has-backup = false;
+                                    root.touch();
+                                }
                                 changed has-focus => {
                                     if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                                 }
@@ -1175,6 +1233,120 @@ export component ItemEditor inherits Window {
                             }
                             if root.content-large: Notice {
                                 text: @tr("This text is {}. Anything over 16 KB opens read-only here, and the first 16 KB are shown.", root.content-size);
+                            }
+                            if root.text-kind && root.kind-index != 2 && !root.content-large: VerticalLayout {
+                                spacing: 0px;
+                                tools-row := DisclosureRow {
+                                    text: @tr("Text tools");
+                                    summary: @tr("Find and replace, change the text, font, line numbers");
+                                    open: root.tools-open;
+                                    a11y-label: root.tools-open ? @tr("Hide the text tools") : @tr("Show the text tools");
+                                    clicked => { root.tools-open = !root.tools-open; }
+                                    changed has-focus => {
+                                        if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                    }
+                                }
+                                if root.tools-open: VerticalLayout {
+                                    spacing: Space.s3;
+                                    padding-top: Space.s2;
+                                    padding-left: Space.s2;
+                                    padding-right: Space.s2;
+                                    Toggle {
+                                        text: @tr("Monospace font");
+                                        checked: (root.kind-index == 1) != root.mono-flip;
+                                        toggled(v) => { root.mono-flip = v != (root.kind-index == 1); }
+                                        changed has-focus => {
+                                            if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                        }
+                                    }
+                                    Toggle {
+                                        text: @tr("Line numbers");
+                                        accessible-description: @tr("Lines stop wrapping, so a number is one line.");
+                                        checked <=> root.line-numbers;
+                                        changed has-focus => {
+                                            if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                        }
+                                    }
+                                    FormField {
+                                        label: @tr("Change the text");
+                                        SelectField {
+                                            label: @tr("Change the text");
+                                            placeholder: @tr("Choose a change");
+                                            options: root.transform-options;
+                                            current: -1;
+                                            chosen(i) => {
+                                                root.tool-backup = root.content;
+                                                root.transform-requested(i);
+                                                root.tool-ran();
+                                            }
+                                            changed has-focus => {
+                                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                            }
+                                        }
+                                    }
+                                    FormField {
+                                        label: @tr("Find");
+                                        TextField {
+                                            label: @tr("Find");
+                                            text <=> root.find-text;
+                                            changed has-focus => {
+                                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                            }
+                                        }
+                                    }
+                                    FormField {
+                                        label: @tr("Replace with");
+                                        TextField {
+                                            label: @tr("Replace with");
+                                            text <=> root.replace-text;
+                                            changed has-focus => {
+                                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                            }
+                                        }
+                                    }
+                                    Toggle {
+                                        text: @tr("Match case");
+                                        checked <=> root.match-case;
+                                        changed has-focus => {
+                                            if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                        }
+                                    }
+                                    HorizontalLayout {
+                                        spacing: Space.s3;
+                                        alignment: start;
+                                        Button {
+                                            text: @tr("Replace all");
+                                            enabled: root.found > 0;
+                                            clicked => {
+                                                root.tool-backup = root.content;
+                                                root.replace-all-requested(root.find-text, root.replace-text, root.match-case);
+                                                root.tool-ran();
+                                            }
+                                            changed has-focus => {
+                                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                            }
+                                        }
+                                        if root.has-backup: Button {
+                                            text: @tr("Undo the change");
+                                            clicked => {
+                                                root.content = root.tool-backup;
+                                                root.has-backup = false;
+                                                root.touch();
+                                            }
+                                            changed has-focus => {
+                                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                            }
+                                        }
+                                        Text {
+                                            text: root.find-text == "" ? "" : root.found == 0 ? @tr("No matches") : @tr("{n} match" | "{n} matches" % root.found);
+                                            color: Theme.text-secondary;
+                                            font-family: Fonts.sans;
+                                            font-size: Type.sm;
+                                            vertical-alignment: center;
+                                            accessible-role: AccessibleRole.text;
+                                        }
+                                    }
+                                }
                             }
                         }
                         attachment := VerticalLayout {
@@ -1292,6 +1464,14 @@ export component ItemEditor inherits Window {
                                 root.touch();
                             }
                             chip-focused(y, h) => { root.reveal-field(y, h); }
+                        }
+                        for line in [root.choice-help, root.limits-help, root.escapes-help, root.transforms-help]: Text {
+                            text: line;
+                            color: Theme.text-secondary;
+                            font-family: Fonts.sans;
+                            font-size: Type.sm;
+                            wrap: word-wrap;
+                            accessible-role: none;
                         }
                     }
 

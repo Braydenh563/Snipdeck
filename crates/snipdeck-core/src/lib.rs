@@ -30,6 +30,7 @@ mod usage;
 
 pub mod search;
 pub mod template;
+pub mod text_tools;
 
 pub use board::Board;
 pub use content::{BlobRef, Content, INLINE_LIMIT, Inline};

@@ -1541,6 +1541,7 @@ export component MainWindow inherits Window {
                                     expanded: suggest.open;
                                     placeholder: @tr("Search snippets");
                                     label: @tr("Search snippets");
+                                    description: @tr("Words match anywhere in a title or body. \"Quotes\" match a phrase, -word excludes, and tag:, list:, kind: or is:pinned filter.");
                                     clear-label: @tr("Clear search");
                                     edited(text) => {
                                         root.cursor = 0;

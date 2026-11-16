@@ -703,3 +703,49 @@ fn pausing_the_hotkeys_ends_a_running_test_so_a_press_after_resume_is_not_swallo
         );
     }
 }
+
+// ---- A toast's Undo and the steps recorded after it (LIBRARY-40) ------------------------------
+
+#[test]
+fn a_toast_undo_is_withdrawn_once_a_later_step_touches_the_same_item() {
+    let mut w = world();
+    let id = w.ctl.view().rows[0].id;
+    w.ctl.trash_items(&[id]);
+    assert!(
+        w.ctl.view().toast.expect("toast").undo,
+        "the delete offers Undo"
+    );
+    // A later step on the same item (silent: it does not replace the toast).
+    w.ctl.record_step(
+        crate::history::Action::Pin,
+        vec![crate::history::Change::Trash(vec![
+            snipdeck_store::Trashable::Item(id),
+        ])],
+    );
+    assert!(
+        !w.ctl.view().toast.expect("toast").undo,
+        "taking the delete back alone would take part of the later step back too"
+    );
+}
+
+#[test]
+fn the_toast_undo_of_an_older_step_still_works_after_an_unrelated_step() {
+    let mut w = world();
+    let id = w.ctl.view().rows[0].id;
+    let other = w.ctl.view().rows[1].id;
+    w.ctl.trash_items(&[id]);
+    w.ctl.record_step(
+        crate::history::Action::Pin,
+        vec![crate::history::Change::Trash(vec![
+            snipdeck_store::Trashable::Item(other),
+        ])],
+    );
+    assert!(w.ctl.view().toast.expect("toast").undo);
+    w.ctl.toast_action();
+    assert!(w.ctl.store().item(id).is_ok(), "the delete was taken back");
+    assert_eq!(
+        w.ctl.history_view().undo,
+        Some(crate::history::Action::Pin),
+        "and only it: the later step stays"
+    );
+}

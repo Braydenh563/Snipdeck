@@ -6,13 +6,22 @@
 //! module is pure data; the controller applies the changes to the library
 //! (`controller::history_ctl`).
 //!
-//! Only item changes are recorded: add, paste, drop, edit, delete, move, reorder, colour, pin,
-//! tag and duplicate. The text of a sensitive item is never copied here, so an edit that
-//! changes it is not recorded.
+//! Recorded: add, paste, drop, edit, delete, restore, move, reorder, colour, pin, tag and
+//! duplicate of items; group changes and folds; the rename and delete of a tag; and the creation,
+//! edit, move and delete of lists and boards. The text of a sensitive item is never copied here,
+//! so an edit that changes it is recorded as a [`Change::Barrier`]: Undo takes the marker off
+//! the list and says why nothing changed; the steps before it are the next Undo.
+//!
+//! The history lives in memory: it holds up to [`HISTORY_LIMIT`] steps, ends with the app (it is
+//! not written to disk, because a step holds the text an edit replaced, and that text must go
+//! when the item is deleted for good) and loses the steps a purge makes impossible
+//! ([`History::retain`]). A lock keeps it: the steps hold no sensitive text.
 
 use std::collections::VecDeque;
 
-use snipdeck_core::{Group, GroupId, Item, ItemId, ListId, Placement, Trigger};
+use snipdeck_core::{
+    Board, BoardId, Group, GroupId, Item, ItemId, List, ListId, Placement, Tag, Trigger,
+};
 use snipdeck_store::Trashable;
 
 /// How many steps are kept; the oldest goes first.
@@ -43,8 +52,14 @@ pub enum Action {
     Tag,
     /// Items duplicated.
     Duplicate,
-    /// A group made, renamed or ungrouped.
+    /// A group made, renamed, folded or ungrouped.
     Group,
+    /// Items (or a list or board) brought back from the Trash.
+    Restore,
+    /// A list made, edited, sorted, moved or deleted.
+    List,
+    /// A board made, renamed, moved or deleted.
+    Board,
 }
 
 impl Action {
@@ -64,6 +79,9 @@ impl Action {
             Self::Tag => 9,
             Self::Duplicate => 10,
             Self::Group => 11,
+            Self::Restore => 12,
+            Self::List => 13,
+            Self::Board => 14,
         }
     }
 }
@@ -85,6 +103,28 @@ pub struct Snap {
 
 /// Where an item sits: its list and its place in it.
 pub type Spot = (ListId, Placement<ItemId>);
+
+/// A stored record the history can write back whole: a tag, a list or a board.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Record {
+    /// A tag (its name).
+    Tag(Tag),
+    /// A list (name, icon, accent, sort).
+    List(List),
+    /// A board (name).
+    Board(Board),
+}
+
+impl Record {
+    /// The list or board this is, for a purge that makes the step impossible.
+    fn stored(&self) -> Option<Trashable> {
+        match self {
+            Self::Tag(_) => None,
+            Self::List(l) => Some(Trashable::List(l.id)),
+            Self::Board(b) => Some(Trashable::Board(b.id)),
+        }
+    }
+}
 
 /// One reversible change to the library.
 #[derive(Debug, Clone, PartialEq)]
@@ -166,13 +206,56 @@ pub enum Change {
         /// The group it belongs to (made again if it was emptied since), or none.
         group: Option<Group>,
     },
-    /// A group was renamed.
+    /// A group was renamed or folded.
     Rename {
         /// The group before.
         before: Group,
         /// The group after.
         after: Group,
     },
+    /// A tag, list or board went from one state to another (a rename, an icon, a sort).
+    Rewrite {
+        /// The state undo returns to.
+        before: Record,
+        /// The state redo returns to.
+        after: Record,
+    },
+    /// A list went from one place among the lists to another (maybe on another board).
+    MoveList {
+        /// The list.
+        id: ListId,
+        /// Where undo puts it.
+        from: (BoardId, Placement<ListId>),
+        /// Where redo puts it.
+        to: (BoardId, Placement<ListId>),
+    },
+    /// A board went from one place among the boards to another.
+    MoveBoard {
+        /// The board.
+        id: BoardId,
+        /// Where undo puts it.
+        from: Placement<BoardId>,
+        /// Where redo puts it.
+        to: Placement<BoardId>,
+    },
+    /// The tag is deleted; `items` are the ones that carried it (the Trash's too). Undoing a
+    /// deletion is [`Change::MakeTag`].
+    DropTag {
+        /// The tag as it was.
+        tag: Tag,
+        /// The items that carried it.
+        items: Vec<ItemId>,
+    },
+    /// The tag exists and is on `items`.
+    MakeTag {
+        /// The tag.
+        tag: Tag,
+        /// The items that carry it.
+        items: Vec<ItemId>,
+    },
+    /// An edit of this sensitive item that cannot be undone: its text is not kept. Undo takes the
+    /// marker off the list and says so; it changes nothing else.
+    Barrier(ItemId),
 }
 
 impl Change {
@@ -234,8 +317,97 @@ impl Change {
                 before: after.clone(),
                 after: before.clone(),
             },
+            Self::Rewrite { before, after } => Self::Rewrite {
+                before: after.clone(),
+                after: before.clone(),
+            },
+            Self::MoveList { id, from, to } => Self::MoveList {
+                id: *id,
+                from: *to,
+                to: *from,
+            },
+            Self::MoveBoard { id, from, to } => Self::MoveBoard {
+                id: *id,
+                from: *to,
+                to: *from,
+            },
+            Self::DropTag { tag, items } => Self::MakeTag {
+                tag: tag.clone(),
+                items: items.clone(),
+            },
+            Self::MakeTag { tag, items } => Self::DropTag {
+                tag: tag.clone(),
+                items: items.clone(),
+            },
+            Self::Barrier(id) => Self::Barrier(*id),
         }
     }
+
+    /// The items, lists and boards this change names (and the siblings it places next to): what
+    /// a later step must not touch for this one to be taken back alone, and what a purge must
+    /// not have removed for it to be applied.
+    fn names(&self, out: &mut Names) {
+        let spot = |out: &mut Names, (list, at): &Spot| {
+            out.stored.push(Trashable::List(*list));
+            if let Placement::After(id) = at {
+                out.items.push(*id);
+            }
+        };
+        let after = |out: &mut Names, at: &Placement<ItemId>| {
+            if let Placement::After(id) = at {
+                out.items.push(*id);
+            }
+        };
+        match self {
+            Self::Trash(t) | Self::Restore(t) => {
+                for target in t {
+                    out.stored.push(*target);
+                    if let Trashable::Item(id) = target {
+                        out.items.push(*id);
+                    }
+                }
+            }
+            Self::Update { before, after } => {
+                out.items.extend([before.item.id, after.item.id]);
+            }
+            Self::Move { id, from, to } => {
+                out.items.push(*id);
+                spot(out, from);
+                spot(out, to);
+            }
+            Self::Group { members, .. } | Self::Ungroup { members, .. } => {
+                out.items.extend(members);
+            }
+            Self::MoveRun { from, to, .. } => {
+                after(out, from);
+                after(out, to);
+            }
+            Self::Join { item, from, .. } | Self::Leave { item, from, .. } => {
+                out.items.push(*item);
+                spot(out, from);
+            }
+            Self::Regroup { item, .. } | Self::Barrier(item) => out.items.push(*item),
+            Self::Rename { .. } | Self::DropTag { .. } | Self::MakeTag { .. } => {}
+            Self::Rewrite { before, after } => {
+                out.stored.extend(before.stored());
+                out.stored.extend(after.stored());
+            }
+            Self::MoveList { id, .. } => out.stored.push(Trashable::List(*id)),
+            Self::MoveBoard { id, .. } => out.stored.push(Trashable::Board(*id)),
+        }
+        if let Self::DropTag { items, .. } | Self::MakeTag { items, .. } = self {
+            // Tag links are applied to the items still stored: a purged one is not needed.
+            out.carriers.extend(items);
+        }
+    }
+}
+
+/// What a step names, for [`Step::names`].
+#[derive(Debug, Default)]
+struct Names {
+    items: Vec<ItemId>,
+    carriers: Vec<ItemId>,
+    stored: Vec<Trashable>,
 }
 
 /// One user action: what it was and the changes it made, in order.
@@ -254,6 +426,70 @@ impl Step {
     #[must_use]
     pub fn undo_changes(&self) -> Vec<Change> {
         self.changes.iter().rev().map(Change::inverse).collect()
+    }
+
+    /// An edit that cannot be taken back (see [`Change::Barrier`]).
+    #[must_use]
+    pub fn is_barrier(&self) -> bool {
+        !self.changes.is_empty() && self.changes.iter().all(|c| matches!(c, Change::Barrier(_)))
+    }
+
+    /// A creation: every change brings items to life, so taking it back only trashes them. These
+    /// are the items (the toast then offers to delete them for good).
+    #[must_use]
+    pub fn made(&self) -> Vec<Trashable> {
+        if !matches!(
+            self.action,
+            Action::Add | Action::Paste | Action::Drop | Action::Duplicate
+        ) {
+            return Vec::new();
+        }
+        let mut made = Vec::new();
+        for change in &self.changes {
+            match change {
+                Change::Restore(t) => made.extend(t.iter().copied()),
+                _ => return Vec::new(),
+            }
+        }
+        made
+    }
+
+    fn names(&self) -> Names {
+        let mut names = Names::default();
+        for change in &self.changes {
+            change.names(&mut names);
+        }
+        names
+    }
+
+    /// Whether `other` names an item this step names (or sits beside): then the two cannot be
+    /// taken back in either order without one undoing part of the other.
+    #[must_use]
+    pub fn overlaps(&self, other: &Self) -> bool {
+        let (mine, theirs) = (self.names(), other.names());
+        let all = |n: &Names| {
+            n.items
+                .iter()
+                .chain(&n.carriers)
+                .copied()
+                .collect::<Vec<_>>()
+        };
+        let theirs_all = all(&theirs);
+        all(&mine).iter().any(|id| theirs_all.contains(id))
+            || mine.stored.iter().any(|t| {
+                matches!(t, Trashable::List(_) | Trashable::Board(_)) && theirs.stored.contains(t)
+            })
+    }
+
+    /// Every item, list and board the step needs to still be in the library.
+    #[must_use]
+    pub fn needs(&self) -> Vec<Trashable> {
+        let names = self.names();
+        names
+            .stored
+            .into_iter()
+            .chain(names.items.into_iter().map(Trashable::Item))
+            .collect()
     }
 }
 
@@ -310,46 +546,88 @@ impl History {
         self.redo.last().map(|s| s.action)
     }
 
-    /// Takes the step to undo off the stack (the caller applies it, then calls
-    /// [`History::undone`]). `id` picks a particular step (the toast's); `None` the latest.
-    pub fn take_undo(&mut self, id: Option<u64>) -> Option<Step> {
+    /// The step Undo would take back: the latest, or step `id` (the toast's). The step stays
+    /// on the stack until [`History::undone`] or [`History::drop_undo`] says what became of it,
+    /// so a failed undo loses nothing. A step that a later step overlaps (see
+    /// [`Step::overlaps`]) is not offered by id: undoing it alone would undo part of the later
+    /// one too.
+    #[must_use]
+    pub fn peek_undo(&self, id: Option<u64>) -> Option<&Step> {
         match id {
-            None => self.undo.pop_back(),
+            None => self.undo.back(),
             Some(id) => {
                 let at = self.undo.iter().position(|s| s.id == id)?;
-                self.undo.remove(at)
+                let step = self.undo.get(at)?;
+                self.undo
+                    .iter()
+                    .skip(at + 1)
+                    .all(|later| !later.overlaps(step))
+                    .then_some(step)
             }
         }
     }
 
-    /// Whether step `id` can still be undone (the history may have been cleared since).
+    /// Whether step `id` can still be undone alone: it is on the stack and no later step
+    /// overlaps it.
     #[must_use]
     pub fn can_undo(&self, id: u64) -> bool {
-        self.undo.iter().any(|s| s.id == id)
+        self.peek_undo(Some(id)).is_some()
     }
 
-    /// Takes the step to redo off the stack.
-    pub fn take_redo(&mut self) -> Option<Step> {
-        self.redo.pop()
+    /// The step Redo would bring back; it stays until [`History::redone`] or
+    /// [`History::drop_redo`].
+    #[must_use]
+    pub fn peek_redo(&self) -> Option<&Step> {
+        self.redo.last()
     }
 
-    /// `step` was undone: Redo can bring it back.
-    pub fn undone(&mut self, step: Step) {
-        self.redo.push(step);
-    }
-
-    /// `step` was redone: Undo can take it back again (the redo stack stays).
-    pub fn redone(&mut self, step: Step) {
-        self.undo.push_back(step);
-        while self.undo.len() > HISTORY_LIMIT {
-            self.undo.pop_front();
+    /// Step `id` was undone: it moves to the redo stack (a step that cannot be redone, an edit
+    /// of a sensitive item, is forgotten).
+    pub fn undone(&mut self, id: u64) {
+        if let Some(at) = self.undo.iter().position(|s| s.id == id)
+            && let Some(step) = self.undo.remove(at)
+            && !step.is_barrier()
+        {
+            self.redo.push(step);
         }
     }
 
-    /// Forgets everything (the library changed under it: a restore from a backup, a lock).
+    /// Step `id` can never be undone: forget it.
+    pub fn drop_undo(&mut self, id: u64) {
+        self.undo.retain(|s| s.id != id);
+    }
+
+    /// The step on top of the redo stack was redone: Undo can take it back again.
+    pub fn redone(&mut self) {
+        if let Some(step) = self.redo.pop() {
+            self.undo.push_back(step);
+            while self.undo.len() > HISTORY_LIMIT {
+                self.undo.pop_front();
+            }
+        }
+    }
+
+    /// The step on top of the redo stack can never be redone: forget it.
+    pub fn drop_redo(&mut self) {
+        self.redo.pop();
+    }
+
+    /// Keeps the steps `keep` accepts, in both stacks (a purge forgets the ones it broke).
+    pub fn retain(&mut self, mut keep: impl FnMut(&Step) -> bool) {
+        self.undo.retain(&mut keep);
+        self.redo.retain(keep);
+    }
+
+    /// Forgets everything (the library changed under it: a restore from a backup).
     pub fn clear(&mut self) {
         self.undo.clear();
         self.redo.clear();
+    }
+
+    /// How many steps Redo can bring back.
+    #[must_use]
+    pub fn redo_len(&self) -> usize {
+        self.redo.len()
     }
 
     /// How many steps Undo can take back.
@@ -375,12 +653,13 @@ mod tests {
         h.record(Action::Add, trash(1));
         h.record(Action::Delete, trash(1));
         assert_eq!(h.next_undo(), Some(Action::Delete));
-        let step = h.take_undo(None).unwrap();
-        assert_eq!(h.next_undo(), Some(Action::Add));
+        let step = h.peek_undo(None).unwrap().id;
+        assert_eq!(h.next_undo(), Some(Action::Delete), "peeking takes nothing");
         h.undone(step);
+        assert_eq!(h.next_undo(), Some(Action::Add));
         assert_eq!(h.next_redo(), Some(Action::Delete));
-        let again = h.take_redo().unwrap();
-        h.redone(again);
+        assert!(h.peek_redo().is_some());
+        h.redone();
         assert_eq!(h.next_undo(), Some(Action::Delete));
         assert_eq!(h.next_redo(), None);
     }
@@ -389,7 +668,7 @@ mod tests {
     fn a_new_action_clears_redo() {
         let mut h = History::new();
         h.record(Action::Add, trash(1));
-        let step = h.take_undo(None).unwrap();
+        let step = h.peek_undo(None).unwrap().id;
         h.undone(step);
         assert!(h.next_redo().is_some());
         h.record(Action::Edit, trash(1));
@@ -415,7 +694,7 @@ mod tests {
             ],
         );
         assert_eq!(h.undo_len(), 1);
-        let step = h.take_undo(None).unwrap();
+        let step = h.peek_undo(None).unwrap();
         assert_eq!(
             step.undo_changes(),
             vec![
@@ -440,10 +719,47 @@ mod tests {
         let mut h = History::new();
         let first = h.record(Action::Delete, trash(1)).unwrap();
         h.record(Action::Pin, trash(1));
-        let step = h.take_undo(Some(first)).unwrap();
+        // The two steps touch different items, so the older one can be taken by its id.
+        let step = h.peek_undo(Some(first)).unwrap();
         assert_eq!(step.action, Action::Delete);
+        h.undone(first);
         assert_eq!(h.next_undo(), Some(Action::Pin));
-        assert!(h.take_undo(Some(first)).is_none());
+        assert!(h.peek_undo(Some(first)).is_none());
+    }
+
+    #[test]
+    fn a_step_a_later_step_overlaps_cannot_be_taken_alone() {
+        let mut h = History::new();
+        let item = ItemId::generate();
+        let first = h
+            .record(
+                Action::Delete,
+                vec![Change::Trash(vec![Trashable::Item(item)])],
+            )
+            .unwrap();
+        let second = h
+            .record(
+                Action::Pin,
+                vec![Change::Trash(vec![Trashable::Item(item)])],
+            )
+            .unwrap();
+        assert!(!h.can_undo(first), "the later step touches the same item");
+        assert!(h.can_undo(second));
+        h.drop_undo(second);
+        assert!(h.can_undo(first), "and it can again once that step is gone");
+    }
+
+    #[test]
+    fn a_barrier_leaves_the_undo_list_without_reaching_redo() {
+        let mut h = History::new();
+        h.record(Action::Pin, trash(1));
+        let barrier = h
+            .record(Action::Edit, vec![Change::Barrier(ItemId::generate())])
+            .unwrap();
+        assert!(h.peek_undo(None).unwrap().is_barrier());
+        h.undone(barrier);
+        assert_eq!(h.next_redo(), None, "it cannot be redone");
+        assert_eq!(h.next_undo(), Some(Action::Pin), "the older step is next");
     }
 
     #[test]

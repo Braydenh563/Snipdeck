@@ -1,0 +1,268 @@
+import { SystemLook, Theme, Type, Radius, Space, Fonts } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { IconButton, IconButtonSize } from "icon-button.slint";
+
+// The words and today's date the host knows (it formats a picked day in the user's date order and language); set once
+// when a form opens.
+export global CalendarWords {
+    // The twelve month names, January first.
+    in property <[string]> month-names;
+    // The seven weekday names (short), Monday first.
+    in property <[string]> weekday-names;
+    in property <bool> week-starts-sunday: false;
+    in property <int> today-year: 2026;
+    in property <int> today-month: 1;
+    in property <int> today-day: 1;
+}
+
+// DESIGN.md §4 MonthGrid: the small calendar under a date field of the fill-in form. One month at a time, a week per row,
+// the week starting on the day the locale says. The date arithmetic is here (Gregorian: the days of a month and the
+// weekday of its first day); the words (month and weekday names) and today's date come from the host, which also
+// formats the picked day in the user's date order.
+//
+// Keyboard (the grid is one Tab stop): Left / Right move one day, Up / Down one week, PageUp / PageDown one month,
+// Home / End the first and last day of the month, Enter or Space picks the day, Esc closes. The arrows cross month
+// ends. A day is never shown by colour alone: the picked day has a check-like filled box, today a ring and a bold
+// number, and the day under the cursor the focus ring.
+export component MonthGrid inherits FocusScope {
+    // The twelve month names, January first.
+    in property <[string]> month-names;
+    // The seven weekday names (short), Monday first; the grid rotates them when the week starts on Sunday.
+    in property <[string]> weekday-names;
+    in property <bool> week-starts-sunday: false;
+    // Today, and the day the field holds (0 = none).
+    in property <int> today-year: 2026;
+    in property <int> today-month: 1;
+    in property <int> today-day: 1;
+    in property <int> picked-year: 0;
+    in property <int> picked-month: 0;
+    in property <int> picked-day: 0;
+    // The words of the two month buttons (also their accessible names).
+    in property <string> previous-text;
+    in property <string> next-text;
+    // Counts up to ask for keyboard focus.
+    in property <int> focus-request: 0;
+    // Forced focus ring for galleries.
+    in property <bool> show-focus: false;
+
+    // The month shown and the day under the cursor.
+    in-out property <int> view-year: 2026;
+    in-out property <int> view-month: 1;
+    in-out property <int> cursor-day: 1;
+
+    // The user chose a day.
+    callback picked(year: int, month: int, day: int);
+    // Esc: close without choosing.
+    callback dismissed();
+
+    // ---- Calendar arithmetic -----------------------------------------------------------------------------------
+    pure function days-in(year: int, month: int) -> int {
+        if (month == 2) {
+            return (Math.mod(year, 4) == 0 && (Math.mod(year, 100) != 0 || Math.mod(year, 400) == 0)) ? 29 : 28;
+        }
+        return (month == 4 || month == 6 || month == 9 || month == 11) ? 30 : 31;
+    }
+    // Zeller's congruence for the first of the month: 0 is Saturday, 1 Sunday, 2 Monday.
+    property <int> zy: root.view-month < 3 ? root.view-year - 1 : root.view-year;
+    property <int> zm: root.view-month < 3 ? root.view-month + 12 : root.view-month;
+    property <int> zk: Math.mod(root.zy, 100);
+    property <int> zj: Math.floor(root.zy / 100);
+    property <int> zh: Math.mod(1 + Math.floor(13 * (root.zm + 1) / 5) + root.zk + Math.floor(root.zk / 4) + Math.floor(root.zj / 4) + 5 * root.zj, 7);
+    // Weekday of the first, 0 = Sunday.
+    property <int> first-sunday0: Math.mod(root.zh + 6, 7);
+    // Blank cells before day 1.
+    out property <int> lead: root.week-starts-sunday ? root.first-sunday0 : Math.mod(root.first-sunday0 + 6, 7);
+    out property <int> month-length: root.days-in(root.view-year, root.view-month);
+    // The day number in cell `index` (0 to 41, row by row), or 0 for a blank cell.
+    pure public function day-at(index: int) -> int {
+        return (index - root.lead + 1 >= 1 && index - root.lead + 1 <= root.month-length) ? index - root.lead + 1 : 0;
+    }
+    // The name of weekday column `column`, for the week's first day.
+    pure function weekday-label(column: int) -> string {
+        return root.weekday-names[root.week-starts-sunday ? Math.mod(column + 6, 7) : column];
+    }
+
+    // ---- Moves -------------------------------------------------------------------------------------------------
+    // Shows the month `delta` months away, keeping the cursor on the same day where the month has it.
+    public function shift-month(delta: int) {
+        let index = root.view-year * 12 + (root.view-month - 1) + delta;
+        root.view-year = Math.floor(index / 12);
+        root.view-month = Math.mod(index, 12) + 1;
+        root.cursor-day = min(root.cursor-day, root.month-length);
+    }
+    public function move-days(delta: int) {
+        let target = root.cursor-day + delta;
+        if (target < 1) {
+            root.shift-month(-1);
+            root.cursor-day = target + root.month-length;
+        } else if (target > root.month-length) {
+            let over = target - root.month-length;
+            root.shift-month(1);
+            root.cursor-day = over;
+        } else {
+            root.cursor-day = target;
+        }
+    }
+    // Shows the month of the picked day (or today's) with the cursor on it.
+    public function show-start() {
+        if (root.picked-day > 0) {
+            root.view-year = root.picked-year;
+            root.view-month = root.picked-month;
+            root.cursor-day = root.picked-day;
+        } else {
+            root.view-year = root.today-year;
+            root.view-month = root.today-month;
+            root.cursor-day = root.today-day;
+        }
+    }
+
+    property <bool> ring: root.has-focus || root.show-focus;
+    // One cell: 28px at 100%, and a text line plus padding at larger text.
+    property <length> cell: max(Space.hit, Type.line-base + Space.s2);
+
+    changed focus-request => {
+        if (root.focus-request > 0) {
+            self.focus();
+        }
+    }
+    focus-on-click: true;
+    accessible-role: none;
+    // Made when the calendar opens: on the day the box holds (or today), with the keyboard if it was asked for.
+    init => {
+        root.show-start();
+        if (root.focus-request > 0) {
+            self.focus();
+        }
+    }
+
+    key-pressed(event) => {
+        if (event.text == Key.LeftArrow) {
+            root.move-days(-1);
+        } else if (event.text == Key.RightArrow) {
+            root.move-days(1);
+        } else if (event.text == Key.UpArrow) {
+            root.move-days(-7);
+        } else if (event.text == Key.DownArrow) {
+            root.move-days(7);
+        } else if (event.text == Key.PageUp) {
+            root.shift-month(-1);
+        } else if (event.text == Key.PageDown) {
+            root.shift-month(1);
+        } else if (event.text == Key.Home) {
+            root.cursor-day = 1;
+        } else if (event.text == Key.End) {
+            root.cursor-day = root.month-length;
+        } else if (event.text == Key.Return || event.text == " ") {
+            root.picked(root.view-year, root.view-month, root.cursor-day);
+        } else if (event.text == Key.Escape) {
+            root.dismissed();
+        } else {
+            return reject;
+        }
+        return accept;
+    }
+
+    VerticalLayout {
+        spacing: Space.s1;
+        alignment: start;
+
+        HorizontalLayout {
+            spacing: Space.s1;
+            IconButton {
+                icon: Icons.caret-left;
+                tooltip: root.previous-text;
+                size: IconButtonSize.sm;
+                scaled: true;
+                clicked => { root.shift-month(-1); }
+            }
+            Text {
+                horizontal-stretch: 1;
+                text: root.month-names[root.view-month - 1] + " " + root.view-year;
+                color: Theme.text-primary;
+                font-family: Fonts.sans;
+                font-size: Type.base;
+                font-weight: Type.medium;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                accessible-role: AccessibleRole.text;
+                accessible-live-region: polite;
+            }
+            IconButton {
+                icon: Icons.caret-right;
+                tooltip: root.next-text;
+                size: IconButtonSize.sm;
+                scaled: true;
+                clicked => { root.shift-month(1); }
+            }
+        }
+
+        // The weekday names.
+        HorizontalLayout {
+            for column in 7: Text {
+                horizontal-stretch: 1;
+                min-width: 0px;
+                text: root.weekday-label(column);
+                color: Theme.text-secondary;
+                font-family: Fonts.sans;
+                font-size: Type.sm;
+                horizontal-alignment: center;
+                overflow: elide;
+                accessible-role: none;
+            }
+        }
+
+        // Six weeks cover every month.
+        for row in 6: HorizontalLayout {
+            for column in 7: cell-box := Rectangle {
+                property <int> day: root.day-at(row * 7 + column);
+                property <bool> is-picked: cell-box.day > 0 && cell-box.day == root.picked-day
+                    && root.view-month == root.picked-month && root.view-year == root.picked-year;
+                property <bool> is-today: cell-box.day > 0 && cell-box.day == root.today-day
+                    && root.view-month == root.today-month && root.view-year == root.today-year;
+                property <bool> is-cursor: cell-box.day > 0 && cell-box.day == root.cursor-day;
+
+                horizontal-stretch: 1;
+                min-width: root.cell;
+                height: root.cell;
+                border-radius: Radius.sm;
+                background: cell-box.is-picked ? Theme.bg-selected
+                    : (day-touch.has-hover && cell-box.day > 0) ? Theme.bg-hover : transparent;
+                border-width: cell-box.is-today ? 1px : 0px;
+                border-color: Theme.border-strong;
+
+                // A real day is a checkable button named by its whole date; a blank cell says nothing.
+                if cell-box.day > 0: Rectangle {
+                    accessible-role: AccessibleRole.button;
+                    accessible-label: "\{root.month-names[root.view-month - 1]} \{cell-box.day}, \{root.view-year}";
+                    accessible-checkable: true;
+                    accessible-checked: cell-box.is-picked;
+                    accessible-action-default => { root.picked(root.view-year, root.view-month, cell-box.day); }
+                }
+                if cell-box.day > 0: Text {
+                    text: "\{cell-box.day}";
+                    color: cell-box.is-picked ? Theme.text-on-selected : Theme.text-primary;
+                    font-family: Fonts.sans;
+                    font-size: Type.base;
+                    font-weight: (cell-box.is-picked || cell-box.is-today) ? Type.medium : Type.regular;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                    accessible-role: none;
+                }
+                // The cursor: the 2px focus ring while the grid has the keyboard.
+                if cell-box.is-cursor && root.ring: Rectangle {
+                    border-width: 2px;
+                    border-color: Theme.focus-ring;
+                    border-radius: Radius.sm;
+                    background: transparent;
+                }
+                day-touch := TouchArea {
+                    enabled: cell-box.day > 0;
+                    clicked => {
+                        root.cursor-day = cell-box.day;
+                        root.picked(root.view-year, root.view-month, cell-box.day);
+                    }
+                }
+            }
+        }
+    }
+}

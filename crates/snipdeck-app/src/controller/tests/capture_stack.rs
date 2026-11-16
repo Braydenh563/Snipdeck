@@ -30,6 +30,20 @@ fn quick_capture_saves_the_clipboard_text_at_the_top_of_the_shown_list() {
     assert_eq!(view.rows[0].preview, "remember the milk");
     assert_eq!(
         view.toast.expect("toast").message,
+        ToastMessage::SavedAgain {
+            list: "Links".into(),
+            was_in: "Replies".into()
+        },
+        "the same text is already in Replies: saved, and said so"
+    );
+    // Other text is a plain save.
+    w.ctl.services.clipboard.written.push(
+        snipdeck_platform::payload::Payload::new(vec![Data::Text("something else".into())])
+            .expect("payload"),
+    );
+    w.ctl.on_hotkey(HotkeyAction::Capture);
+    assert_eq!(
+        w.ctl.view().toast.expect("toast").message,
         ToastMessage::Saved {
             list: "Links".into()
         }

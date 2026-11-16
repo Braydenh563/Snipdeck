@@ -44,11 +44,11 @@ fn a_trashed_item_disappears_everywhere_and_comes_back_in_place() {
         Err(Error::NotFound { entity: "item", .. })
     ));
     assert!(matches!(s.formats(it[1].id), Err(Error::NotFound { .. })));
-    assert_eq!(s.search("two", 10).unwrap().len(), 0);
+    assert_eq!(found(&s, "two").len(), 0);
 
     s.restore(Trashable::Item(it[1].id)).unwrap();
     assert_eq!(titles(&s, l.id), ["one", "two", "three"]);
-    assert_eq!(s.search("two", 10).unwrap(), [it[1].id]);
+    assert_eq!(found(&s, "two"), [it[1].id]);
     assert_healthy(&s);
 }
 
@@ -285,8 +285,8 @@ fn purging_a_list_or_board_deletes_everything_inside_and_its_index_entries() {
     s.trash(Trashable::List(l.id), at(10)).unwrap();
     assert_eq!(s.purge(at(11)).unwrap(), 1);
     assert_eq!(s.all_items().unwrap().len(), 1);
-    assert_eq!(s.search("one", 10).unwrap().len(), 0);
-    assert_eq!(s.search("survivor", 10).unwrap().len(), 1);
+    assert_eq!(found(&s, "one").len(), 0);
+    assert_eq!(found(&s, "survivor").len(), 1);
 
     s.trash(Trashable::Board(b.id), at(20)).unwrap();
     assert_eq!(s.purge(at(21)).unwrap(), 1);
@@ -353,10 +353,7 @@ fn purge_entry_deletes_one_trashed_item_and_leaves_the_rest() {
     s.purge_entry(Trashable::Item(it[0].id)).unwrap();
     let left: Vec<_> = s.trashed().unwrap().into_iter().map(|e| e.label).collect();
     assert_eq!(left, ["two"], "the other trash entry stays");
-    assert!(
-        s.search("one", 10).unwrap().is_empty(),
-        "its search row is gone"
-    );
+    assert!(found(&s, "one").is_empty(), "its search row is gone");
     assert_eq!(titles(&s, l.id), ["three"]);
     assert!(matches!(
         s.restore(Trashable::Item(it[0].id)),
@@ -374,7 +371,7 @@ fn purge_entry_takes_a_trashed_list_or_board_with_everything_inside() {
     s.purge_entry(Trashable::List(l.id)).unwrap();
     assert_eq!(s.trashed().unwrap().len(), 0);
     assert_eq!(s.all_items().unwrap().len(), 1);
-    assert_eq!(s.search("two", 10).unwrap().len(), 0);
+    assert_eq!(found(&s, "two").len(), 0);
 
     s.trash(Trashable::Board(b.id), at(20)).unwrap();
     s.purge_entry(Trashable::Board(b.id)).unwrap();
@@ -479,4 +476,23 @@ fn restore_reporting_reports_every_record_it_brought_back() {
             .unwrap()
             .is_empty()
     );
+}
+
+#[test]
+fn a_record_is_stored_until_it_is_purged() {
+    let (mut s, b, l, it) = tree();
+    let item = Trashable::Item(it[0].id);
+    assert!(s.is_stored(item).unwrap());
+    s.trash(item, at(100)).unwrap();
+    assert!(s.is_stored(item).unwrap(), "the Trash still holds it");
+    s.purge_entry(item).unwrap();
+    assert!(!s.is_stored(item).unwrap());
+    s.trash(Trashable::List(l.id), at(200)).unwrap();
+    s.purge_entry(Trashable::List(l.id)).unwrap();
+    assert!(
+        !s.is_stored(Trashable::Item(it[1].id)).unwrap(),
+        "inside it"
+    );
+    assert!(!s.is_stored(Trashable::List(l.id)).unwrap());
+    assert!(s.is_stored(Trashable::Board(b.id)).unwrap());
 }

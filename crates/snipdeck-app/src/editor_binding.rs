@@ -21,7 +21,7 @@ use slint::{
     CloseRequestResponse, ComponentHandle, SharedPixelBuffer, SharedString,
     winit_030::WinitWindowAccessor,
 };
-use snipdeck_core::{CaseMode, TriggerEnd};
+use snipdeck_core::{CaseMode, TriggerEnd, text_tools};
 use snipdeck_platform::{
     file_dialog::PickKind,
     pipeline::{Clipboard, Keyboard, Timing},
@@ -42,8 +42,8 @@ use crate::{
 const EDITOR_WIDTH: f32 = 560.0;
 
 /// The index of `value` in `all` (0 when it is not there), for a choice list.
-fn position<T: PartialEq>(all: &[T], value: T) -> i32 {
-    to_i32(all.iter().position(|v| *v == value).unwrap_or(0))
+fn position<T: PartialEq>(all: &[T], value: &T) -> i32 {
+    to_i32(all.iter().position(|v| v == value).unwrap_or(0))
 }
 
 /// Records `now` as the shown state of More options; true when it differs from the last one.
@@ -189,6 +189,11 @@ where
             view.reduced_motion,
         );
         window.set_dark(view.dark);
+        let [choice, limits, escapes, transforms] = wording::template_help_texts(&window);
+        window.set_choice_help(choice.into());
+        window.set_limits_help(limits.into());
+        window.set_escapes_help(escapes.into());
+        window.set_transforms_help(transforms.into());
         let fresh = view.seq != self.seq.get();
         {
             let mut shown = self.tags_shown.borrow_mut();
@@ -317,64 +322,6 @@ where
             core.show_preview(&w);
         });
         let core = Rc::downgrade(self);
-        w.on_paste_requested(move || {
-            core.upgrade()
-                .is_some_and(|core| core.act(Controller::refuse_pasted_image))
-        });
-    }
-
-    fn wire(self: &Rc<Self>, w: &ui::ItemEditor) {
-        let core = Rc::downgrade(self);
-        let weak = w.as_weak();
-        w.on_save_requested(move || {
-            let Some(core) = core.upgrade() else {
-                return;
-            };
-            crate::trace!("callback editor save-requested");
-            if let Some(w) = weak.upgrade() {
-                let input = read_input(&w);
-                let trigger = w.get_trigger();
-                core.act(|ctl| {
-                    ctl.item_editor_set_trigger(trigger.as_str());
-                    ctl.item_editor_save(&input);
-                });
-            }
-        });
-        let core = Rc::downgrade(self);
-        w.on_cancel_requested(move || {
-            let Some(core) = core.upgrade() else {
-                return;
-            };
-            crate::trace!("callback editor cancel-requested");
-            core.act(Controller::item_editor_cancel);
-        });
-        let core = Rc::downgrade(self);
-        w.on_help_requested(move || {
-            if let Some(core) = core.upgrade() {
-                core.act(|ctl| ctl.main_open_help(HelpTopic::Guide));
-            }
-        });
-        let core = Rc::downgrade(self);
-        w.on_delete_requested(move || {
-            let Some(core) = core.upgrade() else {
-                return;
-            };
-            crate::trace!("callback editor delete-requested");
-            core.act(Controller::item_editor_delete);
-        });
-        self.wire_content(w);
-        let core = Rc::downgrade(self);
-        let weak = w.as_weak();
-        w.on_more_toggled(move |open| {
-            let Some(core) = core.upgrade() else {
-                return;
-            };
-            if let Some(w) = weak.upgrade() {
-                core.refit_toggled(&w);
-            }
-            core.act(|ctl| ctl.set_editor_more_open(open));
-        });
-        let core = Rc::downgrade(self);
         let weak = w.as_weak();
         w.on_save_anyway_requested(move || {
             let Some(core) = core.upgrade() else {
@@ -390,8 +337,17 @@ where
             let Some(core) = core.upgrade() else {
                 return;
             };
-            core.act(|ctl| ctl.item_editor_open_duplicate());
+            core.act(Controller::item_editor_open_duplicate);
         });
+        let core = Rc::downgrade(self);
+        w.on_paste_requested(move || {
+            core.upgrade()
+                .is_some_and(|core| core.act(Controller::refuse_pasted_image))
+        });
+    }
+
+    /// The Trigger field and its two choices (when it fires, which letter case it takes).
+    fn wire_trigger(self: &Rc<Self>, w: &ui::ItemEditor) {
         let core = Rc::downgrade(self);
         let weak = w.as_weak();
         w.on_trigger_edited(move |text| {
@@ -443,6 +399,61 @@ where
                 core.show_trigger_notes(&w);
             }
         });
+    }
+
+    fn wire(self: &Rc<Self>, w: &ui::ItemEditor) {
+        let core = Rc::downgrade(self);
+        let weak = w.as_weak();
+        w.on_save_requested(move || {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            crate::trace!("callback editor save-requested");
+            if let Some(w) = weak.upgrade() {
+                let input = read_input(&w);
+                let trigger = w.get_trigger();
+                core.act(|ctl| {
+                    ctl.item_editor_set_trigger(trigger.as_str());
+                    ctl.item_editor_save(&input);
+                });
+            }
+        });
+        let core = Rc::downgrade(self);
+        w.on_cancel_requested(move || {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            crate::trace!("callback editor cancel-requested");
+            core.act(Controller::item_editor_cancel);
+        });
+        let core = Rc::downgrade(self);
+        w.on_help_requested(move || {
+            if let Some(core) = core.upgrade() {
+                core.act(|ctl| ctl.main_open_help(HelpTopic::Guide));
+            }
+        });
+        let core = Rc::downgrade(self);
+        w.on_delete_requested(move || {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            crate::trace!("callback editor delete-requested");
+            core.act(Controller::item_editor_delete);
+        });
+        self.wire_content(w);
+        wire_text_tools(w);
+        let core = Rc::downgrade(self);
+        let weak = w.as_weak();
+        w.on_more_toggled(move |open| {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            if let Some(w) = weak.upgrade() {
+                core.refit_toggled(&w);
+            }
+            core.act(|ctl| ctl.set_editor_more_open(open));
+        });
+        self.wire_trigger(w);
         let core = Rc::downgrade(self);
         w.on_edited(move || {
             let Some(core) = core.upgrade() else {
@@ -541,6 +552,45 @@ where
     }
 }
 
+/// The text tools change the whole text in the window (the controller sees it at the next save, as it sees typing);
+/// the counts and the line numbers are answers for the window's bindings.
+fn wire_text_tools(w: &ui::ItemEditor) {
+    w.on_match_count(|text, find, match_case| {
+        to_i32(text_tools::count_matches(
+            text.as_str(),
+            find.as_str(),
+            match_case,
+        ))
+    });
+    w.on_numbered(|text| text_tools::line_numbers(text.as_str()).into());
+    let weak = w.as_weak();
+    w.on_transform_requested(move |i| {
+        let Some(w) = weak.upgrade() else {
+            return;
+        };
+        if let Some(tool) = usize::try_from(i)
+            .ok()
+            .and_then(|i| text_tools::Transform::ALL.get(i))
+        {
+            let text = tool.apply(w.get_content().as_str());
+            w.set_content(text.into());
+        }
+    });
+    let weak = w.as_weak();
+    w.on_replace_all_requested(move |find, with, match_case| {
+        let Some(w) = weak.upgrade() else {
+            return;
+        };
+        let (text, _) = text_tools::replace_all(
+            w.get_content().as_str(),
+            find.as_str(),
+            with.as_str(),
+            match_case,
+        );
+        w.set_content(text.into());
+    });
+}
+
 /// A placeholder chip inserts its token at the caret, then the caret goes after it.
 fn wire_placeholder_chips(w: &ui::ItemEditor) {
     let weak = w.as_weak();
@@ -595,8 +645,8 @@ fn apply_state(w: &ui::ItemEditor, view: &ItemEditorView) {
             .unwrap_or_default()
             .into(),
     );
-    w.set_trigger_end_index(position(&TriggerEnd::ALL, view.trigger_options.end));
-    w.set_trigger_case_index(position(&CaseMode::ALL, view.trigger_options.case));
+    w.set_trigger_end_index(position(&TriggerEnd::ALL, &view.trigger_options.end));
+    w.set_trigger_case_index(position(&CaseMode::ALL, &view.trigger_options.case));
     w.set_banner(text(&view.banner));
     w.set_can_browse(view.can_browse);
     w.set_restored(view.restored);
@@ -685,6 +735,7 @@ fn fill(w: &ui::ItemEditor, view: &ItemEditorView) {
     }
     w.set_discard_open(false);
     w.set_tags_open(false);
+    w.invoke_reset_tools();
     // A fresh editor opens on the form.
     w.set_preview_on(false);
     w.invoke_mark_clean();

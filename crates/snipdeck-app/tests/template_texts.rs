@@ -13,7 +13,7 @@ use snipdeck_app::{
     item_editor::{EditorProblem, TemplateProblem},
     wording::{editor_problem_text, template_problem_text},
 };
-use snipdeck_core::template::{TemplateErrorKind as K, UnitHint};
+use snipdeck_core::template::{SnippetProblem as P, TemplateErrorKind as K, UnitHint};
 use snipdeck_ui::PanelWindow;
 
 #[path = "support/mod.rs"]
@@ -22,6 +22,10 @@ use support::on_ui_thread;
 
 /// One sample of every kind. The match has no wildcard, so a new `TemplateErrorKind` stops this
 /// file compiling until it is listed (and so tested).
+#[allow(
+    clippy::too_many_lines,
+    reason = "a table with one sample per kind of error"
+)]
 fn samples() -> Vec<K> {
     let all = vec![
         K::UnmatchedClose,
@@ -68,6 +72,46 @@ fn samples() -> Vec<K> {
         },
         K::TooManyOffsets { max: 8 },
         K::UnknownFormatSpecifier { specifier: 'q' },
+        K::TwoStartOptions,
+        K::UnknownKey {
+            found: "space".into(),
+        },
+        K::CursorBeforeKey,
+        K::BadClipboardPosition { max: 25 },
+        K::UnknownTransform {
+            found: "shout".into(),
+        },
+        K::BadCalc,
+        K::CalcUnknownName { name: "Qty".into() },
+        K::ValueUnknownName { name: "Qty".into() },
+        K::Snippet {
+            name: "Sig".into(),
+            problem: P::NotFound,
+        },
+        K::Snippet {
+            name: "Sig".into(),
+            problem: P::Ambiguous,
+        },
+        K::Snippet {
+            name: "Sig".into(),
+            problem: P::Unusable,
+        },
+        K::Snippet {
+            name: "Sig".into(),
+            problem: P::Cycle,
+        },
+        K::Snippet {
+            name: "Sig".into(),
+            problem: P::TooMuch,
+        },
+        K::Snippet {
+            name: "Sig".into(),
+            problem: P::Unavailable,
+        },
+        K::InSnippet {
+            name: "Sig".into(),
+            error: Box::new(K::BadCalc),
+        },
     ];
     for kind in &all {
         match kind {
@@ -93,7 +137,17 @@ fn samples() -> Vec<K> {
             | K::UnknownOffsetUnit { .. }
             | K::OffsetOutOfRange { .. }
             | K::TooManyOffsets { .. }
-            | K::UnknownFormatSpecifier { .. } => {}
+            | K::UnknownFormatSpecifier { .. }
+            | K::TwoStartOptions
+            | K::UnknownKey { .. }
+            | K::CursorBeforeKey
+            | K::BadClipboardPosition { .. }
+            | K::UnknownTransform { .. }
+            | K::BadCalc
+            | K::CalcUnknownName { .. }
+            | K::ValueUnknownName { .. }
+            | K::Snippet { .. }
+            | K::InSnippet { .. } => {}
         }
     }
     all

@@ -2,15 +2,16 @@
 //! forward. The Main window and the Panel share one history (Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z and
 //! the two header buttons); the toast's Undo button takes back the step it was shown for.
 
-use snipdeck_core::{Group, Item, ItemId, ListId, Placement, Timestamp};
+use snipdeck_core::{Group, Item, ItemId, ListId, Placement, Tag, Timestamp};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::{
-    Batch, GroupDelete, GroupEnd, GroupRepo, ItemRepo, TrashRepo, Trashable, TriggerRepo,
+    Batch, BoardRepo, GroupDelete, GroupEnd, GroupRepo, ItemRepo, ListRepo, TagRepo, TrashRepo,
+    Trashable, TriggerRepo,
 };
 
 use super::{Controller, Library, Toast, ToastKind, ToastMessage, failed};
 use crate::{
-    history::{Action, Change, Snap, Spot, Step},
+    history::{Action, Change, Record, Snap, Spot, Step},
     host::ClipboardText,
 };
 
@@ -116,6 +117,10 @@ fn apply(b: &mut Batch<'_>, change: &Change, now: Timestamp) -> snipdeck_store::
             }
         }
         Change::Update { after, .. } => {
+            // A tag deleted since stays gone: the item takes the rest of the snapshot.
+            let mut item = after.item.clone();
+            let live: std::collections::BTreeSet<_> = b.tags()?.into_iter().map(|t| t.id).collect();
+            item.tags.retain(|t| live.contains(t));
             let formats = match (after.formats.as_ref(), after.text.as_deref()) {
                 // The formats the edit dropped, while all their bytes are still stored.
                 (Some(kept), _) if readable(b, kept) => Some(kept.clone()),
@@ -127,7 +132,7 @@ fn apply(b: &mut Batch<'_>, change: &Change, now: Timestamp) -> snipdeck_store::
                 ])?),
                 (_, None) => None,
             };
-            b.update_item(&after.item, formats.as_ref())?;
+            b.update_item(&item, formats.as_ref())?;
             if let Some(trigger) = &after.trigger {
                 // A code another item took in the meantime stays with that item.
                 match b.set_trigger(after.item.id, trigger.as_ref()) {
@@ -156,8 +161,53 @@ fn apply(b: &mut Batch<'_>, change: &Change, now: Timestamp) -> snipdeck_store::
             regroup(b, *item, from_group.as_ref())?;
         }
         Change::Regroup { item, group } => regroup(b, *item, group.as_ref())?,
+        Change::Rewrite { after, .. } => match after {
+            Record::Tag(tag) => b.update_tag(tag)?,
+            Record::List(list) => b.update_list(list)?,
+            Record::Board(board) => b.update_board(board)?,
+        },
+        Change::MoveList { id, to, .. } => b.move_list(*id, to.0, to.1)?,
+        Change::MoveBoard { id, to, .. } => b.move_board(*id, *to)?,
+        Change::DropTag { tag, .. } => match b.delete_tag(tag.id) {
+            Ok(()) | Err(snipdeck_store::Error::NotFound { .. }) => {}
+            Err(e) => return Err(e),
+        },
+        Change::MakeTag { tag, items } => make_tag(b, tag, items)?,
+        Change::Barrier(_) => {}
     }
     Ok(())
+}
+
+/// Brings `tag` back on `items` (the ones still stored). A tag another one took the name of in the
+/// meantime is not made twice: the items take that one.
+fn make_tag(b: &mut Batch<'_>, tag: &Tag, items: &[ItemId]) -> snipdeck_store::Result<()> {
+    let id = match b.insert_tag(tag) {
+        Ok(()) | Err(snipdeck_store::Error::AlreadyExists { .. }) => tag.id,
+        Err(snipdeck_store::Error::TagExists(_)) => b
+            .tags()?
+            .into_iter()
+            .find(|t| {
+                t.id == tag.id || t.name.as_str().to_lowercase() == tag.name.as_str().to_lowercase()
+            })
+            .map_or(tag.id, |t| t.id),
+        Err(e) => return Err(e),
+    };
+    b.link_tag(id, items)
+}
+
+/// Whether a store error will repeat however often the step is tried again (the thing it names is
+/// gone), as opposed to a busy or full disk that may clear.
+fn permanent(error: &snipdeck_store::Error) -> bool {
+    use snipdeck_store::Error as E;
+    matches!(
+        error,
+        E::NotFound { .. }
+            | E::AlreadyExists { .. }
+            | E::TagExists(_)
+            | E::Invalid(_)
+            | E::Core(_)
+            | E::BlobCorrupt { .. }
+    )
 }
 
 /// Puts `item` in exactly `group` (made again, with the item alone, if it was emptied and
@@ -193,7 +243,15 @@ where
 
     /// Records a finished action as one step. Returns the step's id.
     pub(super) fn record_step(&mut self, action: Action, changes: Vec<Change>) -> Option<u64> {
-        self.history.record(action, changes)
+        let id = self.history.record(action, changes);
+        // A toast's Undo for an older step goes once this one touches the same things: taking
+        // the older step back alone would take part of this one back with it.
+        if let Some(step) = self.undo.as_ref().and_then(|u| u.step)
+            && !self.history.can_undo(step)
+        {
+            self.undo = None;
+        }
+        id
     }
 
     /// Forgets the whole history (the library changed in a way steps cannot follow).
@@ -209,7 +267,7 @@ where
     /// Ctrl+Y or Ctrl+Shift+Z, or the Redo button: brings back the step Undo took back last.
     pub fn redo(&mut self) {
         self.main_fresh();
-        let Some(step) = self.history.take_redo() else {
+        let Some(step) = self.history.peek_redo().cloned() else {
             return;
         };
         let now = self.clock.now();
@@ -223,22 +281,42 @@ where
         let action = step.action;
         match done {
             Ok(()) => {
-                self.history.redone(step);
+                self.history.redone();
                 self.show_toast(Toast {
                     kind: ToastKind::Neutral,
                     message: ToastMessage::Redone { action },
                 });
             }
+            Err(e) if permanent(&e) => {
+                // What the step needs is gone for good: it cannot come back, and says so.
+                self.history.drop_redo();
+                self.show_toast(Toast {
+                    kind: ToastKind::Danger,
+                    message: ToastMessage::HistoryStepLost,
+                });
+            }
+            // Busy, full disk and the like: the step stays for another try.
             Err(_) => self.show_toast(failed()),
         }
     }
 
-    /// Takes back step `id` (the latest when `None`).
+    /// Takes back step `id` (the latest when `None`). The step leaves the stack only when it was
+    /// taken back, or can never be (what it needs is gone); a failure that may pass keeps it.
     pub(super) fn undo_step(&mut self, id: Option<u64>) {
         self.main_fresh();
-        let Some(step) = self.history.take_undo(id) else {
+        let Some(step) = self.history.peek_undo(id).cloned() else {
             return;
         };
+        if step.is_barrier() {
+            // The text of a sensitive item is not kept: the edit stays, and so does what is
+            // before it (Undo says why it stopped).
+            self.history.drop_undo(step.id);
+            self.show_toast(Toast {
+                kind: ToastKind::Neutral,
+                message: ToastMessage::UndoStopped,
+            });
+            return;
+        }
         let now = self.clock.now();
         let changes = step.undo_changes();
         let done = self.store.atomically(|b| {
@@ -247,23 +325,55 @@ where
             }
             Ok(())
         });
-        if done.is_ok() {
-            let message = restored_count(&step).map_or(
-                ToastMessage::Undone {
-                    action: step.action,
-                },
-                |count| ToastMessage::Restored { count },
-            );
-            self.history.undone(step);
-            self.show_toast(Toast {
-                kind: ToastKind::Success,
-                message,
-            });
-            self.library_changed();
-        } else {
-            self.show_toast(super::failed());
-            self.refresh_logged("a failed undo");
+        match done {
+            Ok(()) => {
+                let made = step.made();
+                let message = restored_count(&step).map_or(
+                    ToastMessage::Undone {
+                        action: step.action,
+                    },
+                    |count| ToastMessage::Restored { count },
+                );
+                self.history.undone(step.id);
+                self.show_toast(Toast {
+                    kind: ToastKind::Success,
+                    message,
+                });
+                if !made.is_empty() {
+                    self.undo = Some(super::Undo {
+                        seq: self.toast_seq,
+                        step: None,
+                        adds: None,
+                        list: None,
+                        purge: made,
+                    });
+                }
+                self.library_changed();
+            }
+            Err(e) => {
+                if permanent(&e) {
+                    self.history.drop_undo(step.id);
+                    self.show_toast(Toast {
+                        kind: ToastKind::Danger,
+                        message: ToastMessage::HistoryStepLost,
+                    });
+                } else {
+                    self.show_toast(super::failed());
+                }
+                self.refresh_logged("a failed undo");
+            }
         }
+    }
+
+    /// Forgets the steps that need something a purge removed (an item, a list or a board), in
+    /// both stacks; the rest of the history stays.
+    pub(super) fn prune_history(&mut self) {
+        let store = &self.store;
+        self.history.retain(|step| {
+            step.needs()
+                .iter()
+                .all(|t| store.is_stored(*t).unwrap_or(true))
+        });
     }
 }
 

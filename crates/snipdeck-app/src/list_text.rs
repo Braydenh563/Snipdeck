@@ -4,7 +4,10 @@
 //! text, items apart by a line of dashes. Items without text (images, files) and sensitive items
 //! are left out: the file is plain text on disk, outside the encrypted library.
 
-use std::path::{Path, PathBuf};
+use std::{
+    fmt::Write as _,
+    path::{Path, PathBuf},
+};
 
 use jiff::civil::Date;
 
@@ -17,12 +20,33 @@ pub struct Entry {
     pub text: String,
 }
 
-/// The file's content for list `name`.
+/// The line that sets items apart: three dashes, or more when an item has a line of exactly that
+/// many (then it could not be told from the separator).
+fn separator(entries: &[Entry]) -> String {
+    let is_dashes = |line: &str| !line.is_empty() && line.trim().chars().all(|c| c == '-');
+    let mut width = 3;
+    while entries
+        .iter()
+        .flat_map(|e| e.title.lines().chain(e.text.lines()))
+        .any(|line| is_dashes(line) && line.trim().len() == width)
+    {
+        width += 1;
+    }
+    "-".repeat(width)
+}
+
+/// The file's content for list `name`, with lines ended by `\r\n` when `crlf` (Windows) and by
+/// `\n` otherwise. Items are apart by a line of dashes no item has a line of.
 #[must_use]
-pub fn render(name: &str, entries: &[Entry]) -> String {
+pub fn render(name: &str, entries: &[Entry], crlf: bool) -> String {
+    let rule = separator(entries);
     let mut out = format!("{name}\n");
     for (i, entry) in entries.iter().enumerate() {
-        out.push_str(if i == 0 { "\n" } else { "\n---\n\n" });
+        if i == 0 {
+            out.push('\n');
+        } else {
+            let _ = write!(out, "\n{rule}\n\n");
+        }
         if !entry.title.is_empty() {
             out.push_str(&entry.title);
             out.push('\n');
@@ -30,7 +54,11 @@ pub fn render(name: &str, entries: &[Entry]) -> String {
         out.push_str(entry.text.trim_end());
         out.push('\n');
     }
-    out
+    if crlf {
+        out.replace("\r\n", "\n").replace('\n', "\r\n")
+    } else {
+        out
+    }
 }
 
 /// A file name in `folder` for the export of list `name` made on `date` that no file has yet:
@@ -82,13 +110,36 @@ mod tests {
         let text = render(
             "Code",
             &[entry("Hello", "echo hi\n"), entry("", "second\nline")],
+            false,
         );
         assert_eq!(text, "Code\n\nHello\necho hi\n\n---\n\nsecond\nline\n");
     }
 
     #[test]
+    fn the_separator_is_longer_than_any_line_of_dashes_in_an_item() {
+        let text = render(
+            "Code",
+            &[
+                entry("", "a\n---\nb"),
+                entry("", "c\n----\nd"),
+                entry("", "e"),
+            ],
+            false,
+        );
+        assert!(text.contains("\n-----\n\ne\n"), "{text:?}");
+        assert_eq!(text.matches("\n-----\n").count(), 2);
+    }
+
+    #[test]
+    fn windows_text_ends_every_line_with_crlf_once() {
+        let text = render("Code", &[entry("T", "a\r\nb\nc")], true);
+        assert_eq!(text, "Code\r\n\r\nT\r\na\r\nb\r\nc\r\n");
+        assert!(!text.replace("\r\n", "").contains('\n'));
+    }
+
+    #[test]
     fn an_empty_list_is_just_its_name() {
-        assert_eq!(render("Code", &[]), "Code\n");
+        assert_eq!(render("Code", &[], false), "Code\n");
     }
 
     #[test]
