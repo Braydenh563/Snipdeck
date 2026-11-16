@@ -153,6 +153,20 @@ fn titles(window: &snipdeck_ui::PickerWindow) -> Vec<String> {
 }
 
 impl Rig {
+    /// Lets a paste's tail finish through the window's own timer chain: the fake clock moves by
+    /// hand (it only moves when something sleeps), the timers by mock time.
+    fn finish_paste(&self) {
+        for _ in 0..20 {
+            if !self.ctl.borrow().paste_pending() {
+                break;
+            }
+            self.ctl.borrow_mut().services_mut().timing.now += std::time::Duration::from_millis(50);
+            i_slint_backend_testing::mock_elapsed_time(std::time::Duration::from_millis(10));
+            slint::platform::update_timers_and_animations();
+        }
+        assert!(!self.ctl.borrow().paste_pending(), "the paste ended");
+    }
+
     fn open(&self) -> snipdeck_ui::PickerWindow {
         self.binding.hotkey(HotkeyAction::Picker);
         slint::platform::update_timers_and_animations();
@@ -344,6 +358,7 @@ fn typing_filters_across_the_boards_and_enter_pastes_into_the_target() {
         );
 
         press(w.window(), &key(Key::Return));
+        r.finish_paste();
         assert!(!w.window().is_visible(), "the Picker is off the screen");
         {
             let ctl = r.ctl.borrow();
@@ -418,6 +433,7 @@ fn alt_digit_uses_the_nth_row_and_arrows_move_the_selection() {
             .item_at(0)
             .expect("row");
         chord(w.window(), &[Key::Alt], "1");
+        r.finish_paste();
         assert!(!w.window().is_visible());
         assert_eq!(r.ctl.borrow().services().keyboard.sent.len(), 1);
         assert_eq!(r.uses(first), 1);
@@ -541,6 +557,7 @@ fn the_toast_shows_in_its_own_window_while_the_panel_is_hidden() {
         let w = r.open();
         type_text(w.window(), "out of office");
         press(w.window(), &key(Key::Return));
+        r.finish_paste();
         let t = r.toasts.window().expect("a toast window was made");
         assert!(
             t.window().is_visible(),
@@ -584,6 +601,7 @@ fn the_toast_windows_close_button_drops_the_toast_and_hides_the_window() {
         let w = r.open();
         type_text(w.window(), "out of office");
         press(w.window(), &key(Key::Return));
+        r.finish_paste();
         let t = r.toasts.window().expect("a toast window was made");
         assert!(t.window().is_visible());
         t.invoke_dismissed();
@@ -646,6 +664,7 @@ fn the_capture_and_paste_next_hotkeys_report_in_the_toast_window_while_the_panel
 
         // Paste next pastes the first pinned item and says where it went.
         r.binding.hotkey(HotkeyAction::PasteNext);
+        r.finish_paste();
         assert_eq!(t.get_text(), "Pasted into Mail");
         assert_eq!(r.ctl.borrow().services().keyboard.sent.len(), 1);
     });
