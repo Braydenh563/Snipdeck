@@ -561,6 +561,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::too_many_lines, reason = "one table, one row per policy case")]
     fn the_policy_table() {
         let big = "x".repeat(MAX_ENTRY_BYTES + 1);
         let edge = "x".repeat(MAX_ENTRY_BYTES);

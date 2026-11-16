@@ -573,6 +573,9 @@ msgstr "Copiado. A janela que você usava foi fechada."
 msgid "Copied. {} runs as administrator, so Snipdeck can't paste into it."
 msgstr "Copiado. {} roda como administrador, então o Snipdeck não consegue colar nele."
 
+msgid "Copies older than this are deleted, even when Recent is off or paused."
+msgstr "Cópias mais antigas são apagadas, mesmo com Recentes desligado ou pausado."
+
 msgid "Copy"
 msgstr "Copiar"
 
@@ -831,6 +834,9 @@ msgstr "Data e hora no formato escolhido"
 msgid "Dates are today's; a field you fill in when you use the item shows its name or default."
 msgstr "As datas são as de hoje; um campo que você preenche ao usar o item mostra o nome ou o valor padrão."
 
+msgid "Days a copy stays in Recent"
+msgstr "Dias que uma cópia fica em Recentes"
+
 msgid "Delete"
 msgstr "Excluir"
 
@@ -890,6 +896,9 @@ msgstr "Excluir esta lista?"
 
 msgid "Delete this tag?"
 msgstr "Excluir esta etiqueta?"
+
+msgid "Delete what Recent has kept?"
+msgstr "Apagar o que Recentes guardou?"
 
 msgid "Delete “{}”"
 msgstr "Excluir “{}”"
@@ -1389,11 +1398,20 @@ msgstr "Kaomoji"
 msgid "Keep Panel visible during screenshots"
 msgstr "Manter o painel visível durante as capturas"
 
+msgid "Keep Recent on"
+msgstr "Manter Recentes ligado"
+
 msgid "Keep a Recent inbox of what you copy"
 msgstr "Manter uma caixa de Recentes com o que você copia"
 
 msgid "Keep a Recent list of what you copy?"
 msgstr "Manter uma lista Recente do que você copia?"
+
+msgid "Keep copies for fewer days"
+msgstr "Manter as cópias por menos dias"
+
+msgid "Keep copies for more days"
+msgstr "Manter as cópias por mais dias"
 
 msgid "Keep editing"
 msgstr "Continuar editando"
@@ -1404,8 +1422,14 @@ msgstr "Mantenha os favoritos ao alcance"
 msgid "Keep fewer backups"
 msgstr "Manter menos backups"
 
+msgid "Keep fewer copies"
+msgstr "Manter menos cópias"
+
 msgid "Keep more backups"
 msgstr "Manter mais backups"
+
+msgid "Keep more copies"
+msgstr "Manter mais cópias"
 
 msgid "Keep panel on top"
 msgstr "Manter o painel no topo"
@@ -1497,6 +1521,15 @@ msgstr "As listas guardam seus trechos."
 msgid "Loading"
 msgstr "Carregando"
 
+msgid "Lock after"
+msgstr "Bloquear após"
+
+msgid "Lock later"
+msgstr "Bloquear mais tarde"
+
+msgid "Lock sooner"
+msgstr "Bloquear mais cedo"
+
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "Os registros só são gravados quando o Snipdeck fecha de forma inesperada, não têm o conteúdo dos trechos e nunca são enviados a lugar nenhum."
 
@@ -1569,6 +1602,12 @@ msgstr "Menu"
 msgid "Microsoft Store"
 msgstr "Microsoft Store"
 
+msgid "Minutes before the library locks"
+msgstr "Minutos antes de a biblioteca bloquear"
+
+msgid "Minutes without use before a master password locks your sensitive items again."
+msgstr "Minutos sem uso antes de a senha mestra bloquear de novo seus itens sensíveis."
+
 msgid "More"
 msgstr "Mais"
 
@@ -1580,6 +1619,9 @@ msgstr "Mais opções: abrir o editor completo"
 
 msgid "More pinned snippets"
 msgstr "Mais trechos fixados"
+
+msgid "Most copies kept in Recent"
+msgstr "Máximo de cópias em Recentes"
 
 msgid "Most used"
 msgstr "Mais usados"
@@ -1863,6 +1905,9 @@ msgstr "Desativado: um painel acoplado à esquerda ou à direita mantém a altur
 
 msgid "Off: a docked panel does not tuck and hides like a floating one. Otherwise it tucks into a thin tab at its edge, and the panel shortcut opens it too."
 msgstr "Desativado: um painel encaixado não se recolhe e é ocultado como um flutuante. Caso contrário, ele se recolhe em uma aba fina na borda, e o atalho do painel também o abre."
+
+msgid "Older copies are deleted when there are more than this many."
+msgstr "Cópias mais antigas são apagadas quando passam deste número."
 
 msgid "On black"
 msgstr "Sobre preto"
@@ -2266,8 +2311,17 @@ msgstr "Ações de entradas recentes"
 msgid "Recent history cleared"
 msgstr "Histórico recente limpo"
 
+msgid "Recent holds {} copies. Turning it off deletes them, unless you choose to keep them hidden; kept copies show again if you turn Recent back on."
+msgstr "Recentes guarda {} cópias. Desligar apaga as cópias, a menos que você escolha mantê-las ocultas; as mantidas voltam a aparecer se você religar Recentes."
+
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "Recentes guarda o texto que você copia, somente neste computador, pelas últimas {} cópias ou {} dias, o que ocorrer primeiro. Senhas de gerenciadores de senhas e itens sensíveis nunca são guardados. Você pode alterar isso quando quiser em Configurações."
+
+msgid "Recent: days kept"
+msgstr "Recentes: dias mantidos"
+
+msgid "Recent: most copies kept"
+msgstr "Recentes: máximo de cópias"
 
 msgid "Recently used"
 msgstr "Usados recentemente"
@@ -2419,6 +2473,12 @@ msgstr "Salvar como PNG…"
 
 msgid "Save as SVG…"
 msgstr "Salvar como SVG…"
+
+msgid "Save as Sensitive to…"
+msgstr "Salvar como Sensível em…"
+
+msgid "Save as Sensitive…"
+msgstr "Salvar como Sensível…"
 
 msgid "Save from clipboard"
 msgstr "Salvar da área de transferência"
@@ -3191,6 +3251,12 @@ msgstr "Tente outra palavra ou outro tipo."
 msgid "Try it"
 msgstr "Experimentar"
 
+msgid "Turn off and delete"
+msgstr "Desligar e apagar"
+
+msgid "Turn off, keep them"
+msgstr "Desligar e manter"
+
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "Ative o histórico da área de transferência em Configurações para reunir o que você copiar."
 
@@ -3476,6 +3542,9 @@ msgstr "Sua biblioteca foi bloqueada depois de um tempo. O formulário do modelo
 msgid "Your library locked after a while. The sensitive item you were editing was closed without saving."
 msgstr "Sua biblioteca foi bloqueada depois de um tempo. O item sensível que você editava foi fechado sem salvar."
 
+msgid "Your library locked. What you were typing in the sensitive item is kept, and comes back when you unlock."
+msgstr "Sua biblioteca bloqueou. O que você digitava no item sensível foi guardado e volta ao desbloquear."
+
 msgid "Your library was erased."
 msgstr "Sua biblioteca foi apagada."
 
@@ -3601,6 +3670,9 @@ msgstr "cria “{}”"
 msgid "creates “{}” in {}"
 msgstr "cria “{}” em {}"
 
+msgid "days"
+msgstr "dias"
+
 msgid "default"
 msgstr "padrão"
 
@@ -3692,6 +3764,9 @@ msgstr "minúsculas"
 
 msgid "make new folder together section collect"
 msgstr "criar novo pasta junto seção reunir"
+
+msgid "min"
+msgstr "min"
 
 msgid "move"
 msgstr "mover"
