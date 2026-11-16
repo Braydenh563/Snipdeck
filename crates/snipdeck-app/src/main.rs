@@ -916,6 +916,14 @@ fn open_library(args: &Args) -> Result<Library, String> {
     };
     // Where a crash report goes (set for any real library, also when the settings stay unsaved).
     crash::set_data_dir(&folder);
+    // Setup's "erase my data" must find a folder chosen with --data-dir (unverified on Windows).
+    #[cfg(windows)]
+    {
+        let default = snipdeck_app::paths::data_dir(&|name| std::env::var(name).ok(), true);
+        if let Err(e) = snipdeck_platform::windows::data_record::sync(&folder, default.as_deref()) {
+            snipdeck_app::trace!("data-folder record: {e}");
+        }
+    }
     let loaded = snipdeck_app::paths::read_settings(&folder);
     let may_save = loaded.may_save();
     let loaded_outcome = loaded.outcome;

@@ -89,6 +89,9 @@ if [ "$MODE_CHANGED" = 1 ]; then
 fi
 [ "$MODE_FULL" = 1 ] && step full-suite bash -c "$(declare -f all_tests); all_tests"
 
+# No tracked path component may start with "-": such a name breaks rm, cat and git add without "--" (PLATFORM-38).
+no_dash_names() { local bad; bad="$(git ls-files | grep -E '(^|/)-')"; [ -z "$bad" ] || { echo "tracked names starting with '-':"; echo "$bad"; return 1; }; }
+step dash-names no_dash_names
 if [ -f scripts/codemap.py ]; then step codemap python3 scripts/codemap.py --check; fi
 if [ -f scripts/i18n.py ]; then step i18n python3 scripts/i18n.py check --strict; fi
 if [ -f scripts/test_i18n.py ]; then step i18n-tests python3 scripts/test_i18n.py; fi

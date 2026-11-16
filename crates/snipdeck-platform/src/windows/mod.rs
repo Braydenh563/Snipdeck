@@ -33,6 +33,7 @@ pub mod autostart;
 pub mod clipboard;
 pub mod clipboard_history;
 pub mod console;
+pub mod data_record;
 pub mod dll_search;
 pub mod dpapi;
 pub mod dpi;

@@ -444,7 +444,7 @@ function Invoke-Uninstall {
     if (-not $go) { $go = Ask-YesNo 'Continue?' $false }
     if (-not $go) { Say '  Nothing was changed.' 'Gray'; return 0 }
 
-    if ((@(Get-AppProcesses).Count -gt 0) -or (@(Get-PortableProcesses).Count -gt 0)) {
+    if (@(Get-AppProcesses).Count -gt 0) {
         Say '  Snipdeck is running.' 'Yellow'
         if (-not (Ask-YesNo 'Stop the running Snipdeck (only that program) so it can be removed?' $true)) {
             Say '  Nothing was changed.' 'Gray'
@@ -452,7 +452,6 @@ function Invoke-Uninstall {
         }
         $stopped = $true
         if (-not (Stop-AppProcesses)) { $stopped = $false }
-        if (-not (Stop-PortableApp)) { $stopped = $false }
         if (-not $stopped -and -not $script:Opt.WhatIf) {
             Write-FailureReport 'stop Snipdeck' 'Snipdeck would not close.' @() @('Quit Snipdeck from its tray icon, then run the uninstall again.')
             return 1
