@@ -180,7 +180,9 @@ pub fn classify_argument(text: &str) -> Result<Request, RequestError> {
 ///
 /// [`RequestError::NotAlone`].
 pub fn check_alone(args: &[&str]) -> Result<(), RequestError> {
-    let first_is_request = args.first().is_some_and(|a| !a.starts_with('-') && !a.is_empty());
+    let first_is_request = args
+        .first()
+        .is_some_and(|a| !a.starts_with('-') && !a.is_empty());
     let has_url = args.iter().any(|a| is_url_argument(a));
     if (first_is_request || has_url) && args.len() > 1 {
         return Err(RequestError::NotAlone);

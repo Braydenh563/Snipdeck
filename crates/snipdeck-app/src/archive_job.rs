@@ -40,6 +40,9 @@ pub(crate) enum Work {
         now: Zoned,
         keep: usize,
         replace: bool,
+        /// Also copy the file written into this folder, pruned to `keep` (the Store build's
+        /// `Documents\Snipdeck backups`, `store_data`).
+        copy_to: Option<PathBuf>,
     },
     /// The whole library as one `.snipdeck` file at `path` (its folder is made first).
     Export { path: PathBuf, now: Timestamp },
@@ -246,18 +249,35 @@ impl ArchiveJob {
                 now,
                 keep,
                 replace,
+                copy_to,
             } => {
                 let outcome = backup::run_if_due(lib, data_dir, now, *keep, lib.data_key())
                     .map_err(|e| failure(&e))?;
-                match outcome {
-                    // The user asked for a fresh copy: write over today's.
+                // The file to copy out of the package: only one that this run wrote. A failed
+                // backup returned above and copies nothing.
+                let written = match &outcome {
+                    BackupOutcome::Created { path, .. } => Some(path.clone()),
                     BackupOutcome::NotDue { existing } if *replace => {
-                        export_to_path(lib, now.timestamp(), &options, &existing)
+                        // The user asked for a fresh copy: write over today's.
+                        export_to_path(lib, now.timestamp(), &options, existing)
                             .map_err(|e| failure(&e))?;
-                        Ok(Made::Backup(BackupOutcome::NotDue { existing }))
+                        Some(existing.clone())
                     }
-                    other => Ok(Made::Backup(other)),
+                    BackupOutcome::NotDue { .. } => None,
+                };
+                if let (Some(file), Some(folder)) = (written, copy_to) {
+                    // The backup is made; a copy that fails is logged, not a failed backup.
+                    if let Err(e) = crate::store_data::copy_out(
+                        &crate::store_data::RealFs,
+                        &file,
+                        folder,
+                        *keep,
+                        now.date(),
+                    ) {
+                        crate::trace!("backup copy to {}: {e}", folder.display());
+                    }
                 }
+                Ok(Made::Backup(outcome))
             }
             Work::Decode { .. } | Work::Rebuild { .. } => {
                 Err(JobError::other("not an archive step"))

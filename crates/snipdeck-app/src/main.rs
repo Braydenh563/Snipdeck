@@ -29,6 +29,7 @@ use slint::{
     ComponentHandle,
     winit_030::{WinitWindowAccessor, winit},
 };
+use snipdeck_app::session_end::JobResult;
 use snipdeck_app::{
     archive_job,
     binding::Binding,
@@ -56,7 +57,6 @@ use snipdeck_app::{
     window_kind,
 };
 use snipdeck_core::Timestamp;
-use snipdeck_app::session_end::JobResult;
 use snipdeck_platform::handover::{Request, UrlAction};
 use snipdeck_platform::tray::TrayEvent;
 use snipdeck_store::Store;
@@ -349,6 +349,11 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         controller.set_system_look(look.read());
         controller.set_recent_gate(recent_gate);
         controller.set_typing(typing);
+        // The Store build also copies each backup into Documents, outside the package.
+        controller.set_backup_copy_folder(snipdeck_app::store_data::copy_folder(
+            snipdeck_app::platform::is_packaged(),
+            snipdeck_app::paths::documents_folder().as_deref(),
+        ));
         controller.prune_recent();
         if let Some(toast) = settings_toast {
             controller.show_toast(toast);
@@ -692,7 +697,11 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
 /// ends and, from the tray thread's `WM_ENDSESSION`, on the UI thread while Windows ends the
 /// session (the event loop never returns then). Safe to run twice.
 fn flush_now() -> JobResult {
-    FLUSH.with(|f| f.borrow().as_ref().map_or(JobResult::Saved, |flush| flush()))
+    FLUSH.with(|f| {
+        f.borrow()
+            .as_ref()
+            .map_or(JobResult::Saved, |flush| flush())
+    })
 }
 
 /// What a session end waits for on the UI thread, at most.
@@ -704,7 +713,7 @@ const SESSION_FLUSH_WAIT: std::time::Duration =
 fn flush_for_session_end() {
     let outcome = snipdeck_app::session_end::flush_until_saved(
         |job| slint::invoke_from_event_loop(job).is_ok(),
-        std::sync::Arc::new(flush_now),
+        flush_now,
         SESSION_FLUSH_WAIT,
         &snipdeck_app::session_end::SystemClock::start(),
     );

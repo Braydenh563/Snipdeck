@@ -74,10 +74,11 @@ pub const RETRY_PAUSE: Duration = Duration::from_millis(50);
 /// from any thread but the UI thread.
 pub fn flush_until_saved(
     post: impl Fn(Box<dyn FnOnce() + Send>) -> bool,
-    job: Arc<dyn Fn() -> JobResult + Send + Sync>,
+    job: impl Fn() -> JobResult + Send + Sync + 'static,
     limit: Duration,
     clock: &dyn Clock,
 ) -> Flushed {
+    let job = Arc::new(job);
     let mut tries = 0_u32;
     loop {
         tries += 1;
@@ -153,11 +154,11 @@ mod tests {
         let flag = Arc::clone(&ran);
         let outcome = flush_until_saved(
             ui_thread,
-            Arc::new(move || {
+            move || {
                 std::thread::sleep(Duration::from_millis(50));
                 flag.store(true, Ordering::SeqCst);
                 JobResult::Saved
-            }),
+            },
             Duration::from_secs(5),
             &SystemClock::start(),
         );
@@ -171,13 +172,13 @@ mod tests {
         let hold = Mutex::new(hold);
         let outcome = flush_until_saved(
             ui_thread,
-            Arc::new(move || {
+            move || {
                 let _ = hold
                     .lock()
                     .expect("hold")
                     .recv_timeout(Duration::from_secs(5));
                 JobResult::Saved
-            }),
+            },
             Duration::from_millis(50),
             &SystemClock::start(),
         );
@@ -191,10 +192,10 @@ mod tests {
         let flag = Arc::clone(&ran);
         let outcome = flush_until_saved(
             |_job| false,
-            Arc::new(move || {
+            move || {
                 flag.store(true, Ordering::SeqCst);
                 JobResult::Saved
-            }),
+            },
             Duration::from_secs(5),
             &FixedClock::new(),
         );
@@ -206,7 +207,7 @@ mod tests {
     fn a_job_that_panics_is_not_a_finished_flush() {
         let outcome = flush_until_saved(
             ui_thread,
-            Arc::new(|| panic!("flush failed")),
+            || panic!("flush failed"),
             Duration::from_secs(5),
             &SystemClock::start(),
         );
@@ -220,14 +221,14 @@ mod tests {
         let clock = FixedClock::new();
         let outcome = flush_until_saved(
             inline,
-            Arc::new(move || {
+            move || {
                 // The controller is borrowed for the first two tries.
                 if counter.fetch_add(1, Ordering::SeqCst) < 2 {
                     JobResult::Skipped
                 } else {
                     JobResult::Saved
                 }
-            }),
+            },
             Duration::from_secs(3),
             &clock,
         );
@@ -243,10 +244,10 @@ mod tests {
         let clock = FixedClock::new();
         let outcome = flush_until_saved(
             inline,
-            Arc::new(move || {
+            move || {
                 counter.fetch_add(1, Ordering::SeqCst);
                 JobResult::Skipped
-            }),
+            },
             Duration::from_millis(500),
             &clock,
         );

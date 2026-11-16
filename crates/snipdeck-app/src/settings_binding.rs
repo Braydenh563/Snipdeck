@@ -1668,25 +1668,6 @@ where
         spawn_archive(&self.controller, begun, move |_| {
             this.show_busy();
             this.refresh_backups();
-            this.copy_backup_out_of_the_package();
-            redraw_all();
-        });
-    }
-
-    /// In the Store build, also saves an export in `Documents\Snipdeck backups`, outside the
-    /// package, so a copy survives an uninstall ([`crate::store_data`]). Nothing elsewhere.
-    fn copy_backup_out_of_the_package(self: &Rc<Self>) {
-        let Some(folder) = crate::store_data::copy_folder(
-            self.host.packaged(),
-            self.host.documents_folder().as_deref(),
-        ) else {
-            return;
-        };
-        let begun = self.act(|ctl| ctl.begin_export(&folder));
-        self.show_busy();
-        let this = Rc::clone(self);
-        spawn_archive(&self.controller, begun, move |_| {
-            this.show_busy();
             redraw_all();
         });
     }

@@ -261,3 +261,8 @@ Unverified: whether `windows-11-arm` runners are available to the repo; cross-co
 - P34: `makepri new` succeeds, icons sharp at 100/150/200 percent.
 - P36/P41: CI YAML above; ARM64 device: exe starts, hotkey, paste, tray.
 - P37: launcher `update`/`uninstall` with the app running: quits via `--quit`, no stray kill; `selftest.ps1` new cases pass.
+
+## Review round B (branch fix-review-b): Windows run list, all unverified
+- Argument injection: from a command prompt run `snipdeck.exe snipdeck://open --data-dir C:\x` and `snipdeck.exe --hidden snipdeck://panel`: the app must print/show "cannot be combined with other options" and start nothing. `snipdeck.exe snipdeck://settings` and double-clicking a `.snipdeck` file still work; check the Setup and MSIX registered open commands pass only `"%1"` (no extra flag).
+- Session end: with the app open and a settings change within the last second (e.g. toggle a switch, then immediately Sign out / Restart): after sign-in the setting survived; the log has no repeated "flush skipped" lines beyond a few.
+- Store build (MSIX): `Back up now` and wait for the daily backup (or delete `backup-state` and restart): `Documents\Snipdeck backups` holds `snipdeck-backup-YYYYMMDD.snipdeck` for both; only one toast shows; the folder never holds more files than "Backups kept"; break the write (read-only folder) and the toast still says the backup was made; uninstall the MSIX and the Documents copies remain.
