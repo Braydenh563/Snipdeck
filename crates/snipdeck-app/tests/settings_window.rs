@@ -3039,6 +3039,24 @@ fn the_hello_row_appears_with_a_password_and_a_ready_hello_and_the_switch_seals(
 }
 
 #[test]
+fn the_recent_unknown_source_toggle_is_off_by_default_and_changes_the_setting() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert!(!r.ui.get_recent_keep_unknown_source());
+        assert!(!r.ctl.borrow().settings().recent_keep_unknown_source);
+        element(
+            &r.ui,
+            "Keep copies from unidentified programs",
+            AccessibleRole::Switch,
+        );
+        r.ui.invoke_recent_keep_unknown_source_toggled(true);
+        assert!(r.ctl.borrow().settings().recent_keep_unknown_source);
+        r.binding.redraw();
+        assert!(r.ui.get_recent_keep_unknown_source());
+    });
+}
+
+#[test]
 fn the_typing_toggles_are_off_by_default_and_change_the_settings() {
     on_ui_thread(|| {
         let r = rig();

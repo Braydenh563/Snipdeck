@@ -731,6 +731,7 @@ struct PageView {
     screenshot_keep_panel: bool,
     dock_full_edge: bool,
     recent_history: bool,
+    recent_keep_unknown_source: bool,
     expand_triggers: bool,
     suggest_triggers: bool,
     reduce_motion: bool,
@@ -995,6 +996,7 @@ where
         screenshot_keep_panel: settings.screenshot_keep_panel,
         dock_full_edge: settings.dock.full_edge,
         recent_history: settings.recent_history,
+        recent_keep_unknown_source: settings.recent_keep_unknown_source,
         expand_triggers: settings.expand_triggers,
         suggest_triggers: settings.suggest_triggers,
         reduce_motion: settings.reduce_motion,
@@ -1855,6 +1857,8 @@ where
         ));
         wire!(on_recent_history_toggled, |core, on| core
             .act(|ctl| ctl.set_recent_history(on)));
+        wire!(on_recent_keep_unknown_source_toggled, |core, on| core
+            .act(|ctl| ctl.update_settings(|s| s.recent_keep_unknown_source = on)));
         wire!(on_expand_triggers_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.expand_triggers = on)));
         wire!(on_suggest_triggers_toggled, |core, on| core
@@ -2097,6 +2101,9 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     }
     if differs(&|p| p.screenshot_keep_panel == view.screenshot_keep_panel) {
         window.set_screenshot_keep_panel(view.screenshot_keep_panel);
+    }
+    if differs(&|p| p.recent_keep_unknown_source == view.recent_keep_unknown_source) {
+        window.set_recent_keep_unknown_source(view.recent_keep_unknown_source);
     }
     if differs(&|p| p.expand_triggers == view.expand_triggers) {
         window.set_expand_triggers(view.expand_triggers);

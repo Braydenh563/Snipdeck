@@ -242,6 +242,9 @@ fn write_backup(conn: &Connection, path: &Path, from: u32) -> Result<()> {
     if from < 5 {
         scrub_or_delete(&temp);
     }
+    if from < 10 && temp.exists() {
+        scrub_previous_key_or_delete(&temp);
+    }
     if !temp.exists() {
         // Deleted because it could not be scrubbed: the old copy is just as plain, so it goes too.
         return match std::fs::remove_file(&target) {
@@ -271,6 +274,29 @@ fn scrub_older_backups(path: &Path, current: u32) {
             scrub_or_delete(&copy);
         }
     }
+}
+
+/// Clears the previous key record from a pre-v10 copy (version 10 drops it from the live file),
+/// or deletes the copy if that fails.
+fn scrub_previous_key_or_delete(backup: &Path) {
+    if scrub_previous_key(&backup.to_string_lossy()).is_err() {
+        let _ = std::fs::remove_file(backup);
+    }
+}
+
+fn scrub_previous_key(backup: &str) -> Result<()> {
+    let copy = Connection::open(backup)?;
+    copy.pragma_update(None, "journal_mode", "MEMORY")?;
+    copy.pragma_update(None, "secure_delete", "ON")?;
+    let has_column: bool = copy.query_row(
+        "SELECT EXISTS (SELECT 1 FROM pragma_table_info('key_ring') WHERE name = 'previous')",
+        [],
+        |r| r.get(0),
+    )?;
+    if has_column {
+        copy.execute_batch("UPDATE key_ring SET previous = NULL; VACUUM;")?;
+    }
+    Ok(())
 }
 
 /// Scrubs the Recent inbox of a backup; if that fails (a file held by antivirus, a damaged copy)
@@ -586,6 +612,46 @@ mod tests {
             backup.prepare("SELECT colour FROM boards").is_err(),
             "the copy predates the change"
         );
+    }
+
+    #[test]
+    fn the_pre_v10_backup_keeps_no_previous_key_record() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("snipdeck.db");
+        let mut conn = Connection::open(&path).unwrap();
+        migrate(&mut conn, &MIGRATIONS[..9], &path, true).unwrap();
+        let old_record = [b"SNKEY1".as_slice(), b"old-record-bytes"].concat();
+        let new_record = [b"SNKEY1".as_slice(), b"new-record-bytes"].concat();
+        conn.execute(
+            "INSERT INTO key_ring (id, record, previous) VALUES (1, ?1, ?2)",
+            params![new_record, old_record],
+        )
+        .unwrap();
+
+        migrate(&mut conn, MIGRATIONS, &path, true).unwrap();
+
+        let bak = dir.path().join("snipdeck.db.pre-v9.bak");
+        let backup = Connection::open(&bak).unwrap();
+        let (record, previous): (Vec<u8>, Option<Vec<u8>>) = backup
+            .query_row("SELECT record, previous FROM key_ring", [], |r| {
+                Ok((r.get(0)?, r.get(1)?))
+            })
+            .unwrap();
+        assert_eq!(record, new_record, "the current record stays");
+        assert!(previous.is_none(), "the old record is gone from the copy");
+        drop(backup);
+        let raw = std::fs::read(&bak).unwrap();
+        assert!(
+            !raw.windows(16).any(|w| w == b"old-record-bytes"),
+            "and its bytes are not left in free pages"
+        );
+        let live: Option<Vec<u8>> = conn
+            .query_row("SELECT previous FROM key_ring", [], |r| r.get(0))
+            .unwrap();
+        assert!(live.is_none());
+        assert_eq!(version(&conn), 10);
+        drop(conn);
+        assert!(Connection::open(&path).is_ok());
     }
 
     fn plain_copy_with_one_entry(path: &Path) {

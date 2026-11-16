@@ -1017,6 +1017,29 @@ fn locking_closes_a_sensitive_editor_so_no_plain_text_stays_on_screen() {
 }
 
 #[test]
+fn locking_reads_the_editor_text_at_that_moment_not_the_last_tick() {
+    let mut r = with_password();
+    r.ctl.open_item_editor(r.id);
+    let mut stale = r.ctl.item_editor_view().expect("editor").fields;
+    stale.content = "as of the last tick".into();
+    r.ctl.item_editor_autosave(&stale);
+    let mut now = stale.clone();
+    now.content = "typed a moment before the lock".into();
+    r.ctl
+        .set_editor_text_source(Box::new(move || Some(now.clone())));
+    r.advance(IDLE_LOCK);
+    assert!(r.ctl.lock_if_idle());
+    let job = r
+        .ctl
+        .begin_unlock_with_password(password())
+        .expect("checked")
+        .expect("locked");
+    assert_eq!(r.ctl.finish_master(run_elsewhere(job)), Ok(()));
+    let back = r.ctl.item_editor_view().expect("the editor comes back");
+    assert_eq!(back.fields.content, "typed a moment before the lock");
+}
+
+#[test]
 fn locking_keeps_the_unsaved_text_sealed_and_gives_it_back_after_the_unlock() {
     let mut r = with_password();
     r.ctl.open_item_editor(r.id);

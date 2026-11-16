@@ -48,6 +48,9 @@ pub(super) struct EditorEnv {
     /// The file dialog. Shared so the window can ask it without holding the controller: the
     /// dialog runs its own message loop, and the controller must be free meanwhile.
     picker: Option<Rc<dyn FilePicker>>,
+    /// Reads what the editor window shows right now, so the lock does not depend on the last
+    /// two-second tick. Must not touch the controller.
+    text_source: Option<Rc<dyn Fn() -> Option<EditorInput>>>,
 }
 
 /// What the editor edits.
@@ -227,6 +230,12 @@ where
         self.editor_env.keys = Some(Arc::from(provider));
     }
 
+    /// Lets the lock read the editor window's text at that moment (it must not borrow the
+    /// controller). Without it the last autosave tick supplies the text.
+    pub fn set_editor_text_source(&mut self, source: Box<dyn Fn() -> Option<EditorInput>>) {
+        self.editor_env.text_source = Some(Rc::from(source));
+    }
+
     /// Lets the item editor open a file dialog with `picker`.
     pub fn set_file_picker(&mut self, picker: Box<dyn FilePicker>) {
         self.editor_env.picker = Some(Rc::from(picker));
@@ -361,6 +370,10 @@ where
     /// to an editor that was open: `None` when none held anything sensitive.
     pub(super) fn park_sensitive_item_editor(&mut self) -> Option<Parked> {
         let mut slot = self.item_editor.take_if(|slot| slot.sensitive())?;
+        // Ask the window for its text now: the tick may be up to two seconds old.
+        if let Some(live) = self.editor_env.text_source.as_ref().and_then(|read| read()) {
+            slot.latest = Some(live);
+        }
         let input = slot.latest.take().unwrap_or_else(|| slot.fields.clone());
         let seal_id = ItemId::generate();
         let sealed = self.store.duplicate_data_key().and_then(|key| {

@@ -1409,6 +1409,9 @@ msgstr "减少副本保留天数"
 msgid "Keep copies for more days"
 msgstr "增加副本保留天数"
 
+msgid "Keep copies from unidentified programs"
+msgstr ""
+
 msgid "Keep editing"
 msgstr "继续编辑"
 
@@ -2310,6 +2313,9 @@ msgstr "“最近”中有{}个副本。关闭后会将其删除，除非你选�
 
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "“最近”会保留你复制的文本，仅保存在这台电脑上，最多保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感片段不会被保留。你可以随时在设置中更改。"
+
+msgid "Recent skips a copy when Snipdeck cannot tell which program it came from, because it could be a password manager. Turn this on to keep those copies too."
+msgstr ""
 
 msgid "Recent: days kept"
 msgstr "最近：保留天数"

@@ -31,7 +31,9 @@ DEK --[optional master password: Argon2id + XChaCha20-Poly1305]--> --KeyProvider
   new record replaces the old one in one transaction (`Store::rotate_key_ring`). No earlier
   record is kept (the `previous` column is always empty; migration 10 clears older ones), so the
   old password opens nothing in the live library. A *backup file* made before the change still
-  opens with the old password and the old OS key; that is the nature of a copy.
+  opens with the old password and the old OS key; that is the nature of a copy: backups made
+  before a rotation stay sealed under the old key. The automatic `pre-v*.bak` copy made at an
+  upgrade has the previous key record cleared (and is deleted if that fails).
 
 ## Argon2id parameters
 
@@ -170,7 +172,8 @@ password and drop the copy; the option stays on and the next password unlock sea
   and its decomposed (NFD) form are tried too. A record is re-sealed in NFC at the next password
   change or removal (rotation, `KeyRing::rotate`).
 * Three wrong passwords in a row start a wait of 2, 4, 8, 16 and then 30 seconds before the next
-  try (unlock, change and remove); a right one clears it. The clock is the controller's injected
+  try (unlock, change and remove); a right one clears it. The wait lasts only while the app runs:
+  quitting and restarting resets it, so it is a speed bump and not brute-force protection. The clock is the controller's injected
   clock and the count lives in memory, so it is a speed bump for typing and not a defence against
   someone who has copies of the files (that is what Argon2id is for).
 * The password fields warn when Caps Lock seems on (guessed from the keys typed; Slint has no

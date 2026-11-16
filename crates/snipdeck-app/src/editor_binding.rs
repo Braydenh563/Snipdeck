@@ -139,6 +139,13 @@ where
             }
         });
         register_redraw(&core.redraw);
+        let weak = Rc::downgrade(&core);
+        this.borrow_mut()
+            .set_editor_text_source(Box::new(move || {
+                let core = weak.upgrade()?;
+                let window = core.window.borrow().as_ref().map(ComponentHandle::clone_strong)?;
+                Some(read_input(&window))
+            }));
         EditorBinding { core }
     }
 }
