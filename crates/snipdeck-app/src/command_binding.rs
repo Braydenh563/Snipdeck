@@ -76,8 +76,7 @@ pub fn rows(
     commands::entries(&texts(window), &context(hotkeys, screen, offers), query)
         .into_iter()
         .map(|entry| {
-            let (mark_before, mark_text) =
-                crate::search_mark::word_mark(&entry.label, query).unwrap_or_default();
+            let (mark_before, mark_text) = entry.mark.clone().unwrap_or_default();
             ui::PaletteRow {
                 id: entry.command.id(),
                 label: entry.label.as_str().into(),

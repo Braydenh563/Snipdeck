@@ -3179,7 +3179,7 @@ ui_tests! {
         let row_at = centre(&rows(&ui).into_iter().next().expect("a row"));
         ui.set_dock_collapsed(true);
         settle();
-        let name = "Snipdeck handle, press the Panel hotkey to open";
+        let name = "Open Snipdeck Panel";
         let handle = find(&ui, name, AccessibleRole::Button);
         let (size, at) = (handle.size(), handle.absolute_position());
         let window = ui.window().size().to_logical(ui.window().scale_factor());

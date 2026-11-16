@@ -29,6 +29,10 @@ export component IconButton inherits Rectangle {
     // While hovered or focused, the button asks the window's `TipLayer` to show `tooltip` (DESIGN.md §4). Off by
     // default: `tooltip` is also the accessible name, and the Panel asks for its tips itself (it anchors some elsewhere).
     in property <bool> own-tooltip: false;
+    // The accessible name when it must differ from the tooltip (a tooltip that carries a shortcut or the toggle's
+    // current state), and a description for what the name leaves out (the shortcut).
+    in property <string> a11y-name;
+    in property <string> a11y-description;
     out property <bool> has-hover: touch.has-hover && root.enabled;
     out property <bool> has-focus: scope.has-focus;
     // Each time this goes up the button takes the keyboard focus (the Panel hands it on after a row's delete).
@@ -64,7 +68,8 @@ export component IconButton inherits Rectangle {
     opacity: root.enabled ? 1.0 : 0.45;
     forward-focus: scope;
     accessible-role: button;
-    accessible-label: root.tooltip;
+    accessible-label: root.a11y-name != "" ? root.a11y-name : root.tooltip;
+    accessible-description: root.a11y-description;
     accessible-enabled: root.enabled;
     accessible-action-default => { if (root.enabled) { root.clicked(); } }
 

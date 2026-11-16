@@ -1697,7 +1697,7 @@ fn edit_and_rename_on_the_selected_row_ask_for_the_quick_editor() {
 
 // ---- The edge dock ----------------------------------------------------------------------------
 
-const HANDLE_LABEL: &str = "Snipdeck handle, press the Panel hotkey to open";
+const HANDLE_LABEL: &str = "Open Snipdeck Panel";
 
 /// The Panel on the first monitor, 40 px from its left edge, docked there through the kebab's
 /// "Dock to the left edge" row, with the dock trigger set to `trigger`.

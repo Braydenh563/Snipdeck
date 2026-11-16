@@ -1122,6 +1122,15 @@ where
         }
     }
 
+    /// [`on_target_changed`](Self::on_target_changed) with the probe already made: one foreground
+    /// change asks the system for the Target once (each probe is a process query and, for some apps,
+    /// a UI Automation call that may wait), not once for each decision it feeds.
+    fn apply_target(&mut self, now: Option<snipdeck_platform::route::Target>) {
+        if self.picker.is_none() && self.fill.is_none() {
+            self.model.set_target(now);
+        }
+    }
+
     /// The foreground window changed: the Target follows it (see
     /// [`on_target_changed`](Self::on_target_changed)), and an unpinned Panel hides when
     /// "Hide the panel when it loses focus" is on. Only the Panel does this: the Main window,
@@ -1137,18 +1146,20 @@ where
         self.panel_revealed = None;
         // The user went to another app while the Picker or the fill form was open: they are
         // dismissed like any popup, without taking the focus back from where the user went (U6).
+        // One probe for the whole event: the three decisions below all read it.
+        let now = self.target.current();
         if (self.picker.is_some() || self.fill.is_some())
-            && self
-                .target
-                .current()
-                .is_some_and(|now| self.model.target() != Some(&now))
+            && now
+                .as_ref()
+                .is_some_and(|now| self.model.target() != Some(now))
         {
             self.picker = None;
             self.fill = None;
             self.fill_erase = None;
         }
-        self.on_target_changed();
-        if self.hides_on_blur() {
+        let has_target = now.is_some();
+        self.apply_target(now);
+        if self.hides_on_blur(has_target) {
             let effects = self.hide_with_hint();
             self.blur_hide = true;
             effects
@@ -1158,7 +1169,7 @@ where
     }
 
     /// Whether a foreground change now should hide the Panel.
-    fn hides_on_blur(&self) -> bool {
+    fn hides_on_blur(&self, has_target: bool) -> bool {
         self.visible
             && !self.on_top
             // A docked Panel tucks instead: its tab is how it comes back.
@@ -1171,7 +1182,7 @@ where
             && self.fill.is_none()
             // The tray, the desktop or the taskbar taking the foreground is no Target: the
             // user who just clicked the tray icon to open the Panel must not see it vanish.
-            && self.target.current().is_some()
+            && has_target
             && Duration::try_from(self.clock.now().duration_since(self.shown_at))
                 .is_ok_and(|since| since > BLUR_GRACE)
     }

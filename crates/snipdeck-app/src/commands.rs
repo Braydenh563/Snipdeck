@@ -212,6 +212,13 @@ impl Command {
         Some(fixed.to_owned())
     }
 
+    /// Removes something (Trash, delete): never wins a tie in the palette, so Enter on a name that fits
+    /// a destructive command and a harmless one runs the harmless one.
+    #[must_use]
+    pub const fn destructive(self) -> bool {
+        matches!(self, Self::TrashItem | Self::DeleteGroup)
+    }
+
     /// Acts on the item under the cursor, so it is offered only with one there.
     #[must_use]
     pub const fn needs_item(self) -> bool {
@@ -366,8 +373,29 @@ pub fn available(command: Command, ctx: &Context<'_>) -> bool {
     }
 }
 
+/// Whether `word` is a subsequence of the label's letters whose first letter starts a label word
+/// ("stg" in "Settings", "ni" in "New item"). Both texts are folded.
+fn fuzzy(label: &str, word: &str) -> bool {
+    let mut letters = word.chars();
+    let mut want = letters.next();
+    let mut at_word_start = true;
+    let mut started = false;
+    for c in label.chars() {
+        if let Some(w) = want {
+            if c == w && (started || at_word_start) {
+                started = true;
+                want = letters.next();
+            }
+        }
+        at_word_start = !c.is_alphanumeric();
+    }
+    want.is_none() && !word.is_empty()
+}
+
 /// How well `word` matches a command: 0 at the start of the label, 1 at the start of a label word, 2
-/// inside the label, 3 in the synonyms, `None` not at all. Both texts are lowercase.
+/// inside the label, 3 in the synonyms, 4 as letters spread over the label (a subsequence from a word
+/// start, so "stg" finds Settings), `None` not at all. Both texts are folded (lowercase, accents
+/// removed, so "é" matches "e").
 fn rank(label: &str, synonyms: &str, word: &str) -> Option<usize> {
     if label.starts_with(word) {
         Some(0)
@@ -377,6 +405,8 @@ fn rank(label: &str, synonyms: &str, word: &str) -> Option<usize> {
         Some(2)
     } else if synonyms.contains(word) {
         Some(3)
+    } else if fuzzy(label, word) {
+        Some(4)
     } else {
         None
     }
@@ -388,8 +418,8 @@ fn rank(label: &str, synonyms: &str, word: &str) -> Option<usize> {
 /// synonyms. An empty query keeps the catalogue order.
 #[must_use]
 pub fn entries(texts: &[(String, String)], ctx: &Context<'_>, query: &str) -> Vec<Entry> {
-    let words: Vec<String> = query.split_whitespace().map(str::to_lowercase).collect();
-    let mut scored: Vec<(usize, usize, Entry)> = Vec::new();
+    let words: Vec<String> = query.split_whitespace().map(snipdeck_symbols::fold).collect();
+    let mut scored: Vec<(usize, bool, usize, Entry)> = Vec::new();
     for (i, command) in Command::ALL.iter().copied().enumerate() {
         let Some((label, synonyms)) = texts.get(i) else {
             continue;
@@ -397,7 +427,7 @@ pub fn entries(texts: &[(String, String)], ctx: &Context<'_>, query: &str) -> Ve
         if !available(command, ctx) {
             continue;
         }
-        let (label_lc, synonyms_lc) = (label.to_lowercase(), synonyms.to_lowercase());
+        let (label_lc, synonyms_lc) = (snipdeck_symbols::fold(label), snipdeck_symbols::fold(synonyms));
         let ranks: Option<Vec<usize>> = words
             .iter()
             .map(|word| rank(&label_lc, &synonyms_lc, word))
@@ -409,6 +439,7 @@ pub fn entries(texts: &[(String, String)], ctx: &Context<'_>, query: &str) -> Ve
         let shortcut = command.shortcut(ctx.hotkeys);
         scored.push((
             score,
+            command.destructive() && !words.is_empty(),
             i,
             Entry {
                 command,
@@ -419,8 +450,8 @@ pub fn entries(texts: &[(String, String)], ctx: &Context<'_>, query: &str) -> Ve
             },
         ));
     }
-    scored.sort_by_key(|(score, i, _)| (*score, *i));
-    scored.into_iter().map(|(_, _, entry)| entry).collect()
+    scored.sort_by_key(|(score, destructive, i, _)| (*score, *destructive, *i));
+    scored.into_iter().map(|(.., entry)| entry).collect()
 }
 
 #[cfg(test)]
@@ -584,8 +615,44 @@ mod tests {
         let found = entries(&texts(), &ctx(&hotkeys), "trash");
         assert_eq!(
             labels(&found),
-            ["Move selected item to Trash", "Go to Trash"]
+            ["Go to Trash", "Move selected item to Trash"],
+            "a destructive command never wins a tie: Enter on \"trash\" opens the Trash"
         );
+    }
+
+    #[test]
+    fn the_top_hit_of_every_word_a_user_would_type_is_pinned_and_never_destructive_on_a_tie() {
+        let hotkeys = Hotkeys::new_install();
+        for (word, top) in [
+            ("trash", "Go to Trash"),
+            ("delete", "Go to Trash"),
+            ("settings", "Settings"),
+            ("pin", "Pin selected item"),
+            ("paste", "Paste next item"),
+            ("recent", "Go to Recent"),
+            ("copy", "Copy selected item"),
+        ] {
+            let found = entries(&texts(), &ctx(&hotkeys), word);
+            assert_eq!(
+                found.first().map(|e| e.label.as_str()),
+                Some(top),
+                "top hit of {word:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn letters_spread_over_a_name_and_accents_still_find_it() {
+        let hotkeys = Hotkeys::new_install();
+        let found = entries(&texts(), &ctx(&hotkeys), "stg");
+        assert_eq!(labels(&found), ["Settings"], "a subsequence from a word start");
+        let found = entries(&texts(), &ctx(&hotkeys), "SETTÍNGS");
+        assert_eq!(labels(&found), ["Settings"], "accents fold away");
+        let mut accented = texts();
+        accented[12].0 = "Réglages".to_owned();
+        let found = entries(&accented, &ctx(&hotkeys), "reglages");
+        assert_eq!(labels(&found), ["Réglages"], "an accented name is found without the accent");
+        assert!(entries(&texts(), &ctx(&hotkeys), "zzq").is_empty());
     }
 
     #[test]

@@ -1028,6 +1028,9 @@ export component ColoursView inherits Rectangle {
     property <int> scheme-focus: 0;
     property <int> formats-focus: 0;
     property <int> input-focus: 0;
+    // Ctrl+F in the Panel: each time this goes up the colour field takes the caret.
+    in property <int> focus-ticks: 0;
+    changed focus-ticks => { root.input-focus += 1; }
     property <int> channel-focus: -1;
     property <string> hover-text;
     property <string> focus-text;

@@ -10,9 +10,12 @@ use snipdeck_core::ListAccent;
 
 const PALETTE_JSON: &str = include_str!("../../../design/tokens/palette.json");
 
+/// The palette file, parsed once (a list row asks for several tokens on every redraw).
+static PARSED: LazyLock<serde_json::Value> =
+    LazyLock::new(|| serde_json::from_str(PALETTE_JSON).unwrap_or_default());
+
 static PRIMITIVES: LazyLock<HashMap<String, [u8; 3]>> = LazyLock::new(|| {
-    let value: serde_json::Value = serde_json::from_str(PALETTE_JSON).unwrap_or_default();
-    value
+    PARSED
         .get("primitives")
         .and_then(serde_json::Value::as_object)
         .map(|map| {
@@ -56,9 +59,8 @@ pub const ICON_MIN_CONTRAST: f64 = 3.0;
 
 /// The theme's semantic colour (`bg.app`) from the palette file.
 fn theme_token(dark: bool, name: &str) -> Option<[u8; 3]> {
-    let value: serde_json::Value = serde_json::from_str(PALETTE_JSON).ok()?;
     parse_hex(
-        value
+        PARSED
             .get("themes")?
             .get(if dark { "dark" } else { "light" })?
             .get(name)?

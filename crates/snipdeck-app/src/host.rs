@@ -376,6 +376,7 @@ type TargetSwitch = (
 pub struct FakeTargets {
     current: Rc<RefCell<Option<Target>>>,
     refocused: Rc<Cell<u32>>,
+    probes: Rc<Cell<u32>>,
     caret: Rc<Cell<Option<ScreenRect>>>,
     cursor: Rc<Cell<Option<(i32, i32)>>>,
     primary: Rc<Cell<Option<bool>>>,
@@ -394,6 +395,7 @@ impl FakeTargets {
         Self {
             current: Rc::new(RefCell::new(target)),
             refocused: Rc::default(),
+            probes: Rc::default(),
             caret: Rc::default(),
             cursor: Rc::default(),
             primary: Rc::default(),
@@ -455,10 +457,17 @@ impl FakeTargets {
     pub fn refocus_count(&self) -> u32 {
         self.refocused.get()
     }
+
+    /// How many times the controller asked what the Target is.
+    #[must_use]
+    pub fn probe_count(&self) -> u32 {
+        self.probes.get()
+    }
 }
 
 impl TargetSource for FakeTargets {
     fn current(&self) -> Option<Target> {
+        self.probes.set(self.probes.get() + 1);
         let raised = self
             .switch
             .borrow()
