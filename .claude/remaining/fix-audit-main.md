@@ -12,9 +12,14 @@
 - DESIGN.md toolbar thresholds; ~36 goldens regenerated, only those that moved
 - Gate --changed: all green except doc link, since fixed; rerun before next push.
 
+## Done in code (pushed, head after e69cddd), existing tests + goldens + 6 locales updated
+3, 4, 6 (Menu key; recent-list menus keep old position), 7, 8, 9, 10, 13, 16, 17 (no Tips entry), 18, 20, 24, 25,
+27 (item noun), 28, 30, 31, 33-38, 45, 46 (labels), 61.
+No dedicated new tests yet for: 3, 4, 6, 7, 8, 9, 13, 16, 17, 18, 20, 24, 25, 28, 38, and MAIN-5.
+
 ## Not done (in audit order)
-3, 4 (search keys, Esc), 5 test, 6, 7, 8, 9, 10, 13-21, 22 (Detail pane, large), 23-25, 27-47, 56-61,
-and the not-reached files (settings.rs, settings_binding.rs, help_binding.rs, toast.rs, toast_binding.rs, text/icon globals).
+14, 15, 19 (decided: key names stay untranslated), 21, 22 (Detail pane, large), 23, 29, 32, 39-44, 47, 56-60,
+and the not-reached files (settings_binding.rs, help_binding.rs, toast_binding.rs, text/icon globals beyond edits above).
 26 belongs to LIBRARY-11 (leave).
 Pending cross-worker note: quick-add row-h change shifts Panel goldens (already regenerated).
 Env: export CARGO_TARGET_DIR=/tmp/target-main CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_INCREMENTAL=0
