@@ -1122,16 +1122,17 @@ fn backups_to_keep_is_what_the_prune_keeps() {
         r.ui.invoke_backups_keep_chosen(2);
         assert_eq!(r.ctl.borrow().settings().backups_keep, 2);
         assert_eq!(r.ui.get_backups_keep(), 2);
-        // Four days of backups on the frozen clock, moved on a day at a time.
-        for day in 0..4 {
+        // Twelve manual backups, a minute apart on the frozen clock: the daily count does not
+        // touch them, the manual ones keep their own newest ten.
+        for minute in 0..12 {
             r.clock
-                .set(at(&format!("2026-10-{:02}T10:30:00Z", 17 + day)));
+                .set(at(&format!("2026-10-17T10:{:02}:00Z", 10 + minute)));
             assert!(r.ctl.borrow_mut().backup_now(r.dir.path()));
         }
         let files = std::fs::read_dir(r.dir.path().join("backups"))
             .unwrap()
             .count();
-        assert_eq!(files, 2, "only the newest two stay");
+        assert_eq!(files, snipdeck_portable::backup::MANUAL_KEPT);
         // A bigger number is held between 1 and 60.
         r.ui.invoke_backups_keep_chosen(900);
         assert_eq!(r.ctl.borrow().settings().backups_keep, 60);
@@ -1305,13 +1306,19 @@ fn back_up_now_replaces_todays_backup_instead_of_refusing() {
             true,
         );
         r.ui.invoke_backup_now_requested();
-        let files = snipdeck_portable::backup::list_backups(r.dir.path()).unwrap();
+        let files = snipdeck_portable::backup::list_backups(
+            &snipdeck_portable::backup::backups_dir(r.dir.path()),
+        )
+        .unwrap();
         assert_eq!(files.len(), 1);
         // Today's file is stale (stand-in: three bytes); asking again writes a real one over it.
         std::fs::write(&files[0].path, b"old").unwrap();
         r.ui.invoke_backup_now_requested();
         assert_eq!(r.ui.get_toast_text(), "Backed up");
-        let after = snipdeck_portable::backup::list_backups(r.dir.path()).unwrap();
+        let after = snipdeck_portable::backup::list_backups(
+            &snipdeck_portable::backup::backups_dir(r.dir.path()),
+        )
+        .unwrap();
         assert_eq!(after.len(), 1, "still one file for today");
         assert!(after[0].bytes > 100, "{} bytes", after[0].bytes);
         assert_eq!(r.ui.get_backups().row_count(), 1);
@@ -2698,11 +2705,13 @@ fn the_backups_section_names_the_newest_backup_or_says_there_is_none() {
             assert!(r.ctl.borrow_mut().backup_now(r.dir.path()));
         }
         r.ui.invoke_backup_now_requested();
-        let newest = snipdeck_portable::backup::list_backups(r.dir.path())
-            .unwrap()
-            .first()
-            .map(|b| b.date.to_string())
-            .unwrap();
+        let newest = snipdeck_portable::backup::list_backups(
+            &snipdeck_portable::backup::backups_dir(r.dir.path()),
+        )
+        .unwrap()
+        .first()
+        .map(|b| b.date.to_string())
+        .unwrap();
         assert_eq!(r.ui.get_last_backup(), newest.as_str());
         assert!(
             newest.starts_with("2026-10-1"),
@@ -3109,7 +3118,7 @@ fn restoring_shows_the_busy_state_while_the_backup_is_read_and_then_the_preview(
         snipdeck_app::demo::seed(&mut store, now()).unwrap();
         snipdeck_portable::backup::run_if_due(
             &store,
-            dir.path(),
+            &snipdeck_portable::backup::backups_dir(dir.path()),
             &now().to_zoned(jiff::tz::TimeZone::UTC),
             7,
             None,
