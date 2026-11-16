@@ -385,7 +385,12 @@ where
     /// Deletes tag `index` after the window's confirmation (its items stay).
     pub fn main_delete_tag(&mut self, index: usize) {
         self.main_fresh();
-        let Some((tag, name)) = self.main.tags().get(index).map(|t| (t.id, t.name.as_str().to_owned())) else {
+        let Some((tag, name)) = self
+            .main
+            .tags()
+            .get(index)
+            .map(|t| (t.id, t.name.as_str().to_owned()))
+        else {
             return;
         };
         let done = self.store.delete_tag(tag);

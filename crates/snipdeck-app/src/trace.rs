@@ -135,10 +135,16 @@ mod tests {
             scrub_paths("draft not written: \"/home/ann/.local/x.json\" (denied)"),
             "draft not written: <path> (denied)"
         );
-        assert_eq!(scrub_paths("main window close requested: quit true"), "main window close requested: quit true");
+        assert_eq!(
+            scrub_paths("main window close requested: quit true"),
+            "main window close requested: quit true"
+        );
         assert_eq!(scrub_paths("callback a/b ok"), "callback a/b ok");
         assert_eq!(
-            line(Duration::from_millis(5), format_args!("open folder: {}", r"D:\data")),
+            line(
+                Duration::from_millis(5),
+                format_args!("open folder: {}", r"D:\data")
+            ),
             "snipdeck-log +5ms open folder: <path>"
         );
     }
