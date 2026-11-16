@@ -34,7 +34,8 @@ export component QuickAdd inherits Rectangle {
     out property <string> text: field.text;
     // The caret is in the box.
     out property <bool> field-focused: field.has-focus;
-    out property <length> box-h: root.expanded ? col.preferred-height + 2 * Space.s1 : Space.hit;
+    out property <length> row-h: max(Space.hit, Type.line-base + Space.s2);
+    out property <length> box-h: root.expanded ? col.preferred-height + 2 * Space.s1 : root.row-h;
     property <bool> kind-touched: false;
     property <int> chosen-kind: 0;
     property <int> auto-kind: root.detect-kind(field.text);
@@ -71,7 +72,7 @@ export component QuickAdd inherits Rectangle {
 
     // ---- Collapsed: the "+ New item" row ----------------------------------------------------------
     if !root.expanded: add-row := Rectangle {
-        height: Space.hit;
+        height: root.row-h;
         border-radius: Radius.md;
         background: add-touch.has-hover ? Theme.bg-hover : transparent;
         border-width: add-scope.has-focus ? 2px : 0px;

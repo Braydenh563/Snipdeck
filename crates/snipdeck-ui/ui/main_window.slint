@@ -272,14 +272,19 @@ component SidebarHeading inherits Rectangle {
 export component MainWindow inherits Window {
     title: @tr("Snipdeck");
     background: Theme.bg-app;
-    min-width: 480px;
-    min-height: 360px;
+    // The minimum scales with the text size: the toolbar and the sidebar are drawn in text-scaled units (MAIN-48).
+    min-width: 480px * max(1, SystemLook.text-scale);
+    min-height: 360px * max(1, SystemLook.text-scale);
     preferred-width: root.wanted-width;
     preferred-height: root.wanted-height;
 
     // The size the window opens at; the host cuts it to the screen before the window exists.
     out property <length> wanted-width: 1100px;
     out property <length> wanted-height: 720px;
+    // The window's own minimum size and the sidebar's right edge, for the fit tests (MAIN-62).
+    out property <length> min-w: 480px * max(1, SystemLook.text-scale);
+    out property <length> min-h: 360px * max(1, SystemLook.text-scale);
+    out property <length> sidebar-right: root.sidebar-w;
 
     // ---- State in -----------------------------------------------------------------------------
     in property <bool> dark: false;
@@ -580,9 +585,10 @@ export component MainWindow inherits Window {
     property <bool> commands-compact: false;
     property <bool> view-compact: false;
     property <bool> toolbar-toggles: true;
+    property <bool> toolbar-tight: false;
     property <length> caption-inset: SystemLook.caption-inset;
     property <length> ctl-h: max(Space.s8 * SystemLook.text-scale, Type.line-base + Space.s2);
-    property <length> bar-h: max(Space.s8 + Space.s3, Type.line-base + Space.s2 + Space.s3);
+    property <length> bar-h: root.ctl-h + Space.s3;
     // A group header row: a full hit target inside its focus-ring inset, growing with the text size so its name never spills.
     property <length> header-h: Space.hit * SystemLook.text-scale + 2 * root.ring;
     // Below 720px the sidebar is a rail whatever was chosen; the chosen width and the collapsed flag apply above it.
@@ -659,13 +665,16 @@ export component MainWindow inherits Window {
     }
     // Set from `changed` handlers, not bound to `root.width`: a window's width follows its layout.
     function update-narrow() {
-        root.auto-rail = root.width < 720px;
+        root.auto-rail = root.width < 720px * max(1, root.text-scale);
         root.narrow = root.auto-rail || root.sidebar-collapsed;
         let room = (root.width - root.sidebar-w - root.caption-inset) / root.text-scale;
-        root.toolbar-keys = room >= 736px;
-        root.commands-compact = room < 658px;
-        root.view-compact = room < 608px;
-        root.toolbar-toggles = room >= 574px;
+        // The tiers leave the search field its 150px floor (scaled): each width is the controls that stay plus 150px.
+        root.toolbar-keys = room >= 854px;
+        root.commands-compact = room < 776px;
+        root.view-compact = room < 726px;
+        root.toolbar-toggles = room >= 692px;
+        // Last tier: Panel, Undo and Redo leave the bar (Ctrl+Z, Ctrl+Y and the Commands list keep them) and New item is an icon.
+        root.toolbar-tight = room < 480px;
     }
     // The Colour block needs room above the list. Set from `changed height` (not bound to `root.height`: the
     // block changes the layout, and a binding on the height would loop).
@@ -1232,7 +1241,7 @@ export component MainWindow inherits Window {
                         }
                     }
                     if root.narrow: Rectangle {
-                        height: Space.hit + Space.s1;
+                        height: Space.hit * root.text-scale + Space.s1;
                         IconButton {
                             scaled: true;
                             icon: Icons.stack;
@@ -1528,7 +1537,7 @@ export component MainWindow inherits Window {
                         spacing: Space.s2;
                         Rectangle {
                             horizontal-stretch: 1;
-                            min-width: 0px;
+                            min-width: 150px * SystemLook.text-scale;
                             // The same width whatever is typed: the field's own preferred width follows its text.
                             preferred-width: 360px * SystemLook.text-scale;
                             max-width: 360px * SystemLook.text-scale;
@@ -1554,7 +1563,7 @@ export component MainWindow inherits Window {
                             padding-right: Space.s1;
                             HorizontalLayout {
                                 spacing: 0px;
-                                panel-show := IconButton {
+                                if !root.toolbar-tight: panel-show := IconButton {
                                     scaled: true;
                                     side-override: root.ctl-h;
                                     icon: Icons.picture-in-picture;
@@ -1565,7 +1574,7 @@ export component MainWindow inherits Window {
                                     own-tooltip: true;
                                     clicked => { root.panel-requested(); }
                                 }
-                                Rectangle {
+                                if !root.toolbar-tight: Rectangle {
                                     width: Space.s3;
                                     height: root.ctl-h;
                                     Rectangle {
@@ -1576,7 +1585,7 @@ export component MainWindow inherits Window {
                                         background: Theme.border-subtle;
                                     }
                                 }
-                                HorizontalLayout {
+                                if !root.toolbar-tight: HorizontalLayout {
                                     spacing: Space.s1;
                                     undo-button := IconButton {
                                         scaled: true;
@@ -1597,7 +1606,7 @@ export component MainWindow inherits Window {
                                         clicked => { root.redo-requested(); }
                                     }
                                 }
-                                Rectangle {
+                                if !root.toolbar-tight: Rectangle {
                                     width: Space.s3;
                                     height: root.ctl-h;
                                     Rectangle {
@@ -1716,7 +1725,9 @@ export component MainWindow inherits Window {
                                 horizontal-stretch: 0;
                                 variant: ButtonVariant.primary;
                                 icon: Icons.plus;
-                                text: @tr("New item");
+                                text: root.toolbar-tight ? "" : @tr("New item");
+                                a11y-label: @tr("New item");
+                                tooltip: @tr("New item");
                                 clicked => { root.new-item-requested(); }
                             }
                         }
@@ -1725,7 +1736,7 @@ export component MainWindow inherits Window {
 
                 // ---- Heading: where the user is -----------------------------------------------
                 Rectangle {
-                    height: max(Space.s8, Type.line-lg + Space.s2);
+                    height: max(root.ctl-h, Type.line-lg + Space.s2);
                     HorizontalLayout {
                         padding-left: root.pad;
                         padding-right: root.pad;
