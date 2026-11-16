@@ -1104,6 +1104,9 @@ msgstr "Nach Farbmarkierung filtern"
 msgid "Find anything by typing"
 msgstr "Alles durch Tippen finden"
 
+msgid "First {} matches in {}"
+msgstr "Erste {} Treffer in {}"
+
 msgid "Flags"
 msgstr "Flaggen"
 
@@ -1795,6 +1798,9 @@ msgstr "Funktioniert nicht"
 msgid "Nothing copied yet"
 msgstr "Noch nichts kopiert"
 
+msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
+msgstr "Ohne dein Ja wird nichts gespeichert, und du kannst das jederzeit in den Einstellungen ändern. „Zuletzt“ speichert den Text, den du kopierst, nur auf diesem Computer, für die letzten {} Kopien oder {} Tage, je nachdem, was zuerst eintritt. Passwörter aus Passwortmanagern und vertrauliche Einträge werden nie gespeichert."
+
 msgid "Nothing matches “{}”"
 msgstr "Nichts passt zu „{}“"
 
@@ -2256,9 +2262,6 @@ msgstr "Aktionen für Zuletzt Kopiertes"
 
 msgid "Recent history cleared"
 msgstr "Verlauf „Zuletzt“ gelöscht"
-
-msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
-msgstr "Ohne dein Ja wird nichts gespeichert, und du kannst das jederzeit in den Einstellungen ändern. „Zuletzt“ speichert den Text, den du kopierst, nur auf diesem Computer, für die letzten {} Kopien oder {} Tage, je nachdem, was zuerst eintritt. Passwörter aus Passwortmanagern und vertrauliche Einträge werden nie gespeichert."
 
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "„Zuletzt“ behält den kopierten Text, nur auf diesem Computer, für die letzten {} Kopien oder {} Tage, je nachdem, was zuerst eintritt. Passwörter aus Passwortmanagern und vertrauliche Textbausteine werden nie gespeichert. Du kannst das jederzeit in den Einstellungen ändern."
