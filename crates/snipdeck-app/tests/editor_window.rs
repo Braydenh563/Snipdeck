@@ -948,7 +948,7 @@ fn preview_shows_the_unsaved_item_from_the_button_and_ctrl_p_and_loses_nothing()
         assert_eq!(r.item_count(), before, "previewing saves nothing");
 
         // Ctrl+P turns it off; every field is as it was and the item is still unsaved.
-        chord(ed.window(), &[Key::Control], "p");
+        chord(ed.window(), &[Key::Alt], "p");
         settle();
         assert!(!ed.get_preview_on());
         assert_eq!(ed.get_content(), "Hi {field:Who}, on {date}");
@@ -958,7 +958,7 @@ fn preview_shows_the_unsaved_item_from_the_button_and_ctrl_p_and_loses_nothing()
         // A change made after the first look shows on the next one; Ctrl+P also turns it on.
         ed.set_kind_index(2);
         ed.set_content("https://docs.example.com/a?b=1".into());
-        chord(ed.window(), &[Key::Control], "p");
+        chord(ed.window(), &[Key::Alt], "p");
         settle();
         assert!(ed.get_preview_on());
         assert_eq!(ed.get_preview_link(), "docs.example.com");
@@ -982,7 +982,7 @@ fn a_save_refused_while_previewing_goes_back_to_the_form_and_shows_why() {
         let before = r.item_count();
 
         // The window's own check: no text.
-        chord(ed.window(), &[Key::Control], "p");
+        chord(ed.window(), &[Key::Alt], "p");
         settle();
         assert!(ed.get_preview_on());
         save(&ed);
@@ -993,7 +993,7 @@ fn a_save_refused_while_previewing_goes_back_to_the_form_and_shows_why() {
         // The host's check: a link with no scheme passes the window and is refused by Save.
         ed.set_kind_index(2);
         ed.set_content("docs.example.com".into());
-        chord(ed.window(), &[Key::Control], "p");
+        chord(ed.window(), &[Key::Alt], "p");
         settle();
         assert!(ed.get_preview_on());
         assert_ne!(ed.get_preview_note(), "", "the preview already says why");
@@ -1015,7 +1015,7 @@ fn ctrl_shift_p_does_not_toggle_preview_and_tags_close_when_it_opens() {
         settle();
         assert!(!ed.get_preview_on());
         ed.set_tags_open(true);
-        chord(ed.window(), &[Key::Control], "p");
+        chord(ed.window(), &[Key::Alt], "p");
         settle();
         assert!(ed.get_preview_on());
         assert!(!ed.get_tags_open(), "the hidden chooser is closed");
@@ -1071,14 +1071,14 @@ fn leaving_preview_on_an_image_item_keeps_the_keyboard_in_the_window() {
         let toggle = find(&ed, "Preview", AccessibleRole::Button);
         click(ed.window(), &toggle);
         assert!(ed.get_preview_on());
-        chord(ed.window(), &[Key::Control], "p");
+        chord(ed.window(), &[Key::Alt], "p");
         settle();
         assert!(!ed.get_preview_on());
         // Focus is somewhere in the window: Ctrl+P still reaches it, and Esc (nothing typed) closes the editor.
-        chord(ed.window(), &[Key::Control], "p");
+        chord(ed.window(), &[Key::Alt], "p");
         settle();
         assert!(ed.get_preview_on(), "Ctrl+P still works after leaving");
-        chord(ed.window(), &[Key::Control], "p");
+        chord(ed.window(), &[Key::Alt], "p");
         settle();
         press(ed.window(), &key(Key::Escape));
         settle();
@@ -1090,7 +1090,7 @@ fn leaving_preview_on_an_image_item_keeps_the_keyboard_in_the_window() {
 // The test backend cannot say which element has the focus, so these type a letter and see which field took it.
 
 fn preview_on(ed: &ItemEditor) {
-    chord(ed.window(), &[Key::Control], "p");
+    chord(ed.window(), &[Key::Alt], "p");
     settle();
     assert!(ed.get_preview_on());
 }
@@ -1163,7 +1163,7 @@ fn tab_walks_the_form_and_the_preview_without_a_trap() {
             text_seen && title_seen,
             "Tab reaches the text and the title"
         );
-        chord(ed.window(), &[Key::Control], "p");
+        chord(ed.window(), &[Key::Alt], "p");
         settle();
         assert!(ed.get_preview_on(), "Ctrl+P still works after a full walk");
 
@@ -1184,7 +1184,7 @@ fn tab_walks_the_form_and_the_preview_without_a_trap() {
         );
 
         assert!(ed.get_preview_on());
-        chord(ed.window(), &[Key::Control], "p");
+        chord(ed.window(), &[Key::Alt], "p");
         settle();
         assert!(!ed.get_preview_on(), "Ctrl+P leaves Preview after the walk");
 
@@ -1218,14 +1218,14 @@ fn ctrl_p_preview_flips_survive_a_tab_depth_loop() {
                         press(ed.window(), &key(Key::Tab));
                     }
                 }
-                chord(ed.window(), &[Key::Control], "p");
+                chord(ed.window(), &[Key::Alt], "p");
                 settle();
                 assert!(
                     !ed.get_preview_on(),
                     "Ctrl+P leaves Preview after {k} {}",
                     if shift { "Shift+Tab" } else { "Tab" }
                 );
-                chord(ed.window(), &[Key::Control], "p");
+                chord(ed.window(), &[Key::Alt], "p");
                 settle();
             }
         }

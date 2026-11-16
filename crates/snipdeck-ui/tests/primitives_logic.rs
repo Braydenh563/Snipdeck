@@ -72,7 +72,7 @@ fn by_label(ui: &impl ComponentHandle, label: &str, role: AccessibleRole) -> Ele
 /// The toast container itself (the only element with that label that is a live region).
 fn toast(ui: &impl ComponentHandle, label: &str) -> ElementHandle {
     ElementHandle::find_by_accessible_label(ui, label)
-        .find(|e| e.accessible_live_region() == Some(AccessibleLiveness::Polite))
+        .find(|e| matches!(e.accessible_live_region(), Some(AccessibleLiveness::Polite | AccessibleLiveness::Assertive)))
         .unwrap_or_else(|| panic!("no toast labelled {label:?}"))
 }
 
@@ -450,13 +450,13 @@ fn surfaces() -> SurfacesGallery {
 }
 
 #[test]
-fn toast_is_a_polite_live_region_and_undo_works() {
+fn a_failure_toast_is_an_assertive_live_region_and_undo_works() {
     on_ui(|| {
         let ui = surfaces();
         let toast = toast(&ui, "Could not paste");
         assert_eq!(
             toast.accessible_live_region(),
-            Some(AccessibleLiveness::Polite)
+            Some(AccessibleLiveness::Assertive)
         );
         by_label(&ui, "Undo", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(ui.get_undos(), 1);

@@ -651,7 +651,7 @@ ui_tests! {
             ("Move to list…", "bulk-move"),
             ("Colour", "bulk-colour"),
             ("Copy all", "bulk-copy"),
-            ("Delete", "bulk-delete"),
+            ("Move to Trash", "bulk-delete"),
             ("Clear selection", "clear-selection"),
         ] {
             find(&ui, label, AccessibleRole::Button).invoke_accessible_default_action();
@@ -3603,7 +3603,7 @@ ui_tests! {
         fixture::set_rows(&ui, sample);
         settle();
         assert!(missing(&ui, &format!("Delete \u{201c}{}\u{201d}", row.title), AccessibleRole::Button), "no delete button on a deleted row");
-        let ghost = find(&ui, &format!("Deleted \u{201c}{}\u{201d}", row.title), AccessibleRole::Groupbox);
+        let ghost = find(&ui, &format!("Moved \u{201c}{}\u{201d} to the Trash", row.title), AccessibleRole::Groupbox);
         assert!(ghost.size().height <= 40.0, "the collapsed row is one compact line: {}", ghost.size().height);
         assert!(ghost.size().height < rows(&ui)[0].size().height, "shorter than a live row");
         assert_eq!(rows(&ui).len(), fixture::sample_rows().len() - 1, "the covered card is not an item for assistive technology");

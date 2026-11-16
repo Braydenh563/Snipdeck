@@ -1595,7 +1595,7 @@ ui_tests! {
         let flags: Vec<bool> = (0..rows.row_count()).map(|i| rows.row_data(i).unwrap().selected).collect();
         assert_eq!(flags, [false, true, true, true, false, false, false, false]);
         let _ = find(&ui, "3 selected", AccessibleRole::Groupbox);
-        for label in ["Move", "Tag", "Pin", "Move to Trash", "Clear selection"] {
+        for label in ["Move to list…", "Tag", "Pin", "Move to Trash", "Clear selection"] {
             let b = find(&ui, label, AccessibleRole::Button);
             assert!(b.size().height >= MIN_HIT && b.size().width >= MIN_HIT, "{label}");
         }
@@ -1624,7 +1624,7 @@ ui_tests! {
         assert_eq!(take(&log), ["clear"]);
         ui.set_section(MainSection::Trash);
         settle();
-        assert!(missing(&ui, "Move", AccessibleRole::Button));
+        assert!(missing(&ui, "Move to list…", AccessibleRole::Button));
         let _ = find(&ui, "Restore", AccessibleRole::Button);
         find(&ui, "Delete for good…", AccessibleRole::Button).invoke_accessible_default_action();
         assert!(ui.get_confirm_open());

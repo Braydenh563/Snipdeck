@@ -32,7 +32,7 @@ fn the_tray_words_follow_the_selected_translation() {
         words(&ui),
         [
             "Panel öffnen",
-            "Snipdeck öffnen",
+            "Hauptfenster öffnen",
             "Tastenkürzel pausieren",
             "Beenden"
         ]
