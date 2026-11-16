@@ -50,8 +50,9 @@ fn radii_come_from_the_tokens_except_on_hairline_bars() {
         .into_iter()
         .filter(|(_, n)| *n > 2.0)
         .collect();
-    assert!(
-        bad.is_empty(),
+    assert_eq!(
+        bad.len(),
+        0,
         "literal radii over 2px (use Radius.*): {bad:?}"
     );
 }
@@ -59,5 +60,5 @@ fn radii_come_from_the_tokens_except_on_hairline_bars() {
 #[test]
 fn font_weights_come_from_the_type_tokens() {
     let bad = literals("font-weight");
-    assert!(bad.is_empty(), "literal font weights (use Type.*): {bad:?}");
+    assert_eq!(bad.len(), 0, "literal font weights (use Type.*): {bad:?}");
 }
