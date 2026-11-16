@@ -37,6 +37,10 @@ pub const VK_LEFT: u16 = 0x25;
 /// The unassigned virtual key (0xE8) used to mask a lone `Alt` / `Win` release.
 pub const VK_MASK: u16 = 0xE8;
 
+/// Marks key events Snipdeck injects itself (`dwExtraInfo`): the typing hook skips these and
+/// sees every other app's injected keys (remote desktop, on-screen keyboards, text-input tools).
+pub const OWN_INPUT_TAG: usize = 0x5344_4B31;
+
 /// A virtual key and whether `SendInput` needs `KEYEVENTF_EXTENDEDKEY` for it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VirtualKey {

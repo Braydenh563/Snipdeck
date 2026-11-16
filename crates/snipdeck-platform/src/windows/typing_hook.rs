@@ -318,7 +318,8 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
 
 /// Takes one key press; returns whether the key must not reach the app (the hint's `Tab`).
 fn handle(info: &KBDLLHOOKSTRUCT) -> bool {
-    if info.flags.0 & LLKHF_INJECTED.0 != 0 {
+    // Only our own injected keys are skipped; other apps' injected keys count as typing.
+    if info.flags.0 & LLKHF_INJECTED.0 != 0 && info.dwExtraInfo == crate::win_logic::OWN_INPUT_TAG {
         return false;
     }
     // SAFETY: no preconditions.

@@ -227,7 +227,8 @@ where
         wire!(on_close_requested, |core| core
             .act(Controller::close_picker));
         wire!(on_dismissed, |core| core.act(Controller::dismiss_picker));
-        wire!(on_open_requested, |core| core.act(Controller::picker_open_panel));
+        wire!(on_open_requested, |core| core
+            .act(Controller::picker_open_panel));
         wire!(on_help_requested, |core| core
             .act(|ctl| ctl.main_open_help(HelpTopic::Guide)));
         wire!(on_colour_chosen, |core, row, format, copy| core

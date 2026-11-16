@@ -17,3 +17,8 @@ none
 - done: ten new commands (Hide Panel, Close Panel when I click away, Undo, Redo, New board, Lock, Quit, Paste as plain text, Restore, Delete for good), state-named toggles, unavailable Symbols/Colours rows with a reason (Hint), i18n, tests.
 - done: PANEL-44 chip accessible description; PANEL-43 recorded post-1.0 in SPEC.
 - next: dynamic board/list/tag rows (PANEL-2), PANEL-3, PANEL-5 Page/Home/End, then 10, 12, 15-29, 31, 36, 40, 41, 45.
+
+## Batch (Windows, unverified)
+- Done: 18 (own SendInput tagged `OWN_INPUT_TAG`; hook skips only those), 28 (`wScan` via MapVirtualKeyW). Cross-checked only.
+- Post-1.0 in SPEC: 27, 21, F2 on Recent.
+- Next: 15, 22, 23, 31, then 2, 3, 12, 16, 17, 19, 20, 24, 25, 26, 29, 40, 45, 10k probe.

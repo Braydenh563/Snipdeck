@@ -241,3 +241,6 @@ Post-1.0, decided:
 - OLE `IDropTarget` drops from other apps: a v1.1 deferral (`docs/reviews/v101-spec.md:68`).
 - Palette commands for Import, Export, Back up now and Empty Trash (PANEL-2): each runs through a confirmation or a file dialog that its own window owns (Settings, the Trash view), so a palette row would have to open that window first; Settings and Go to Trash are in the palette and lead there.
 - Dock polling (PANEL-43): the docked Panel reads the pointer every 50 ms only while it is shown and docked, and redraws nothing when nothing changed. Waking on pointer movement needs a global low-level mouse hook, which antivirus products flag, so the poll stays until a Windows measurement shows a cost.
+- Partly sent keys (PANEL-27): a "partly sent" paste outcome needs a new `PasteFailure` variant in core and toast copy in every surface; the path (Windows accepting only part of a `SendInput` batch) cannot be reproduced or verified off Windows. Today the item stays on the clipboard and the toast says it was copied.
+- Erase checks the window handle (PANEL-21): needs the Target's window handle and focused control remembered at trigger time, Windows-only and unverifiable here. Today the erase checks the app name.
+- F2 rename on Panel Recent (PANEL-10): Recent rows are clipboard history with no name to edit, so the key does not apply.
