@@ -20,7 +20,10 @@ fn catalog_counts_match_the_manifest() {
     assert_eq!(c.range(Kind::Kaomoji).len(), n("kaomoji"));
     assert_eq!(c.range(Kind::Icon).len(), n("icons"));
     assert_eq!(c.range(Kind::Character).len(), n("characters"));
-    assert_eq!(c.len(), n("emoji") + n("kaomoji") + n("icons") + n("characters"));
+    assert_eq!(
+        c.len(),
+        n("emoji") + n("kaomoji") + n("icons") + n("characters")
+    );
     assert_eq!(c.range(Kind::Emoji).end, c.range(Kind::Kaomoji).start);
     assert_eq!(c.range(Kind::Kaomoji).end, c.range(Kind::Icon).start);
     assert_eq!(c.range(Kind::Icon).end, c.range(Kind::Character).start);
@@ -39,7 +42,10 @@ fn catalog_counts_match_the_manifest() {
     };
     assert_eq!(groups("emoji_groups"), EMOJI_GROUPS);
     assert_eq!(groups("kaomoji_groups"), KAOMOJI_GROUPS);
-    assert_eq!(groups("character_groups"), snipdeck_symbols::CHARACTER_GROUPS);
+    assert_eq!(
+        groups("character_groups"),
+        snipdeck_symbols::CHARACTER_GROUPS
+    );
 }
 
 #[test]
@@ -108,7 +114,12 @@ fn ids_are_stable_across_regeneration() {
 
 #[test]
 fn symbol_keys_round_trip_and_reject_junk() {
-    for key in ["emoji:1f600", "kaomoji:joy-smile", "icon:trash", "char:2192"] {
+    for key in [
+        "emoji:1f600",
+        "kaomoji:joy-smile",
+        "icon:trash",
+        "char:2192",
+    ] {
         assert_eq!(SymbolId::from_key(key).unwrap().key(), key);
     }
     for junk in ["", "emoji", "emoji:", "sticker:1", ":x"] {

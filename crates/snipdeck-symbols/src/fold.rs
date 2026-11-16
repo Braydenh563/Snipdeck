@@ -68,7 +68,9 @@ fn is_word(c: char) -> bool {
 
 /// The words of an already folded string: runs of letters and digits.
 pub(crate) fn words(folded: &str) -> impl Iterator<Item = &str> {
-    folded.split(|c: char| !is_word(c)).filter(|w| !w.is_empty())
+    folded
+        .split(|c: char| !is_word(c))
+        .filter(|w| !w.is_empty())
 }
 
 /// True for a letter of a script that is written without spaces (Han, kana, Hangul): a query of one

@@ -311,6 +311,7 @@ impl Catalog {
     ///
     /// # Errors
     /// When a data file is damaged.
+    #[allow(clippy::too_many_lines, reason = "one linear load of every data file")]
     pub fn build() -> Result<Self, DataError> {
         let mut symbols = Vec::new();
         for line in data::rows("emoji.tsv.z", data::EMOJI)? {
@@ -431,7 +432,10 @@ impl Catalog {
             let (base, variants) = line
                 .split_once('\t')
                 .ok_or(bad("tones.tsv.z", "row without 2 columns"))?;
-            let texts: Vec<String> = variants.split('|').filter_map(data::seq_to_string).collect();
+            let texts: Vec<String> = variants
+                .split('|')
+                .filter_map(data::seq_to_string)
+                .collect();
             let texts: [String; 5] = texts
                 .try_into()
                 .map_err(|_| bad("tones.tsv.z", "a row needs five variants"))?;

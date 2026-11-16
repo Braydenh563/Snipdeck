@@ -63,7 +63,10 @@ fn every_emoji_has_art_or_is_listed_as_system_style() {
         .iter()
         .map(|e| e["seq"].as_str().unwrap().to_owned())
         .collect();
-    assert!(!system.is_empty() && system.len() < 100, "the few emoji with no art at all");
+    assert!(
+        !system.is_empty() && system.len() < 100,
+        "the few emoji with no art at all"
+    );
     for i in c.range(snipdeck_symbols::Kind::Emoji) {
         let sym = c.symbol(i).unwrap();
         let SymbolId::Emoji(seq) = &sym.id else {
@@ -78,7 +81,12 @@ fn every_emoji_has_art_or_is_listed_as_system_style() {
         }
     }
     // Every country flag is drawn from bundled art, not left to a system font that has none.
-    for flag in ["1f1e9-1f1ea", "1f1ef-1f1f5", "1f1fa-1f1f8", "1f3f4-e0067-e0062-e0065-e006e-e0067-e007f"] {
+    for flag in [
+        "1f1e9-1f1ea",
+        "1f1ef-1f1f5",
+        "1f1fa-1f1f8",
+        "1f3f4-e0067-e0062-e0065-e006e-e0067-e007f",
+    ] {
         let i = c.index_of(&SymbolId::Emoji(flag.into())).unwrap();
         assert!(c.has_art(i), "{flag}");
     }

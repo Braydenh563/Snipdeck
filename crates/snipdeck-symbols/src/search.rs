@@ -90,11 +90,9 @@ fn rank_view(v: &View, q: &str, terms: &[&str]) -> Option<Rank> {
         Some(Rank::ExactName)
     } else if all(&|t| v.name_words.iter().any(|w| starts_with(w, t))) {
         Some(Rank::NameWord)
-    } else if v.keywords.iter().any(|k| k == q) {
-        Some(Rank::KeywordExact)
-    } else if compact.chars().count() >= 4
-        && (starts_with(&v.name_compact, &compact)
-            || v.keywords_compact.iter().any(|k| *k == compact))
+    } else if v.keywords.iter().any(|k| k == q)
+        || (compact.chars().count() >= 4
+            && (starts_with(&v.name_compact, &compact) || v.keywords_compact.contains(&compact)))
     {
         Some(Rank::KeywordExact)
     } else if all(&|t| v.words.iter().any(|w| starts_with(w, t))) {
@@ -125,13 +123,14 @@ fn within_one(a: &[char], b: &[char]) -> bool {
     if i == la && i == lb {
         return true;
     }
-    if la == lb {
+    match la.cmp(&lb) {
         // One substitution, or two neighbours swapped.
-        a[i + 1..] == b[i + 1..] || (i + 1 < la && a[i] == b[i + 1] && a[i + 1] == b[i] && a[i + 2..] == b[i + 2..])
-    } else if la > lb {
-        a[i + 1..] == b[i..]
-    } else {
-        a[i..] == b[i + 1..]
+        std::cmp::Ordering::Equal => {
+            a[i + 1..] == b[i + 1..]
+                || (i + 1 < la && a[i] == b[i + 1] && a[i + 1] == b[i] && a[i + 2..] == b[i + 2..])
+        }
+        std::cmp::Ordering::Greater => a[i + 1..] == b[i..],
+        std::cmp::Ordering::Less => a[i..] == b[i + 1..],
     }
 }
 
@@ -196,7 +195,11 @@ pub fn search(catalog: &Catalog, query: &str, lang: Lang, kind: Option<Kind>) ->
         .iter()
         .find(|(face, _)| *face == typed)
         .map(|(_, name)| *name);
-    let shortcoded = if emoticon.is_some() { None } else { shortcode(query) };
+    let shortcoded = if emoticon.is_some() {
+        None
+    } else {
+        shortcode(query)
+    };
     let text = if emoticon.is_some() {
         ""
     } else {
