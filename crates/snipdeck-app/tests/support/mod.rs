@@ -373,11 +373,11 @@ impl ArchiveSteps for Ctl {
     }
     fn apply_import(&mut self, source: &snipdeck_app::controller::ImportSource) -> bool {
         let begun = self.begin_apply_import(source);
-        imported(end(self, begun))
+        imported(&end(self, begun))
     }
     fn restore_backup(&mut self, backup: &std::path::Path) -> bool {
         let begun = self.begin_restore_backup(backup);
-        imported(end(self, begun))
+        imported(&end(self, begun))
     }
 }
 
@@ -390,6 +390,6 @@ fn previewed(
     }
 }
 
-fn imported(end: snipdeck_app::controller::ArchiveEnd) -> bool {
+fn imported(end: &snipdeck_app::controller::ArchiveEnd) -> bool {
     matches!(end, snipdeck_app::controller::ArchiveEnd::Imported(true))
 }
