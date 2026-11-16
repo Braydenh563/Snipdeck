@@ -268,7 +268,7 @@ fn solid_brush(r: u8, g: u8, b: u8) -> (HBRUSH, GdiObject) {
 struct Surface {
     // Field order is drop order: the bitmap goes after `Drop::drop` selected it out, then the DC.
     // Shared with the pixels a [`Shot`] reads from the DIB (see `DibPixels`).
-    _bitmap: Rc<GdiObject>,
+    bitmap: Rc<GdiObject>,
     dc: MemDc,
     previous: HGDIOBJ,
     /// The pixels of a DIB section (`None` for a compatible bitmap).
@@ -334,7 +334,7 @@ impl Surface {
             return Err(Error::Unavailable("could not select a bitmap"));
         }
         Ok(Self {
-            _bitmap: bitmap,
+            bitmap: bitmap,
             dc,
             previous,
             bits,
@@ -535,13 +535,13 @@ struct DibPixels {
     bits: *const u8,
     len: usize,
     /// Keeps the bitmap, and so `bits`, alive.
-    _bitmap: Rc<GdiObject>,
+    bitmap: Rc<GdiObject>,
 }
 
 impl AsRef<[u8]> for DibPixels {
     fn as_ref(&self) -> &[u8] {
         // SAFETY: `bits` is the pixel memory of a 32-bit DIB section of exactly `len` bytes,
-        // which `_bitmap` keeps allocated. After the capture's `BitBlt` only reads draw from the
+        // which `bitmap` keeps allocated. After the capture's `BitBlt` only reads draw from the
         // frozen surface, so nothing writes to it while this slice is borrowed.
         unsafe { std::slice::from_raw_parts(self.bits, self.len) }
     }
@@ -585,7 +585,7 @@ fn capture(screen: &ScreenDc, monitor: &MonitorFacts, hdr: bool) -> Result<(Shot
     let bgra = Pixels::new(DibPixels {
         bits: bits.cast::<u8>().cast_const(),
         len,
-        _bitmap: Rc::clone(&surface._bitmap),
+        bitmap: Rc::clone(&surface.bitmap),
     });
     let shot = Shot {
         bounds: monitor.bounds,

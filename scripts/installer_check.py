@@ -111,15 +111,12 @@ def entry_fields(line):
 
 
 def rust_mutex():
-    """Expected mutex name: 'Snipdeck-' (instance_names.rs) + APP_ID (platform.rs)."""
+    """Expected mutex name: the fixed installer marker in instance_names.rs (minus 'Local\\')."""
     names = INSTANCE_NAMES.read_text(encoding="utf-8")
-    plat = PLATFORM.read_text(encoding="utf-8")
-    if not re.search(r'format!\(r"Local\\Snipdeck-\{app_id\}"\)', names):
-        raise ValueError("instance_names.rs no longer builds Local\\Snipdeck-{app_id}")
-    m = re.search(r'pub const APP_ID: &str = "([^"]+)";', plat)
+    m = re.search(r'pub const INSTALLER_MARKER_MUTEX: &str = r"Local\\([^"]+)";', names)
     if not m:
-        raise ValueError("APP_ID not found in platform.rs")
-    return "Snipdeck-" + m.group(1)
+        raise ValueError("INSTALLER_MARKER_MUTEX not found in instance_names.rs")
+    return m.group(1)
 
 
 def asset_files():

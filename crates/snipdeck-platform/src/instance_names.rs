@@ -117,6 +117,10 @@ pub fn normalize_dir_key(path: &str) -> String {
     key
 }
 
+/// The fixed mutex name every first instance also holds, for Setup's `AppMutex=Snipdeck-main`
+/// (the installer cannot compute the per-user, per-folder [`instance_id`]).
+pub const INSTALLER_MARKER_MUTEX: &str = r"Local\Snipdeck-main";
+
 /// The id every kernel object name of one instance is built from: 32 hex characters, a hash of
 /// `user_sid` (the SID string of the logged-on user) and the data folder's [`normalize_dir_key`].
 ///
@@ -141,6 +145,11 @@ pub fn instance_id(user_sid: &str, dir_key: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn installer_marker_matches_the_inno_app_mutex() {
+        assert_eq!(super::INSTALLER_MARKER_MUTEX, r"Local\Snipdeck-main");
+    }
+
     #[test]
     fn every_object_has_its_own_name_and_all_are_local() {
         let id = "ab12";

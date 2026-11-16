@@ -397,6 +397,8 @@ pub struct SingleInstance {
     _lock: Handle,
     _section: Arc<Section>,
     _mutex: Handle,
+    /// Fixed-name marker the installer's `AppMutex` looks for (unverified on Windows). Best effort.
+    _marker: Option<Handle>,
 }
 
 impl std::fmt::Debug for SingleInstance {
@@ -494,6 +496,13 @@ impl SingleInstance {
                 })
                 .map_err(|_| Error::Unavailable("could not start the single-instance thread"))?
         };
+        // The installer cannot compute the per-folder id, so every first instance also holds the
+        // fixed marker name (squatting it only makes Setup ask to close the app: harmless).
+        let marker = HSTRING::from(crate::instance_names::INSTALLER_MARKER_MUTEX);
+        // SAFETY: plain named mutex, default security, name is a valid NUL-terminated HSTRING.
+        let marker = unsafe { CreateMutexW(None, false, PCWSTR(marker.as_ptr())) }
+            .ok()
+            .map(Handle);
         let Objects {
             mutex,
             raise,
@@ -512,6 +521,7 @@ impl SingleInstance {
             _lock: lock,
             _section: section,
             _mutex: mutex,
+            _marker: marker,
         }))
     }
 }
