@@ -500,7 +500,10 @@ mod tests {
         assert_eq!(w.clipboard.log, ["snapshot", "transient:2", "restore"]);
         assert_eq!(w.keyboard.sent.len(), 1);
         let waited: Duration = w.timing.slept.iter().sum();
-        assert!(waited >= SETTLE, "the Target gets {SETTLE:?} to read before the restore");
+        assert!(
+            waited >= SETTLE,
+            "the Target gets {SETTLE:?} to read before the restore"
+        );
     }
 
     /// The paste key is out and the clipboard still holds the item: what the app polls.
@@ -510,7 +513,14 @@ mod tests {
             keyboard: &mut w.keyboard,
             timing: &mut w.timing,
         };
-        match begin_item_erasing(&mut env, &text_and_html(), UseMode::Paste, &PASTE, 0, &|| true) {
+        match begin_item_erasing(
+            &mut env,
+            &text_and_html(),
+            UseMode::Paste,
+            &PASTE,
+            0,
+            &|| true,
+        ) {
             Ok(Began::Waiting(waiting)) => waiting,
             _ => panic!("the paste key should be out and the paste still waiting"),
         }
@@ -521,8 +531,16 @@ mod tests {
         let mut w = World::new();
         let _ = waiting(&mut w);
         assert_eq!(w.keyboard.sent.len(), 1, "the paste key went out");
-        assert!(w.timing.slept.is_empty(), "no sleep before the key: {:?}", w.timing.slept);
-        assert_eq!(w.clipboard.log, ["snapshot", "transient:2"], "not restored yet");
+        assert!(
+            w.timing.slept.is_empty(),
+            "no sleep before the key: {:?}",
+            w.timing.slept
+        );
+        assert_eq!(
+            w.clipboard.log,
+            ["snapshot", "transient:2"],
+            "not restored yet"
+        );
     }
 
     #[test]
@@ -535,10 +553,17 @@ mod tests {
         // Asked at this look: the settle time starts now.
         assert_eq!(tail.poll(&mut w.clipboard, &mut w.timing), None);
         w.timing.now += SETTLE - Duration::from_millis(1);
-        assert_eq!(tail.poll(&mut w.clipboard, &mut w.timing), None, "still reading");
+        assert_eq!(
+            tail.poll(&mut w.clipboard, &mut w.timing),
+            None,
+            "still reading"
+        );
         assert_eq!(w.clipboard.log, ["snapshot", "transient:2"]);
         w.timing.now += Duration::from_millis(1);
-        assert_eq!(tail.poll(&mut w.clipboard, &mut w.timing), Some(UseOutcome::Pasted));
+        assert_eq!(
+            tail.poll(&mut w.clipboard, &mut w.timing),
+            Some(UseOutcome::Pasted)
+        );
         assert_eq!(w.clipboard.log, ["snapshot", "transient:2", "restore"]);
         assert!(w.timing.slept.is_empty(), "polling never sleeps");
     }
@@ -554,7 +579,11 @@ mod tests {
             tail.poll(&mut w.clipboard, &mut w.timing),
             Some(UseOutcome::CopiedInstead(PasteFailure::TargetUnavailable))
         );
-        assert_eq!(w.clipboard.log, ["snapshot", "transient:2"], "the item stays for a hand paste");
+        assert_eq!(
+            w.clipboard.log,
+            ["snapshot", "transient:2"],
+            "the item stays for a hand paste"
+        );
     }
 
     #[test]

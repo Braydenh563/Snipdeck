@@ -413,6 +413,7 @@ fn a_retry_that_works_replaces_the_error_of_the_failed_try() {
     let before = w.ctl.view().toast.expect("toast").seq;
     let result = w.ctl.activate_row(0, UseMode::Paste);
     assert_eq!(result, UseResult::Done(UseOutcome::Pasted));
+    w.ctl.drain_paste();
     let now = w.ctl.view().toast.expect("toast");
     assert_ne!(now.seq, before, "a new toast");
     assert!(matches!(now.message, ToastMessage::Pasted { .. }));
@@ -470,6 +471,7 @@ fn a_failed_refresh_after_a_paste_keeps_the_success() {
     let result = w.ctl.activate_row(0, UseMode::Paste);
     FAIL_REFRESH.set(false);
     assert_eq!(result, UseResult::Done(UseOutcome::Pasted));
+    w.ctl.drain_paste();
     assert_eq!(
         shown(&w),
         Some(ToastMessage::Pasted {

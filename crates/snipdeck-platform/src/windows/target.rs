@@ -62,7 +62,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
 };
 use windows::core::{BOOL, Owned, PWSTR};
 
-use crate::route::{Focus, ScreenRect, Target};
+use crate::route::{Focus, Refocus, ScreenRect, Target};
 use crate::win_logic::{self, ElementFacts, ForegroundKind};
 
 /// How long UI Automation may take to connect to the Target's process, in milliseconds.

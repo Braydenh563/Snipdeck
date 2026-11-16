@@ -171,6 +171,7 @@ fn enter_in_the_picker_pastes_counts_the_use_and_closes_it() {
     );
     assert!(w.ctl.view().picker.is_none());
     assert_eq!(pasted(&w), ["second"]);
+    w.ctl.drain_paste();
     assert_eq!(uses(&w, w.ids[1]), 1);
     assert_eq!(w.ctl.services().keyboard.sent.len(), 1, "Ctrl+V was sent");
     assert_eq!(w.targets.refocus_count(), refocused + 1);

@@ -351,6 +351,7 @@ fn symbol_pastes_and_icon_copies_write_the_clipboard_like_a_snippet_does() {
     let mut w = world();
     let item = w.ids[0];
     w.ctl.use_item(item, UseMode::Paste);
+    w.ctl.drain_paste();
     let snippet_log = w.ctl.services().clipboard.log.clone();
     let mut w = world();
     w.ctl.use_symbol(&emoji(), UseMode::Paste);
@@ -359,6 +360,7 @@ fn symbol_pastes_and_icon_copies_write_the_clipboard_like_a_snippet_does() {
             .map(|l| l.split(':').next().unwrap_or("").to_owned())
             .collect()
     };
+    w.ctl.drain_paste();
     assert_eq!(strip(&w.ctl.services().clipboard.log), strip(&snippet_log));
 
     let mut w = world();

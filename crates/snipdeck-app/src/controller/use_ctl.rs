@@ -566,7 +566,6 @@ where
             crate::trace!("{line}");
         }
         self.note_activity();
-        self.queue.used(item);
         self.index_cache.note_use(item);
         self.schedule_clipboard_clear(item, used.outcome);
         self.show_toast(toast::after_use(used.outcome, route, pasted_into));
@@ -640,12 +639,15 @@ where
         let sequence_before = env.clipboard.sequence_number();
         match usecase::begin_use(&mut self.store, &mut env, &request, &proceed) {
             Ok(usecase::Started::Done(used)) => {
+                self.queue.used(item);
                 self.finish_use(item, &route, pasted_into.as_deref(), sequence_before, &used);
                 UseResult::Done(used.outcome)
             }
             // The key is out: the rest is polled by `paste_tick`. The caller sees the paste as
             // done (it was sent); the toast waits for the real end.
             Ok(usecase::Started::Waiting(pending)) => {
+                // "Paste next" walks on as soon as the key is out, not when the tail ends.
+                self.queue.used(item);
                 self.paste = Some(PendingPaste {
                     pending,
                     route,
