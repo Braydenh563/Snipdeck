@@ -65,6 +65,10 @@ pub enum Key {
     /// `Tab`: given back to the app when the typing hook swallowed one for a suggestion hint
     /// that was gone by then.
     Tab,
+    /// `Enter`: a template's `{key:enter}`.
+    Enter,
+    /// The `C` key: with `Ctrl`, copies the selection for a template's `{selection}`.
+    C,
     /// An unassigned virtual key, pressed and released while `Alt` or `Win` is held so that
     /// releasing it does not open a menu bar or the Start menu.
     Mask,
