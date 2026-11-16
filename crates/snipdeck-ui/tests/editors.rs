@@ -428,23 +428,10 @@ fn list_editor_new_existing_error_and_confirmation() {
     h.component.set_sort_index(1);
     assert_golden("list-editor-existing-dark", &render(&h));
     drop(h);
-
-    let h = Harness::new(ListEditor::new, SMALL.0, SMALL.1);
-    fixture::list_editor_existing(&h.component);
-    h.component.set_delete_open(true);
-    assert_golden("list-editor-delete-light", &render(&h));
 }
 
 #[test]
 fn board_editor_and_the_last_board() {
-    let h = Harness::new(BoardEditor::new, SMALL.0, SMALL.1);
-    h.component.set_name("Work".into());
-    h.component.set_accent(4);
-    h.component.set_item_count(42);
-    h.component.set_delete_open(true);
-    assert_golden("board-editor-delete-light", &render(&h));
-    drop(h);
-
     let h = Harness::new(BoardEditor::new, SMALL.0, SMALL.1);
     h.component.set_dark(true);
     h.component.set_name("Personal".into());

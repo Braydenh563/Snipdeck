@@ -1721,8 +1721,6 @@ component EntityEditorBody inherits Rectangle {
     in property <bool> show-icon: false;
     in property <bool> show-colour: true;
     in property <bool> show-sort: true;
-    // How many items a deletion affects (the confirmation says so).
-    in property <int> item-count: 0;
     // False when this one cannot be deleted (the last board); `delete-hint` says why.
     in property <bool> can-delete: true;
     in property <string> delete-hint;
@@ -1731,17 +1729,14 @@ component EntityEditorBody inherits Rectangle {
     in property <string> name-placeholder;
     in property <string> missing-name-text;
     in property <string> delete-label;
-    in property <string> delete-title;
-    in property <string> delete-body;
     out property <bool> dirty: false;
     in-out property <bool> discard-open: false;
-    in-out property <bool> delete-open: false;
 
     callback save-requested();
     callback cancel-requested();
     // F1: the user guide.
     callback help-requested();
-    // Sent after the user confirmed in the dialog.
+    // The footer's Delete: the host moves the list or board to the Trash at once, with an Undo toast.
     callback delete-confirmed();
     callback edited();
 
@@ -1806,11 +1801,11 @@ component EntityEditorBody inherits Rectangle {
             if (event.text == Key.Escape && TipHost.dismiss()) {
                 return accept;
             }
-            if ((event.text == "\n" || event.text == "s" || event.text == "S" || event.text == "\u{13}") && event.modifiers.control && !event.modifiers.alt && !root.discard-open && !root.delete-open) {
+            if ((event.text == "\n" || event.text == "s" || event.text == "S" || event.text == "\u{13}") && event.modifiers.control && !event.modifiers.alt && !root.discard-open) {
                 root.try-save();
                 return accept;
             }
-            if ((event.text == "w" || event.text == "W" || event.text == "\u{17}") && event.modifiers.control && !event.modifiers.alt && !root.discard-open && !root.delete-open) {
+            if ((event.text == "w" || event.text == "W" || event.text == "\u{17}") && event.modifiers.control && !event.modifiers.alt && !root.discard-open) {
                 root.request-cancel();
                 return accept;
             }
@@ -1821,7 +1816,7 @@ component EntityEditorBody inherits Rectangle {
                 root.help-requested();
                 return accept;
             }
-            if (event.text == Key.Escape && !root.discard-open && !root.delete-open) {
+            if (event.text == Key.Escape && !root.discard-open) {
                 root.request-cancel();
                 return accept;
             }
@@ -1914,7 +1909,7 @@ component EntityEditorBody inherits Rectangle {
                 delete-label: root.delete-label;
                 cancel-label: @tr("Cancel");
                 save-label: @tr("Save");
-                delete => { root.delete-open = true; }
+                delete => { root.delete-confirmed(); }
                 cancel => { root.request-cancel(); }
                 save => { root.try-save(); }
             }
@@ -1938,27 +1933,6 @@ component EntityEditorBody inherits Rectangle {
             clicked => {
                 root.discard-open = false;
                 root.cancel-requested();
-            }
-        }
-    }
-
-    Dialog {
-        open: root.delete-open;
-        variant: DialogVariant.destructive;
-        title: root.delete-title;
-        body: root.delete-body;
-        dismissed => { root.delete-open = false; }
-        closed => { scope.focus(); }
-        Button {
-            text: @tr("Cancel");
-            clicked => { root.delete-open = false; }
-        }
-        Button {
-            text: root.delete-label;
-            variant: ButtonVariant.danger;
-            clicked => {
-                root.delete-open = false;
-                root.delete-confirmed();
             }
         }
     }
@@ -1988,13 +1962,10 @@ export component ListEditor inherits Window {
     in-out property <int> sort-index <=> body.sort-index;
     in property <bool> show-colour <=> body.show-colour;
     in property <bool> show-sort <=> body.show-sort;
-    // How many items deleting the list affects (the confirmation says so).
-    in property <int> item-count <=> body.item-count;
     in property <bool> can-delete <=> body.can-delete;
     in property <string> delete-hint <=> body.delete-hint;
     out property <bool> dirty <=> body.dirty;
     in-out property <bool> discard-open <=> body.discard-open;
-    in-out property <bool> delete-open <=> body.delete-open;
 
     callback save-requested();
     callback cancel-requested();
@@ -2012,8 +1983,6 @@ export component ListEditor inherits Window {
         name-placeholder: @tr("For example, Email replies");
         missing-name-text: @tr("Give the list a name.");
         delete-label: @tr("Delete list");
-        delete-title: @tr("Delete this list?");
-        delete-body: @tr("{n} item will move to Trash with it. You can restore them for 30 days." | "{n} items will move to Trash with it. You can restore them for 30 days." % root.item-count);
         save-requested => { root.save-requested(); }
         cancel-requested => { root.cancel-requested(); }
         help-requested => { root.help-requested(); }
@@ -2022,7 +1991,7 @@ export component ListEditor inherits Window {
     }
 
     // The window's tooltip layer: last, so no sibling paints over a tooltip and no container clips it.
-    TipLayer { suppressed: root.discard-open || root.delete-open; }
+    TipLayer { suppressed: root.discard-open; }
 }
 
 // Boards carry a name only in the data model today (snipdeck-core `Board`); colour and sort are shown because the
@@ -2046,14 +2015,11 @@ export component BoardEditor inherits Window {
     in-out property <int> sort-index <=> body.sort-index;
     in property <bool> show-colour <=> body.show-colour;
     in property <bool> show-sort <=> body.show-sort;
-    // How many items deleting the board affects (the confirmation says so).
-    in property <int> item-count <=> body.item-count;
     // False for the last board; `delete-hint` says why.
     in property <bool> can-delete <=> body.can-delete;
     in property <string> delete-hint <=> body.delete-hint;
     out property <bool> dirty <=> body.dirty;
     in-out property <bool> discard-open <=> body.discard-open;
-    in-out property <bool> delete-open <=> body.delete-open;
 
     callback save-requested();
     callback cancel-requested();
@@ -2070,8 +2036,6 @@ export component BoardEditor inherits Window {
         name-placeholder: @tr("For example, Work");
         missing-name-text: @tr("Give the board a name.");
         delete-label: @tr("Delete board");
-        delete-title: @tr("Delete this board?");
-        delete-body: @tr("Its lists and {n} item will move to Trash. You can restore them for 30 days." | "Its lists and {n} items will move to Trash. You can restore them for 30 days." % root.item-count);
         save-requested => { root.save-requested(); }
         cancel-requested => { root.cancel-requested(); }
         help-requested => { root.help-requested(); }
@@ -2080,7 +2044,7 @@ export component BoardEditor inherits Window {
     }
 
     // The window's tooltip layer: last, so no sibling paints over a tooltip and no container clips it.
-    TipLayer { suppressed: root.discard-open || root.delete-open; }
+    TipLayer { suppressed: root.discard-open; }
 }
 
 // ---- Tag management ------------------------------------------------------------------------------

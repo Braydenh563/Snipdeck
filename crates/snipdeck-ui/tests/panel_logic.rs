@@ -99,7 +99,6 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_row_delete_requested, |i| format!("row-delete:{i}"));
     hook!(on_row_undo_requested, |i| format!("row-undo:{i}"));
     hook!(on_clear_list_requested, || "clear-requested".to_string());
-    hook!(on_clear_list_confirmed, || "clear-confirmed".to_string());
     hook!(on_bulk_move_requested, || "bulk-move".to_string());
     hook!(on_bulk_colour_requested, || "bulk-colour".to_string());
     hook!(on_bulk_delete_requested, || "bulk-delete".to_string());
@@ -3501,7 +3500,7 @@ ui_tests! {
         ui.set_select_mode(true);
         settle();
         assert!(!missing(&ui, "Select items", AccessibleRole::Button));
-        assert!(missing(&ui, "Clear list\u{2026}", AccessibleRole::Button), "Clear list is for Delete mode");
+        assert!(missing(&ui, "Clear list", AccessibleRole::Button), "Clear list is for Delete mode");
         ui.set_select_mode(false);
         settle();
         assert!(missing(&ui, "Select items", AccessibleRole::Button), "the strip is gone with the mode");
@@ -3515,7 +3514,7 @@ ui_tests! {
             ui.set_delete_mode(true);
             settle();
             let mut right = 0.0_f32;
-            for name in ["Select items", "Move to Trash", "Clear list\u{2026}", "Done"] {
+            for name in ["Select items", "Move to Trash", "Clear list", "Done"] {
                 let b = find(&ui, name, AccessibleRole::Button);
                 let (p, s) = (b.absolute_position(), b.size());
                 assert!(p.x >= right - 0.5, "{name} does not overlap the one before at {scale}");
@@ -3526,7 +3525,7 @@ ui_tests! {
             take(&log);
             click_at(&ui, centre(&find(&ui, "Select items", AccessibleRole::Button)));
             assert_eq!(take(&log), ["select-mode:true"]);
-            click_at(&ui, centre(&find(&ui, "Clear list\u{2026}", AccessibleRole::Button)));
+            click_at(&ui, centre(&find(&ui, "Clear list", AccessibleRole::Button)));
             assert_eq!(take(&log), ["clear-requested"]);
             click_at(&ui, centre(&find(&ui, "Done", AccessibleRole::Button)));
             assert_eq!(take(&log), ["modes-ended"]);
@@ -3621,18 +3620,6 @@ ui_tests! {
         let undo = find(&ui, &format!("Undo delete of \u{201c}{}\u{201d}", row.title), AccessibleRole::Button);
         click_at(&ui, centre(&undo));
         assert_eq!(take(&log), ["row-undo:0"]);
-    }
-
-    fn clear_list_confirmation_shows_the_count_and_asks_once() {
-        let (ui, log) = start();
-        ui.set_clear_list_name("Replies".into());
-        ui.set_clear_list_count(7);
-        ui.set_clear_list_open(true);
-        settle();
-        assert!(ElementHandle::find_by_accessible_label(&ui, "Clear list \u{201c}Replies\u{201d}?").next().is_some());
-        take(&log);
-        click_at(&ui, centre(&find(&ui, "Clear list", AccessibleRole::Button)));
-        assert_eq!(take(&log), ["clear-confirmed"]);
     }
 
     // ---- Text entry: the no-activate Panel takes the keyboard for every field, and Paste works ---------

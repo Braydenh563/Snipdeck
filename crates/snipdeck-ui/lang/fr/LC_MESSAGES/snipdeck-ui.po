@@ -178,11 +178,6 @@ msgstr "Tous"
 msgid "All items"
 msgstr "Tous les extraits"
 
-msgid "All {n} item moves to the Trash. You can restore it for {} days."
-msgid_plural "All {n} items move to the Trash. You can restore them for {} days."
-msgstr[0] "Le {n} élément va dans la Corbeille. Vous pouvez le restaurer pendant {} jours."
-msgstr[1] "Les {n} éléments vont dans la Corbeille. Vous pouvez les restaurer pendant {} jours."
-
 msgid "All {} recent copies are removed. This can't be undone."
 msgstr "Les {} copies récentes seront supprimées. Cette action est irréversible."
 
@@ -410,12 +405,6 @@ msgstr "Effacer l'historique"
 
 msgid "Clear list"
 msgstr "Vider la liste"
-
-msgid "Clear list “{}”?"
-msgstr "Vider la liste « {} » ?"
-
-msgid "Clear list…"
-msgstr "Vider la liste…"
 
 msgid "Clear recent emoji and colours"
 msgstr "Effacer les émojis et couleurs récents"
@@ -837,12 +826,6 @@ msgstr "Supprimer un groupe et ses éléments"
 msgid "Delete board"
 msgstr "Supprimer le tableau"
 
-msgid "Delete board “{}”?"
-msgstr "Supprimer le tableau « {} » ?"
-
-msgid "Delete board…"
-msgstr "Supprimer le tableau…"
-
 msgid "Delete for good"
 msgstr "Supprimer définitivement"
 
@@ -858,12 +841,6 @@ msgstr "Supprimer le groupe"
 msgid "Delete list"
 msgstr "Supprimer la liste"
 
-msgid "Delete list “{}”?"
-msgstr "Supprimer la liste « {} » ?"
-
-msgid "Delete list…"
-msgstr "Supprimer la liste…"
-
 msgid "Delete tag"
 msgstr "Supprimer l'étiquette"
 
@@ -875,12 +852,6 @@ msgstr "Supprimer l'étiquette « {} » ?"
 
 msgid "Delete tag…"
 msgstr "Supprimer l'étiquette…"
-
-msgid "Delete this board?"
-msgstr "Supprimer ce tableau ?"
-
-msgid "Delete this list?"
-msgstr "Supprimer cette liste ?"
 
 msgid "Delete this tag?"
 msgstr "Supprimer cette étiquette ?"
@@ -1353,14 +1324,6 @@ msgstr "Élément désépinglé"
 
 msgid "Items are removed after {} days."
 msgstr "Les extraits sont supprimés après {} jours."
-
-msgid "Its lists and {n} item will move to Trash. You can restore them for 30 days."
-msgid_plural "Its lists and {n} items will move to Trash. You can restore them for 30 days."
-msgstr[0] "Ses listes et {n} extrait seront déplacés dans la corbeille. Vous pouvez les restaurer pendant 30 jours."
-msgstr[1] "Ses listes et {n} extraits seront déplacés dans la corbeille. Vous pouvez les restaurer pendant 30 jours."
-
-msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
-msgstr "Ses listes et {} éléments vont à la corbeille. Vous pouvez les restaurer pendant {} jours."
 
 msgid "Joy"
 msgstr "Joie"
@@ -2972,9 +2935,6 @@ msgstr "La bibliothèque n'a pas pu être déverrouillée ni modifiée. Rien n'a
 msgid "The licences of the libraries Snipdeck is built from."
 msgstr "Les licences des bibliothèques avec lesquelles Snipdeck est construit."
 
-msgid "The list and its {} items move to the Trash. You can restore them for {} days."
-msgstr "La liste et ses {} extraits sont déplacés dans la corbeille. Vous pouvez les restaurer pendant {} jours."
-
 msgid "The list holds at most {} programs."
 msgstr "La liste contient au maximum {} programmes."
 
@@ -3790,11 +3750,6 @@ msgid "{n} item"
 msgid_plural "{n} items"
 msgstr[0] "{n} extrait"
 msgstr[1] "{n} extraits"
-
-msgid "{n} item will move to Trash with it. You can restore them for 30 days."
-msgid_plural "{n} items will move to Trash with it. You can restore them for 30 days."
-msgstr[0] "{n} extrait sera déplacé dans la corbeille avec lui. Vous pouvez le restaurer pendant 30 jours."
-msgstr[1] "{n} extraits seront déplacés dans la corbeille avec lui. Vous pouvez les restaurer pendant 30 jours."
 
 msgid "{n} match in {}"
 msgid_plural "{n} matches in {}"

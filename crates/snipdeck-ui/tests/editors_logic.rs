@@ -980,36 +980,16 @@ ui_tests! {
         assert!(missing(&ui, "Teal", AccessibleRole::RadioButton));
     }
 
-    fn deleting_a_list_asks_first_and_says_how_many_items_go() {
+    fn deleting_a_list_acts_at_once_without_a_dialog() {
         let (ui, log) = list_editor();
         find(&ui, "Delete list", AccessibleRole::Button).invoke_accessible_default_action();
         settle();
-        assert!(ui.get_delete_open());
-        let dialog = find(&ui, "Delete this list?", AccessibleRole::Groupbox);
-        assert_eq!(
-            dialog.accessible_description().as_deref(),
-            Some("24 items will move to Trash with it. You can restore them for 30 days.")
+        assert_eq!(take(&log), ["delete"], "UX-20: no confirmation, the host trashes it");
+        assert!(
+            missing(&ui, "Delete this list?", AccessibleRole::Groupbox),
+            "no dialog opens"
         );
-        ui.set_item_count(1);
-        settle();
-        assert!(find(&ui, "Delete this list?", AccessibleRole::Groupbox)
-            .accessible_description().unwrap().starts_with("1 item will move"));
-        ui.set_item_count(24);
-
-        // Enter does nothing in a destructive dialog; Esc closes it and the editor stays.
-        press_key(&ui, Key::Return);
-        assert!(ui.get_delete_open());
-        press_key(&ui, Key::Escape);
-        assert!(!ui.get_delete_open());
-        assert_eq!(take(&log), Vec::<String>::new());
-
-        find(&ui, "Delete list", AccessibleRole::Button).invoke_accessible_default_action();
-        settle();
-        // The dialog's own confirm button has the same name; it is the last one in tree order.
-        let buttons = all(&ui, "Delete list", AccessibleRole::Button);
-        buttons.last().expect("confirm").invoke_accessible_default_action();
-        assert_eq!(take(&log), ["delete"]);
-        assert!(!ui.get_delete_open());
+        assert_eq!(all(&ui, "Delete list", AccessibleRole::Button).len(), 1);
     }
 
     fn a_board_that_cannot_be_deleted_says_why() {

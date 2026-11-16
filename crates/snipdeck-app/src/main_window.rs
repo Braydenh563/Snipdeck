@@ -271,8 +271,6 @@ pub struct EditorView {
     pub icon: Option<ListIcon>,
     /// A list's item order.
     pub sort: ListSort,
-    /// How many items deleting it affects.
-    pub item_count: usize,
     /// Whether it can be deleted.
     pub can_delete: bool,
     /// Why not.

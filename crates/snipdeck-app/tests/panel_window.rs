@@ -481,30 +481,23 @@ fn a_list_menu_request_opens_the_list_menu_and_dismissing_closes_it() {
 }
 
 #[test]
-fn delete_on_the_list_menu_shows_only_the_panel_confirmation() {
-    // O52: Delete asked inside the list editor, which then appeared behind the confirmation.
+fn delete_on_the_list_menu_trashes_at_once_with_undo_and_opens_no_editor() {
+    // O52: Delete asked inside the list editor. UX-20: a list goes to the Trash, so it acts at
+    // once and offers Undo; there is no dialog.
     on_ui_thread(|| {
         let r = rig();
         let lists = r.ui.get_tabs().row_count();
         r.ui.invoke_list_menu_requested(1);
         r.ui.invoke_list_menu_activated(1);
         assert!(!r.ui.get_list_menu_open());
-        assert!(r.ui.get_list_delete_open(), "the Panel asks");
-        assert!(!r.ui.get_list_delete_name().is_empty());
+        assert_eq!(r.ui.get_tabs().row_count(), lists - 1);
         assert!(
             r.ctl.borrow_mut().main_screen().editor.is_none(),
             "no list editor opens"
         );
-        r.ui.invoke_list_delete_dismissed();
-        assert!(!r.ui.get_list_delete_open());
-        assert_eq!(r.ui.get_tabs().row_count(), lists, "Cancel keeps the list");
-
-        r.ui.invoke_list_menu_requested(1);
-        r.ui.invoke_list_menu_activated(1);
-        r.ui.invoke_list_delete_confirmed();
-        assert!(!r.ui.get_list_delete_open());
-        assert_eq!(r.ui.get_tabs().row_count(), lists - 1);
-        assert!(r.ctl.borrow_mut().main_screen().editor.is_none());
+        assert_eq!(r.ui.get_toast_undo_label(), "Undo");
+        r.ui.invoke_toast_undo();
+        assert_eq!(r.ui.get_tabs().row_count(), lists, "Undo restores the list");
     });
 }
 

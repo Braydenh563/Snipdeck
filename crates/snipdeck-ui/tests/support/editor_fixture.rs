@@ -259,6 +259,5 @@ pub fn list_editor_existing(ui: &ListEditor) {
     ui.set_name("Email replies".into());
     ui.set_accent(1);
     ui.set_sort_index(0);
-    ui.set_item_count(24);
     ui.invoke_mark_clean();
 }

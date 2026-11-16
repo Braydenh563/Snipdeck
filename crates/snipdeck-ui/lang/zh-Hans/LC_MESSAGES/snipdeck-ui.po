@@ -178,10 +178,6 @@ msgstr "全部"
 msgid "All items"
 msgstr "所有片段"
 
-msgid "All {n} item moves to the Trash. You can restore it for {} days."
-msgid_plural "All {n} items move to the Trash. You can restore them for {} days."
-msgstr[0] "{n} 个项目将移入回收站。{} 天内可以恢复。"
-
 msgid "All {} recent copies are removed. This can't be undone."
 msgstr "将删除全部 {} 条最近复制的内容。此操作无法撤销。"
 
@@ -409,12 +405,6 @@ msgstr "清除历史"
 
 msgid "Clear list"
 msgstr "清空列表"
-
-msgid "Clear list “{}”?"
-msgstr "清空列表“{}”？"
-
-msgid "Clear list…"
-msgstr "清空列表…"
 
 msgid "Clear recent emoji and colours"
 msgstr "清除最近使用的表情符号和颜色"
@@ -836,12 +826,6 @@ msgstr "删除分组及其中的项目"
 msgid "Delete board"
 msgstr "删除看板"
 
-msgid "Delete board “{}”?"
-msgstr "删除看板“{}”?"
-
-msgid "Delete board…"
-msgstr "删除看板…"
-
 msgid "Delete for good"
 msgstr "永久删除"
 
@@ -857,12 +841,6 @@ msgstr "删除分组"
 msgid "Delete list"
 msgstr "删除列表"
 
-msgid "Delete list “{}”?"
-msgstr "要删除列表“{}”吗？"
-
-msgid "Delete list…"
-msgstr "删除列表…"
-
 msgid "Delete tag"
 msgstr "删除标签"
 
@@ -874,12 +852,6 @@ msgstr "要删除标签“{}”吗？"
 
 msgid "Delete tag…"
 msgstr "删除标签…"
-
-msgid "Delete this board?"
-msgstr "要删除此看板吗？"
-
-msgid "Delete this list?"
-msgstr "要删除此列表吗？"
 
 msgid "Delete this tag?"
 msgstr "要删除此标签吗？"
@@ -1350,13 +1322,6 @@ msgstr "已取消固定"
 
 msgid "Items are removed after {} days."
 msgstr "片段将在 {} 天后移除。"
-
-msgid "Its lists and {n} item will move to Trash. You can restore them for 30 days."
-msgid_plural "Its lists and {n} items will move to Trash. You can restore them for 30 days."
-msgstr[0] "其列表及其中的 {n} 个片段将移至回收站。你可以在 30 天内恢复它们。"
-
-msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
-msgstr "它的列表和 {} 个项目将移到回收站。你可以在 {} 天内恢复。"
 
 msgid "Joy"
 msgstr "喜悦"
@@ -2964,9 +2929,6 @@ msgstr "无法解锁或更改资料库。未做任何更改。"
 msgid "The licences of the libraries Snipdeck is built from."
 msgstr "构成 Snipdeck 的库的许可证。"
 
-msgid "The list and its {} items move to the Trash. You can restore them for {} days."
-msgstr "该列表及其中的 {} 个片段将移至回收站。你可以在 {} 天内恢复它们。"
-
 msgid "The list holds at most {} programs."
 msgstr "列表最多可包含 {} 个程序。"
 
@@ -3779,10 +3741,6 @@ msgstr "窗口 几何 默认 恢复 移动 大小 被截断"
 msgid "{n} item"
 msgid_plural "{n} items"
 msgstr[0] "{n} 个片段"
-
-msgid "{n} item will move to Trash with it. You can restore them for 30 days."
-msgid_plural "{n} items will move to Trash with it. You can restore them for 30 days."
-msgstr[0] "{n} 个片段将一同移至回收站。你可以在 30 天内恢复它们。"
 
 msgid "{n} match in {}"
 msgid_plural "{n} matches in {}"

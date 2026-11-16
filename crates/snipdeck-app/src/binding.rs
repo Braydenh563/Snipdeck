@@ -901,8 +901,6 @@ where
         wire_effects!(on_list_menu_activated, |ctl, i| ctl
             .choose_list_menu(index(i)));
         wire!(on_list_menu_dismissed, |ctl| ctl.close_list_menu());
-        wire!(on_list_delete_confirmed, |ctl| ctl.confirm_list_delete());
-        wire!(on_list_delete_dismissed, |ctl| ctl.cancel_list_delete());
         wire_effects!(on_list_edit_requested, |ctl, i| ctl.edit_list_tab(index(i)));
         wire!(on_reveal_requested, |ctl, i, on| ctl
             .reveal_row(index(i), on));
@@ -1034,8 +1032,6 @@ where
         });
         wire!(on_board_menu_requested, |ctl| ctl.open_board_menu());
         wire_effects!(on_board_menu_activated, |ctl, i| ctl.choose_board(index(i)));
-        wire!(on_board_delete_confirmed, |ctl| ctl.confirm_board_delete());
-        wire!(on_board_delete_dismissed, |ctl| ctl.cancel_board_delete());
         wire!(on_board_menu_dismissed, |ctl| ctl.close_board_menu());
         wire!(on_pin_toggled, |ctl, on| ctl.choose_on_top(on));
         wire!(on_add_list_requested, |ctl| ctl.add_list());
@@ -1065,9 +1061,7 @@ where
         wire!(on_row_delete_requested, |ctl, i| ctl
             .panel_delete_row(index(i)));
         wire!(on_row_undo_requested, |ctl, i| ctl.panel_undo_row(index(i)));
-        wire!(on_clear_list_requested, |ctl| ctl.panel_open_clear_list());
-        wire!(on_clear_list_confirmed, |ctl| ctl.panel_clear_list());
-        wire!(on_clear_list_dismissed, |ctl| ctl.cancel_clear_list());
+        wire!(on_clear_list_requested, |ctl| ctl.panel_clear_list());
         wire!(on_selection_extended, |ctl, d| ctl
             .panel_extend_marks(isize::try_from(d).unwrap_or(0)));
         wire!(on_selection_cleared, |ctl| ctl.panel_clear_marks());
@@ -1861,15 +1855,6 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     window.set_trash_focus_seq(i32::try_from(view.focus_seq).unwrap_or(i32::MAX));
     window.set_select_mode(view.select_mode);
     window.set_delete_mode(view.delete_mode);
-    if differs(&|p| p.clear_list == view.clear_list)
-        || window.get_clear_list_open() != view.clear_list.is_some()
-    {
-        if let Some(ask) = &view.clear_list {
-            window.set_clear_list_name(ask.name.as_str().into());
-            window.set_clear_list_count(i32::try_from(ask.count).unwrap_or(i32::MAX));
-        }
-        window.set_clear_list_open(view.clear_list.is_some());
-    }
     window.set_show_numbers(view.show_numbers);
     window.set_symbols_available(view.symbols_available);
     window.set_colours_available(view.colours_available);
@@ -1887,24 +1872,6 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     }
     window.set_list_menu_sort(crate::main_binding::sort_index(view.list_menu_sort));
     window.set_list_menu_css(view.list_menu_css);
-    if differs(&|p| p.list_delete == view.list_delete)
-        || window.get_list_delete_open() != view.list_delete.is_some()
-    {
-        if let Some(ask) = &view.list_delete {
-            window.set_list_delete_name(ask.name.as_str().into());
-            window.set_list_delete_count(i32::try_from(ask.count).unwrap_or(i32::MAX));
-        }
-        window.set_list_delete_open(view.list_delete.is_some());
-    }
-    if differs(&|p| p.board_delete == view.board_delete)
-        || window.get_board_delete_open() != view.board_delete.is_some()
-    {
-        if let Some(ask) = &view.board_delete {
-            window.set_board_delete_name(ask.name.as_str().into());
-            window.set_board_delete_count(i32::try_from(ask.count).unwrap_or(i32::MAX));
-        }
-        window.set_board_delete_open(view.board_delete.is_some());
-    }
     if differs(&|p| p.toast == view.toast) {
         if let Some(toast) = &view.toast {
             {

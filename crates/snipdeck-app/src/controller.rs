@@ -8,7 +8,7 @@
 use std::time::Duration;
 
 use snipdeck_core::{
-    BoardId, ItemId, ListId, Timestamp,
+    ItemId, ListId, Timestamp,
     template::{Locale, TimeZone},
 };
 use snipdeck_platform::{
@@ -60,8 +60,8 @@ pub use settings_ctl::{ImportKind, ImportPreview, ImportProblem, ImportSource};
 pub use symbol_ctl::{IconExport, IconSave, SaveOutcome, SymbolChoice, SymbolMenuEntry};
 pub use trigger_ctl::{HintOutcome, TypedOutcome};
 pub use views::{
-    BoardDeleteView, ChooseEntry, ChooseLabel, ChooseMenu, ClearListView, Effect, FillSubmission,
-    FillView, ListDeleteView, PickerView, StackView, ToastPhase, ToastView, UseResult, View,
+    ChooseEntry, ChooseLabel, ChooseMenu, Effect, FillSubmission, FillView, PickerView, StackView,
+    ToastPhase, ToastView, UseResult, View,
 };
 
 use crate::{
@@ -268,9 +268,6 @@ pub struct Controller<S, C, K, T> {
     /// The list or board editor, while one is open.
     editor: Option<main_ctl::EditorSlot>,
     editor_seq: u64,
-    /// The board menu's delete confirmation is asking about this board (the Main window draws
-    /// it; no editor opens).
-    board_delete: Option<BoardId>,
     /// List and board editors closed with the window that opened them: what was typed in each,
     /// for the next time it opens (this app session only).
     parked_editors: Vec<(main_ctl::EditorTarget, crate::main_window::EditorView)>,
@@ -408,12 +405,6 @@ enum PanelMenu {
     PasteAs(ItemId),
     /// The context menu of a list tab.
     List(ListId),
-    /// The list menu's delete confirmation, asking about this list.
-    DeleteList(ListId),
-    /// The kebab's "Clear list…" confirmation, asking about this list.
-    ClearList(ListId),
-    /// The board menu's delete confirmation, asking about this board.
-    DeleteBoard(BoardId),
 }
 
 /// Facts about the running app that are not settings and not on screen.
@@ -531,7 +522,6 @@ where
             main,
             editor: None,
             editor_seq: 0,
-            board_delete: None,
             parked_editors: Vec::new(),
             item_editor: None,
             item_editor_seq: 0,
@@ -706,7 +696,6 @@ where
             rename_seq: self.rename_panel.seq,
             select_mode: self.select_mode,
             delete_mode: self.delete_mode,
-            clear_list: self.clear_list_view(),
             show_numbers: self.settings.show_numbers,
             symbols_available: self.settings.show_symbols_tab,
             colours_available: self.settings.show_colours_tab,
@@ -716,8 +705,6 @@ where
             list_menu: matches!(self.menu, PanelMenu::List(_)).then(|| LIST_MENU.to_vec()),
             list_menu_sort: self.list_menu_sort(),
             list_menu_css: matches!(self.menu, PanelMenu::List(id) if self.list_has_colours(id)),
-            list_delete: self.list_delete_view(),
-            board_delete: self.board_delete_view(),
             hotkeys_paused: self.session.hotkeys_paused,
             picker: self.picker.as_ref().map(|p| PickerView {
                 rows: p.rows(),

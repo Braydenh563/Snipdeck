@@ -296,7 +296,7 @@ export component PanelWindow inherits Window {
     in property <bool> item-menu-open: false;
     in property <[MenuEntry]> item-menu-entries;
     // The context menu of a list tab (right-click, Menu, Shift+F10, F2 or a double-click edits): the host sets
-    // `list-menu-open` on `list-menu-requested`; its rows are fixed here ("Edit list…", "Delete list…", then the three "Sort by" rows).
+    // `list-menu-open` on `list-menu-requested`; its rows are fixed here ("Edit list…", "Delete list", then the three "Sort by" rows).
     in property <bool> list-menu-open: false;
     property <length> list-menu-x: 0px;
     property <length> list-menu-y: 0px;
@@ -307,7 +307,7 @@ export component PanelWindow inherits Window {
     property <image> list-menu-no-icon;
     property <[MenuEntry]> list-menu-entries: [
         { text: @tr("Edit list…"), icon: Icons.pencil-simple },
-        { text: @tr("Delete list…"), icon: Icons.trash, destructive: true },
+        { text: @tr("Delete list"), icon: Icons.trash, destructive: true },
         { separator: true },
         { text: @tr("Sort by: Manual"), icon: root.list-menu-sort == 0 ? Icons.check : root.list-menu-no-icon },
         { text: @tr("Sort by: Most used"), icon: root.list-menu-sort == 1 ? Icons.check : root.list-menu-no-icon },
@@ -315,20 +315,9 @@ export component PanelWindow inherits Window {
         { separator: true },
         { text: @tr("Copy as CSS variables"), icon: Icons.copy, disabled: !root.list-menu-css },
     ];
-    // The list menu's "Delete list…" confirmation (O52): the host sets `list-delete-open` after that row, and nothing
-    // else opens (no list editor). `list-delete-name` and `list-delete-count` fill its words.
-    in property <bool> list-delete-open: false;
-    // The board menu's "Delete board…" confirmation: the same words as the Main window's.
-    in property <bool> board-delete-open: false;
     // The one-time first-run question "Keep a Recent list of what you copy?" (Store policy 10.5: nothing is kept
     // until Yes). The host sets it while the answer is unknown and the welcome tour is not on screen.
     in property <bool> recent-question-open: false;
-    in property <string> board-delete-name;
-    in property <int> board-delete-count;
-    in property <string> list-delete-name;
-    in property <int> list-delete-count;
-    // How long the Trash keeps what is deleted (the Main window says the same).
-    in property <int> trash-days: 30;
     property <length> item-menu-x: 0px;
     property <length> item-menu-y: 0px;
     // Toast: empty text hides it. The app owns its timing (Toast documents the phases).
@@ -447,13 +436,8 @@ export component PanelWindow inherits Window {
             root.focus-typing();
         }
     }
-    // The kebab's "Clear list…" confirmation: the count of items that go to the Trash (one Undo brings them back).
-    in property <bool> clear-list-open: false;
-    in property <string> clear-list-name;
-    in property <int> clear-list-count;
+    // The kebab's "Clear list": every item goes to the Trash at once (one Undo brings them back).
     callback clear-list-requested();
-    callback clear-list-confirmed();
-    callback clear-list-dismissed();
     in property <bool> show-numbers: true;
     callback row-picked(int, bool, bool);
     callback select-all-requested();
@@ -500,13 +484,8 @@ export component PanelWindow inherits Window {
     callback list-menu-activated(int);
     callback list-menu-dismissed();
     callback list-edit-requested(int);
-    // The list delete confirmation: "Delete list", or Cancel / Esc / a click on the scrim.
-    callback board-delete-confirmed();
-    callback board-delete-dismissed();
     // The first-run question was answered: true is Yes. Esc and a click on the scrim answer No.
     callback recent-question-answered(bool);
-    callback list-delete-confirmed();
-    callback list-delete-dismissed();
     // Quick edit of row `index`: Ctrl+E, F2 or the item menu (SPEC 5.1). A double-click does nothing extra: the
     // first click already used the row.
     callback edit-requested(int);
@@ -592,7 +571,7 @@ export component PanelWindow inherits Window {
     // The text of the tooltip on screen (empty = none), for tests and assistive checks.
     // The tooltip on screen ("" for none). A menu, dialog or drag hides it.
     out property <string> tooltip-shown: tips.shown;
-    property <bool> tips-suppressed: root.board-menu-open || root.app-menu-open || root.item-menu-open || root.list-menu-open || root.list-delete-open || root.clear-list-open || root.board-delete-open || root.new-menu-open || root.pinned-menu-open || root.dragging;
+    property <bool> tips-suppressed: root.board-menu-open || root.app-menu-open || root.item-menu-open || root.list-menu-open || root.new-menu-open || root.pinned-menu-open || root.dragging;
 
     // ---- Internals ----------------------------------------------------------------------------
     property <bool> pastes: root.target-name != "";
@@ -825,22 +804,7 @@ export component PanelWindow inherits Window {
         }
     }
     changed list-menu-open => {
-        if (!root.list-menu-open && !root.list-delete-open) {
-            root.focus-typing();
-        }
-    }
-    changed list-delete-open => {
-        if (!root.list-delete-open) {
-            root.focus-typing();
-        }
-    }
-    changed clear-list-open => {
-        if (!root.clear-list-open) {
-            root.focus-typing();
-        }
-    }
-    changed board-delete-open => {
-        if (!root.board-delete-open) {
+        if (!root.list-menu-open) {
             root.focus-typing();
         }
     }
@@ -850,7 +814,7 @@ export component PanelWindow inherits Window {
         }
     }
     changed board-menu-open => {
-        if (!root.board-menu-open && !root.board-delete-open) {
+        if (!root.board-menu-open) {
             root.focus-typing();
         }
     }
@@ -1240,7 +1204,7 @@ export component PanelWindow inherits Window {
                     }
                     return reject;
                 }
-                if (root.board-menu-open || root.app-menu-open || root.item-menu-open || root.list-menu-open || root.recent-menu-open || root.recent-save-open || root.list-delete-open || root.clear-list-open || root.board-delete-open || root.recent-question-open || root.new-menu-open || root.pinned-menu-open) {
+                if (root.board-menu-open || root.app-menu-open || root.item-menu-open || root.list-menu-open || root.recent-menu-open || root.recent-save-open || root.recent-question-open || root.new-menu-open || root.pinned-menu-open) {
                     // The menu (or the confirmation) owns the keyboard; Esc closes it.
                     if (event.text == Key.Escape) {
                         root.new-menu-open = false;
@@ -1248,15 +1212,6 @@ export component PanelWindow inherits Window {
                             root.recent-question-answered(false);
                         }
                         root.pinned-menu-open = false;
-                        if (root.list-delete-open) {
-                            root.list-delete-dismissed();
-                        }
-                        if (root.clear-list-open) {
-                            root.clear-list-dismissed();
-                        }
-                        if (root.board-delete-open) {
-                            root.board-delete-dismissed();
-                        }
                         root.recent-menu-open = false;
                         root.recent-save-open = false;
                         if (root.item-menu-open) {
@@ -1862,7 +1817,7 @@ export component PanelWindow inherits Window {
                         if root.delete-mode: Button {
                             size: ButtonSize.sm;
                             variant: ButtonVariant.ghost;
-                            text: @tr("Clear list…");
+                            text: @tr("Clear list");
                             clicked => { root.clear-list-requested(); }
                         }
                         Rectangle { horizontal-stretch: 1; }
@@ -3152,61 +3107,6 @@ export component PanelWindow inherits Window {
                 root.recent-saved(root.recent-menu-id, i);
             }
             dismissed => { root.recent-save-open = false; }
-        }
-
-        // ---- The list delete confirmation: over everything but the tooltip and the grips. The only thing "Delete
-        // list…" shows; the list and its items move to the Trash with an Undo toast.
-        Dialog {
-            open: root.list-delete-open;
-            variant: DialogVariant.destructive;
-            title: @tr("Delete list “{}”?", root.list-delete-name);
-            body: @tr("The list and its {} items move to the Trash. You can restore them for {} days.", root.list-delete-count, root.trash-days);
-            dismissed => { root.list-delete-dismissed(); }
-            Button {
-                text: @tr("Cancel");
-                clicked => { root.list-delete-dismissed(); }
-            }
-            Button {
-                variant: ButtonVariant.danger;
-                text: @tr("Delete list");
-                clicked => { root.list-delete-confirmed(); }
-            }
-        }
-
-        // "Clear list…" (the kebab): asks once, with the count; the Undo toast brings every item back in one step.
-        Dialog {
-            open: root.clear-list-open;
-            variant: DialogVariant.destructive;
-            title: @tr("Clear list “{}”?", root.clear-list-name);
-            body: @tr("All {n} item moves to the Trash. You can restore it for {} days." | "All {n} items move to the Trash. You can restore them for {} days." % root.clear-list-count, root.trash-days);
-            dismissed => { root.clear-list-dismissed(); }
-            Button {
-                text: @tr("Cancel");
-                clicked => { root.clear-list-dismissed(); }
-            }
-            Button {
-                variant: ButtonVariant.danger;
-                text: @tr("Clear list");
-                clicked => { root.clear-list-confirmed(); }
-            }
-        }
-
-        // The board delete confirmation: the board, its lists and their items move to the Trash with an Undo toast.
-        Dialog {
-            open: root.board-delete-open;
-            variant: DialogVariant.destructive;
-            title: @tr("Delete board “{}”?", root.board-delete-name);
-            body: @tr("Its lists and {} items move to the Trash. You can restore them for {} days.", root.board-delete-count, root.trash-days);
-            dismissed => { root.board-delete-dismissed(); }
-            Button {
-                text: @tr("Cancel");
-                clicked => { root.board-delete-dismissed(); }
-            }
-            Button {
-                variant: ButtonVariant.danger;
-                text: @tr("Delete board");
-                clicked => { root.board-delete-confirmed(); }
-            }
         }
 
         // The first-run question about the Recent list: asked once, nothing is kept before Yes.

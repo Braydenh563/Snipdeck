@@ -1722,23 +1722,11 @@ ui_tests! {
         assert_eq!(take(&log), ["list-edit:0"]);
         assert!(ui.get_sidebar_focused(), "the keys return to the sidebar");
 
+        // UX-20: a list goes to the Trash, so Delete acts at once and asks nothing.
         press_key(&ui, Key::Menu);
-        find(&ui, "Delete list…", AccessibleRole::ListItem).invoke_accessible_default_action();
+        find(&ui, "Delete list", AccessibleRole::ListItem).invoke_accessible_default_action();
         settle();
-        assert!(ui.get_confirm_open());
-        let dialog = find(&ui, "Delete list “Email replies”?", AccessibleRole::Groupbox);
-        assert_eq!(
-            dialog.accessible_description().as_deref(),
-            Some("The list and its 24 items move to the Trash. You can restore them for 30 days.")
-        );
-        press_key(&ui, Key::Escape);
-        assert!(!ui.get_confirm_open());
-        assert_eq!(take(&log), Vec::<String>::new());
-
-        press_key(&ui, Key::Menu);
-        find(&ui, "Delete list…", AccessibleRole::ListItem).invoke_accessible_default_action();
-        settle();
-        find(&ui, "Delete list", AccessibleRole::Button).invoke_accessible_default_action();
+        assert!(!ui.get_confirm_open(), "no confirmation dialog");
         assert_eq!(take(&log), ["list-delete:0"]);
     }
 
