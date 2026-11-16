@@ -211,9 +211,12 @@ pub fn open_library_folder(
         .find(|stem| !folder.join(stem).exists())
         .unwrap_or_else(|| format!("snipdeck.damaged-{stamp}-x"));
     let (store, kept) = snipdeck_store::Store::open_or_set_aside(folder, &stem)?;
-    let toast = kept.map(|_| crate::toast::Toast {
+    let has_backup =
+        snipdeck_portable::backup::list_backups(&snipdeck_portable::backup::backups_dir(folder))
+            .is_ok_and(|list| !list.is_empty());
+    let toast = kept.map(|folder| crate::toast::Toast {
         kind: crate::toast::ToastKind::Danger,
-        message: crate::toast::ToastMessage::LibrarySetAside,
+        message: crate::toast::ToastMessage::LibrarySetAside { folder, has_backup },
     });
     Ok((store, toast))
 }
@@ -548,7 +551,12 @@ mod tests {
         let (_store, toast) = open_library_folder(dir.path(), now).unwrap();
         let toast = toast.expect("a notice");
         assert_eq!(toast.kind, crate::toast::ToastKind::Danger);
-        assert_eq!(toast.message, crate::toast::ToastMessage::LibrarySetAside);
+        let crate::toast::ToastMessage::LibrarySetAside { folder, has_backup } = &toast.message
+        else {
+            panic!("the set-aside notice");
+        };
+        assert!(folder.starts_with("snipdeck.damaged-"));
+        assert!(!has_backup, "no backup in this folder");
         let kept: Vec<_> = std::fs::read_dir(dir.path())
             .unwrap()
             .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())

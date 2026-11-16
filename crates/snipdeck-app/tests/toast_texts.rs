@@ -143,7 +143,7 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::BackupMadeSkipping { .. } => 113,
         ToastMessage::BackupShrunk { .. } => 114,
         ToastMessage::ExportedSkipping { .. } => 115,
-        ToastMessage::LibrarySetAside => 116,
+        ToastMessage::LibrarySetAside { .. } => 116,
     }
 }
 
@@ -340,7 +340,14 @@ fn samples() -> Vec<ToastMessage> {
         M::HelloEnrolFailed,
         M::SettingsDamaged,
         M::SettingsUnreadable,
-        M::LibrarySetAside,
+        M::LibrarySetAside {
+            folder: s("snipdeck.damaged-20261116-1000"),
+            has_backup: true,
+        },
+        M::LibrarySetAside {
+            folder: s("snipdeck.damaged-20261116-1000"),
+            has_backup: false,
+        },
         M::ClipboardWatchFailed,
     ]
 }

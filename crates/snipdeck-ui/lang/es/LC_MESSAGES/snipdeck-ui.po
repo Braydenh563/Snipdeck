@@ -3520,8 +3520,11 @@ msgstr "Sí"
 msgid "Your Windows Hello PIN, face or fingerprint changed. Unlock with your password once to set Windows Hello up again."
 msgstr "Tu PIN, rostro o huella de Windows Hello ha cambiado. Desbloquea una vez con tu contraseña para volver a configurar Windows Hello."
 
-msgid "Your library couldn't be opened. A copy was kept. Settings > Rebuild from backup restores your newest backup."
-msgstr "No se pudo abrir tu biblioteca. Se guardó una copia. Ajustes > Reconstruir desde una copia restaura tu copia más reciente."
+msgid "Your library couldn't be opened, so it was moved aside to {} in your Snipdeck data folder. There is no backup to restore from yet."
+msgstr "No se pudo abrir tu biblioteca, así que se movió aparte a {} en tu carpeta de datos de Snipdeck. Todavía no hay una copia desde la que restaurar."
+
+msgid "Your library couldn't be opened, so it was moved aside to {}. Settings > Rebuild from backup restores your newest backup."
+msgstr "No se pudo abrir tu biblioteca, así que se movió aparte a {}. Ajustes > Reconstruir desde una copia restaura tu copia más reciente."
 
 msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, backups (as many as you choose to keep) and logs."
 msgstr "Tu biblioteca vive en una sola carpeta, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (tableros, listas, elementos, etiquetas y la Papelera), blobs (imágenes, archivos y texto largo), settings.json, backups (las que decidas conservar) y logs."

@@ -289,7 +289,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         controller.set_recent_gate(recent_gate);
         controller.set_typing(typing);
         controller.prune_recent();
-        if let Some(toast) = settings_toast {
+        for toast in settings_toast {
             controller.show_toast(toast);
         }
         if clipboard_watch_failed {
@@ -886,13 +886,13 @@ fn report_hotkey_problems(problems: &[host::HotkeyProblem]) {
 /// What [`open_library`] returns: the library, the settings, and the data
 /// folder (`None` only for the demo, which has none), and what the settings saver starts from
 /// (`None` when changes must not be written: the demo, `--dark`, and a settings file that could
-/// not be read or set aside).
+/// not be read or set aside), and the notices to show at start (settings, library moved aside).
 type Library = (
     Store,
     Settings,
     Option<PathBuf>,
     Option<Settings>,
-    Option<Toast>,
+    Vec<Toast>,
 );
 
 /// The library and the settings.
@@ -907,7 +907,7 @@ fn open_library(args: &Args) -> Result<Library, String> {
         };
         let store = demo::store(now).map_err(|e| format!("demo library: {e}"))?;
         snipdeck_app::trace!("demo library");
-        return Ok((store, settings, None, None, None));
+        return Ok((store, settings, None, None, Vec::new()));
     }
     let folder = match &args.data_dir {
         Some(dir) => dir.clone(),
@@ -947,6 +947,12 @@ fn open_library(args: &Args) -> Result<Library, String> {
     let (mut store, set_aside_toast) =
         snipdeck_app::paths::open_library_folder(&folder, Timestamp::now())
             .map_err(|e| format!("{}: {e}", folder.display()))?;
+    if set_aside_toast.is_some() && loaded_outcome.toast().is_some() {
+        // One toast shows at a time and the library notice (shown last) stays.
+        eprintln!(
+            "snipdeck: the settings file was also damaged or unreadable; see settings.json.bad"
+        );
+    }
     // A new library has no board, and the Panel cannot make one: without this every control of a
     // first run has nothing to act on (an empty board menu, no tabs, no rows).
     match snipdeck_app::starter::ensure_first_run(&mut store, now) {
@@ -958,7 +964,12 @@ fn open_library(args: &Args) -> Result<Library, String> {
         settings,
         Some(folder),
         saver_baseline,
-        set_aside_toast.or_else(|| loaded_outcome.toast()),
+        // The settings notice first: the toast shown last stays, and the library one matters more.
+        loaded_outcome
+            .toast()
+            .into_iter()
+            .chain(set_aside_toast)
+            .collect(),
     ))
 }
 

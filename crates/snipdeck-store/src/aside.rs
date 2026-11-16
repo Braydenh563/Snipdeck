@@ -222,6 +222,19 @@ pub fn finish_rebuild(folder: &Path, lock: &FolderLock) -> Result<()> {
     Ok(())
 }
 
+/// Whether the next start will leave the library alone: no marker, or one that is sealed (the
+/// start only finishes it). A readable marker that is not sealed, or one that cannot be read,
+/// would make the next start put the set-aside library back over the fresh one.
+pub(crate) fn marker_is_settled(folder: &Path) -> bool {
+    match fs::read(folder.join(MARKER)) {
+        Err(e) => e.kind() == io::ErrorKind::NotFound,
+        Ok(bytes) => String::from_utf8(bytes)
+            .ok()
+            .and_then(|t| parse(&t))
+            .is_some_and(|m| m.phase == Phase::Fresh && m.sealed.is_some()),
+    }
+}
+
 /// Best effort: adds the fresh library's fingerprint to a `fresh` marker.
 fn seal(folder: &Path) {
     let Ok(text) = fs::read_to_string(folder.join(MARKER)) else {

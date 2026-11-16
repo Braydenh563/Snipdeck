@@ -13,7 +13,7 @@ use crate::blobs::Blobs;
 use crate::codec::{blob_refs, is_valid_name};
 use crate::crypto::DataKey;
 use crate::migrations::{self, MIGRATIONS};
-use crate::{Error, Result, Trouble};
+use crate::{Error, Result};
 
 /// The database file inside the data folder.
 const DB_FILE: &str = "snipdeck.db";
@@ -159,6 +159,25 @@ fn refuse_empty_database(folder: &Path, db_path: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Whether an error from opening proves the database file is not a usable library, so that
+/// setting it aside loses nothing and keeping it cannot help: SQLite says it is not a database
+/// or is corrupt, the schema holds what Snipdeck could not have written, the file is empty
+/// beside other library files, or it is another program's database. Everything else (I/O
+/// errors, busy or locked, a full disk, an out-of-memory or interrupted open, a failed
+/// migration, a newer database) can happen to a healthy library and moves nothing.
+#[must_use]
+pub fn is_damaged(error: &Error) -> bool {
+    use rusqlite::ErrorCode;
+    match error {
+        Error::EmptyDatabase { .. } | Error::ForeignDatabase { .. } | Error::Corrupt(_) => true,
+        Error::Sqlite(e) => matches!(
+            e.sqlite_error_code(),
+            Some(ErrorCode::NotADatabase | ErrorCode::DatabaseCorrupt)
+        ),
+        _ => false,
+    }
+}
+
 impl Store {
     /// Opens (creating it if needed) the data folder at `folder`: takes its lock, opens the
     /// database in WAL mode with foreign keys on, and migrates it to the current schema.
@@ -175,18 +194,28 @@ impl Store {
         Self::open_locked(folder, lock).map_err(|failed| failed.error)
     }
 
-    /// Like [`Store::open`], but a library that cannot be opened (a damaged or empty database, a
-    /// failed migration) is moved aside with [`set_aside`](crate::set_aside) under `stem`
-    /// (`snipdeck.damaged-<stamp>`) and a fresh one is opened, so the app can start and
-    /// "Rebuild from backup" can restore the newest backup. Returns the set-aside folder's name
-    /// when that happened.
+    /// Like [`Store::open`], but a library that is damaged (see [`is_damaged`]) is moved aside
+    /// with [`set_aside`](crate::set_aside) under `stem` (`snipdeck.damaged-<stamp>`) and a fresh
+    /// one is opened, so the app can start and "Rebuild from backup" can restore the newest
+    /// backup. Returns the set-aside folder's name when that happened.
     ///
-    /// Never touches a folder another Snipdeck holds, a database from a newer Snipdeck, an
-    /// interrupted rebuild, or a failure that is the disk's (full, read-only, in use): those
-    /// return their error with nothing moved. If the fresh open fails too, the moves are undone.
+    /// Nothing moves unless the error proves the file is not a usable Snipdeck database: not a
+    /// database, corrupt, empty beside other library files, or another program's. A failed
+    /// migration of an intact database, a transient I/O error (antivirus, a sync client, a
+    /// network folder), a full or read-only disk, a folder another Snipdeck holds, a newer
+    /// database and an interrupted rebuild all return their error with nothing moved. If the
+    /// fresh open fails too, the move is undone.
     pub fn open_or_set_aside(
         folder: impl AsRef<Path>,
         stem: &str,
+    ) -> Result<(Self, Option<String>)> {
+        Self::open_or_set_aside_with(folder, stem, |f, lock| Self::open_locked(f, lock))
+    }
+
+    fn open_or_set_aside_with(
+        folder: impl AsRef<Path>,
+        stem: &str,
+        fresh: impl FnOnce(&Path, FolderLock) -> core::result::Result<Self, Box<OpenLockedError>>,
     ) -> Result<(Self, Option<String>)> {
         let folder = folder.as_ref();
         fs::create_dir_all(folder)?;
@@ -197,20 +226,25 @@ impl Store {
             Err(failed) => failed,
         };
         let OpenLockedError { error, lock } = *failed;
-        let damaged = match &error {
-            Error::EmptyDatabase { .. } | Error::ForeignDatabase { .. } | Error::Corrupt(_) => true,
-            Error::Sqlite(_) | Error::Migration { .. } => error.trouble() == Trouble::Other,
-            _ => false,
-        };
-        if !damaged || crate::aside::set_aside(folder, &lock, stem).is_err() {
+        if !is_damaged(&error) || crate::aside::set_aside(folder, &lock, stem).is_err() {
             return Err(error);
         }
-        match Self::open_locked(folder, lock) {
+        match fresh(folder, lock) {
             Ok(store) => {
-                // The fresh library is the result: the marker (which would undo the move at
-                // the next start) goes. Failing to remove it is not worth refusing to start.
-                if let Some(lock) = store.lock.as_ref() {
-                    let _ = crate::aside::finish_rebuild(folder, lock);
+                // The fresh library is the result, so the marker (which would undo the move at
+                // the next start) must go, or be sealed so that the next start only finishes it.
+                // If neither works, the next start would delete this library and put the
+                // damaged one back: refuse to run on it (it holds nothing yet).
+                let lock = store.lock.as_ref().ok_or_else(|| {
+                    Error::Invalid("the fresh library holds no folder lock".to_owned())
+                })?;
+                if crate::aside::finish_rebuild(folder, lock).is_err()
+                    && !crate::aside::marker_is_settled(folder)
+                {
+                    return Err(Error::RebuildInterrupted {
+                        folder: folder.to_owned(),
+                        aside: folder.join(stem),
+                    });
                 }
                 Ok((store, Some(stem.to_owned())))
             }
@@ -888,5 +922,128 @@ mod tests {
             shown.starts_with("Store {") && shown.contains("unlocked: false"),
             "{shown}"
         );
+    }
+    fn sqlite(code: i32) -> Error {
+        Error::Sqlite(rusqlite::Error::SqliteFailure(
+            rusqlite::ffi::Error::new(code),
+            None,
+        ))
+    }
+
+    #[test]
+    fn only_a_file_that_is_not_a_library_counts_as_damaged() {
+        use rusqlite::ffi;
+        for code in [ffi::SQLITE_NOTADB, ffi::SQLITE_CORRUPT] {
+            assert!(is_damaged(&sqlite(code)), "{code}");
+        }
+        assert!(is_damaged(&Error::Corrupt("x".into())));
+        assert!(is_damaged(&Error::EmptyDatabase { folder: ".".into() }));
+        assert!(is_damaged(&Error::ForeignDatabase { path: ".".into() }));
+        // What a healthy library meets now and then (antivirus, a sync client, a network folder).
+        for code in [
+            ffi::SQLITE_IOERR,
+            ffi::SQLITE_IOERR_SHORT_READ,
+            ffi::SQLITE_NOMEM,
+            ffi::SQLITE_INTERRUPT,
+            ffi::SQLITE_PROTOCOL,
+            ffi::SQLITE_BUSY,
+            ffi::SQLITE_LOCKED,
+            ffi::SQLITE_CANTOPEN,
+            ffi::SQLITE_FULL,
+            ffi::SQLITE_READONLY,
+            ffi::SQLITE_PERM,
+        ] {
+            assert!(!is_damaged(&sqlite(code)), "{code}");
+        }
+        assert!(!is_damaged(&Error::Io(std::io::Error::other("x"))));
+        assert!(!is_damaged(&Error::Migration {
+            version: 9,
+            name: "n",
+            reason: "r".into(),
+            source: None,
+        }));
+        assert!(!is_damaged(&Error::SchemaTooNew {
+            found: 99,
+            supported: 9
+        }));
+        assert!(!is_damaged(&Error::Locked { folder: ".".into() }));
+    }
+
+    #[test]
+    fn a_failed_migration_of_an_intact_database_is_not_set_aside() {
+        let dir = tempfile::tempdir().unwrap();
+        drop(Store::open(dir.path()).unwrap());
+        // Looks like version 8 but already holds version 9's changes: the migration fails.
+        let raw = Connection::open(dir.path().join(DB_FILE)).unwrap();
+        raw.pragma_update(None, "user_version", 8).unwrap();
+        drop(raw);
+        let before = std::fs::read(dir.path().join(DB_FILE)).unwrap();
+        let err = Store::open_or_set_aside(dir.path(), "snipdeck.damaged-m")
+            .err()
+            .unwrap();
+        assert!(
+            matches!(err, Error::Migration { .. } | Error::Sqlite(_)),
+            "{err:?}"
+        );
+        assert!(!dir.path().join("snipdeck.damaged-m").exists());
+        assert!(!dir.path().join("snipdeck.rebuild").exists());
+        assert!(dir.path().join(DB_FILE).is_file());
+        assert_eq!(std::fs::read(dir.path().join(DB_FILE)).unwrap(), before);
+    }
+
+    fn damaged_folder() -> tempfile::TempDir {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join(DB_FILE), vec![0x42u8; 4096]).unwrap();
+        dir
+    }
+
+    #[test]
+    fn a_failed_fresh_open_puts_the_damaged_library_back() {
+        let dir = damaged_folder();
+        let err = Store::open_or_set_aside_with(dir.path(), "snipdeck.damaged-u", |_, lock| {
+            Err(Box::new(OpenLockedError {
+                error: Error::Io(std::io::Error::other("disk went away")),
+                lock,
+            }))
+        })
+        .err()
+        .unwrap();
+        assert!(matches!(err, Error::Io(_)), "{err:?}");
+        assert_eq!(
+            std::fs::read(dir.path().join(DB_FILE)).unwrap(),
+            vec![0x42u8; 4096]
+        );
+        assert!(!dir.path().join("snipdeck.damaged-u").exists());
+        assert!(!dir.path().join("snipdeck.rebuild").exists());
+    }
+
+    #[test]
+    fn a_marker_that_cannot_be_removed_or_sealed_refuses_the_start_instead_of_looping() {
+        let dir = damaged_folder();
+        let err = Store::open_or_set_aside_with(dir.path(), "snipdeck.damaged-v", |f, lock| {
+            let store = Store::open_locked(f, lock)?;
+            // The marker becomes something that can be neither read, sealed nor removed.
+            let marker = f.join("snipdeck.rebuild");
+            std::fs::remove_file(&marker).unwrap();
+            std::fs::create_dir(&marker).unwrap();
+            Ok(store)
+        })
+        .err()
+        .unwrap();
+        assert!(matches!(err, Error::RebuildInterrupted { .. }), "{err:?}");
+    }
+
+    #[test]
+    fn a_marker_is_settled_when_gone_or_sealed_and_not_when_it_would_undo_the_move() {
+        let dir = damaged_folder();
+        assert!(crate::aside::marker_is_settled(dir.path()));
+        let fresh = "snipdeck-rebuild 1\naside=snipdeck.damaged-w\nphase=fresh\nend\n";
+        std::fs::write(dir.path().join("snipdeck.rebuild"), fresh).unwrap();
+        assert!(!crate::aside::marker_is_settled(dir.path()));
+        let sealed = "snipdeck-rebuild 1\naside=snipdeck.damaged-w\nphase=fresh\nsealed=1/2\nend\n";
+        std::fs::write(dir.path().join("snipdeck.rebuild"), sealed).unwrap();
+        assert!(crate::aside::marker_is_settled(dir.path()));
+        std::fs::write(dir.path().join("snipdeck.rebuild"), "junk").unwrap();
+        assert!(!crate::aside::marker_is_settled(dir.path()));
     }
 }

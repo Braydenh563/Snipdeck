@@ -174,9 +174,14 @@ pub enum ToastMessage {
     /// "Couldn't read your settings file, so Snipdeck started with the defaults. Changes to
     /// settings won't be saved until you fix or remove the file."
     SettingsUnreadable,
-    /// "Your library couldn't be opened. A copy was kept. Settings > Rebuild from backup
-    /// restores your newest backup."
-    LibrarySetAside,
+    /// "Your library couldn't be opened, so it was moved aside to {folder}." With a backup in
+    /// the folder it adds that Settings > Rebuild from backup restores the newest one.
+    LibrarySetAside {
+        /// The folder the library was moved into (a name inside the data folder).
+        folder: String,
+        /// Whether the data folder holds a backup to rebuild from.
+        has_backup: bool,
+    },
     /// "Snipdeck can't watch the clipboard, so Recent stays empty. Restart Snipdeck to try again."
     ClipboardWatchFailed,
     /// "Moved 3 items to the Trash" (with Undo).
