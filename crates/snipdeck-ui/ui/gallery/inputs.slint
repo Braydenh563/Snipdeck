@@ -223,6 +223,7 @@ export component FormGallery inherits Window {
     in-out property <int> tf-chosen: 0;
     out property <HotkeyState> hk-state: hk.state;
     out property <bool> hk-recording: hk.recording;
+    out property <string> hk-reason: hk.reject-reason;
     out property <bool> hk-has-focus: hk.has-focus;
     public function focus-hk() { hk.focus(); }
     // As the fill form does: the list's own Tab stop takes focus through `focus-request`.
