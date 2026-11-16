@@ -2478,9 +2478,9 @@ export component PanelWindow inherits Window {
                             width: parent.width - 2 * Space.s2;
                             height: parent.height;
                             kind: EmptyStateKind.inbox;
-                            heading: root.recent-locked ? @tr("Recent copies are locked")
+                            heading: root.recent-locked ? @tr("Recent is locked")
                                 : root.recent-paused ? @tr("History is paused") : @tr("Nothing copied yet");
-                            body: root.recent-locked ? @tr("Unlock your library to see recent copies. Nothing is collected while it is locked.")
+                            body: root.recent-locked ? @tr("Unlock your library to see Recent. Nothing is collected while it is locked.")
                                 : root.recent-paused ? @tr("Resume it from the tray icon, then copy some text.")
                                 : @tr("Text you copy shows up here for {} days. Save the useful ones to a list.", root.recent-days);
                             action-text: root.recent-locked ? @tr("Unlock") : "";
@@ -3128,7 +3128,7 @@ export component PanelWindow inherits Window {
         // The first-run question about the Recent list: asked once, nothing is kept before Yes.
         Dialog {
             open: root.recent-question-open;
-            title: @tr("Keep a Recent list of what you copy?");
+            title: @tr("Keep what you copy in Recent?");
             body: @tr("Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept.", root.recent-max-entries, root.recent-days);
             dismissed => { root.recent-question-answered(false); }
             Button {

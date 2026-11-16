@@ -28,6 +28,7 @@ import { Toggle, Radio } from "components/choice.slint";
 import { Tag } from "components/tag.slint";
 import { Swatch } from "components/swatch.slint";
 import { Dialog, DialogVariant } from "components/dialog.slint";
+import { DialogTexts } from "dialog_texts.slint";
 import { Chooser, ChoiceEntry } from "components/chooser.slint";
 import { OverlayScrollbar } from "components/scrollbar.slint";
 import { StateColor } from "components/state-color.slint";
@@ -288,30 +289,40 @@ component ColourPicker inherits Rectangle {
         }
     }
 
-    height: Space.hit * SystemLook.text-scale;
+    // One cell per target ("no colour" and the hues), wrapped by the width the form gives: a larger text size makes
+    // the targets bigger, so fewer fit in a row and the grid grows downwards instead of past the window's edge.
+    property <length> cell: Space.hit * SystemLook.text-scale;
+    property <length> gap: Space.s1;
+    property <int> count: root.hues.length + 1;
+    property <int> columns: max(1, floor((root.width + root.gap) / (root.cell + root.gap)));
+    property <int> rows: ceil(root.count / root.columns);
+
+    height: root.rows * root.cell + (root.rows - 1) * root.gap;
     forward-focus: scope;
     accessible-role: radio-group;
     accessible-label: root.label;
 
-    HorizontalLayout {
-        // The targets grow with the text size and the window cannot get wider than its minimum, so the gap shrinks
-        // by the same factor: nine targets at 2.25x still end inside the window (final-audit-2 re-audit).
-        spacing: Space.s1 / SystemLook.text-scale;
-        alignment: start;
-        NoColour {
-            label: root.none-label;
-            selected: root.accent == -1;
-            show-focus: scope.has-focus && root.accent == -1;
-            clicked => { root.move(-1); }
-        }
-        for h[i] in root.hues: Swatch {
-            hue: h;
-            label: root.names[i];
-            selected: i == root.accent;
-            keyboard-focusable: false;
-            show-focus: scope.has-focus && i == root.accent;
-            clicked => { root.move(i); }
-        }
+    NoColour {
+        x: 0px;
+        y: 0px;
+        width: root.cell;
+        height: root.cell;
+        label: root.none-label;
+        selected: root.accent == -1;
+        show-focus: scope.has-focus && root.accent == -1;
+        clicked => { root.move(-1); }
+    }
+    for h[i] in root.hues: Swatch {
+        x: mod(i + 1, root.columns) * (root.cell + root.gap);
+        y: floor((i + 1) / root.columns) * (root.cell + root.gap);
+        width: root.cell;
+        height: root.cell;
+        hue: h;
+        label: root.names[i];
+        selected: i == root.accent;
+        keyboard-focusable: false;
+        show-focus: scope.has-focus && i == root.accent;
+        clicked => { root.move(i); }
     }
 
     scope := FocusScope {
@@ -753,10 +764,12 @@ export component ItemEditor inherits Window {
     // Grows with the text size: at 225% the footer buttons need about 600 px.
     out property <length> min-window-width: max(420px, 270px * SystemLook.text-scale);
     min-width: root.min-window-width;
-    min-height: 380px;
+    // Grows with the text size too: the tab strip, a few rows and the footer need more room at 225%.
+    out property <length> min-window-height: max(380px, 240px * SystemLook.text-scale);
+    min-height: root.min-window-height;
     preferred-width: max(560px, root.min-window-width);
     // Opens at the height of its form (More options closed), up to 700 px; the form scrolls past that.
-    preferred-height: min(700px, max(380px, form.preferred-height + footer.height + header.height));
+    preferred-height: min(700px, max(root.min-window-height, form.preferred-height + footer.height + header.height));
 
     // The height the window wants for its form as it is now (More options open or closed), up to 700 px.
     // The host sets the window to it on open and on each toggle, cut to the screen's work area.
@@ -927,7 +940,7 @@ export component ItemEditor inherits Window {
     }
     // A refusal that sits under "More options" opens it, so it is never hidden.
     out property <bool> more-shown: root.more-open || root.title-error != "" || root.privacy-error != "" || root.trigger-error != "";
-    property <string> sensitive-base: @tr("Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard a little after you copy it (the time is in Settings).");
+    property <string> sensitive-base: @tr("Hidden in lists until you hold Space, kept out of Recent, and cleared from the clipboard a little after you copy it (the time is in Settings).");
     property <string> sensitive-help: root.text-kind
         ? root.sensitive-base
         : @tr("Only text, code, link and template items can be sensitive.");
@@ -1624,8 +1637,12 @@ component IconPicker inherits Rectangle {
     callback chosen(icon: int);
     out property <bool> has-focus: scope.has-focus;
 
-    property <int> columns: 9;
+    property <length> cell: Space.hit * SystemLook.text-scale;
+    property <length> gap: Space.s1;
     property <int> total: ListIcons.all.length;
+    // Wrapped by the width the form gives (see ColourPicker): "no icon" is cell 0, the icons are cells 1 to `total`.
+    property <int> columns: max(1, floor((root.width + root.gap) / (root.cell + root.gap)));
+    property <int> rows: ceil((root.total + 1) / root.columns);
 
     function move(to: int) {
         if (to >= -1 && to < root.total && to != root.icon) {
@@ -1633,37 +1650,31 @@ component IconPicker inherits Rectangle {
         }
     }
 
-    height: 3 * Space.hit * SystemLook.text-scale + 2 * Space.s1;
+    height: root.rows * root.cell + (root.rows - 1) * root.gap;
     forward-focus: scope;
     accessible-role: radio-group;
     accessible-label: root.label;
 
-    VerticalLayout {
-        spacing: Space.s1;
-        alignment: start;
-        for row in 3: HorizontalLayout {
-            spacing: Space.s1;
-            alignment: start;
-            for col in root.columns: Rectangle {
-                // 0 is "no icon"; 1 to 24 are the icons.
-                property <int> cell: row * root.columns + col;
-                width: Space.hit * SystemLook.text-scale;
-                height: Space.hit * SystemLook.text-scale;
-                if cell == 0: NoColour {
-                    label: root.none-label;
-                    selected: root.icon == -1;
-                    show-focus: scope.has-focus && root.icon == -1;
-                    clicked => { root.move(-1); }
-                }
-                if cell > 0 && cell <= root.total: IconCell {
-                    source: ListIcons.all[cell - 1];
-                    label: root.names[cell - 1];
-                    selected: cell - 1 == root.icon;
-                    show-focus: scope.has-focus && cell - 1 == root.icon;
-                    clicked => { root.move(cell - 1); }
-                }
-            }
-        }
+    NoColour {
+        x: 0px;
+        y: 0px;
+        width: root.cell;
+        height: root.cell;
+        label: root.none-label;
+        selected: root.icon == -1;
+        show-focus: scope.has-focus && root.icon == -1;
+        clicked => { root.move(-1); }
+    }
+    for i in root.total: IconCell {
+        x: mod(i + 1, root.columns) * (root.cell + root.gap);
+        y: floor((i + 1) / root.columns) * (root.cell + root.gap);
+        width: root.cell;
+        height: root.cell;
+        source: ListIcons.all[i];
+        label: root.names[i];
+        selected: i == root.icon;
+        show-focus: scope.has-focus && i == root.icon;
+        clicked => { root.move(i); }
     }
 
     scope := FocusScope {
@@ -1776,6 +1787,8 @@ component EntityEditorBody inherits Rectangle {
 
     // The height that shows the whole form and the footer: a host that opens the window sizes it to this.
     out property <length> wanted-height: form.preferred-height + footer.height;
+    // Enough for the footer and two labelled rows of the form; the rest scrolls above the footer.
+    out property <length> min-content-height: footer.height + 2 * Space.s4 + 2 * (Type.line-sm + Space.s1 + Space.hit * SystemLook.text-scale);
 
     // A new list or board starts with a sample name: select it, so typing replaces it. An existing name keeps the caret at its end.
     public function focus-name() {
@@ -1941,9 +1954,13 @@ component EntityEditorBody inherits Rectangle {
 export component ListEditor inherits Window {
     title: root.is-new ? @tr("New list") : @tr("Edit list");
     background: Theme.bg-app;
-    min-width: 380px;
-    min-height: min(300px, body.wanted-height);
-    preferred-width: 460px;
+    // The smallest window shows the name, a few targets per row and the footer; the colour and icon grids wrap, so
+    // the width needs five targets at the current text size, and the height the footer and a few rows of the form.
+    out property <length> min-window-width: max(380px, 2 * Space.s4 + 6 * (Space.hit * SystemLook.text-scale + Space.s1));
+    out property <length> min-window-height: min(body.wanted-height, max(300px, body.min-content-height));
+    min-width: root.min-window-width;
+    min-height: root.min-window-height;
+    preferred-width: max(460px, root.min-window-width);
     preferred-height: body.wanted-height;
 
     // The height that fits the form as it is now (a new list is shorter than one with a Delete row).
@@ -1999,9 +2016,13 @@ export component ListEditor inherits Window {
 export component BoardEditor inherits Window {
     title: root.is-new ? @tr("New board") : @tr("Edit board");
     background: Theme.bg-app;
-    min-width: 380px;
-    min-height: min(300px, body.wanted-height);
-    preferred-width: 460px;
+    // The smallest window shows the name, a few targets per row and the footer; the colour and icon grids wrap, so
+    // the width needs five targets at the current text size, and the height the footer and a few rows of the form.
+    out property <length> min-window-width: max(380px, 2 * Space.s4 + 6 * (Space.hit * SystemLook.text-scale + Space.s1));
+    out property <length> min-window-height: min(body.wanted-height, max(300px, body.min-content-height));
+    min-width: root.min-window-width;
+    min-height: root.min-window-height;
+    preferred-width: max(460px, root.min-window-width);
     preferred-height: body.wanted-height;
 
     // The height that fits the form as it is now (a new list is shorter than one with a Delete row).
@@ -2054,11 +2075,15 @@ export component BoardEditor inherits Window {
 export component TagManager inherits Window {
     title: @tr("Tags");
     background: Theme.bg-app;
-    min-width: 360px;
-    min-height: 280px;
-    preferred-width: 440px;
+    // The smallest window shows the intro, two rows and the Close row; both grow with the text size. Each row holds
+    // the name, its count and the two buttons.
+    out property <length> min-window-width: max(360px, 2 * Space.s4 + Space.s3 + 3 * Space.s2 + 2 * Space.hit * SystemLook.text-scale + 14 * Type.base);
+    out property <length> min-window-height: 2 * Space.s4 + 2 * Space.s3 + intro.preferred-height + 2 * root.row-h + 2px + close-row.preferred-height;
+    min-width: root.min-window-width;
+    min-height: root.min-window-height;
+    preferred-width: max(440px, root.min-window-width);
     // Fits its content (the intro, one row per tag, the Close row), at most 520px; a long list scrolls.
-    out property <length> wanted-height: min(520px, max(280px, 2 * Space.s4 + 2 * Space.s3 + intro.preferred-height + max(root.tags.length, 2) * root.row-h + 2px + close-row.preferred-height));
+    out property <length> wanted-height: min(max(520px, root.min-window-height), max(root.min-window-height, 2 * Space.s4 + 2 * Space.s3 + intro.preferred-height + max(root.tags.length, 2) * root.row-h + 2px + close-row.preferred-height));
     preferred-height: root.wanted-height;
 
     in property <bool> dark: false;
@@ -2080,7 +2105,7 @@ export component TagManager inherits Window {
 
     public function finish-rename() { root.editing = -1; }
 
-    property <length> row-h: max(Space.hit + Space.s2, Type.line-base + Space.s3);
+    property <length> row-h: max(Space.hit * SystemLook.text-scale + Space.s2, Type.line-base + Space.s3);
 
     function begin-rename(i: int) {
         root.rename-text = root.tags[i].label;
@@ -2140,6 +2165,8 @@ export component TagManager inherits Window {
 
             Rectangle {
                 vertical-stretch: 1;
+                // Never less than two rows: the Close row below is outside this area, so it cannot be overlapped.
+                min-height: 2 * root.row-h;
                 background: Theme.bg-surface;
                 border-radius: Radius.md;
                 border-width: 1px;
@@ -2260,8 +2287,8 @@ export component TagManager inherits Window {
     Dialog {
         open: root.delete-index >= 0;
         variant: DialogVariant.destructive;
-        title: @tr("Delete this tag?");
-        body: @tr("It is removed from {n} item. The item stays." | "It is removed from {n} items. The items stay." % (root.delete-index >= 0 && root.delete-index < root.tags.length ? root.tags[root.delete-index].count : 0));
+        title: DialogTexts.tag-delete-title(root.delete-index >= 0 && root.delete-index < root.tags.length ? root.tags[root.delete-index].label : "");
+        body: DialogTexts.tag-delete-body(root.delete-index >= 0 && root.delete-index < root.tags.length ? root.tags[root.delete-index].count : 0);
         dismissed => { root.delete-index = -1; }
         closed => { scope.focus(); }
         Button {
@@ -2269,7 +2296,7 @@ export component TagManager inherits Window {
             clicked => { root.delete-index = -1; }
         }
         Button {
-            text: @tr("Delete tag");
+            text: DialogTexts.tag-delete-ok();
             variant: ButtonVariant.danger;
             clicked => {
                 let i = root.delete-index;

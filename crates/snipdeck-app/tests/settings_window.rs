@@ -1061,7 +1061,7 @@ fn start_with_windows_that_cannot_be_changed_says_so_and_keeps_the_old_value() {
         assert!(!r.ui.get_autostart(), "the switch went back");
         assert_eq!(
             r.ui.get_toast_text(),
-            "Couldn't change the Windows start-up entry."
+            "Couldn't change the Windows start-up entry"
         );
         assert_eq!(r.ui.get_toast_kind(), ToastKind::Danger);
         r.host.autostart_fails.set(false);
@@ -1290,7 +1290,7 @@ fn restoring_a_backup_round_trips_the_demo_library() {
         b.ui.invoke_import_confirmed();
         assert_eq!(
             b.ui.get_toast_text(),
-            "Nothing to restore: your library already has everything in that backup."
+            "Nothing to restore: your library already has everything in that backup"
         );
         assert_eq!(titles(b.ctl.borrow().store(), false), plain);
     });
@@ -1409,7 +1409,7 @@ fn erasing_the_library_needs_exactly_the_word_delete() {
         assert!(!r.ui.get_toast_text().contains("erased"));
 
         r.ui.invoke_erase_confirmed("DELETE".into(), true);
-        assert_eq!(r.ui.get_toast_text(), "Your library was erased.");
+        assert_eq!(r.ui.get_toast_text(), "Your library was erased");
         assert_eq!(r.ui.get_toast_kind(), ToastKind::Success);
         // A new empty library with the starter board is running.
         assert_eq!(board_names(r.ctl.borrow().store()), ["My snippets"]);
@@ -2805,7 +2805,7 @@ fn a_browser_that_will_not_open_says_so_in_a_toast() {
         let r = rig();
         r.host.url_fails.set(true);
         r.ui.invoke_support_requested();
-        assert_eq!(r.ui.get_toast_text(), "Couldn't open the link.");
+        assert_eq!(r.ui.get_toast_text(), "Couldn't open the link");
         assert_eq!(r.ui.get_toast_kind(), ToastKind::Danger);
     });
 }

@@ -42,7 +42,9 @@ export component HelpWindow inherits Window {
     // Grows with the text size: at 225% the tab bar and the shortcut rows need about 600 px (final audit 1).
     out property <length> min-window-width: max(420px, 270px * SystemLook.text-scale);
     min-width: root.min-window-width;
-    min-height: 360px;
+    // Grows with the text size too: the tab strip, a few rows and the footer need more room at 225%.
+    out property <length> min-window-height: max(380px, 240px * SystemLook.text-scale);
+    min-height: root.min-window-height;
     preferred-width: root.wanted-width;
     preferred-height: root.wanted-height;
 
@@ -528,7 +530,7 @@ export component HelpWindow inherits Window {
     Dialog {
         open: root.rebuild-open;
         title: @tr("Rebuild from the newest backup?");
-        body: @tr("The newest backup is from {} and holds {} items on {} boards. Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read.", root.rebuild-date, root.rebuild-items, root.rebuild-boards);
+        body: @tr("The newest backup is from {} and holds {} items on {} boards. Your current library is set aside, not deleted. Items added after this backup are recovered where they can be read.", root.rebuild-date, root.rebuild-items, root.rebuild-boards);
         dismissed => { root.rebuild-dismissed(); }
         // The dialog took the focus when it opened: give it back so Esc and F1 keep working after Cancel.
         closed => { scope.focus(); }

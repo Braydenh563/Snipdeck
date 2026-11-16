@@ -39,6 +39,7 @@ import { Dialog, DialogVariant } from "components/dialog.slint";
 import { Chooser, ChoiceEntry } from "components/chooser.slint";
 import { ColourBlock, ColourFormatCell } from "components/colour_block.slint";
 import { MenuTexts } from "menu_texts.slint";
+import { DialogTexts } from "dialog_texts.slint";
 import { GroupHeader } from "components/group-header.slint";
 import { LabelChip } from "components/label-chip.slint";
 import { QuickAdd } from "components/quick-add.slint";
@@ -800,17 +801,17 @@ export component MainWindow inherits Window {
         root.confirm-target = target;
         root.confirm-shown = true;
     }
-    property <string> confirm-title: root.confirm-kind == 2 ? @tr("Delete tag “{}”?", root.tags[root.confirm-target].label)
+    property <string> confirm-title: root.confirm-kind == 2 ? DialogTexts.tag-delete-title(root.tags[root.confirm-target].label)
         : root.confirm-kind == 3 ? @tr("Empty the Trash?")
-        : root.confirm-kind == 5 ? @tr("Clear recent history?")
+        : root.confirm-kind == 5 ? @tr("Clear Recent?")
         : @tr("Delete for good?");
-    property <string> confirm-body: root.confirm-kind == 2 ? @tr("The tag is removed from its items. The items themselves stay.")
+    property <string> confirm-body: root.confirm-kind == 2 ? DialogTexts.tag-delete-body(root.tags[root.confirm-target].count)
         : root.confirm-kind == 3 ? @tr("Everything in the Trash is deleted for good. This can't be undone.")
-        : root.confirm-kind == 5 ? @tr("All {} recent copies are removed. This can't be undone.", root.count-recent)
+        : root.confirm-kind == 5 ? @tr("All {} entries in Recent are removed. This can't be undone.", root.count-recent)
         : @tr("The selected items are deleted for good. This can't be undone.");
-    property <string> confirm-ok: root.confirm-kind == 2 ? @tr("Delete tag")
+    property <string> confirm-ok: root.confirm-kind == 2 ? DialogTexts.tag-delete-ok()
         : root.confirm-kind == 3 ? @tr("Empty Trash")
-        : root.confirm-kind == 5 ? @tr("Clear history") : @tr("Delete for good");
+        : root.confirm-kind == 5 ? @tr("Clear Recent") : @tr("Delete for good");
     function confirmed() {
         let kind = root.confirm-kind;
         let target = root.confirm-target;
@@ -2385,7 +2386,7 @@ export component MainWindow inherits Window {
                             Button {
                                 variant: ButtonVariant.ghost;
                                 icon: Icons.trash;
-                                text: @tr("Clear recent history");
+                                text: @tr("Clear Recent");
                                 clicked => { root.ask(5, 0); }
                             }
                         }
@@ -2473,14 +2474,14 @@ export component MainWindow inherits Window {
                         heading: root.searching ? @tr("No matches")
                             : root.section == MainSection.all ? @tr("No snippets yet")
                             : root.section == MainSection.pinned ? @tr("Nothing pinned")
-                            : root.section == MainSection.recent ? (root.recent-locked ? @tr("Recent copies are locked") : root.recent-on ? @tr("Nothing copied yet") : @tr("No recent items"))
+                            : root.section == MainSection.recent ? (root.recent-locked ? @tr("Recent is locked") : root.recent-on ? @tr("Nothing copied yet") : @tr("No recent items"))
                             : root.in-trash ? @tr("The Trash is empty")
                             : root.section == MainSection.list ? @tr("This list is empty")
                             : @tr("No items with this tag");
                         body: root.searching ? @tr("Nothing matches “{}”.", root.query)
                             : root.section == MainSection.all ? @tr("Save what you paste often.")
                             : root.section == MainSection.pinned ? @tr("Pin the snippets you use most to keep them one click away.")
-                            : root.section == MainSection.recent ? (root.recent-locked ? @tr("Unlock your library to see recent copies. Nothing is collected while it is locked.") : root.recent-on ? @tr("Text you copy appears here, newest first, until you clear it or it is older than {} days.", root.recent-days) : @tr("Turn on clipboard history in Settings to collect what you copy."))
+                            : root.section == MainSection.recent ? (root.recent-locked ? @tr("Unlock your library to see Recent. Nothing is collected while it is locked.") : root.recent-on ? @tr("Text you copy appears here, newest first, until you clear it or it is older than {} days.", root.recent-days) : @tr("Turn on “Keep what you copy in Recent” in Settings."))
                             : root.in-trash ? @tr("Deleted items stay here for {} days before they are removed.", root.trash-days)
                             : root.section == MainSection.list ? @tr("Add a snippet, or move items here from another list.")
                             : @tr("Tag a snippet to see it here.");

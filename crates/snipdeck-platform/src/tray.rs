@@ -72,7 +72,7 @@ impl TrayEntry {
             Self::Help => "Troubleshoot…",
             Self::TakeScreenshot => "Take screenshot",
             Self::PauseHotkeys => "Pause hotkeys",
-            Self::PauseHistory => "Pause history",
+            Self::PauseHistory => "Pause Recent",
             Self::Quit => "Quit",
         }
     }
@@ -189,7 +189,7 @@ pub enum TrayEvent {
     TakeScreenshot,
     /// "Pause hotkeys" was toggled; `true` = the hotkeys should now be off.
     HotkeysPaused(bool),
-    /// "Pause history" was toggled; `true` = collecting should now be paused.
+    /// "Pause Recent" was toggled; `true` = collecting should now be paused.
     HistoryPaused(bool),
     /// "Quit".
     Quit,
@@ -368,7 +368,7 @@ pub trait Tray {
     /// The backend is not running.
     fn set_hotkeys_paused(&mut self, paused: bool) -> Result<(), Error>;
 
-    /// Tells the tray whether clipboard history is on (`available`: "Pause history" is in the
+    /// Tells the tray whether clipboard history is on (`available`: "Pause Recent" is in the
     /// menu) and whether it is paused (the entry is checked).
     ///
     /// # Errors
@@ -394,7 +394,7 @@ pub struct TrayModel {
     labels: TrayLabels,
 }
 
-/// "Pause history" in the menu: not offered (clipboard history is off), offered, or offered and
+/// "Pause Recent" in the menu: not offered (clipboard history is off), offered, or offered and
 /// checked (collecting is paused).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum History {
@@ -473,13 +473,13 @@ impl TrayModel {
         self.hotkeys_paused = paused;
     }
 
-    /// Whether "Pause history" is checked.
+    /// Whether "Pause Recent" is checked.
     #[must_use]
     pub fn history_paused(&self) -> bool {
         self.history == History::Paused
     }
 
-    /// Whether the menu offers "Pause history" (clipboard history is on).
+    /// Whether the menu offers "Pause Recent" (clipboard history is on).
     #[must_use]
     pub fn history_available(&self) -> bool {
         self.history != History::Off
@@ -709,11 +709,11 @@ mod tests {
         assert!(
             menu_labels(&mut m)
                 .iter()
-                .all(|(l, _)| l != "Pause history")
+                .all(|(l, _)| l != "Pause Recent")
         );
         m.set_history(true, false);
         let labels = menu_labels(&mut m);
-        let at = labels.iter().position(|(l, _)| l == "Pause history");
+        let at = labels.iter().position(|(l, _)| l == "Pause Recent");
         // Right after "Pause hotkeys", before "Quit".
         assert_eq!(at, Some(8));
         assert_eq!(labels.last().map(|(l, _)| l.as_str()), Some("Quit"));
@@ -722,7 +722,7 @@ mod tests {
         assert!(
             menu_labels(&mut m)
                 .iter()
-                .all(|(l, _)| l != "Pause history")
+                .all(|(l, _)| l != "Pause Recent")
         );
     }
 
@@ -741,7 +741,7 @@ mod tests {
         m.set_history(true, true);
         assert!(m.history_paused());
         let labels = menu_labels(&mut m);
-        assert!(labels.contains(&("Pause history".to_owned(), true)));
+        assert!(labels.contains(&("Pause Recent".to_owned(), true)));
         // The hotkeys check mark is a separate one.
         assert!(labels.contains(&("Pause hotkeys".to_owned(), false)));
         assert_eq!(

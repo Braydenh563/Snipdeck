@@ -396,11 +396,11 @@ fn what_a_toast_carries_reaches_its_sentence() {
         };
         assert_eq!(
             said(rebuilt(2, false, 0)),
-            "Database rebuilt: 5 items restored, 2 recovered. Your old database is kept in the folder old."
+            "Library rebuilt: 5 items restored, 2 recovered. Your old library is kept in the folder old."
         );
         assert_eq!(
             said(rebuilt(0, true, 1)),
-            "Database rebuilt: 5 items restored. Newer items could not be read. Your old database is kept in the folder old. 1 sensitive item was not in the backup."
+            "Library rebuilt: 5 items restored. Newer items could not be read. Your old library is kept in the folder old. 1 sensitive item was not in the backup."
         );
         assert_eq!(
             said(ToastMessage::Undone {
@@ -434,7 +434,7 @@ fn what_a_toast_carries_reaches_its_sentence() {
         );
         assert_eq!(
             said(ToastMessage::BackupRestored { items: 0 }),
-            "Nothing to restore: your library already has everything in that backup."
+            "Nothing to restore: your library already has everything in that backup"
         );
         assert_eq!(said(ToastMessage::Imported { items: 1 }), "Imported 1 item");
         assert_eq!(said(ToastMessage::ThemeSet(Theme::System)), "Theme: System");
@@ -462,7 +462,7 @@ fn what_a_toast_carries_reaches_its_sentence() {
         assert_eq!(said(ToastMessage::FileMoved), "File moved or deleted");
         assert_eq!(
             said(ToastMessage::FilesTooLarge),
-            "Some files were left out: together they are over 64 MB."
+            "Some files were left out: together they are over 64 MB"
         );
         assert_eq!(
             said(ToastMessage::TriggerOverlaps {
@@ -496,7 +496,7 @@ fn what_a_toast_carries_reaches_its_sentence() {
         );
         assert_eq!(
             said(ToastMessage::Imported { items: 0 }),
-            "Nothing new to import."
+            "Nothing new to import"
         );
         let panel = said(ToastMessage::PanelHidden {
             chord: Some(s("Ctrl+Shift+Space")),

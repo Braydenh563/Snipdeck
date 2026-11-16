@@ -151,7 +151,7 @@ pub fn help(ui: &HelpWindow) {
     ui.set_checks(ModelRc::new(VecModel::from(vec![
         row("Data folder", "Writable, with room to spare.", 0, 0),
         row(
-            "Database",
+            "Library",
             "The integrity check found 1 problem(s); the first: row 3 missing",
             2,
             0,
