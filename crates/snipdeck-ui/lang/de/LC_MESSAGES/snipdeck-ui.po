@@ -16,6 +16,9 @@ msgstr "#ffffff"
 msgid "(new ID)"
 msgstr "(neue ID)"
 
+msgid "(none)"
+msgstr "(keine)"
+
 msgid "+{} more"
 msgstr "+{} weitere"
 
@@ -79,8 +82,14 @@ msgstr "Ein Smiley-Tab neben „Zuletzt“ mit Emoji, Kaomoji und Symbolen zum E
 msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
 msgstr "Eine Leiste mit deinen Textbausteinen neben der App, in der du arbeitest. Ein Klick fügt den Baustein dort ein."
 
+msgid "A sum of numbers and number names, with 2 decimals"
+msgstr "Eine Summe aus Zahlen und Zahlennamen, mit 2 Dezimalstellen"
+
 msgid "A tag with that name already exists."
 msgstr "Ein Schlagwort mit diesem Namen gibt es bereits."
+
+msgid "A template can ask for up to {} different answers (fields, choices, numbers, dates and sections), a date can have up to {} offsets, and snippets can be nested {} deep."
+msgstr "Eine Vorlage kann bis zu {} verschiedene Antworten abfragen (Felder, Auswahlen, Zahlen, Daten und Abschnitte), ein Datum kann bis zu {} Verschiebungen haben, und Textbausteine lassen sich bis zu {} Ebenen tief verschachteln."
 
 msgid "A tick box; the text inside is pasted only when ticked"
 msgstr "Ein Kontrollkästchen; der Text darin wird nur eingefügt, wenn es angehakt ist"
@@ -163,6 +172,9 @@ msgstr "Fügt zusätzlich zum Schutz durch Windows ein Passwort für Ihre sensib
 msgid "Adds a text snippet to {}"
 msgstr "Fügt {} einen Textbaustein hinzu"
 
+msgid "After a bar a placeholder can change its text: {}, for example {}."
+msgstr "Nach einem senkrechten Strich kann ein Platzhalter seinen Text ändern: {}, zum Beispiel {}."
+
 msgid "After a paste or copy"
 msgstr "Nach dem Einfügen oder Kopieren"
 
@@ -213,6 +225,9 @@ msgstr "Bernstein"
 msgid "An Image item holds a PNG picture. Choose a PNG file, or add this one as a File."
 msgstr "Ein Bild-Textbaustein enthält ein PNG-Bild. Wähle eine PNG-Datei oder füge diese als Datei hinzu."
 
+msgid "An answer again, with a transform"
+msgstr "Eine Antwort noch einmal, mit einer Umwandlung"
+
 msgid "An item is open in the editor, so the pasted text was not added. Close it, then paste again."
 msgstr "Im Editor ist ein Element geöffnet, daher wurde der eingefügte Text nicht hinzugefügt. Schließen Sie es und fügen Sie erneut ein."
 
@@ -248,6 +263,9 @@ msgstr "Neuen Namen übernehmen"
 
 msgid "Asks for a date, today if left empty"
 msgstr "Fragt nach einem Datum, heute wenn leer"
+
+msgid "Asks for a number"
+msgstr "Fragt nach einer Zahl"
 
 msgid "Asks for a value each time"
 msgstr "Fragt jedes Mal nach einem Wert"
@@ -1026,8 +1044,11 @@ msgstr "Stapel beenden"
 msgid "Enter"
 msgstr "Enter"
 
-msgid "Enter a real date as YYYY-MM-DD, or leave it empty for today."
-msgstr "Gib ein gültiges Datum als JJJJ-MM-TT ein oder lass das Feld für heute leer."
+msgid "Enter a number, such as 12 or 3.5."
+msgstr "Gib eine Zahl ein, etwa 12 oder 3,5."
+
+msgid "Enter a real date as {}, or leave it empty for today."
+msgstr "Gib ein echtes Datum als {} ein oder lass das Feld leer für heute."
 
 msgid "Enter creates “{}” in {}"
 msgstr "Enter erstellt „{}“ in {}"
@@ -1103,6 +1124,9 @@ msgstr "Nach Farbmarkierung filtern"
 
 msgid "Find anything by typing"
 msgstr "Alles durch Tippen finden"
+
+msgid "First word"
+msgstr "Erstes Wort"
 
 msgid "Flags"
 msgstr "Flaggen"
@@ -1331,6 +1355,12 @@ msgstr[1] "{} Textbausteine importiert"
 msgid "Import…"
 msgstr "Importieren…"
 
+msgid "In a choice, put {} before the option to start on; an empty option is the \"none\" choice."
+msgstr "Setze in einer Auswahl {} vor die Option, die zuerst gewählt sein soll; eine leere Option ist die Wahl „keine“."
+
+msgid "In the text, write {} for a literal brace. Inside a placeholder, write {} for a literal bar or brace."
+msgstr "Schreibe im Text {} für eine geschweifte Klammer. In einem Platzhalter schreibe {} für einen senkrechten Strich oder eine geschweifte Klammer."
+
 msgid "Include"
 msgstr "Einschließen"
 
@@ -1433,6 +1463,9 @@ msgstr "Sprache"
 
 msgid "Last backup: {}"
 msgstr "Letzte Sicherung: {}"
+
+msgid "Last word"
+msgstr "Letztes Wort"
 
 msgid "Layout"
 msgstr "Layout"
@@ -1708,6 +1741,9 @@ msgstr "Weiter"
 msgid "Next list"
 msgstr "Nächste Liste"
 
+msgid "Next month"
+msgstr "Nächster Monat"
+
 msgid "Next scope"
 msgstr "Nächster Bereich"
 
@@ -1794,6 +1830,9 @@ msgstr "Funktioniert nicht"
 
 msgid "Nothing copied yet"
 msgstr "Noch nichts kopiert"
+
+msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
+msgstr "Ohne dein Ja wird nichts gespeichert, und du kannst das jederzeit in den Einstellungen ändern. „Zuletzt“ speichert den Text, den du kopierst, nur auf diesem Computer, für die letzten {} Kopien oder {} Tage, je nachdem, was zuerst eintritt. Passwörter aus Passwortmanagern und vertrauliche Einträge werden nie gespeichert."
 
 msgid "Nothing matches “{}”"
 msgstr "Nichts passt zu „{}“"
@@ -2113,6 +2152,9 @@ msgstr "Farbe vom Bildschirm wählen"
 msgid "Pick a colour from the screen (Ctrl+I)"
 msgstr "Farbe vom Bildschirm wählen (Strg+I)"
 
+msgid "Pick a date"
+msgstr "Datum wählen"
+
 msgid "Pick how the panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button."
 msgstr "Wähle, wo das Panel sitzt. Du kannst das jederzeit in den Einstellungen ändern, ebenso die anderen Ränder, das Ausblenden beim Wechsel der App und die Taskleistenschaltfläche."
 
@@ -2179,6 +2221,12 @@ msgstr "Drücke jetzt das Tastenkürzel"
 msgid "Press your Panel shortcut in any app to bring up your snippets."
 msgstr "Drücke dein Panel-Tastenkürzel in einer beliebigen App, um deine Textbausteine aufzurufen."
 
+msgid "Presses Enter here"
+msgstr "Drückt hier die Eingabetaste"
+
+msgid "Presses Tab here, to move between the fields of a form"
+msgstr "Drückt hier die Tabulatortaste, um zwischen den Feldern eines Formulars zu wechseln"
+
 msgid "Preview"
 msgstr "Vorschau"
 
@@ -2187,6 +2235,9 @@ msgstr "Vorschau, wie dieser Textbaustein aussehen wird (Strg+P)"
 
 msgid "Previous list"
 msgstr "Vorherige Liste"
+
+msgid "Previous month"
+msgstr "Vorheriger Monat"
 
 msgid "Privacy"
 msgstr "Datenschutz"
@@ -2256,9 +2307,6 @@ msgstr "Aktionen für Zuletzt Kopiertes"
 
 msgid "Recent history cleared"
 msgstr "Verlauf „Zuletzt“ gelöscht"
-
-msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
-msgstr "Ohne dein Ja wird nichts gespeichert, und du kannst das jederzeit in den Einstellungen ändern. „Zuletzt“ speichert den Text, den du kopierst, nur auf diesem Computer, für die letzten {} Kopien oder {} Tage, je nachdem, was zuerst eintritt. Passwörter aus Passwortmanagern und vertrauliche Einträge werden nie gespeichert."
 
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "„Zuletzt“ behält den kopierten Text, nur auf diesem Computer, für die letzten {} Kopien oder {} Tage, je nachdem, was zuerst eintritt. Passwörter aus Passwortmanagern und vertrauliche Textbausteine werden nie gespeichert. Du kannst das jederzeit in den Einstellungen ändern."
@@ -2578,6 +2626,9 @@ msgstr "Vertrauliche Einträge lassen sich nicht eintippen, deshalb haben sie ke
 
 msgid "Sensitive items in a backup or export can only be restored by this Windows account on this PC. On another PC, or after Windows is reinstalled, they are skipped. Keep your own copy of anything sensitive you cannot lose."
 msgstr "Vertrauliche Elemente in einer Sicherung oder einem Export können nur von diesem Windows-Konto auf diesem PC wiederhergestellt werden. Auf einem anderen PC oder nach einer Neuinstallation von Windows werden sie übersprungen. Bewahren Sie von allem Vertraulichen, das Sie nicht verlieren dürfen, eine eigene Kopie auf."
+
+msgid "Sentence case"
+msgstr "Satzanfang groß"
 
 msgid "Set master password"
 msgstr "Hauptpasswort festlegen"
@@ -2984,6 +3035,9 @@ msgstr "Der Papierkorb ist leer"
 msgid "The Windows clipboard history has no text in it yet. Copy some text, then try again."
 msgstr "Der Zwischenablageverlauf enthält noch keinen Text. Kopiere etwas Text und versuche es dann erneut."
 
+msgid "The clipboard before the latest copy (2 to 25)"
+msgstr "Die Zwischenablage vor dem letzten Kopieren (2 bis 25)"
+
 msgid "The file dialog couldn't open. Type the path instead."
 msgstr "Der Dateidialog konnte nicht geöffnet werden. Gib stattdessen den Pfad ein."
 
@@ -3037,6 +3091,12 @@ msgstr "Das Schlagwort wird aus seinen Textbausteinen entfernt. Die Textbaustein
 
 msgid "The taskbar is on that edge. Pick another edge, or move the taskbar."
 msgstr "An diesem Rand liegt die Taskleiste. Wähle einen anderen Rand oder verschiebe die Taskleiste."
+
+msgid "The text of another snippet"
+msgstr "Der Text eines anderen Textbausteins"
+
+msgid "The text selected in the app you paste into"
+msgstr "Der Text, der in der Ziel-App markiert ist"
 
 msgid "The time now"
 msgstr "Die aktuelle Uhrzeit"
@@ -3137,8 +3197,8 @@ msgstr "Titel, Text und Beschriftungen zählen alle."
 msgid "To remove everything, use Erase library under Backups and your data, then delete the folder."
 msgstr "Zum Entfernen von allem nutze Bibliothek löschen unter Sicherungen und deine Daten und lösche dann den Ordner."
 
-msgid "Today's date"
-msgstr "Heutiges Datum"
+msgid "Today's date, in your regional format"
+msgstr "Das heutige Datum im Format deiner Region"
 
 msgid "Toggle keep Panel open"
 msgstr "Panel offen halten umschalten"
@@ -3214,6 +3274,9 @@ msgstr "UI"
 
 msgid "UPPERCASE"
 msgstr "GROSSBUCHSTABEN"
+
+msgid "URL-encoded"
+msgstr "URL-codiert"
 
 msgid "Undid {}"
 msgstr "Rückgängig: {}"
@@ -3446,9 +3509,6 @@ msgstr "Windows hat Snipdeck unter Einstellungen > Apps > Autostart ausgeschalte
 msgid "With clipboard history on, Recent keeps what you copy in other programs."
 msgstr "Mit eingeschaltetem Verlauf der Zwischenablage behält „Zuletzt verwendet“ alles, was du in anderen Programmen kopierst."
 
-msgid "YYYY-MM-DD, empty for today"
-msgstr "YYYY-MM-DD, leer für heute"
-
 msgid "Yes"
 msgstr "Ja"
 
@@ -3506,11 +3566,14 @@ msgstr "`w` für Wochen"
 msgid "`y` for years"
 msgstr "`y` für Jahre"
 
+msgid "a calculation uses {}, which is not a {} of this template"
+msgstr "eine Berechnung verwendet {}, das kein {} dieser Vorlage ist"
+
+msgid "a choice needs an option with text, and at most one empty option"
+msgstr "eine Auswahl braucht eine Option mit Text und höchstens eine leere Option"
+
 msgid "a choice needs options, e.g. {}"
 msgstr "eine Auswahl braucht Optionen, z. B. {}"
-
-msgid "a choice option is empty"
-msgstr "eine Auswahloption ist leer"
 
 msgid "a placeholder can have at most {} offsets"
 msgstr "ein Platzhalter kann höchstens {} Versätze haben"
@@ -3518,11 +3581,11 @@ msgstr "ein Platzhalter kann höchstens {} Versätze haben"
 msgid "a placeholder is not valid"
 msgstr "ein Platzhalter ist ungültig"
 
-msgid "a prompt takes a name and one more part: {}"
-msgstr "eine Abfrage hat einen Namen und einen weiteren Teil: {}"
+msgid "a prompt takes a name and one more part: {}; write {} for a literal bar"
+msgstr "ein Feld hat einen Namen und einen weiteren Teil: {}; schreibe {} für einen senkrechten Strich"
 
-msgid "a template can ask for at most {} different fields, choices, dates or sections"
-msgstr "eine Vorlage kann höchstens {} verschiedene Felder, Auswahlen, Daten oder Abschnitte abfragen"
+msgid "a template can ask for at most {} different fields, choices, numbers, dates or sections"
+msgstr "eine Vorlage kann höchstens {} verschiedene Felder, Auswahlen, Zahlen, Daten oder Abschnitte abfragen"
 
 msgid "a {} ends the format; write {} for a literal {}"
 msgstr "ein {} beendet das Format; schreibe {} für ein wörtliches {}"
@@ -3555,6 +3618,9 @@ msgstr "Aussehen Farbe dunkel hell Windows folgen"
 
 msgid "appearance colour night"
 msgstr "Aussehen Farbe Nacht"
+
+msgid "camelCase"
+msgstr "camelCase"
 
 msgid "change modify rename"
 msgstr "ändern bearbeiten umbenennen"
@@ -3622,8 +3688,8 @@ msgstr "Bearbeiten"
 msgid "emoji kaomoji icons smiley emoticon insert"
 msgstr "emoji kaomoji symbole icons smiley emoticon einfügen"
 
-msgid "empty placeholder {}"
-msgstr "leerer Platzhalter {}"
+msgid "empty placeholder {}; to write a literal brace, write {} (and {} to close it)"
+msgstr "leerer Platzhalter {}; für eine geschweifte Klammer schreibe {} (und {} zum Schließen)"
 
 msgid "every mark choose all"
 msgstr "alle markieren auswählen"
@@ -3672,6 +3738,9 @@ msgstr "Tastenkürzel Tasten Spickzettel Belegungen Akkorde"
 msgid "https://example.com"
 msgstr "https://example.com"
 
+msgid "in the snippet {}: {}"
+msgstr "im Textbaustein {}: {}"
+
 msgid "label: {}"
 msgstr "Markierung: {}"
 
@@ -3680,6 +3749,9 @@ msgstr "Kleinbuchstaben"
 
 msgid "make new folder together section collect"
 msgstr "erstellen neu Ordner zusammen Abschnitt sammeln"
+
+msgid "more than one snippet is titled {}; rename one"
+msgstr "mehr als ein Textbaustein heißt {}; benenne einen um"
 
 msgid "move"
 msgstr "Verschieben"
@@ -3702,11 +3774,17 @@ msgstr "nie einfügen ausgeschlossene Programme"
 msgid "no close name"
 msgstr "kein ähnlicher Name"
 
+msgid "no snippet is titled {}"
+msgstr "kein Textbaustein heißt {}"
+
 msgid "notepad.exe"
 msgstr "notepad.exe"
 
 msgid "one of d, w, mo, y, h, min"
 msgstr "eines von d, w, mo, y, h, min"
+
+msgid "only one choice option can start with {}"
+msgstr "nur eine Option der Auswahl darf mit {} beginnen"
 
 msgid "only one {} is allowed"
 msgstr "nur ein {} ist erlaubt"
@@ -3765,8 +3843,14 @@ msgstr "s"
 msgid "slug-like-this"
 msgstr "slug-wie-dieser"
 
+msgid "snake_case"
+msgstr "snake_case"
+
 msgid "snip snipping capture screen picture image"
 msgstr "ausschnitt snipping aufnahme bildschirm bild screenshot"
+
+msgid "snippets can be nested {} deep and used {} times in one template"
+msgstr "Textbausteine lassen sich bis zu {} Ebenen tief verschachteln und {}-mal in einer Vorlage verwenden"
 
 msgid "stack queue sequence following paste"
 msgstr "stapel warteschlange reihenfolge nächster einfügen"
@@ -3795,6 +3879,9 @@ msgstr "Tutorial Einführung Einstieg Grundlagen lernen"
 msgid "unknown date format {}; supported: {}"
 msgstr "unbekanntes Datumsformat {}; unterstützt: {}"
 
+msgid "unknown key {}; use {} or {}"
+msgstr "unbekannte Taste {}; verwende {} oder {}"
+
 msgid "unknown offset unit {}; use {}"
 msgstr "unbekannte Versatzeinheit {}; verwende {}"
 
@@ -3803,6 +3890,9 @@ msgstr "unbekannter Platzhalter {}"
 
 msgid "unknown placeholder {}, did you mean {}?"
 msgstr "unbekannter Platzhalter {}, meintest du {}?"
+
+msgid "unknown transform {}; use one of {}"
+msgstr "unbekannte Umwandlung {}; verwende eine von {}"
 
 msgid "version update"
 msgstr "version update aktualisierung"
@@ -3859,11 +3949,17 @@ msgstr[1] "{} Bytes"
 msgid "{} can't be used as a shortcut. Choose another in Settings."
 msgstr "{} kann nicht als Tastenkürzel verwendet werden. Wähle in den Einstellungen ein anderes."
 
+msgid "{} cannot be looked up here"
+msgstr "{} lässt sich hier nicht nachschlagen"
+
 msgid "{} closes nothing"
 msgstr "{} schließt nichts"
 
 msgid "{} closes nothing; write {} for a literal {}"
 msgstr "{} schließt nichts; schreibe {} für ein wörtliches {}"
+
+msgid "{} contains itself"
+msgstr "{} enthält sich selbst"
 
 msgid "{} could not be read and was skipped."
 msgstr "{} konnte nicht gelesen werden und wurde übersprungen."
@@ -3890,8 +3986,14 @@ msgstr "{} gefunden"
 msgid "{} h ago"
 msgstr "vor {} Std."
 
+msgid "{} has no text a template can use (a picture, files or a Sensitive item)"
+msgstr "{} hat keinen Text, den eine Vorlage verwenden kann (ein Bild, Dateien oder ein sensibler Eintrag)"
+
 msgid "{} is a link to somewhere else and was not followed."
 msgstr "{} ist ein Link zu einer anderen Stelle und wurde nicht verfolgt."
+
+msgid "{} is a sum of numbers and number names; the part after the bar is the decimals, 0 to 10"
+msgstr "{} ist ein Rechenausdruck aus Zahlen und Zahlennamen; der Teil nach dem senkrechten Strich sind die Dezimalstellen, 0 bis 10"
 
 msgid "{} is already in the list."
 msgstr "{} ist bereits in der Liste."
@@ -3951,6 +4053,9 @@ msgstr[1] "{} Treffer in allen Boards"
 msgid "{} min ago"
 msgstr "vor {} Min."
 
+msgid "{} must come after the last {}"
+msgstr "{} muss nach dem letzten {} stehen"
+
 msgid "{} needs a number"
 msgstr "{} braucht eine Zahl"
 
@@ -3976,6 +4081,9 @@ msgid_plural "{} pictures or files that no snippet uses were left out."
 msgstr[0] "{} Bild oder Datei, die kein Textbaustein verwendet, wurde weggelassen."
 msgstr[1] "{} Bilder oder Dateien, die kein Textbaustein verwendet, wurden weggelassen."
 
+msgid "{} repeats an answer, but nothing asks for {}"
+msgstr "{} wiederholt eine Antwort, aber nichts fragt nach {}"
+
 msgid "{} selected"
 msgstr "{} ausgewählt"
 
@@ -3994,6 +4102,9 @@ msgid_plural "{} sensitive items were not in the backup."
 msgstr[0] "{} vertraulicher Textbaustein war nicht in der Sicherung."
 msgstr[1] "{} vertrauliche Textbausteine waren nicht in der Sicherung."
 
+msgid "{} takes a whole number from 1 to {}; 1 is the clipboard now"
+msgstr "{} nimmt eine ganze Zahl von 1 bis {}; 1 ist die aktuelle Zwischenablage"
+
 msgid "{} takes no argument"
 msgstr "{} nimmt kein Argument"
 
@@ -4005,6 +4116,9 @@ msgstr "{} – mit Tab einfügen"
 
 msgid "{}, colour {}"
 msgstr "{}, Farbe {}"
+
+msgid "{}, empty for today"
+msgstr "{}, leer lassen für heute"
 
 msgid "{}, match {}"
 msgstr "{}, Eintrag {}"

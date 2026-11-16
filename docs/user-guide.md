@@ -67,28 +67,40 @@ editor, the **Placeholders** list inserts one for you.
 
 | Placeholder | What you get |
 |---|---|
-| `{date}`, `{time}` | Today's date, or the time |
-| `{datetime:FORMAT}` | Date and time in a format you choose, such as `{datetime:%d %B %Y}` |
+| `{date}`, `{time}`, `{datetime}` | Today's date, the time, or both, in your computer's regional format. Add `:FORMAT` for your own, such as `{datetime:%d %B %Y}` |
 | `{uuid}` | A new random ID (version 4), different for each `{uuid}` and each use |
+| `{clipboard}` | The clipboard text. `{clipboard:2}` is the copy before it, up to `{clipboard:25}` (needs clipboard history). |
+| `{selection}` | The text you had selected in the app you paste into (not in a terminal or console, where it is empty) |
 | `{cursor}` | Nothing. It marks where the text cursor ends up after pasting. |
-| `{field:Name}` or `{field:Name\|default}` | Asks you for a value each time |
-| `{choice:Name\|a\|b}` | Asks you to pick one of the options |
+| `{key:tab}`, `{key:enter}` | Presses Tab or Enter at that point, to fill a form: the text before it is pasted, the key is pressed, then the text after it. A copy keeps the text whole and presses nothing. |
+| `{field:Name}` or `{field:Name\|default}` | Asks you for a value each time. `{field:Name\|}` may be left empty. |
+| `{choice:Name\|a\|b}` | Asks you to pick one of the options. Put `*` before the option to start on, such as `{choice:Size\|S\|*M\|L}`; an empty option (`{choice:Size\|\|S\|M}`) is "(none)". |
 | `{multiline:Name}` or `{multiline:Name\|default}` | Asks for text over several lines |
-| `{pickdate:Name}` or `{pickdate:Name\|FORMAT}` | Asks for a date typed as `YYYY-MM-DD`; left empty it is today. `FORMAT` is how it is written, such as `%d %B %Y`. |
-| `{optional:Name}...{/optional}` | A tick box. The text inside is inserted only when it is ticked. Sections do not nest. |
+| `{number:Name}` or `{number:Name\|default}` | Asks for a number; `.` or `,` is the decimal mark |
+| `{calc:Qty*Price\|2}` | A sum with `+ - * /` and parentheses over your `{number}` prompts, with 2 decimals (the part after the bar is optional) |
+| `{pickdate:Name}` or `{pickdate:Name\|FORMAT}` | Asks for a date, typed in your computer's order (the box shows it, such as `DD.MM.YYYY`; `YYYY-MM-DD` always works) or picked in a month grid: press the calendar button, then use the arrow keys, `PageUp` / `PageDown` for the month, `Enter` to pick and `Esc` to close. Left empty it is today. |
+| `{optional:Name}...{/optional}` | A tick box. The text inside is inserted only when it is ticked, and fields inside are off while it is not. Sections do not nest. |
+| `{value:Name\|upper}` | An answer again, shaped by a transform |
+| `{snippet:Title}` | The text of another item, found by its title (or trigger); a template item brings its own placeholders. Nesting stops at 4 levels; an item that contains itself, or a Sensitive item, is refused. |
 
-`{date}`, `{time}` and `{datetime:FORMAT}` can move in time: add an offset such as `{date+3d}`,
+A placeholder can shape its text by a transform after a bar, such as `{clipboard\|upper}`: plain, upper, lower, title, trim, slug,
+sentence, camel, snake, urlencode, firstword, lastword. The same choices are in **Paste as...**.
+
+`{date}`, `{time}` and `{datetime}` can move in time: add an offset such as `{date+3d}`,
 `{date-1w:%Y-%m-%d}`, `{time+90min}` or `{datetime+1mo:%d %B %Y %H:%M}`. The units are `d` (days), `w` (weeks),
-`mo` (months), `y` (years), `h` (hours) and `min` (minutes); you can chain offsets, as in `{date+1mo-1d}`. A month
-that is too short gives its last day (`{date+1mo}` on 31 January is 28 or 29 February). `{date:FORMAT}` works like
-`{datetime:FORMAT}`. Very large offsets are an error, and the editor says so when you save.
+`mo` (months), `y` (years), `h` (hours) and `min` (minutes); you can chain up to 16 offsets, as in `{date+1mo-1d}`. A month
+that is too short gives its last day (`{date+1mo}` on 31 January is 28 or 29 February). In a format, `%-d` drops the
+zero (7, not 07), `%_d` pads with a space, `%V` is the ISO week, `%q` the quarter and `%Z` the time zone name; a wrong
+specifier is an error that lists the right ones. Month and weekday names follow the language of Snipdeck.
 
-`{date}` and `{time}` use your computer's time zone. `{clipboard}` inserts the clipboard text. Type `{{` and `}}` for literal braces. Any other braces are an error, and the editor says so when
-you save.
+`{date}` and `{time}` use your computer's time zone. A template can ask for up to 64 different answers. The editor lists the limits under the placeholder chips.
+To write a literal brace in the text, type `{{` or `}}`. Inside a placeholder, put a backslash before a bar or brace that is
+part of a name, default or option: `{field:Test\|a \| b}` (the default is `a | b`). Any other braces are an error, and the editor says
+how to fix it when you save. Names are compared without regard to case: `{field:Name}` and `{field:name}` are one prompt.
 
 In the Fill in template window, each `{uuid}` shows as "(new ID)" in the preview: the real ID is made when you insert.
 
-When you use a template with `{field}`, `{choice}`, `{multiline}`, `{pickdate}` or `{optional}`, a **Fill in template** window
+When you use a template with `{field}`, `{choice}`, `{multiline}`, `{number}`, `{pickdate}` or `{optional}`, a **Fill in template** window
 opens. Fill the fields, check the preview and press `Ctrl+Enter` to insert. `Esc` cancels. In a multi-line box `Enter`
 adds a line; `Ctrl+Enter` still inserts. A date that is not a real day (such as 2026-02-30) is marked on its box and
 nothing is inserted until you fix it or clear it. `Enter` moves to the next box, and on the last box it inserts.

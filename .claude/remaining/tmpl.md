@@ -1,16 +1,17 @@
-# tmpl: LIBRARY-13..25
+# tmpl agent: LIBRARY-13..25 (remaining work)
 
 ## Done
-- snipdeck-core template engine: all of 13-25 (parse, render, locale, calc, transforms, snippets, keys, selection,
-  clipboard by position). Tests: crates/snipdeck-core/src/template/findings.rs (library_NN_*).
+- Core engine (snipdeck-core template*): all of 13..25 with tests `library_13`..`library_25` (template/findings.rs).
+- Platform: regional.rs (+ windows GetLocaleInfoEx, unverified), restore_forced, copy_sequence, fakes.
+- App: fill model (enabled, number, choice default, locale dates, calendar), selection capture, nested snippets
+  (StoreSnippets), key pieces paste, clipboard history, editor help; app lib tests green (1313).
+- Slint: MonthGrid + calendar button, editor chips/help, form texts; i18n 6 locales translated (check --strict ok).
+- SPEC 5.4a, user guide, CODEMAP.
 
 ## Next
-- app wiring: fill.rs (active prompts, number field, choice default, locale date), fill_binding.rs, usecase.rs
-  (StoreSnippets, keys paste sequence, clipboard history, selection), use_ctl.rs, item_editor/item_preview/editor_ctl,
-  wording.rs (new error arms, transform names), platform (selection capture, regional_patterns Windows).
-- Slint: template_field (number kind, none label, disabled, calendar grid), template_fill, form_texts, template_texts,
-  menu_texts, editor help/inserter.
-- i18n extract + 6 locales; SPEC template section; user-guide; UI walk screenshots.
+- snipdeck-ui tests: month_grid_logic, fill_logic, fill, audit_final1_keys, editors; goldens regenerate if changed
+- UI walk (sizes, scales, themes, focus order) via screenshot tests
+- fmt, clippy, gate, commit
 
-## Blocked
-- none
+## Blocked / unverified
+- Windows: GetLocaleInfoEx, Ctrl+C selection capture, Win+V history read, key presses between pieces.

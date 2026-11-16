@@ -39,8 +39,19 @@ fn start_with(fields: Vec<FormField>) -> (TemplateFillWindow, Log) {
         ui.on_answer_changed(move |i, v| log.borrow_mut().push(format!("answer:{i}:{v}")));
     }
     {
+        // The host's part (the app's `flag_missing`, tested there): a required field that is on and empty
+        // keeps the form open, flags every such field from now on and moves focus to the first one.
         let log = log.clone();
+        let weak = ui.as_weak();
         ui.on_submitted(move |fields| {
+            let first = fields
+                .iter()
+                .position(|f| f.enabled && f.required && f.value.is_empty());
+            if let (Some(first), Some(ui)) = (first, weak.upgrade()) {
+                ui.invoke_show_required_errors();
+                ui.invoke_focus_field(i32::try_from(first).expect("index"));
+                return;
+            }
             let values: Vec<String> = fields.iter().map(|f| f.value.to_string()).collect();
             log.borrow_mut()
                 .push(format!("submit:{}", values.join("|")));
@@ -330,16 +341,48 @@ ui_tests! {
         assert_eq!(field().accessible_description().map(|d| d.to_string()).unwrap_or_default(), "");
     }
 
-    fn the_date_box_says_that_empty_means_today() {
+    fn the_date_box_shows_the_format_hint_the_host_gives_for_the_locale() {
         let mut date = fixture::date("Due date");
-        date.placeholder = "".into();
+        date.placeholder = "DD.MM.YYYY, leer lassen für heute".into();
         let (ui, _log) = start_with(vec![date]);
         settle();
         let field = find(&ui, "Due date", AccessibleRole::TextInput);
         assert_eq!(
             field.accessible_placeholder_text().as_deref(),
-            Some("YYYY-MM-DD, empty for today")
+            Some("DD.MM.YYYY, leer lassen für heute")
         );
+    }
+
+    fn the_calendar_button_opens_a_month_grid_and_a_picked_day_goes_to_the_host() {
+        let (ui, _log) = start();
+        let picked: Rc<RefCell<Vec<(i32, i32, i32, i32)>>> = Rc::default();
+        {
+            let picked = picked.clone();
+            ui.on_date_picked(move |i, y, m, d| picked.borrow_mut().push((i, y, m, d)));
+        }
+        settle();
+        assert!(all(&ui, "October 2026", AccessibleRole::Text).is_empty(), "closed at first");
+        find(&ui, "Pick a date", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert!(!all(&ui, "October 2026", AccessibleRole::Text).is_empty(), "the grid is open on today's month");
+        // The grid has the keyboard: the cursor starts on today (the 17th); Right then Enter picks the 18th.
+        press(ui.window(), &key(Key::RightArrow));
+        press(ui.window(), &key(Key::Return));
+        settle();
+        assert_eq!(*picked.borrow(), [(3, 2026, 10, 18)]);
+        assert!(all(&ui, "October 2026", AccessibleRole::Text).is_empty(), "picking closes the grid");
+    }
+
+    fn escape_closes_the_month_grid_and_not_the_form() {
+        let (ui, log) = start();
+        settle();
+        find(&ui, "Pick a date", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        take(&log);
+        press(ui.window(), &key(Key::Escape));
+        settle();
+        assert!(all(&ui, "October 2026", AccessibleRole::Text).is_empty());
+        assert_eq!(take(&log), Vec::<String>::new(), "the form stays open");
     }
 
     // ---- Tab order -----------------------------------------------------------------------------
@@ -358,7 +401,8 @@ ui_tests! {
         press(ui.window(), &key(Key::Tab));
         type_text(ui.window(), "d");
         assert_eq!(value(&ui, 3), "d");
-        // Due date -> Notes
+        // Due date -> its calendar button (one stop) -> Notes
+        press(ui.window(), &key(Key::Tab));
         press(ui.window(), &key(Key::Tab));
         type_text(ui.window(), "n");
         assert_eq!(value(&ui, 4), "n");

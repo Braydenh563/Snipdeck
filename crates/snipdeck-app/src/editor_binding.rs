@@ -183,6 +183,11 @@ where
             view.reduced_motion,
         );
         window.set_dark(view.dark);
+        let [choice, limits, escapes, transforms] = wording::template_help_texts(&window);
+        window.set_choice_help(choice.into());
+        window.set_limits_help(limits.into());
+        window.set_escapes_help(escapes.into());
+        window.set_transforms_help(transforms.into());
         let fresh = view.seq != self.seq.get();
         {
             let mut shown = self.tags_shown.borrow_mut();

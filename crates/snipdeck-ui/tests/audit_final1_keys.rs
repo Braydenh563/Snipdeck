@@ -414,6 +414,7 @@ fn every_kind() -> Vec<snipdeck_ui::FormField> {
         snipdeck_ui::FormField {
             label: "Send a copy".into(),
             kind: snipdeck_ui::TemplateFieldKind::Toggle,
+            enabled: true,
             ..Default::default()
         },
     ]

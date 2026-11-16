@@ -175,28 +175,34 @@ where
         redraw_all();
     }
 
-    /// The window cannot trim or read a date, and unrolls its own check over 16 fields, so
-    /// the field the model stopped on says why and takes the focus: a required field left
-    /// empty (or with only spaces, or past the 16th) or a date that is not a real day.
+    /// The window cannot trim, read a date or a number, or tell which fields are switched off,
+    /// so the model says what is wrong: every such field gets its message (never colour alone)
+    /// and the first takes the focus.
     fn flag_missing(&self, window: &ui::TemplateFillWindow) {
-        let bad = self
-            .controller
-            .borrow()
-            .fill()
-            .and_then(crate::fill::FillModel::first_missing);
-        let Some((at, why)) = bad else {
+        let (missing, hint) = {
+            let controller = self.controller.borrow();
+            let Some(fill) = controller.fill() else {
+                return;
+            };
+            (fill.missing(), fill.date_hint())
+        };
+        let Some(&(first, _)) = missing.first() else {
             return;
         };
         let fields = window.get_fields();
-        if let Some(mut field) = fields.row_data(at) {
-            let texts = window.global::<ui::FormTexts<'_>>();
-            field.error = match why {
-                Missing::BadDate => texts.invoke_bad_date(),
-                Missing::Empty => texts.invoke_field_required(),
-            };
-            fields.set_row_data(at, field);
-            window.invoke_focus_field(crate::binding::to_i32(at));
+        let texts = window.global::<ui::FormTexts<'_>>();
+        for (at, why) in missing {
+            if let Some(mut field) = fields.row_data(at) {
+                field.error = match why {
+                    Missing::BadDate => texts.invoke_bad_date(hint.as_str().into()),
+                    Missing::BadNumber => texts.invoke_bad_number(),
+                    Missing::Empty => texts.invoke_field_required(),
+                };
+                fields.set_row_data(at, field);
+            }
         }
+        window.invoke_show_required_errors();
+        window.invoke_focus_field(crate::binding::to_i32(first));
     }
 
     fn wire(self: &Rc<Self>, window: &ui::TemplateFillWindow) {
@@ -213,6 +219,16 @@ where
         }
         wire!(on_answer_changed, |core, i, value| core
             .act(|ctl| ctl.fill_changed(index(i), value.as_str())));
+        wire!(on_date_picked, |core, i, year, month, day| {
+            let picked = core.act(|ctl| ctl.fill_date_picked(index(i), year, month, day));
+            if let (Some(text), Some(window)) = (picked, core.shell.window()) {
+                let rows = window.get_fields();
+                if let Some(mut row) = rows.row_data(index(i)) {
+                    row.value = text.into();
+                    rows.set_row_data(index(i), row);
+                }
+            }
+        });
         wire!(on_submitted, |core, fields| {
             let values: Vec<String> = fields.iter().map(|f| f.value.to_string()).collect();
             core.submit(&values);
@@ -296,13 +312,14 @@ impl FillUi {
 
 /// One prompt as the window's field.
 #[must_use]
-pub fn form_field(field: &Field) -> ui::FormField {
+pub fn form_field(field: &Field, date_hint: &str) -> ui::FormField {
     ui::FormField {
         label: field.label.as_str().into(),
         kind: match field.kind {
             FieldKind::Text => ui::TemplateFieldKind::Text,
             FieldKind::Choice => ui::TemplateFieldKind::Choice,
             FieldKind::Multiline => ui::TemplateFieldKind::Multiline,
+            FieldKind::Number => ui::TemplateFieldKind::Number,
             FieldKind::Date => ui::TemplateFieldKind::Date,
             FieldKind::Toggle => ui::TemplateFieldKind::Toggle,
         },
@@ -310,9 +327,29 @@ pub fn form_field(field: &Field) -> ui::FormField {
         options: model(field.options.iter().map(|o| o.as_str().into())),
         choice_index: crate::binding::to_i32(field.choice_index),
         required: field.required,
-        placeholder: slint::SharedString::new(),
+        enabled: field.enabled,
+        placeholder: if field.kind == FieldKind::Date {
+            date_hint.into()
+        } else {
+            slint::SharedString::new()
+        },
         error: slint::SharedString::new(),
+        date_year: 0,
+        date_month: 0,
+        date_day: 0,
     }
+}
+
+/// The month grid's words and today, set when a form opens.
+fn set_calendar(words: &ui::CalendarWords<'_>, calendar: &crate::controller::CalendarView) {
+    let strings = |list: &[String]| model(list.iter().map(|s| s.as_str().into()));
+    words.set_month_names(strings(&calendar.months));
+    words.set_weekday_names(strings(&calendar.weekdays));
+    words.set_week_starts_sunday(calendar.week_starts_sunday);
+    let (year, month, day) = calendar.today;
+    words.set_today_year(year);
+    words.set_today_month(month);
+    words.set_today_day(day);
 }
 
 fn render(
@@ -342,7 +379,25 @@ fn render(
     // The fields are set once per form: afterwards the window holds what is typed.
     if differs(&|p| p.seq == fill.seq) {
         window.set_template_title(fill.title.as_str().into());
-        window.set_fields(model(fill.fields.iter().map(form_field)));
+        let hint = window
+            .global::<ui::FormTexts<'_>>()
+            .invoke_date_hint(fill.date_hint.as_str().into());
+        window.set_fields(model(fill.fields.iter().map(|f| form_field(f, &hint))));
+        set_calendar(&window.global::<ui::CalendarWords<'_>>(), &fill.calendar);
+    }
+    // Ticking a box switches the fields of its section on or off: the window keeps the answers, the
+    // host says which fields count.
+    let rows = window.get_fields();
+    for (i, field) in fill.fields.iter().enumerate() {
+        let (year, month, day) = fill.dates.get(i).copied().flatten().unwrap_or_default();
+        if let Some(mut row) = rows.row_data(i)
+            && (row.enabled, row.date_year, row.date_month, row.date_day)
+                != (field.enabled, year, month, day)
+        {
+            row.enabled = field.enabled;
+            (row.date_year, row.date_month, row.date_day) = (year, month, day);
+            rows.set_row_data(i, row);
+        }
     }
     if differs(&|p| p.preview == fill.preview && p.masked == fill.masked) {
         window.set_preview(if fill.masked {

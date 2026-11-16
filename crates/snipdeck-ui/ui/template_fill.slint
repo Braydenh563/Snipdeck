@@ -15,8 +15,9 @@
 //
 // Validation: a required field left empty is flagged (text next to the label and under the field, never colour
 // alone) and the form does not submit; the first such field takes focus. After the first failed attempt the flags
-// follow the fields live. Slint has no string trimming, so a value of only spaces counts as filled: the host
-// trims. At most 16 fields are validated (a template with more is not realistic).
+// follow the fields live. Slint has no string trimming, so the host decides (it trims, reads dates and numbers,
+// skips fields that are switched off, and flags every field that is wrong): `submitted` always fires and the host
+// calls `show-required-errors()` when the form must stay open.
 //
 // Limitation: the form does not scroll. Around eight fields the window passes 640px; the host caps its height.
 import { TipHost, TipLayer } from "components/tip-host.slint";
@@ -39,9 +40,16 @@ export struct FormField {
     options: [string],
     choice-index: int,
     required: bool,
+    // false: the field sits in an {optional} section the answers leave unticked; it is shown dimmed and never
+    // blocks the submit.
+    enabled: bool,
     // text and multiline: placeholder; date: the format hint ("YYYY-MM-DD").
     placeholder: string,
     error: string,
+    // date: the day the box holds, as the host read it (0 = none, or not a date): the month grid marks it.
+    date-year: int,
+    date-month: int,
+    date-day: int,
 }
 
 export component TemplateFillWindow inherits Window {
@@ -72,6 +80,9 @@ export component TemplateFillWindow inherits Window {
     // ---- Gestures out -------------------------------------------------------------------------
     // Field `index` now holds `value` (a choice: the option's text).
     callback answer-changed(index: int, value: string);
+    // A day was picked in the month grid of date field `index`: the host writes it in the user's date order and sets
+    // the field's `value`.
+    callback date-picked(index: int, year: int, month: int, day: int);
     // Every required field is filled and the user asked to insert: the fields with their answers.
     callback submitted(fields: [FormField]);
     callback cancelled();
@@ -90,15 +101,14 @@ export component TemplateFillWindow inherits Window {
         root.focus-target = index;
         root.focus-seq += 1;
     }
-    // Validates, and submits when everything required is filled. Also what Ctrl+Enter and the button do.
+    // Asks the host to submit (it answers with `show-required-errors` when something is wrong). Also what
+    // Ctrl+Enter and the button do.
     public function submit() {
-        let bad = root.first-invalid();
-        if (bad >= 0) {
-            root.show-errors = true;
-            root.focus-field(bad);
-        } else {
-            root.submitted(root.fields);
-        }
+        root.submitted(root.fields);
+    }
+    // The host kept the form open: required fields left empty are flagged from now on, live.
+    public function show-required-errors() {
+        root.show-errors = true;
     }
 
     // ---- Internals ----------------------------------------------------------------------------
@@ -106,15 +116,13 @@ export component TemplateFillWindow inherits Window {
     property <int> focus-target: 0;
     // Starts above 0 so the first field takes focus when the form opens.
     property <int> focus-seq: 1;
+    // The date field whose month grid is open (-1 = none), and a counter that tells the open grids to close.
+    property <int> open-calendar: -1;
+    property <int> close-calendars: 0;
 
-    // Slint has no loops in functions, so the first invalid field is found by an unrolled test of the first 16.
+    // A required field that is on and empty.
     pure function bad(i: int) -> bool {
-        return i < root.fields.length && root.fields[i].required && root.fields[i].value == "";
-    }
-    pure function first-invalid() -> int {
-        return root.bad(0) ? 0 : root.bad(1) ? 1 : root.bad(2) ? 2 : root.bad(3) ? 3 : root.bad(4) ? 4 : root.bad(5) ? 5
-            : root.bad(6) ? 6 : root.bad(7) ? 7 : root.bad(8) ? 8 : root.bad(9) ? 9 : root.bad(10) ? 10 : root.bad(11) ? 11
-            : root.bad(12) ? 12 : root.bad(13) ? 13 : root.bad(14) ? 14 : root.bad(15) ? 15 : -1;
+        return i < root.fields.length && root.fields[i].enabled && root.fields[i].required && root.fields[i].value == "";
     }
 
     init => {
@@ -147,6 +155,12 @@ export component TemplateFillWindow inherits Window {
             }
             if (event.text == Key.F1) {
                 root.help-requested();
+                return accept;
+            }
+            // An open month grid closes first; the next Esc cancels the form.
+            if (event.text == Key.Escape && root.open-calendar >= 0) {
+                root.open-calendar = -1;
+                root.close-calendars += 1;
                 return accept;
             }
             if (event.text == Key.Escape) {
@@ -232,14 +246,26 @@ export component TemplateFillWindow inherits Window {
                         kind: field.kind;
                         required: field.required;
                         required-text: @tr("Required");
-                        placeholder: field.kind == TemplateFieldKind.date && field.placeholder == ""
-                            ? @tr("YYYY-MM-DD, empty for today") : field.placeholder;
+                        enabled: field.enabled;
+                        placeholder: field.placeholder;
                         choices: field.options;
                         choice-index: field.choice-index;
                         value: field.value;
                         error: field.error != "" ? field.error
                             : root.show-errors && root.bad(i) ? @tr("This field is required") : "";
                         focus-request: i == root.focus-target ? root.focus-seq : 0;
+                        picked-year: field.date-year;
+                        picked-month: field.date-month;
+                        picked-day: field.date-day;
+                        date-picked(y, m, d) => { root.date-picked(i, y, m, d); }
+                        close-request: root.close-calendars;
+                        calendar-toggled(open) => {
+                            if (open) {
+                                root.open-calendar = i;
+                            } else if (root.open-calendar == i) {
+                                root.open-calendar = -1;
+                            }
+                        }
                         init => {
                             // A choice's answer is its chosen option, so the form never has to look it up.
                             if (field.kind == TemplateFieldKind.choice && field.value == ""

@@ -778,7 +778,7 @@ impl fmt::Display for TemplateErrorKind {
             Self::UnmatchedClose => f.write_str("`}` closes nothing; write `}}` for a literal `}`"),
             Self::Unterminated => f.write_str("`{` is never closed; write `{{` for a literal `{`"),
             Self::EmptyPlaceholder => f.write_str(
-                "empty placeholder `{}`; for a literal brace write `{{` (and `}}` to close it)",
+                "empty placeholder `{}`; to write a literal brace, write `{{` (and `}}` to close it)",
             ),
             Self::EmptyName => f.write_str("the prompt needs a name, e.g. `{field:Name}`"),
             Self::UnclosedSection => {
@@ -796,7 +796,7 @@ impl fmt::Display for TemplateErrorKind {
             }
             Self::TooManyParts => f.write_str(
                 "a prompt takes a name and one more part: `{field:Name|default}`; \
-                 write `\\|` for a literal `|`",
+                 write `\\|` for a literal bar",
             ),
             Self::DuplicateCursor => f.write_str("only one `{cursor}` is allowed"),
             Self::TrailingPercent => {
@@ -864,12 +864,12 @@ impl fmt::Display for TemplateErrorKind {
                 Transform::keyword_list()
             ),
             Self::BadCalc => f.write_str(
-                "`{calc:…}` is a sum of numbers and number names, like `{calc:Qty*Price|2}`; \
-                 the part after `|` is the decimals, 0 to 10",
+                "`{calc:…}` is a sum of numbers and number names; \
+                 the part after the bar is the decimals, 0 to 10",
             ),
             Self::CalcUnknownName { name } => write!(
                 f,
-                "`{{calc:…}}` uses `{name}`, which is not a `{{number:{name}}}` of this template"
+                "a calculation uses `{name}`, which is not a `{{number:{name}}}` of this template"
             ),
             Self::ValueUnknownName { name } => write!(
                 f,

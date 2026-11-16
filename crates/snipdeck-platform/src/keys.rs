@@ -181,7 +181,16 @@ fn event(key: Key, down: bool) -> KeyEvent {
 /// `Alt` or `Win` is among them. Modifiers the user already holds and the chord needs are left
 /// down. Modifiers pressed here are released again at the end.
 pub fn paste_sequence(held: Modifiers, paste: PasteKey) -> Vec<KeyEvent> {
-    let chord = paste.modifiers();
+    chord_sequence(held, paste.modifiers(), paste.main_key())
+}
+
+/// The key events for `Ctrl+C`, treating the held modifiers as [`paste_sequence`] does: what
+/// reading the Target's selection sends.
+pub fn copy_sequence(held: Modifiers) -> Vec<KeyEvent> {
+    chord_sequence(held, &[Modifier::Ctrl], Key::C)
+}
+
+fn chord_sequence(held: Modifiers, chord: &[Modifier], main: Key) -> Vec<KeyEvent> {
     let mut events = Vec::new();
 
     let pressed: Vec<Modifier> = chord.iter().copied().filter(|&m| !held.has(m)).collect();
@@ -209,8 +218,8 @@ pub fn paste_sequence(held: Modifiers, paste: PasteKey) -> Vec<KeyEvent> {
         events.push(event(Key::Modifier(modifier), false));
     }
 
-    events.push(event(paste.main_key(), true));
-    events.push(event(paste.main_key(), false));
+    events.push(event(main, true));
+    events.push(event(main, false));
 
     for &modifier in pressed.iter().rev() {
         events.push(event(Key::Modifier(modifier), false));
@@ -235,6 +244,25 @@ mod tests {
     }
 
     use super::*;
+
+    #[test]
+    fn copy_is_ctrl_c_and_lets_go_of_a_held_alt() {
+        assert_eq!(
+            copy_sequence(Modifiers::default()),
+            [
+                event(Key::Modifier(Modifier::Ctrl), true),
+                event(Key::C, true),
+                event(Key::C, false),
+                event(Key::Modifier(Modifier::Ctrl), false),
+            ]
+        );
+        let held = Modifiers {
+            alt: true,
+            ..Modifiers::default()
+        };
+        let events = copy_sequence(held);
+        assert!(events.contains(&event(Key::Modifier(Modifier::Alt), false)));
+    }
 
     const DOWN: bool = true;
     const UP: bool = false;
