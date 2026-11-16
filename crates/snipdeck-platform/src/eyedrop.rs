@@ -18,6 +18,7 @@
 //! - The hint bar's fade, the key tables, the cloak wait, the HDR decision and the other small
 //!   rules of the Windows glue are here too, as plain functions.
 
+#[cfg(any(windows, test))]
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::rc::Rc;
 use std::sync::Arc;
@@ -269,11 +270,11 @@ pub const CELLS: u32 = 11;
 const DEFAULT_ZOOM: usize = 0;
 
 /// Logical padding around the magnified grid (room for the frame around the picked cell).
-const PAD: u32 = 4;
+pub(crate) const PAD: u32 = 4;
 
 /// Logical height of the readout bar under the grid (swatch and two lines of text) at a text
 /// scale of 1.
-const READOUT: u32 = 48;
+pub(crate) const READOUT: u32 = 48;
 
 /// Logical gap between the cursor and the magnifier.
 const GAP: u32 = 24;
@@ -585,7 +586,12 @@ pub(crate) struct FallbackKey {
 
 #[cfg(any(windows, test))]
 const fn fallback(id: i32, vk: u16, shift: bool, ctrl: bool) -> FallbackKey {
-    FallbackKey { id, vk, shift, ctrl }
+    FallbackKey {
+        id,
+        vk,
+        shift,
+        ctrl,
+    }
 }
 
 /// Every key of the focused path, in the fallback path too: the same table drives
@@ -1156,8 +1162,10 @@ pub const HINT_HOLD: Duration = Duration::from_secs(2);
 /// How long it takes to fade out after that.
 pub const HINT_FADE: Duration = Duration::from_millis(400);
 /// The bar moves to the other edge when the cursor is within this many logical pixels of it.
+#[cfg(any(windows, test))]
 const HINT_NEAR: u32 = 80;
 /// Logical distance of the bar from its edge of the monitor.
+#[cfg(any(windows, test))]
 const HINT_EDGE: u32 = 16;
 
 /// Opacity (0 to 255) of the hint `elapsed` after the run began: 255 for [`HINT_HOLD`], then a
@@ -1167,11 +1175,11 @@ pub(crate) fn hint_alpha(elapsed: Duration) -> u8 {
     if elapsed < HINT_HOLD {
         return 255;
     }
-    let into = elapsed - HINT_HOLD;
+    let into = elapsed.saturating_sub(HINT_HOLD);
     if into >= HINT_FADE {
         return 0;
     }
-    let left = HINT_FADE - into;
+    let left = HINT_FADE.saturating_sub(into);
     // 255 * left / fade, rounded; both are small.
     let value = (255 * left.as_millis() + HINT_FADE.as_millis() / 2) / HINT_FADE.as_millis();
     u8::try_from(value).unwrap_or(255)
@@ -1223,22 +1231,20 @@ pub(crate) enum HintSide {
     Bottom,
 }
 
-/// The hint bar of `size` (physical pixels) at `side` of `monitor`, centred, 16 logical pixels
+/// The hint bar of `size` (physical pixels) at `edge_of` the `monitor`, centred, 16 logical pixels
 /// from the edge.
 #[cfg(any(windows, test))]
 pub(crate) fn hint_rect(
     monitor: ScreenRect,
     scale: f32,
     size: (u32, u32),
-    side: HintSide,
+    edge_of: HintSide,
 ) -> ScreenRect {
     let edge = i64::from(scaled(HINT_EDGE, scale));
     let x = i64::from(monitor.x) + (i64::from(monitor.w) - i64::from(size.0)) / 2;
-    let y = match side {
+    let y = match edge_of {
         HintSide::Top => i64::from(monitor.y) + edge,
-        HintSide::Bottom => {
-            i64::from(monitor.y) + i64::from(monitor.h) - edge - i64::from(size.1)
-        }
+        HintSide::Bottom => i64::from(monitor.y) + i64::from(monitor.h) - edge - i64::from(size.1),
     };
     ScreenRect {
         x: i32::try_from(x).unwrap_or(monitor.x),
@@ -1300,7 +1306,9 @@ pub(crate) fn guarded<T>(fallback: T, f: impl FnOnce() -> T) -> T {
 /// one failed monitor (a protected or disconnected-in-flight display) must not end the run, only
 /// all of them failing does.
 #[cfg(any(windows, test))]
-pub(crate) fn keep_captured<T>(results: Vec<Result<T, Error>>) -> Result<Vec<Option<T>>, FailReason> {
+pub(crate) fn keep_captured<T>(
+    results: Vec<Result<T, Error>>,
+) -> Result<Vec<Option<T>>, FailReason> {
     if results.is_empty() {
         return Err(FailReason::NoMonitor);
     }
@@ -2001,10 +2009,7 @@ mod tests {
                 Input::DisplayChanged,
                 EyedropOutcome::Ended(EndReason::DisplayChanged),
             ),
-            (
-                Input::TimedOut,
-                EyedropOutcome::Ended(EndReason::TimedOut),
-            ),
+            (Input::TimedOut, EyedropOutcome::Ended(EndReason::TimedOut)),
         ];
         for (input, outcome) in expect {
             let mut s = session(&shots, (1, 1));
@@ -2063,13 +2068,23 @@ mod tests {
         let rgb = Some([0x3a, 0x7b, 0xd5]);
         let t = with_title("Pipette, {}");
         assert_eq!(window_title(&t, rgb), "Pipette, #3a7bd5");
-        assert_eq!(window_title(&t, None), "Pipette", "no colour: the words only");
+        assert_eq!(
+            window_title(&t, None),
+            "Pipette",
+            "no colour: the words only"
+        );
         // Other scripts and punctuation: whatever precedes `{}` minus trailing punctuation.
         let t = with_title("\u{30b9}\u{30dd}\u{30a4}\u{30c8}\u{ff1a}{}");
-        assert_eq!(window_title(&t, rgb), "\u{30b9}\u{30dd}\u{30a4}\u{30c8}\u{ff1a}#3a7bd5");
+        assert_eq!(
+            window_title(&t, rgb),
+            "\u{30b9}\u{30dd}\u{30a4}\u{30c8}\u{ff1a}#3a7bd5"
+        );
         assert_eq!(window_title(&t, None), "\u{30b9}\u{30dd}\u{30a4}\u{30c8}");
         // The hex may come first; a pattern without `{}` gets the hex after it.
-        assert_eq!(window_title(&with_title("{} (picker)"), rgb), "#3a7bd5 (picker)");
+        assert_eq!(
+            window_title(&with_title("{} (picker)"), rgb),
+            "#3a7bd5 (picker)"
+        );
         assert_eq!(window_title(&with_title("Pipette"), rgb), "Pipette #3a7bd5");
         assert_eq!(window_title(&with_title("Pipette"), None), "Pipette");
         // Nothing but the hex: never an empty title.
@@ -2118,7 +2133,13 @@ mod tests {
     fn no_user_visible_english_literal_is_left_in_the_eyedropper_code() {
         // Diagnostics for the log (an `Error`, an `expect` reason) are English on purpose; any
         // other prose in a string would reach the screen untranslated.
-        let internal = ["Unavailable(", "Pixels(", "reason =", "Error::Os", "FailReason::Other("];
+        let internal = [
+            "Unavailable(",
+            "Pixels(",
+            "reason =",
+            "Error::Os",
+            "FailReason::Other(",
+        ];
         for (name, source) in [
             ("eyedrop.rs", include_str!("eyedrop.rs")),
             ("windows/eyedrop.rs", include_str!("windows/eyedrop.rs")),
@@ -2127,13 +2148,19 @@ mod tests {
                 .split("\n#[cfg(test)]\nmod tests")
                 .next()
                 .unwrap_or_default();
-            for (n, line) in code.lines().enumerate() {
+            let lines: Vec<&str> = code.lines().collect();
+            for (n, line) in lines.iter().enumerate() {
                 if line.trim_start().starts_with("//") {
                     continue;
                 }
+                // The marker may sit on the line that opened the call (rustfmt wraps).
+                let context = &lines[n.saturating_sub(2)..=n];
                 for literal in string_literals(line) {
                     assert!(
-                        !looks_like_prose(&literal) || internal.iter().any(|m| line.contains(m)),
+                        !looks_like_prose(&literal)
+                            || context
+                                .iter()
+                                .any(|l| internal.iter().any(|m| l.contains(m))),
                         "{name}:{}: user-visible text {literal:?} belongs in EyedropTexts",
                         n + 1
                     );
@@ -2154,7 +2181,10 @@ mod tests {
             string_literals(r#"let a = "x y"; // "ignored" b"#),
             vec!["x y".to_owned()]
         );
-        assert_eq!(string_literals(r#"f("a\"b", '"')"#), vec!["a\"b".to_owned()]);
+        assert_eq!(
+            string_literals(r#"f("a\"b", '"')"#),
+            vec!["a\"b".to_owned()]
+        );
     }
 
     #[test]
@@ -2170,7 +2200,10 @@ mod tests {
         );
         assert_eq!(
             readout_lines(&t, rgb, Aperture::Five, 2),
-            ("rgb(58, 123, 213)".to_owned(), "#3a7bd5  5x5  +2".to_owned())
+            (
+                "rgb(58, 123, 213)".to_owned(),
+                "#3a7bd5  5x5  +2".to_owned()
+            )
         );
         // In a gap: a dash and the aperture.
         assert_eq!(
@@ -2224,7 +2257,11 @@ mod tests {
         assert_eq!(font_height_px(12, 1.5, 1.0), -24);
         assert_eq!(font_height_px(12, 1.0, 2.0), -32);
         assert_eq!(font_height_px(12, 1.5, 2.0), -48);
-        assert_eq!(font_height_px(12, 1.0, 0.5), -16, "never below the 100 % size");
+        assert_eq!(
+            font_height_px(12, 1.0, 0.5),
+            -16,
+            "never below the 100 % size"
+        );
     }
 
     // pixels, apertures and failed monitors ------------------------------------------------
@@ -2262,7 +2299,11 @@ mod tests {
         assert_eq!(average(&shots, 0, 0, Aperture::Three), Some([5, 5, 4]));
         // Rounded to nearest: five of nine pixels are 10, the rest 0: 50 / 9 = 5.56 -> 6.
         let checker = vec![shot(rect(0, 0, 3, 3), 1.0, |x, y| {
-            if (x + y) % 2 == 0 { [10, 0, 0] } else { [0, 0, 0] }
+            if (x + y) % 2 == 0 {
+                [10, 0, 0]
+            } else {
+                [0, 0, 0]
+            }
         })];
         assert_eq!(average(&checker, 1, 1, Aperture::Three), Some([6, 0, 0]));
     }
@@ -2301,7 +2342,13 @@ mod tests {
         assert_eq!(s.on(&shots, Input::Collect), Step::Nothing);
         let mut s = session(&shots, (10, 5));
         assert_eq!(
-            s.on(&shots, Input::Key { nav: Nav::Left, fast: false }),
+            s.on(
+                &shots,
+                Input::Key {
+                    nav: Nav::Left,
+                    fast: false
+                }
+            ),
             Step::Nothing
         );
         assert!(s.loupe(&shots).is_some());
@@ -2317,7 +2364,10 @@ mod tests {
             keep_captured(vec![Ok(1), Err(bad()), Ok(3)]),
             Ok(vec![Some(1), None, Some(3)])
         );
-        assert_eq!(keep_captured(vec![Err::<u8, _>(bad())]), Err(FailReason::CaptureRefused));
+        assert_eq!(
+            keep_captured(vec![Err::<u8, _>(bad())]),
+            Err(FailReason::CaptureRefused)
+        );
         assert_eq!(
             keep_captured(vec![Err::<u8, _>(bad()), Err(bad())]),
             Err(FailReason::CaptureRefused)
@@ -2361,7 +2411,11 @@ mod tests {
                         r.y + r.h - r.thick,
                     )
                 };
-                assert_eq!(inner(white), (x, y, x + side, y + side), "touches the block");
+                assert_eq!(
+                    inner(white),
+                    (x, y, x + side, y + side),
+                    "touches the block"
+                );
                 assert_eq!(
                     inner(black),
                     (white.x, white.y, white.x + white.w, white.y + white.h),
@@ -2389,8 +2443,14 @@ mod tests {
             Input::CycleAperture
         );
         let key = |nav, fast| Input::Key { nav, fast };
-        assert_eq!(key_input(KeyName::Left, false, false), key(Nav::Left, false));
-        assert_eq!(key_input(KeyName::Right, true, false), key(Nav::Right, true));
+        assert_eq!(
+            key_input(KeyName::Left, false, false),
+            key(Nav::Left, false)
+        );
+        assert_eq!(
+            key_input(KeyName::Right, true, false),
+            key(Nav::Right, true)
+        );
         assert_eq!(key_input(KeyName::Up, false, true), key(Nav::Up, true));
         assert_eq!(key_input(KeyName::Down, true, true), key(Nav::Down, true));
     }
@@ -2422,13 +2482,25 @@ mod tests {
     fn plus_and_minus_zoom_and_a_cycles_the_aperture_in_a_session() {
         let shots = ramp();
         let mut s = session(&shots, (5, 5));
-        assert_eq!(s.on(&shots, key_input(KeyName::Plus, false, false)), Step::Redraw);
+        assert_eq!(
+            s.on(&shots, key_input(KeyName::Plus, false, false)),
+            Step::Redraw
+        );
         assert_eq!(s.zoom(), 12);
-        assert_eq!(s.on(&shots, key_input(KeyName::Minus, false, false)), Step::Redraw);
+        assert_eq!(
+            s.on(&shots, key_input(KeyName::Minus, false, false)),
+            Step::Redraw
+        );
         assert_eq!(s.zoom(), 8);
-        assert_eq!(s.on(&shots, key_input(KeyName::Minus, false, false)), Step::Nothing);
+        assert_eq!(
+            s.on(&shots, key_input(KeyName::Minus, false, false)),
+            Step::Nothing
+        );
         assert_eq!(s.aperture(), Aperture::One);
-        assert_eq!(s.on(&shots, key_input(KeyName::Aperture, false, false)), Step::Redraw);
+        assert_eq!(
+            s.on(&shots, key_input(KeyName::Aperture, false, false)),
+            Step::Redraw
+        );
         assert_eq!(s.aperture(), Aperture::Three);
     }
 
@@ -2495,7 +2567,10 @@ mod tests {
             [KeyName::Enter, KeyName::Left],
             "Left three times is one key"
         );
-        assert_eq!(keys_of_ids(&[21, 16, 18]), [KeyName::Plus, KeyName::Aperture]);
+        assert_eq!(
+            keys_of_ids(&[21, 16, 18]),
+            [KeyName::Plus, KeyName::Aperture]
+        );
         assert_eq!(keys_of_ids(&[500]), Vec::<KeyName>::new());
     }
 
@@ -2588,12 +2663,19 @@ mod tests {
     #[test]
     fn the_aperture_key_changes_what_a_pick_returns() {
         let shots = vec![shot(rect(0, 0, 3, 3), 1.0, |x, y| {
-            if (x + y) % 2 == 0 { [10, 0, 0] } else { [0, 0, 0] }
+            if (x + y) % 2 == 0 {
+                [10, 0, 0]
+            } else {
+                [0, 0, 0]
+            }
         })];
         let mut s = session(&shots, (1, 1));
         assert_eq!(s.colour(&shots), Some([10, 0, 0]));
         assert_eq!(s.on(&shots, Input::CycleAperture), Step::Redraw);
-        assert_eq!((s.aperture(), s.colour(&shots)), (Aperture::Three, Some([6, 0, 0])));
+        assert_eq!(
+            (s.aperture(), s.colour(&shots)),
+            (Aperture::Three, Some([6, 0, 0]))
+        );
         assert_eq!(s.on(&shots, Input::Pick), picked([6, 0, 0]));
     }
 
@@ -2615,16 +2697,27 @@ mod tests {
         let mut s = session(&shots, (10, 10));
         assert_eq!(s.on(&shots, Input::TouchDown(300, 300)), Step::Redraw);
         assert_eq!(s.cursor(), (300, 300), "the loupe follows the finger down");
-        assert_eq!(s.pick_button(&shots), None, "no button while the finger is down");
+        assert_eq!(
+            s.pick_button(&shots),
+            None,
+            "no button while the finger is down"
+        );
         assert_eq!(s.on(&shots, Input::TouchMove(310, 305)), Step::Redraw);
         assert_eq!(s.on(&shots, Input::TouchUp(310, 305)), Step::Redraw);
         assert_eq!(s.cursor(), (310, 305));
-        assert!(s.pick_button(&shots).is_some(), "placed: the Pick button shows");
+        assert!(
+            s.pick_button(&shots).is_some(),
+            "placed: the Pick button shows"
+        );
         // The loupe grew for the button.
         assert!(s.layout().button);
         // Second tap near the cursor: nothing moves, lifting picks.
         assert_eq!(s.on(&shots, Input::TouchDown(315, 300)), Step::Nothing);
-        assert_eq!(s.on(&shots, Input::TouchMove(400, 400)), Step::Nothing, "no drag");
+        assert_eq!(
+            s.on(&shots, Input::TouchMove(400, 400)),
+            Step::Nothing,
+            "no drag"
+        );
         assert_eq!(s.cursor(), (310, 305));
         assert_eq!(s.on(&shots, Input::TouchUp(315, 300)), picked([60, 55, 7]));
     }
@@ -2640,9 +2733,19 @@ mod tests {
             b.x + i32::try_from(b.w / 2).unwrap(),
             b.y + i32::try_from(b.h / 2).unwrap(),
         );
-        assert_eq!(s.on(&shots, Input::TouchDown(centre.0, centre.1)), Step::Nothing);
-        assert_eq!(s.cursor(), (300, 300), "the loupe did not move to the button");
-        assert_eq!(s.on(&shots, Input::TouchUp(centre.0, centre.1)), picked([50, 50, 7]));
+        assert_eq!(
+            s.on(&shots, Input::TouchDown(centre.0, centre.1)),
+            Step::Nothing
+        );
+        assert_eq!(
+            s.cursor(),
+            (300, 300),
+            "the loupe did not move to the button"
+        );
+        assert_eq!(
+            s.on(&shots, Input::TouchUp(centre.0, centre.1)),
+            picked([50, 50, 7])
+        );
     }
 
     #[test]
@@ -2660,8 +2763,14 @@ mod tests {
         // On the loupe's grid (not the button, not near the cursor): ignored.
         let l = s.loupe(&shots).unwrap();
         let on_grid = (l.x + 100, l.y + 60);
-        assert_eq!(s.on(&shots, Input::TouchDown(on_grid.0, on_grid.1)), Step::Nothing);
-        assert_eq!(s.on(&shots, Input::TouchUp(on_grid.0, on_grid.1)), Step::Nothing);
+        assert_eq!(
+            s.on(&shots, Input::TouchDown(on_grid.0, on_grid.1)),
+            Step::Nothing
+        );
+        assert_eq!(
+            s.on(&shots, Input::TouchUp(on_grid.0, on_grid.1)),
+            Step::Nothing
+        );
         assert_eq!(s.cursor(), (700, 500));
         assert!(s.pick_button(&shots).is_some());
         // A mouse moving afterwards ends the touch placement.
@@ -2681,8 +2790,14 @@ mod tests {
     #[test]
     fn touch_made_mouse_messages_are_told_from_the_mouse_by_their_extra_info() {
         assert!(is_touch_extra_info(0xFF51_5780));
-        assert!(is_touch_extra_info(0xFF51_57FF), "the low bits are a touch id");
-        assert!(!is_touch_extra_info(0xFF51_5700), "a pen is precise: it acts as a mouse");
+        assert!(
+            is_touch_extra_info(0xFF51_57FF),
+            "the low bits are a touch id"
+        );
+        assert!(
+            !is_touch_extra_info(0xFF51_5700),
+            "a pen is precise: it acts as a mouse"
+        );
         assert!(!is_touch_extra_info(0xFF51_5680));
         assert!(!is_touch_extra_info(0));
     }
@@ -2702,7 +2817,7 @@ mod tests {
         assert!(hint_alpha(ms(2100)) > hint_alpha(ms(2300)));
         assert_eq!(hint_alpha(ms(2399)), 1);
         assert_eq!(hint_alpha(ms(2400)), 0);
-        assert_eq!(hint_alpha(Duration::from_secs(60)), 0);
+        assert_eq!(hint_alpha(Duration::from_mins(1)), 0);
         assert!(hint_animating(ms(2399)));
         assert!(!hint_animating(ms(2400)));
         assert!(hint_animating(Duration::ZERO));
@@ -2715,12 +2830,27 @@ mod tests {
             hdr_note: "N".to_owned(),
             ..EyedropTexts::default()
         };
-        assert_eq!(hint_content(&t, false, Duration::ZERO), Some(("H".to_owned(), 255)));
-        assert_eq!(hint_content(&t, true, ms(1500)), Some(("H\nN".to_owned(), 255)));
-        assert_eq!(hint_content(&t, false, ms(2200)), Some(("H".to_owned(), 128)));
+        assert_eq!(
+            hint_content(&t, false, Duration::ZERO),
+            Some(("H".to_owned(), 255))
+        );
+        assert_eq!(
+            hint_content(&t, true, ms(1500)),
+            Some(("H\nN".to_owned(), 255))
+        );
+        assert_eq!(
+            hint_content(&t, false, ms(2200)),
+            Some(("H".to_owned(), 128))
+        );
         assert_eq!(hint_content(&t, false, ms(3000)), None);
-        assert_eq!(hint_content(&t, true, ms(3000)), Some(("N".to_owned(), 255)));
-        assert_eq!(hint_content(&t, true, Duration::from_secs(100)), Some(("N".to_owned(), 255)));
+        assert_eq!(
+            hint_content(&t, true, ms(3000)),
+            Some(("N".to_owned(), 255))
+        );
+        assert_eq!(
+            hint_content(&t, true, Duration::from_secs(100)),
+            Some(("N".to_owned(), 255))
+        );
         // No hint text, no note: nothing to draw; a note alone shows.
         let none = EyedropTexts::default();
         assert_eq!(hint_content(&none, true, Duration::ZERO), None);
@@ -2728,7 +2858,10 @@ mod tests {
             hdr_note: "N".to_owned(),
             ..EyedropTexts::default()
         };
-        assert_eq!(hint_content(&note_only, true, Duration::ZERO), Some(("N".to_owned(), 255)));
+        assert_eq!(
+            hint_content(&note_only, true, Duration::ZERO),
+            Some(("N".to_owned(), 255))
+        );
         assert_eq!(hint_content(&note_only, false, Duration::ZERO), None);
     }
 
@@ -2737,20 +2870,26 @@ mod tests {
         let m = rect(0, 0, 1920, 1080);
         let size = (400, 40);
         // Top bar: x 760..1160, y 16..56.
-        assert_eq!(hint_rect(m, 1.0, size, HintSide::Top), rect(760, 16, 400, 40));
-        assert_eq!(hint_rect(m, 1.0, size, HintSide::Bottom), rect(760, 1024, 400, 40));
-        let side = |c| hint_side(c, m, 1.0, size);
-        assert_eq!(side((900, 30)), HintSide::Bottom, "on the bar");
-        assert_eq!(side((900, 135)), HintSide::Bottom, "80 below it");
-        assert_eq!(side((900, 136)), HintSide::Top, "81 below it");
-        assert_eq!(side((680, 30)), HintSide::Bottom, "80 to its left");
-        assert_eq!(side((679, 30)), HintSide::Top, "81 to its left");
-        assert_eq!(side((900, 700)), HintSide::Top);
+        assert_eq!(
+            hint_rect(m, 1.0, size, HintSide::Top),
+            rect(760, 16, 400, 40)
+        );
+        assert_eq!(
+            hint_rect(m, 1.0, size, HintSide::Bottom),
+            rect(760, 1024, 400, 40)
+        );
+        let near = |c| hint_side(c, m, 1.0, size);
+        assert_eq!(near((900, 30)), HintSide::Bottom, "on the bar");
+        assert_eq!(near((900, 135)), HintSide::Bottom, "80 below it");
+        assert_eq!(near((900, 136)), HintSide::Top, "81 below it");
+        assert_eq!(near((680, 30)), HintSide::Bottom, "80 to its left");
+        assert_eq!(near((679, 30)), HintSide::Top, "81 to its left");
+        assert_eq!(near((900, 700)), HintSide::Top);
         // 80 logical pixels: 160 at 200 %.
         let size2 = (800, 80);
-        let side2 = |c| hint_side(c, m, 2.0, size2);
-        assert_eq!(side2((900, 32 + 80 + 160 - 1)), HintSide::Bottom);
-        assert_eq!(side2((900, 32 + 80 + 160)), HintSide::Top);
+        let near2 = |c| hint_side(c, m, 2.0, size2);
+        assert_eq!(near2((900, 32 + 80 + 160 - 1)), HintSide::Bottom);
+        assert_eq!(near2((900, 32 + 80 + 160)), HintSide::Top);
     }
 
     #[test]
@@ -2801,10 +2940,16 @@ mod tests {
         let clock = Cell::new(Duration::ZERO);
         let polls = Cell::new(0_u32);
         let sleep = |d: Duration| clock.set(clock.get() + d);
-        let outcome = wait_until(ms(500), ms(10), || clock.get(), sleep, || {
-            polls.set(polls.get() + 1);
-            polls.get() >= 4
-        });
+        let outcome = wait_until(
+            ms(500),
+            ms(10),
+            || clock.get(),
+            sleep,
+            || {
+                polls.set(polls.get() + 1);
+                polls.get() >= 4
+            },
+        );
         assert_eq!(outcome, Waited::Ready);
         assert_eq!((polls.get(), clock.get()), (4, ms(30)), "three sleeps");
 
@@ -2822,9 +2967,24 @@ mod tests {
         // A zero cap still tries once and never sleeps.
         let clock = Cell::new(Duration::ZERO);
         let slept = Cell::new(false);
-        let ready = wait_until(Duration::ZERO, ms(10), || clock.get(), |_| slept.set(true), || true);
-        let late = wait_until(Duration::ZERO, ms(10), || clock.get(), |_| slept.set(true), || false);
-        assert_eq!((ready, late, slept.get()), (Waited::Ready, Waited::TimedOut, false));
+        let ready = wait_until(
+            Duration::ZERO,
+            ms(10),
+            || clock.get(),
+            |_| slept.set(true),
+            || true,
+        );
+        let late = wait_until(
+            Duration::ZERO,
+            ms(10),
+            || clock.get(),
+            |_| slept.set(true),
+            || false,
+        );
+        assert_eq!(
+            (ready, late, slept.get()),
+            (Waited::Ready, Waited::TimedOut, false)
+        );
     }
 
     #[test]
@@ -2839,8 +2999,14 @@ mod tests {
         assert!(cloak_settled(&[w(true, true, false)]), "cloaked");
         assert!(cloak_settled(&[w(true, false, true)]), "minimised");
         assert!(cloak_settled(&[w(false, false, false)]), "hidden");
-        assert!(cloak_settled(&[w(false, false, false), w(true, true, false)]));
-        assert!(!cloak_settled(&[w(true, true, false), w(true, false, false)]));
+        assert!(cloak_settled(&[
+            w(false, false, false),
+            w(true, true, false)
+        ]));
+        assert!(!cloak_settled(&[
+            w(true, true, false),
+            w(true, false, false)
+        ]));
     }
 
     #[test]
@@ -2852,7 +3018,8 @@ mod tests {
             KeyName::Aperture,
         ])]);
         let mut host = fake.clone();
-        host.start(texts("n"), Duration::ZERO, recorder().1).unwrap();
+        host.start(texts("n"), Duration::ZERO, recorder().1)
+            .unwrap();
         assert_eq!(
             host.notes(),
             [EyedropNote::KeysNotRegistered(vec![
