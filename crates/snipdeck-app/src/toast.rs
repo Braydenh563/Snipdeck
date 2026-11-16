@@ -229,7 +229,7 @@ pub enum ToastMessage {
     TrashEmptied,
     /// "Snipdeck found a problem in your library. Export a copy to be safe." (the weekly check)
     LibraryProblem,
-    /// "Snipdeck closed unexpectedly last time. Open the log?" The action opens the log folder
+    /// "Snipdeck ran into a problem. Open the log?" The action opens the log folder
     /// (`crash::open_log_folder`).
     CrashedLastTime,
     /// "Backed up".

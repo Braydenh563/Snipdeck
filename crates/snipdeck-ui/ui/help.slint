@@ -229,23 +229,34 @@ export component HelpWindow inherits Window {
 
                     FormSection {
                         title: @tr("Tools");
-                        HorizontalLayout {
+                        // One under the other: three side by side run past the window in the
+                        // languages whose button names are long (audit EXTRAS-15).
+                        VerticalLayout {
                             padding-top: Space.s2;
                             spacing: Space.s2;
                             alignment: start;
-                            Button {
-                                text: @tr("Copy diagnostic report");
-                                clicked => { root.copy-report-requested(); }
+                            HorizontalLayout {
+                                alignment: start;
+                                Button {
+                                    text: @tr("Copy diagnostic report");
+                                    clicked => { root.copy-report-requested(); }
+                                }
                             }
-                            Button {
-                                text: @tr("Open data folder");
-                                enabled: root.has-data-folder;
-                                clicked => { root.open-data-folder-requested(); }
+                            HorizontalLayout {
+                                alignment: start;
+                                Button {
+                                    text: @tr("Open data folder");
+                                    enabled: root.has-data-folder;
+                                    clicked => { root.open-data-folder-requested(); }
+                                }
                             }
-                            Button {
-                                text: @tr("Open logs folder");
-                                enabled: root.has-data-folder;
-                                clicked => { root.open-logs-folder-requested(); }
+                            HorizontalLayout {
+                                alignment: start;
+                                Button {
+                                    text: @tr("Open logs folder");
+                                    enabled: root.has-data-folder;
+                                    clicked => { root.open-logs-folder-requested(); }
+                                }
                             }
                         }
                         Text {

@@ -1718,6 +1718,7 @@ component EntityEditorBody inherits Rectangle {
     in property <bool> show-sort: true;
     // How many items a deletion affects (the confirmation says so).
     in property <int> item-count: 0;
+    in property <int> trash-days: 30;
     // False when this one cannot be deleted (the last board); `delete-hint` says why.
     in property <bool> can-delete: true;
     in property <string> delete-hint;
@@ -1981,6 +1982,7 @@ export component ListEditor inherits Window {
     in property <bool> show-sort <=> body.show-sort;
     // How many items deleting the list affects (the confirmation says so).
     in property <int> item-count <=> body.item-count;
+    in property <int> trash-days <=> body.trash-days;
     in property <bool> can-delete <=> body.can-delete;
     in property <string> delete-hint <=> body.delete-hint;
     out property <bool> dirty <=> body.dirty;
@@ -2004,7 +2006,7 @@ export component ListEditor inherits Window {
         missing-name-text: @tr("Give the list a name.");
         delete-label: @tr("Delete list");
         delete-title: @tr("Delete this list?");
-        delete-body: @tr("{n} item will move to Trash with it. You can restore them for 30 days." | "{n} items will move to Trash with it. You can restore them for 30 days." % root.item-count);
+        delete-body: @tr("{n} item will move to Trash with it. You can restore them for {} days." | "{n} items will move to Trash with it. You can restore them for {} days." % root.item-count, root.trash-days);
         save-requested => { root.save-requested(); }
         cancel-requested => { root.cancel-requested(); }
         help-requested => { root.help-requested(); }
@@ -2039,6 +2041,7 @@ export component BoardEditor inherits Window {
     in property <bool> show-sort <=> body.show-sort;
     // How many items deleting the board affects (the confirmation says so).
     in property <int> item-count <=> body.item-count;
+    in property <int> trash-days <=> body.trash-days;
     // False for the last board; `delete-hint` says why.
     in property <bool> can-delete <=> body.can-delete;
     in property <string> delete-hint <=> body.delete-hint;
@@ -2062,7 +2065,7 @@ export component BoardEditor inherits Window {
         missing-name-text: @tr("Give the board a name.");
         delete-label: @tr("Delete board");
         delete-title: @tr("Delete this board?");
-        delete-body: @tr("Its lists and {n} item will move to Trash. You can restore them for 30 days." | "Its lists and {n} items will move to Trash. You can restore them for 30 days." % root.item-count);
+        delete-body: @tr("Its lists and {n} item will move to Trash. You can restore them for {} days." | "Its lists and {n} items will move to Trash. You can restore them for {} days." % root.item-count, root.trash-days);
         save-requested => { root.save-requested(); }
         cancel-requested => { root.cancel-requested(); }
         help-requested => { root.help-requested(); }

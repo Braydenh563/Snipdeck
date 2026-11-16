@@ -649,6 +649,17 @@ fn the_trash_keeps_things_thirty_days_by_the_injected_clock() {
     assert_eq!(ctl.main_screen().counts.trash, 0);
 }
 
+#[test]
+fn the_trash_keeps_things_for_the_days_the_setting_says() {
+    let (mut ctl, clock) = rig();
+    ctl.update_settings(|s| s.trash_days = 7);
+    ctl.main_action(MainAction::Delete, 0);
+    clock.set("2026-10-24T10:29:00Z".parse().unwrap()); // 6 days and a bit later
+    assert_eq!(ctl.purge_expired_trash().expect("purge"), 0);
+    clock.set("2026-10-24T10:31:00Z".parse().unwrap()); // past 7 days
+    assert_eq!(ctl.purge_expired_trash().expect("purge"), 1);
+}
+
 // ---- Lists ----------------------------------------------------------------------------------
 
 #[test]

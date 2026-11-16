@@ -38,3 +38,11 @@ EXTRAS-4 (Rust-side English into *Texts globals), 12 (portable marker, trash ret
 - make_logo.py: no --check; needs cairosvg + fontTools (not installed here), so the generated assets/logo files are not verified against it. Owner: add a --check and `pip install cairosvg fonttools` in CI, or accept
 - readme_shots.py: now exits 1 when renders are missing
 - EXTRAS-7 done in code: `windows::exception` filter (unverified on Windows; compiles for windows-gnu), `crash::native_report`/`on_native_exception`, maintenance checks for a crash report on every tick. Needs wording follow-up in the lang batch: toast "Snipdeck closed unexpectedly last time. Open the log?" is wrong for a mid-session panic -> "Snipdeck ran into a problem. Open the log?" (toast_texts.slint:248, .pot + 6 .po)
+
+## Update (latest batch)
+- EXTRAS-4 done by the agent (NameTexts, StarterTexts, key words, first-run content after language::apply, structural library_is_untouched, 40 strings x 6 locales). Left English, noted: shortcuts.rs Custom/Plain `spoken` consts; main.rs "creating the Panel: {e}" (no window exists to translate it).
+- EXTRAS-12 done: `trash_days` setting (1..=365, default 30) in Settings > Backups; purge, window texts, editor delete dialogs use it (`Jobs::purge_trash` lost its cutoff). Tests: settings `trash_days_default_to_thirty...`, `the_trash_keeps_things_for_the_days_the_setting_says`, `days_in_the_trash_is_held_between_one_and_365_and_shown`, editors_logic delete dialog. The gallery mock (`gallery/inputs.slint`) still shows "30 days" as sample text.
+- Stale strings fixed: "Short tips", "Snipdeck ran into a problem. Open the log?" (+ docs/troubleshooting.md), Tips card text.
+- EXTRAS-7 done: native SEH filter (unverified on Windows) + crash check every maintenance tick (every 6 h).
+- EXTRAS-15 done: `tests/locale_fit.rs` (`a_language_does_not_push_more_past_the_window_edge_than_english_does`). It found and fixed: Help > Tools buttons ran past the window in es/fr/pt-BR/ja (now stacked). Open (English too): Main window toolbar at 2.25x text in a 480 px window runs past the edge; skipped in the test until branch fix/narrow-toolbar lands.
+- Not audited in depth: main.rs lines 260-870.

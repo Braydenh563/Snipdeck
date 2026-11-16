@@ -579,6 +579,7 @@ where
         }
         let view = self.controller.borrow().view();
         render(&window, self.shown.borrow().as_ref(), &view);
+        window.set_trash_days(limit(self.controller.borrow().settings().trash_days));
         // A new group's name follows the language the window is in now.
         self.controller
             .borrow_mut()
@@ -823,7 +824,6 @@ where
         on_effect: impl Fn(&Effect) + 'static,
     ) -> Binding {
         let core = Core::new(this, window, host, Box::new(on_effect));
-        window.set_trash_days(limit(crate::main_window::TRASH_DAYS));
         core.act(|ctl| ctl.set_group_name(&window.invoke_group_default_name()));
         core.wire_colours(window);
         core.sync();

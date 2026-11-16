@@ -26,7 +26,6 @@ use std::{
 
 use jiff::{Zoned, tz::TimeZone};
 use serde::{Deserialize, Serialize};
-use snipdeck_core::Timestamp;
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_portable::backup::{self, BackupOutcome};
 use snipdeck_store::Store;
@@ -36,7 +35,6 @@ use crate::{
     crash,
     failure::Cause,
     host::{ClipboardText, Clock},
-    main_window::TRASH_DAYS,
     toast::{Toast, ToastKind, ToastMessage},
 };
 
@@ -139,7 +137,7 @@ pub trait Jobs {
     /// # Errors
     ///
     /// A message for the log.
-    fn purge_trash(&mut self, cutoff: Timestamp) -> Result<usize, String>;
+    fn purge_trash(&mut self) -> Result<usize, String>;
 
     /// Sweeps blob files nothing uses (leftovers of interrupted writes) older than
     /// [`GC_GRACE`]; returns how many files went.
@@ -361,7 +359,7 @@ impl Maintenance {
         }
 
         if is_due(self.state.last_purge, seconds, INTERVAL) {
-            match jobs.purge_trash(trash_cutoff(now)) {
+            match jobs.purge_trash() {
                 Ok(count) => {
                     self.state.last_purge = Some(seconds);
                     changed = true;
@@ -402,14 +400,6 @@ impl Maintenance {
         }
         outcomes
     }
-}
-
-/// Trash entries older than [`TRASH_DAYS`] days at `now` are expired.
-fn trash_cutoff(now: Timestamp) -> Timestamp {
-    let seconds = now
-        .as_second()
-        .saturating_sub(i64::from(TRASH_DAYS) * 86_400);
-    Timestamp::from_second(seconds).unwrap_or(Timestamp::MIN)
 }
 
 /// The message of a deferred backup.
@@ -477,8 +467,8 @@ where
         }
     }
 
-    /// The controller cuts at its own clock's `now - TRASH_DAYS`, the same moment as `_cutoff`.
-    fn purge_trash(&mut self, _cutoff: Timestamp) -> Result<usize, String> {
+    /// The controller cuts at its own clock's `now` minus the `trash_days` setting.
+    fn purge_trash(&mut self) -> Result<usize, String> {
         self.controller
             .purge_expired_trash()
             .map_err(|e| e.to_string())
@@ -526,6 +516,7 @@ where
 mod tests {
     use super::*;
     use crate::host::FixedClock;
+    use snipdeck_core::Timestamp;
 
     const HOUR: i64 = 3600;
     const DAY: i64 = 86_400;
@@ -572,7 +563,7 @@ mod tests {
     #[derive(Default)]
     struct FakeJobs {
         backups: Vec<Timestamp>,
-        purges: Vec<Timestamp>,
+        purges: usize,
         checks: usize,
         sweeps: usize,
         prunes: usize,
@@ -589,8 +580,8 @@ mod tests {
                 .clone()
                 .unwrap_or(Ok(BackupResult::Created { pruned: 0 }))
         }
-        fn purge_trash(&mut self, cutoff: Timestamp) -> Result<usize, String> {
-            self.purges.push(cutoff);
+        fn purge_trash(&mut self) -> Result<usize, String> {
+            self.purges += 1;
             self.purge_result.clone().unwrap_or(Ok(0))
         }
         fn gc_blobs(&mut self) -> Result<usize, String> {
@@ -642,17 +633,12 @@ mod tests {
     }
 
     #[test]
-    fn the_purge_cuts_at_exactly_thirty_days_before_now() {
+    fn the_purge_runs_on_the_first_tick_and_then_every_six_hours() {
         let dir = tempfile::tempdir().unwrap();
         let (mut m, _clock) = rig(dir.path());
         let mut jobs = FakeJobs::default();
         m.tick(&mut jobs);
-        assert_eq!(jobs.purges, [at(t0() - 30 * DAY)]);
-        assert_eq!(
-            jobs.purges[0].to_string(),
-            "2026-09-18T09:00:00Z",
-            "30 days before 2026-10-18"
-        );
+        assert_eq!(jobs.purges, 1);
     }
 
     #[test]
@@ -664,11 +650,11 @@ mod tests {
 
         clock.set(at(t0() + 6 * HOUR - 1));
         assert!(m.tick(&mut jobs).is_empty(), "one second early");
-        assert_eq!((jobs.backups.len(), jobs.purges.len()), (1, 1));
+        assert_eq!((jobs.backups.len(), jobs.purges), (1, 1));
 
         clock.set(at(t0() + 6 * HOUR));
         let out = m.tick(&mut jobs);
-        assert_eq!((jobs.backups.len(), jobs.purges.len()), (2, 2), "{out:?}");
+        assert_eq!((jobs.backups.len(), jobs.purges), (2, 2), "{out:?}");
         assert_eq!(jobs.backups[1], at(t0() + 6 * HOUR));
         assert_eq!(jobs.checks, 1, "the integrity check is weekly");
     }
@@ -764,12 +750,7 @@ mod tests {
         jobs.integrity_result = None;
         m.tick(&mut jobs);
         assert_eq!(
-            (
-                jobs.backups.len(),
-                jobs.purges.len(),
-                jobs.sweeps,
-                jobs.checks
-            ),
+            (jobs.backups.len(), jobs.purges, jobs.sweeps, jobs.checks),
             (2, 2, 2, 2)
         );
     }

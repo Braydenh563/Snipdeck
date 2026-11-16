@@ -875,6 +875,9 @@ msgstr "任意の形式の日付と時刻"
 msgid "Dates are today’s; a field you fill in when you use the item shows its name or default."
 msgstr "日付は今日のものです。スニペットの使用時に入力するフィールドには、名前または既定値が表示されます。"
 
+msgid "Days in the Trash"
+msgstr "ごみ箱の保存日数"
+
 msgid "Delete"
 msgstr "削除"
 
@@ -943,6 +946,9 @@ msgstr "ボード「{}」を削除しました"
 
 msgid "Deleted for good"
 msgstr "完全に削除しました"
+
+msgid "Deleted items can be restored until then, and are removed after."
+msgstr "削除したスニペットは、この日数までは復元でき、過ぎると削除されます。"
 
 msgid "Deleted items stay here for {} days before they are removed."
 msgstr "削除されたスニペットは、完全に削除されるまで{}日間ここに残ります。"
@@ -1292,8 +1298,8 @@ msgstr "ハート"
 msgid "Help"
 msgstr "ヘルプ"
 
-msgid "Help > Tips has ten short cards with a picture and a Try it button each. Open it from Help, or from the tray icon's menu."
-msgstr "ヘルプ > ヒントには、画像と「試してみる」ボタン付きの短いカードが10枚あります。ヘルプまたはトレイアイコンのメニューから開けます。"
+msgid "Help > Tips has short cards with a picture and a Try it button each. Open it from Help, or from the tray icon's menu."
+msgstr "ヘルプ > ヒントには、画像と「試してみる」ボタン付きの短いカードがあります。ヘルプまたはトレイアイコンのメニューから開けます。"
 
 msgid "Help sections"
 msgstr "ヘルプのセクション"
@@ -1435,9 +1441,9 @@ msgstr "スニペット"
 msgid "Items are removed after {} days."
 msgstr "スニペットは{}日後に削除されます。"
 
-msgid "Its lists and {n} item will move to Trash. You can restore them for 30 days."
-msgid_plural "Its lists and {n} items will move to Trash. You can restore them for 30 days."
-msgstr[0] "そのリストと{n}件のスニペットはごみ箱に移動します。30日間復元できます。"
+msgid "Its lists and {n} item will move to Trash. You can restore them for {} days."
+msgid_plural "Its lists and {n} items will move to Trash. You can restore them for {} days."
+msgstr[0] "そのリストと{n}件のスニペットはごみ箱に移動します。{}日間復元できます。"
 
 msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
 msgstr "このボードのリストと{}件のスニペットがごみ箱に移動します。{}日間は復元できます。"
@@ -1465,6 +1471,12 @@ msgstr "コピーした内容を「最近」の受信箱に残す"
 
 msgid "Keep a Recent list of what you copy?"
 msgstr "コピーした内容の「最近」リストを残しますか？"
+
+msgid "Keep deleted items for fewer days"
+msgstr "削除したスニペットの保存日数を減らす"
+
+msgid "Keep deleted items for more days"
+msgstr "削除したスニペットの保存日数を増やす"
 
 msgid "Keep editing"
 msgstr "編集を続ける"
@@ -2721,6 +2733,9 @@ msgstr "Shift+クリックでコピー"
 msgid "Shopping cart"
 msgstr "ショッピングカート"
 
+msgid "Short tips"
+msgstr "短いヒント"
+
 msgid "Shortcuts"
 msgstr "ショートカット"
 
@@ -2817,9 +2832,6 @@ msgstr "Snipdeck はそのファイルを読めません。使用中か、保護
 msgid "Snipdeck can’t watch the clipboard, so Recent stays empty. Restart Snipdeck to try again."
 msgstr "Snipdeck はクリップボードを監視できないため、最近の項目は空のままです。Snipdeck を再起動してもう一度お試しください。"
 
-msgid "Snipdeck closed unexpectedly last time. Open the log?"
-msgstr "Snipdeck は前回、予期せず終了しました。ログを開きますか？"
-
 msgid "Snipdeck couldn’t open that. Check that it still exists."
 msgstr "Snipdeck でそのファイルを開けませんでした。まだ存在するか確認してください。"
 
@@ -2870,6 +2882,9 @@ msgstr "Snipdeck が自動で確認することはありません。ブラウザ
 
 msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
 msgstr "Snipdeck はインターネットに接続しません。表示するアイコンとフォントはすべて同梱されています。"
+
+msgid "Snipdeck ran into a problem. Open the log?"
+msgstr "Snipdeck で問題が発生しました。ログを開きますか？"
 
 msgid "Snipdeck saves a copy of your library once a day and keeps the newest {}. Restoring adds back what is missing and never removes anything."
 msgstr "Snipdeckはライブラリのコピーを1日1回保存し、新しい{}つを残します。復元では足りないものだけが戻り、何も削除されません。"
@@ -3017,9 +3032,6 @@ msgstr "テンプレートのテキスト"
 
 msgid "Templates ask for names, dates and options before they paste."
 msgstr "テンプレートは貼り付ける前に、名前、日付、選択肢を尋ねます。"
-
-msgid "Ten short tips"
-msgstr "10 個の短いヒント"
 
 msgid "Terminal"
 msgstr "ターミナル"
@@ -3990,9 +4002,9 @@ msgid "{n} item"
 msgid_plural "{n} items"
 msgstr[0] "{n}件のスニペット"
 
-msgid "{n} item will move to Trash with it. You can restore them for 30 days."
-msgid_plural "{n} items will move to Trash with it. You can restore them for 30 days."
-msgstr[0] "{n}件のスニペットも一緒にごみ箱に移動します。30日間復元できます。"
+msgid "{n} item will move to Trash with it. You can restore them for {} days."
+msgid_plural "{n} items will move to Trash with it. You can restore them for {} days."
+msgstr[0] "{n}件のスニペットも一緒にごみ箱に移動します。{}日間復元できます。"
 
 msgid "{n} match in {}"
 msgid_plural "{n} matches in {}"

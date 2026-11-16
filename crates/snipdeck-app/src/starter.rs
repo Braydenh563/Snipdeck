@@ -67,7 +67,7 @@ impl StarterWords {
                 ),
                 card(
                     "More tips",
-                    "Help > Tips has ten short cards with a picture and a Try it button each. Open it from Help, or from the tray icon's menu.",
+                    "Help > Tips has short cards with a picture and a Try it button each. Open it from Help, or from the tray icon's menu.",
                 ),
             ],
             new_list: "New list".to_owned(),

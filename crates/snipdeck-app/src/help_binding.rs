@@ -269,6 +269,7 @@ pub(crate) fn report_flags(settings: &crate::settings::Settings) -> Vec<(String,
         ),
         ("Panel width".into(), settings.panel_width.to_string()),
         ("Backups kept".into(), settings.backups_keep.to_string()),
+        ("Days in the Trash".into(), settings.trash_days.to_string()),
         (
             "Programs that never get a paste".into(),
             settings.no_paste_apps.len().to_string(),

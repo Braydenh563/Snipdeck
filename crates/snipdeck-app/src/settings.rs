@@ -21,6 +21,10 @@ pub const MAIN_SIDEBAR_WIDTH_DEFAULT: u32 = 232;
 pub const BACKUPS_KEEP: std::ops::RangeInclusive<u32> = 1..=60;
 /// The default number of backups kept (SPEC 5.7a).
 pub const BACKUPS_KEEP_DEFAULT: u32 = 7;
+/// How many days the Trash keeps deleted things (Settings > Backups; SPEC 5.7a).
+pub const TRASH_DAYS: std::ops::RangeInclusive<u32> = 1..=365;
+/// The default number of days the Trash keeps things.
+pub const TRASH_DAYS_DEFAULT: u32 = 30;
 /// How long a copied sensitive item may stay on the clipboard, in seconds (Settings > Privacy);
 /// 0 never clears it (SPEC 5.7).
 pub const CLIPBOARD_CLEAR_SECS: std::ops::RangeInclusive<u32> = 0..=600;
@@ -766,6 +770,8 @@ pub struct Settings {
     pub panel_width: u32,
     /// How many daily backups to keep (1 to 60).
     pub backups_keep: u32,
+    /// How many days deleted things stay in the Trash before they are removed (1 to 365).
+    pub trash_days: u32,
     /// Animations are off even when Windows' "Animation effects" is on.
     pub reduce_motion: bool,
     /// The text size: follow Windows, or a fixed percentage (WCAG 1.4.4).
@@ -894,6 +900,7 @@ impl Default for Settings {
             hide_hint_shown: false,
             panel_width: PANEL_WIDTH_DEFAULT,
             backups_keep: BACKUPS_KEEP_DEFAULT,
+            trash_days: TRASH_DAYS_DEFAULT,
             reduce_motion: false,
             text_size: TextSize::System,
             clipboard_clear_secs: CLIPBOARD_CLEAR_SECS_DEFAULT,
@@ -1030,6 +1037,7 @@ impl Settings {
         field!(hide_hint_shown);
         field!(panel_width);
         field!(backups_keep);
+        field!(trash_days);
         field!(reduce_motion);
         field!(text_size);
         field!(clipboard_clear_secs);
@@ -1168,6 +1176,9 @@ impl Settings {
         self.backups_keep = self
             .backups_keep
             .clamp(*BACKUPS_KEEP.start(), *BACKUPS_KEEP.end());
+        self.trash_days = self
+            .trash_days
+            .clamp(*TRASH_DAYS.start(), *TRASH_DAYS.end());
         self.clipboard_clear_secs = self
             .clipboard_clear_secs
             .clamp(*CLIPBOARD_CLEAR_SECS.start(), *CLIPBOARD_CLEAR_SECS.end());
@@ -2056,6 +2067,24 @@ mod tests {
         assert_eq!((bad.backups_keep, bad.theme), (7, Theme::Dark));
         let kept = Settings {
             backups_keep: 30,
+            ..Settings::default()
+        };
+        assert_eq!(Settings::from_json(&kept.to_json()), kept);
+    }
+
+    #[test]
+    fn trash_days_default_to_thirty_and_are_held_between_one_and_365() {
+        assert_eq!(Settings::from_json("{}").trash_days, 30);
+        assert_eq!(Settings::from_json(r#"{"trash_days":0}"#).trash_days, 1);
+        assert_eq!(
+            Settings::from_json(r#"{"trash_days":9999}"#).trash_days,
+            365
+        );
+        assert_eq!(Settings::from_json(r#"{"trash_days":90}"#).trash_days, 90);
+        let bad = Settings::from_json(r#"{"trash_days":"long","theme":"dark"}"#);
+        assert_eq!((bad.trash_days, bad.theme), (30, Theme::Dark));
+        let kept = Settings {
+            trash_days: 14,
             ..Settings::default()
         };
         assert_eq!(Settings::from_json(&kept.to_json()), kept);

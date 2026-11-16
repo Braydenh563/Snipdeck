@@ -25,6 +25,8 @@ use support::on_ui_thread;
 fn in_english_the_globals_give_the_english_words() {
     on_ui_thread(|| {
         let window = PanelWindow::new().expect("window");
+        // The tests of this file share the process, and the language is process-wide.
+        slint::select_bundled_translation("").expect("untranslated");
         assert_eq!(starter_words(&window), StarterWords::english());
         assert_eq!(key_words(&window), KeyWords::english());
         let labels: Vec<String> = ItemLabel::ALL
@@ -72,6 +74,7 @@ fn every_label_and_icon_has_its_own_name_in_every_bundled_language() {
             icons.dedup();
             assert_eq!(icons.len(), ListIcon::ALL.len(), "{tag}: icon names differ");
         }
+        slint::select_bundled_translation("").expect("untranslated");
     });
 }
 
@@ -93,5 +96,6 @@ fn a_new_library_is_worded_in_the_selected_language() {
         // The template card keeps its placeholders, whatever the language.
         assert!(german.cards[2].1.contains("{date}") && german.cards[2].1.contains("{time}"));
         assert_ne!(key_words(&window), KeyWords::english());
+        slint::select_bundled_translation("").expect("untranslated");
     });
 }

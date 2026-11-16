@@ -876,6 +876,9 @@ msgstr "Data e hora no formato escolhido"
 msgid "Dates are today’s; a field you fill in when you use the item shows its name or default."
 msgstr "As datas são as de hoje; um campo que você preenche ao usar o trecho mostra o nome ou o valor padrão."
 
+msgid "Days in the Trash"
+msgstr "Dias na lixeira"
+
 msgid "Delete"
 msgstr "Excluir"
 
@@ -944,6 +947,9 @@ msgstr "Quadro “{}” excluído"
 
 msgid "Deleted for good"
 msgstr "Excluído definitivamente"
+
+msgid "Deleted items can be restored until then, and are removed after."
+msgstr "Os trechos excluídos podem ser restaurados até lá e são removidos depois."
 
 msgid "Deleted items stay here for {} days before they are removed."
 msgstr "Os trechos excluídos ficam aqui por {} dias antes de serem removidos."
@@ -1293,8 +1299,8 @@ msgstr "Coração"
 msgid "Help"
 msgstr "Ajuda"
 
-msgid "Help > Tips has ten short cards with a picture and a Try it button each. Open it from Help, or from the tray icon's menu."
-msgstr "Ajuda > Dicas tem dez cartões curtos, cada um com uma imagem e um botão Experimentar. Abra pela Ajuda ou pelo menu do ícone da bandeja."
+msgid "Help > Tips has short cards with a picture and a Try it button each. Open it from Help, or from the tray icon's menu."
+msgstr "Ajuda > Dicas tem cartões curtos, cada um com uma imagem e um botão Experimentar. Abra pela Ajuda ou pelo menu do ícone da bandeja."
 
 msgid "Help sections"
 msgstr "Seções da ajuda"
@@ -1438,10 +1444,10 @@ msgstr "Trechos"
 msgid "Items are removed after {} days."
 msgstr "Os trechos são removidos após {} dias."
 
-msgid "Its lists and {n} item will move to Trash. You can restore them for 30 days."
-msgid_plural "Its lists and {n} items will move to Trash. You can restore them for 30 days."
-msgstr[0] "Suas listas e {n} trecho serão movidos para a Lixeira. Você pode restaurá-los em até 30 dias."
-msgstr[1] "Suas listas e {n} trechos serão movidos para a Lixeira. Você pode restaurá-los em até 30 dias."
+msgid "Its lists and {n} item will move to Trash. You can restore them for {} days."
+msgid_plural "Its lists and {n} items will move to Trash. You can restore them for {} days."
+msgstr[0] "Suas listas e {n} trecho serão movidos para a Lixeira. Você pode restaurá-los em até {} dias."
+msgstr[1] "Suas listas e {n} trechos serão movidos para a Lixeira. Você pode restaurá-los em até {} dias."
 
 msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
 msgstr "Suas listas e {} trechos vão para a lixeira. Você pode restaurá-los por {} dias."
@@ -1469,6 +1475,12 @@ msgstr "Manter uma caixa de Recentes com o que você copia"
 
 msgid "Keep a Recent list of what you copy?"
 msgstr "Manter uma lista Recente do que você copia?"
+
+msgid "Keep deleted items for fewer days"
+msgstr "Manter os trechos excluídos por menos dias"
+
+msgid "Keep deleted items for more days"
+msgstr "Manter os trechos excluídos por mais dias"
 
 msgid "Keep editing"
 msgstr "Continuar editando"
@@ -2729,6 +2741,9 @@ msgstr "Shift+clique para copiar"
 msgid "Shopping cart"
 msgstr "Carrinho de compras"
 
+msgid "Short tips"
+msgstr "Dicas curtas"
+
 msgid "Shortcuts"
 msgstr "Atalhos"
 
@@ -2825,9 +2840,6 @@ msgstr "O Snipdeck não consegue ler esse arquivo. Ele pode estar em uso ou prot
 msgid "Snipdeck can’t watch the clipboard, so Recent stays empty. Restart Snipdeck to try again."
 msgstr "O Snipdeck não consegue monitorar a área de transferência, então Recentes continuará vazio. Reinicie o Snipdeck para tentar de novo."
 
-msgid "Snipdeck closed unexpectedly last time. Open the log?"
-msgstr "O Snipdeck foi fechado inesperadamente da última vez. Abrir o log?"
-
 msgid "Snipdeck couldn’t open that. Check that it still exists."
 msgstr "O Snipdeck não conseguiu abrir isso. Verifique se ainda existe."
 
@@ -2878,6 +2890,9 @@ msgstr "O Snipdeck nunca verifica sozinho. Isto abre a página de versões no se
 
 msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
 msgstr "O Snipdeck nunca se conecta à internet: todos os ícones e fontes que ele mostra vêm incluídos."
+
+msgid "Snipdeck ran into a problem. Open the log?"
+msgstr "O Snipdeck encontrou um problema. Abrir o log?"
 
 msgid "Snipdeck saves a copy of your library once a day and keeps the newest {}. Restoring adds back what is missing and never removes anything."
 msgstr "O Snipdeck salva uma cópia da sua biblioteca uma vez por dia e mantém as {} mais recentes. Restaurar traz de volta o que falta e nunca remove nada."
@@ -3025,9 +3040,6 @@ msgstr "Texto do modelo"
 
 msgid "Templates ask for names, dates and options before they paste."
 msgstr "Os modelos pedem nomes, datas e opções antes de colar."
-
-msgid "Ten short tips"
-msgstr "Dez dicas curtas"
 
 msgid "Terminal"
 msgstr "Terminal"
@@ -4001,10 +4013,10 @@ msgid_plural "{n} items"
 msgstr[0] "{n} trecho"
 msgstr[1] "{n} trechos"
 
-msgid "{n} item will move to Trash with it. You can restore them for 30 days."
-msgid_plural "{n} items will move to Trash with it. You can restore them for 30 days."
-msgstr[0] "{n} trecho será movido para a Lixeira junto. Você pode restaurá-lo em até 30 dias."
-msgstr[1] "{n} trechos serão movidos para a Lixeira junto. Você pode restaurá-los em até 30 dias."
+msgid "{n} item will move to Trash with it. You can restore them for {} days."
+msgid_plural "{n} items will move to Trash with it. You can restore them for {} days."
+msgstr[0] "{n} trecho será movido para a Lixeira junto. Você pode restaurá-lo em até {} dias."
+msgstr[1] "{n} trechos serão movidos para a Lixeira junto. Você pode restaurá-los em até {} dias."
 
 msgid "{n} match in {}"
 msgid_plural "{n} matches in {}"

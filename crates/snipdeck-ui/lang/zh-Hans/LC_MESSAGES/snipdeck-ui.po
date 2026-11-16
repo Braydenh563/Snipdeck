@@ -875,6 +875,9 @@ msgstr "以你选择的格式显示日期和时间"
 msgid "Dates are today’s; a field you fill in when you use the item shows its name or default."
 msgstr "日期为今天的日期；使用该片段时才填写的字段会显示其名称或默认值。"
 
+msgid "Days in the Trash"
+msgstr "回收站保留天数"
+
 msgid "Delete"
 msgstr "删除"
 
@@ -943,6 +946,9 @@ msgstr "已删除看板“{}”"
 
 msgid "Deleted for good"
 msgstr "已永久删除"
+
+msgid "Deleted items can be restored until then, and are removed after."
+msgstr "在此天数内可以恢复已删除的片段，之后会被移除。"
 
 msgid "Deleted items stay here for {} days before they are removed."
 msgstr "已删除的片段会在这里保留 {} 天，之后才会被移除。"
@@ -1292,8 +1298,8 @@ msgstr "心形"
 msgid "Help"
 msgstr "帮助"
 
-msgid "Help > Tips has ten short cards with a picture and a Try it button each. Open it from Help, or from the tray icon's menu."
-msgstr "帮助 > 提示 有十张简短的卡片，每张都带有图片和“试一试”按钮。可从帮助或托盘图标的菜单中打开。"
+msgid "Help > Tips has short cards with a picture and a Try it button each. Open it from Help, or from the tray icon's menu."
+msgstr "帮助 > 提示 有简短的卡片，每张都带有图片和“试一试”按钮。可从帮助或托盘图标的菜单中打开。"
 
 msgid "Help sections"
 msgstr "帮助分区"
@@ -1435,9 +1441,9 @@ msgstr "片段"
 msgid "Items are removed after {} days."
 msgstr "片段将在 {} 天后移除。"
 
-msgid "Its lists and {n} item will move to Trash. You can restore them for 30 days."
-msgid_plural "Its lists and {n} items will move to Trash. You can restore them for 30 days."
-msgstr[0] "其列表及其中的 {n} 个片段将移至回收站。你可以在 30 天内恢复它们。"
+msgid "Its lists and {n} item will move to Trash. You can restore them for {} days."
+msgid_plural "Its lists and {n} items will move to Trash. You can restore them for {} days."
+msgstr[0] "其列表及其中的 {n} 个片段将移至回收站。你可以在 {} 天内恢复它们。"
 
 msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
 msgstr "它的列表和 {} 个片段将移到回收站。你可以在 {} 天内恢复。"
@@ -1465,6 +1471,12 @@ msgstr "保留你复制内容的“最近”收件箱"
 
 msgid "Keep a Recent list of what you copy?"
 msgstr "要保留你复制内容的“最近”列表吗？"
+
+msgid "Keep deleted items for fewer days"
+msgstr "减少已删除片段的保留天数"
+
+msgid "Keep deleted items for more days"
+msgstr "增加已删除片段的保留天数"
 
 msgid "Keep editing"
 msgstr "继续编辑"
@@ -2721,6 +2733,9 @@ msgstr "Shift+单击以复制"
 msgid "Shopping cart"
 msgstr "购物车"
 
+msgid "Short tips"
+msgstr "简短提示"
+
 msgid "Shortcuts"
 msgstr "快捷键"
 
@@ -2817,9 +2832,6 @@ msgstr "Snipdeck 无法读取该文件。它可能正在使用中或受保护。
 msgid "Snipdeck can’t watch the clipboard, so Recent stays empty. Restart Snipdeck to try again."
 msgstr "Snipdeck 无法监视剪贴板，因此“最近”将保持为空。请重启 Snipdeck 后重试。"
 
-msgid "Snipdeck closed unexpectedly last time. Open the log?"
-msgstr "Snipdeck 上次意外关闭。要打开日志吗？"
-
 msgid "Snipdeck couldn’t open that. Check that it still exists."
 msgstr "Snipdeck 无法打开该文件。请检查它是否仍然存在。"
 
@@ -2870,6 +2882,9 @@ msgstr "Snipdeck 不会自行检查。这会在浏览器中打开发布页面。
 
 msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
 msgstr "Snipdeck 从不连接互联网：它显示的每个图标和字体都已随应用打包。"
+
+msgid "Snipdeck ran into a problem. Open the log?"
+msgstr "Snipdeck 遇到了问题。要打开日志吗？"
 
 msgid "Snipdeck saves a copy of your library once a day and keeps the newest {}. Restoring adds back what is missing and never removes anything."
 msgstr "Snipdeck 每天保存一份资料库副本，并保留最新的 {} 份。还原只会补回缺少的内容，不会删除任何东西。"
@@ -3017,9 +3032,6 @@ msgstr "模板文本"
 
 msgid "Templates ask for names, dates and options before they paste."
 msgstr "模板会在粘贴前询问姓名、日期和选项。"
-
-msgid "Ten short tips"
-msgstr "十条简短提示"
 
 msgid "Terminal"
 msgstr "终端"
@@ -3990,9 +4002,9 @@ msgid "{n} item"
 msgid_plural "{n} items"
 msgstr[0] "{n} 个片段"
 
-msgid "{n} item will move to Trash with it. You can restore them for 30 days."
-msgid_plural "{n} items will move to Trash with it. You can restore them for 30 days."
-msgstr[0] "{n} 个片段将一同移至回收站。你可以在 30 天内恢复它们。"
+msgid "{n} item will move to Trash with it. You can restore them for {} days."
+msgid_plural "{n} items will move to Trash with it. You can restore them for {} days."
+msgstr[0] "{n} 个片段将一同移至回收站。你可以在 {} 天内恢复它们。"
 
 msgid "{n} match in {}"
 msgid_plural "{n} matches in {}"

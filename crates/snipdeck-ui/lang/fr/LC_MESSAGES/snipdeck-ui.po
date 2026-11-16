@@ -876,6 +876,9 @@ msgstr "Date et heure dans le format de votre choix"
 msgid "Dates are today’s; a field you fill in when you use the item shows its name or default."
 msgstr "Les dates sont celles d'aujourd'hui ; un champ à remplir lors de l'utilisation de l'extrait affiche son nom ou sa valeur par défaut."
 
+msgid "Days in the Trash"
+msgstr "Jours dans la corbeille"
+
 msgid "Delete"
 msgstr "Supprimer"
 
@@ -944,6 +947,9 @@ msgstr "Tableau « {} » supprimé"
 
 msgid "Deleted for good"
 msgstr "Supprimé définitivement"
+
+msgid "Deleted items can be restored until then, and are removed after."
+msgstr "Les extraits supprimés peuvent être restaurés jusque-là, puis ils sont retirés."
 
 msgid "Deleted items stay here for {} days before they are removed."
 msgstr "Les extraits supprimés restent ici {} jours avant d'être retirés."
@@ -1293,8 +1299,8 @@ msgstr "Cœur"
 msgid "Help"
 msgstr "Aide"
 
-msgid "Help > Tips has ten short cards with a picture and a Try it button each. Open it from Help, or from the tray icon's menu."
-msgstr "Aide > Astuces propose dix cartes courtes, chacune avec une image et un bouton Essayer. Ouvrez-les depuis l’Aide ou depuis le menu de l’icône de la zone de notification."
+msgid "Help > Tips has short cards with a picture and a Try it button each. Open it from Help, or from the tray icon's menu."
+msgstr "Aide > Astuces propose des cartes courtes, chacune avec une image et un bouton Essayer. Ouvrez-les depuis l’Aide ou depuis le menu de l’icône de la zone de notification."
 
 msgid "Help sections"
 msgstr "Sections de l'aide"
@@ -1438,10 +1444,10 @@ msgstr "Extraits"
 msgid "Items are removed after {} days."
 msgstr "Les extraits sont supprimés après {} jours."
 
-msgid "Its lists and {n} item will move to Trash. You can restore them for 30 days."
-msgid_plural "Its lists and {n} items will move to Trash. You can restore them for 30 days."
-msgstr[0] "Ses listes et {n} extrait seront déplacés dans la corbeille. Vous pouvez les restaurer pendant 30 jours."
-msgstr[1] "Ses listes et {n} extraits seront déplacés dans la corbeille. Vous pouvez les restaurer pendant 30 jours."
+msgid "Its lists and {n} item will move to Trash. You can restore them for {} days."
+msgid_plural "Its lists and {n} items will move to Trash. You can restore them for {} days."
+msgstr[0] "Ses listes et {n} extrait seront déplacés dans la corbeille. Vous pouvez les restaurer pendant {} jours."
+msgstr[1] "Ses listes et {n} extraits seront déplacés dans la corbeille. Vous pouvez les restaurer pendant {} jours."
 
 msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
 msgstr "Ses listes et {} extraits vont à la corbeille. Vous pouvez les restaurer pendant {} jours."
@@ -1469,6 +1475,12 @@ msgstr "Garder une boîte Récents de ce que vous copiez"
 
 msgid "Keep a Recent list of what you copy?"
 msgstr "Garder une liste Récent de ce que vous copiez ?"
+
+msgid "Keep deleted items for fewer days"
+msgstr "Conserver les extraits supprimés moins de jours"
+
+msgid "Keep deleted items for more days"
+msgstr "Conserver les extraits supprimés plus de jours"
 
 msgid "Keep editing"
 msgstr "Continuer la modification"
@@ -2729,6 +2741,9 @@ msgstr "Shift+clic pour copier"
 msgid "Shopping cart"
 msgstr "Caddie"
 
+msgid "Short tips"
+msgstr "Astuces courtes"
+
 msgid "Shortcuts"
 msgstr "Raccourcis"
 
@@ -2825,9 +2840,6 @@ msgstr "Snipdeck ne peut pas lire ce fichier. Il est peut-être utilisé ou prot
 msgid "Snipdeck can’t watch the clipboard, so Recent stays empty. Restart Snipdeck to try again."
 msgstr "Snipdeck ne peut pas surveiller le presse-papiers, donc Récents reste vide. Redémarrez Snipdeck pour réessayer."
 
-msgid "Snipdeck closed unexpectedly last time. Open the log?"
-msgstr "Snipdeck s'est fermé de façon inattendue la dernière fois. Ouvrir le journal ?"
-
 msgid "Snipdeck couldn’t open that. Check that it still exists."
 msgstr "Snipdeck n'a pas pu ouvrir ce fichier. Vérifiez qu'il existe toujours."
 
@@ -2878,6 +2890,9 @@ msgstr "Snipdeck ne cherche jamais de lui-même. Cela ouvre la page des versions
 
 msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
 msgstr "Snipdeck ne se connecte jamais à internet : chaque icône et chaque police affichée est fournie avec lui."
+
+msgid "Snipdeck ran into a problem. Open the log?"
+msgstr "Snipdeck a rencontré un problème. Ouvrir le journal ?"
 
 msgid "Snipdeck saves a copy of your library once a day and keeps the newest {}. Restoring adds back what is missing and never removes anything."
 msgstr "Snipdeck enregistre une copie de votre bibliothèque une fois par jour et garde les {} plus récentes. La restauration remet ce qui manque et ne supprime jamais rien."
@@ -3025,9 +3040,6 @@ msgstr "Texte du modèle"
 
 msgid "Templates ask for names, dates and options before they paste."
 msgstr "Les modèles demandent des noms, des dates et des options avant de coller."
-
-msgid "Ten short tips"
-msgstr "Dix astuces courtes"
 
 msgid "Terminal"
 msgstr "Terminal"
@@ -4001,10 +4013,10 @@ msgid_plural "{n} items"
 msgstr[0] "{n} extrait"
 msgstr[1] "{n} extraits"
 
-msgid "{n} item will move to Trash with it. You can restore them for 30 days."
-msgid_plural "{n} items will move to Trash with it. You can restore them for 30 days."
-msgstr[0] "{n} extrait sera déplacé dans la corbeille avec lui. Vous pouvez le restaurer pendant 30 jours."
-msgstr[1] "{n} extraits seront déplacés dans la corbeille avec lui. Vous pouvez les restaurer pendant 30 jours."
+msgid "{n} item will move to Trash with it. You can restore them for {} days."
+msgid_plural "{n} items will move to Trash with it. You can restore them for {} days."
+msgstr[0] "{n} extrait sera déplacé dans la corbeille avec lui. Vous pouvez le restaurer pendant {} jours."
+msgstr[1] "{n} extraits seront déplacés dans la corbeille avec lui. Vous pouvez les restaurer pendant {} jours."
 
 msgid "{n} match in {}"
 msgid_plural "{n} matches in {}"

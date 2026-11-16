@@ -990,6 +990,10 @@ ui_tests! {
             dialog.accessible_description().as_deref(),
             Some("24 items will move to Trash with it. You can restore them for 30 days.")
         );
+        ui.set_trash_days(90);
+        settle();
+        assert!(find(&ui, "Delete this list?", AccessibleRole::Groupbox)
+            .accessible_description().unwrap().ends_with("for 90 days."));
         ui.set_item_count(1);
         settle();
         assert!(find(&ui, "Delete this list?", AccessibleRole::Groupbox)

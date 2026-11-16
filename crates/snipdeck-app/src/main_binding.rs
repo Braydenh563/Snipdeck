@@ -252,6 +252,9 @@ where
         };
         let screen = self.controller.borrow_mut().main_screen();
         render(&window, self.shown.borrow().as_ref(), &screen);
+        window.set_trash_days(crate::binding::limit(
+            self.controller.borrow().settings().trash_days,
+        ));
         if let Some(toast) = &screen.toast
             && self.controller.borrow_mut().claim_toast_timer(toast.seq)
         {
@@ -359,6 +362,7 @@ where
 
     /// Shows, updates or hides the list or board editor to match `screen.editor`.
     fn sync_editors(self: &Rc<Self>, screen: &MainScreen) {
+        let trash_days = crate::binding::limit(self.controller.borrow().settings().trash_days);
         let Some(view) = &screen.editor else {
             let editors = self.editors.borrow();
             if let Some(w) = &editors.list {
@@ -380,6 +384,7 @@ where
                 }
                 apply_look(&window, screen);
                 window.set_dark(screen.dark);
+                window.set_trash_days(trash_days);
                 window.set_name_error(error_text(&window, view));
                 if fresh {
                     fill_list_editor(&window, view);
@@ -403,6 +408,7 @@ where
                 }
                 apply_look(&window, screen);
                 window.set_dark(screen.dark);
+                window.set_trash_days(trash_days);
                 window.set_name_error(error_text(&window, view));
                 if fresh {
                     fill_board_editor(&window, view);
@@ -567,7 +573,6 @@ where
         // The OS draws the title bar and its caption buttons until the client-area chrome of
         // ADR-0008 exists, so the toolbar reserves nothing for them.
         window.global::<ui::SystemLook<'_>>().set_caption_inset(0.0);
-        window.set_trash_days(crate::binding::limit(crate::main_window::TRASH_DAYS));
         core.sync();
 
         macro_rules! wire {

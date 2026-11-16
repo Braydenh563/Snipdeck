@@ -275,7 +275,7 @@ fn each_toggle_writes_settings_json_after_the_quiet_time() {
             }
         }
         let _english = EnglishAgain;
-        let cases: [Case; 20] = [
+        let cases: [Case; 21] = [
             (
                 "theme",
                 |r| r.ui.invoke_theme_chosen(2),
@@ -330,6 +330,11 @@ fn each_toggle_writes_settings_json_after_the_quiet_time() {
                 "backups to keep",
                 |r| r.ui.invoke_backups_keep_chosen(12),
                 |s| s.backups_keep == 12,
+            ),
+            (
+                "days in the Trash",
+                |r| r.ui.invoke_trash_days_chosen(90),
+                |s| s.trash_days == 90,
             ),
             (
                 "panel width",
@@ -1121,6 +1126,21 @@ fn the_window_behaviour_toggles_start_at_their_defaults_and_reach_the_host() {
         r.ui.invoke_panel_hide_on_blur_toggled(false);
         assert!(!r.ctl.borrow().settings().panel_hide_on_blur);
         assert!(!r.ui.get_panel_hide_on_blur());
+    });
+}
+
+#[test]
+fn days_in_the_trash_is_held_between_one_and_365_and_shown() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert_eq!(r.ui.get_trash_days(), 30);
+        r.ui.invoke_trash_days_chosen(90);
+        assert_eq!(r.ctl.borrow().settings().trash_days, 90);
+        assert_eq!(r.ui.get_trash_days(), 90);
+        r.ui.invoke_trash_days_chosen(9999);
+        assert_eq!(r.ctl.borrow().settings().trash_days, 365);
+        r.ui.invoke_trash_days_chosen(0);
+        assert_eq!(r.ctl.borrow().settings().trash_days, 1);
     });
 }
 

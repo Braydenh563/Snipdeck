@@ -740,6 +740,7 @@ struct PageView {
     dock_hover_delay: i32,
     dock_leave_delay: i32,
     backups_keep: i32,
+    trash_days: i32,
     clipboard_clear_secs: i32,
     paste_rules: Vec<(String, i32)>,
     paste_rule_error: String,
@@ -999,6 +1000,7 @@ where
         dock_hover_delay: i32::try_from(settings.dock.hover_delay_ms).unwrap_or(150),
         dock_leave_delay: i32::try_from(settings.dock.leave_delay_ms).unwrap_or(400),
         backups_keep: i32::try_from(settings.backups_keep).unwrap_or(7),
+        trash_days: i32::try_from(settings.trash_days).unwrap_or(30),
         clipboard_clear_secs: i32::try_from(settings.clipboard_clear_secs).unwrap_or(30),
         paste_rules: settings
             .programs
@@ -1883,6 +1885,10 @@ where
             .act(|ctl| ctl.update_settings(
                 |s| s.backups_keep = u32::try_from(n).unwrap_or(0)
             )));
+        wire!(on_trash_days_chosen, |core, n| core
+            .act(|ctl| ctl.update_settings(
+                |s| s.trash_days = u32::try_from(n).unwrap_or(0)
+            )));
         wire!(on_clipboard_clear_secs_chosen, |core, n| core.act(|ctl| {
             ctl.update_settings(|s| s.clipboard_clear_secs = u32::try_from(n).unwrap_or(0));
         }));
@@ -1924,6 +1930,8 @@ where
             window.set_dock_leave_delay_max(crate::binding::limit(*s::LEAVE_DELAY_MS.end()));
             window.set_backups_keep_min(crate::binding::limit(*s::BACKUPS_KEEP.start()));
             window.set_backups_keep_max(crate::binding::limit(*s::BACKUPS_KEEP.end()));
+            window.set_trash_days_min(crate::binding::limit(*s::TRASH_DAYS.start()));
+            window.set_trash_days_max(crate::binding::limit(*s::TRASH_DAYS.end()));
             window.set_clipboard_clear_secs_max(crate::binding::limit(
                 *s::CLIPBOARD_CLEAR_SECS.end(),
             ));
@@ -2110,6 +2118,9 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     }
     if differs(&|p| p.backups_keep == view.backups_keep) {
         window.set_backups_keep(view.backups_keep);
+    }
+    if differs(&|p| p.trash_days == view.trash_days) {
+        window.set_trash_days(view.trash_days);
     }
     if differs(&|p| p.clipboard_clear_secs == view.clipboard_clear_secs) {
         window.set_clipboard_clear_secs(view.clipboard_clear_secs);
