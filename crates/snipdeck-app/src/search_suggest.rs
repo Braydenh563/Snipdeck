@@ -538,11 +538,11 @@ mod tests {
             "only lists, in name order; one-word names unquoted"
         );
         // A quote the user opened is closed, and not doubled when already closed.
-        let found = suggest("list:\"wor", 9, &index);
-        assert_eq!(apply("list:\"wor", &found[0]).0, "list:\"Work notes\"");
-        let found = suggest("list:\"wor\" x", 9, &index);
+        let found = suggest("list:\"work", 10, &index);
+        assert_eq!(apply("list:\"work", &found[0]).0, "list:\"Work notes\"");
+        let found = suggest("list:\"work\" x", 10, &index);
         assert_eq!(
-            apply("list:\"wor\" x", &found[0]).0,
+            apply("list:\"work\" x", &found[0]).0,
             "list:\"Work notes\" x"
         );
         // `mytag:` is not a filter: every kind is offered, unquoted.
