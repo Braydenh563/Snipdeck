@@ -2239,7 +2239,7 @@ fn a_machine_without_key_protection_says_so_and_offers_nothing() {
         let note = master_row(&r)
             .accessible_description()
             .expect("a description");
-        assert!(note.contains("can't protect a key"), "{note}");
+        assert!(note.contains("can’t protect a key"), "{note}");
         assert_eq!(
             element(&r.ui, "Set password\u{2026}", AccessibleRole::Button).accessible_enabled(),
             Some(false)
@@ -2266,7 +2266,7 @@ fn a_key_record_that_cannot_be_read_offers_no_password_and_says_why() {
         let note = master_row(&r)
             .accessible_description()
             .expect("a description");
-        assert!(note.contains("couldn't read your encryption key"), "{note}");
+        assert!(note.contains("couldn’t read your encryption key"), "{note}");
         assert_eq!(
             element(&r.ui, "Set password\u{2026}", AccessibleRole::Button).accessible_enabled(),
             Some(false),

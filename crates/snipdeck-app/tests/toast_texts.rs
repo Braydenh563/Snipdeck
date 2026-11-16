@@ -566,7 +566,7 @@ fn a_failure_toast_names_its_cause_and_ends_with_what_to_do() {
             assert_ne!(texts[2], texts[0], "{texts:?}");
         }
         assert!(
-            said(ToastMessage::ImportFailed(Cause::NotArchive)).contains("isn't a file Snipdeck")
+            said(ToastMessage::ImportFailed(Cause::NotArchive)).contains("isn’t a file Snipdeck")
         );
         assert!(said(ToastMessage::ImportFailed(Cause::TooNew)).contains("newer Snipdeck"));
     });
