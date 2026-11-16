@@ -598,7 +598,7 @@ impl MainModel {
         &self.query
     }
 
-    /// Whether the search stopped at [`SEARCH_LIMIT`] hits, so more items match than are shown.
+    /// Whether the search stopped at `SEARCH_LIMIT` hits, so more items match than are shown.
     #[must_use]
     pub fn search_capped(&self) -> bool {
         self.searching() && self.hits.len() >= SEARCH_LIMIT
