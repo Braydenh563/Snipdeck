@@ -179,6 +179,9 @@ export global ToastTexts {
     pure public function settings-unreadable() -> string {
         return @tr("Couldn't read your settings file, so Snipdeck is using the defaults. Changes to settings won't be saved until the file is fixed or removed.");
     }
+    pure public function library-set-aside() -> string {
+        return @tr("Your library couldn't be opened. A copy was kept. Settings > Rebuild from backup restores your newest backup.");
+    }
     pure public function clipboard-watch-failed() -> string {
         return @tr("Snipdeck can't watch the clipboard, so Recent stays empty. Restart Snipdeck to try again.");
     }

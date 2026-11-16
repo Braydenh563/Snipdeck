@@ -13,7 +13,7 @@ use crate::blobs::Blobs;
 use crate::codec::{blob_refs, is_valid_name};
 use crate::crypto::DataKey;
 use crate::migrations::{self, MIGRATIONS};
-use crate::{Error, Result};
+use crate::{Error, Result, Trouble};
 
 /// The database file inside the data folder.
 const DB_FILE: &str = "snipdeck.db";
@@ -173,6 +173,53 @@ impl Store {
         // database is never replaced by an empty one while a damaged library sits set aside.
         crate::aside::recover(folder, &lock)?;
         Self::open_locked(folder, lock).map_err(|failed| failed.error)
+    }
+
+    /// Like [`Store::open`], but a library that cannot be opened (a damaged or empty database, a
+    /// failed migration) is moved aside with [`set_aside`](crate::set_aside) under `stem`
+    /// (`snipdeck.damaged-<stamp>`) and a fresh one is opened, so the app can start and
+    /// "Rebuild from backup" can restore the newest backup. Returns the set-aside folder's name
+    /// when that happened.
+    ///
+    /// Never touches a folder another Snipdeck holds, a database from a newer Snipdeck, an
+    /// interrupted rebuild, or a failure that is the disk's (full, read-only, in use): those
+    /// return their error with nothing moved. If the fresh open fails too, the moves are undone.
+    pub fn open_or_set_aside(
+        folder: impl AsRef<Path>,
+        stem: &str,
+    ) -> Result<(Self, Option<String>)> {
+        let folder = folder.as_ref();
+        fs::create_dir_all(folder)?;
+        let lock = acquire_lock(folder)?;
+        crate::aside::recover(folder, &lock)?;
+        let failed = match Self::open_locked(folder, lock) {
+            Ok(store) => return Ok((store, None)),
+            Err(failed) => failed,
+        };
+        let OpenLockedError { error, lock } = *failed;
+        let damaged = match &error {
+            Error::EmptyDatabase { .. } | Error::ForeignDatabase { .. } | Error::Corrupt(_) => true,
+            Error::Sqlite(_) | Error::Migration { .. } => error.trouble() == Trouble::Other,
+            _ => false,
+        };
+        if !damaged || crate::aside::set_aside(folder, &lock, stem).is_err() {
+            return Err(error);
+        }
+        match Self::open_locked(folder, lock) {
+            Ok(store) => {
+                // The fresh library is the result: the marker (which would undo the move at
+                // the next start) goes. Failing to remove it is not worth refusing to start.
+                if let Some(lock) = store.lock.as_ref() {
+                    let _ = crate::aside::finish_rebuild(folder, lock);
+                }
+                Ok((store, Some(stem.to_owned())))
+            }
+            Err(failed) => {
+                let OpenLockedError { error, lock } = *failed;
+                let _ = crate::aside::undo_set_aside(folder, &lock);
+                Err(error)
+            }
+        }
     }
 
     /// Like [`Store::open`], for a caller that already holds the folder's lock (from

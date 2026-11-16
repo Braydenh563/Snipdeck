@@ -143,10 +143,11 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::BackupMadeSkipping { .. } => 113,
         ToastMessage::BackupShrunk { .. } => 114,
         ToastMessage::ExportedSkipping { .. } => 115,
+        ToastMessage::LibrarySetAside => 116,
     }
 }
 
-const VARIANTS: usize = 116;
+const VARIANTS: usize = 117;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -339,6 +340,7 @@ fn samples() -> Vec<ToastMessage> {
         M::HelloEnrolFailed,
         M::SettingsDamaged,
         M::SettingsUnreadable,
+        M::LibrarySetAside,
         M::ClipboardWatchFailed,
     ]
 }

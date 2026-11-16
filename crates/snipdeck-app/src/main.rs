@@ -942,7 +942,11 @@ fn open_library(args: &Args) -> Result<Library, String> {
     if args.dark {
         settings.theme = Theme::Dark;
     }
-    let mut store = Store::open(&folder).map_err(|e| format!("{}: {e}", folder.display()))?;
+    // A library that cannot be opened is kept aside and a fresh one opened (DATA-5): exiting
+    // here would leave no way to reach Settings > Rebuild from backup.
+    let (mut store, set_aside_toast) =
+        snipdeck_app::paths::open_library_folder(&folder, Timestamp::now())
+            .map_err(|e| format!("{}: {e}", folder.display()))?;
     // A new library has no board, and the Panel cannot make one: without this every control of a
     // first run has nothing to act on (an empty board menu, no tabs, no rows).
     match snipdeck_app::starter::ensure_first_run(&mut store, now) {
@@ -954,7 +958,7 @@ fn open_library(args: &Args) -> Result<Library, String> {
         settings,
         Some(folder),
         saver_baseline,
-        loaded_outcome.toast(),
+        set_aside_toast.or_else(|| loaded_outcome.toast()),
     ))
 }
 

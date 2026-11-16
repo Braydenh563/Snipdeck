@@ -3508,6 +3508,9 @@ msgstr "是"
 msgid "Your Windows Hello PIN, face or fingerprint changed. Unlock with your password once to set Windows Hello up again."
 msgstr "你的 Windows Hello PIN、面部或指纹已更改。请先用密码解锁一次，以重新设置 Windows Hello。"
 
+msgid "Your library couldn't be opened. A copy was kept. Settings > Rebuild from backup restores your newest backup."
+msgstr "无法打开你的资料库。已保留一份副本。设置 > 从备份重建 会恢复你最新的备份。"
+
 msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, backups (as many as you choose to keep) and logs."
 msgstr "你的资料库位于一个文件夹 %LOCALAPPDATA%\\Snipdeck 中：snipdeck.db（看板、列表、项目、标签和回收站）、blobs（图片、文件和长文本）、settings.json、backups（保留你选定的份数）和 logs。"
 

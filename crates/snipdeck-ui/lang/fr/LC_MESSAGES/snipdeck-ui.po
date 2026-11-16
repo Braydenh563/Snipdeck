@@ -3520,6 +3520,9 @@ msgstr "Oui"
 msgid "Your Windows Hello PIN, face or fingerprint changed. Unlock with your password once to set Windows Hello up again."
 msgstr "Votre code PIN, visage ou empreinte Windows Hello a changé. Déverrouillez une fois avec votre mot de passe pour reconfigurer Windows Hello."
 
+msgid "Your library couldn't be opened. A copy was kept. Settings > Rebuild from backup restores your newest backup."
+msgstr "Votre bibliothèque n'a pas pu être ouverte. Une copie a été conservée. Réglages > Reconstruire depuis une sauvegarde restaure votre sauvegarde la plus récente."
+
 msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, backups (as many as you choose to keep) and logs."
 msgstr "Votre bibliothèque tient dans un seul dossier, %LOCALAPPDATA%\\Snipdeck : snipdeck.db (tableaux, listes, éléments, étiquettes et la Corbeille), blobs (images, fichiers et textes longs), settings.json, backups (autant que vous choisissez d'en garder) et logs."
 

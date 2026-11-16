@@ -287,6 +287,7 @@ where
         ToastMessage::SettingsNotSaved => t.invoke_settings_not_saved(),
         ToastMessage::SettingsDamaged => t.invoke_settings_damaged(),
         ToastMessage::SettingsUnreadable => t.invoke_settings_unreadable(),
+        ToastMessage::LibrarySetAside => t.invoke_library_set_aside(),
         ToastMessage::ClipboardWatchFailed => t.invoke_clipboard_watch_failed(),
         ToastMessage::ItemsTrashed { count: n } => t.invoke_items_trashed(count(*n)),
         ToastMessage::ListTrashed { name } => t.invoke_list_trashed(name.into()),

@@ -174,6 +174,9 @@ pub enum ToastMessage {
     /// "Couldn't read your settings file, so Snipdeck started with the defaults. Changes to
     /// settings won't be saved until you fix or remove the file."
     SettingsUnreadable,
+    /// "Your library couldn't be opened. A copy was kept. Settings > Rebuild from backup
+    /// restores your newest backup."
+    LibrarySetAside,
     /// "Snipdeck can't watch the clipboard, so Recent stays empty. Restart Snipdeck to try again."
     ClipboardWatchFailed,
     /// "Moved 3 items to the Trash" (with Undo).
