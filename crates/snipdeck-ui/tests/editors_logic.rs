@@ -1535,7 +1535,8 @@ ui_tests! {
         assert!(missing(&ui, "Deutsch", AccessibleRole::ListItem));
         let moved = find(&ui, "Remove keepass.exe from the list", AccessibleRole::Button).absolute_position();
         assert_eq!(moved, remove.absolute_position(), "the button is still under the pointer");
-        for _ in 0..10 {
+        // The hold lapses on the layer's next two 500ms checks, then the tip waits its own 500ms rest.
+        for _ in 0..16 {
             i_slint_backend_testing::mock_elapsed_time(std::time::Duration::from_millis(100));
             settle();
         }

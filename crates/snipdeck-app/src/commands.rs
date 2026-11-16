@@ -418,7 +418,10 @@ fn rank(label: &str, synonyms: &str, word: &str) -> Option<usize> {
 /// synonyms. An empty query keeps the catalogue order.
 #[must_use]
 pub fn entries(texts: &[(String, String)], ctx: &Context<'_>, query: &str) -> Vec<Entry> {
-    let words: Vec<String> = query.split_whitespace().map(snipdeck_symbols::fold).collect();
+    let words: Vec<String> = query
+        .split_whitespace()
+        .map(snipdeck_symbols::fold)
+        .collect();
     let mut scored: Vec<(usize, bool, usize, Entry)> = Vec::new();
     for (i, command) in Command::ALL.iter().copied().enumerate() {
         let Some((label, synonyms)) = texts.get(i) else {
@@ -427,7 +430,10 @@ pub fn entries(texts: &[(String, String)], ctx: &Context<'_>, query: &str) -> Ve
         if !available(command, ctx) {
             continue;
         }
-        let (label_lc, synonyms_lc) = (snipdeck_symbols::fold(label), snipdeck_symbols::fold(synonyms));
+        let (label_lc, synonyms_lc) = (
+            snipdeck_symbols::fold(label),
+            snipdeck_symbols::fold(synonyms),
+        );
         let ranks: Option<Vec<usize>> = words
             .iter()
             .map(|word| rank(&label_lc, &synonyms_lc, word))
@@ -645,13 +651,21 @@ mod tests {
     fn letters_spread_over_a_name_and_accents_still_find_it() {
         let hotkeys = Hotkeys::new_install();
         let found = entries(&texts(), &ctx(&hotkeys), "stg");
-        assert_eq!(labels(&found), ["Settings"], "a subsequence from a word start");
+        assert_eq!(
+            labels(&found),
+            ["Settings"],
+            "a subsequence from a word start"
+        );
         let found = entries(&texts(), &ctx(&hotkeys), "SETTÍNGS");
         assert_eq!(labels(&found), ["Settings"], "accents fold away");
         let mut accented = texts();
         accented[12].0 = "Réglages".to_owned();
         let found = entries(&accented, &ctx(&hotkeys), "reglages");
-        assert_eq!(labels(&found), ["Réglages"], "an accented name is found without the accent");
+        assert_eq!(
+            labels(&found),
+            ["Réglages"],
+            "an accented name is found without the accent"
+        );
         assert!(entries(&texts(), &ctx(&hotkeys), "zzq").is_empty());
     }
 
