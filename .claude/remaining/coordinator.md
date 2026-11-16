@@ -31,3 +31,4 @@ Cargo: flock /tmp/target-panel/.audit.lock; env CARGO_TARGET_DIR=/tmp/target-pan
 - panel -> session_01NKjURu2Ui2oqJRKoriWaT6, branch claude/fix-audit-panel
 - Next audits: copy findings to .claude/audit/<area>.md, push, start a session per area.
 Older open items: fable2-last Part B (session_01NKjURsVa5FL9t3AAoppKaw), fix/sidebar-expand (local), PR #29 (owner decision), blind usability tests, gate --full, CI, handover, retro.
+- 06:20 2026-11-16: all 10 audits in. perf.md + ux.md committed (push after gate24). main fixer handed over partial at 506333b -> part 2 session_01NKjURvCgQT1PLfp8nNrme1. Next: perf + ux cloud fix sessions once pushed; sidebar fix (d4ae69cf) after ux-auditor; CI Windows fix aa114c40.
