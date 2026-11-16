@@ -50,10 +50,10 @@ msgid "A link needs a scheme such as https://"
 msgstr "链接需要包含协议，例如 https://"
 
 msgid "A master password is on and your sensitive items are locked."
-msgstr "已开启主密码，敏感片段已锁定。"
+msgstr "已开启主密码，敏感项目已锁定。"
 
 msgid "A master password is on. Snipdeck asks for it when you first use a sensitive item and again after {} minutes without use."
-msgstr "已开启主密码。首次使用敏感片段时，Snipdeck 会要求输入，此后若 {} 分钟未使用，再次使用时也会要求输入。"
+msgstr "已开启主密码。首次使用敏感项目时，Snipdeck 会要求输入，此后若 {} 分钟未使用，再次使用时也会要求输入。"
 
 msgid "A master password locks the whole deck."
 msgstr "主密码可以锁定整个卡组。"
@@ -77,7 +77,7 @@ msgid "A smiley tab next to Recent with emoji, kaomoji and icons to paste. Turn 
 msgstr "“最近”旁边的笑脸标签页，提供可粘贴的表情符号、颜文字和图标。关闭后将隐藏该标签页及其 Ctrl+K 命令。"
 
 msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
-msgstr "在你正在使用的应用旁边显示的片段栏。点击其中一条，即可粘贴到该应用。"
+msgstr "在你正在使用的应用旁边显示的项目栏。点击其中一条，即可粘贴到该应用。"
 
 msgid "A tag with that name already exists."
 msgstr "已存在同名标签。"
@@ -128,10 +128,10 @@ msgid "Add"
 msgstr "添加"
 
 msgid "Add a snippet, or move items here from another list."
-msgstr "添加片段，或从其他列表移动到这里。"
+msgstr "添加项目，或从其他列表移动到这里。"
 
 msgid "Add a snippet… (Enter to save)"
-msgstr "添加片段…(按 Enter 保存)"
+msgstr "添加项目…(按 Enter 保存)"
 
 msgid "Add list"
 msgstr "添加列表"
@@ -149,7 +149,7 @@ msgid "Add to “{}”"
 msgstr "添加到“{}”"
 
 msgid "Add {} or {} to a snippet."
-msgstr "在片段中加入 {} 或 {}。"
+msgstr "在项目中加入 {} 或 {}。"
 
 msgid "Added to {}"
 msgstr "已添加到 {}"
@@ -161,7 +161,7 @@ msgid "Adds a password on top of Windows' own protection for your sensitive item
 msgstr "在 Windows 自带保护之外，为你的敏感项目再加一道密码。首次使用敏感项目时会要求输入，闲置 {} 分钟后会再次要求。在 Windows 上，之后也可以用 Windows Hello 解锁。"
 
 msgid "Adds a text snippet to {}"
-msgstr "向 {} 添加文本片段"
+msgstr "向 {} 添加文本项目"
 
 msgid "After a paste or copy"
 msgstr "粘贴或复制后"
@@ -176,7 +176,7 @@ msgid "All"
 msgstr "全部"
 
 msgid "All items"
-msgstr "所有片段"
+msgstr "所有项目"
 
 msgid "All {n} item moves to the Trash. You can restore it for {} days."
 msgid_plural "All {n} items move to the Trash. You can restore them for {} days."
@@ -210,7 +210,7 @@ msgid "Amber"
 msgstr "琥珀色"
 
 msgid "An Image item holds a PNG picture. Choose a PNG file, or add this one as a File."
-msgstr "图片片段保存的是 PNG 图片。请选择 PNG 文件，或将此文件添加为“文件”片段。"
+msgstr "图片项目保存的是 PNG 图片。请选择 PNG 文件，或将此文件添加为“文件”项目。"
 
 msgid "An item is open in the editor, so the pasted text was not added. Close it, then paste again."
 msgstr "编辑器中已打开一个项目，所以粘贴的文本没有添加。请先关闭它，再重新粘贴。"
@@ -231,7 +231,7 @@ msgid "Another program already uses {}."
 msgstr "其他程序已在使用 {}。"
 
 msgid "Another snippet already uses this trigger."
-msgstr "另一个片段已使用此触发词。"
+msgstr "另一个项目已使用此触发词。"
 
 msgid "Anywhere in Windows"
 msgstr "Windows 中的任何位置"
@@ -324,10 +324,13 @@ msgid "Brightness"
 msgstr "亮度"
 
 msgid "Bring in items from a Snipdeck file or another clipboard manager. You see what will be added before anything is written."
-msgstr "从 Snipdeck 文件或其他剪贴板管理器导入片段。写入前可先查看将要添加的内容。"
+msgstr "从 Snipdeck 文件或其他剪贴板管理器导入项目。写入前可先查看将要添加的内容。"
 
 msgid "Bring up the panel, open the picker, save the clipboard or paste the next item from any app."
 msgstr "在任何应用中，都可以呼出面板、打开选择器、保存剪贴板内容或粘贴下一项。"
+
+msgid "Bring your snippets"
+msgstr "导入你的项目"
 
 msgid "Brings the panel up beside the app you are working in."
 msgstr "在你正在使用的应用旁边显示面板。"
@@ -351,7 +354,7 @@ msgid "Cancel the test of {}"
 msgstr "取消 {} 的测试"
 
 msgid "Captured items keep their kind."
-msgstr "捕获的片段保留其类型。"
+msgstr "捕获的项目保留其类型。"
 
 msgid "Cards"
 msgstr "卡片"
@@ -387,7 +390,7 @@ msgid "Choose comfortable rows, compact rows or tiles."
 msgstr "可选择舒适行、紧凑行或磁贴。"
 
 msgid "Choose one to add it where the cursor is. It is filled in when you use the item."
-msgstr "选择一项，将其添加到光标所在位置。使用该片段时会填入内容。"
+msgstr "选择一项，将其添加到光标所在位置。使用该项目时会填入内容。"
 
 msgid "Choose tags"
 msgstr "选择标签"
@@ -432,7 +435,7 @@ msgid "Clear selection"
 msgstr "清除选择"
 
 msgid "Clear the clipboard after copying a sensitive item"
-msgstr "复制敏感片段后清除剪贴板"
+msgstr "复制敏感项目后清除剪贴板"
 
 msgid "Clear the clipboard later"
 msgstr "稍后清除剪贴板"
@@ -600,7 +603,7 @@ msgid "Copy only"
 msgstr "仅复制"
 
 msgid "Copy selected item"
-msgstr "复制所选片段"
+msgstr "复制所选项目"
 
 msgid "Copy something, then save it from the Panel."
 msgstr "先复制一些内容，然后在面板中保存。"
@@ -609,7 +612,7 @@ msgid "Copy something, then save it here."
 msgstr "先复制一些内容，然后保存到这里。"
 
 msgid "Copy the item"
-msgstr "复制该片段"
+msgstr "复制该项目"
 
 msgid "Copy the result"
 msgstr "复制结果"
@@ -720,7 +723,7 @@ msgid "Couldn't open the log folder."
 msgstr "无法打开日志文件夹。"
 
 msgid "Couldn't open this item."
-msgstr "无法打开此片段。"
+msgstr "无法打开此项目。"
 
 msgid "Couldn't pick a colour from the screen."
 msgstr "无法从屏幕上取色。"
@@ -762,7 +765,7 @@ msgid "Couldn't save a draft of what you typed."
 msgstr "无法保存你输入内容的草稿。"
 
 msgid "Couldn't save this item. Nothing was changed."
-msgstr "无法保存此片段。未做任何更改。"
+msgstr "无法保存此项目。未做任何更改。"
 
 msgid "Couldn't save your settings. Snipdeck will try again."
 msgstr "无法保存你的设置。Snipdeck 将再次尝试。"
@@ -774,16 +777,16 @@ msgid "Couldn't start typing triggers. Nothing will be expanded or suggested."
 msgstr "无法启动键入触发。不会展开或推荐任何内容。"
 
 msgid "Couldn't use this item. Try again, or restart Snipdeck if it keeps happening."
-msgstr "无法使用此片段。请重试；如果问题持续出现，请重启 Snipdeck。"
+msgstr "无法使用此项目。请重试；如果问题持续出现，请重启 Snipdeck。"
 
 msgid "Couldn't use this item: the disk is full. Free up some space, then try again."
-msgstr "无法使用此片段：磁盘已满。请释放一些空间，然后重试。"
+msgstr "无法使用此项目：磁盘已满。请释放一些空间，然后重试。"
 
 msgid "Couldn't use this item: your library file is in use by another program. Close that program, then try again."
-msgstr "无法使用此片段：你的资料库文件正被其他程序占用。请关闭该程序，然后重试。"
+msgstr "无法使用此项目：你的资料库文件正被其他程序占用。请关闭该程序，然后重试。"
 
 msgid "Couldn't use this item: your library is locked. Unlock it, then try again."
-msgstr "无法使用此片段：你的资料库已锁定。请先解锁，然后重试。"
+msgstr "无法使用此项目：你的资料库已锁定。请先解锁，然后重试。"
 
 msgid "Couldn't write to your library. Check that the disk has room."
 msgstr "无法写入你的资料库。请检查磁盘是否有足够空间。"
@@ -864,7 +867,7 @@ msgid "Delete list…"
 msgstr "删除列表…"
 
 msgid "Delete snippets"
-msgstr "删除片段"
+msgstr "删除项目"
 
 msgid "Delete tag"
 msgstr "删除标签"
@@ -897,7 +900,7 @@ msgid "Deleted for good"
 msgstr "已永久删除"
 
 msgid "Deleted items stay here for {} days before they are removed."
-msgstr "已删除的片段会在这里保留 {} 天，之后才会被移除。"
+msgstr "已删除的项目会在这里保留 {} 天，之后才会被移除。"
 
 msgid "Deleted list “{}”"
 msgstr "已删除列表“{}”"
@@ -906,7 +909,7 @@ msgid "Deleted “{}”"
 msgstr "已删除：“{}”"
 
 msgid "Deletes every board, list, item and backup on this PC. This cannot be undone."
-msgstr "删除这台电脑上的所有看板、列表、片段和备份。此操作无法撤销。"
+msgstr "删除这台电脑上的所有看板、列表、项目和备份。此操作无法撤销。"
 
 msgid "Deletes everything in the Recent inbox now."
 msgstr "立即删除“最近”收件箱中的所有内容。"
@@ -963,10 +966,10 @@ msgid "Duplicate"
 msgstr "创建副本"
 
 msgid "Duplicate selected item"
-msgstr "为所选片段创建副本"
+msgstr "为所选项目创建副本"
 
 msgid "Duplicate the item"
-msgstr "为该片段创建副本"
+msgstr "为该项目创建副本"
 
 msgid "Duplicated"
 msgstr "已复制"
@@ -978,7 +981,7 @@ msgid "Edit board"
 msgstr "编辑看板"
 
 msgid "Edit item"
-msgstr "编辑片段"
+msgstr "编辑项目"
 
 msgid "Edit list"
 msgstr "编辑列表"
@@ -987,10 +990,10 @@ msgid "Edit list…"
 msgstr "编辑列表…"
 
 msgid "Edit selected item"
-msgstr "编辑所选片段"
+msgstr "编辑所选项目"
 
 msgid "Edit the item"
-msgstr "编辑该片段"
+msgstr "编辑该项目"
 
 msgid "Edit the result"
 msgstr "编辑结果"
@@ -1032,7 +1035,7 @@ msgid "Enter creates “{}” in {}"
 msgstr "按 Enter 创建“{}”（位于 {}）"
 
 msgid "Enter your master password to use the sensitive items in your library. Your other items are always available."
-msgstr "输入主密码以使用资料库中的敏感片段。其他片段始终可用。"
+msgstr "输入主密码以使用资料库中的敏感项目。其他项目始终可用。"
 
 msgid "Enter your password."
 msgstr "请输入密码。"
@@ -1155,7 +1158,7 @@ msgid "Get started"
 msgstr "开始使用"
 
 msgid "Give a snippet a trigger, such as ;sig, under More options in its editor."
-msgstr "在片段编辑器的“更多选项”中为它设置触发词，例如 ;sig。"
+msgstr "在项目编辑器的“更多选项”中为它设置触发词，例如 ;sig。"
 
 msgid "Give it a name."
 msgstr "请为其命名。"
@@ -1170,7 +1173,7 @@ msgid "Gives the Panel a taskbar button and an Alt+Tab entry while it is on scre
 msgstr "面板在屏幕上时，为它显示任务栏按钮和 Alt+Tab 条目。粘贴仍会进入你之前所在的应用。关闭后两处都不显示；仍可通过托盘图标和面板快捷键调出。"
 
 msgid "Go to All items"
-msgstr "前往“所有片段”"
+msgstr "前往“所有项目”"
 
 msgid "Go to Pinned"
 msgstr "前往“置顶”"
@@ -1260,7 +1263,7 @@ msgid "Hold to reveal"
 msgstr "按住以显示"
 
 msgid "Hold to reveal a hidden item"
-msgstr "按住以显示隐藏的片段"
+msgstr "按住以显示隐藏的项目"
 
 msgid "Hover"
 msgstr "悬停"
@@ -1278,7 +1281,7 @@ msgid "How long the pointer stays off the open panel before it tucks away, from 
 msgstr "指针离开已打开的面板多久后收起，0 到 {} 毫秒。"
 
 msgid "How tall the item rows are in the Main window lists. Compact shows one line per item."
-msgstr "主窗口列表中片段行的高度。紧凑模式每个片段显示一行。"
+msgstr "主窗口列表中项目行的高度。紧凑模式每个项目显示一行。"
 
 msgid "How the Panel lists your items: one per row, two per row as cards, or tight rows. A search shows rows in every layout."
 msgstr "面板列出项目的方式：每行一个、每行两个卡片，或紧凑的行。搜索时在任何布局下都显示为行。"
@@ -1305,7 +1308,7 @@ msgid "Icons can't be added to a list yet."
 msgstr "暂时无法将图标添加到列表。"
 
 msgid "If you forget this password, your sensitive items can never be opened again. Snipdeck cannot reset it and keeps no recovery key. Your other items are not affected."
-msgstr "如果忘记此密码，敏感片段将再也无法打开。Snipdeck 无法重置它，也不保存恢复密钥。你的其他片段不受影响。"
+msgstr "如果忘记此密码，敏感项目将再也无法打开。Snipdeck 无法重置它，也不保存恢复密钥。你的其他项目不受影响。"
 
 msgid "Image"
 msgstr "图片"
@@ -1315,6 +1318,9 @@ msgstr "此处无法粘贴图片。请将图片保存为 PNG，并将其添加�
 
 msgid "Import"
 msgstr "导入"
+
+msgid "Import from TextExpander, Espanso, Beeftext, PhraseExpress, Ditto or CopyQ in Settings, under Import."
+msgstr "在“设置”的“导入”中，可从 TextExpander、Espanso、Beeftext、PhraseExpress、Ditto 或 CopyQ 导入。"
 
 msgid "Import from {}"
 msgstr "从 {} 导入"
@@ -1327,7 +1333,7 @@ msgstr "导入到你的资料库，并先预览"
 
 msgid "Imported {} item"
 msgid_plural "Imported {} items"
-msgstr[0] "已导入 {} 个片段"
+msgstr[0] "已导入 {} 个项目"
 
 msgid "Import…"
 msgstr "导入…"
@@ -1346,10 +1352,10 @@ msgstr "插入 {}"
 
 msgid "It is removed from {n} item. The item stays."
 msgid_plural "It is removed from {n} items. The items stay."
-msgstr[0] "将从 {n} 个片段中移除。片段本身保留。"
+msgstr[0] "将从 {n} 个项目中移除。项目本身保留。"
 
 msgid "Item actions"
-msgstr "片段操作"
+msgstr "项目操作"
 
 msgid "Item pinned"
 msgstr "已固定"
@@ -1358,11 +1364,11 @@ msgid "Item unpinned"
 msgstr "已取消固定"
 
 msgid "Items are removed after {} days."
-msgstr "片段将在 {} 天后移除。"
+msgstr "项目将在 {} 天后移除。"
 
 msgid "Its lists and {n} item will move to Trash. You can restore them for 30 days."
 msgid_plural "Its lists and {n} items will move to Trash. You can restore them for 30 days."
-msgstr[0] "其列表及其中的 {n} 个片段将移至回收站。你可以在 30 天内恢复它们。"
+msgstr[0] "其列表及其中的 {n} 个项目将移至回收站。你可以在 30 天内恢复它们。"
 
 msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
 msgstr "它的列表和 {} 个项目将移到回收站。你可以在 {} 天内恢复。"
@@ -1416,7 +1422,7 @@ msgid "Keep them"
 msgstr "保留"
 
 msgid "Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Sensitive items, password managers and the apps you exclude are never kept."
-msgstr "保留你复制的文本，最多保留最近 {} 次复制或 {} 天，以先到者为准，方便你再次找到或保存到列表。敏感片段、密码管理器以及你排除的应用的内容不会被保留。"
+msgstr "保留你复制的文本，最多保留最近 {} 次复制或 {} 天，以先到者为准，方便你再次找到或保存到列表。敏感项目、密码管理器以及你排除的应用的内容不会被保留。"
 
 msgid "Keyboard shortcuts"
 msgstr "键盘快捷键"
@@ -1485,13 +1491,13 @@ msgid "Lists"
 msgstr "列表"
 
 msgid "Lists hold your snippets."
-msgstr "列表用来存放你的片段。"
+msgstr "列表用来存放你的项目。"
 
 msgid "Loading"
 msgstr "正在加载"
 
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
-msgstr "日志只在 Snipdeck 崩溃时写入，不含片段内容，也不会发送到任何地方。"
+msgstr "日志只在 Snipdeck 崩溃时写入，不含项目内容，也不会发送到任何地方。"
 
 msgid "Love"
 msgstr "爱"
@@ -1536,7 +1542,7 @@ msgid "Manual"
 msgstr "手动"
 
 msgid "Mark a snippet Sensitive to hide it until you reveal it."
-msgstr "将片段标记为敏感，在你显示之前它会保持隐藏。"
+msgstr "将项目标记为敏感，在你显示之前它会保持隐藏。"
 
 msgid "Master password"
 msgstr "主密码"
@@ -1551,7 +1557,7 @@ msgid "Master password removed."
 msgstr "主密码已移除。"
 
 msgid "Master password removed. Snipdeck couldn't open the library just now. Restart Snipdeck to use your sensitive items."
-msgstr "主密码已移除。Snipdeck 刚才无法打开资料库。请重启 Snipdeck 以使用敏感片段。"
+msgstr "主密码已移除。Snipdeck 刚才无法打开资料库。请重启 Snipdeck 以使用敏感项目。"
 
 msgid "Master password set."
 msgstr "主密码已设置。"
@@ -1572,7 +1578,7 @@ msgid "More options: open the full editor"
 msgstr "更多选项：打开完整编辑器"
 
 msgid "More pinned snippets"
-msgstr "更多置顶片段"
+msgstr "更多置顶项目"
 
 msgid "Most used"
 msgstr "最常用"
@@ -1593,7 +1599,7 @@ msgid "Move down"
 msgstr "下移"
 
 msgid "Move selected item to Trash"
-msgstr "将所选片段移到回收站"
+msgstr "将所选项目移到回收站"
 
 msgid "Move the group down"
 msgstr "下移该分组"
@@ -1605,13 +1611,13 @@ msgid "Move the group up or down"
 msgstr "上移或下移分组"
 
 msgid "Move the item to the Trash"
-msgstr "将该片段移到回收站"
+msgstr "将该项目移到回收站"
 
 msgid "Move the item up or down its list"
-msgstr "在列表中上下移动该片段"
+msgstr "在列表中上下移动该项目"
 
 msgid "Move through the items"
-msgstr "在片段之间移动"
+msgstr "在项目之间移动"
 
 msgid "Move through the results"
 msgstr "在结果之间移动"
@@ -1636,11 +1642,11 @@ msgstr "已移到第 {} 位，共 {} 项"
 
 msgid "Moved {} item to the Trash"
 msgid_plural "Moved {} items to the Trash"
-msgstr[0] "已将 {} 个片段移到回收站"
+msgstr[0] "已将 {} 个项目移到回收站"
 
 msgid "Moved {} item to {}"
 msgid_plural "Moved {} items to {}"
-msgstr[0] "已将 {} 个片段移到 {}"
+msgstr[0] "已将 {} 个项目移到 {}"
 
 msgid "Name"
 msgstr "名称"
@@ -1670,7 +1676,7 @@ msgid "New board…"
 msgstr "新建看板…"
 
 msgid "New item"
-msgstr "新建片段"
+msgstr "新建项目"
 
 msgid "New item (quick add in an open list)"
 msgstr "新建项目（在打开的列表中为快速添加）"
@@ -1723,8 +1729,11 @@ msgstr "没有与“{}”匹配的命令"
 msgid "No icon"
 msgstr "无图标"
 
+msgid "No item uses this tag."
+msgstr "没有项目使用此标签。"
+
 msgid "No items with this tag"
-msgstr "没有带此标签的片段"
+msgstr "没有带此标签的项目"
 
 msgid "No label"
 msgstr "无标签"
@@ -1748,7 +1757,7 @@ msgid "No programs yet. Every program gets Ctrl+V."
 msgstr "还没有程序。所有程序都使用 Ctrl+V。"
 
 msgid "No recent items"
-msgstr "没有最近的片段"
+msgstr "没有最近的项目"
 
 msgid "No settings match"
 msgstr "没有匹配的设置"
@@ -1757,7 +1766,7 @@ msgid "No shortcut matches"
 msgstr "没有匹配的快捷键"
 
 msgid "No snippets yet"
-msgstr "还没有片段"
+msgstr "还没有项目"
 
 msgid "No symbols match “{}”"
 msgstr "没有与“{}”匹配的符号"
@@ -1772,7 +1781,7 @@ msgid "No tags yet. Add one below."
 msgstr "还没有标签。请在下方添加。"
 
 msgid "No tags yet. Add tags to an item and they appear here."
-msgstr "还没有标签。为片段添加标签后，将显示在这里。"
+msgstr "还没有标签。为项目添加标签后，将显示在这里。"
 
 msgid "No target:"
 msgstr "无目标："
@@ -1811,13 +1820,13 @@ msgid "Nothing pinned"
 msgstr "没有置顶内容"
 
 msgid "Nothing pinned matches “{}”."
-msgstr "没有与“{}”匹配的置顶片段。"
+msgstr "没有与“{}”匹配的置顶项目。"
 
 msgid "Nothing pinned yet"
 msgstr "还没有置顶内容"
 
 msgid "Nothing to paste next. Pin a snippet, or add one to this list."
-msgstr "没有可接着粘贴的内容。请置顶一个片段，或将其添加到此列表。"
+msgstr "没有可接着粘贴的内容。请置顶一个项目，或将其添加到此列表。"
 
 msgid "Nothing to redo"
 msgstr "没有可重做的操作"
@@ -1868,7 +1877,7 @@ msgid "On white"
 msgstr "在白色上"
 
 msgid "Only text, code, link and template items can be sensitive."
-msgstr "只有文本、代码、链接和模板类型的片段可以设为敏感。"
+msgstr "只有文本、代码、链接和模板类型的项目可以设为敏感。"
 
 msgid "Only with Start with Windows: wait in the tray, or open the Panel as well."
 msgstr "仅在“随 Windows 启动”时：在托盘中等待，或同时打开面板。"
@@ -1961,7 +1970,7 @@ msgid "Other colour"
 msgstr "其他颜色"
 
 msgid "Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."
-msgstr "在该文件夹之外，Snipdeck 只会写入 Windows 开机启动项（如果你开启了它），以及在你使用片段时写入剪贴板。"
+msgstr "在该文件夹之外，Snipdeck 只会写入 Windows 开机启动项（如果你开启了它），以及在你使用项目时写入剪贴板。"
 
 msgid "PNG, {}"
 msgstr "PNG，{}"
@@ -2051,7 +2060,7 @@ msgid "Paste the item as plain text"
 msgstr "将该条目以纯文本粘贴"
 
 msgid "Paste the next item"
-msgstr "粘贴下一个片段"
+msgstr "粘贴下一个项目"
 
 msgid "Paste the next item of a stack"
 msgstr "粘贴堆栈中的下一项"
@@ -2084,7 +2093,7 @@ msgid "Pastes into {} · {}"
 msgstr "粘贴到 {} · {}"
 
 msgid "Pastes the next item of the list in order."
-msgstr "按顺序粘贴列表中的下一个片段。"
+msgstr "按顺序粘贴列表中的下一个项目。"
 
 msgid "Pasting"
 msgstr "正在粘贴"
@@ -2138,25 +2147,25 @@ msgid "Pin"
 msgstr "置顶"
 
 msgid "Pin a snippet from the Panel to find it here."
-msgstr "在面板中置顶片段后，即可在这里找到。"
+msgstr "在面板中置顶项目后，即可在这里找到。"
 
 msgid "Pin or unpin the item"
-msgstr "置顶或取消置顶该片段"
+msgstr "置顶或取消置顶该项目"
 
 msgid "Pin selected item"
-msgstr "置顶所选片段"
+msgstr "置顶所选项目"
 
 msgid "Pin the snippets you use most to keep them one click away."
-msgstr "将常用的片段置顶，即可一键直达。"
+msgstr "将常用的项目置顶，即可一键直达。"
 
 msgid "Pin the snippets you use most; they stay at the top of the Panel."
-msgstr "置顶最常用的片段，它们会固定在面板顶部。"
+msgstr "置顶最常用的项目，它们会固定在面板顶部。"
 
 msgid "Pinned"
 msgstr "置顶"
 
 msgid "Pinned snippets"
-msgstr "已置顶的片段"
+msgstr "已置顶的项目"
 
 msgid "Placeholders"
 msgstr "占位符"
@@ -2177,7 +2186,7 @@ msgid "Press the shortcut now"
 msgstr "现在按下快捷键"
 
 msgid "Press your Panel shortcut in any app to bring up your snippets."
-msgstr "在任何应用中按面板快捷键，即可调出你的片段。"
+msgstr "在任何应用中按面板快捷键，即可调出你的项目。"
 
 msgid "Preview"
 msgstr "预览"
@@ -2216,7 +2225,7 @@ msgid "Quick capture"
 msgstr "快速捕获"
 
 msgid "Quick capture saves what you copied as a new snippet."
-msgstr "快速捕获会把你复制的内容保存为新片段。"
+msgstr "快速捕获会把你复制的内容保存为新项目。"
 
 msgid "Quick capture the clipboard"
 msgstr "快速捕获剪贴板"
@@ -2258,7 +2267,7 @@ msgid "Recent history cleared"
 msgstr "已清除最近记录"
 
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
-msgstr "“最近”会保留你复制的文本，仅保存在这台电脑上，最多保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感片段不会被保留。你可以随时在设置中更改。"
+msgstr "“最近”会保留你复制的文本，仅保存在这台电脑上，最多保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感项目不会被保留。你可以随时在设置中更改。"
 
 msgid "Recently used"
 msgstr "最近使用"
@@ -2330,7 +2339,7 @@ msgid "Rename group"
 msgstr "重命名分组"
 
 msgid "Rename or delete tags. Deleting a tag removes it from its items; the items stay."
-msgstr "重命名或删除标签。删除标签会将其从片段中移除，片段本身保留。"
+msgstr "重命名或删除标签。删除标签会将其从项目中移除，项目本身保留。"
 
 msgid "Rename tag {}"
 msgstr "重命名标签 {}"
@@ -2361,11 +2370,11 @@ msgstr "已恢复你尚未保存的更改。"
 
 msgid "Restored {} item"
 msgid_plural "Restored {} items"
-msgstr[0] "已还原 {} 个片段"
+msgstr[0] "已还原 {} 个项目"
 
 msgid "Restored {} item from the backup"
 msgid_plural "Restored {} items from the backup"
-msgstr[0] "已从备份还原 {} 个片段"
+msgstr[0] "已从备份还原 {} 个项目"
 
 msgid "Result with sample values"
 msgstr "使用示例值的结果"
@@ -2413,7 +2422,7 @@ msgid "Save from clipboard"
 msgstr "从剪贴板保存"
 
 msgid "Save the clipboard as an item"
-msgstr "将剪贴板保存为片段"
+msgstr "将剪贴板保存为项目"
 
 msgid "Save to"
 msgstr "保存到"
@@ -2455,10 +2464,10 @@ msgid "Saved. This trigger overlaps the trigger of “{}”, so one of them may 
 msgstr "已保存。此触发词与“{}”的触发词重叠，其中一个可能永远不会触发。"
 
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
-msgstr "将所有看板、列表和片段保存为一个 .snipdeck 文件，存放在你选择的文件夹中。"
+msgstr "将所有看板、列表和项目保存为一个 .snipdeck 文件，存放在你选择的文件夹中。"
 
 msgid "Saves the text that is on the clipboard when you press it as a new item in the list the panel shows."
-msgstr "将你按下时剪贴板中的文本，作为新片段保存到面板当前显示的列表中。"
+msgstr "将你按下时剪贴板中的文本，作为新项目保存到面板当前显示的列表中。"
 
 msgid "Saving changed text removes the formatting."
 msgstr "保存修改后的文本会清除格式。"
@@ -2488,7 +2497,7 @@ msgid "Search (Ctrl+F)"
 msgstr "搜索 (Ctrl+F)"
 
 msgid "Search all snippets"
-msgstr "搜索所有片段"
+msgstr "搜索所有项目"
 
 msgid "Search emoji, kaomoji, icons"
 msgstr "搜索表情符号、颜文字、图标"
@@ -2512,7 +2521,7 @@ msgid "Search shortcuts"
 msgstr "搜索快捷键"
 
 msgid "Search snippets"
-msgstr "搜索片段"
+msgstr "搜索项目"
 
 msgid "Search suggestions"
 msgstr "搜索建议"
@@ -2530,7 +2539,7 @@ msgid "Searched every board and list."
 msgstr "已搜索所有看板和列表。"
 
 msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
-msgstr "复制敏感片段后，若期间未复制其他内容，则在此秒数后从剪贴板清除。设为 0 则永不清除。粘贴时会改为恢复你原本的剪贴板内容。"
+msgstr "复制敏感项目后，若期间未复制其他内容，则在此秒数后从剪贴板清除。设为 0 则永不清除。粘贴时会改为恢复你原本的剪贴板内容。"
 
 msgid "See the tips"
 msgstr "查看提示"
@@ -2548,7 +2557,7 @@ msgid "Select and delete"
 msgstr "选择和删除"
 
 msgid "Select every item"
-msgstr "选择所有片段"
+msgstr "选择所有项目"
 
 msgid "Select or delete…"
 msgstr "选择或删除…"
@@ -2560,13 +2569,13 @@ msgid "Select several items"
 msgstr "选择多个项目"
 
 msgid "Select snippets"
-msgstr "选择片段"
+msgstr "选择项目"
 
 msgid "Sensitive"
 msgstr "敏感"
 
 msgid "Sensitive item"
-msgstr "敏感片段"
+msgstr "敏感项目"
 
 msgid "Sensitive items can't be typed in, so they have no trigger."
 msgstr "敏感项目无法通过键入插入，因此没有触发词。"
@@ -2710,7 +2719,7 @@ msgid "Snipdeck couldn't save a draft of what you typed."
 msgstr "Snipdeck 无法保存你输入内容的草稿。"
 
 msgid "Snipdeck couldn't save this item. Nothing was changed."
-msgstr "Snipdeck 无法保存此片段。未做任何更改。"
+msgstr "Snipdeck 无法保存此项目。未做任何更改。"
 
 msgid "Snipdeck couldn't start.\n\n{}\n\nNothing was deleted. Close any program that may be using your Snipdeck folder, make sure the folder is not read-only, then start Snipdeck again. If you went back to an older version, install the newer one. Your backups are in the backups folder inside your Snipdeck folder."
 msgstr "Snipdeck 无法启动。\n\n{}\n\n没有删除任何内容。请关闭可能正在使用 Snipdeck 文件夹的程序，确认该文件夹不是只读的，然后重新启动 Snipdeck。如果你回退到了旧版本，请安装较新的版本。你的备份位于 Snipdeck 文件夹内的 backups 文件夹中。"
@@ -2752,7 +2761,7 @@ msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "Snipdeck 会待在系统托盘中，以便登录后快捷键仍可使用。"
 
 msgid "Snippets"
-msgstr "片段"
+msgstr "项目"
 
 msgid "Some files were left out: together they are over 64 MB."
 msgstr "部分文件被忽略：它们加起来超过 64 MB。"
@@ -2824,7 +2833,7 @@ msgid "Strength: weak"
 msgstr "强度：弱"
 
 msgid "Suggest snippets as I type"
-msgstr "输入时推荐片段"
+msgstr "输入时推荐项目"
 
 msgid "Support"
 msgstr "支持"
@@ -2863,7 +2872,7 @@ msgid "Tag"
 msgstr "标签"
 
 msgid "Tag a snippet to see it here."
-msgstr "为片段添加标签后，即可在这里看到。"
+msgstr "为项目添加标签后，即可在这里看到。"
 
 msgid "Tags"
 msgstr "标签"
@@ -2932,7 +2941,7 @@ msgid "That file is from a newer Snipdeck. Update Snipdeck to import it."
 msgstr "该文件来自较新版本的 Snipdeck。请更新 Snipdeck 后再导入。"
 
 msgid "That file is over {} MB, the most an item can hold."
-msgstr "该文件超过 {} MB，即单个片段可容纳的上限。"
+msgstr "该文件超过 {} MB，即单个项目可容纳的上限。"
 
 msgid "That is too many files to add at once."
 msgstr "一次添加的文件太多。"
@@ -2998,7 +3007,7 @@ msgid "The licences of the libraries Snipdeck is built from."
 msgstr "构成 Snipdeck 的库的许可证。"
 
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
-msgstr "该列表及其中的 {} 个片段将移至回收站。你可以在 {} 天内恢复它们。"
+msgstr "该列表及其中的 {} 个项目将移至回收站。你可以在 {} 天内恢复它们。"
 
 msgid "The list holds at most {} programs."
 msgstr "列表最多可包含 {} 个程序。"
@@ -3019,16 +3028,16 @@ msgid "The report holds versions and settings switches, never your items."
 msgstr "报告只包含版本和设置开关,绝不包含你的条目。"
 
 msgid "The selected items are deleted for good. This can't be undone."
-msgstr "所选片段将被永久删除，此操作无法撤销。"
+msgstr "所选项目将被永久删除，此操作无法撤销。"
 
 msgid "The sensitive item \"{}\" cannot be unlocked with this computer's key and was skipped."
-msgstr "无法使用本电脑的密钥打开敏感片段“{}”，已跳过。"
+msgstr "无法使用本电脑的密钥打开敏感项目“{}”，已跳过。"
 
 msgid "The shortcut for each is shown beside it."
 msgstr "每个操作的快捷键显示在旁边。"
 
 msgid "The tag is removed from its items. The items themselves stay."
-msgstr "标签将从其片段中移除，片段本身保留。"
+msgstr "标签将从其项目中移除，项目本身保留。"
 
 msgid "The taskbar is on that edge. Pick another edge, or move the taskbar."
 msgstr "任务栏位于该边缘。请选择其他边缘，或移动任务栏。"
@@ -3085,10 +3094,10 @@ msgid "This is your only board. Add another before deleting it."
 msgstr "这是你唯一的看板。请先添加另一个再删除它。"
 
 msgid "This item was deleted, so nothing was saved."
-msgstr "此片段已被删除，因此未保存任何内容。"
+msgstr "此项目已被删除，因此未保存任何内容。"
 
 msgid "This item was deleted. Nothing was saved."
-msgstr "此片段已删除。未保存任何内容。"
+msgstr "此项目已删除。未保存任何内容。"
 
 msgid "This list is empty"
 msgstr "此列表为空"
@@ -3190,10 +3199,10 @@ msgid "Type a command"
 msgstr "输入命令"
 
 msgid "Type a short code, get a snippet"
-msgstr "输入短代码，得到片段"
+msgstr "输入短代码，得到项目"
 
 msgid "Type this in any app to insert the snippet. Turn it on in Settings, under Typing."
-msgstr "在任何应用中输入它即可插入该片段。请在“设置”的“输入”中开启。"
+msgstr "在任何应用中输入它即可插入该项目。请在“设置”的“输入”中开启。"
 
 msgid "Type {} to confirm"
 msgstr "输入 {} 以确认"
@@ -3253,19 +3262,19 @@ msgid "Unlock with Windows Hello (Windows only)"
 msgstr "使用 Windows Hello 解锁（仅限 Windows）"
 
 msgid "Unlock your library first, so your sensitive items are included. Nothing was done."
-msgstr "请先解锁资料库，以便包含你的敏感片段。未执行任何操作。"
+msgstr "请先解锁资料库，以便包含你的敏感项目。未执行任何操作。"
 
 msgid "Unlock your library to save this item."
-msgstr "请先解锁资料库，才能保存此片段。"
+msgstr "请先解锁资料库，才能保存此项目。"
 
 msgid "Unlock your library to see recent copies. Nothing is collected while it is locked."
 msgstr "解锁资料库即可查看最近复制的内容。锁定期间不会收集任何内容。"
 
 msgid "Unlock your library to use this item."
-msgstr "请先解锁资料库，才能使用此片段。"
+msgstr "请先解锁资料库，才能使用此项目。"
 
 msgid "Unlock your sensitive items"
-msgstr "解锁你的敏感片段"
+msgstr "解锁你的敏感项目"
 
 msgid "Unlocking…"
 msgstr "正在解锁…"
@@ -3277,7 +3286,7 @@ msgid "Unpin"
 msgstr "取消置顶"
 
 msgid "Unpin selected item"
-msgstr "取消置顶所选片段"
+msgstr "取消置顶所选项目"
 
 msgid "Unpin them the same way."
 msgstr "取消置顶的方式相同。"
@@ -3298,13 +3307,13 @@ msgid "Use result N"
 msgstr "使用结果 N"
 
 msgid "Use selected item"
-msgstr "使用所选片段"
+msgstr "使用所选项目"
 
 msgid "Use the Nth item"
-msgstr "使用第 N 个片段"
+msgstr "使用第 N 个项目"
 
 msgid "Use the item"
-msgstr "使用该片段"
+msgstr "使用该项目"
 
 msgid "Use your face, fingerprint or PIN instead of typing the master password. Windows asks for Hello twice when you turn this on. The password is still asked after a restart and every 7 days, and it always works."
 msgstr "使用面部、指纹或 PIN 代替输入主密码。重启后以及每隔 7 天仍会要求输入密码，密码始终可用。开启时，Windows 会要求两次 Hello 验证。"
@@ -3358,7 +3367,7 @@ msgid "What you changed has not been saved."
 msgstr "更改尚未保存。"
 
 msgid "What you changed in this item has not been saved."
-msgstr "此片段的更改尚未保存。"
+msgstr "此项目的更改尚未保存。"
 
 msgid "Wheel"
 msgstr "色轮"
@@ -3457,7 +3466,7 @@ msgid "Your library locked after a while. The form for the sensitive template yo
 msgstr "你的库在一段时间后已锁定。你正在填写的敏感模板表单已关闭。"
 
 msgid "Your library locked after a while. The sensitive item you were editing was closed without saving."
-msgstr "资料库在一段时间后自动锁定。你正在编辑的敏感片段已关闭，未保存。"
+msgstr "资料库在一段时间后自动锁定。你正在编辑的敏感项目已关闭，未保存。"
 
 msgid "Your library was erased."
 msgstr "资料库已删除。"
@@ -3529,7 +3538,7 @@ msgid "add create"
 msgstr "添加 新建"
 
 msgid "add create snippet note write"
-msgstr "添加 新建 片段 笔记 写入"
+msgstr "添加 新建 项目 笔记 写入"
 
 msgid "an offset in {} can be at most {}"
 msgstr "{} 中的偏移最大为 {}"
@@ -3814,11 +3823,11 @@ msgstr "窗口 几何 默认 恢复 移动 大小 被截断"
 
 msgid "{n} item"
 msgid_plural "{n} items"
-msgstr[0] "{n} 个片段"
+msgstr[0] "{n} 个项目"
 
 msgid "{n} item will move to Trash with it. You can restore them for 30 days."
 msgid_plural "{n} items will move to Trash with it. You can restore them for 30 days."
-msgstr[0] "{n} 个片段将一同移至回收站。你可以在 30 天内恢复它们。"
+msgstr[0] "{n} 个项目将一同移至回收站。你可以在 30 天内恢复它们。"
 
 msgid "{n} match in {}"
 msgid_plural "{n} matches in {}"
@@ -3919,7 +3928,7 @@ msgstr[0] "有 {} 个项目的标题或来源应用超过 {} 或 {} 个字符，
 
 msgid "{} item in {} list will be added"
 msgid_plural "{} items in {} lists will be added"
-msgstr[0] "将添加 {} 个片段，共 {} 个列表"
+msgstr[0] "将添加 {} 个项目，共 {} 个列表"
 
 msgid "{} item that is not text (a picture or file) was skipped."
 msgid_plural "{} items that are not text (pictures or files) were skipped."
@@ -3953,18 +3962,18 @@ msgstr "{}%"
 
 msgid "{} picture or file that no snippet uses was left out."
 msgid_plural "{} pictures or files that no snippet uses were left out."
-msgstr[0] "{} 张没有被任何片段使用的图片或文件已被省略。"
+msgstr[0] "{} 张没有被任何项目使用的图片或文件已被省略。"
 
 msgid "{} selected"
 msgstr "已选择 {} 项"
 
 msgid "{} sensitive item is encrypted with a key this library does not have and was skipped."
 msgid_plural "{} sensitive items are encrypted with a key this library does not have and were skipped."
-msgstr[0] "{} 个敏感片段使用本资料库没有的密钥加密，已跳过。"
+msgstr[0] "{} 个敏感项目使用本资料库没有的密钥加密，已跳过。"
 
 msgid "{} sensitive item was left out when this file was made."
 msgid_plural "{} sensitive items were left out when this file was made."
-msgstr[0] "创建此文件时，已省略 {} 个敏感片段。"
+msgstr[0] "创建此文件时，已省略 {} 个敏感项目。"
 
 msgid "{} sensitive item was not in the backup."
 msgid_plural "{} sensitive items were not in the backup."
@@ -4022,7 +4031,7 @@ msgid "{}: the trigger {} and {} start alike, so the shorter one fires first."
 msgstr "{}：触发词 {} 与 {} 开头相同，因此较短的会先触发。"
 
 msgid "{}: the trigger {} is already used by another snippet, so it was imported without it."
-msgstr "{}：触发词 {} 已被另一个片段使用，因此导入时未带触发词。"
+msgstr "{}：触发词 {} 已被另一个项目使用，因此导入时未带触发词。"
 
 msgid "{}: this entry is not a match and was skipped."
 msgstr "{}：此条目不是匹配项，已跳过。"
@@ -4040,7 +4049,7 @@ msgid "{}: {} to 1. AA text {}. AA large text {}. AAA text {}. AAA large text {}
 msgstr "{}：{} 比 1。AA 文本{}。AA 大号文本{}。AAA 文本{}。AAA 大号文本{}。界面部件{}。"
 
 msgid "{}: {} was not kept as a trigger, because a snippet has one trigger."
-msgstr "{}：{} 未保留为触发词，因为一个片段只有一个触发词。"
+msgstr "{}：{} 未保留为触发词，因为一个项目只有一个触发词。"
 
 msgid "{}: {} was not kept as a trigger, because a trigger has no spaces and at most 32 characters."
 msgstr "{}：{} 未保留为触发词，因为触发词不能含空格，且最多 32 个字符。"

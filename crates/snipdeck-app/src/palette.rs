@@ -254,4 +254,16 @@ mod tests {
             assert!(ratio >= 4.5, "{theme} toast action {ratio:.2}");
         }
     }
+
+    /// MAIN-59: the sidebar and chooser counts (secondary text) read at 4.5:1 on every surface they sit on,
+    /// the selected row included.
+    #[test]
+    fn counts_read_at_four_and_a_half_to_one_on_every_surface() {
+        for theme in ["light", "dark"] {
+            for bg in ["bg.app", "bg.surface", "bg.sunken", "bg.hover", "bg.selected", "bg.overlay"] {
+                let ratio = contrast(theme, "text.secondary", bg);
+                assert!(ratio >= 4.5, "{theme} count on {bg}: {ratio:.2}");
+            }
+        }
+    }
 }

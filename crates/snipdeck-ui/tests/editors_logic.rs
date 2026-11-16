@@ -1157,6 +1157,20 @@ ui_tests! {
         assert_eq!(take(&log), ["delete:2"]);
     }
 
+    /// MAIN-39: an unused tag says so instead of "removed from 0 items".
+    fn deleting_an_unused_tag_does_not_say_zero_items() {
+        let ui = TagManager::new().expect("tag manager");
+        fixture::tag_manager(&ui);
+        ui.show().expect("show");
+        settle();
+        find(&ui, "Delete tag unused", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert_eq!(
+            find(&ui, "Delete this tag?", AccessibleRole::Groupbox).accessible_description().as_deref(),
+            Some("No item uses this tag.")
+        );
+    }
+
     fn tag_rows_have_big_enough_targets() {
         let ui = TagManager::new().expect("tag manager");
         fixture::tag_manager(&ui);
@@ -1833,6 +1847,9 @@ ui_tests! {
         let (ui, _) = onboarding(0);
         let _ = find(&ui, "The panel", AccessibleRole::Groupbox);
         let _ = find(&ui, "The picker", AccessibleRole::Groupbox);
+        // MAIN-47: the tour says where to bring other tools' snippets in.
+        let import = find(&ui, "Bring your snippets", AccessibleRole::Groupbox);
+        assert!(import.accessible_description().is_some_and(|d| d.contains("TextExpander") && d.contains("CopyQ")));
         let _ = find(&ui, "Also keep what I copy?", AccessibleRole::Groupbox);
         assert!(missing(&ui, "Start with Windows", AccessibleRole::Switch));
         ui.set_step(1);

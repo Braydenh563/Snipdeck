@@ -1702,6 +1702,8 @@ component EntityEditorBody inherits Rectangle {
 
     in property <bool> dark: false;
     in property <bool> is-new: false;
+    // The host put back fields the owner typed before the window closed (MAIN-42).
+    in property <bool> restored: false;
     in-out property <string> name;
     // Needs the store (a name already taken); the host sets it after `save-requested`.
     in property <string> name-error;
@@ -1831,6 +1833,10 @@ component EntityEditorBody inherits Rectangle {
                     padding: Space.s4;
                     spacing: Space.s4;
                     alignment: start;
+
+                    if root.restored: Notice {
+                        text: @tr("Restored the changes you had not saved.");
+                    }
 
                     FormField {
                         label: root.name-label;
@@ -1968,6 +1974,7 @@ export component ListEditor inherits Window {
 
     in property <bool> dark <=> body.dark;
     in property <bool> is-new <=> body.is-new;
+    in property <bool> restored <=> body.restored;
     in-out property <string> name <=> body.name;
     in property <string> name-error <=> body.name-error;
     // -1 no colour, else 0 to 8 in the order of `ListHue` (blue, teal, green, amber, orange, red, rose, violet, slate).
@@ -2031,6 +2038,7 @@ export component BoardEditor inherits Window {
 
     in property <bool> dark <=> body.dark;
     in property <bool> is-new <=> body.is-new;
+    in property <bool> restored <=> body.restored;
     in-out property <string> name <=> body.name;
     in property <string> name-error <=> body.name-error;
     in-out property <int> accent <=> body.accent;
@@ -2278,7 +2286,9 @@ export component TagManager inherits Window {
         open: root.delete-index >= 0;
         variant: DialogVariant.destructive;
         title: @tr("Delete this tag?");
-        body: @tr("It is removed from {n} item. The item stays." | "It is removed from {n} items. The items stay." % (root.delete-index >= 0 && root.delete-index < root.tags.length ? root.tags[root.delete-index].count : 0));
+        body: (root.delete-index >= 0 && root.delete-index < root.tags.length && root.tags[root.delete-index].count == 0)
+            ? @tr("No item uses this tag.")
+            : @tr("It is removed from {n} item. The item stays." | "It is removed from {n} items. The items stay." % (root.delete-index >= 0 && root.delete-index < root.tags.length ? root.tags[root.delete-index].count : 0));
         dismissed => { root.delete-index = -1; }
         closed => { scope.focus(); }
         Button {

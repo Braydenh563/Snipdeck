@@ -131,6 +131,8 @@ CHECKS = [  # (fg, bg, min, label)
   ("text.secondary", "bg.surface", 4.5, "secondary text"),
   ("text.secondary", "bg.hover", 4.5, "secondary on hover row"),
   ("text.primary", "bg.selected", 4.5, "text on selected row"),
+  ("text.secondary", "bg.app", 4.5, "counts on the sidebar"),
+  ("text.secondary", "bg.selected", 4.5, "counts on the selected row"),
   ("text.primary", "bg.overlay-hover", 4.5, "text on highlighted menu row"),
   ("text.secondary", "bg.overlay-hover", 4.5, "secondary on highlighted menu row"),
   ("text.tertiary", "bg.surface", 3.0, "tertiary (icons/hints, non-essential)"),

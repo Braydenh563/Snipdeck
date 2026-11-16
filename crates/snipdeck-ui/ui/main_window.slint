@@ -1304,6 +1304,17 @@ export component MainWindow inherits Window {
                                         root.open-section(root.nav-cursor);
                                         return accept;
                                     }
+                                    // F2 edits and Delete asks to delete the list or tag under the cursor (MAIN-15), like the menu.
+                                    if (event.text == Key.F2 || event.text == Key.Delete) {
+                                        let kind = root.nav-section(root.nav-cursor);
+                                        let at = root.nav-index(root.nav-cursor);
+                                        if (kind == MainSection.list) {
+                                            if (event.text == Key.F2) { root.list-edit-requested(at); } else { root.ask(1, at); }
+                                        } else if (kind == MainSection.tag) {
+                                            if (event.text == Key.F2) { root.manage-tags-requested(); } else { root.ask(2, at); }
+                                        }
+                                        return accept;
+                                    }
                                     if (event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10)) {
                                         if (root.nav-cursor >= 3) {
                                             root.open-nav-menu(root.nav-cursor, root.sidebar-w, root.bar-h + Space.s8);
@@ -2712,6 +2723,8 @@ export component MainWindow inherits Window {
                         root.sidebar-width-changed(root.sidebar-width);
                     }
                 }
+                // A double click puts the sidebar back at its default width (MAIN-15).
+                double-clicked => { root.set-sidebar-width(232, true); }
                 moved => {
                     if (self.pressed) {
                         let edge = self.absolute-position.x + self.mouse-x + root.splitter-grab;
@@ -2736,6 +2749,15 @@ export component MainWindow inherits Window {
                     }
                     if (event.text == Key.RightArrow) {
                         root.set-sidebar-width(root.sidebar-width + 8, true);
+                        return accept;
+                    }
+                    // Home and End jump to the narrowest and the widest (MAIN-15, like any slider).
+                    if (event.text == Key.Home) {
+                        root.set-sidebar-width(200, true);
+                        return accept;
+                    }
+                    if (event.text == Key.End) {
+                        root.set-sidebar-width(320, true);
                         return accept;
                     }
                     return reject;

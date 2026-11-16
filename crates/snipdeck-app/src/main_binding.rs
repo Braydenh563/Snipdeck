@@ -1519,6 +1519,7 @@ where
 
 fn fill_list_editor(window: &ui::ListEditor, view: &EditorView) {
     window.set_is_new(view.is_new);
+    window.set_restored(view.restored);
     window.set_name(view.name.as_str().into());
     window.set_accent(accent_index(view.accent));
     window.set_icon_names(model(
@@ -1540,6 +1541,7 @@ fn fill_list_editor(window: &ui::ListEditor, view: &EditorView) {
 
 fn fill_board_editor(window: &ui::BoardEditor, view: &EditorView) {
     window.set_is_new(view.is_new);
+    window.set_restored(view.restored);
     window.set_name(view.name.as_str().into());
     window.set_show_colour(false);
     window.set_show_sort(false);

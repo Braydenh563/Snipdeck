@@ -279,6 +279,8 @@ pub struct EditorView {
     pub delete_hint: Option<DeleteHint>,
     /// Why the last save was refused.
     pub name_error: Option<NameError>,
+    /// Fields the owner typed before the window closed came back.
+    pub restored: bool,
 }
 
 /// The Main window's state.

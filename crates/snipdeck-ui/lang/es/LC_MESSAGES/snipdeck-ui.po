@@ -50,10 +50,10 @@ msgid "A link needs a scheme such as https://"
 msgstr "Un enlace necesita un esquema, como https://"
 
 msgid "A master password is on and your sensitive items are locked."
-msgstr "La contraseña maestra está activada y tus fragmentos sensibles están bloqueados."
+msgstr "La contraseña maestra está activada y tus elementos sensibles están bloqueados."
 
 msgid "A master password is on. Snipdeck asks for it when you first use a sensitive item and again after {} minutes without use."
-msgstr "La contraseña maestra está activada. Snipdeck la pide la primera vez que usas un fragmento sensible y de nuevo tras {} minutos sin usarlo."
+msgstr "La contraseña maestra está activada. Snipdeck la pide la primera vez que usas un elemento sensible y de nuevo tras {} minutos sin usarlo."
 
 msgid "A master password locks the whole deck."
 msgstr "Una contraseña maestra bloquea todo el mazo."
@@ -77,7 +77,7 @@ msgid "A smiley tab next to Recent with emoji, kaomoji and icons to paste. Turn 
 msgstr "Una pestaña con una carita junto a Reciente, con emoji, kaomoji e iconos para pegar. Desactívala para ocultar la pestaña y su comando de Ctrl+K."
 
 msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
-msgstr "Una tira con tus fragmentos junto a la aplicación en la que trabajas. Haz clic en uno para pegarlo allí."
+msgstr "Una tira con tus elementos junto a la aplicación en la que trabajas. Haz clic en uno para pegarlo allí."
 
 msgid "A tag with that name already exists."
 msgstr "Ya existe una etiqueta con ese nombre."
@@ -128,10 +128,10 @@ msgid "Add"
 msgstr "Añadir"
 
 msgid "Add a snippet, or move items here from another list."
-msgstr "Añade un fragmento o mueve aquí elementos de otra lista."
+msgstr "Añade un elemento o mueve aquí elementos de otra lista."
 
 msgid "Add a snippet… (Enter to save)"
-msgstr "Añade un fragmento… (Intro para guardar)"
+msgstr "Añade un elemento… (Intro para guardar)"
 
 msgid "Add list"
 msgstr "Añadir lista"
@@ -161,7 +161,7 @@ msgid "Adds a password on top of Windows' own protection for your sensitive item
 msgstr "Añade una contraseña además de la protección propia de Windows para tus elementos sensibles. Se pide la primera vez que usas un elemento sensible y de nuevo tras {} minutos sin usarlo. En Windows, después también puedes desbloquear con Windows Hello."
 
 msgid "Adds a text snippet to {}"
-msgstr "Añade un fragmento de texto a {}"
+msgstr "Añade un elemento de texto a {}"
 
 msgid "After a paste or copy"
 msgstr "Después de pegar o copiar"
@@ -176,7 +176,7 @@ msgid "All"
 msgstr "Todos"
 
 msgid "All items"
-msgstr "Todos los fragmentos"
+msgstr "Todos los elementos"
 
 msgid "All {n} item moves to the Trash. You can restore it for {} days."
 msgid_plural "All {n} items move to the Trash. You can restore them for {} days."
@@ -232,7 +232,7 @@ msgid "Another program already uses {}."
 msgstr "Otro programa ya usa {}."
 
 msgid "Another snippet already uses this trigger."
-msgstr "Otro fragmento ya usa este atajo."
+msgstr "Otro elemento ya usa este atajo."
 
 msgid "Anywhere in Windows"
 msgstr "En cualquier parte de Windows"
@@ -330,6 +330,9 @@ msgstr "Trae elementos de un archivo de Snipdeck u otro gestor del portapapeles.
 msgid "Bring up the panel, open the picker, save the clipboard or paste the next item from any app."
 msgstr "Muestra el panel, abre el selector, guarda el portapapeles o pega el siguiente elemento desde cualquier aplicación."
 
+msgid "Bring your snippets"
+msgstr "Trae tus elementos"
+
 msgid "Brings the panel up beside the app you are working in."
 msgstr "Muestra el panel junto a la aplicación en la que trabajas."
 
@@ -352,7 +355,7 @@ msgid "Cancel the test of {}"
 msgstr "Cancelar la prueba de {}"
 
 msgid "Captured items keep their kind."
-msgstr "Los fragmentos capturados conservan su tipo."
+msgstr "Los elementos capturados conservan su tipo."
 
 msgid "Cards"
 msgstr "Tarjetas"
@@ -388,7 +391,7 @@ msgid "Choose comfortable rows, compact rows or tiles."
 msgstr "Elige filas cómodas, filas compactas o mosaicos."
 
 msgid "Choose one to add it where the cursor is. It is filled in when you use the item."
-msgstr "Elige uno para añadirlo donde está el cursor. Se completa cuando usas el fragmento."
+msgstr "Elige uno para añadirlo donde está el cursor. Se completa cuando usas el elemento."
 
 msgid "Choose tags"
 msgstr "Elegir etiquetas"
@@ -433,7 +436,7 @@ msgid "Clear selection"
 msgstr "Borrar selección"
 
 msgid "Clear the clipboard after copying a sensitive item"
-msgstr "Vaciar el portapapeles tras copiar un fragmento sensible"
+msgstr "Vaciar el portapapeles tras copiar un elemento sensible"
 
 msgid "Clear the clipboard later"
 msgstr "Vaciar el portapapeles más tarde"
@@ -775,16 +778,16 @@ msgid "Couldn't start typing triggers. Nothing will be expanded or suggested."
 msgstr "No se pudieron iniciar los atajos al escribir. No se expandirá ni se sugerirá nada."
 
 msgid "Couldn't use this item. Try again, or restart Snipdeck if it keeps happening."
-msgstr "No se pudo usar este fragmento. Inténtalo de nuevo o reinicia Snipdeck si sigue ocurriendo."
+msgstr "No se pudo usar este elemento. Inténtalo de nuevo o reinicia Snipdeck si sigue ocurriendo."
 
 msgid "Couldn't use this item: the disk is full. Free up some space, then try again."
-msgstr "No se pudo usar este fragmento: el disco está lleno. Libera espacio e inténtalo de nuevo."
+msgstr "No se pudo usar este elemento: el disco está lleno. Libera espacio e inténtalo de nuevo."
 
 msgid "Couldn't use this item: your library file is in use by another program. Close that program, then try again."
-msgstr "No se pudo usar este fragmento: otro programa está usando el archivo de tu biblioteca. Ciérralo e inténtalo de nuevo."
+msgstr "No se pudo usar este elemento: otro programa está usando el archivo de tu biblioteca. Ciérralo e inténtalo de nuevo."
 
 msgid "Couldn't use this item: your library is locked. Unlock it, then try again."
-msgstr "No se pudo usar este fragmento: tu biblioteca está bloqueada. Desbloquéala e inténtalo de nuevo."
+msgstr "No se pudo usar este elemento: tu biblioteca está bloqueada. Desbloquéala e inténtalo de nuevo."
 
 msgid "Couldn't write to your library. Check that the disk has room."
 msgstr "No se pudo escribir en tu biblioteca. Comprueba que el disco tenga espacio."
@@ -865,7 +868,7 @@ msgid "Delete list…"
 msgstr "Eliminar lista…"
 
 msgid "Delete snippets"
-msgstr "Eliminar fragmentos"
+msgstr "Eliminar elementos"
 
 msgid "Delete tag"
 msgstr "Eliminar etiqueta"
@@ -898,7 +901,7 @@ msgid "Deleted for good"
 msgstr "Eliminado definitivamente"
 
 msgid "Deleted items stay here for {} days before they are removed."
-msgstr "Los fragmentos eliminados permanecen aquí {} días antes de borrarse."
+msgstr "Los elementos eliminados permanecen aquí {} días antes de borrarse."
 
 msgid "Deleted list “{}”"
 msgstr "Lista “{}” eliminada"
@@ -907,7 +910,7 @@ msgid "Deleted “{}”"
 msgstr "Eliminado: «{}»"
 
 msgid "Deletes every board, list, item and backup on this PC. This cannot be undone."
-msgstr "Elimina todos los tableros, listas, fragmentos y copias de seguridad de este PC. No se puede deshacer."
+msgstr "Elimina todos los tableros, listas, elementos y copias de seguridad de este PC. No se puede deshacer."
 
 msgid "Deletes everything in the Recent inbox now."
 msgstr "Elimina ahora todo lo de la bandeja Recientes."
@@ -979,7 +982,7 @@ msgid "Edit board"
 msgstr "Editar tablero"
 
 msgid "Edit item"
-msgstr "Editar fragmento"
+msgstr "Editar elemento"
 
 msgid "Edit list"
 msgstr "Editar lista"
@@ -1033,7 +1036,7 @@ msgid "Enter creates “{}” in {}"
 msgstr "Intro crea «{}» en {}"
 
 msgid "Enter your master password to use the sensitive items in your library. Your other items are always available."
-msgstr "Introduce tu contraseña maestra para usar los fragmentos sensibles de tu biblioteca. Tus demás elementos siempre están disponibles."
+msgstr "Introduce tu contraseña maestra para usar los elementos sensibles de tu biblioteca. Tus demás elementos siempre están disponibles."
 
 msgid "Enter your password."
 msgstr "Introduce tu contraseña."
@@ -1156,7 +1159,7 @@ msgid "Get started"
 msgstr "Empezar"
 
 msgid "Give a snippet a trigger, such as ;sig, under More options in its editor."
-msgstr "Dale a un fragmento un atajo, como ;sig, en «Más opciones» de su editor."
+msgstr "Dale a un elemento un atajo, como ;sig, en «Más opciones» de su editor."
 
 msgid "Give it a name."
 msgstr "Ponle un nombre."
@@ -1261,7 +1264,7 @@ msgid "Hold to reveal"
 msgstr "Mantén pulsado para mostrar"
 
 msgid "Hold to reveal a hidden item"
-msgstr "Mantén pulsado para mostrar un fragmento oculto"
+msgstr "Mantén pulsado para mostrar un elemento oculto"
 
 msgid "Hover"
 msgstr "Pasar el puntero"
@@ -1279,7 +1282,7 @@ msgid "How long the pointer stays off the open panel before it tucks away, from 
 msgstr "Cuánto tiempo permanece el puntero fuera del panel abierto antes de que se recoja, de 0 a {} milisegundos."
 
 msgid "How tall the item rows are in the Main window lists. Compact shows one line per item."
-msgstr "Qué altura tienen las filas de fragmentos en las listas de la ventana principal. Compacta muestra una línea por fragmento."
+msgstr "Qué altura tienen las filas de elementos en las listas de la ventana principal. Compacta muestra una línea por elemento."
 
 msgid "How the Panel lists your items: one per row, two per row as cards, or tight rows. A search shows rows in every layout."
 msgstr "Cómo lista el Panel tus elementos: uno por fila, dos por fila como tarjetas o filas compactas. Una búsqueda muestra filas en cualquier diseño."
@@ -1306,7 +1309,7 @@ msgid "Icons can't be added to a list yet."
 msgstr "Aún no se pueden añadir iconos a una lista."
 
 msgid "If you forget this password, your sensitive items can never be opened again. Snipdeck cannot reset it and keeps no recovery key. Your other items are not affected."
-msgstr "Si olvidas esta contraseña, tus fragmentos sensibles no se podrán abrir nunca más. Snipdeck no puede restablecerla y no guarda ninguna clave de recuperación. Tus demás elementos no se ven afectados."
+msgstr "Si olvidas esta contraseña, tus elementos sensibles no se podrán abrir nunca más. Snipdeck no puede restablecerla y no guarda ninguna clave de recuperación. Tus demás elementos no se ven afectados."
 
 msgid "Image"
 msgstr "Imagen"
@@ -1316,6 +1319,9 @@ msgstr "Aquí no se pueden pegar imágenes. Guarda la imagen como PNG y añádel
 
 msgid "Import"
 msgstr "Importar"
+
+msgid "Import from TextExpander, Espanso, Beeftext, PhraseExpress, Ditto or CopyQ in Settings, under Import."
+msgstr "Importa desde TextExpander, Espanso, Beeftext, PhraseExpress, Ditto o CopyQ en Ajustes, en Importar."
 
 msgid "Import from {}"
 msgstr "Importar desde {}"
@@ -1352,7 +1358,7 @@ msgstr[0] "Se quita de {n} elemento. El elemento se conserva."
 msgstr[1] "Se quita de {n} elementos. Los elementos se conservan."
 
 msgid "Item actions"
-msgstr "Acciones de fragmentos"
+msgstr "Acciones de elementos"
 
 msgid "Item pinned"
 msgstr "Elemento fijado"
@@ -1361,7 +1367,7 @@ msgid "Item unpinned"
 msgstr "Elemento desfijado"
 
 msgid "Items are removed after {} days."
-msgstr "Los fragmentos se eliminan tras {} días."
+msgstr "Los elementos se eliminan tras {} días."
 
 msgid "Its lists and {n} item will move to Trash. You can restore them for 30 days."
 msgid_plural "Its lists and {n} items will move to Trash. You can restore them for 30 days."
@@ -1420,7 +1426,7 @@ msgid "Keep them"
 msgstr "Conservar"
 
 msgid "Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Sensitive items, password managers and the apps you exclude are never kept."
-msgstr "Guarda el texto que copias durante las últimas {} copias o {} días, lo que ocurra primero, para que puedas encontrarlo de nuevo o guardarlo en una lista. Los fragmentos sensibles, los gestores de contraseñas y las aplicaciones que excluyas nunca se guardan."
+msgstr "Guarda el texto que copias durante las últimas {} copias o {} días, lo que ocurra primero, para que puedas encontrarlo de nuevo o guardarlo en una lista. Los elementos sensibles, los gestores de contraseñas y las aplicaciones que excluyas nunca se guardan."
 
 msgid "Keyboard shortcuts"
 msgstr "Atajos de teclado"
@@ -1489,13 +1495,13 @@ msgid "Lists"
 msgstr "Listas"
 
 msgid "Lists hold your snippets."
-msgstr "Las listas contienen tus fragmentos."
+msgstr "Las listas contienen tus elementos."
 
 msgid "Loading"
 msgstr "Cargando"
 
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
-msgstr "Los registros solo se escriben cuando Snipdeck se cierra por un error, no contienen el contenido de los fragmentos y no se envían a ningún sitio."
+msgstr "Los registros solo se escriben cuando Snipdeck se cierra por un error, no contienen el contenido de los elementos y no se envían a ningún sitio."
 
 msgid "Love"
 msgstr "Amor"
@@ -1555,7 +1561,7 @@ msgid "Master password removed."
 msgstr "Contraseña maestra eliminada."
 
 msgid "Master password removed. Snipdeck couldn't open the library just now. Restart Snipdeck to use your sensitive items."
-msgstr "Contraseña maestra eliminada. Snipdeck no pudo abrir la biblioteca hace un momento. Reinicia Snipdeck para usar tus fragmentos sensibles."
+msgstr "Contraseña maestra eliminada. Snipdeck no pudo abrir la biblioteca hace un momento. Reinicia Snipdeck para usar tus elementos sensibles."
 
 msgid "Master password set."
 msgstr "Contraseña maestra establecida."
@@ -1576,7 +1582,7 @@ msgid "More options: open the full editor"
 msgstr "Más opciones: abrir el editor completo"
 
 msgid "More pinned snippets"
-msgstr "Más fragmentos fijados"
+msgstr "Más elementos fijados"
 
 msgid "Most used"
 msgstr "Más usados"
@@ -1676,7 +1682,7 @@ msgid "New board…"
 msgstr "Nuevo tablero…"
 
 msgid "New item"
-msgstr "Nuevo fragmento"
+msgstr "Nuevo elemento"
 
 msgid "New item (quick add in an open list)"
 msgstr "Nuevo elemento (añadir rápido en una lista abierta)"
@@ -1729,8 +1735,11 @@ msgstr "Ningún comando coincide con «{}»"
 msgid "No icon"
 msgstr "Sin icono"
 
+msgid "No item uses this tag."
+msgstr "Ningún elemento usa esta etiqueta."
+
 msgid "No items with this tag"
-msgstr "No hay fragmentos con esta etiqueta"
+msgstr "No hay elementos con esta etiqueta"
 
 msgid "No label"
 msgstr "Sin etiqueta"
@@ -1754,7 +1763,7 @@ msgid "No programs yet. Every program gets Ctrl+V."
 msgstr "Aún no hay programas. Todos los programas usan Ctrl+V."
 
 msgid "No recent items"
-msgstr "No hay fragmentos recientes"
+msgstr "No hay elementos recientes"
 
 msgid "No settings match"
 msgstr "Ninguna configuración coincide"
@@ -1763,7 +1772,7 @@ msgid "No shortcut matches"
 msgstr "Ningún atajo coincide"
 
 msgid "No snippets yet"
-msgstr "Aún no hay fragmentos"
+msgstr "Aún no hay elementos"
 
 msgid "No symbols match “{}”"
 msgstr "Ningún símbolo coincide con “{}”"
@@ -1778,7 +1787,7 @@ msgid "No tags yet. Add one below."
 msgstr "Aún no hay etiquetas. Añade una abajo."
 
 msgid "No tags yet. Add tags to an item and they appear here."
-msgstr "Aún no hay etiquetas. Añade etiquetas a un fragmento y aparecerán aquí."
+msgstr "Aún no hay etiquetas. Añade etiquetas a un elemento y aparecerán aquí."
 
 msgid "No target:"
 msgstr "Sin destino:"
@@ -1817,13 +1826,13 @@ msgid "Nothing pinned"
 msgstr "Nada fijado"
 
 msgid "Nothing pinned matches “{}”."
-msgstr "Ningún fragmento fijado coincide con “{}”."
+msgstr "Ningún elemento fijado coincide con “{}”."
 
 msgid "Nothing pinned yet"
 msgstr "Aún no hay nada fijado"
 
 msgid "Nothing to paste next. Pin a snippet, or add one to this list."
-msgstr "Nada que pegar a continuación. Fija un fragmento o añade uno a esta lista."
+msgstr "Nada que pegar a continuación. Fija un elemento o añade uno a esta lista."
 
 msgid "Nothing to redo"
 msgstr "Nada que rehacer"
@@ -1874,7 +1883,7 @@ msgid "On white"
 msgstr "Sobre blanco"
 
 msgid "Only text, code, link and template items can be sensitive."
-msgstr "Solo los fragmentos de texto, código, enlace y plantilla pueden ser sensibles."
+msgstr "Solo los elementos de texto, código, enlace y plantilla pueden ser sensibles."
 
 msgid "Only with Start with Windows: wait in the tray, or open the Panel as well."
 msgstr "Solo con Iniciar con Windows: esperar en la bandeja o abrir también el panel."
@@ -1967,7 +1976,7 @@ msgid "Other colour"
 msgstr "Otro color"
 
 msgid "Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."
-msgstr "Fuera de esa carpeta Snipdeck solo escribe la entrada de inicio de Windows (si la activas) y el portapapeles cuando usas un fragmento."
+msgstr "Fuera de esa carpeta Snipdeck solo escribe la entrada de inicio de Windows (si la activas) y el portapapeles cuando usas un elemento."
 
 msgid "PNG, {}"
 msgstr "PNG, {}"
@@ -2057,7 +2066,7 @@ msgid "Paste the item as plain text"
 msgstr "Pegar el elemento como texto sin formato"
 
 msgid "Paste the next item"
-msgstr "Pegar el siguiente fragmento"
+msgstr "Pegar el siguiente elemento"
 
 msgid "Paste the next item of a stack"
 msgstr "Pega el siguiente elemento de una pila"
@@ -2090,7 +2099,7 @@ msgid "Pastes into {} · {}"
 msgstr "Pega en {} · {}"
 
 msgid "Pastes the next item of the list in order."
-msgstr "Pega el siguiente fragmento de la lista, en orden."
+msgstr "Pega el siguiente elemento de la lista, en orden."
 
 msgid "Pasting"
 msgstr "Pegado"
@@ -2144,7 +2153,7 @@ msgid "Pin"
 msgstr "Fijar"
 
 msgid "Pin a snippet from the Panel to find it here."
-msgstr "Fija un fragmento desde el panel para encontrarlo aquí."
+msgstr "Fija un elemento desde el panel para encontrarlo aquí."
 
 msgid "Pin or unpin the item"
 msgstr "Fija o desfija el elemento"
@@ -2153,7 +2162,7 @@ msgid "Pin selected item"
 msgstr "Fijar el elemento seleccionado"
 
 msgid "Pin the snippets you use most to keep them one click away."
-msgstr "Fija los fragmentos que más usas para tenerlos a un clic."
+msgstr "Fija los elementos que más usas para tenerlos a un clic."
 
 msgid "Pin the snippets you use most; they stay at the top of the Panel."
 msgstr "Fija los elementos que más usas; se quedan arriba en el panel."
@@ -2162,7 +2171,7 @@ msgid "Pinned"
 msgstr "Fijados"
 
 msgid "Pinned snippets"
-msgstr "Fragmentos fijados"
+msgstr "Elementos fijados"
 
 msgid "Placeholders"
 msgstr "Marcadores de posición"
@@ -2264,7 +2273,7 @@ msgid "Recent history cleared"
 msgstr "Historial reciente borrado"
 
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
-msgstr "Recientes guarda el texto que copias, solo en este equipo, durante las últimas {} copias o {} días, lo que ocurra primero. Las contraseñas de los gestores de contraseñas y los fragmentos sensibles nunca se guardan. Puedes cambiarlo cuando quieras en Configuración."
+msgstr "Recientes guarda el texto que copias, solo en este equipo, durante las últimas {} copias o {} días, lo que ocurra primero. Las contraseñas de los gestores de contraseñas y los elementos sensibles nunca se guardan. Puedes cambiarlo cuando quieras en Configuración."
 
 msgid "Recently used"
 msgstr "Usados recientemente"
@@ -2336,7 +2345,7 @@ msgid "Rename group"
 msgstr "Renombrar grupo"
 
 msgid "Rename or delete tags. Deleting a tag removes it from its items; the items stay."
-msgstr "Cambia el nombre o elimina etiquetas. Al eliminar una etiqueta, se quita de sus fragmentos; los fragmentos se conservan."
+msgstr "Cambia el nombre o elimina etiquetas. Al eliminar una etiqueta, se quita de sus elementos; los elementos se conservan."
 
 msgid "Rename tag {}"
 msgstr "Renombrar la etiqueta {}"
@@ -2421,7 +2430,7 @@ msgid "Save from clipboard"
 msgstr "Guardar desde el portapapeles"
 
 msgid "Save the clipboard as an item"
-msgstr "Guardar el portapapeles como fragmento"
+msgstr "Guardar el portapapeles como elemento"
 
 msgid "Save to"
 msgstr "Guardar en"
@@ -2463,10 +2472,10 @@ msgid "Saved. This trigger overlaps the trigger of “{}”, so one of them may 
 msgstr "Guardado. Este atajo se solapa con el atajo de «{}», así que puede que uno de los dos nunca se active."
 
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
-msgstr "Guarda todos los tableros, listas y fragmentos en un archivo .snipdeck dentro de la carpeta que elijas."
+msgstr "Guarda todos los tableros, listas y elementos en un archivo .snipdeck dentro de la carpeta que elijas."
 
 msgid "Saves the text that is on the clipboard when you press it as a new item in the list the panel shows."
-msgstr "Guarda como un fragmento nuevo, en la lista que muestra el panel, el texto que hay en el portapapeles cuando lo pulsas."
+msgstr "Guarda como un elemento nuevo, en la lista que muestra el panel, el texto que hay en el portapapeles cuando lo pulsas."
 
 msgid "Saving changed text removes the formatting."
 msgstr "Al guardar el texto modificado se quita el formato."
@@ -2496,7 +2505,7 @@ msgid "Search (Ctrl+F)"
 msgstr "Buscar (Ctrl+F)"
 
 msgid "Search all snippets"
-msgstr "Buscar en todos los fragmentos"
+msgstr "Buscar en todos los elementos"
 
 msgid "Search emoji, kaomoji, icons"
 msgstr "Buscar emoji, kaomoji, iconos"
@@ -2520,7 +2529,7 @@ msgid "Search shortcuts"
 msgstr "Buscar atajos"
 
 msgid "Search snippets"
-msgstr "Buscar fragmentos"
+msgstr "Buscar elementos"
 
 msgid "Search suggestions"
 msgstr "Sugerencias de búsqueda"
@@ -2538,7 +2547,7 @@ msgid "Searched every board and list."
 msgstr "Se buscó en todos los tableros y listas."
 
 msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
-msgstr "Segundos antes de que un fragmento sensible copiado se borre del portapapeles, si desde entonces no se ha copiado nada más. 0 nunca lo borra. Al pegar se restaura tu propio portapapeles."
+msgstr "Segundos antes de que un elemento sensible copiado se borre del portapapeles, si desde entonces no se ha copiado nada más. 0 nunca lo borra. Al pegar se restaura tu propio portapapeles."
 
 msgid "See the tips"
 msgstr "Ver los consejos"
@@ -2568,13 +2577,13 @@ msgid "Select several items"
 msgstr "Seleccionar varios elementos"
 
 msgid "Select snippets"
-msgstr "Seleccionar fragmentos"
+msgstr "Seleccionar elementos"
 
 msgid "Sensitive"
 msgstr "Confidencial"
 
 msgid "Sensitive item"
-msgstr "Fragmento sensible"
+msgstr "Elemento sensible"
 
 msgid "Sensitive items can't be typed in, so they have no trigger."
 msgstr "Los elementos confidenciales no se pueden escribir, así que no tienen atajo."
@@ -2760,7 +2769,7 @@ msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "Snipdeck espera en la bandeja para que los atajos funcionen tras iniciar sesión."
 
 msgid "Snippets"
-msgstr "Fragmentos"
+msgstr "Elementos"
 
 msgid "Some files were left out: together they are over 64 MB."
 msgstr "Se omitieron algunos archivos: juntos superan los 64 MB."
@@ -2784,7 +2793,7 @@ msgid "Sort by: {}"
 msgstr "Ordenar por: {}"
 
 msgid "Sort items by"
-msgstr "Ordenar fragmentos por"
+msgstr "Ordenar elementos por"
 
 msgid "Sort: {}"
 msgstr "Orden: {}"
@@ -2832,7 +2841,7 @@ msgid "Strength: weak"
 msgstr "Seguridad: débil"
 
 msgid "Suggest snippets as I type"
-msgstr "Sugerir fragmentos al escribir"
+msgstr "Sugerir elementos al escribir"
 
 msgid "Support"
 msgstr "Apoyar"
@@ -2871,7 +2880,7 @@ msgid "Tag"
 msgstr "Etiquetas"
 
 msgid "Tag a snippet to see it here."
-msgstr "Etiqueta un fragmento para verlo aquí."
+msgstr "Etiqueta un elemento para verlo aquí."
 
 msgid "Tags"
 msgstr "Etiquetas"
@@ -3006,7 +3015,7 @@ msgid "The licences of the libraries Snipdeck is built from."
 msgstr "Las licencias de las bibliotecas con las que se crea Snipdeck."
 
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
-msgstr "La lista y sus {} fragmentos se mueven a la papelera. Puedes restaurarlos durante {} días."
+msgstr "La lista y sus {} elementos se mueven a la papelera. Puedes restaurarlos durante {} días."
 
 msgid "The list holds at most {} programs."
 msgstr "La lista admite como máximo {} programas."
@@ -3027,16 +3036,16 @@ msgid "The report holds versions and settings switches, never your items."
 msgstr "El informe contiene versiones e interruptores de ajustes, nunca tus elementos."
 
 msgid "The selected items are deleted for good. This can't be undone."
-msgstr "Los fragmentos seleccionados se eliminarán definitivamente. No se puede deshacer."
+msgstr "Los elementos seleccionados se eliminarán definitivamente. No se puede deshacer."
 
 msgid "The sensitive item \"{}\" cannot be unlocked with this computer's key and was skipped."
-msgstr "El fragmento sensible «{}» no se puede desbloquear con la clave de este equipo y se omitió."
+msgstr "El elemento sensible «{}» no se puede desbloquear con la clave de este equipo y se omitió."
 
 msgid "The shortcut for each is shown beside it."
 msgstr "El atajo de cada una aparece a su lado."
 
 msgid "The tag is removed from its items. The items themselves stay."
-msgstr "La etiqueta se quita de sus fragmentos. Los fragmentos se conservan."
+msgstr "La etiqueta se quita de sus elementos. Los elementos se conservan."
 
 msgid "The taskbar is on that edge. Pick another edge, or move the taskbar."
 msgstr "La barra de tareas está en ese borde. Elige otro borde o mueve la barra de tareas."
@@ -3198,10 +3207,10 @@ msgid "Type a command"
 msgstr "Escribe un comando"
 
 msgid "Type a short code, get a snippet"
-msgstr "Escribe un código corto, obtén un fragmento"
+msgstr "Escribe un código corto, obtén un elemento"
 
 msgid "Type this in any app to insert the snippet. Turn it on in Settings, under Typing."
-msgstr "Escríbelo en cualquier aplicación para insertar el fragmento. Actívalo en Ajustes, en Escritura."
+msgstr "Escríbelo en cualquier aplicación para insertar el elemento. Actívalo en Ajustes, en Escritura."
 
 msgid "Type {} to confirm"
 msgstr "Escribe {} para confirmar"
@@ -3261,7 +3270,7 @@ msgid "Unlock with Windows Hello (Windows only)"
 msgstr "Desbloquear con Windows Hello (solo Windows)"
 
 msgid "Unlock your library first, so your sensitive items are included. Nothing was done."
-msgstr "Desbloquea primero tu biblioteca para incluir tus fragmentos sensibles. No se hizo nada."
+msgstr "Desbloquea primero tu biblioteca para incluir tus elementos sensibles. No se hizo nada."
 
 msgid "Unlock your library to save this item."
 msgstr "Desbloquea tu biblioteca para guardar este elemento."
@@ -3273,7 +3282,7 @@ msgid "Unlock your library to use this item."
 msgstr "Desbloquea tu biblioteca para usar este elemento."
 
 msgid "Unlock your sensitive items"
-msgstr "Desbloquea tus fragmentos sensibles"
+msgstr "Desbloquea tus elementos sensibles"
 
 msgid "Unlocking…"
 msgstr "Desbloqueando…"
@@ -3366,7 +3375,7 @@ msgid "What you changed has not been saved."
 msgstr "Los cambios no se han guardado."
 
 msgid "What you changed in this item has not been saved."
-msgstr "Los cambios en este fragmento no se han guardado."
+msgstr "Los cambios en este elemento no se han guardado."
 
 msgid "Wheel"
 msgstr "Rueda"
@@ -3465,7 +3474,7 @@ msgid "Your library locked after a while. The form for the sensitive template yo
 msgstr "Tu biblioteca se bloqueó tras un tiempo. Se cerró el formulario de la plantilla confidencial que estabas rellenando."
 
 msgid "Your library locked after a while. The sensitive item you were editing was closed without saving."
-msgstr "Tu biblioteca se bloqueó tras un rato. El fragmento sensible que editabas se cerró sin guardar."
+msgstr "Tu biblioteca se bloqueó tras un rato. El elemento sensible que editabas se cerró sin guardar."
 
 msgid "Your library was erased."
 msgstr "Tu biblioteca se borró."
@@ -3537,7 +3546,7 @@ msgid "add create"
 msgstr "añadir crear"
 
 msgid "add create snippet note write"
-msgstr "añadir crear fragmento nota escribir"
+msgstr "añadir crear elemento nota escribir"
 
 msgid "an offset in {} can be at most {}"
 msgstr "un desfase en {} puede ser como máximo {}"
@@ -3976,21 +3985,21 @@ msgstr "{} por ciento"
 
 msgid "{} picture or file that no snippet uses was left out."
 msgid_plural "{} pictures or files that no snippet uses were left out."
-msgstr[0] "Se omitió {} imagen o archivo que ningún fragmento usa."
-msgstr[1] "Se omitieron {} imágenes o archivos que ningún fragmento usa."
+msgstr[0] "Se omitió {} imagen o archivo que ningún elemento usa."
+msgstr[1] "Se omitieron {} imágenes o archivos que ningún elemento usa."
 
 msgid "{} selected"
 msgstr "{} seleccionados"
 
 msgid "{} sensitive item is encrypted with a key this library does not have and was skipped."
 msgid_plural "{} sensitive items are encrypted with a key this library does not have and were skipped."
-msgstr[0] "{} fragmento sensible está cifrado con una clave que esta biblioteca no tiene y se omitió."
-msgstr[1] "{} fragmentos sensibles están cifrados con una clave que esta biblioteca no tiene y se omitieron."
+msgstr[0] "{} elemento sensible está cifrado con una clave que esta biblioteca no tiene y se omitió."
+msgstr[1] "{} elementos sensibles están cifrados con una clave que esta biblioteca no tiene y se omitieron."
 
 msgid "{} sensitive item was left out when this file was made."
 msgid_plural "{} sensitive items were left out when this file was made."
-msgstr[0] "{} fragmento sensible se omitió al crear este archivo."
-msgstr[1] "{} fragmentos sensibles se omitieron al crear este archivo."
+msgstr[0] "{} elemento sensible se omitió al crear este archivo."
+msgstr[1] "{} elementos sensibles se omitieron al crear este archivo."
 
 msgid "{} sensitive item was not in the backup."
 msgid_plural "{} sensitive items were not in the backup."
@@ -4049,7 +4058,7 @@ msgid "{}: the trigger {} and {} start alike, so the shorter one fires first."
 msgstr "{}: el activador {} y {} empiezan igual, así que se activa primero el más corto."
 
 msgid "{}: the trigger {} is already used by another snippet, so it was imported without it."
-msgstr "{}: el activador {} ya lo usa otro fragmento, así que se importó sin él."
+msgstr "{}: el activador {} ya lo usa otro elemento, así que se importó sin él."
 
 msgid "{}: this entry is not a match and was skipped."
 msgstr "{}: esta entrada no es una coincidencia (match) y se omitió."
@@ -4067,7 +4076,7 @@ msgid "{}: {} to 1. AA text {}. AA large text {}. AAA text {}. AAA large text {}
 msgstr "{}: {} a 1. Texto AA {}. Texto grande AA {}. Texto AAA {}. Texto grande AAA {}. Componentes de la interfaz {}."
 
 msgid "{}: {} was not kept as a trigger, because a snippet has one trigger."
-msgstr "{}: {} no se conservó como activador porque un fragmento solo tiene un activador."
+msgstr "{}: {} no se conservó como activador porque un elemento solo tiene un activador."
 
 msgid "{}: {} was not kept as a trigger, because a trigger has no spaces and at most 32 characters."
 msgstr "{}: {} no se conservó como activador porque un activador no lleva espacios y tiene como máximo 32 caracteres."

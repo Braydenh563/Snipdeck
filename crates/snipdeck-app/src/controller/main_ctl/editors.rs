@@ -46,6 +46,7 @@ where
                 can_delete: false,
                 delete_hint: None,
                 name_error: None,
+                restored: false,
             },
         );
     }
@@ -89,6 +90,7 @@ where
             can_delete: true,
             delete_hint: None,
             name_error: None,
+            restored: false,
         };
         self.open_editor(EditorTarget::List(list.id), view);
     }
@@ -125,6 +127,7 @@ where
             can_delete,
             delete_hint: (!can_delete).then_some(DeleteHint::LastBoard),
             name_error: None,
+            restored: false,
         };
         self.open_editor(EditorTarget::Board(id), view);
     }
@@ -148,6 +151,7 @@ where
                 can_delete: false,
                 delete_hint: None,
                 name_error: None,
+                restored: false,
             },
         );
     }
@@ -170,6 +174,7 @@ where
             can_delete,
             delete_hint: (!can_delete).then_some(DeleteHint::LastBoard),
             name_error: None,
+            restored: false,
         };
         self.open_editor(EditorTarget::Board(board), view);
     }
@@ -184,6 +189,7 @@ where
             view.accent = typed.accent;
             view.icon = typed.icon;
             view.sort = typed.sort;
+            view.restored = true;
         }
         self.editor = Some(EditorSlot { view, target });
     }

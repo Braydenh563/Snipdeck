@@ -1615,6 +1615,32 @@ ui_tests! {
         assert!(missing(&ui, "8 selected", AccessibleRole::Groupbox));
     }
 
+    /// MAIN-5: the Move chooser opens at the bulk bar's Move button and, whatever the window size and
+    /// text scale, is clamped by its real size so it never leaves the window.
+    fn the_bulk_bar_chooser_is_anchored_to_its_button_and_stays_inside_the_window() {
+        for (w, h, scale) in [(1040.0_f32, 640.0_f32, 1.0_f32), (480.0, 360.0, 2.25)] {
+            let (ui, _log) = start();
+            ui.window().set_size(slint::LogicalSize::new(w, h));
+            ui.global::<snipdeck_ui::SystemLook<'_>>().set_text_scale(scale);
+            ui.set_selected_count(2);
+            settle();
+            let button = find(&ui, "Move", AccessibleRole::Button);
+            let (bp, bs) = (button.absolute_position(), button.size());
+            button.invoke_accessible_default_action();
+            settle();
+            assert!(ui.get_menu_open(), "the chooser opens at {w}x{h}@{scale}");
+            let list = find(&ui, "Move to list", AccessibleRole::List);
+            let (p, s) = (list.absolute_position(), list.size());
+            assert!(p.x >= 0.0 && p.y >= 0.0, "inside at the top left: {p:?} at {w}x{h}@{scale}");
+            assert!(p.x + s.width <= w + 0.5, "inside at the right: {p:?} {s:?} at {w}x{h}@{scale}");
+            assert!(p.y + s.height <= h + 0.5, "inside at the bottom: {p:?} {s:?} at {w}x{h}@{scale}");
+            if scale == 1.0 {
+                assert!((p.x - bp.x).abs() <= 1.0, "left edge on the button: {p:?} vs {bp:?}");
+                assert!(p.y >= bp.y + bs.height - 1.0, "below the button: {p:?} vs {bp:?} {bs:?}");
+            }
+        }
+    }
+
     fn the_bulk_bar_acts_on_the_selection() {
         let (ui, log) = start();
         ui.set_selected_count(2);
@@ -1704,6 +1730,35 @@ ui_tests! {
         settle();
         assert_eq!(find(&ui, "Trash", AccessibleRole::ListItem).accessible_item_selected(), Some(true));
         assert_eq!(find(&ui, "All items", AccessibleRole::ListItem).accessible_item_selected(), Some(false));
+    }
+
+    /// MAIN-15: F2 edits and Delete asks to delete the list under the sidebar cursor, no menu needed.
+    fn f2_and_delete_work_on_a_sidebar_list() {
+        let (ui, log) = start();
+        for _ in 0..16 {
+            if ui.get_sidebar_focused() {
+                break;
+            }
+            press_key(&ui, Key::Backtab);
+        }
+        for _ in 0..4 {
+            press_key(&ui, Key::DownArrow);
+        }
+        take(&log);
+        press_key(&ui, Key::F2);
+        assert_eq!(take(&log), ["list-edit:0"]);
+        press_key(&ui, Key::Delete);
+        settle();
+        assert!(ui.get_confirm_open(), "Delete asks first");
+        assert_eq!(take(&log), Vec::<String>::new());
+        press_key(&ui, Key::Escape);
+        assert!(!ui.get_confirm_open());
+        // On a built-in view neither key does anything.
+        press_key(&ui, Key::Home);
+        press_key(&ui, Key::Delete);
+        press_key(&ui, Key::F2);
+        assert!(!ui.get_confirm_open());
+        assert_eq!(take(&log), Vec::<String>::new());
     }
 
     fn a_list_context_menu_edits_or_asks_before_deleting() {
@@ -2114,6 +2169,22 @@ ui_tests! {
             press_key(&ui, Key::RightArrow);
         }
         assert_eq!(ui.get_sidebar_width(), 320, "stops at 320");
+    }
+
+    /// MAIN-15: Home and End jump to the narrowest and the widest, a double click resets the default.
+    fn splitter_home_end_and_double_click() {
+        let (ui, _log) = start();
+        let splitter = find(&ui, "Sidebar width", AccessibleRole::Slider);
+        press_at_centre(&ui, centre_of(&splitter));
+        press_key(&ui, Key::End);
+        assert_eq!(ui.get_sidebar_width(), 320);
+        press_key(&ui, Key::Home);
+        assert_eq!(ui.get_sidebar_width(), 200);
+        // Two quick presses on the strip (the pointer is at the strip's new place).
+        let strip = centre_of(&find(&ui, "Sidebar width", AccessibleRole::Slider));
+        press_at_centre(&ui, strip);
+        press_at_centre(&ui, strip);
+        assert_eq!(ui.get_sidebar_width(), 232, "a double click restores the default width");
     }
 
     fn ctrl_b_with_the_splitter_focused_moves_focus_to_the_list() {

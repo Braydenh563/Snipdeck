@@ -329,6 +329,11 @@ export component OnboardingWindow inherits Window {
                         description: @tr("Bring up the panel, open the picker, save the clipboard or paste the next item from any app.");
                     }
                     Feature {
+                        glyph: Icons.folder;
+                        title: @tr("Bring your snippets");
+                        description: @tr("Import from TextExpander, Espanso, Beeftext, PhraseExpress, Ditto or CopyQ in Settings, under Import.");
+                    }
+                    Feature {
                         glyph: Icons.clock;
                         title: @tr("Also keep what I copy?");
                         description: @tr("Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings.", root.recent-max-entries, root.recent-max-days);

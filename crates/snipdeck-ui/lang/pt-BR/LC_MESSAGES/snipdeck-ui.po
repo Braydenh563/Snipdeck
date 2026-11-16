@@ -77,7 +77,7 @@ msgid "A smiley tab next to Recent with emoji, kaomoji and icons to paste. Turn 
 msgstr "Uma aba com um rosto sorridente ao lado de Recentes, com emoji, kaomoji e ícones para colar. Desative para ocultar a aba e o comando do Ctrl+K."
 
 msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
-msgstr "Uma faixa com seus trechos ao lado do aplicativo em que você trabalha. Clique em um para colá-lo ali."
+msgstr "Uma faixa com seus itens ao lado do aplicativo em que você trabalha. Clique em um para colá-lo ali."
 
 msgid "A tag with that name already exists."
 msgstr "Já existe uma etiqueta com esse nome."
@@ -128,10 +128,10 @@ msgid "Add"
 msgstr "Adicionar"
 
 msgid "Add a snippet, or move items here from another list."
-msgstr "Adicione um trecho ou mova itens para cá a partir de outra lista."
+msgstr "Adicione um item ou mova itens para cá a partir de outra lista."
 
 msgid "Add a snippet… (Enter to save)"
-msgstr "Adicionar um trecho… (Enter para salvar)"
+msgstr "Adicionar um item… (Enter para salvar)"
 
 msgid "Add list"
 msgstr "Adicionar lista"
@@ -161,7 +161,7 @@ msgid "Adds a password on top of Windows' own protection for your sensitive item
 msgstr "Adiciona uma senha além da proteção do próprio Windows para seus itens sensíveis. É pedida na primeira vez que você usa um item sensível e de novo após {} minutos sem uso. No Windows, depois você também pode desbloquear com o Windows Hello."
 
 msgid "Adds a text snippet to {}"
-msgstr "Adiciona um trecho de texto a {}"
+msgstr "Adiciona um item de texto a {}"
 
 msgid "After a paste or copy"
 msgstr "Depois de colar ou copiar"
@@ -176,7 +176,7 @@ msgid "All"
 msgstr "Todos"
 
 msgid "All items"
-msgstr "Todos os trechos"
+msgstr "Todos os itens"
 
 msgid "All {n} item moves to the Trash. You can restore it for {} days."
 msgid_plural "All {n} items move to the Trash. You can restore them for {} days."
@@ -232,7 +232,7 @@ msgid "Another program already uses {}."
 msgstr "Outro programa já usa {}."
 
 msgid "Another snippet already uses this trigger."
-msgstr "Outro trecho já usa este gatilho."
+msgstr "Outro item já usa este gatilho."
 
 msgid "Anywhere in Windows"
 msgstr "Em qualquer lugar do Windows"
@@ -330,6 +330,9 @@ msgstr "Traga itens de um arquivo do Snipdeck ou de outro gerenciador de área d
 msgid "Bring up the panel, open the picker, save the clipboard or paste the next item from any app."
 msgstr "Abra o painel, abra o seletor, salve a área de transferência ou cole o próximo item de qualquer aplicativo."
 
+msgid "Bring your snippets"
+msgstr "Traga seus itens"
+
 msgid "Brings the panel up beside the app you are working in."
 msgstr "Traz o painel ao lado do aplicativo em que você está trabalhando."
 
@@ -352,7 +355,7 @@ msgid "Cancel the test of {}"
 msgstr "Cancelar o teste de {}"
 
 msgid "Captured items keep their kind."
-msgstr "Os trechos capturados mantêm o tipo."
+msgstr "Os itens capturados mantêm o tipo."
 
 msgid "Cards"
 msgstr "Cartões"
@@ -475,7 +478,7 @@ msgid "Click to paste into {}. Shift+click copies."
 msgstr "Clique para colar em {}. Shift+clique copia."
 
 msgid "Clip {}"
-msgstr "Trecho {}"
+msgstr "Item {}"
 
 msgid "Clipboard clear time"
 msgstr "Tempo para limpar a área de transferência"
@@ -817,10 +820,10 @@ msgid "Dark"
 msgstr "Escuro"
 
 msgid "Database rebuilt: {} items restored, {} recovered."
-msgstr "Banco de dados reconstruído: {} trechos restaurados, {} recuperados."
+msgstr "Banco de dados reconstruído: {} itens restaurados, {} recuperados."
 
 msgid "Database rebuilt: {} items restored. Newer items could not be read."
-msgstr "Banco de dados reconstruído: {} trechos restaurados. Não foi possível ler os trechos mais recentes."
+msgstr "Banco de dados reconstruído: {} itens restaurados. Não foi possível ler os itens mais recentes."
 
 msgid "Date and time in a format you choose"
 msgstr "Data e hora no formato escolhido"
@@ -898,7 +901,7 @@ msgid "Deleted for good"
 msgstr "Excluído definitivamente"
 
 msgid "Deleted items stay here for {} days before they are removed."
-msgstr "Os trechos excluídos ficam aqui por {} dias antes de serem removidos."
+msgstr "Os itens excluídos ficam aqui por {} dias antes de serem removidos."
 
 msgid "Deleted list “{}”"
 msgstr "Lista “{}” excluída"
@@ -907,7 +910,7 @@ msgid "Deleted “{}”"
 msgstr "Excluído: “{}”"
 
 msgid "Deletes every board, list, item and backup on this PC. This cannot be undone."
-msgstr "Apaga todos os quadros, listas, trechos e backups deste PC. Isso não pode ser desfeito."
+msgstr "Apaga todos os quadros, listas, itens e backups deste PC. Isso não pode ser desfeito."
 
 msgid "Deletes everything in the Recent inbox now."
 msgstr "Apaga agora tudo na caixa de Recentes."
@@ -979,7 +982,7 @@ msgid "Edit board"
 msgstr "Editar quadro"
 
 msgid "Edit item"
-msgstr "Editar trecho"
+msgstr "Editar item"
 
 msgid "Edit list"
 msgstr "Editar lista"
@@ -1156,7 +1159,7 @@ msgid "Get started"
 msgstr "Começar"
 
 msgid "Give a snippet a trigger, such as ;sig, under More options in its editor."
-msgstr "Dê um gatilho a um trecho, como ;sig, em “Mais opções” no editor dele."
+msgstr "Dê um gatilho a um item, como ;sig, em “Mais opções” no editor dele."
 
 msgid "Give it a name."
 msgstr "Dê um nome a ele."
@@ -1317,6 +1320,9 @@ msgstr "Imagens não podem ser coladas aqui. Salve a imagem como PNG e adicione-
 msgid "Import"
 msgstr "Importar"
 
+msgid "Import from TextExpander, Espanso, Beeftext, PhraseExpress, Ditto or CopyQ in Settings, under Import."
+msgstr "Importe do TextExpander, Espanso, Beeftext, PhraseExpress, Ditto ou CopyQ em Configurações, em Importar."
+
 msgid "Import from {}"
 msgstr "Importar de {}"
 
@@ -1352,7 +1358,7 @@ msgstr[0] "É removido de {n} item. O item permanece."
 msgstr[1] "É removido de {n} itens. Os itens permanecem."
 
 msgid "Item actions"
-msgstr "Ações de trechos"
+msgstr "Ações de itens"
 
 msgid "Item pinned"
 msgstr "Item fixado"
@@ -1361,7 +1367,7 @@ msgid "Item unpinned"
 msgstr "Item desafixado"
 
 msgid "Items are removed after {} days."
-msgstr "Os trechos são removidos após {} dias."
+msgstr "Os itens são removidos após {} dias."
 
 msgid "Its lists and {n} item will move to Trash. You can restore them for 30 days."
 msgid_plural "Its lists and {n} items will move to Trash. You can restore them for 30 days."
@@ -1489,13 +1495,13 @@ msgid "Lists"
 msgstr "Listas"
 
 msgid "Lists hold your snippets."
-msgstr "As listas guardam seus trechos."
+msgstr "As listas guardam seus itens."
 
 msgid "Loading"
 msgstr "Carregando"
 
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
-msgstr "Os registros só são gravados quando o Snipdeck fecha de forma inesperada, não têm o conteúdo dos trechos e nunca são enviados a lugar nenhum."
+msgstr "Os registros só são gravados quando o Snipdeck fecha de forma inesperada, não têm o conteúdo dos itens e nunca são enviados a lugar nenhum."
 
 msgid "Love"
 msgstr "Amor"
@@ -1576,7 +1582,7 @@ msgid "More options: open the full editor"
 msgstr "Mais opções: abrir o editor completo"
 
 msgid "More pinned snippets"
-msgstr "Mais trechos fixados"
+msgstr "Mais itens fixados"
 
 msgid "Most used"
 msgstr "Mais usados"
@@ -1676,7 +1682,7 @@ msgid "New board…"
 msgstr "Novo quadro…"
 
 msgid "New item"
-msgstr "Novo trecho"
+msgstr "Novo item"
 
 msgid "New item (quick add in an open list)"
 msgstr "Novo item (adição rápida em uma lista aberta)"
@@ -1729,8 +1735,11 @@ msgstr "Nenhum comando corresponde a “{}”"
 msgid "No icon"
 msgstr "Sem ícone"
 
+msgid "No item uses this tag."
+msgstr "Nenhum item usa esta etiqueta."
+
 msgid "No items with this tag"
-msgstr "Nenhum trecho com esta etiqueta"
+msgstr "Nenhum item com esta etiqueta"
 
 msgid "No label"
 msgstr "Sem rótulo"
@@ -1754,7 +1763,7 @@ msgid "No programs yet. Every program gets Ctrl+V."
 msgstr "Nenhum programa ainda. Todo programa usa Ctrl+V."
 
 msgid "No recent items"
-msgstr "Nenhum trecho recente"
+msgstr "Nenhum item recente"
 
 msgid "No settings match"
 msgstr "Nenhuma configuração corresponde"
@@ -1763,7 +1772,7 @@ msgid "No shortcut matches"
 msgstr "Nenhum atalho corresponde"
 
 msgid "No snippets yet"
-msgstr "Nenhum trecho ainda"
+msgstr "Nenhum item ainda"
 
 msgid "No symbols match “{}”"
 msgstr "Nenhum símbolo corresponde a “{}”"
@@ -1778,7 +1787,7 @@ msgid "No tags yet. Add one below."
 msgstr "Nenhuma etiqueta ainda. Adicione uma abaixo."
 
 msgid "No tags yet. Add tags to an item and they appear here."
-msgstr "Nenhuma etiqueta ainda. Adicione etiquetas a um trecho e elas aparecerão aqui."
+msgstr "Nenhuma etiqueta ainda. Adicione etiquetas a um item e elas aparecerão aqui."
 
 msgid "No target:"
 msgstr "Sem destino:"
@@ -1817,13 +1826,13 @@ msgid "Nothing pinned"
 msgstr "Nada fixado"
 
 msgid "Nothing pinned matches “{}”."
-msgstr "Nenhum trecho fixado corresponde a “{}”."
+msgstr "Nenhum item fixado corresponde a “{}”."
 
 msgid "Nothing pinned yet"
 msgstr "Nada fixado ainda"
 
 msgid "Nothing to paste next. Pin a snippet, or add one to this list."
-msgstr "Nada para colar em seguida. Fixe um trecho ou adicione um a esta lista."
+msgstr "Nada para colar em seguida. Fixe um item ou adicione um a esta lista."
 
 msgid "Nothing to redo"
 msgstr "Nada para refazer"
@@ -1874,7 +1883,7 @@ msgid "On white"
 msgstr "Sobre branco"
 
 msgid "Only text, code, link and template items can be sensitive."
-msgstr "Somente trechos de texto, código, link e modelo podem ser sensíveis."
+msgstr "Somente itens de texto, código, link e modelo podem ser sensíveis."
 
 msgid "Only with Start with Windows: wait in the tray, or open the Panel as well."
 msgstr "Somente com Iniciar com o Windows: aguardar na bandeja ou abrir também o Painel."
@@ -1967,7 +1976,7 @@ msgid "Other colour"
 msgstr "Outra cor"
 
 msgid "Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."
-msgstr "Fora dessa pasta, o Snipdeck só grava a entrada de inicialização do Windows (se você ativá-la) e a área de transferência quando você usa um trecho."
+msgstr "Fora dessa pasta, o Snipdeck só grava a entrada de inicialização do Windows (se você ativá-la) e a área de transferência quando você usa um item."
 
 msgid "PNG, {}"
 msgstr "PNG, {}"
@@ -2057,7 +2066,7 @@ msgid "Paste the item as plain text"
 msgstr "Colar o item como texto simples"
 
 msgid "Paste the next item"
-msgstr "Colar o próximo trecho"
+msgstr "Colar o próximo item"
 
 msgid "Paste the next item of a stack"
 msgstr "Colar o próximo item de uma pilha"
@@ -2090,7 +2099,7 @@ msgid "Pastes into {} · {}"
 msgstr "Cola em {} · {}"
 
 msgid "Pastes the next item of the list in order."
-msgstr "Cola o próximo trecho da lista, em ordem."
+msgstr "Cola o próximo item da lista, em ordem."
 
 msgid "Pasting"
 msgstr "Colando"
@@ -2144,7 +2153,7 @@ msgid "Pin"
 msgstr "Fixar"
 
 msgid "Pin a snippet from the Panel to find it here."
-msgstr "Fixe um trecho pelo painel para encontrá-lo aqui."
+msgstr "Fixe um item pelo painel para encontrá-lo aqui."
 
 msgid "Pin or unpin the item"
 msgstr "Fixar ou desafixar o item"
@@ -2153,7 +2162,7 @@ msgid "Pin selected item"
 msgstr "Fixar item selecionado"
 
 msgid "Pin the snippets you use most to keep them one click away."
-msgstr "Fixe os trechos que você mais usa para tê-los a um clique de distância."
+msgstr "Fixe os itens que você mais usa para tê-los a um clique de distância."
 
 msgid "Pin the snippets you use most; they stay at the top of the Panel."
 msgstr "Fixe os itens que você mais usa; eles ficam no topo do painel."
@@ -2162,7 +2171,7 @@ msgid "Pinned"
 msgstr "Fixados"
 
 msgid "Pinned snippets"
-msgstr "Trechos fixados"
+msgstr "Itens fixados"
 
 msgid "Placeholders"
 msgstr "Espaços reservados"
@@ -2336,7 +2345,7 @@ msgid "Rename group"
 msgstr "Renomear grupo"
 
 msgid "Rename or delete tags. Deleting a tag removes it from its items; the items stay."
-msgstr "Renomeie ou exclua etiquetas. Excluir uma etiqueta a remove dos seus trechos; os trechos permanecem."
+msgstr "Renomeie ou exclua etiquetas. Excluir uma etiqueta a remove dos seus itens; os itens permanecem."
 
 msgid "Rename tag {}"
 msgstr "Renomear a etiqueta {}"
@@ -2421,7 +2430,7 @@ msgid "Save from clipboard"
 msgstr "Salvar da área de transferência"
 
 msgid "Save the clipboard as an item"
-msgstr "Salvar a área de transferência como trecho"
+msgstr "Salvar a área de transferência como item"
 
 msgid "Save to"
 msgstr "Salvar em"
@@ -2496,7 +2505,7 @@ msgid "Search (Ctrl+F)"
 msgstr "Pesquisar (Ctrl+F)"
 
 msgid "Search all snippets"
-msgstr "Pesquisar todos os trechos"
+msgstr "Pesquisar todos os itens"
 
 msgid "Search emoji, kaomoji, icons"
 msgstr "Pesquisar emoji, kaomoji, ícones"
@@ -2520,7 +2529,7 @@ msgid "Search shortcuts"
 msgstr "Pesquisar atalhos"
 
 msgid "Search snippets"
-msgstr "Pesquisar trechos"
+msgstr "Pesquisar itens"
 
 msgid "Search suggestions"
 msgstr "Sugestões de busca"
@@ -2574,7 +2583,7 @@ msgid "Sensitive"
 msgstr "Sensível"
 
 msgid "Sensitive item"
-msgstr "Trecho sensível"
+msgstr "Item sensível"
 
 msgid "Sensitive items can't be typed in, so they have no trigger."
 msgstr "Itens sensíveis não podem ser digitados, então não têm gatilho."
@@ -2760,7 +2769,7 @@ msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "O Snipdeck aguarda na bandeja para que os atalhos funcionem após o login."
 
 msgid "Snippets"
-msgstr "Trechos"
+msgstr "Itens"
 
 msgid "Some files were left out: together they are over 64 MB."
 msgstr "Alguns arquivos foram deixados de fora: juntos, passam de 64 MB."
@@ -2784,7 +2793,7 @@ msgid "Sort by: {}"
 msgstr "Ordenar por: {}"
 
 msgid "Sort items by"
-msgstr "Ordenar trechos por"
+msgstr "Ordenar itens por"
 
 msgid "Sort: {}"
 msgstr "Ordem: {}"
@@ -2832,7 +2841,7 @@ msgid "Strength: weak"
 msgstr "Força: fraca"
 
 msgid "Suggest snippets as I type"
-msgstr "Sugerir trechos ao digitar"
+msgstr "Sugerir itens ao digitar"
 
 msgid "Support"
 msgstr "Apoiar"
@@ -2871,7 +2880,7 @@ msgid "Tag"
 msgstr "Etiquetas"
 
 msgid "Tag a snippet to see it here."
-msgstr "Etiquete um trecho para vê-lo aqui."
+msgstr "Etiquete um item para vê-lo aqui."
 
 msgid "Tags"
 msgstr "Etiquetas"
@@ -3006,13 +3015,13 @@ msgid "The licences of the libraries Snipdeck is built from."
 msgstr "As licenças das bibliotecas com as quais o Snipdeck é feito."
 
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
-msgstr "A lista e seus {} trechos são movidos para a lixeira. Você pode restaurá-los por {} dias."
+msgstr "A lista e seus {} itens são movidos para a lixeira. Você pode restaurá-los por {} dias."
 
 msgid "The list holds at most {} programs."
 msgstr "A lista comporta no máximo {} programas."
 
 msgid "The newest backup is from {} and holds {} items on {} boards. Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read."
-msgstr "O backup mais recente é de {} e tem {} trechos em {} quadros. Seu banco de dados atual é guardado de lado, não excluído. Os trechos adicionados depois deste backup são recuperados onde puderem ser lidos."
+msgstr "O backup mais recente é de {} e tem {} itens em {} quadros. Seu banco de dados atual é guardado de lado, não excluído. Os itens adicionados depois deste backup são recuperados onde puderem ser lidos."
 
 msgid "The oldest ones are deleted once there are more than this."
 msgstr "As mais antigas são excluídas quando houver mais do que este número."
@@ -3027,7 +3036,7 @@ msgid "The report holds versions and settings switches, never your items."
 msgstr "O relatório contém versões e opções de configuração, nunca os seus itens."
 
 msgid "The selected items are deleted for good. This can't be undone."
-msgstr "Os trechos selecionados serão excluídos definitivamente. Isso não pode ser desfeito."
+msgstr "Os itens selecionados serão excluídos definitivamente. Isso não pode ser desfeito."
 
 msgid "The sensitive item \"{}\" cannot be unlocked with this computer's key and was skipped."
 msgstr "O item sensível \"{}\" não pode ser desbloqueado com a chave deste computador e foi ignorado."
@@ -3036,7 +3045,7 @@ msgid "The shortcut for each is shown beside it."
 msgstr "O atalho de cada uma aparece ao lado."
 
 msgid "The tag is removed from its items. The items themselves stay."
-msgstr "A etiqueta é removida dos seus trechos. Os trechos permanecem."
+msgstr "A etiqueta é removida dos seus itens. Os itens permanecem."
 
 msgid "The taskbar is on that edge. Pick another edge, or move the taskbar."
 msgstr "A barra de tarefas está nessa borda. Escolha outra borda ou mova a barra de tarefas."
@@ -3198,10 +3207,10 @@ msgid "Type a command"
 msgstr "Digite um comando"
 
 msgid "Type a short code, get a snippet"
-msgstr "Digite um código curto, receba um trecho"
+msgstr "Digite um código curto, receba um item"
 
 msgid "Type this in any app to insert the snippet. Turn it on in Settings, under Typing."
-msgstr "Digite isto em qualquer aplicativo para inserir o trecho. Ative em Configurações, em Digitação."
+msgstr "Digite isto em qualquer aplicativo para inserir o item. Ative em Configurações, em Digitação."
 
 msgid "Type {} to confirm"
 msgstr "Digite {} para confirmar"
@@ -3366,7 +3375,7 @@ msgid "What you changed has not been saved."
 msgstr "As alterações não foram salvas."
 
 msgid "What you changed in this item has not been saved."
-msgstr "As alterações neste trecho não foram salvas."
+msgstr "As alterações neste item não foram salvas."
 
 msgid "Wheel"
 msgstr "Roda"
@@ -3537,7 +3546,7 @@ msgid "add create"
 msgstr "adicionar criar"
 
 msgid "add create snippet note write"
-msgstr "adicionar criar trecho nota escrever"
+msgstr "adicionar criar item nota escrever"
 
 msgid "an offset in {} can be at most {}"
 msgstr "um deslocamento em {} pode ser no máximo {}"
@@ -3976,8 +3985,8 @@ msgstr "{} por cento"
 
 msgid "{} picture or file that no snippet uses was left out."
 msgid_plural "{} pictures or files that no snippet uses were left out."
-msgstr[0] "{} imagem ou arquivo que nenhum trecho usa foi deixado de fora."
-msgstr[1] "{} imagens ou arquivos que nenhum trecho usa foram deixados de fora."
+msgstr[0] "{} imagem ou arquivo que nenhum item usa foi deixado de fora."
+msgstr[1] "{} imagens ou arquivos que nenhum item usa foram deixados de fora."
 
 msgid "{} selected"
 msgstr "{} selecionado(s)"
@@ -3994,8 +4003,8 @@ msgstr[1] "{} itens sensíveis foram deixados de fora quando este arquivo foi cr
 
 msgid "{} sensitive item was not in the backup."
 msgid_plural "{} sensitive items were not in the backup."
-msgstr[0] "{} trecho sensível não estava no backup."
-msgstr[1] "{} trechos sensíveis não estavam no backup."
+msgstr[0] "{} item sensível não estava no backup."
+msgstr[1] "{} itens sensíveis não estavam no backup."
 
 msgid "{} takes no argument"
 msgstr "{} não aceita argumento"
@@ -4049,7 +4058,7 @@ msgid "{}: the trigger {} and {} start alike, so the shorter one fires first."
 msgstr "{}: o gatilho {} e {} começam igual, então o mais curto é disparado primeiro."
 
 msgid "{}: the trigger {} is already used by another snippet, so it was imported without it."
-msgstr "{}: o gatilho {} já é usado por outro trecho, então foi importado sem ele."
+msgstr "{}: o gatilho {} já é usado por outro item, então foi importado sem ele."
 
 msgid "{}: this entry is not a match and was skipped."
 msgstr "{}: esta entrada não é uma correspondência (match) e foi ignorada."
@@ -4067,7 +4076,7 @@ msgid "{}: {} to 1. AA text {}. AA large text {}. AAA text {}. AAA large text {}
 msgstr "{}: {} para 1. Texto AA {}. Texto grande AA {}. Texto AAA {}. Texto grande AAA {}. Partes da interface {}."
 
 msgid "{}: {} was not kept as a trigger, because a snippet has one trigger."
-msgstr "{}: {} não foi mantido como gatilho, porque um trecho tem só um gatilho."
+msgstr "{}: {} não foi mantido como gatilho, porque um item tem só um gatilho."
 
 msgid "{}: {} was not kept as a trigger, because a trigger has no spaces and at most 32 characters."
 msgstr "{}: {} não foi mantido como gatilho, porque um gatilho não tem espaços e tem no máximo 32 caracteres."
