@@ -34,6 +34,15 @@ pub fn startup_failure_text(window: &PanelWindow, details: &str) -> String {
         .into()
 }
 
+/// The text of the message box a second launch shows when the running Snipdeck does not answer,
+/// in the language selected now.
+#[must_use]
+pub fn not_answering_text(window: &PanelWindow) -> String {
+    ToastTexts::get(window)
+        .invoke_already_running_not_answering()
+        .into()
+}
+
 /// The tray menu's words in the language selected for the UI now (English until a bundled
 /// translation is selected). `window` is any window of the UI: Slint globals are reached
 /// through a component.

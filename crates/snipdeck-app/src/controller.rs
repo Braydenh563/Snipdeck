@@ -1112,6 +1112,9 @@ where
             }
             TrayEvent::TakeScreenshot => self.take_screenshot(),
             TrayEvent::Quit => vec![Effect::Quit],
+            // Flushed by the host on the tray thread before an event could reach here
+            // (`session_end`); the controller has nothing to add.
+            TrayEvent::SessionEnding => Vec::new(),
             TrayEvent::IconPresent(present) => {
                 // With an icon in the notification area closing the Panel hides it (when
                 // `close_to_tray` is on); without one nothing could bring it back, so closing

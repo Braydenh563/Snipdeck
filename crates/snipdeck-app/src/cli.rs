@@ -2,6 +2,8 @@
 
 use std::{ffi::OsString, path::PathBuf};
 
+use snipdeck_platform::handover::{self, Request};
+
 /// What the command line asked for.
 #[allow(
     clippy::struct_excessive_bools,
@@ -25,6 +27,9 @@ pub struct Args {
     pub troubleshoot: bool,
     /// Ask the Snipdeck running in this Windows session to quit, then exit.
     pub quit: bool,
+    /// What the shell asked for: a `.snipdeck` file to open or a `snipdeck:` address. Acted on by
+    /// the running instance (handed over), or by this one when it is the first.
+    pub request: Option<Request>,
     /// Print the usage and exit.
     pub help: bool,
 }
@@ -38,6 +43,9 @@ pub enum ArgError {
     /// A flag that needs a value came last.
     #[error("`{0}` needs a value")]
     MissingValue(&'static str),
+    /// A file or address that is not something Snipdeck opens (or a second one).
+    #[error("`{0}` is not a .snipdeck file or a snipdeck:// address Snipdeck can open")]
+    NotOpenable(String),
 }
 
 /// The text of `--help`.
@@ -82,10 +90,32 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, ArgError>
                 parsed.screenshot = Some(value.into());
                 parsed.demo = true;
             }
+            other if !other.starts_with('-') && !other.is_empty() => {
+                parsed.request = Some(open_request(&arg, parsed.request.is_some())?);
+            }
             _ => return Err(ArgError::Unknown(arg.to_string_lossy().into_owned())),
         }
     }
     Ok(parsed)
+}
+
+/// The one file or address the shell passed. A relative path is made absolute here, against this
+/// process's folder: the running instance has its own.
+fn open_request(arg: &OsString, already_has_one: bool) -> Result<Request, ArgError> {
+    let not_openable = || ArgError::NotOpenable(arg.to_string_lossy().into_owned());
+    let text = arg.to_str().ok_or_else(not_openable)?;
+    if already_has_one {
+        return Err(not_openable());
+    }
+    let text = if handover::is_url_argument(text) {
+        text.to_owned()
+    } else {
+        std::path::absolute(text)
+            .ok()
+            .and_then(|p| p.to_str().map(str::to_owned))
+            .ok_or_else(not_openable)?
+    };
+    handover::classify_argument(&text).map_err(|_| not_openable())
 }
 
 #[cfg(test)]
@@ -123,6 +153,50 @@ mod tests {
         let args = parse_all(&["--check-db", "--troubleshoot"]).expect("args");
         assert!(args.check_db && args.troubleshoot);
         assert!(!parse_all(&[]).expect("args").check_db);
+    }
+
+    #[test]
+    fn a_snipdeck_file_or_address_becomes_a_request() {
+        use snipdeck_platform::handover::UrlAction;
+        let file = std::env::temp_dir().join("backup.snipdeck");
+        let file = file.to_str().expect("utf-8 temp dir");
+        let args = parse_all(&[file]).expect("args");
+        assert_eq!(args.request, Some(Request::OpenFile(PathBuf::from(file))));
+        let args = parse_all(&["--hidden", "snipdeck://settings"]).expect("args");
+        assert_eq!(args.request, Some(Request::Url(UrlAction::Settings)));
+        assert!(args.hidden);
+        assert_eq!(parse_all(&[]).expect("args").request, None);
+    }
+
+    #[test]
+    fn a_relative_file_is_made_absolute_here() {
+        let args = parse_all(&["backup.snipdeck"]).expect("args");
+        let Some(Request::OpenFile(path)) = args.request else {
+            panic!("a file request");
+        };
+        assert!(path.is_absolute(), "{path:?}");
+        assert!(path.ends_with("backup.snipdeck"));
+    }
+
+    #[test]
+    fn anything_else_is_refused_by_name() {
+        for bad in [
+            "notes.txt",
+            "snipdeck://evil",
+            "snipdeck://open?x=1",
+            "x.exe",
+        ] {
+            assert_eq!(
+                parse_all(&[bad]),
+                Err(ArgError::NotOpenable(bad.to_owned())),
+                "{bad}"
+            );
+        }
+        // Only one thing to open per launch.
+        let file = std::env::temp_dir().join("a.snipdeck");
+        let file = file.to_str().expect("utf-8 temp dir");
+        assert!(parse_all(&[file, file]).is_err());
+        assert!(parse_all(&["snipdeck://open", file]).is_err());
     }
 
     #[test]

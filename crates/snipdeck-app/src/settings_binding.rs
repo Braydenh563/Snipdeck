@@ -1086,6 +1086,14 @@ where
         self.core.refresh_autostart();
         self.redraw();
     }
+
+    /// A `.snipdeck` file was opened from the shell: shows its Import preview, as if it had been
+    /// picked under "Import...". Nothing is written until the user confirms there.
+    pub fn import_file(&self, path: PathBuf) {
+        let source = ImportSource::of(ImportKind::Snipdeck, path);
+        let name = source.file_name();
+        self.core.preview(source, false, name);
+    }
 }
 
 impl<C, K, T> SettingsCore<C, K, T>
@@ -2226,6 +2234,21 @@ thread_local! {
     static OPENER: RefCell<Option<Rc<dyn Fn()>>> = const { RefCell::new(None) };
 }
 
+/// Opens the Settings page on the Import preview of a file.
+type ImportOpener = Rc<dyn Fn(PathBuf)>;
+
+thread_local! {
+    /// Set by [`SettingsUi::new`].
+    static IMPORT_OPENER: RefCell<Option<ImportOpener>> = const { RefCell::new(None) };
+}
+
+/// Opens the Settings page with the Import preview of the `.snipdeck` file `path` (a file
+/// opened from the shell). Returns whether a host is there to do it. UI thread only.
+pub fn request_import_file(path: PathBuf) -> bool {
+    let opener = IMPORT_OPENER.with(|o| o.borrow().clone());
+    opener.map(|opener| opener(path)).is_some()
+}
+
 /// Opens the Settings page (creating it the first time), if the host made one with
 /// [`SettingsUi::new`]. UI thread only.
 pub fn request_open() {
@@ -2321,6 +2344,18 @@ impl SettingsUi {
             })
         };
         let open: Rc<dyn Fn() -> Result<(), slint::PlatformError>> = Rc::new(open);
+        IMPORT_OPENER.with(|o| {
+            let (open, slot) = (Rc::clone(&open), Rc::clone(&slot));
+            *o.borrow_mut() = Some(Rc::new(move |path| {
+                if let Err(e) = open() {
+                    crate::trace!("cannot open the settings: {e}");
+                    return;
+                }
+                if let Some((_, binding)) = slot.borrow().as_ref() {
+                    binding.import_file(path);
+                }
+            }));
+        });
         OPENER.with(|o| {
             let open = Rc::clone(&open);
             *o.borrow_mut() = Some(Rc::new(move || {

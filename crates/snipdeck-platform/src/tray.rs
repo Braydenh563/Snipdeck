@@ -175,6 +175,12 @@ pub enum TrayEvent {
     /// away by Explorer restarting, or added again after it. The app closes the Panel to the
     /// tray only while this is `true`. Sent once per change, not per attempt.
     IconPresent(bool),
+    /// Windows is ending the session (sign-out, shutdown, restart, an installer's Restart Manager):
+    /// `WM_ENDSESSION` with the end confirmed. Unlike every other event this one is delivered
+    /// **synchronously, on the tray thread, and the process may be killed as soon as the handler
+    /// returns**: the handler must finish saving first (it hands the flush to the UI thread and
+    /// waits, see `snipdeck_app::session_end`). Never sent for a click.
+    SessionEnding,
 }
 
 /// One line of the popup menu.

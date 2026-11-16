@@ -42,10 +42,10 @@ use snipdeck_app::{
     master_job,
     onboarding_binding::OnboardingUi,
     picker_binding::{AnchorMemory, PickerUi},
-    platform::{self, Callbacks, Host, Start},
+    platform::{self, Callbacks, Host, Instance, Start},
     screenshot,
     settings::{Settings, Theme},
-    settings_binding::{PanelTaskbar, SettingsUi, SystemHost},
+    settings_binding::{self, PanelTaskbar, SettingsUi, SystemHost},
     settings_store::{FileSink, SettingsSaver},
     toast::Toast,
     toast_binding::ToastUi,
@@ -53,12 +53,18 @@ use snipdeck_app::{
     window_kind,
 };
 use snipdeck_core::Timestamp;
+use snipdeck_platform::handover::{Request, UrlAction};
+use snipdeck_platform::tray::TrayEvent;
 use snipdeck_store::Store;
 use snipdeck_ui::PanelWindow;
 
 thread_local! {
     /// The binding, for events that arrive from other threads and are handed to this one.
     static BINDING: RefCell<Option<Binding>> = const { RefCell::new(None) };
+    /// Requests handed over before the binding existed.
+    static EARLY: RefCell<Vec<EarlyRequest>> = const { RefCell::new(Vec::new()) };
+    /// Saves everything that waits for a quiet moment (see [`flush_now`]).
+    static FLUSH: RefCell<Option<Box<dyn Fn()>>> = const { RefCell::new(None) };
 }
 
 /// Applies the newest "Pause history" state to the tray; if the tray is borrowed right now, tries
@@ -104,8 +110,14 @@ fn main() -> ExitCode {
         return ExitCode::SUCCESS;
     }
     if args.quit {
-        // Nothing else first: no library, data folder, log or window, and no mutex.
-        platform::ask_to_quit();
+        // Nothing else first: no library, data folder, log or window, and no mutex. The instance
+        // is found by the same id a launch makes (same user, same data folder).
+        if let Some(id) = data_folder(&args)
+            .ok()
+            .and_then(|folder| platform::instance_id(&folder).ok())
+        {
+            platform::ask_to_quit(&id);
+        }
         return ExitCode::SUCCESS;
     }
     // Windows says once how a packaged build was started; ask before anything else could.
@@ -190,13 +202,26 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     let look = platform::system_look();
     let callbacks = Callbacks {
         on_hotkey: Box::new(|action| on_ui_thread(move |b| b.hotkey(action))),
-        on_second: Box::new(|| on_ui_thread(Binding::show)),
+        // A later launch's request: acted on here, then acknowledged (the launch waits for that).
+        on_request: Box::new(|request, ack| {
+            if slint::invoke_from_event_loop(move || deliver_request(request, ack)).is_err() {
+                snipdeck_app::trace!("request for the UI thread dropped");
+            }
+        }),
         // The same path as the tray's Quit, so pending saves flush after the event loop ends.
         on_quit: Box::new(|| {
             on_ui_thread(|b| b.tray(snipdeck_platform::tray::TrayEvent::Quit));
         }),
         on_target_changed: Box::new(|| with_binding(Binding::target_changed)),
-        on_tray: Box::new(|event| on_ui_thread(move |b| b.tray(event))),
+        on_tray: Box::new(|event| {
+            if event == TrayEvent::SessionEnding {
+                // Windows ends the session: save on the UI thread now, and return only when that
+                // is done (or the limit passes), because the process ends right after.
+                flush_for_session_end();
+            } else {
+                on_ui_thread(move |b| b.tray(event));
+            }
+        }),
         on_clipboard_change: Box::new(|change| on_ui_thread(move |b| b.clipboard_changed(change))),
         on_typed: Box::new(|typed| on_ui_thread(move |b| b.typed_trigger(typed))),
         on_session_lock: Box::new(|| on_ui_thread(Binding::session_locked)),
@@ -220,9 +245,23 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     select_backend()?;
     // `SNIPDECK_DIAG=render`: the paint hooks go on this (the UI) thread before any window.
     snipdeck_app::diag::start();
-    let host = match platform::connect(callbacks, !args.demo)? {
+    let instance_id = if args.demo {
+        None
+    } else {
+        Some(platform::instance_id(&data_folder(args)?)?)
+    };
+    let request = args.request.clone().unwrap_or(Request::Show);
+    let instance = instance_id.as_deref().map(|id| Instance {
+        id,
+        request: &request,
+    });
+    let host = match platform::connect(callbacks, instance.as_ref())? {
         Start::Run(host) => *host,
         Start::AlreadyRunning => return Ok(()),
+        Start::NotAnswering => {
+            report_not_answering();
+            return Ok(());
+        }
     };
     // Only now: reading the settings may move a damaged file aside, and opening the library may
     // migrate it. A second launch (which stops just above) must not touch the running copy's files.
@@ -493,12 +532,42 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         move |effect| on_effect(effect)
     });
     BINDING.with(|b| *b.borrow_mut() = Some(binding.clone()));
+    // Requests that came in before the Panel was bound, and this launch's own file or address.
+    let own_request = args.request.clone();
+    if slint::invoke_from_event_loop(move || {
+        if let Some(request) = own_request {
+            with_binding(|b| apply_request(b, request));
+        }
+        for (request, ack) in take_early_requests() {
+            deliver_request(request, ack);
+        }
+    })
+    .is_err()
+    {
+        snipdeck_app::trace!("start-up requests dropped");
+    }
     // The Panel steps down from topmost while one of the app's regular windows has the focus.
     snipdeck_app::native_window::on_own_window_active(|active| {
         with_binding(|b| b.own_window_active(active));
     });
     // The item editor opens from the Panel, the Main window and the Picker; one binding draws it.
-    let item_editor = Controller::bind_item_editor(&controller);
+    let item_editor = Rc::new(Controller::bind_item_editor(&controller));
+    // What a clean end saves, run after the event loop and when Windows ends the session.
+    FLUSH.with(|f| {
+        let (item_editor, controller) = (Rc::clone(&item_editor), Rc::clone(&controller));
+        *f.borrow_mut() = Some(Box::new(move || {
+            // An editor left open keeps what was typed since the last draft.
+            item_editor.flush_draft();
+            // A sensitive copy still waiting for its clear timer would outlive the app.
+            if let Ok(mut ctl) = controller.try_borrow_mut() {
+                ctl.clear_pending_clipboard_now();
+                // Settings changed in the last moments are still waiting for their quiet time.
+                if let Err(e) = ctl.flush_settings() {
+                    eprintln!("snipdeck: could not save the settings: {e}");
+                }
+            }
+        }));
+    });
     // Frame changes are remembered only once the stored place has been restored.
     let frames_armed = Rc::new(Cell::new(false));
     watch_window_events(&window, binding.clone(), Rc::clone(&frames_armed));
@@ -557,16 +626,87 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     if let Err(e) = &ran {
         eprintln!("snipdeck: event loop: {e}");
     }
-    // An editor left open keeps what was typed since the last draft.
-    item_editor.flush_draft();
-    // A sensitive copy still waiting for its clear timer would outlive the app.
-    controller.borrow_mut().clear_pending_clipboard_now();
+    flush_now();
+    // The saver's handles go as before: with this function, not with the thread.
+    FLUSH.with(|f| drop(f.borrow_mut().take()));
     controller.borrow_mut().abandon_unfinished_archive();
-    // Settings changed in the last moments are still waiting for their quiet time.
-    if let Err(e) = controller.borrow_mut().flush_settings() {
-        eprintln!("snipdeck: could not save the settings: {e}");
-    }
     Ok(())
+}
+
+/// Saves what is still waiting: the one list of what a clean end keeps. Runs after the event loop
+/// ends and, from the tray thread's `WM_ENDSESSION`, on the UI thread while Windows ends the
+/// session (the event loop never returns then). Safe to run twice.
+fn flush_now() {
+    FLUSH.with(|f| {
+        if let Some(flush) = f.borrow().as_ref() {
+            flush();
+        }
+    });
+}
+
+/// What a session end waits for on the UI thread, at most.
+const SESSION_FLUSH_WAIT: std::time::Duration =
+    std::time::Duration::from_millis(snipdeck_platform::win_logic::SESSION_FLUSH_WAIT_MS);
+
+/// Windows is ending the session (called on the tray thread): saves everything on the UI thread
+/// and waits for it, up to [`SESSION_FLUSH_WAIT`].
+fn flush_for_session_end() {
+    let outcome = snipdeck_app::session_end::flush_on_ui_thread(
+        |job| slint::invoke_from_event_loop(job).is_ok(),
+        flush_now_on_ui_thread,
+        SESSION_FLUSH_WAIT,
+    );
+    snipdeck_app::trace!("session end flush: {outcome:?}");
+}
+
+fn flush_now_on_ui_thread() {
+    flush_now();
+}
+
+/// A request that came in before the Panel was bound, kept with its acknowledgement.
+type EarlyRequest = (Request, platform::Ack);
+
+/// Acts on `request` on the UI thread and acknowledges it; before the Panel is bound, keeps it
+/// until it is.
+fn deliver_request(request: Request, ack: platform::Ack) {
+    let bound = BINDING.with(|b| b.borrow().is_some());
+    if bound {
+        with_binding(|b| apply_request(b, request));
+        ack();
+    } else {
+        EARLY.with(|e| e.borrow_mut().push((request, ack)));
+    }
+}
+
+fn take_early_requests() -> Vec<EarlyRequest> {
+    EARLY.with(|e| std::mem::take(&mut *e.borrow_mut()))
+}
+
+/// What a launch asked for. UI thread only. A file is only previewed (Import asks before it writes
+/// anything); an address can only open one of three windows.
+fn apply_request(binding: &Binding, request: Request) {
+    match request {
+        Request::Show => binding.show(),
+        Request::OpenFile(path) => {
+            if !settings_binding::request_import_file(path) {
+                snipdeck_app::trace!("file request: no Settings page to open it on");
+            }
+        }
+        Request::Url(UrlAction::Open) => binding.tray(TrayEvent::OpenSnipdeck),
+        Request::Url(UrlAction::Panel) => binding.tray(TrayEvent::OpenPanel),
+        Request::Url(UrlAction::Settings) => settings_binding::request_open(),
+    }
+}
+
+/// The running Snipdeck did not answer this launch: say so (no window exists; the language is the
+/// system's, as for a start-up failure).
+fn report_not_answering() {
+    let _ = slint::select_bundled_translation("");
+    let text = PanelWindow::new().map_or_else(
+        |_| "Snipdeck is already running, but it did not answer.".to_owned(),
+        |window| snipdeck_app::wording::not_answering_text(&window),
+    );
+    platform::show_startup_failure("Snipdeck", &text);
 }
 
 type SharedTray = Rc<RefCell<Option<Box<dyn snipdeck_platform::tray::Tray>>>>;
@@ -895,6 +1035,15 @@ type Library = (
     Option<Toast>,
 );
 
+/// Where the library lives: `--data-dir`, or the default folder.
+fn data_folder(args: &Args) -> Result<PathBuf, String> {
+    match &args.data_dir {
+        Some(dir) => Ok(dir.clone()),
+        None => snipdeck_app::paths::data_dir(&|name| std::env::var(name).ok(), cfg!(windows))
+            .ok_or_else(|| "cannot find a data folder; pass --data-dir <folder>".to_owned()),
+    }
+}
+
 /// The library and the settings.
 fn open_library(args: &Args) -> Result<Library, String> {
     let now = Timestamp::now();
@@ -909,11 +1058,7 @@ fn open_library(args: &Args) -> Result<Library, String> {
         snipdeck_app::trace!("demo library");
         return Ok((store, settings, None, None, None));
     }
-    let folder = match &args.data_dir {
-        Some(dir) => dir.clone(),
-        None => snipdeck_app::paths::data_dir(&|name| std::env::var(name).ok(), cfg!(windows))
-            .ok_or("cannot find a data folder; pass --data-dir <folder>")?,
-    };
+    let folder = data_folder(args)?;
     // Where a crash report goes (set for any real library, also when the settings stay unsaved).
     crash::set_data_dir(&folder);
     // Setup's "erase my data" must find a folder chosen with --data-dir (unverified on Windows).
