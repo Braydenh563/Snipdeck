@@ -208,7 +208,7 @@ where
     }
 
     fn backup_dates(&self) -> Result<Vec<Date>, String> {
-        backup::list_backups(self.data_dir)
+        backup::list_backups(&self.controller.settings().backup_folder(self.data_dir))
             .map(|files| files.into_iter().map(|f| f.date).collect())
             .map_err(|e| e.to_string())
     }
@@ -509,7 +509,7 @@ where
         let (Some(dir), Some(_)) = (self.data_dir.clone(), self.window.upgrade()) else {
             return;
         };
-        let newest = backup::list_backups(&dir)
+        let newest = backup::list_backups(&self.controller.borrow().settings().backup_folder(&dir))
             .ok()
             .and_then(|found| found.into_iter().next());
         let Some(file) = newest else {
@@ -543,7 +543,7 @@ where
         let Some(dir) = self.data_dir.clone() else {
             return;
         };
-        let Some(file) = backup::list_backups(&dir)
+        let Some(file) = backup::list_backups(&self.controller.borrow().settings().backup_folder(&dir))
             .ok()
             .and_then(|found| found.into_iter().next())
         else {

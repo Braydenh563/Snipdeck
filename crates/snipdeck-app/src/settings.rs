@@ -766,6 +766,10 @@ pub struct Settings {
     pub panel_width: u32,
     /// How many daily backups to keep (1 to 60).
     pub backups_keep: u32,
+    /// The folder backups are written to; empty is `<data folder>/backups`. A second disk or a
+    /// synced folder keeps them when the library's disk is lost (a backup is one finished file
+    /// written by rename, so a sync client never sees half of one).
+    pub backup_folder: String,
     /// Animations are off even when Windows' "Animation effects" is on.
     pub reduce_motion: bool,
     /// The text size: follow Windows, or a fixed percentage (WCAG 1.4.4).
@@ -894,6 +898,7 @@ impl Default for Settings {
             hide_hint_shown: false,
             panel_width: PANEL_WIDTH_DEFAULT,
             backups_keep: BACKUPS_KEEP_DEFAULT,
+            backup_folder: String::new(),
             reduce_motion: false,
             text_size: TextSize::System,
             clipboard_clear_secs: CLIPBOARD_CLEAR_SECS_DEFAULT,
@@ -1030,6 +1035,7 @@ impl Settings {
         field!(hide_hint_shown);
         field!(panel_width);
         field!(backups_keep);
+        field!(backup_folder);
         field!(reduce_motion);
         field!(text_size);
         field!(clipboard_clear_secs);
@@ -1143,6 +1149,16 @@ impl Settings {
         }
     }
 
+    /// Where backups are written and read: the chosen folder, else `<data folder>/backups`.
+    #[must_use]
+    pub fn backup_folder(&self, data_dir: &std::path::Path) -> std::path::PathBuf {
+        if self.backup_folder.is_empty() {
+            snipdeck_portable::backup::backups_dir(data_dir)
+        } else {
+            std::path::PathBuf::from(&self.backup_folder)
+        }
+    }
+
     /// The settings as pretty JSON.
     ///
     /// # Panics
@@ -1168,6 +1184,7 @@ impl Settings {
         self.backups_keep = self
             .backups_keep
             .clamp(*BACKUPS_KEEP.start(), *BACKUPS_KEEP.end());
+        self.backup_folder = self.backup_folder.trim().to_owned();
         self.clipboard_clear_secs = self
             .clipboard_clear_secs
             .clamp(*CLIPBOARD_CLEAR_SECS.start(), *CLIPBOARD_CLEAR_SECS.end());

@@ -53,6 +53,12 @@ pub enum MergeStrategy {
     /// an item already in the library or earlier in the same import. If nothing is left the
     /// board is not created.
     SkipDuplicates,
+    /// Restoring a Snipdeck backup or rebuilding from one: each archive item is matched by
+    /// where it is (board and list name), its title and its content against the library, one
+    /// for one, so two items with the same text in different lists both come back, and an item
+    /// that is already there is left alone. Boards and lists are reused by name and created only
+    /// when the library has none (empty ones included); items go back into their own lists.
+    Restore,
 }
 
 /// How a `.snipdeck` archive's boards and lists are laid out on import.
@@ -445,6 +451,7 @@ fn build_plan<R: Read + Seek>(
     let mut plan = Plan {
         tags,
         boards: Vec::new(),
+        reuse_existing: false,
     };
 
     let keep_boards = options.layout == BoardLayout::KeepBoards;

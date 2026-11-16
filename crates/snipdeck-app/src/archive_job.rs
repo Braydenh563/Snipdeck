@@ -33,13 +33,14 @@ use crate::{controller::ImportSource, failure::Cause, maintenance::JobError};
 /// What a job writes.
 #[derive(Debug, Clone)]
 pub(crate) enum Work {
-    /// Today's backup in `data_dir`, pruned to `keep`. `replace` writes a fresh copy even when
-    /// today's exists ("Back up now").
+    /// Today's backup in `folder`, pruned to `keep` daily files (and the weekly and monthly
+    /// copies); or, when `manual`, a backup file of its own.
     Backup {
-        data_dir: PathBuf,
+        folder: PathBuf,
         now: Zoned,
         keep: usize,
-        replace: bool,
+        /// "Back up now": a file of its own instead of today's.
+        manual: bool,
     },
     /// The whole library as one `.snipdeck` file at `path` (its folder is made first).
     Export { path: PathBuf, now: Timestamp },
@@ -242,22 +243,18 @@ impl ArchiveJob {
         }
         match &self.work {
             Work::Backup {
-                data_dir,
+                folder,
                 now,
                 keep,
-                replace,
+                manual,
             } => {
-                let outcome = backup::run_if_due(lib, data_dir, now, *keep, lib.data_key())
-                    .map_err(|e| failure(&e))?;
-                match outcome {
-                    // The user asked for a fresh copy: write over today's.
-                    BackupOutcome::NotDue { existing } if *replace => {
-                        export_to_path(lib, now.timestamp(), &options, &existing)
-                            .map_err(|e| failure(&e))?;
-                        Ok(Made::Backup(BackupOutcome::NotDue { existing }))
-                    }
-                    other => Ok(Made::Backup(other)),
+                let outcome = if *manual {
+                    backup::run_manual(lib, folder, now, lib.data_key())
+                } else {
+                    backup::run_if_due(lib, folder, now, *keep, lib.data_key())
                 }
+                .map_err(|e| failure(&e))?;
+                Ok(Made::Backup(outcome))
             }
             Work::Decode { .. } | Work::Rebuild { .. } => {
                 Err(JobError::other("not an archive step"))

@@ -233,19 +233,36 @@ fn problem_of(source: &ImportSource, error: &snipdeck_portable::Error) -> Import
     }
 }
 
-/// Files and folders of the data folder that "Erase library" leaves: the settings (and the copies
-/// of a damaged file set aside), the crash logs and the lock the running app
-/// holds. Everything else is the library.
-fn kept_by_erase(name: &str) -> bool {
-    name.starts_with("settings") || name == "logs" || name == "snipdeck.lock"
+/// The names in the data folder that are the library, which "Erase library" deletes. A list of
+/// what is ours, not of what is kept: `--data-dir` may point at a folder that holds other
+/// things (Documents, a synced folder, a stick), and those are not Snipdeck's to delete. The
+/// settings, the logs and the lock are not in it.
+fn is_library_file(name: &str) -> bool {
+    const EXACT: [&str; 10] = [
+        "snipdeck.db",
+        "snipdeck.db-wal",
+        "snipdeck.db-shm",
+        "snipdeck.db-journal",
+        "snipdeck.salvage.snipdeck",
+        "snipdeck.salvage.snipdeck.part",
+        "blobs",
+        "backups",
+        "drafts",
+        "maintenance.json",
+    ];
+    EXACT.contains(&name)
+        || name.starts_with("maintenance.json.")
+        || (name.starts_with("snipdeck.db.pre-v") && name.ends_with(".bak"))
+        || name.starts_with("snipdeck.damaged-")
 }
 
-/// Deletes everything in `folder` that is the library. Goes on past a file it cannot delete and
-/// reports the first failure at the end.
+/// Deletes the library from `folder`: the files and folders [`is_library_file`] names. Anything
+/// else in the folder stays. Goes on past a file it cannot delete and reports the first failure
+/// at the end.
 fn wipe_library(folder: &Path) -> io::Result<()> {
     let mut first_error = None;
     for entry in fs::read_dir(folder)?.flatten() {
-        if entry.file_name().to_str().is_some_and(kept_by_erase) {
+        if !entry.file_name().to_str().is_some_and(is_library_file) {
             continue;
         }
         let path = entry.path();
@@ -259,6 +276,58 @@ fn wipe_library(folder: &Path) -> io::Result<()> {
         }
     }
     first_error.map_or(Ok(()), Err)
+}
+
+#[cfg(test)]
+mod erase_tests {
+    use super::*;
+
+    #[test]
+    fn erase_deletes_the_library_and_leaves_what_is_not_ours() {
+        let dir = tempfile::tempdir().unwrap();
+        let d = dir.path();
+        for ours in [
+            "snipdeck.db",
+            "snipdeck.db-wal",
+            "snipdeck.db.pre-v8.bak",
+            "maintenance.json",
+            "maintenance.json.123-1.tmp",
+        ] {
+            fs::write(d.join(ours), b"x").unwrap();
+        }
+        for ours in ["blobs", "backups", "drafts", "snipdeck.damaged-20261107-1030"] {
+            fs::create_dir_all(d.join(ours)).unwrap();
+            fs::write(d.join(ours).join("inner"), b"x").unwrap();
+        }
+        // Not ours: a user's file and folder, the settings, the logs, the lock.
+        fs::write(d.join("report.docx"), b"mine").unwrap();
+        fs::create_dir_all(d.join("Photos")).unwrap();
+        fs::write(d.join("Photos").join("a.jpg"), b"mine").unwrap();
+        fs::write(d.join("snipdeck.db-notes.txt"), b"mine").unwrap();
+        fs::write(d.join("settings.json"), b"{}").unwrap();
+        fs::create_dir_all(d.join("logs")).unwrap();
+        fs::write(d.join("snipdeck.lock"), b"").unwrap();
+
+        wipe_library(d).unwrap();
+
+        let mut left: Vec<String> = fs::read_dir(d)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().into_string().unwrap())
+            .collect();
+        left.sort();
+        assert_eq!(
+            left,
+            [
+                "Photos",
+                "logs",
+                "report.docx",
+                "settings.json",
+                "snipdeck.db-notes.txt",
+                "snipdeck.lock"
+            ]
+        );
+        assert!(d.join("Photos").join("a.jpg").exists());
+    }
 }
 
 /// A name for an export made on `date` that no file in `folder` has yet:

@@ -101,7 +101,7 @@ impl DoctorHost for FolderDoctor<'_> {
     }
 
     fn backup_dates(&self) -> Result<Vec<Date>, String> {
-        backup::list_backups(self.folder)
+        backup::list_backups(&self.settings.backup_folder(self.folder))
             .map(|files| files.into_iter().map(|f| f.date).collect())
             .map_err(|e| e.to_string())
     }

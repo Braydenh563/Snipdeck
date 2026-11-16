@@ -190,8 +190,8 @@ where
         Begun::Finished(self.finish_archive(done))
     }
 
-    /// "Back up now": today's backup in `data_dir`, replacing the one already made today (the
-    /// daily run writes only when there is none, and the user asked for a fresh copy).
+    /// "Back up now": a backup file of its own in the backups folder; it never replaces the
+    /// daily one (the usual moment to press it is after something went wrong).
     pub fn begin_backup_now(&mut self, data_dir: &Path) -> Begun {
         // A copy of a locked library would lack its sensitive items and replace today's whole one.
         if self.refuse_archive() {
@@ -200,10 +200,10 @@ where
         let job = self.archive_job(
             ArchiveOp::BackupNow,
             Work::Backup {
-                data_dir: data_dir.to_path_buf(),
+                folder: self.settings.backup_folder(data_dir),
                 now: self.clock.now().to_zoned(TimeZone::system()),
                 keep: self.backup_keep(),
-                replace: true,
+                manual: true,
             },
         );
         self.begin_running(job, Context::None)
@@ -232,10 +232,10 @@ where
         let job = self.archive_job(
             ArchiveOp::DailyBackup,
             Work::Backup {
-                data_dir: data_dir.to_path_buf(),
+                folder: self.settings.backup_folder(data_dir),
                 now: now.clone(),
                 keep: self.backup_keep(),
-                replace: false,
+                manual: false,
             },
         );
         Ok(self.begin_running(job, Context::None))

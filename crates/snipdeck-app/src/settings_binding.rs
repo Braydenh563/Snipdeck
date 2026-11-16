@@ -1132,10 +1132,12 @@ where
     }
 
     fn refresh_backups(&self) {
-        let found = self
+        let folder = self
             .data_dir
             .as_deref()
-            .and_then(|dir| backup::list_backups(dir).ok())
+            .map(|dir| self.controller.borrow().settings().backup_folder(dir));
+        let found = folder
+            .and_then(|folder| backup::list_backups(&folder).ok())
             .unwrap_or_default();
         self.state.borrow_mut().backups = found;
     }

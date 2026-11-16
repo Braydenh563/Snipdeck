@@ -189,6 +189,8 @@ pub(crate) struct PlanBoard {
 pub(crate) struct Plan {
     pub tags: Vec<Name>,
     pub boards: Vec<PlanBoard>,
+    /// A restore: boards and lists the library already has (by name) are reused, not added.
+    pub reuse_existing: bool,
 }
 
 impl Plan {
@@ -254,12 +256,12 @@ fn content_parts(content: &Content) -> ([u8; 32], u64) {
 /// Items stored in plain text are hashed from one pass over the tables
 /// ([`ItemRepo::plain_formats`]); only encrypted items are read one by one, as they need the
 /// data key.
-pub(crate) fn existing_hashes<L: ItemRepo>(lib: &L) -> Result<HashSet<[u8; 32]>> {
-    let mut known = HashSet::new();
+pub(crate) fn existing_hashes<L: ItemRepo>(lib: &L) -> Result<HashMap<ItemId, [u8; 32]>> {
+    let mut known = HashMap::new();
     let mut seen = HashSet::new();
     for (id, formats) in lib.plain_formats()? {
         seen.insert(id);
-        known.insert(hash_formats(&formats));
+        known.insert(id, hash_formats(&formats));
     }
     for item in lib.all_items()? {
         if seen.contains(&item.id) {
@@ -267,7 +269,7 @@ pub(crate) fn existing_hashes<L: ItemRepo>(lib: &L) -> Result<HashSet<[u8; 32]>>
         }
         match lib.formats(item.id) {
             Ok(formats) => {
-                known.insert(hash_formats(&formats));
+                known.insert(item.id, hash_formats(&formats));
             }
             // An encrypted item cannot be read while the library is locked. Skipping it only
             // means a duplicate of it is not recognised; refusing would stop a restore of the
@@ -367,21 +369,50 @@ fn write(
     }
 
     for plan_board in &mut plan.boards {
-        let mut board = Board::new(plan_board.name.clone(), plan_board.created_at);
-        board.updated_at = plan_board.updated_at;
-        lib.insert_board(&board, Placement::Last)?;
-        report.boards_added += 1;
-        report.boards.push(board.id);
+        let existing_board = if plan.reuse_existing {
+            let key = name_key(plan_board.name.as_str());
+            lib.boards()?
+                .into_iter()
+                .find(|b| name_key(b.name.as_str()) == key)
+        } else {
+            None
+        };
+        let board = match existing_board {
+            Some(board) => board,
+            None => {
+                let mut board = Board::new(plan_board.name.clone(), plan_board.created_at);
+                board.updated_at = plan_board.updated_at;
+                lib.insert_board(&board, Placement::Last)?;
+                report.boards_added += 1;
+                report.boards.push(board.id);
+                board
+            }
+        };
 
         for plan_list in &mut plan_board.lists {
-            let mut list = List::new(board.id, plan_list.name.clone(), plan_list.created_at);
-            list.updated_at = plan_list.updated_at;
-            list.accent = plan_list.accent;
-            list.icon = plan_list.icon;
-            list.view = plan_list.view;
-            list.sort = plan_list.sort;
-            lib.insert_list(&list, Placement::Last)?;
-            report.lists_added += 1;
+            let existing_list = if plan.reuse_existing {
+                let key = name_key(plan_list.name.as_str());
+                lib.lists(board.id)?
+                    .into_iter()
+                    .find(|l| name_key(l.name.as_str()) == key)
+            } else {
+                None
+            };
+            let list = match existing_list {
+                Some(list) => list,
+                None => {
+                    let mut list =
+                        List::new(board.id, plan_list.name.clone(), plan_list.created_at);
+                    list.updated_at = plan_list.updated_at;
+                    list.accent = plan_list.accent;
+                    list.icon = plan_list.icon;
+                    list.view = plan_list.view;
+                    list.sort = plan_list.sort;
+                    lib.insert_list(&list, Placement::Last)?;
+                    report.lists_added += 1;
+                    list
+                }
+            };
 
             let mut members: Vec<Vec<ItemId>> = vec![Vec::new(); plan_list.groups.len()];
             for plan_item in &mut plan_list.items {
@@ -559,6 +590,7 @@ mod tests {
         Plan {
             tags: vec![name("existing"), name("fresh")],
             boards: vec![board("First", vec![list_a]), board("Second", vec![list_b])],
+            reuse_existing: false,
         }
     }
 
@@ -679,6 +711,7 @@ mod tests {
                 updated_at: at(1),
                 lists: vec![list],
             }],
+            reuse_existing: false,
         };
         let mut fetch = |_: &AssetRef| Ok(Vec::new());
         let report = apply(&mut s, &mut plan, &mut fetch, ImportReport::default()).unwrap();
