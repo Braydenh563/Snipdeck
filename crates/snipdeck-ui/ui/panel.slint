@@ -770,7 +770,8 @@ export component PanelWindow inherits Window {
     property <string> row-tip-text: "";
     function row-tips-close() {
         if (root.row-tip-text != "") {
-            root.tip-set(root.row-tip-text, 0px, 0px, 0px, 0px, false);
+            // The row is gone: its tip goes at once, with no wait for a pointer to cross to it.
+            TipHost.dismiss();
             root.row-tip-text = "";
         }
     }
