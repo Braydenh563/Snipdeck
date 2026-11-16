@@ -89,7 +89,13 @@ fn a_preview_reports_exactly_what_the_apply_then_adds() {
     let code = snipdeck_core::Trigger::new(";hi").unwrap();
     s.set_trigger(held.id, Some(&code)).unwrap();
 
-    let decoded = decode_beeftext(&path, at(9), &skip()).unwrap();
+    // Installing the triggers, so the apply and the preview talk about the same codes (when
+    // they are left, the preview still lists them for the person to choose).
+    let options = ImportOptions {
+        triggers: snipdeck_portable::Triggers::Install,
+        ..skip()
+    };
+    let decoded = decode_beeftext(&path, at(9), &options).unwrap();
     let before = snapshot(&s);
     let previewed = decoded.preview(&s, None).unwrap();
     assert_eq!(snapshot(&s), before, "a preview writes nothing");
