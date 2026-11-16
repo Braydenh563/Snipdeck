@@ -93,6 +93,25 @@ pub fn text_scale_from_percent(percent: Option<u32>) -> f32 {
     f32::from(u16::try_from(percent).unwrap_or(100)) / 100.0
 }
 
+/// The accent colour from the two registry values Windows keeps (PLATFORM-21).
+///
+/// `menu` is `HKCU\...\Explorer\Accent\AccentColorMenu`: the colour picked in Settings >
+/// Personalization > Colors, stored as `0xAABBGGRR`. `colorization` is the older
+/// `HKCU\...\DWM\ColorizationColor` (`0xAARRGGBB`), which is the colour *blended* for window
+/// frames and differs from the swatch. The first is the accent; the second is used only when the
+/// first is missing.
+#[must_use]
+pub fn accent_from_registry(menu: Option<u32>, colorization: Option<u32>) -> Option<Rgb> {
+    if let Some(value) = menu {
+        let [_, b, g, r] = value.to_be_bytes();
+        return Some(Rgb { r, g, b });
+    }
+    colorization.map(|value| {
+        let [_, r, g, b] = value.to_be_bytes();
+        Rgb { r, g, b }
+    })
+}
+
 // Window messages and `SPI_*` codes that can change the look. Written out so the filter is
 // testable here; the Windows backend asserts they equal the `windows` crate's constants.
 /// `WM_POWERBROADCAST`.
@@ -125,9 +144,10 @@ pub const SPI_SETCLIENTAREAANIMATION: usize = 0x1043;
 /// The `lParam` string Windows sends with `WM_SETTINGCHANGE` when the app or system colour mode
 /// changes.
 pub const IMMERSIVE_COLOR_SET: &str = "ImmersiveColorSet";
-/// The `lParam` string of the `WM_SETTINGCHANGE` that is meant to announce a new text size.
-/// **Unverified on Windows**: if Windows words it differently the app follows the new size at
-/// its next start.
+/// The `lParam` string of the `WM_SETTINGCHANGE` that may announce a new text size. Not
+/// documented, so it is only one of two routes: the Windows watcher also waits on the registry
+/// key that holds the text size (`RegNotifyChangeKeyValue`), which does not depend on how
+/// Windows words its broadcast. **Unverified on Windows.**
 pub const TEXT_SCALE_FACTOR: &str = "TextScaleFactor";
 
 /// Whether a window message can have changed the look, so the source should be read again.
@@ -218,6 +238,35 @@ mod tests {
         // A hand-edited or future value is held to the range.
         assert!((text_scale_from_percent(Some(0)) - 1.0).abs() < f32::EPSILON);
         assert!((text_scale_from_percent(Some(9000)) - 2.25).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn the_accent_is_the_settings_swatch_not_the_blended_frame_colour() {
+        // AccentColorMenu is 0xAABBGGRR: blue 0x33, green 0x22, red 0x11.
+        let menu = Some(0xFF33_2211);
+        let frame = Some(0xC4AA_BBCC);
+        assert_eq!(
+            accent_from_registry(menu, frame),
+            Some(Rgb {
+                r: 0x11,
+                g: 0x22,
+                b: 0x33
+            })
+        );
+    }
+
+    #[test]
+    fn the_accent_falls_back_to_the_colorization_value() {
+        // ColorizationColor is 0xAARRGGBB.
+        assert_eq!(
+            accent_from_registry(None, Some(0xC411_2233)),
+            Some(Rgb {
+                r: 0x11,
+                g: 0x22,
+                b: 0x33
+            })
+        );
+        assert_eq!(accent_from_registry(None, None), None);
     }
 
     #[test]

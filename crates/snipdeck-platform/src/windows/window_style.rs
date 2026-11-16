@@ -71,6 +71,9 @@ pub fn install_panel_style(hwnd: isize, in_taskbar: bool) -> bool {
     if !installed.as_bool() {
         return false;
     }
+    // Round corners stated explicitly on Windows 11, so the edge of the Panel, Picker, fill form
+    // and toast does not depend on the system default (PLATFORM-20; unverified on Windows).
+    let _ = super::dwm::prefer_round_corners(hwnd.0 as isize);
     // SAFETY: plain calls on the same window handle. A stale handle makes them fail, not crash.
     unsafe {
         let current = ex_style_bits(GetWindowLongPtrW(hwnd, GWL_EXSTYLE));

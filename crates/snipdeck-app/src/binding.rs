@@ -1622,6 +1622,9 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     crate::text_scale::apply(&window.global::<ui::SystemLook<'_>>());
     if differs(&|p| (p.dark, p.high_contrast) == (view.dark, view.high_contrast)) {
         crate::native_window::set_erase_colour(window.window(), window_colour(window, view));
+        // The title bars of the regular windows follow Snipdeck's theme, not the Windows app
+        // mode (high contrast keeps the system's own frame colours).
+        crate::native_window::set_title_theme(window.window(), view.dark);
     }
     if differs(&|p| {
         (p.high_contrast, p.accent, p.reduced_motion)

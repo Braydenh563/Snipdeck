@@ -642,6 +642,12 @@ Command Prompt, with `app\snipdeck.exe` in the folder that holds `Snipdeck.bat`:
 
 Add `--data-dir <folder>` to check a library somewhere else.
 
+Snipdeck is a Windows program without a console of its own, so a Command Prompt does not wait for it: the
+text can appear after the prompt is back, and `%ERRORLEVEL%` is not set. Start it with `start /wait` to wait
+and read the exit code: `start /wait app\snipdeck.exe --check-db`, then `echo %ERRORLEVEL%`. In PowerShell use
+`(Start-Process -Wait -PassThru -NoNewWindow app\snipdeck.exe --check-db).ExitCode`. With the output sent to a
+file (`app\snipdeck.exe --check-db > result.txt`) nothing special is needed. The same text is in `--help`.
+
 **Starting Snipdeck twice.** One Snipdeck runs per Windows user and library folder. Starting it again (from the
 Start menu, a shortcut or a file) brings the running one to the front and exits. If the running Snipdeck does
 not answer within a few seconds, you get a message saying so; end it in Task Manager and start it again. A

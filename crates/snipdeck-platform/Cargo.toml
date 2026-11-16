@@ -26,7 +26,7 @@ testing = []
 
 [target.'cfg(windows)'.dependencies]
 # `Win32_Graphics_Dwm` (DwmFlush) and `Win32_Devices_Display` (HDR query) are for the eyedropper.
-windows = { workspace = true, features = ["Win32_Devices_Display", "Win32_Graphics_Dwm"] }
+windows = { workspace = true, features = ["Win32_Devices_Display", "Win32_Graphics_Dwm", "Wdk_System_SystemServices", "Win32_System_SystemInformation"] }
 
 [lints]
 workspace = true

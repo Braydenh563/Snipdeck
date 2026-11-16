@@ -65,8 +65,8 @@ use crate::tray::{
     ClickDeferral, Gesture, MenuLine, Reaction, Tray, TrayEntry, TrayEvent, TrayLabels, TrayModel,
     classify, decode_anchor, decode_callback,
 };
-use crate::win_logic::{SessionEnd, session_end};
 use crate::tray_timing::{AddRetry, KeySelectDebounce};
+use crate::win_logic::{SessionEnd, session_end};
 
 /// Wakes the window to drain the command channel.
 const WM_COMMANDS: u32 = WM_APP + 1;

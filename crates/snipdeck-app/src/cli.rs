@@ -62,6 +62,16 @@ Usage: snipdeck-app [options]
   --quit                 ask the running Snipdeck to quit, as the tray's Quit does, and exit (0
                          whether or not one was running; Windows only)
   --help                 show this text
+
+Snipdeck is a Windows program without a console. Its text appears in the console it was started
+from, but the prompt does not wait for it, and %ERRORLEVEL% is not set. To wait and read the
+exit code, start it like this:
+
+  Command Prompt:  start /wait snipdeck.exe --check-db
+                   echo %ERRORLEVEL%
+  PowerShell:      Start-Process -Wait -NoNewWindow snipdeck.exe --check-db
+                   $LASTEXITCODE is not set; use (Start-Process ... -PassThru -Wait).ExitCode
+  To a file:       snipdeck.exe --check-db > result.txt   (works as it is)
 ";
 
 /// Parses the arguments after the program name.
@@ -197,6 +207,12 @@ mod tests {
         let file = file.to_str().expect("utf-8 temp dir");
         assert!(parse_all(&[file, file]).is_err());
         assert!(parse_all(&["snipdeck://open", file]).is_err());
+    }
+
+    #[test]
+    fn the_help_says_how_to_wait_for_the_output_and_the_exit_code() {
+        assert!(USAGE.contains("start /wait snipdeck.exe --check-db"));
+        assert!(USAGE.contains("Start-Process -Wait"));
     }
 
     #[test]

@@ -5,8 +5,11 @@
 //! Windows is the product. Off Windows the same binary runs on the platform fakes, which is how
 //! `cargo run -p snipdeck-app -- --demo` shows the Panel on a development machine.
 
-// unverified on Windows (Fable v1 sweep A1): no console window for the release GUI build.
-#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
+// unverified on Windows (Fable v1 sweep A1, PLATFORM-35): the exe is a GUI-subsystem program in
+// every profile, so the dev build the owner tests behaves like the release (no console window
+// at start-up or autostart, and closing none kills the app). The `console` cargo feature builds
+// a console-subsystem exe for debugging: `cargo run -p snipdeck-app --features console`.
+#![cfg_attr(all(windows, not(feature = "console")), windows_subsystem = "windows")]
 #![forbid(unsafe_code)]
 #![allow(
     clippy::print_stdout,

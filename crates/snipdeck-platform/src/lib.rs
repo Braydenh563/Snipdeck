@@ -23,6 +23,7 @@ pub mod clipboard_history;
 pub mod clipboard_watch;
 pub mod command_line;
 pub mod data_record;
+pub mod dwm_look;
 pub mod error;
 pub mod eyedrop;
 pub mod file_dialog;

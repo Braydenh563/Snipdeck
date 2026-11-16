@@ -17,15 +17,21 @@
 use std::ffi::c_void;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
-use windows::Win32::Foundation::{ERROR_SUCCESS, HWND, LPARAM, LRESULT, WPARAM};
+use windows::Win32::Foundation::{
+    CloseHandle, ERROR_SUCCESS, HANDLE, HWND, LPARAM, LRESULT, WAIT_OBJECT_0, WPARAM,
+};
 use windows::Win32::Graphics::Gdi::{
     COLOR_GRAYTEXT, COLOR_HIGHLIGHT, COLOR_HIGHLIGHTTEXT, COLOR_WINDOW, COLOR_WINDOWTEXT,
     GetSysColor, SYS_COLOR_INDEX,
 };
-use windows::Win32::System::Registry::{HKEY_CURRENT_USER, RRF_RT_REG_DWORD, RegGetValueW};
+use windows::Win32::System::Registry::{
+    HKEY, HKEY_CURRENT_USER, KEY_NOTIFY, REG_NOTIFY_CHANGE_LAST_SET, RRF_RT_REG_DWORD, RegCloseKey,
+    RegGetValueW, RegNotifyChangeKeyValue, RegOpenKeyExW,
+};
 use windows::Win32::System::RemoteDesktop::{
     NOTIFY_FOR_THIS_SESSION, WTSRegisterSessionNotification, WTSUnRegisterSessionNotification,
 };
+use windows::Win32::System::Threading::{CreateEventW, INFINITE, SetEvent, WaitForMultipleObjects};
 use windows::Win32::UI::Accessibility::{HCF_HIGHCONTRASTON, HIGHCONTRASTW};
 use windows::Win32::UI::WindowsAndMessaging::{
     SPI_GETCLIENTAREAANIMATION, SPI_GETHIGHCONTRAST, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS,
@@ -36,8 +42,8 @@ use windows::core::{BOOL, PCWSTR, w};
 use super::hidden_window::{HiddenWindow, WindowHandler};
 use crate::error::Error;
 use crate::system_look::{
-    HighContrast, Rgb, SystemLook, SystemLookSource, message_may_change_look, message_means_lock,
-    text_scale_from_percent,
+    HighContrast, Rgb, SystemLook, SystemLookSource, accent_from_registry, message_may_change_look,
+    message_means_lock, text_scale_from_percent,
 };
 
 /// Reads the live system look. Stateless, so it is `Send + Sync` and cheap to copy.
@@ -127,26 +133,40 @@ fn apps_use_light_theme() -> Option<bool> {
     (code == ERROR_SUCCESS).then_some(data != 0)
 }
 
-/// The user's accent colour: `HKCU\Software\Microsoft\Windows\DWM`, DWORD `ColorizationColor`
-/// (0xAARRGGBB). `None` when the value is missing.
-fn accent_color() -> Option<Rgb> {
+/// A DWORD under `HKCU\<key>`, `None` when it is missing.
+fn current_user_dword(key: PCWSTR, value: PCWSTR) -> Option<u32> {
     let mut data: u32 = 0;
     let mut size = u32::try_from(std::mem::size_of::<u32>()).unwrap_or(4);
-    // SAFETY: as in `apps_use_light_theme`: static NUL-terminated names, valid out-pointers,
-    // `RRF_RT_REG_DWORD` limits what is written to a DWORD.
+    // SAFETY: as in `apps_use_light_theme`: NUL-terminated names from `w!` (the callers), valid
+    // out-pointers, `RRF_RT_REG_DWORD` limits what is written to a DWORD.
     let code = unsafe {
         RegGetValueW(
             HKEY_CURRENT_USER,
-            w!(r"Software\Microsoft\Windows\DWM"),
-            w!("ColorizationColor"),
+            key,
+            value,
             RRF_RT_REG_DWORD,
             None,
             Some((&raw mut data).cast::<c_void>()),
             Some(&raw mut size),
         )
     };
-    let [_, r, g, b] = data.to_be_bytes();
-    (code == ERROR_SUCCESS).then_some(Rgb { r, g, b })
+    (code == ERROR_SUCCESS).then_some(data)
+}
+
+/// The user's accent colour: the swatch picked in Settings (`...\Explorer\Accent`,
+/// `AccentColorMenu`), else the older DWM `ColorizationColor` (see
+/// [`accent_from_registry`]). `None` when neither value exists. **Unverified on Windows.**
+fn accent_color() -> Option<Rgb> {
+    accent_from_registry(
+        current_user_dword(
+            w!(r"Software\Microsoft\Windows\CurrentVersion\Explorer\Accent"),
+            w!("AccentColorMenu"),
+        ),
+        current_user_dword(
+            w!(r"Software\Microsoft\Windows\DWM"),
+            w!("ColorizationColor"),
+        ),
+    )
 }
 
 fn sys_color(index: SYS_COLOR_INDEX) -> Rgb {
@@ -187,6 +207,8 @@ fn high_contrast() -> Option<HighContrast> {
 /// Watches for changes of the system look. Dropping it stops the thread.
 pub struct SystemLookWatcher {
     _window: HiddenWindow,
+    /// Waits on the registry key of the text size; `None` when it could not start.
+    _text_size: Option<RegistryWatch>,
 }
 
 impl std::fmt::Debug for SystemLookWatcher {
@@ -207,11 +229,121 @@ impl SystemLookWatcher {
         on_change: impl Fn() + Send + 'static,
         on_lock: impl Fn() + Send + 'static,
     ) -> Result<Self, Error> {
+        let on_change = std::sync::Arc::new(std::sync::Mutex::new(on_change));
+        let for_window = std::sync::Arc::clone(&on_change);
         let window = HiddenWindow::spawn("snipdeck-look", "SnipdeckLookWindow", move || Watcher {
-            on_change: Box::new(on_change),
+            on_change: Box::new(move || {
+                if let Ok(f) = for_window.lock() {
+                    f();
+                }
+            }),
             on_lock: Box::new(on_lock),
         })?;
-        Ok(Self { _window: window })
+        let text_size = RegistryWatch::start(
+            r"Software\Microsoft\Accessibility",
+            Box::new(move || {
+                if let Ok(f) = on_change.lock() {
+                    f();
+                }
+            }),
+        );
+        Ok(Self {
+            _window: window,
+            _text_size: text_size,
+        })
+    }
+}
+
+/// A thread that calls `on_change` whenever a value under `HKCU\<key>` is set
+/// (`RegNotifyChangeKeyValue`), until dropped. This is how a new Text size (PLATFORM-21) is
+/// noticed without relying on the wording of a `WM_SETTINGCHANGE` broadcast. **Unverified on
+/// Windows.**
+struct RegistryWatch {
+    /// A manual-reset event the thread also waits on; set to stop it.
+    stop: isize,
+    thread: Option<std::thread::JoinHandle<()>>,
+}
+
+impl RegistryWatch {
+    fn start(key: &'static str, on_change: Box<dyn Fn() + Send>) -> Option<Self> {
+        // SAFETY: an unnamed event with default security; closed in `drop`.
+        let stop = unsafe { CreateEventW(None, true, false, PCWSTR::null()) }.ok()?;
+        let stop_value = stop.0 as isize;
+        let thread = std::thread::Builder::new()
+            .name("snipdeck-look-registry".into())
+            .spawn(move || watch_key(key, stop_value, &*on_change))
+            .ok();
+        if thread.is_none() {
+            // SAFETY: `stop` is the handle created above and not used elsewhere.
+            let _ = unsafe { CloseHandle(stop) };
+            return None;
+        }
+        Some(Self {
+            stop: stop_value,
+            thread,
+        })
+    }
+}
+
+impl Drop for RegistryWatch {
+    fn drop(&mut self) {
+        let stop = HANDLE(self.stop as *mut c_void);
+        // SAFETY: `stop` is this watch's own event; the thread is joined before it is closed.
+        unsafe {
+            let _ = SetEvent(stop);
+        }
+        if let Some(thread) = self.thread.take() {
+            let _ = thread.join();
+        }
+        // SAFETY: the thread has ended, nothing waits on the handle any more.
+        let _ = unsafe { CloseHandle(stop) };
+    }
+}
+
+/// The thread body of [`RegistryWatch`]: waits for a change of `HKCU\<key>` or the stop event.
+fn watch_key(key: &str, stop: isize, on_change: &(dyn Fn() + Send)) {
+    let wide: Vec<u16> = key.encode_utf16().chain(std::iter::once(0)).collect();
+    let stop = HANDLE(stop as *mut c_void);
+    let mut handle = HKEY::default();
+    // SAFETY: `wide` is NUL-terminated and outlives the call; `handle` is a valid out-pointer.
+    let opened = unsafe {
+        RegOpenKeyExW(
+            HKEY_CURRENT_USER,
+            PCWSTR(wide.as_ptr()),
+            None,
+            KEY_NOTIFY,
+            &raw mut handle,
+        )
+    };
+    if opened != ERROR_SUCCESS {
+        return;
+    }
+    // SAFETY: an unnamed auto-reset event; closed below.
+    let Ok(event) = (unsafe { CreateEventW(None, false, false, PCWSTR::null()) }) else {
+        // SAFETY: `handle` was opened above.
+        let _ = unsafe { RegCloseKey(handle) };
+        return;
+    };
+    loop {
+        // SAFETY: `handle` and `event` are live; asynchronous, so the call returns at once and
+        // signals `event` on the next change.
+        let armed = unsafe {
+            RegNotifyChangeKeyValue(handle, false, REG_NOTIFY_CHANGE_LAST_SET, Some(event), true)
+        };
+        if armed != ERROR_SUCCESS {
+            break;
+        }
+        // SAFETY: both handles are live for the whole loop.
+        let woke = unsafe { WaitForMultipleObjects(&[stop, event], false, INFINITE) };
+        if woke.0 != WAIT_OBJECT_0.0 + 1 {
+            break;
+        }
+        let _ = catch_unwind(AssertUnwindSafe(on_change));
+    }
+    // SAFETY: both were created or opened above and are not used again.
+    unsafe {
+        let _ = CloseHandle(event);
+        let _ = RegCloseKey(handle);
     }
 }
 

@@ -129,7 +129,9 @@ later, so delete it once the new version runs well ([`store.md`](store.md)).
 
 **Check the library from a Command Prompt.** With Snipdeck closed, run `app\snipdeck.exe --check-db` to test
 the library for damage (exit code 0 healthy, 1 problems, 2 could not run), or `app\snipdeck.exe --troubleshoot` to
-print the Troubleshoot report. Add `--data-dir <folder>` for a library somewhere else.
+print the Troubleshoot report. Add `--data-dir <folder>` for a library somewhere else. Run it as `start /wait app\snipdeck.exe --check-db`
+so the prompt waits for the text and `echo %ERRORLEVEL%` shows the exit code (Snipdeck has no console of its own;
+see the user guide).
 
 ## Locked library and the master password
 
