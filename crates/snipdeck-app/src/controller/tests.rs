@@ -35,6 +35,7 @@ use tray::with_tray;
 use use_paste::make_sensitive;
 
 mod access;
+mod archive_busy;
 mod capture_stack;
 mod colour_main;
 mod colours;

@@ -1489,9 +1489,13 @@ where
 
     /// Greys out "Back up now" and "Export library" while an archive job runs.
     fn show_busy(&self) {
-        let busy = self.controller.borrow().archive_busy();
+        let (busy, op) = {
+            let controller = self.controller.borrow();
+            (controller.archive_busy(), controller.archive_busy_op())
+        };
         if let Some(window) = self.window.upgrade() {
             window.set_backup_busy(busy);
+            window.set_backup_busy_op(op);
         }
     }
 
