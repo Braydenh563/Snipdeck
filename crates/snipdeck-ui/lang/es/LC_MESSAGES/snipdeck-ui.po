@@ -2522,6 +2522,9 @@ msgstr "Buscar"
 msgid "Search (Ctrl+F)"
 msgstr "Buscar (Ctrl+F)"
 
+msgid "Search all boards"
+msgstr "Buscar en todos los tableros"
+
 msgid "Search all snippets"
 msgstr "Buscar en todos los fragmentos"
 

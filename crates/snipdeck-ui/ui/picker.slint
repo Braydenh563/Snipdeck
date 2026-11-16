@@ -139,6 +139,8 @@ export component PickerWindow inherits Window {
     callback dismissed();
     // F1: the user guide.
     callback help-requested();
+    // The empty state's "Open Snipdeck": close the Picker and show the Panel, where snippets are made.
+    callback open-requested();
     // "Paste as" opens for colour row `index`: the host fills `colour-choices` before this returns.
     callback colour-choices-requested(int);
     // Format `format` (an index into the host's formats) of colour row `row` chosen; `copy` when Shift was held.
@@ -596,7 +598,18 @@ export component PickerWindow inherits Window {
                             : @tr("Nothing pinned matches “{}”.", root.query))
                         : root.scope == PickerScope.pinned ? @tr("Pin a snippet from the Panel to find it here.")
                         : @tr("Copy something, then save it from the Panel.");
-                    action-text: "";
+                    // The one step that fixes the empty state: widen a search that found nothing in a narrow scope,
+                    // or go where snippets are made.
+                    action-text: root.searching
+                        ? (root.scope == PickerScope.all ? "" : @tr("Search all boards"))
+                        : @tr("Open Snipdeck");
+                    action => {
+                        if (root.searching) {
+                            root.pick-scope(PickerScope.all);
+                        } else {
+                            root.open-requested();
+                        }
+                    }
                 }
             }
 

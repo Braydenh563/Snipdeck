@@ -51,6 +51,7 @@ fn start() -> (PickerWindow, Log) {
     hook!(on_selection_moved, |d| format!("move:{d}"));
     hook!(on_edit_requested, |i| format!("edit:{i}"));
     hook!(on_close_requested, || "close".to_string());
+    hook!(on_open_requested, || "open".to_string());
     hook!(on_dismissed, || "dismissed".to_string());
     (ui, log)
 }
@@ -509,6 +510,27 @@ ui_tests! {
     }
 
     // ---- States --------------------------------------------------------------------------------
+
+    fn an_empty_state_carries_the_one_action_that_fixes_it() {
+        let (ui, log) = start();
+        fixture::set_rows(&ui, Vec::new());
+        settle();
+        find(&ui, "Open Snipdeck", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["open"], "an empty library goes to the Panel");
+
+        // A search with no result in a narrow scope offers the wider one.
+        find(&ui, "This board", AccessibleRole::Button).invoke_accessible_default_action();
+        type_text(ui.window(), "zz");
+        settle();
+        take(&log);
+        find(&ui, "Search all boards", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert_eq!(take(&log), ["scope:All"]);
+        assert!(
+            missing(&ui, "Search all boards", AccessibleRole::Button),
+            "the widest scope has nothing wider to offer"
+        );
+    }
 
     fn an_empty_picker_teaches_and_a_search_with_no_results_says_so() {
         let (ui, log) = start();

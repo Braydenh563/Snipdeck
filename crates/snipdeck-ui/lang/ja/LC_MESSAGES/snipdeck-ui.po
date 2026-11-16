@@ -2514,6 +2514,9 @@ msgstr "検索"
 msgid "Search (Ctrl+F)"
 msgstr "検索 (Ctrl+F)"
 
+msgid "Search all boards"
+msgstr "すべてのボードを検索"
+
 msgid "Search all snippets"
 msgstr "すべてのスニペットを検索"
 

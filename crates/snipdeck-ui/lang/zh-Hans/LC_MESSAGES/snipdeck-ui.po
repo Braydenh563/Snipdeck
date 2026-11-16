@@ -2514,6 +2514,9 @@ msgstr "搜索"
 msgid "Search (Ctrl+F)"
 msgstr "搜索 (Ctrl+F)"
 
+msgid "Search all boards"
+msgstr "搜索所有看板"
+
 msgid "Search all snippets"
 msgstr "搜索所有片段"
 

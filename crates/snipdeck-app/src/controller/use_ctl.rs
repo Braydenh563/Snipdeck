@@ -95,6 +95,13 @@ where
         self.picker = None;
     }
 
+    /// The Picker's empty state "Open Snipdeck": the Picker closes and the Panel shows.
+    pub fn picker_open_panel(&mut self) {
+        self.picker = None;
+        let effects = self.show();
+        self.pending.extend(effects);
+    }
+
     /// The Picker, while it is open.
     #[must_use]
     pub fn picker(&self) -> Option<&PickerModel> {

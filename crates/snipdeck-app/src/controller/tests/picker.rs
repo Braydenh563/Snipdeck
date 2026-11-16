@@ -293,3 +293,13 @@ fn the_picker_closes_when_the_user_switches_to_another_app_and_does_not_steal_th
         "the focus is left where the user put it"
     );
 }
+
+#[test]
+fn the_pickers_empty_state_opens_the_panel_and_closes_the_picker() {
+    let mut w = world();
+    w.ctl.open_picker();
+    assert!(w.ctl.picker().is_some());
+    w.ctl.picker_open_panel();
+    assert!(w.ctl.picker().is_none());
+    assert!(w.ctl.visible());
+}
