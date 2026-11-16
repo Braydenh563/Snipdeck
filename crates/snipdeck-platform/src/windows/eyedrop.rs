@@ -334,7 +334,7 @@ impl Surface {
             return Err(Error::Unavailable("could not select a bitmap"));
         }
         Ok(Self {
-            bitmap: bitmap,
+            bitmap,
             dc,
             previous,
             bits,
@@ -535,7 +535,7 @@ struct DibPixels {
     bits: *const u8,
     len: usize,
     /// Keeps the bitmap, and so `bits`, alive.
-    bitmap: Rc<GdiObject>,
+    _bitmap: Rc<GdiObject>,
 }
 
 impl AsRef<[u8]> for DibPixels {
@@ -585,7 +585,7 @@ fn capture(screen: &ScreenDc, monitor: &MonitorFacts, hdr: bool) -> Result<(Shot
     let bgra = Pixels::new(DibPixels {
         bits: bits.cast::<u8>().cast_const(),
         len,
-        bitmap: Rc::clone(&surface.bitmap),
+        _bitmap: Rc::clone(&surface.bitmap),
     });
     let shot = Shot {
         bounds: monitor.bounds,
