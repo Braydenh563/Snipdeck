@@ -411,8 +411,8 @@ impl Maintenance {
             .purge_not_before
             .is_some_and(|until| seconds < until && until.saturating_sub(seconds) <= 86_400);
         if self.state.last_seen != Some(seconds) {
+            // Saved with the next save; a write on every tick would be churn.
             self.state.last_seen = Some(seconds);
-            changed = true;
         }
         if !held && is_due(self.state.last_purge, seconds, INTERVAL) {
             match jobs.purge_trash(trash_cutoff(now)) {
@@ -931,7 +931,14 @@ mod tests {
                 MaintenanceOutcome::IntegrityFailed("busy".into()),
             ]
         );
-        assert_eq!(*m.state(), State::default(), "nothing is marked as run");
+        assert_eq!(
+            State {
+                last_seen: None,
+                ..m.state().clone()
+            },
+            State::default(),
+            "nothing is marked as run"
+        );
         assert!(!dir.path().join(STATE_FILE).exists());
 
         clock.set(at(t0() + 1));
