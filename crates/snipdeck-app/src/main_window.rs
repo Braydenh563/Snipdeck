@@ -894,12 +894,6 @@ impl MainModel {
         !self.searching() && self.open_list().is_some_and(|l| l.sort == ListSort::Manual)
     }
 
-    /// The trash entry for `key`.
-    #[must_use]
-    pub fn trash_entry(&self, key: Key) -> Option<&TrashEntry> {
-        self.trash.iter().find(|t| Key::from(t.target) == key)
-    }
-
     // ---- Changing what is shown ----------------------------------------------------------------
 
     /// Opens `section`: the search ends, the label filter and the selection clear and the cursor

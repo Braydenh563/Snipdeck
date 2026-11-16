@@ -568,6 +568,7 @@ where
         // The OS draws the title bar and its caption buttons until the client-area chrome of
         // ADR-0008 exists, so the toolbar reserves nothing for them.
         window.global::<ui::SystemLook<'_>>().set_caption_inset(0.0);
+        window.set_trash_days(crate::binding::limit(crate::main_window::TRASH_DAYS));
         core.sync();
 
         macro_rules! wire {

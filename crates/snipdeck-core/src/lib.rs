@@ -47,6 +47,3 @@ pub use trigger::{
     BUFFER_CHARS, Candidate, Fired, Matcher, SUGGEST_MIN_CHARS, Suggestion, Trigger, prefix_of,
 };
 pub use usage::{PasteFailure, UseMode, UseOutcome};
-
-/// The product name shown to users. The working name lives only here (SPEC header).
-pub const APP_NAME: &str = "Snipdeck";

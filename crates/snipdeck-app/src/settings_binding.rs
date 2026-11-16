@@ -1912,6 +1912,18 @@ where
             i32::try_from(crate::master_password::IDLE_LOCK.as_secs() / 60).unwrap_or(15),
         );
         window.set_master_min_length(to_i32(crate::master_password::MIN_LEN));
+        {
+            use crate::settings as s;
+            window.set_panel_width_min(crate::binding::limit(*s::PANEL_WIDTH.start()));
+            window.set_panel_width_max(crate::binding::limit(*s::PANEL_WIDTH.end()));
+            window.set_dock_hover_delay_max(crate::binding::limit(*s::HOVER_DELAY_MS.end()));
+            window.set_dock_leave_delay_max(crate::binding::limit(*s::LEAVE_DELAY_MS.end()));
+            window.set_backups_keep_min(crate::binding::limit(*s::BACKUPS_KEEP.start()));
+            window.set_backups_keep_max(crate::binding::limit(*s::BACKUPS_KEEP.end()));
+            window.set_clipboard_clear_secs_max(crate::binding::limit(
+                *s::CLIPBOARD_CLEAR_SECS.end(),
+            ));
+        }
         wire!(on_support_requested, |core| core.open_support());
         wire!(on_backup_now_requested, |core| core.backup_now());
         wire!(on_backup_restore_requested, |core, i| core

@@ -823,6 +823,7 @@ where
         on_effect: impl Fn(&Effect) + 'static,
     ) -> Binding {
         let core = Core::new(this, window, host, Box::new(on_effect));
+        window.set_trash_days(limit(crate::main_window::TRASH_DAYS));
         core.act(|ctl| ctl.set_group_name(&window.invoke_group_default_name()));
         core.wire_colours(window);
         core.sync();
@@ -2010,6 +2011,11 @@ pub(crate) fn refreshed_model<T: Clone + PartialEq + 'static>(
         vec.insert(head + shared + k, row);
     }
     None
+}
+
+/// A configured limit as the `int` a window property takes.
+pub(crate) fn limit(n: u32) -> i32 {
+    i32::try_from(n).unwrap_or(i32::MAX)
 }
 
 pub(crate) fn to_i32(n: usize) -> i32 {

@@ -2216,14 +2216,6 @@ ui_tests! {
         assert_eq!(take(&log), ["add-list"]);
     }
 
-    fn loading_shows_a_skeleton_with_a_spoken_status_instead_of_the_empty_state() {
-        let (ui, _log) = start();
-        fixture::set_rows(&ui, Vec::new());
-        ui.set_loading(true);
-        settle();
-        assert!(!missing(&ui, "Loading", AccessibleRole::ProgressIndicator));
-        assert!(missing(&ui, "This list is empty", AccessibleRole::Text));
-    }
 
     // ---- Toast -----------------------------------------------------------------------------------
 

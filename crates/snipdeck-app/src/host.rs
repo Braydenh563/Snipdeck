@@ -269,7 +269,6 @@ pub trait TypingControl {
 #[derive(Debug, Clone, Default)]
 pub struct FakeTyping {
     enabled: Rc<RefCell<Vec<bool>>>,
-    triggers: Rc<Cell<u32>>,
     candidates: Rc<RefCell<Vec<snipdeck_core::Candidate>>>,
     up: Rc<RefCell<Vec<u64>>>,
     generation: Rc<Cell<u64>>,
@@ -324,12 +323,6 @@ impl FakeTyping {
     pub fn ever_enabled(&self) -> bool {
         self.enabled.borrow().contains(&true)
     }
-
-    /// How many trigger lists were handed over.
-    #[must_use]
-    pub fn trigger_lists(&self) -> u32 {
-        self.triggers.get()
-    }
 }
 
 impl TypingControl for FakeTyping {
@@ -343,7 +336,6 @@ impl TypingControl for FakeTyping {
         _matcher: snipdeck_core::Matcher,
         candidates: Vec<snipdeck_core::Candidate>,
     ) {
-        self.triggers.set(self.triggers.get() + 1);
         *self.candidates.borrow_mut() = candidates;
     }
 

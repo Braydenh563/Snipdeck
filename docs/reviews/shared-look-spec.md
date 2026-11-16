@@ -184,7 +184,7 @@ measured from the regenerated goldens); slices 1 and 8 get `reviewer`. Regenerat
    empty, A12), `toast_window.slint`, `components/feedback.slint` (remove `ink`). Tests first: `tile_height_fits_content`,
    `tile_glyph_inline_with_title`, `empty_all_offers_clipboard_new_import`, `panel_empty_has_two_create_actions`,
    `toast_fill_is_ink` (pixel), `toast_action_contrast_4_5`. Goldens regenerated: `main-tile-light/dark`,
-   `main-awkward-tile-light`, `main-loading-tile-light`, `main-empty-all-light`, `main-empty-list-dark`,
+   `main-awkward-tile-light`, `main-empty-all-light`, `main-empty-list-dark`,
    `main-empty-trash-light`, `main-toast-dark`, `panel-empty-light`; new `main-tile-hover-light`.
 6. **Toolbar, menus, palette.** `main_window.slint` toolbar + search field, `components/menu.slint`,
    `components/command-palette.slint`, `form.slint` (SelectField popup rows). Run after 5 (same file). Tests first:

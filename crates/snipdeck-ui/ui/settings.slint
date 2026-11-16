@@ -462,15 +462,15 @@ export component SettingsPage inherits Window {
     callback help-requested();
 
     property <[string]> hotkey-names: [
-        @tr("Show or hide the panel"),
+        @tr("Show or hide the Panel"),
         @tr("Open the picker"),
         @tr("Save the clipboard as an item"),
         @tr("Paste the next item"),
     ];
     property <[string]> hotkey-help: [
-        @tr("Brings the panel up beside the app you are working in."),
+        @tr("Brings the Panel up beside the app you are working in."),
         @tr("Search every board and paste without opening the window."),
-        @tr("Saves the text that is on the clipboard when you press it as a new item in the list the panel shows."),
+        @tr("Saves the text that is on the clipboard when you press it as a new item in the list the Panel shows."),
         @tr("Pastes the next item of the list in order."),
     ];
 
@@ -482,13 +482,13 @@ export component SettingsPage inherits Window {
     // Titles of section 2 (Panel layout), for the search. A test checks that every row title is in here.
     property <string> keys-2: @tr("Panel layout") + " " + @tr("Layout") + " " + @tr("Search field") + " " + @tr("Lists") + " " + @tr("Quick-use numbers") + " " + @tr("Show Symbols tab") + " " + @tr("Show Colours tab") + " " + @tr("Copy a colour picked from the screen");
     // Titles of section 3 (Opening the Panel), for the search. A test checks that every row title is in here.
-    property <string> keys-3: @tr("Opening the Panel") + " " + @tr("Tray icon click opens") + " " + @tr("Panel opens") + " " + @tr("After a paste or copy") + " " + @tr("Hide the panel when it loses focus") + " " + @tr("Show the Panel in the taskbar and Alt+Tab") + " " + @tr("Keep Panel visible during screenshots") + " " + @tr("Dock to") + " " + @tr("Docked panel uses the full edge") + " " + @tr("Open a docked panel by") + " " + @tr("Hover delay") + " " + @tr("Leave delay") + " " + @tr("Picker position") + " " + @tr("Start with Windows") + " " + @tr("When Windows starts") + " " + @tr("Keep running in the tray when the window closes");
+    property <string> keys-3: @tr("Opening the Panel") + " " + @tr("Tray icon click opens") + " " + @tr("Panel opens") + " " + @tr("After a paste or copy") + " " + @tr("Hide the Panel when it loses focus") + " " + @tr("Show the Panel in the taskbar and Alt+Tab") + " " + @tr("Keep Panel visible during screenshots") + " " + @tr("Dock to") + " " + @tr("Docked Panel uses the full edge") + " " + @tr("Open a docked Panel by") + " " + @tr("Hover delay") + " " + @tr("Leave delay") + " " + @tr("Picker position") + " " + @tr("Start with Windows") + " " + @tr("When Windows starts") + " " + @tr("Keep running in the tray when the window closes");
     // Titles of section 4 (Privacy), for the search. A test checks that every row title is in here.
     property <string> keys-4: @tr("Privacy") + " " + @tr("fingerprint face PIN biometric lock") + " " + @tr("Keep a Recent inbox of what you copy") + " " + @tr("Clear recent history") + " " + @tr("Clear recent emoji and colours") + " " + @tr("Clear the clipboard after copying a sensitive item") + " " + @tr("Master password") + " " + @tr("Unlock with Windows Hello");
     // Titles of section 5 (Programs), for the search. A test checks that every row title is in here.
     property <string> keys-5: @tr("Programs") + " " + @tr("never paste excluded apps");
     // Titles of section 6 (Typing), for the search. A test checks that every row title is in here.
-    property <string> keys-6: @tr("Typing") + " " + @tr("Expand abbreviations as I type") + " " + @tr("Suggest snippets as I type") + " " + @tr("trigger triggers text expansion autocomplete shortcode");
+    property <string> keys-6: @tr("Typing") + " " + @tr("Expand abbreviations as I type") + " " + @tr("Suggest items as I type") + " " + @tr("trigger triggers text expansion autocomplete shortcode");
     // Titles of section 7 (Backups and your data), for the search. A test checks that every row title is in here.
     property <string> keys-7: @tr("Backups and your data") + " " + @tr("Backups to keep") + " " + @tr("Export library") + " " + @tr("Import") + " " + @tr("Erase library") + " " + @tr("Also forget the encryption key");
     // Titles of section 8 (Support), for the search. A test checks that every row title is in here.
@@ -744,11 +744,11 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Panel width");
-                        description: @tr("How wide the panel opens, from {} to {} pixels.", root.panel-width-min, root.panel-width-max);
+                        description: @tr("How wide the Panel opens, from {} to {} pixels.", root.panel-width-min, root.panel-width-max);
                         NumberStepper {
                             label: @tr("Panel width");
-                            decrease-label: @tr("Make the panel narrower");
-                            increase-label: @tr("Make the panel wider");
+                            decrease-label: @tr("Make the Panel narrower");
+                            increase-label: @tr("Make the Panel wider");
                             unit: @tr("px");
                             min: root.panel-width-min;
                             max: root.panel-width-max;
@@ -912,10 +912,10 @@ export component SettingsPage inherits Window {
                         }
                     }
                     SettingRow {
-                        title: @tr("Hide the panel when it loses focus");
-                        description: @tr("When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays, and a docked panel that tucks goes to its tab instead.");
+                        title: @tr("Hide the Panel when it loses focus");
+                        description: @tr("When the pin is off, the Panel hides as soon as you switch to another app. A pinned Panel stays, and a docked Panel that tucks goes to its tab instead.");
                         Toggle {
-                            a11y-label: @tr("Hide the panel when it loses focus");
+                            a11y-label: @tr("Hide the Panel when it loses focus");
                             checked <=> root.panel-hide-on-blur;
                             toggled(on) => { root.panel-hide-on-blur-toggled(on); }
                             changed has-focus => {
@@ -937,7 +937,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Keep Panel visible during screenshots");
-                        description: @tr("Take screenshot hides the panel until the picture is taken. Turn this on to leave it on screen.");
+                        description: @tr("Take screenshot hides the Panel until the picture is taken. Turn this on to leave it on screen.");
                         Toggle {
                             a11y-label: @tr("Keep Panel visible during screenshots");
                             checked <=> root.screenshot-keep-panel;
@@ -949,7 +949,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Dock to");
-                        description: @tr("Puts the panel at one edge of the screen, on the monitor it is on. Dragging it to an edge and holding it there does the same. Floating lets it sit anywhere.");
+                        description: @tr("Puts the Panel at one edge of the screen, on the monitor it is on. Dragging it to an edge and holding it there does the same. Floating lets it sit anywhere.");
                         SelectField {
                             width: 200px * SystemLook.text-scale;
                             label: @tr("Dock to");
@@ -962,10 +962,10 @@ export component SettingsPage inherits Window {
                         }
                     }
                     SettingRow {
-                        title: @tr("Docked panel uses the full edge");
-                        description: @tr("Off keeps a panel docked to the left or right at the height you dropped it. On stretches it over the whole edge.");
+                        title: @tr("Docked Panel uses the full edge");
+                        description: @tr("Off keeps a Panel docked to the left or right at the height you dropped it. On stretches it over the whole edge.");
                         Toggle {
-                            a11y-label: @tr("Docked panel uses the full edge");
+                            a11y-label: @tr("Docked Panel uses the full edge");
                             checked <=> root.dock-full-edge;
                             toggled(on) => { root.dock-full-edge-toggled(on); }
                             changed has-focus => {
@@ -974,11 +974,11 @@ export component SettingsPage inherits Window {
                         }
                     }
                     SettingRow {
-                        title: @tr("Open a docked panel by");
-                        description: @tr("Off: a docked panel does not tuck and hides like a floating one. Otherwise it tucks into a thin tab at its edge, and the panel shortcut opens it too.");
+                        title: @tr("Open a docked Panel by");
+                        description: @tr("Off: a docked Panel does not tuck and hides like a floating one. Otherwise it tucks into a thin tab at its edge, and the Panel shortcut opens it too.");
                         Segmented {
                             width: 360px * SystemLook.text-scale;
-                            label: @tr("Open a docked panel by");
+                            label: @tr("Open a docked Panel by");
                             options: [@tr("Off"), @tr("Hover"), @tr("Click"), @tr("Hover and click")];
                             current: root.dock-trigger-index;
                             chosen(i) => { root.dock-trigger-chosen(i); }
@@ -989,7 +989,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Hover delay");
-                        description: @tr("How long the pointer rests on the tab before the panel opens, from 0 to {} milliseconds.", root.dock-hover-delay-max);
+                        description: @tr("How long the pointer rests on the tab before the Panel opens, from 0 to {} milliseconds.", root.dock-hover-delay-max);
                         NumberStepper {
                             label: @tr("Hover delay");
                             decrease-label: @tr("Shorten the hover delay");
@@ -1007,7 +1007,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Leave delay");
-                        description: @tr("How long the pointer stays off the open panel before it tucks away, from 0 to {} milliseconds.", root.dock-leave-delay-max);
+                        description: @tr("How long the pointer stays off the open Panel before it tucks away, from 0 to {} milliseconds.", root.dock-leave-delay-max);
                         NumberStepper {
                             label: @tr("Leave delay");
                             decrease-label: @tr("Shorten the leave delay");
@@ -1166,7 +1166,7 @@ export component SettingsPage inherits Window {
                         accessible-role: none;
                     }
                     Text {
-                        text: @tr("Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe.");
+                        text: @tr("Nothing you copy in these programs reaches the Recent inbox. Use the program’s file name, for example keepass.exe.");
                         color: Theme.text-secondary;
                         font-family: Fonts.sans;
                         font-size: Type.sm;
@@ -1204,14 +1204,14 @@ export component SettingsPage inherits Window {
                         title: @tr("Master password");
                         search-also: @tr("Unlock with Windows Hello");
                         description: root.master-state == 0
-                            ? @tr("Snipdeck can't protect a key on this PC, so a master password is not available.")
+                            ? @tr("Snipdeck can’t protect a key on this PC, so a master password is not available.")
                             : root.master-state == 3
-                            ? @tr("Snipdeck couldn't read your encryption key, so the master password can't be set or changed right now. Restart Snipdeck to try again.")
+                            ? @tr("Snipdeck couldn’t read your encryption key, so the master password can’t be set or changed right now. Restart Snipdeck to try again.")
                             : root.master-state == 2
                             ? (root.master-locked
                                 ? @tr("A master password is on and your sensitive items are locked.")
                                 : @tr("A master password is on. Snipdeck asks for it when you first use a sensitive item and again after {} minutes without use.", root.master-idle-minutes))
-                            : @tr("Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. On Windows, you can then also unlock with Windows Hello.", root.master-idle-minutes);
+                            : @tr("Adds a password on top of Windows’ own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. On Windows, you can then also unlock with Windows Hello.", root.master-idle-minutes);
                         HorizontalLayout {
                             spacing: Space.s2;
                             if root.master-state != 2: Button {
@@ -1296,7 +1296,7 @@ export component SettingsPage inherits Window {
                     search-text: root.keys-5;
                     located(y) => { page.scroll-to(y - body.absolute-position.y); }
                     Text {
-                        text: @tr("The key Snipdeck presses to paste into each program. Most programs use Ctrl+V; some terminals need another key. Choose Never paste to copy instead. Use the program's file name, for example notepad.exe.");
+                        text: @tr("The key Snipdeck presses to paste into each program. Most programs use Ctrl+V; some terminals need another key. Choose Never paste to copy instead. Use the program’s file name, for example notepad.exe.");
                         color: Theme.text-secondary;
                         font-family: Fonts.sans;
                         font-size: Type.sm;
@@ -1329,7 +1329,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Expand abbreviations as I type");
-                        description: @tr("When you type an item's trigger in another program, Snipdeck replaces it with the item's text. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items.");
+                        description: @tr("When you type an item’s trigger in another program, Snipdeck replaces it with the item’s text. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items.");
                         Toggle {
                             a11y-label: @tr("Expand abbreviations as I type");
                             a11y-description: root.typing-available ? "" : @tr("Typing triggers work on Windows only.");
@@ -1342,10 +1342,10 @@ export component SettingsPage inherits Window {
                         }
                     }
                     SettingRow {
-                        title: @tr("Suggest snippets as I type");
+                        title: @tr("Suggest items as I type");
                         description: @tr("After you type the first two characters of a trigger, a small hint at the text cursor offers the item. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows.");
                         Toggle {
-                            a11y-label: @tr("Suggest snippets as I type");
+                            a11y-label: @tr("Suggest items as I type");
                             a11y-description: root.typing-available ? "" : @tr("Typing triggers work on Windows only.");
                             enabled: root.typing-available;
                             checked <=> root.suggest-triggers;
