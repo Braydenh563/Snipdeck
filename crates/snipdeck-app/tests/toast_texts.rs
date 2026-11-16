@@ -375,7 +375,7 @@ fn what_a_toast_carries_reaches_its_sentence() {
         );
         assert_eq!(
             said(ToastMessage::CopiedElevated { app: String::new() }),
-            "Copied. That app runs as administrator, so Snipdeck can't paste into it."
+            "Copied. That app runs as administrator, so Snipdeck can’t paste into it."
         );
         assert_eq!(
             said(ToastMessage::ItemsTrashed { count: 1 }),

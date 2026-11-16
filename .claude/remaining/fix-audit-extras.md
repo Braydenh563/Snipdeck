@@ -23,3 +23,8 @@ EXTRAS-4 (Rust-side English into *Texts globals), 12 (portable marker, trash ret
 - EXTRAS-13: add a Pages workflow, or delete the claim in site/README.txt
 - EXTRAS-14: pin the release toolchain to an exact version (release.yml:209) and enforce `rust-version`
 - Windows-only code is unverified until run on Windows
+
+## Added this stretch
+- EXTRAS-4 (part): doctor labels and details are translated (`DoctorTexts`, `doctor::Finding`). Still open: `starter.rs`, `wording.rs`, `commands.rs`, start-up failure reason
+- EXTRAS-12 (part): live language change (`language::apply`), `portable` marker file beside the exe (`paths::portable_dir`). Still open: Trash retention setting
+- Open: EXTRAS-7 SEH filter (unverified), EXTRAS-15 fit-per-locale test, not-reached file audit
