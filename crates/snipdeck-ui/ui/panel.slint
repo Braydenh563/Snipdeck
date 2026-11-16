@@ -1305,6 +1305,17 @@ export component PanelWindow inherits Window {
                     return reject;
                 }
                 if (event.modifiers.control && !event.modifiers.alt && !event.modifiers.meta) {
+                // Ctrl+Home and Ctrl+End: the first and last row of the list or of Recent (Home and End are the search
+                // field's caret keys).
+                    if (root.recent-open && !switcher.has-focus && (event.text == Key.Home || event.text == Key.End)) {
+                        root.move-recent(event.text == Key.Home ? -root.recent-rows.length : root.recent-rows.length);
+                        return accept;
+                    }
+                    if (!root.recent-open && !root.symbols-open && !root.colours-open && !switcher.has-focus && !root.list-hidden
+                        && (event.text == Key.Home || event.text == Key.End)) {
+                        root.move-selection(event.text == Key.Home ? -root.rows.length : root.rows.length);
+                        return accept;
+                    }
                     if (root.symbols-open && event.text == Key.LeftArrow) {
                         root.step-symbol-kind(-1);
                         return accept;
@@ -1417,6 +1428,12 @@ export component PanelWindow inherits Window {
                     && (event.text == Key.UpArrow || event.text == Key.DownArrow)) {
                     // The keyboard way to arrange rows (WCAG 2.5.7 for the drag); a sorted list or a search leaves the key alone.
                     root.item-reorder-requested(event.text == Key.UpArrow ? -1 : 1);
+                    return accept;
+                }
+                // Alt+1-9 on Recent uses the Nth clipboard entry.
+                if (event.modifiers.alt && !event.modifiers.control && !event.modifiers.shift && !event.modifiers.meta && root.recent-open
+                    && root.digit(event.text) > 0 && root.digit(event.text) <= root.recent-rows.length) {
+                    root.recent-used(root.recent-rows[root.digit(event.text) - 1].id);
                     return accept;
                 }
                 // Alt+1-9 uses the Nth row whatever the query holds; a bare digit is always search text.

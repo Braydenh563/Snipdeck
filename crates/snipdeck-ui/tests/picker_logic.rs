@@ -228,6 +228,18 @@ ui_tests! {
         assert_eq!(ui.get_selected_index(), 0);
     }
 
+    fn ctrl_home_and_ctrl_end_go_to_the_first_and_last_result_and_leave_the_search_caret_alone() {
+        let (ui, log) = start();
+        fixture::set_rows(&ui, fixture::numbered_rows(30));
+        settle();
+        chord(ui.window(), &[Key::Control], &key(Key::End));
+        assert_eq!(ui.get_selected_index(), 29);
+        assert_eq!(take(&log), ["move:29"]);
+        chord(ui.window(), &[Key::Control], &key(Key::Home));
+        assert_eq!(ui.get_selected_index(), 0);
+        assert_eq!(take(&log), ["move:-29"]);
+    }
+
     fn the_selected_row_is_exposed_as_selected_to_assistive_technology() {
         let (ui, _log) = start();
         press(ui.window(), &key(Key::DownArrow));

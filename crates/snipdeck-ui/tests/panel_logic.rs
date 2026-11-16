@@ -3496,6 +3496,35 @@ ui_tests! {
         }
     }
 
+    fn ctrl_home_ctrl_end_and_alt_digits_work_on_the_panel_list_and_on_recent() {
+        let (ui, log) = start();
+        let used = log.clone();
+        ui.on_recent_used(move |i| used.borrow_mut().push(format!("ruse:{i}")));
+        let n = ui.get_rows().row_count();
+        chord(ui.window(), &[Key::Control], &key(Key::End));
+        assert_eq!(usize::try_from(ui.get_selected_index()).ok(), n.checked_sub(1), "the last row");
+        chord(ui.window(), &[Key::Control], &key(Key::Home));
+        assert_eq!(ui.get_selected_index(), 0, "the first row");
+
+        ui.set_recent_available(true);
+        ui.set_recent_rows(ModelRc::new(VecModel::from(vec![
+            RecentRow { id: 1, preview: "one".into(), app: "".into(), age_minutes: 1, kind: snipdeck_ui::ItemKind::Text, image: slint::Image::default() },
+            RecentRow { id: 2, preview: "two".into(), app: "".into(), age_minutes: 2, kind: snipdeck_ui::ItemKind::Text, image: slint::Image::default() },
+            RecentRow { id: 3, preview: "three".into(), app: "".into(), age_minutes: 3, kind: snipdeck_ui::ItemKind::Text, image: slint::Image::default() },
+        ])));
+        press_at(&ui, centre(&find(&ui, "Recent", AccessibleRole::Tab)));
+        settle();
+        take(&log);
+        chord(ui.window(), &[Key::Control], &key(Key::End));
+        assert_eq!(ui.get_recent_selected(), 2);
+        chord(ui.window(), &[Key::Control], &key(Key::Home));
+        assert_eq!(ui.get_recent_selected(), 0);
+        chord(ui.window(), &[Key::Alt], "2");
+        assert_eq!(take(&log), ["ruse:2"], "Alt+2 pastes the second clipboard entry");
+        chord(ui.window(), &[Key::Alt], "9");
+        assert!(take(&log).is_empty(), "three entries: there is no ninth");
+    }
+
     fn the_empty_recent_list_says_why_and_the_menu_offers_save_to() {
         let (ui, _log) = start();
         ui.set_recent_available(true);

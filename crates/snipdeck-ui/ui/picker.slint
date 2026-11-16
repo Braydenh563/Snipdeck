@@ -384,6 +384,11 @@ export component PickerWindow inherits Window {
                 return accept;
             }
             if (event.modifiers.control && !event.modifiers.alt && !event.modifiers.meta) {
+                // Ctrl+Home and Ctrl+End: the first and last result (Home and End are the search field's caret keys).
+                if (event.text == Key.Home || event.text == Key.End) {
+                    root.move-selection(event.text == Key.Home ? -root.rows.length : root.rows.length);
+                    return accept;
+                }
                 if (event.text == "e" || event.text == "E") {
                     if (root.sel >= 0) {
                         root.edit-requested(root.sel);
