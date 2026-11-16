@@ -137,6 +137,8 @@ count; single select; choosing it again or "Clear filter" clears it).
 `blue` (default), `teal`, `green`, `orange`, `rose`, `violet`, `slate`. Each maps to the same
 600/700/800 steps; the checks run for every option.
 
+**One named palette.** Item labels, list and board colours and the accent choice share the nine names Blue, Teal, Green, Amber, Orange, Red, Rose, Violet and Slate (`HueNames` in `theme.slint`; the Rust side keeps one key per hue). A surface offers a subset (labels have no Rose, because the library file restricts the stored label keys; the accent offers Blue, Teal, Green, Amber, Rose, Violet and Windows), and the stored ids and values never change.
+
 ## 3. Typography
 
 **Families (bundled, SIL OFL):**
@@ -230,7 +232,7 @@ Every icon-only control has a tooltip and an accessible label with the same word
 | ListTabBar | Tab ×N, overflow, + | Switch and reorder lists in the panel | scrollable, draggable |
 | BoardSwitcher | Button + Menu | Change board | — |
 | PinnedStrip | Tag-style pinned items | One-click access to pinned items | horizontal scroll |
-| SidebarItem | icon, label, count | Main-window navigation | board, list (8px colour mark, optional list icon), tag, system |
+| SidebarItem | icon, label, count | Main-window navigation | board, list (8px colour mark, optional list icon), tag, system; list, tag and Trash rows take a dragged item row (`drop-target`: a 2px focus-ring border) |
 | TemplateField | label, TextField / choice | Fill in a prompted placeholder | text · choice · date |
 | HotkeyRecorder | Keycap combo, clear | Rebind shortcuts, detect conflicts | idle, recording, conflict |
 | EmptyState | heading, one sentence, primary action | Teach how to fill an empty surface | list, board, search, inbox |

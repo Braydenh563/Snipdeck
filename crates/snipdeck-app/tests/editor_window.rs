@@ -796,7 +796,7 @@ fn with_big_item(data: &Path) -> (ItemId, String) {
 }
 
 #[test]
-fn text_over_16_kb_opens_in_a_read_only_viewer_and_saving_keeps_it_whole() {
+fn text_over_16_kb_opens_in_parts_that_are_all_editable_and_saves_whole() {
     on_ui_thread(|| {
         let data = tempfile::tempdir().expect("dir");
         let (id, big) = with_big_item(data.path());
@@ -805,32 +805,39 @@ fn text_over_16_kb_opens_in_a_read_only_viewer_and_saving_keeps_it_whole() {
         r.editor.redraw();
         let ed = r.ed();
         assert!(ed.get_content_large());
-        assert_eq!(
-            ed.get_content().len(),
-            16 * 1024,
-            "the start of the text is shown"
-        );
+        let parts = ed.get_parts().row_count();
+        assert_eq!(parts, 2, "27.5 KB is two parts");
+        assert_eq!(ed.get_part_index(), 0);
+        assert!(ed.get_content().len() <= 16 * 1024, "one part in the field");
+        assert!(big.starts_with(ed.get_content().as_str()));
         let field = find(&ed, "Content", AccessibleRole::TextInput);
-        assert_eq!(field.accessible_read_only(), Some(true));
+        assert_eq!(field.accessible_read_only(), Some(false), "editable");
         let size = ed.get_content_size().to_string();
         assert!(size.ends_with("KB"), "{size}");
         let notice = format!(
-            "This text is {size}. Anything over 16 KB opens read-only here, and the first 16 KB are shown."
+            "This text is {size}. It opens a part at a time, so typing stays fast; all the parts are saved together."
         );
         let _ = find(&ed, &notice, AccessibleRole::Text);
+        let _ = find(&ed, "Part 1 of 2", AccessibleRole::Text);
 
-        // Typing into the viewer changes nothing; the title is still editable.
-        let shown = ed.get_content();
+        // The second part is reachable, and the tail is readable there.
+        ed.invoke_part_requested(1);
+        settle();
+        assert_eq!(ed.get_part_index(), 1);
+        assert!(ed.get_content().ends_with("TAIL"));
+        let _ = find(&ed, "Part 2 of 2", AccessibleRole::Text);
+        // Typing into a part changes it, and only it; the whole text is saved with the change.
         ed.invoke_focus_title();
         click(
             ed.window(),
             &find(&ed, "Content", AccessibleRole::TextInput),
         );
-        type_text(ed.window(), "typed into the viewer");
-        assert_eq!(ed.get_content(), shown, "read-only");
+        type_text(ed.window(), "typed");
+        assert!(ed.get_content().contains("typed"), "editable");
+        ed.invoke_part_requested(0);
+        settle();
+        assert_eq!(ed.get_part_index(), 0);
         ed.set_item_title("Giant, renamed".into());
-        wait(AUTOSAVE_EVERY);
-        assert!(r.draft_files().is_empty(), "a read-only text has no draft");
         ed.invoke_mark_dirty();
         save(&ed);
         assert!(
@@ -843,7 +850,15 @@ fn text_over_16_kb_opens_in_a_read_only_viewer_and_saving_keeps_it_whole() {
             ))
         );
         let id = r.id("Giant, renamed");
-        assert_eq!(r.text(id), big, "the whole text is still there");
+        let saved = r.text(id);
+        assert_eq!(saved.len(), big.len() + "typed".len());
+        assert!(saved.ends_with("TAIL"));
+        assert!(saved.starts_with("0123456789\n"));
+        assert_eq!(
+            saved.replacen("typed", "", 1),
+            big,
+            "only the typing changed"
+        );
     });
 }
 

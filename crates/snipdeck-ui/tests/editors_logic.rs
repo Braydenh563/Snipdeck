@@ -572,18 +572,40 @@ ui_tests! {
         assert!(toggle.accessible_description().unwrap().starts_with("Only text, code, link"));
     }
 
-    fn large_text_is_read_only_with_a_notice() {
+    fn large_text_is_edited_a_part_at_a_time_with_a_pager() {
         let (ui, _log) = item_editor();
         assert_eq!(find(&ui, "Content", AccessibleRole::TextInput).accessible_read_only(), Some(false));
+        assert!(missing(&ui, "Next part", AccessibleRole::Button), "no pager for a short text");
+        let asked = std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
+        let seen = asked.clone();
+        ui.on_part_requested(move |target| seen.borrow_mut().push(target));
         ui.set_content_large(true);
         ui.set_content_size("2.4 MB".into());
+        ui.set_parts(slint::ModelRc::new(slint::VecModel::from(vec![
+            slint::SharedString::from("one"),
+            slint::SharedString::from("two"),
+            slint::SharedString::from("three"),
+        ])));
+        ui.set_part_index(0);
         settle();
-        assert_eq!(find(&ui, "Content", AccessibleRole::TextInput).accessible_read_only(), Some(true));
+        // Still editable; the notice and the pager say where the reader is.
+        assert_eq!(find(&ui, "Content", AccessibleRole::TextInput).accessible_read_only(), Some(false));
         let _ = find(
             &ui,
-            "This text is 2.4 MB. Anything over 16 KB opens read-only here, and the first 16 KB are shown.",
+            "This text is 2.4 MB. It opens a part at a time, so typing stays fast; all the parts are saved together.",
             AccessibleRole::Text,
         );
+        let _ = find(&ui, "Part 1 of 3", AccessibleRole::Text);
+        assert_eq!(find(&ui, "Previous part", AccessibleRole::Button).accessible_enabled(), Some(false));
+        find(&ui, "Next part", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(*asked.borrow(), [1]);
+        // On the last part Next is off and Previous asks for the one before.
+        ui.set_part_index(2);
+        settle();
+        let _ = find(&ui, "Part 3 of 3", AccessibleRole::Text);
+        assert_eq!(find(&ui, "Next part", AccessibleRole::Button).accessible_enabled(), Some(false));
+        find(&ui, "Previous part", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(*asked.borrow(), [1, 1]);
     }
 
     fn a_new_item_may_be_an_image_or_a_file_and_asks_for_its_path() {

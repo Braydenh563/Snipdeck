@@ -544,6 +544,9 @@ export component MainWindow inherits Window {
     callback row-dropped-above(int, int);
     // Row `row` was dropped on sidebar list `list`.
     callback row-dropped-on-list(int, int);
+    // Row `row` was dropped on the sidebar's Trash, or on sidebar tag `tag` (an index of `tags`).
+    callback row-dropped-on-trash(int);
+    callback row-dropped-on-tag(int, int);
     // Sidebar list `from` was dropped on sidebar list `onto`.
     callback list-dropped(int, int);
     // Rows can be dragged into a new place: the open list is in manual order and no search is running.
@@ -1429,17 +1432,31 @@ export component MainWindow inherits Window {
                                         show-focus: nav-scope.has-focus && root.nav-cursor == 2;
                                         clicked => { root.open-section(2); }
                                     }
-                                    SidebarItem {
-                                        kind: SidebarItemKind.system;
-                                        icon: Icons.trash;
-                                        label: @tr("Trash");
-                                        count: root.count-trash;
-                                        rail: root.narrow;
-                                        selected: root.nav-selected == 3;
-                                        keyboard-focusable: false;
-                                        show-focus: nav-scope.has-focus && root.nav-cursor == 3;
-                                        clicked => { root.open-section(3); }
-                                        context-menu-requested(x, y) => { root.open-nav-menu(3, root.sidebar-w, self.absolute-position.y + y); }
+                                    Rectangle {
+                                        height: side-trash.height;
+                                        trash-drop := DropArea {
+                                            can-drop(event) => {
+                                                root.edge-dir = 0;
+                                                root.payload-row(event.data) >= 0 && !root.in-trash ? DragAction.move : DragAction.none
+                                            }
+                                            dropped(event) => {
+                                                root.row-dropped-on-trash(root.payload-row(event.data));
+                                                return DragAction.move;
+                                            }
+                                            side-trash := SidebarItem {
+                                                kind: SidebarItemKind.system;
+                                                icon: Icons.trash;
+                                                label: @tr("Trash");
+                                                count: root.count-trash;
+                                                rail: root.narrow;
+                                                selected: root.nav-selected == 3;
+                                                drop-target: trash-drop.has-drag;
+                                                keyboard-focusable: false;
+                                                show-focus: nav-scope.has-focus && root.nav-cursor == 3;
+                                                clicked => { root.open-section(3); }
+                                                context-menu-requested(x, y) => { root.open-nav-menu(3, root.sidebar-w, self.absolute-position.y + y); }
+                                            }
+                                        }
                                     }
 
                                     if !root.narrow: SidebarHeading {
@@ -1530,16 +1547,30 @@ export component MainWindow inherits Window {
                                             clicked => { root.manage-tags-requested(); }
                                         }
                                     }
-                                    for entry[i] in root.tags: SidebarItem {
-                                        kind: SidebarItemKind.tag;
-                                        label: entry.label;
-                                        count: entry.count;
-                                        rail: root.narrow;
-                                        selected: root.nav-selected == 4 + root.n-lists + i;
-                                        keyboard-focusable: false;
-                                        show-focus: nav-scope.has-focus && root.nav-cursor == 4 + root.n-lists + i;
-                                        clicked => { root.open-section(4 + root.n-lists + i); }
-                                        context-menu-requested(x, y) => { root.open-nav-menu(4 + root.n-lists + i, root.sidebar-w, self.absolute-position.y + y); }
+                                    for entry[i] in root.tags: Rectangle {
+                                        height: side-tag.height;
+                                        tag-drop := DropArea {
+                                            can-drop(event) => {
+                                                root.edge-dir = 0;
+                                                root.payload-row(event.data) >= 0 && !root.in-trash ? DragAction.move : DragAction.none
+                                            }
+                                            dropped(event) => {
+                                                root.row-dropped-on-tag(root.payload-row(event.data), i);
+                                                return DragAction.move;
+                                            }
+                                            side-tag := SidebarItem {
+                                                kind: SidebarItemKind.tag;
+                                                label: entry.label;
+                                                count: entry.count;
+                                                rail: root.narrow;
+                                                selected: root.nav-selected == 4 + root.n-lists + i;
+                                                drop-target: tag-drop.has-drag;
+                                                keyboard-focusable: false;
+                                                show-focus: nav-scope.has-focus && root.nav-cursor == 4 + root.n-lists + i;
+                                                clicked => { root.open-section(4 + root.n-lists + i); }
+                                                context-menu-requested(x, y) => { root.open-nav-menu(4 + root.n-lists + i, root.sidebar-w, self.absolute-position.y + y); }
+                                            }
+                                        }
                                     }
                                 }
                             }

@@ -261,7 +261,6 @@ fn tips_topic_opens_the_fourth_tab() {
             words.get_titles().row_count(),
             words.get_first_lines().row_count(),
             words.get_second_lines().row_count(),
-            words.get_images().row_count(),
         ] {
             assert_eq!(list, TIPS.len(), "one entry per tip in every TipTexts list");
         }
@@ -270,7 +269,7 @@ fn tips_topic_opens_the_fourth_tab() {
         for card in &cards {
             assert!(!card.title.is_empty() && !card.first_line.is_empty());
             assert!(!card.second_line.is_empty());
-            assert!(card.picture.size().width > 0, "{}: no picture", card.title);
+            assert!((0..11).contains(&card.art), "{}: no picture", card.title);
         }
         assert_eq!(cards[0].title.as_str(), "Open the Panel from anywhere");
         // The template card shows the two placeholder examples, not their format holes.

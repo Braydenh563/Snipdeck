@@ -216,7 +216,7 @@ pub fn tips(ui: &HelpWindow) {
             title: words.get_titles().row_data(i).unwrap_or_default(),
             first_line: words.get_first_lines().row_data(i).unwrap_or_default(),
             second_line: words.get_second_lines().row_data(i).unwrap_or_default(),
-            picture: words.get_images().row_data(i).unwrap_or_default(),
+            art: i32::try_from(i).unwrap_or_default(),
         })
         .collect();
     ui.set_tips(ModelRc::new(VecModel::from(cards)));

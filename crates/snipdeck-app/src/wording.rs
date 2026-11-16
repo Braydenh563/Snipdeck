@@ -732,6 +732,8 @@ where
     match error {
         TagRenameError::Name(name) => name_error_text(window, name),
         TagRenameError::Exists => t.invoke_tag_exists().into(),
+        // Not an error: the Tag manager asks to merge instead.
+        TagRenameError::Merge { .. } => String::new(),
         TagRenameError::Failed => t.invoke_tag_rename_failed().into(),
     }
 }

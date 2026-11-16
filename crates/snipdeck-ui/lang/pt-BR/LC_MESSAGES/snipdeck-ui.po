@@ -145,6 +145,9 @@ msgstr "Adicionar lista"
 msgid "Add some text, or cancel."
 msgstr "Adicione um texto ou cancele."
 
+msgid "Add tag"
+msgstr "Adicionar etiqueta"
+
 msgid "Add to list"
 msgstr "Adicionar à lista"
 
@@ -156,6 +159,9 @@ msgstr "Adicionar a “{}”"
 
 msgid "Add {} or {} to a snippet."
 msgstr "Adicione {} ou {} a um item."
+
+msgid "Add, rename, merge or delete tags. A new name another tag already has merges the two. Deleting a tag removes it from its items; the items stay."
+msgstr "Adicione, renomeie, mescle ou exclua etiquetas. Um nome novo que outra etiqueta já tem mescla as duas. Excluir uma etiqueta a remove de seus itens; os itens permanecem."
 
 msgid "Added to {}"
 msgstr "Adicionado a {}"
@@ -1603,6 +1609,12 @@ msgstr "Senha mestra definida."
 msgid "Menu"
 msgstr "Menu"
 
+msgid "Merge tags"
+msgstr "Mesclar etiquetas"
+
+msgid "Merge these tags?"
+msgstr "Mesclar estas etiquetas?"
+
 msgid "Microsoft Store"
 msgstr "Microsoft Store"
 
@@ -1753,6 +1765,9 @@ msgstr "Avançar"
 
 msgid "Next list"
 msgstr "Próxima lista"
+
+msgid "Next part"
+msgstr "Próxima parte"
 
 msgid "Next scope"
 msgstr "Próximo escopo"
@@ -2108,6 +2123,9 @@ msgstr "O Painel permanece aberto"
 msgid "Panel width"
 msgstr "Largura do painel"
 
+msgid "Part {} of {}"
+msgstr "Parte {} de {}"
+
 msgid "Paste"
 msgstr "Colar"
 
@@ -2291,6 +2309,9 @@ msgstr "Pré-visualizar este item (Ctrl+P)"
 msgid "Previous list"
 msgstr "Lista anterior"
 
+msgid "Previous part"
+msgstr "Parte anterior"
+
 msgid "Privacy"
 msgstr "Privacidade"
 
@@ -2434,9 +2455,6 @@ msgstr "Renomear quadro…"
 
 msgid "Rename group"
 msgstr "Renomear grupo"
-
-msgid "Rename or delete tags. Deleting a tag removes it from its items; the items stay."
-msgstr "Renomeie ou exclua etiquetas. Excluir uma etiqueta a remove dos seus itens; os itens permanecem."
 
 msgid "Rename tag {}"
 msgstr "Renomear a etiqueta {}"
@@ -3271,8 +3289,8 @@ msgstr "Não é possível ler este modelo: {}."
 msgid "This text is over {} KB, the most that can be edited here. Shorten it, or keep it in a file."
 msgstr "Este texto tem mais de {} KB, o máximo editável aqui. Encurte-o ou mantenha-o em um arquivo."
 
-msgid "This text is {}. Anything over 16 KB opens read-only here, and the first 16 KB are shown."
-msgstr "Este texto é {}. Qualquer coisa acima de 16 KB abre aqui somente para leitura, e os primeiros 16 KB são exibidos."
+msgid "This text is {}. It opens a part at a time, so typing stays fast; all the parts are saved together."
+msgstr "Este texto tem {}. Ele abre uma parte por vez para que a digitação continue fluida; todas as partes são salvas juntas."
 
 msgid "Tile view"
 msgstr "Exibição em blocos"
@@ -4017,6 +4035,11 @@ msgid "{n} item will be added"
 msgid_plural "{n} items will be added"
 msgstr[0] "{n} item será adicionado"
 msgstr[1] "{n} itens serão adicionados"
+
+msgid "{n} item will carry \"{}\" instead of \"{}\"."
+msgid_plural "{n} items will carry \"{}\" instead of \"{}\"."
+msgstr[0] "{n} item terá “{}” em vez de “{}”."
+msgstr[1] "{n} itens terão “{}” em vez de “{}”."
 
 msgid "{n} item will move to Trash with it. You can restore them for 30 days."
 msgid_plural "{n} items will move to Trash with it. You can restore them for 30 days."

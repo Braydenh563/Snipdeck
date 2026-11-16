@@ -734,7 +734,32 @@ fn renaming_in_the_tag_manager_updates_the_sidebar() {
 }
 
 #[test]
-fn a_clashing_rename_shows_the_error_and_keeps_the_editor() {
+fn a_new_tag_is_added_from_the_manager_and_a_taken_name_says_so() {
+    on_ui_thread(|| {
+        let r = rig_with_tags();
+        let before = tag_labels(&r);
+        r.ui.invoke_manage_tags_requested();
+        let manager = r.binding.tag_manager().unwrap();
+        manager.set_new_text("Fresh".into());
+        manager.invoke_create_requested("Fresh".into());
+        assert_eq!(manager.get_new_error(), "");
+        assert_eq!(manager.get_new_text(), "", "the field is cleared");
+        assert_eq!(tag_labels(&r).len(), before.len() + 1);
+        assert_eq!(manager.get_tags().row_count(), before.len() + 1);
+
+        manager.set_new_text("fresh".into());
+        manager.invoke_create_requested("fresh".into());
+        assert_eq!(
+            manager.get_new_error(),
+            "A tag with that name already exists."
+        );
+        assert_eq!(manager.get_new_text(), "fresh", "kept for correcting");
+        assert_eq!(tag_labels(&r).len(), before.len() + 1);
+    });
+}
+
+#[test]
+fn renaming_onto_another_tag_asks_and_the_confirmation_merges() {
     on_ui_thread(|| {
         let r = rig_with_tags();
         let before = tag_labels(&r);
@@ -742,12 +767,28 @@ fn a_clashing_rename_shows_the_error_and_keeps_the_editor() {
         let manager = r.binding.tag_manager().unwrap();
         manager.set_editing(0);
         manager.invoke_rename_requested(0, before[1].to_uppercase().into());
-        assert_eq!(
-            manager.get_rename_error(),
-            "A tag with that name already exists."
-        );
+        assert_eq!(manager.get_rename_error(), "");
+        assert_eq!(manager.get_merge_from(), 0, "the dialog is open");
+        assert_eq!(manager.get_merge_into(), 1);
         assert_eq!(manager.get_editing(), 0, "the field stays open");
-        assert_eq!(tag_labels(&r), before);
+        assert_eq!(tag_labels(&r), before, "nothing changed yet");
+
+        manager.invoke_merge_confirmed(0, 1);
+        assert_eq!(manager.get_merge_from(), -1);
+        assert_eq!(manager.get_editing(), -1);
+        assert_eq!(tag_labels(&r), [before[1].clone()]);
+        assert_eq!(manager.get_tags().row_count(), 1);
+    });
+}
+
+#[test]
+fn a_bad_rename_shows_the_error_and_keeps_the_editor() {
+    on_ui_thread(|| {
+        let r = rig_with_tags();
+        let before = tag_labels(&r);
+        r.ui.invoke_manage_tags_requested();
+        let manager = r.binding.tag_manager().unwrap();
+        manager.set_editing(0);
 
         manager.invoke_rename_requested(0, "".into());
         assert_eq!(manager.get_rename_error(), "Give it a name.");

@@ -9,7 +9,7 @@
 // Keyboard: Tab / Shift+Tab move between settings (the page scrolls to the focused one); each group of choices is
 // one tab stop with arrow keys. A shortcut recorder starts on Enter or Space and ends on Esc. Esc closes the page.
 import { TipHost, TipLayer } from "components/tip-host.slint";
-import { Theme, Type, Space, Radius, Motion, Fonts, Palette, SystemLook } from "theme.slint";
+import { Theme, Type, Space, Radius, Motion, Fonts, Palette, SystemLook, HueNames, ListHue } from "theme.slint";
 import { Icons } from "icons.slint";
 import { Button, ButtonSize, ButtonVariant } from "components/button.slint";
 import { Toast, ToastKind, ToastPhase } from "components/feedback.slint";
@@ -712,7 +712,7 @@ export component SettingsPage inherits Window {
                         SelectField {
                             width: 200px * SystemLook.text-scale;
                             label: @tr("Accent colour");
-                            options: [@tr("Blue"), @tr("Teal"), @tr("Green"), @tr("Amber"), @tr("Rose"), @tr("Violet"), @tr("Windows accent")];
+                            options: [HueNames.name(ListHue.blue), HueNames.name(ListHue.teal), HueNames.name(ListHue.green), HueNames.name(ListHue.amber), HueNames.name(ListHue.rose), HueNames.name(ListHue.violet), @tr("Windows accent")];
                             current: root.accent-index;
                             chosen(i) => { root.accent-chosen(i); }
                             changed has-focus => {

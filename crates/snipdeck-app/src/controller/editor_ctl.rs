@@ -14,6 +14,8 @@
 
 use std::{collections::BTreeSet, path::PathBuf, rc::Rc, sync::Arc};
 
+use crate::item_editor;
+
 use snipdeck_core::{
     Format, Formats, Item, ItemId, ItemKind, ListId, Tag, TagId, template::Locale,
 };
@@ -107,8 +109,6 @@ pub(super) struct ItemEditorSlot {
     formatted: bool,
     /// `updated_at` of the item when it was opened, as text: a draft of an older state is stale.
     stamp: Option<String>,
-    /// The size of a text over the editing cap, which is shown read-only.
-    large: Option<u64>,
     attachment: Option<AttachmentView>,
     restored: bool,
     /// What the editor starts as: a draft equal to it is no draft.
@@ -251,9 +251,13 @@ where
             trigger: slot.trigger.clone(),
             trigger_problem: slot.problems.trigger.clone(),
             banner: slot.problems.banner.clone(),
-            large: slot.large,
             formatted: slot.formatted,
-            saved_text: slot.original_text.clone().unwrap_or_default(),
+            saved_text: slot
+                .original_text
+                .as_ref()
+                .filter(|t| t.len() <= item_editor::PART_BYTES)
+                .cloned()
+                .unwrap_or_default(),
             attachment: slot.attachment.clone(),
             can_browse: self.editor_env.picker.is_some(),
             restored: slot.restored,
@@ -414,7 +418,7 @@ where
 
     /// The two-second tick: writes the draft if the fields differ from what the editor started
     /// with and from the last draft, removes it when they are back to the start. Nothing is
-    /// written for a sensitive item (see [`crate::drafts`]), a read-only text, or without a
+    /// written for a sensitive item (see [`crate::drafts`]), a text over a draft's size, or without a
     /// drafts folder. A failed write is reported once per editor. Returns whether something the
     /// windows show changed (that report).
     pub fn item_editor_autosave(&mut self, input: &EditorInput) -> bool {
@@ -428,7 +432,7 @@ where
         let Some(drafts) = self.editor_env.drafts.as_ref() else {
             return false;
         };
-        if slot.large.is_some() {
+        if input.content.len() > item_editor::DRAFT_TEXT_MAX_BYTES {
             return false;
         }
         let key = slot.draft_key();

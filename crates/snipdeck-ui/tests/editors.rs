@@ -740,6 +740,16 @@ fn help_tips_light_and_dark() {
     assert_golden("help-tips-dark", &render(&h));
 }
 
+/// Every tip picture (`TipArt`, one per card), on a window tall enough to show all eleven cards.
+#[test]
+fn help_tips_show_every_picture() {
+    let h = Harness::new(HelpWindow::new, 420, 3600);
+    fixture::help(&h.component);
+    fixture::tips(&h.component);
+    h.component.set_tab(3);
+    assert_golden("help-tips-all-light", &render(&h));
+}
+
 /// The Tips tab at the Help window's smallest size: the cards keep their picture and button and the
 /// list scrolls.
 #[test]

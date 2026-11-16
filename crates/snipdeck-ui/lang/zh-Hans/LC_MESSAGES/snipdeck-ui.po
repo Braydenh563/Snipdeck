@@ -145,6 +145,9 @@ msgstr "添加列表"
 msgid "Add some text, or cancel."
 msgstr "添加一些文本，或取消。"
 
+msgid "Add tag"
+msgstr "添加标签"
+
 msgid "Add to list"
 msgstr "添加到列表"
 
@@ -156,6 +159,9 @@ msgstr "添加到“{}”"
 
 msgid "Add {} or {} to a snippet."
 msgstr "在项目中加入 {} 或 {}。"
+
+msgid "Add, rename, merge or delete tags. A new name another tag already has merges the two. Deleting a tag removes it from its items; the items stay."
+msgstr "添加、重命名、合并或删除标签。新名称与其他标签重名时会合并这两个标签。删除标签会将其从各项目中移除;项目会保留。"
 
 msgid "Added to {}"
 msgstr "已添加到 {}"
@@ -1597,6 +1603,12 @@ msgstr "主密码已设置。"
 msgid "Menu"
 msgstr "菜单"
 
+msgid "Merge tags"
+msgstr "合并标签"
+
+msgid "Merge these tags?"
+msgstr "合并这些标签?"
+
 msgid "Microsoft Store"
 msgstr "Microsoft Store"
 
@@ -1745,6 +1757,9 @@ msgstr "下一步"
 
 msgid "Next list"
 msgstr "下一个列表"
+
+msgid "Next part"
+msgstr "下一部分"
 
 msgid "Next scope"
 msgstr "下一个范围"
@@ -2100,6 +2115,9 @@ msgstr "面板保持打开"
 msgid "Panel width"
 msgstr "面板宽度"
 
+msgid "Part {} of {}"
+msgstr "第 {} 部分,共 {} 部分"
+
 msgid "Paste"
 msgstr "粘贴"
 
@@ -2283,6 +2301,9 @@ msgstr "预览此项目的外观 (Ctrl+P)"
 msgid "Previous list"
 msgstr "上一个列表"
 
+msgid "Previous part"
+msgstr "上一部分"
+
 msgid "Privacy"
 msgstr "隐私"
 
@@ -2426,9 +2447,6 @@ msgstr "重命名看板…"
 
 msgid "Rename group"
 msgstr "重命名分组"
-
-msgid "Rename or delete tags. Deleting a tag removes it from its items; the items stay."
-msgstr "重命名或删除标签。删除标签会将其从项目中移除，项目本身保留。"
 
 msgid "Rename tag {}"
 msgstr "重命名标签 {}"
@@ -3256,8 +3274,8 @@ msgstr "无法读取此模板：{}。"
 msgid "This text is over {} KB, the most that can be edited here. Shorten it, or keep it in a file."
 msgstr "此文本超过 {} KB，这是此处可编辑的上限。请缩短它，或将其保存在文件中。"
 
-msgid "This text is {}. Anything over 16 KB opens read-only here, and the first 16 KB are shown."
-msgstr "此文本为 {}。超过 16 KB 的内容将在此以只读方式打开，并显示前 16 KB。"
+msgid "This text is {}. It opens a part at a time, so typing stays fast; all the parts are saved together."
+msgstr "此文本大小为 {}。为保持输入流畅,它按部分打开;所有部分会一起保存。"
 
 msgid "Tile view"
 msgstr "平铺视图"
@@ -3996,6 +4014,10 @@ msgstr[0] "{n} 个项目"
 msgid "{n} item will be added"
 msgid_plural "{n} items will be added"
 msgstr[0] "将添加 {n} 个项目"
+
+msgid "{n} item will carry \"{}\" instead of \"{}\"."
+msgid_plural "{n} items will carry \"{}\" instead of \"{}\"."
+msgstr[0] "{n} 个项目将使用“{}”,而不是“{}”。"
 
 msgid "{n} item will move to Trash with it. You can restore them for 30 days."
 msgid_plural "{n} items will move to Trash with it. You can restore them for 30 days."
