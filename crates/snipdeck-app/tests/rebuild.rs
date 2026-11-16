@@ -406,7 +406,8 @@ fn a_library_that_cannot_be_opened_is_set_aside_and_rebuild_finds_the_backups() 
     // The real proof: Rebuild from backup restores the newest backup into the fresh library.
     let mut ctl = start_with(store);
     assert!(ctl.rebuild_from_backup(dir.path(), &newest_backup(dir.path())));
-    assert!(!titles(&ctl).is_empty() && titles(&ctl).len() <= backed_up);
+    assert_ne!(titles(&ctl).len(), 0, "the backup was restored");
+    assert!(titles(&ctl).len() <= backed_up);
     assert_eq!(
         damaged_files(dir.path()).len(),
         2,

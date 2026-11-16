@@ -194,7 +194,7 @@ impl Store {
         Self::open_locked(folder, lock).map_err(|failed| failed.error)
     }
 
-    /// Like [`Store::open`], but a library that is damaged (see [`is_damaged`]) is moved aside
+    /// Like [`Store::open`], but a library that is damaged (see `is_damaged`) is moved aside
     /// with [`set_aside`](crate::set_aside) under `stem` (`snipdeck.damaged-<stamp>`) and a fresh
     /// one is opened, so the app can start and "Rebuild from backup" can restore the newest
     /// backup. Returns the set-aside folder's name when that happened.
