@@ -49,12 +49,13 @@ use serde::de::{self, DeserializeSeed, Deserializer, MapAccess, SeqAccess, Visit
 use snipdeck_core::Timestamp;
 use snipdeck_core::template::Template;
 
+use crate::decoded::Decoded;
 use crate::error::{Error, Result};
 use crate::import::ImportOptions;
-use crate::plan::Library;
+
 use crate::report::{ImportReport, Note, Warning};
 
-use super::expander::{Body, Snip, Tpl, import_snips, placeholder_name, read_capped};
+use super::expander::{Body, Snip, Tpl, decode_snips, placeholder_name, read_capped};
 use super::{MEMORY_BUDGET, clean_label, decode_text, note_lossy};
 
 /// Most files read from a folder.
@@ -69,12 +70,11 @@ const MAX_DEPTH: usize = 8;
 ///
 /// [`Error::File`] if `path` cannot be read, and storage errors. Unreadable or malformed files,
 /// and matches that cannot be imported, are skipped with a warning.
-pub fn import_espanso<L: Library>(
-    lib: &mut L,
+pub fn decode_espanso(
     path: &Path,
     now: Timestamp,
     options: &ImportOptions<'_>,
-) -> Result<ImportReport> {
+) -> Result<Decoded<'static>> {
     let mut report = ImportReport::default();
     let meta = fs::symlink_metadata(path).map_err(|source| Error::File {
         path: path.to_owned(),
@@ -118,8 +118,7 @@ pub fn import_espanso<L: Library>(
             &mut report,
         );
     }
-    import_snips(
-        lib,
+    decode_snips(
         snips,
         ("Imported from Espanso", "Espanso"),
         now,

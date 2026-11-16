@@ -12,10 +12,49 @@
 //! - [`loupe_rect`] places the magnifier next to the cursor and flips it at the monitor edges.
 //! - [`Session`] turns [`Input`] (mouse, keys, wheel, focus loss) into a [`Step`].
 
-use std::time::Duration;
+use std::{ops::Deref, rc::Rc, time::Duration};
 
 use crate::error::Error;
 use crate::route::ScreenRect;
+
+/// The bytes of a [`Shot`]: owned, or read in place from a buffer the platform keeps alive (the
+/// Windows capture reads its DIB section directly instead of copying it).
+#[derive(Clone)]
+pub struct Pixels(Rc<dyn AsRef<[u8]>>);
+
+impl Pixels {
+    /// Pixels read from `source` for as long as any copy of these lives.
+    #[must_use]
+    pub fn new(source: impl AsRef<[u8]> + 'static) -> Self {
+        Self(Rc::new(source))
+    }
+}
+
+impl From<Vec<u8>> for Pixels {
+    fn from(bytes: Vec<u8>) -> Self {
+        Self::new(bytes)
+    }
+}
+
+impl Deref for Pixels {
+    type Target = [u8];
+
+    fn deref(&self) -> &[u8] {
+        (*self.0).as_ref()
+    }
+}
+
+impl std::fmt::Debug for Pixels {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Pixels({} bytes)", self.len())
+    }
+}
+
+impl PartialEq for Pixels {
+    fn eq(&self, other: &Self) -> bool {
+        **self == **other
+    }
+}
 
 /// One monitor, frozen: its place on the virtual screen and its pixels.
 ///
@@ -30,7 +69,7 @@ pub struct Shot {
     pub hdr: bool,
     /// `bounds.w * bounds.h` pixels, top-down, four bytes each: blue, green, red, then a byte
     /// that is undefined (GDI leaves the alpha alone) and never read.
-    pub bgra: Vec<u8>,
+    pub bgra: Pixels,
 }
 
 impl Shot {
@@ -530,7 +569,7 @@ mod tests {
             bounds,
             scale,
             hdr: false,
-            bgra,
+            bgra: bgra.into(),
         }
     }
 
@@ -578,7 +617,7 @@ mod tests {
     #[test]
     fn a_shot_with_too_few_bytes_counts_as_a_gap_not_a_panic() {
         let mut short = shot(rect(0, 0, 4, 4), 1.0, |_, _| [1, 2, 3]);
-        short.bgra.truncate(4 * 4 * 4 - 3);
+        short.bgra = Pixels::from(short.bgra[..4 * 4 * 4 - 3].to_vec());
         assert_eq!(sample(std::slice::from_ref(&short), 3, 3), None);
         assert_eq!(sample(&[short], 3, 2), Some([1, 2, 3]));
     }

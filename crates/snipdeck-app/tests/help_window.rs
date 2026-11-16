@@ -32,7 +32,7 @@ use snipdeck_ui::{HelpWindow, ShortcutTexts, TipTexts};
 
 #[path = "support/mod.rs"]
 mod support;
-use support::on_ui_thread;
+use support::{HeldArchive, on_ui_thread};
 
 type Ctl = Controller<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
 
@@ -354,6 +354,60 @@ fn the_about_page_support_row_opens_exactly_the_coffee_page_and_nothing_else() {
             r.ctl.borrow_mut().take_pending(),
             Vec::new(),
             "nothing unlocked"
+        );
+    });
+}
+
+#[test]
+fn rebuild_shows_the_busy_state_while_the_backup_is_read_and_then_the_confirmation() {
+    on_ui_thread(|| {
+        let dir = tempfile::tempdir().expect("dir");
+        let mut store = Store::open(dir.path()).expect("store");
+        snipdeck_app::demo::seed(&mut store, now()).expect("seed");
+        snipdeck_portable::backup::run_if_due(
+            &store,
+            dir.path(),
+            &now().to_zoned(jiff::tz::TimeZone::UTC),
+            7,
+            None,
+        )
+        .expect("backup");
+        let ctl: Rc<RefCell<Ctl>> = Rc::new(RefCell::new(
+            Controller::new(
+                store,
+                Services {
+                    clipboard: FakeClipboard::default(),
+                    keyboard: FakeKeyboard::default(),
+                    timing: FakeTiming::default(),
+                },
+                Box::new(FakeTargets::new(Some(demo::target()))),
+                Box::new(FixedClock::new(now())),
+                Settings::default(),
+            )
+            .expect("controller"),
+        ));
+        let ui = HelpWindow::new().expect("help window");
+        let binding = HelpBinding::new(&ctl, &ui, Some(dir.path().to_owned()), Rc::new(NoHost));
+        ui.show().expect("show");
+        binding.refresh();
+        assert!(!ui.get_archive_busy());
+
+        let held = HeldArchive::default();
+        let _inline_again = held.install();
+        ui.invoke_fix_requested(4);
+        assert_eq!(held.held(), 1, "the backup is read off this thread");
+        assert!(ui.get_archive_busy(), "the window shows the busy state");
+        assert!(
+            !ui.get_rebuild_open(),
+            "no confirmation until the read is done"
+        );
+
+        held.release();
+        assert!(!ui.get_archive_busy());
+        assert!(ui.get_rebuild_open());
+        assert!(
+            !ui.get_rebuild_date().is_empty(),
+            "the confirmation names the backup"
         );
     });
 }

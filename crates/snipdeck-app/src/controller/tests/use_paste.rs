@@ -1476,6 +1476,33 @@ fn quitting_deletes_the_files_a_sensitive_files_item_left_in_the_temp_folder() {
     assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten, 1);
     w.ctl.clear_pending_clipboard_now();
     assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten, 1, "once");
+    assert_eq!(
+        w.ctl.services.clipboard.pasted_files_forgotten_waited, 1,
+        "the quit waits for the deletion"
+    );
+}
+
+#[test]
+fn a_quit_after_the_timer_deleted_the_paste_files_waits_for_that_deletion() {
+    let mut w = world();
+    let id = w.ids[0];
+    let mut item = w.ctl.store.item(id).expect("item");
+    item.sensitive = true;
+    item.kind = snipdeck_core::ItemKind::File;
+    item.preview.clear();
+    w.ctl.store.update_item(&item, None).expect("update");
+    w.ctl.activate_row(0, UseMode::Paste);
+    // The background deletion starts (the lock, or the timer) and clears the "pasted" flag.
+    w.ctl.forget_secret_files();
+    assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten_waited, 0);
+    // The quit still joins it: the process would end under a deletion in flight.
+    w.ctl.clear_pending_clipboard_now();
+    assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten_waited, 1);
+    w.ctl.clear_pending_clipboard_now();
+    assert_eq!(
+        w.ctl.services.clipboard.pasted_files_forgotten_waited, 1,
+        "once"
+    );
 }
 
 #[test]
@@ -1499,6 +1526,10 @@ fn a_sensitive_files_paste_deletes_its_temp_files_on_the_clear_timer_without_a_l
     w.clock.set(at("2026-10-17T10:30:30Z"));
     w.ctl.clear_clipboard_if_due();
     assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten, 1);
+    assert_eq!(
+        w.ctl.services.clipboard.pasted_files_forgotten_waited, 0,
+        "the timer's deletion runs in the background"
+    );
     assert_eq!(w.ctl.clipboard_clear_wait(), None, "no timer left");
 }
 

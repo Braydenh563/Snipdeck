@@ -131,6 +131,8 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 
 ### 5.7a Deletion & recovery
 - Items delete instantly with a 5 s **Undo** toast; lists and boards ask for confirmation (showing the item count).
+- **Undo checks that stored bytes exist, not that they are intact.** Before restoring a deleted item (or a replaced one) Undo checks that every blob file it needs is still stored (by file length). It does not read and hash the blob: that would stall the UI thread on a big image. Trade-off: a blob damaged on disk without changing its length is restored as it is, and the next integrity check reports it.
+- **Archives run off the UI thread, one at a time.** Backup, export and a rebuild's salvage copy read one snapshot of the library taken when the step begins. Blob files that edits orphan meanwhile are kept until the step ends. A second backup, export, restore, import or master-password step is refused with a toast while one runs. Quitting mid-export removes that export's `<name>.part`.
 - **Trash** keeps everything 30 days; restore from the main window.
 - **Daily local auto-backup** (zipped `.snipdeck` in the data folder, keep 7); restore from Settings.
 - **Crash log** stored locally; "Report a problem" lets the user review the log, then opens a prefilled GitHub issue or email. Nothing is sent automatically.

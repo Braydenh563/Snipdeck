@@ -22,12 +22,13 @@ use std::path::Path;
 use serde_json::Value;
 use snipdeck_core::Timestamp;
 
+use crate::decoded::Decoded;
 use crate::error::{Error, Result};
 use crate::import::ImportOptions;
-use crate::plan::Library;
+
 use crate::report::{ImportReport, Note, Warning};
 
-use super::expander::{Snip, Tpl, import_snips, placeholder_name, read_capped};
+use super::expander::{Snip, Tpl, decode_snips, placeholder_name, read_capped};
 use super::{decode_text, note_lossy};
 
 /// Imports a Beeftext JSON export into a new board named `Imported from Beeftext` (unless the
@@ -38,22 +39,20 @@ use super::{decode_text, note_lossy};
 /// [`Error::File`] if the file cannot be read, [`Error::LimitExceeded`] if it is over the size
 /// limit, [`Error::Malformed`] if it is not an export, and storage errors. Combos with no
 /// snippet, an empty snippet or one over 5 MB are skipped with a warning.
-pub fn import_beeftext<L: Library>(
-    lib: &mut L,
+pub fn decode_beeftext(
     path: &Path,
     now: Timestamp,
     options: &ImportOptions<'_>,
-) -> Result<ImportReport> {
+) -> Result<Decoded<'static>> {
     let bytes = read_capped(path, "Beeftext file size", options)?;
-    import_beeftext_bytes(lib, &bytes, now, options)
+    decode_beeftext_bytes(&bytes, now, options)
 }
 
-fn import_beeftext_bytes<L: Library>(
-    lib: &mut L,
+fn decode_beeftext_bytes(
     bytes: &[u8],
     now: Timestamp,
     options: &ImportOptions<'_>,
-) -> Result<ImportReport> {
+) -> Result<Decoded<'static>> {
     let mut report = ImportReport::default();
     let (text, how) = decode_text(bytes);
     note_lossy(how, "the Beeftext file", &mut report);
@@ -109,8 +108,7 @@ fn import_beeftext_bytes<L: Library>(
             body,
         });
     }
-    import_snips(
-        lib,
+    decode_snips(
         snips,
         ("Imported from Beeftext", "Beeftext"),
         now,

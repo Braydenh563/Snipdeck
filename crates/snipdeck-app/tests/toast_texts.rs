@@ -139,10 +139,11 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::TypingUnavailable => 101,
         ToastMessage::AutostartSwitchedOff => 102,
         ToastMessage::AutostartPolicy => 103,
+        ToastMessage::ArchiveBusy => 112,
     }
 }
 
-const VARIANTS: usize = 112;
+const VARIANTS: usize = 113;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -236,6 +237,7 @@ fn samples() -> Vec<ToastMessage> {
         M::AutostartFailed,
         M::AutostartSwitchedOff,
         M::AutostartPolicy,
+        M::ArchiveBusy,
         M::CannotOpenLog,
         M::KeyUnavailable,
         M::ItemGone,

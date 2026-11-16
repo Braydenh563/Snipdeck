@@ -154,6 +154,8 @@ pub struct WinClipboard {
     /// The clipboard sequence number read on the clipboard thread right after the latest write.
     written_sequence: Option<u32>,
     thread: Option<JoinHandle<()>>,
+    /// The background deletion of decrypted paste files, if one was started: the quit joins it.
+    forgetting: Option<JoinHandle<()>>,
     exited: Receiver<()>,
     /// Whether Windows accepted the clipboard-change listener (without it Recent sees nothing).
     listening: Arc<AtomicBool>,
@@ -251,6 +253,7 @@ impl WinClipboard {
                 latest_snapshot: Weak::new(),
                 written_sequence: None,
                 thread: Some(thread),
+                forgetting: None,
                 exited,
                 listening,
             }),
@@ -343,6 +346,27 @@ impl WinClipboard {
     /// ordinary file items stay: the clipboard may still point to them. Called when the
     /// clipboard clear is due, on lock and on quit.
     pub fn forget_pasted_files(&mut self) {
+        // Deleting folders can take a while (a big file, a busy disk): not on the UI thread.
+        match std::thread::Builder::new()
+            .name("forget-paste-files".into())
+            .spawn(forget_sensitive_paste_files)
+        {
+            // Kept so the quit can wait for it: the process would end under the deletion.
+            Ok(handle) => {
+                if let Some(earlier) = self.forgetting.replace(handle) {
+                    let _ = earlier.join();
+                }
+            }
+            Err(_) => forget_sensitive_paste_files(),
+        }
+    }
+
+    /// [`forget_pasted_files`](Self::forget_pasted_files), returning once the files are gone (the
+    /// quit calls it, as the process would end under a background deletion).
+    pub fn forget_pasted_files_waiting(&mut self) {
+        if let Some(handle) = self.forgetting.take() {
+            let _ = handle.join();
+        }
         forget_sensitive_paste_files();
     }
 

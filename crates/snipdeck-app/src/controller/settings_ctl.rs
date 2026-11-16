@@ -13,19 +13,21 @@ use std::{
 use jiff::tz::TimeZone;
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_portable::{
-    BoardLayout, ExportOptions, HistoryEntry, ImportOptions, ImportReport, KeySource,
-    MergeStrategy, SensitivePolicy,
-    backup::{self, BackupOutcome},
-    export_to_path, import_archive_path, import_beeftext, import_copyq_json, import_ditto,
-    import_entries, import_espanso, import_folder, import_phraseexpress_csv,
-    import_textexpander_csv,
+    BoardLayout, Decoded, HistoryEntry, ImportOptions, decode_archive_path, decode_beeftext,
+    decode_copyq_json, decode_ditto, decode_entries, decode_espanso, decode_folder,
+    decode_phraseexpress_csv, decode_textexpander_csv,
 };
 use snipdeck_store::{
     ItemRepo, Store,
     crypto::{DataKey, KeyRecord},
 };
 
-use super::{Controller, Toast, ToastKind, ToastMessage};
+use super::{
+    Controller, Toast, ToastKind, ToastMessage,
+    archive_ctl::{ArchiveEnd, Begun, Context, ImportPurpose, ImportRun, Rebuild},
+};
+use crate::archive_job::{ArchiveOp, Made, Work};
+use crate::maintenance::JobError;
 use crate::{failure::Cause, host::ClipboardText, starter};
 
 /// Where an import reads from. Each variant is one kind of source the Settings "Import..." row
@@ -86,24 +88,24 @@ impl ImportSource {
             .unwrap_or_default()
     }
 
-    /// Runs the importer for this source over `store`. With `options.dry_run` nothing is kept.
-    fn run(
+    /// Reads and checks this source, with no library: what a worker does. The result is
+    /// previewed or applied by [`Decoded`]. `options.key` must not be `KeySource::Library`.
+    pub(crate) fn decode(
         &self,
-        store: &mut Store,
         now: jiff::Timestamp,
         options: &ImportOptions<'_>,
-    ) -> snipdeck_portable::Result<ImportReport> {
+    ) -> snipdeck_portable::Result<Decoded<'static>> {
         match self {
-            Self::Snipdeck(p) => import_archive_path(store, p, now, options),
-            Self::Ditto(p) => import_ditto(store, p, now, options),
-            Self::CopyQ(p) => import_copyq_json(store, p, now, options),
-            Self::Folder(p) => import_folder(store, p, now, options),
-            Self::Espanso(p) => import_espanso(store, p, now, options),
-            Self::Beeftext(p) => import_beeftext(store, p, now, options),
-            Self::TextExpander(p) => import_textexpander_csv(store, p, now, options),
-            Self::PhraseExpress(p) => import_phraseexpress_csv(store, p, now, options),
+            Self::Snipdeck(p) => decode_archive_path(p, now, options),
+            Self::Ditto(p) => decode_ditto(p, now, options),
+            Self::CopyQ(p) => decode_copyq_json(p, now, options),
+            Self::Folder(p) => decode_folder(p, now, options),
+            Self::Espanso(p) => decode_espanso(p, now, options),
+            Self::Beeftext(p) => decode_beeftext(p, now, options),
+            Self::TextExpander(p) => decode_textexpander_csv(p, now, options),
+            Self::PhraseExpress(p) => decode_phraseexpress_csv(p, now, options),
             Self::ClipboardHistory { entries, board } => {
-                import_entries(store, entries, board, now, options)
+                decode_entries(entries, board, now, options)
             }
         }
     }
@@ -261,7 +263,7 @@ fn wipe_library(folder: &Path) -> io::Result<()> {
 
 /// A name for an export made on `date` that no file in `folder` has yet:
 /// `Snipdeck-library-20261018.snipdeck`, then `...-2.snipdeck` and so on.
-fn export_path(folder: &Path, date: jiff::civil::Date) -> PathBuf {
+pub(super) fn export_path(folder: &Path, date: jiff::civil::Date) -> PathBuf {
     let stem = format!(
         "Snipdeck-library-{:04}{:02}{:02}",
         date.year(),
@@ -278,7 +280,7 @@ fn export_path(folder: &Path, date: jiff::civil::Date) -> PathBuf {
         .unwrap_or(first)
 }
 
-fn danger(message: ToastMessage) -> Toast {
+pub(super) fn danger(message: ToastMessage) -> Toast {
     Toast {
         kind: ToastKind::Danger,
         message,
@@ -334,96 +336,30 @@ where
         self.toast_view()
     }
 
-    fn backup_options(&self) -> ExportOptions<'_> {
-        // Encrypted with the library's key when it has one and it is unlocked; without a key the
-        // export leaves sensitive items out, so a backup never holds one in plain text.
-        ExportOptions {
-            sensitive: snipdeck_portable::Library::data_key(&self.store)
-                .map_or(SensitivePolicy::Skip, SensitivePolicy::Encrypt),
-            ..ExportOptions::default()
-        }
-    }
-
-    /// "Back up now": today's backup in `data_dir`, replacing the one already made today (the
-    /// daily run writes only when there is none, and the user asked for a fresh copy).
-    /// Returns whether it worked.
-    pub fn backup_now(&mut self, data_dir: &Path) -> bool {
-        // A copy of a locked library would lack its sensitive items and replace today's whole one.
-        if self.copy_blocked_by_lock() {
-            return false;
-        }
-        let now = self.clock.now();
-        let key = snipdeck_portable::Library::data_key(&self.store);
-        let made = match backup::run_if_due(
-            &self.store,
-            data_dir,
-            &now.to_zoned(TimeZone::system()),
-            usize::try_from(self.settings.backups_keep).unwrap_or(backup::DEFAULT_KEEP),
-            key,
-        ) {
-            Ok(BackupOutcome::Created { .. }) => Ok(()),
-            Ok(BackupOutcome::NotDue { existing }) => {
-                export_to_path(&self.store, now, &self.backup_options(), &existing).map(|_| ())
-            }
-            Err(e) => Err(e),
-        };
-        let worked = made.is_ok();
-        self.show_toast(match made {
-            Ok(()) => Toast {
-                kind: ToastKind::Success,
-                message: ToastMessage::BackupMade,
-            },
-            Err(e) => {
-                // The toast gives the cause; the log names an item that is too big.
-                crate::trace!("backup failed: {e}");
-                danger(ToastMessage::BackupFailed(Cause::of_portable(&e)))
-            }
-        });
-        worked
-    }
-
     /// Restores `backup` (a file `backup::list_backups` found) into the library: what is missing
-    /// comes back, nothing is removed.
-    pub fn restore_backup(&mut self, backup_file: &Path) -> bool {
-        // Without the key the backup's sensitive items cannot be read, and they would be dropped.
-        if self.copy_blocked_by_lock() {
-            return false;
-        }
+    /// comes back, nothing is removed. The file is read on a worker (`Begun::Job`); its outcome
+    /// is [`ArchiveEnd::Imported`].
+    pub fn begin_restore_backup(&mut self, backup_file: &Path) -> Begun {
         let source = ImportSource::Snipdeck(backup_file.to_path_buf());
-        // The shared import path: one transaction, duplicates skipped.
-        let restored = self.import_report(&source, BoardLayout::KeepBoards, false);
-        let worked = restored.is_ok();
-        match restored {
-            Ok(report) => {
-                self.show_toast(Toast {
-                    kind: ToastKind::Success,
-                    message: ToastMessage::BackupRestored {
-                        items: report.items_added,
-                    },
-                });
-                // After the toast: a failed refresh says the list is stale, which matters more.
-                self.refresh_or_notice("a restore");
-            }
-            Err(e) => self.show_toast(danger(ToastMessage::RestoreFailed(Cause::of_portable(&e)))),
-        }
-        worked
+        self.begin_import(source, BoardLayout::KeepBoards, ImportPurpose::Restore)
     }
 
-    /// "Rebuild from backup…": sets the damaged library aside into the folder
-    /// `snipdeck.damaged-<stamp>/`
-    /// (database, log and blobs), opens a fresh one, restores `backup_file` into it and then
-    /// merges what the old database could still be read for. Nothing is deleted. Any failure
-    /// puts the original back and changes nothing. Returns whether it worked.
+    /// "Rebuild from backup…", first half: checks what must hold before anything is touched and
+    /// starts the salvage copy of what the damaged database can still give up (a temporary
+    /// archive, written off the UI thread). `finish_rebuild` then sets the damaged
+    /// library aside into the folder `snipdeck.damaged-<stamp>/` (database, log and blobs), opens
+    /// a fresh one, restores `backup_file` into it and merges the salvage. Nothing is deleted. Any
+    /// failure puts the original back and changes nothing.
     ///
     /// An encrypted library keeps its key: the fresh database gets the same key record and is
     /// opened with the key already in memory, so sensitive items survive the rebuild.
-    pub fn rebuild_from_backup(&mut self, data_dir: &Path, backup_file: &Path) -> bool {
-        if self.copy_blocked_by_lock() {
-            return false;
+    pub fn begin_rebuild_from_backup(&mut self, data_dir: &Path, backup_file: &Path) -> Begun {
+        if self.refuse_archive() {
+            return Begun::Refused;
         }
         let failed = |ctl: &mut Self| {
             ctl.show_toast(danger(ToastMessage::RestoreFailed(Cause::Other)));
-            false
+            Begun::Finished(ArchiveEnd::Rebuilt(false))
         };
         // A key ring that cannot be read is a corrupt one: refuse rather than lose the key.
         let Ok(record) = self.store.key_record() else {
@@ -446,18 +382,122 @@ where
                 })
             }
         };
+        let salvage = data_dir.join("snipdeck.salvage.snipdeck");
+        // The worker reads the backup before anything is touched; unreadable, the rebuild ends
+        // in `finish_rebuild` without a swap.
+        self.begin_rebuild_pass(Rebuild {
+            data_dir: data_dir.to_path_buf(),
+            backup_file: backup_file.to_path_buf(),
+            salvage,
+            carry,
+            counter: 0,
+            attempt: 0,
+        })
+    }
+
+    /// Hands one pass of a rebuild (read the backup, cut the salvage copy and read it back) to a
+    /// worker.
+    fn begin_rebuild_pass(&mut self, mut rebuild: Rebuild) -> Begun {
+        let job = self.archive_job(
+            ArchiveOp::Salvage,
+            Work::Rebuild {
+                backup: rebuild.backup_file.clone(),
+                salvage: rebuild.salvage.clone(),
+                now: self.clock.now(),
+            },
+        );
+        rebuild.counter = self.store.change_counter();
+        self.begin_running(job, Context::Rebuild(Box::new(rebuild)))
+    }
+
+    /// "Rebuild from backup…", second half, on the UI thread once the worker has read the backup
+    /// and cut the salvage copy (or failed to cut it: a rebuild goes on without it). Whether it
+    /// worked, or [`ArchiveEnd::Again`] when the library changed meanwhile.
+    pub(super) fn finish_rebuild(
+        &mut self,
+        rebuild: Rebuild,
+        made: Result<Made, JobError>,
+    ) -> ArchiveEnd {
+        let Rebuild {
+            data_dir,
+            backup_file,
+            salvage,
+            carry,
+            counter,
+            attempt,
+        } = rebuild;
+        let data_dir = data_dir.as_path();
+        let failed = |ctl: &mut Self| {
+            let _ = fs::remove_file(&salvage);
+            ctl.show_toast(danger(ToastMessage::RestoreFailed(Cause::Other)));
+            ArchiveEnd::Rebuilt(false)
+        };
+        let prepared = match made {
+            Ok(Made::Rebuilt(prepared)) => *prepared,
+            Ok(_) => return failed(self),
+            Err(e) => {
+                crate::trace!("rebuild worker failed: {e}");
+                return failed(self);
+            }
+        };
         // The backup must be readable before anything is touched.
-        if self.preview_restore(backup_file).is_err() {
+        let backup = match prepared.backup {
+            Ok(backup) => backup,
+            Err(e) => {
+                crate::trace!("the backup cannot be read: {e}");
+                return failed(self);
+            }
+        };
+        // A password step is refused while a rebuild runs; if the key record moved anyway
+        // (another process, a bug), applying the old one would undo it: stop, change nothing.
+        let record_now = self.store.key_record().ok();
+        let unchanged = match (&carry, &record_now) {
+            (None, Some(None)) => true,
+            (Some(carry), Some(Some(now))) => carry.record == *now,
+            _ => false,
+        };
+        if !unchanged {
             return failed(self);
         }
-        // Best effort: what the damaged database can still give up, as a temporary archive.
-        let now = self.clock.now();
-        let salvage = data_dir.join("snipdeck.salvage.snipdeck");
-        let salvaged = export_to_path(&self.store, now, &self.backup_options(), &salvage).is_ok();
+        // The library stays editable while the worker copies it. If it changed after the
+        // worker's snapshot, the copy lacks what was written since: cut it again on a worker
+        // (a few tries; a library that keeps changing under the copy is not rebuilt).
+        if prepared.salvage.is_some() && self.store.change_counter() != counter {
+            if attempt >= MAX_REBUILD_PASSES {
+                return failed(self);
+            }
+            let again = Rebuild {
+                data_dir: data_dir.to_path_buf(),
+                backup_file,
+                salvage: salvage.clone(),
+                carry,
+                counter,
+                attempt: attempt + 1,
+            };
+            return match self.begin_rebuild_pass(again) {
+                Begun::Job(job) => ArchiveEnd::Again(job),
+                Begun::Finished(end) => end,
+                Begun::Refused => failed(self),
+            };
+        }
+        let salvaged = prepared.salvage.is_some();
         let sensitive_before = self.sensitive_count();
-        let outcome =
-            self.swap_in_rebuilt(data_dir, backup_file, salvaged.then_some(&salvage), carry);
+        let outcome = self.swap_in_rebuilt(data_dir, backup, prepared.salvage, carry);
         let _ = fs::remove_file(&salvage);
+        ArchiveEnd::Rebuilt(self.rebuild_end(outcome, sensitive_before, salvaged))
+    }
+
+    /// The toast and the cleanup for what the swap came to. Whether it worked.
+    fn rebuild_end(
+        &mut self,
+        outcome: Result<(usize, usize, String), Swap>,
+        sensitive_before: usize,
+        salvaged: bool,
+    ) -> bool {
+        let failed = |ctl: &mut Self| {
+            ctl.show_toast(danger(ToastMessage::RestoreFailed(Cause::Other)));
+            false
+        };
         match outcome {
             Ok((restored, recovered, kept)) => {
                 self.history = crate::history::History::new();
@@ -514,8 +554,8 @@ where
     fn swap_in_rebuilt(
         &mut self,
         data_dir: &Path,
-        backup_file: &Path,
-        salvage: Option<&Path>,
+        backup: Decoded<'static>,
+        salvage: Option<Decoded<'static>>,
         carry: Option<Carry>,
     ) -> Result<(usize, usize, String), Swap> {
         let stamp = self
@@ -565,12 +605,8 @@ where
             return Err(self.roll_back(data_dir, fresh, original_key));
         }
         self.store = fresh;
-        let imported = self.import_report(
-            &ImportSource::Snipdeck(backup_file.to_path_buf()),
-            BoardLayout::KeepBoards,
-            false,
-        );
-        let Ok(report) = imported else {
+        // Applying what the worker read is the one short transaction on this thread.
+        let Ok(report) = backup.apply(&mut self.store, None) else {
             let fresh = std::mem::replace(
                 &mut self.store,
                 Store::open_in_memory().map_err(|_| Swap::Stuck)?,
@@ -578,14 +614,7 @@ where
             return Err(self.roll_back(data_dir, fresh, original_key));
         };
         let recovered = salvage
-            .and_then(|file| {
-                self.import_report(
-                    &ImportSource::Snipdeck(file.to_path_buf()),
-                    BoardLayout::KeepBoards,
-                    false,
-                )
-                .ok()
-            })
+            .and_then(|decoded| decoded.apply(&mut self.store, None).ok())
             .map_or(0, |r| r.items_added);
         // The commit point: the marker goes. The lock is the running store's own. If the marker
         // cannot be removed the rebuilt library keeps running (the marker carries a fingerprint
@@ -640,122 +669,145 @@ where
         }
     }
 
-    /// The importer options every Settings import uses: duplicates are skipped, a `.snipdeck`
-    /// lands as `layout` says (one new board for an import, its own boards for a restore), encrypted items open with the library's own key.
-    fn import_report(
+    /// The slow half of every Settings import starts here: reading and checking the source,
+    /// with no library, on a worker (`Begun::Job`; the snapshot's duplicate set comes with it).
+    /// Duplicates are skipped; a `.snipdeck` lands as `layout` says (one new board for an
+    /// import, its own boards for a restore); encrypted items open with the library's key.
+    fn begin_import(
         &mut self,
-        source: &ImportSource,
+        source: ImportSource,
         layout: BoardLayout,
-        dry_run: bool,
-    ) -> snipdeck_portable::Result<ImportReport> {
-        let options = ImportOptions {
-            merge: MergeStrategy::SkipDuplicates,
+        purpose: ImportPurpose,
+    ) -> Begun {
+        // A `.snipdeck` file's sensitive items open with the library's key; locked, they would be
+        // dropped.
+        let needs_key = purpose == ImportPurpose::Restore
+            || (purpose == ImportPurpose::Apply && matches!(source, ImportSource::Snipdeck(_)));
+        if self.refuse_while_archiving() || (needs_key && self.copy_blocked_by_lock()) {
+            return Begun::Refused;
+        }
+        let work = Work::Decode {
+            source: source.clone(),
             layout,
-            key: KeySource::Library,
-            dry_run,
-            ..ImportOptions::default()
+            now: self.clock.now(),
         };
-        source.run(&mut self.store, self.clock.now(), &options)
+        let job = self.archive_job(ArchiveOp::Decode, work);
+        let run = ImportRun {
+            source,
+            purpose,
+            counter: self.store.change_counter(),
+        };
+        self.begin_running(job, Context::Import(Box::new(run)))
     }
 
     /// Works out what importing `source` would do, writing nothing: the preview the page shows
-    /// before the user agrees.
-    ///
-    /// # Errors
-    ///
-    /// Why the source cannot be read.
-    pub fn preview_import(
+    /// before the user agrees. The outcome is [`ArchiveEnd::ImportPreview`].
+    pub fn begin_import_preview(&mut self, source: &ImportSource) -> Begun {
+        self.begin_import(
+            source.clone(),
+            BoardLayout::SingleBoard,
+            ImportPurpose::Preview,
+        )
+    }
+
+    /// The preview of restoring a backup: like [`Self::begin_import_preview`], but the backup's
+    /// boards come back under their own names.
+    pub fn begin_restore_preview(&mut self, backup_file: &Path) -> Begun {
+        self.begin_import(
+            ImportSource::Snipdeck(backup_file.to_path_buf()),
+            BoardLayout::KeepBoards,
+            ImportPurpose::Preview,
+        )
+    }
+
+    /// Imports `source` for real, as previewed. The outcome is [`ArchiveEnd::Imported`].
+    pub fn begin_apply_import(&mut self, source: &ImportSource) -> Begun {
+        self.begin_import(
+            source.clone(),
+            BoardLayout::SingleBoard,
+            ImportPurpose::Apply,
+        )
+    }
+
+    /// The UI-thread half of an import step: previews or applies the decoded source against the
+    /// library as it is now. The snapshot's duplicate set is used only if nothing was edited
+    /// since it was taken; otherwise it is read again.
+    pub(super) fn finish_import(
         &mut self,
-        source: &ImportSource,
-    ) -> Result<ImportPreview, ImportProblem> {
-        self.preview_as(source, BoardLayout::SingleBoard)
-    }
-
-    /// The preview of restoring a backup: like [`Self::preview_import`], but the backup's boards
-    /// come back under their own names.
-    ///
-    /// # Errors
-    ///
-    /// Why the backup cannot be read.
-    pub fn preview_restore(&mut self, backup_file: &Path) -> Result<ImportPreview, ImportProblem> {
-        let source = ImportSource::Snipdeck(backup_file.to_path_buf());
-        self.preview_as(&source, BoardLayout::KeepBoards)
-    }
-
-    fn preview_as(
-        &mut self,
-        source: &ImportSource,
-        layout: BoardLayout,
-    ) -> Result<ImportPreview, ImportProblem> {
-        let report = self
-            .import_report(source, layout, true)
-            .map_err(|e| problem_of(source, &e))?;
-        Ok(ImportPreview {
-            boards: report.boards_added,
-            lists: report.lists_added,
-            items: report.items_added,
-            duplicates: report.duplicates_skipped,
-            tags: report.tags_added,
-            warnings: report.warnings,
-            warnings_dropped: report.warnings_dropped,
-        })
-    }
-
-    /// Imports `source` for real, as previewed, and says how many items came in. Returns
-    /// whether it worked.
-    pub fn apply_import(&mut self, source: &ImportSource) -> bool {
-        // A `.snipdeck` file's sensitive items open with the library's key; locked, they would be
-        // dropped.
-        if matches!(source, ImportSource::Snipdeck(_)) && self.copy_blocked_by_lock() {
-            return false;
-        }
-        match self.import_report(source, BoardLayout::SingleBoard, false) {
-            Ok(report) => {
-                self.show_toast(Toast {
-                    kind: ToastKind::Success,
-                    message: ToastMessage::Imported {
-                        items: report.items_added,
-                    },
-                });
-                self.refresh_or_notice("an import");
-                true
-            }
+        run: &ImportRun,
+        made: Result<Made, JobError>,
+    ) -> ArchiveEnd {
+        // `None` in the error: the worker itself failed (no portable error to name).
+        let decoded = match made {
+            Ok(Made::Decoded(decoded)) => (*decoded).map_err(Some),
+            Ok(_) => Err(None),
             Err(e) => {
-                self.show_toast(danger(ToastMessage::ImportFailed(Cause::of_portable(&e))));
-                false
+                crate::trace!("import worker failed: {e}");
+                Err(None)
             }
+        };
+        if run.purpose != ImportPurpose::Preview && self.copy_blocked_by_lock() {
+            // The library was locked while the source was being read: nothing is written.
+            return ArchiveEnd::Imported(false);
         }
-    }
-
-    /// Exports the whole library as one `.snipdeck` file in `folder`, under a name that does not
-    /// overwrite an earlier export. Sensitive items go in encrypted, or are left out when the
-    /// library has no key.
-    pub fn export_library(&mut self, folder: &Path) -> Option<PathBuf> {
-        if self.copy_blocked_by_lock() {
-            return None;
-        }
-        let now = self.clock.now();
-        let path = export_path(folder, now.to_zoned(TimeZone::system()).date());
-        let exported = fs::create_dir_all(folder)
-            .map_err(|e| Cause::of_io(&e))
-            .and_then(|()| {
-                export_to_path(&self.store, now, &self.backup_options(), &path)
-                    .map_err(|e| Cause::of_portable(&e))
-            });
-        if exported.is_ok() {
-            let file = path
-                .file_name()
-                .map(|n| n.to_string_lossy().into_owned())
-                .unwrap_or_default();
-            self.show_toast(Toast {
-                kind: ToastKind::Success,
-                message: ToastMessage::Exported { file },
-            });
-            Some(path)
-        } else {
-            let cause = exported.err().unwrap_or(Cause::Other);
-            self.show_toast(danger(ToastMessage::ExportFailed(cause)));
-            None
+        let fresh = run.counter == self.store.change_counter();
+        let ready = decoded.map(|ready| {
+            let known = fresh.then_some(ready.known);
+            (ready.decoded, known)
+        });
+        match run.purpose {
+            ImportPurpose::Preview => {
+                let preview = ready
+                    .and_then(|(decoded, known)| {
+                        decoded.preview(&self.store, known.as_ref()).map_err(Some)
+                    })
+                    .map(|report| ImportPreview {
+                        boards: report.boards_added,
+                        lists: report.lists_added,
+                        items: report.items_added,
+                        duplicates: report.duplicates_skipped,
+                        tags: report.tags_added,
+                        warnings: report.warnings,
+                        warnings_dropped: report.warnings_dropped,
+                    })
+                    .map_err(|e| e.map_or(ImportProblem::Failed, |e| problem_of(&run.source, &e)));
+                ArchiveEnd::ImportPreview(preview)
+            }
+            ImportPurpose::Apply | ImportPurpose::Restore => {
+                let restoring = run.purpose == ImportPurpose::Restore;
+                let applied = ready.and_then(|(decoded, known)| {
+                    decoded.apply(&mut self.store, known.as_ref()).map_err(Some)
+                });
+                let worked = applied.is_ok();
+                match applied {
+                    Ok(report) => {
+                        self.show_toast(Toast {
+                            kind: ToastKind::Success,
+                            message: if restoring {
+                                ToastMessage::BackupRestored {
+                                    items: report.items_added,
+                                }
+                            } else {
+                                ToastMessage::Imported {
+                                    items: report.items_added,
+                                }
+                            },
+                        });
+                        // After the toast: a failed refresh says the list is stale, which
+                        // matters more.
+                        self.refresh_or_notice(if restoring { "a restore" } else { "an import" });
+                    }
+                    Err(e) => {
+                        let cause = e.as_ref().map_or(Cause::Other, Cause::of_portable);
+                        self.show_toast(danger(if restoring {
+                            ToastMessage::RestoreFailed(cause)
+                        } else {
+                            ToastMessage::ImportFailed(cause)
+                        }));
+                    }
+                }
+                ArchiveEnd::Imported(worked)
+            }
         }
     }
 
@@ -766,6 +818,11 @@ where
     ///
     /// The caller has already asked the user to type DELETE; nothing here asks again.
     pub fn erase_library(&mut self, data_dir: &Path, forget_key: bool) -> bool {
+        // The library's files are being read by a worker: wait for it to end.
+        if self.archive_busy() {
+            self.show_toast(danger(ToastMessage::EraseFailed));
+            return false;
+        }
         let record = if forget_key {
             None
         } else if let Ok(record) = self.store.key_record() {
@@ -826,13 +883,16 @@ where
 }
 
 /// The key material an encrypted library carries over to its rebuilt database.
-struct Carry {
-    record: KeyRecord,
-    for_fresh: DataKey,
-    for_original: DataKey,
+pub(super) struct Carry {
+    pub(super) record: KeyRecord,
+    pub(super) for_fresh: DataKey,
+    pub(super) for_original: DataKey,
 }
 
 /// Why a rebuild did not complete.
+/// How many times a rebuild cuts its salvage copy again because the library changed under it.
+const MAX_REBUILD_PASSES: u8 = 3;
+
 enum Swap {
     /// The original database is back and open.
     RolledBack,

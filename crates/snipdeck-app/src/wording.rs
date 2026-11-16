@@ -295,6 +295,7 @@ where
         ToastMessage::LibraryProblem => t.invoke_library_problem(),
         ToastMessage::CrashedLastTime => t.invoke_crashed_last_time(),
         ToastMessage::BackupMade => t.invoke_backup_made(),
+        ToastMessage::ArchiveBusy => t.invoke_archive_busy(),
         ToastMessage::BackupFailed(cause) => t.invoke_backup_failed(cause.code()),
         ToastMessage::DailyBackupFailed(cause) => t.invoke_daily_backup_failed(cause.code()),
         ToastMessage::TrashPurgeFailed => t.invoke_trash_purge_failed(),

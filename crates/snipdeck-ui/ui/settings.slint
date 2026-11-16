@@ -378,6 +378,8 @@ export component SettingsPage inherits Window {
     in-out property <MasterProblem> master-problem: MasterProblem.none;
     // The host is working out the key for the submitted form; the form waits.
     in property <bool> master-busy: false;
+    // A backup or an export is being written on a worker; both buttons wait for it.
+    in property <bool> backup-busy: false;
     // Which form is open under the row. The host sets it back to `closed` after a change worked.
     in-out property <MasterMode> master-mode: MasterMode.closed;
     // Go up to put the focus on the form's first field, and back on the row's button when the form closes.
@@ -1446,6 +1448,7 @@ export component SettingsPage inherits Window {
                                     text: @tr("Restore");
                                     icon: Icons.arrow-counter-clockwise;
                                     variant: ButtonVariant.ghost;
+                                    enabled: !root.backup-busy;
                                     a11y-label: @tr("Restore the backup of {}", backup.date);
                                     clicked => { root.backup-restore-requested(i); }
                                     changed has-focus => {
@@ -1460,7 +1463,7 @@ export component SettingsPage inherits Window {
                         alignment: start;
                         Button {
                             text: @tr("Back up now");
-                            enabled: root.has-data-folder;
+                            enabled: root.has-data-folder && !root.backup-busy;
                             clicked => { root.backup-now-requested(); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
@@ -1490,7 +1493,7 @@ export component SettingsPage inherits Window {
                         description: @tr("Saves every board, list and item as one .snipdeck file in a folder you choose.");
                         Button {
                             text: @tr("Export library");
-                            enabled: root.has-data-folder;
+                            enabled: root.has-data-folder && !root.backup-busy;
                             clicked => { root.export-requested(); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
@@ -1502,7 +1505,7 @@ export component SettingsPage inherits Window {
                         description: @tr("Bring in items from a Snipdeck file or another clipboard manager. You see what will be added before anything is written.");
                         Button {
                             text: @tr("Import…");
-                            enabled: root.has-data-folder && !root.import-open;
+                            enabled: root.has-data-folder && !root.import-open && !root.backup-busy;
                             a11y-label: @tr("Import into your library, see a preview first");
                             clicked => { root.import-choosing = !root.import-choosing; }
                             changed has-focus => {

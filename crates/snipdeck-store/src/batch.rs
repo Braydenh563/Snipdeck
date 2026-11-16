@@ -601,6 +601,10 @@ impl BlobStore for Store {
         // Decrypted and staged sensitive payloads are served from memory.
         self.blobs.read_any(content)
     }
+
+    fn is_stored(&self, content: &Content) -> bool {
+        self.blobs.has_content(content)
+    }
 }
 
 impl BlobStore for Batch<'_> {
@@ -610,5 +614,9 @@ impl BlobStore for Batch<'_> {
 
     fn read<'a>(&self, content: &'a Content) -> Result<std::borrow::Cow<'a, [u8]>> {
         self.guard.blobs.read_any(content)
+    }
+
+    fn is_stored(&self, content: &Content) -> bool {
+        self.guard.blobs.has_content(content)
     }
 }

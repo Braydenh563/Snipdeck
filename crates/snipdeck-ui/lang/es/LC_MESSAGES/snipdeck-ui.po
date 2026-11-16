@@ -228,6 +228,9 @@ msgstr "Animales"
 msgid "Animals & Nature"
 msgstr "Animales y naturaleza"
 
+msgid "Another backup or export is still running. Try again when it has finished."
+msgstr "Otra copia de seguridad o exportación sigue en curso. Inténtalo de nuevo cuando termine."
+
 msgid "Another program already uses {}."
 msgstr "Otro programa ya usa {}."
 
@@ -1795,6 +1798,9 @@ msgstr "No funciona"
 msgid "Nothing copied yet"
 msgstr "Todavía no se ha copiado nada"
 
+msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
+msgstr "No se guarda nada si no dices que Sí, y puedes cambiarlo cuando quieras en Ajustes. Reciente guarda el texto que copias, solo en este equipo, de las últimas {} copias o {} días, lo que ocurra primero. Las contraseñas de los gestores de contraseñas y los elementos Sensibles nunca se guardan."
+
 msgid "Nothing matches “{}”"
 msgstr "Nada coincide con “{}”"
 
@@ -2256,9 +2262,6 @@ msgstr "Acciones de entradas recientes"
 
 msgid "Recent history cleared"
 msgstr "Historial reciente borrado"
-
-msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
-msgstr "No se guarda nada si no dices que Sí, y puedes cambiarlo cuando quieras en Ajustes. Reciente guarda el texto que copias, solo en este equipo, de las últimas {} copias o {} días, lo que ocurra primero. Las contraseñas de los gestores de contraseñas y los elementos Sensibles nunca se guardan."
 
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "Recientes guarda el texto que copias, solo en este equipo, durante las últimas {} copias o {} días, lo que ocurra primero. Las contraseñas de los gestores de contraseñas y los fragmentos sensibles nunca se guardan. Puedes cambiarlo cuando quieras en Configuración."

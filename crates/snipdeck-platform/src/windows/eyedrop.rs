@@ -9,7 +9,7 @@
 //!    API, which of them are in HDR mode;
 //! 4. it copies each monitor with `BitBlt(.. SRCCOPY | CAPTUREBLT)` into a 32-bit top-down DIB
 //!    section (per monitor, so no buffer spans a gap or a negative origin), keeps the DIB to
-//!    paint the overlay from, and copies the bytes into a portable [`Shot`];
+//!    paint the overlay from, and reads its bytes in place for a portable [`Shot`];
 //! 5. it opens one `WS_POPUP` overlay per monitor, on that monitor, and takes the foreground;
 //!    if it did not get it 100 ms later it registers Esc / Enter / Space / arrows as hotkeys for
 //!    the rest of the run;
@@ -31,6 +31,7 @@
 use std::cell::RefCell;
 use std::ffi::c_void;
 use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
@@ -80,8 +81,8 @@ use super::dpi;
 use super::screen;
 use crate::error::Error;
 use crate::eyedrop::{
-    CELLS, EyedropDone, EyedropOutcome, EyedropTexts, Eyedropper, Input, Nav, Session, Shot, Step,
-    hex_text, loupe_cells, loupe_rect, scaled, shot_at, signed, window_title,
+    CELLS, EyedropDone, EyedropOutcome, EyedropTexts, Eyedropper, Input, Nav, Pixels, Session,
+    Shot, Step, hex_text, loupe_cells, loupe_rect, scaled, shot_at, signed, window_title,
 };
 use crate::route::ScreenRect;
 
@@ -266,7 +267,8 @@ fn solid_brush(r: u8, g: u8, b: u8) -> (HBRUSH, GdiObject) {
 /// buffer and the 11 x 11 source of the magnified cells.
 struct Surface {
     // Field order is drop order: the bitmap goes after `Drop::drop` selected it out, then the DC.
-    _bitmap: GdiObject,
+    // Shared with the pixels a [`Shot`] reads from the DIB (see `DibPixels`).
+    _bitmap: Rc<GdiObject>,
     dc: MemDc,
     previous: HGDIOBJ,
     /// The pixels of a DIB section (`None` for a compatible bitmap).
@@ -302,7 +304,7 @@ impl Surface {
             )
         }
         .map_err(|e| Error::from_windows("CreateDIBSection", &e))?;
-        let bitmap = GdiObject(HGDIOBJ(bitmap.0));
+        let bitmap = Rc::new(GdiObject(HGDIOBJ(bitmap.0)));
         if bits.is_null() {
             return Err(Error::Unavailable("the bitmap has no pixels"));
         }
@@ -313,14 +315,18 @@ impl Surface {
     fn compatible(reference: HDC, w: i32, h: i32) -> Result<Self, Error> {
         // SAFETY: `reference` is a live DC; the result is owned by the guard.
         let bitmap = unsafe { CreateCompatibleBitmap(reference, w, h) };
-        let bitmap = GdiObject(HGDIOBJ(bitmap.0));
+        let bitmap = Rc::new(GdiObject(HGDIOBJ(bitmap.0)));
         if bitmap.is_invalid() {
             return Err(Error::Unavailable("could not create a bitmap"));
         }
         Self::select(reference, bitmap, None)
     }
 
-    fn select(reference: HDC, bitmap: GdiObject, bits: Option<*mut u32>) -> Result<Self, Error> {
+    fn select(
+        reference: HDC,
+        bitmap: Rc<GdiObject>,
+        bits: Option<*mut u32>,
+    ) -> Result<Self, Error> {
         let dc = MemDc::new(reference)?;
         // SAFETY: both handles are live; the bitmap is not selected into another DC.
         let previous = unsafe { SelectObject(dc.0, bitmap.0) };
@@ -524,6 +530,23 @@ fn is_hdr(value: u32) -> bool {
     value & ENABLED != 0 && value & WIDE_COLOR_ENFORCED == 0
 }
 
+/// The pixels of a DIB section, read in place.
+struct DibPixels {
+    bits: *const u8,
+    len: usize,
+    /// Keeps the bitmap, and so `bits`, alive.
+    _bitmap: Rc<GdiObject>,
+}
+
+impl AsRef<[u8]> for DibPixels {
+    fn as_ref(&self) -> &[u8] {
+        // SAFETY: `bits` is the pixel memory of a 32-bit DIB section of exactly `len` bytes,
+        // which `_bitmap` keeps allocated. After the capture's `BitBlt` only reads draw from the
+        // frozen surface, so nothing writes to it while this slice is borrowed.
+        unsafe { std::slice::from_raw_parts(self.bits, self.len) }
+    }
+}
+
 /// Copies one monitor. Returns the portable shot and the surface the overlay paints from.
 fn capture(screen: &ScreenDc, monitor: &MonitorFacts, hdr: bool) -> Result<(Shot, Surface), Error> {
     let too_big = || Error::Unavailable("a monitor is too large to capture");
@@ -557,9 +580,13 @@ fn capture(screen: &ScreenDc, monitor: &MonitorFacts, hdr: bool) -> Result<(Shot
         .zip(usize::try_from(h).ok())
         .and_then(|(w, h)| w.checked_mul(h)?.checked_mul(4))
         .ok_or_else(too_big)?;
-    // SAFETY: `bits` is the pixel memory of the 32-bit `w` x `h` DIB section owned by `surface`,
-    // which is alive for this whole call: exactly `w * h * 4` readable bytes.
-    let bgra = unsafe { std::slice::from_raw_parts(bits.cast::<u8>(), len) }.to_vec();
+    // The shot reads the DIB section in place; it shares the bitmap, so the pixels live as long
+    // as the shot does even if the surface goes first.
+    let bgra = Pixels::new(DibPixels {
+        bits: bits.cast::<u8>().cast_const(),
+        len,
+        _bitmap: Rc::clone(&surface._bitmap),
+    });
     let shot = Shot {
         bounds: monitor.bounds,
         scale: monitor.scale,

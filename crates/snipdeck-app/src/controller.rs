@@ -17,6 +17,7 @@ use snipdeck_platform::{
     tray::TrayEvent,
 };
 
+mod archive_ctl;
 mod colour_ctl;
 mod colour_main;
 mod commands_ctl;
@@ -45,6 +46,7 @@ mod trigger_ctl;
 mod use_ctl;
 mod views;
 
+pub use archive_ctl::{ArchiveEnd, Begun, spawn as spawn_archive};
 pub use colour_ctl::{ColourView, SaveList, SaveTarget};
 pub use colour_main::{ColourBlock, colour_formats};
 pub use create_ctl::DropRun;
@@ -203,6 +205,8 @@ pub struct Controller<S, C, K, T> {
     /// A sensitive Files item was pasted: its decrypted files wait in the temp folder until the
     /// lock or the quit deletes them.
     secret_files_pasted: bool,
+    /// A background deletion of those files was started (the lock): the quit waits for it.
+    secret_files_deleting: bool,
     /// When the decrypted files of that paste are deleted (the clipboard clear's timer); none
     /// when clearing is off, then the lock or the quit does it.
     secret_files_due: Option<Timestamp>,
@@ -352,6 +356,8 @@ pub struct Controller<S, C, K, T> {
     pending: Vec<Effect>,
     /// The master password: whether one is set, whether its prompt is open, the idle clock.
     lock: lock_ctl::LockState,
+    /// The archive step a worker is writing, if any.
+    archive: archive_ctl::ArchiveState,
     /// Switches the clipboard listener of the Recent inbox (see `recent_ctl.rs`).
     recent_gate: Option<snipdeck_platform::clipboard_watch::WatchGate>,
     /// The typed-trigger service (keyboard hook), once the host hands it over.
@@ -477,6 +483,7 @@ where
         model.set_paste_rules(settings.paste_rules());
         model.set_target(target.current());
         let shown_at = clock.now();
+        let idle_start = clock.elapsed();
         let pinned = settings.panel_pinned;
         let colour =
             colour_ctl::colour_or(&settings.colour_current, crate::settings::DEFAULT_COLOUR);
@@ -491,6 +498,7 @@ where
             tz: TimeZone::system(),
             clipboard_clear: None,
             secret_files_pasted: false,
+            secret_files_deleting: false,
             secret_files_due: None,
             model,
             index_cache,
@@ -563,7 +571,8 @@ where
             dock_area_seen: None,
             fullscreen: false,
             pending: Vec::new(),
-            lock: lock_ctl::LockState::new(shown_at),
+            lock: lock_ctl::LockState::new(idle_start),
+            archive: archive_ctl::ArchiveState::default(),
             recent_gate: None,
             typing: None,
             typing_sent: Vec::new(),

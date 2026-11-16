@@ -33,8 +33,8 @@ use crate::{
     accent::AccentChoice,
     binding::{Loggable, Shown, arm_toast, model, redraw_all, register_redraw, to_i32},
     controller::{
-        Controller, HelpTopic, ImportKind, ImportPreview, ImportProblem, ImportSource, MasterState,
-        ToastPhase, ToastView,
+        ArchiveEnd, Begun, Controller, HelpTopic, ImportKind, ImportPreview, ImportProblem,
+        ImportSource, MasterState, ToastPhase, ToastView, spawn_archive,
     },
     host::{self, ClipboardText, HotkeyBackend, HotkeyFailure, HotkeyProblem},
     hotkey_health::{self, HotkeyHealth},
@@ -1477,9 +1477,22 @@ where
         let Some(dir) = self.data_dir.clone() else {
             return;
         };
-        self.act(|ctl| ctl.backup_now(&dir));
-        self.refresh_backups();
-        redraw_all();
+        let begun = self.act(|ctl| ctl.begin_backup_now(&dir));
+        self.show_busy();
+        let this = Rc::clone(self);
+        spawn_archive(&self.controller, begun, move |_| {
+            this.show_busy();
+            this.refresh_backups();
+            redraw_all();
+        });
+    }
+
+    /// Greys out "Back up now" and "Export library" while an archive job runs.
+    fn show_busy(&self) {
+        let busy = self.controller.borrow().archive_busy();
+        if let Some(window) = self.window.upgrade() {
+            window.set_backup_busy(busy);
+        }
     }
 
     /// "Restore" on a backup row: shows what the backup would add, the same preview as an import.
@@ -1561,22 +1574,26 @@ where
 
     /// Works out what `source` would do (nothing is written) and opens the preview on it.
     fn preview(self: &Rc<Self>, source: ImportSource, restore: bool, name: String) {
-        let outcome = self.act(|ctl| {
-            if restore {
-                source
-                    .path()
-                    .map_or(Err(ImportProblem::Failed), |p| ctl.preview_restore(p))
-            } else {
-                ctl.preview_import(&source)
+        let begun = self.act(|ctl| match source.path() {
+            Some(path) if restore => ctl.begin_restore_preview(path),
+            _ if restore => Begun::Refused,
+            _ => ctl.begin_import_preview(&source),
+        });
+        self.show_busy();
+        let this = Rc::clone(self);
+        spawn_archive(&self.controller, begun, move |end| {
+            this.show_busy();
+            // Refused (busy, or locked): the toast has said so; no preview opens.
+            if let ArchiveEnd::ImportPreview(outcome) = end {
+                this.state.borrow_mut().import = Some(PendingImport {
+                    source,
+                    restore,
+                    name,
+                    outcome,
+                });
             }
+            redraw_all();
         });
-        self.state.borrow_mut().import = Some(PendingImport {
-            source,
-            restore,
-            name,
-            outcome,
-        });
-        redraw_all();
     }
 
     /// "Import" / "Restore" in the preview: does what was previewed.
@@ -1585,12 +1602,18 @@ where
             return;
         };
         if pending.outcome.is_ok() {
-            if pending.restore {
-                self.act(|ctl| pending.source.path().is_some_and(|p| ctl.restore_backup(p)));
-            } else {
-                self.act(|ctl| ctl.apply_import(&pending.source));
-            }
-            self.refresh_backups();
+            let begun = self.act(|ctl| match pending.source.path() {
+                Some(path) if pending.restore => ctl.begin_restore_backup(path),
+                _ if pending.restore => Begun::Refused,
+                _ => ctl.begin_apply_import(&pending.source),
+            });
+            self.show_busy();
+            let this = Rc::clone(self);
+            spawn_archive(&self.controller, begun, move |_| {
+                this.show_busy();
+                this.refresh_backups();
+                redraw_all();
+            });
         }
         redraw_all();
     }
@@ -1650,12 +1673,18 @@ where
                 .documents_folder()
                 .unwrap_or_else(|| dir.join("exports")),
         };
-        let saved = self.act(|ctl| ctl.export_library(&folder));
-        if let Some(file) = saved
-            && let Some(parent) = file.parent()
-        {
-            self.open_folder(parent);
-        }
+        let begun = self.act(|ctl| ctl.begin_export(&folder));
+        self.show_busy();
+        let this = Rc::clone(self);
+        spawn_archive(&self.controller, begun, move |end| {
+            this.show_busy();
+            if let ArchiveEnd::Exported(Some(file)) = end
+                && let Some(parent) = file.parent()
+            {
+                this.open_folder(parent);
+            }
+            redraw_all();
+        });
     }
 
     fn erase(self: &Rc<Self>, typed: &str, forget_key: bool) {
@@ -1701,6 +1730,7 @@ where
                 shown: RefCell::new(None),
                 redraw: Rc::new(move || {
                     if let Some(core) = weak.upgrade() {
+                        core.show_busy();
                         core.sync();
                     }
                 }),

@@ -9,6 +9,9 @@
     reason = "test code: a failure is a failed test"
 )]
 
+mod support;
+use support::ArchiveSteps as _;
+
 use snipdeck_app::{
     controller::{Controller, Services},
     demo,

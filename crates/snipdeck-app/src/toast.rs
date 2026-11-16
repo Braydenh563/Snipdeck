@@ -234,6 +234,8 @@ pub enum ToastMessage {
     CrashedLastTime,
     /// "Backed up".
     BackupMade,
+    /// "Another backup or export is still running. Try again when it has finished."
+    ArchiveBusy,
     /// "Couldn't make a backup: the disk is full. ..." (a backup the user asked for)
     BackupFailed(Cause),
     /// "Couldn't make today's backup. Check the disk has room, then use Back up now in
