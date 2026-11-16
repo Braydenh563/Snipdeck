@@ -631,7 +631,10 @@ impl PanelModel {
         let mut merged: Vec<Row> = Vec::with_capacity(rows.len() + pending.len());
         // Several ghosts after the same row stack newest first (each one went in right below
         // the row, ahead of the earlier ones); a ghost after a ghost follows it at once.
-        #[allow(clippy::items_after_statements, reason = "local to the merge it serves")]
+        #[allow(
+            clippy::items_after_statements,
+            reason = "local to the merge it serves"
+        )]
         fn emit(
             key: Option<ItemId>,
             after: &mut HashMap<Option<ItemId>, Vec<&Ghost>>,
