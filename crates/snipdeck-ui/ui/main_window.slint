@@ -610,6 +610,8 @@ export component MainWindow inherits Window {
     property <bool> commands-compact: false;
     property <bool> view-compact: false;
     property <bool> toolbar-toggles: true;
+    // The heading row's Filter and Sort buttons drop their words (the tooltip keeps them) when the row is too narrow for both.
+    property <bool> heading-compact: false;
     property <length> caption-inset: SystemLook.caption-inset;
     property <length> ctl-h: max(Space.s8 * SystemLook.text-scale, Type.line-base + Space.s2);
     property <length> bar-h: max(Space.s8 + Space.s3, Type.line-base + Space.s2 + Space.s3);
@@ -701,6 +703,7 @@ export component MainWindow inherits Window {
         root.commands-compact = room < 658px;
         root.view-compact = room < 608px;
         root.toolbar-toggles = room >= 574px;
+        root.heading-compact = room < 380px;
     }
     // The Colour block needs room above the list. Set from `changed height` (not bound to `root.height`: the
     // block changes the layout, and a binding on the height would loop).
@@ -1827,6 +1830,7 @@ export component MainWindow inherits Window {
                         if root.filterable: filter-button := ToolbarButton {
                             horizontal-stretch: 0;
                             h: root.ctl-h;
+                            compact: root.heading-compact;
                             icon: Icons.funnel;
                             label: root.filter-count() > 0 ? @tr("Filter ({})", root.filter-count()) : @tr("Filter");
                             tooltip: @tr("Filter the items");
@@ -1838,6 +1842,7 @@ export component MainWindow inherits Window {
                         if root.sortable: sort-button := ToolbarButton {
                             horizontal-stretch: 0;
                             h: root.ctl-h;
+                            compact: root.heading-compact;
                             icon: Icons.rows;
                             label: @tr("Sort: {}", root.sort-name(root.list-sort));
                             tooltip: @tr("Sort by: {}", root.sort-name(root.list-sort));
@@ -1858,8 +1863,9 @@ export component MainWindow inherits Window {
                 }
 
                 // ---- Colour-label filter ----------------------------------------------------------
+                // One chip's height plus its 4 px focus ring on each side (the row scrolls, so it clips) and the bottom gap.
                 if root.label-chips.length > 0 || root.filter-count() > 0: Rectangle {
-                    height: Space.hit + Space.s2;
+                    height: max(Space.hit, Type.line-sm + Space.s2) + 3 * Space.s1;
                     accessible-role: AccessibleRole.groupbox;
                     accessible-label: @tr("Filter by colour label");
                     HorizontalLayout {
@@ -1868,21 +1874,43 @@ export component MainWindow inherits Window {
                         padding-bottom: Space.s1;
                         spacing: Space.s1;
                         alignment: start;
-                        for chip in root.label-chips: LabelChip {
-                            y: (parent.height - self.height) / 2;
-                            text: chip.name;
-                            hue: [ListHue.blue, ListHue.teal, ListHue.green, ListHue.amber, ListHue.orange, ListHue.red, ListHue.violet, ListHue.slate][chip.label];
-                            count: chip.count;
-                            selected: chip.label == root.label-filter;
-                            clicked => { root.label-filter-requested(chip.label == root.label-filter ? -1 : chip.label); }
-                        }
-                        for chip[i] in root.filter-chips: LabelChip {
-                            y: (parent.height - self.height) / 2;
-                            text: root.filter-name(chip.kind, chip.name);
-                            hue: ListHue.slate;
-                            selected: true;
-                            accessible-description: @tr("Remove this filter");
-                            clicked => { root.filter-chip-removed(i); }
+                        // The chips scroll sideways when the row is too narrow for them at the text size in use (they
+                        // each keep their words); Clear filter and the count stay in view beside them.
+                        chip-scroll := Flickable {
+                            preferred-width: chip-row.preferred-width;
+                            min-width: Space.hit;
+                            content-width: max(chip-row.preferred-width, self.width);
+                            content-height: self.height;
+                            interactive: false;
+                            function reveal(x: length, w: length) {
+                                if (x + self.content-x < 0px) {
+                                    self.content-x = -x;
+                                } else if (x + w + self.content-x > self.width) {
+                                    self.content-x = self.width - x - w;
+                                }
+                            }
+                            chip-row := HorizontalLayout {
+                                spacing: Space.s1;
+                                alignment: start;
+                                for chip in root.label-chips: chip-l := LabelChip {
+                                    y: (parent.height - self.height) / 2;
+                                    text: chip.name;
+                                    hue: [ListHue.blue, ListHue.teal, ListHue.green, ListHue.amber, ListHue.orange, ListHue.red, ListHue.violet, ListHue.slate][chip.label];
+                                    count: chip.count;
+                                    selected: chip.label == root.label-filter;
+                                    clicked => { root.label-filter-requested(chip.label == root.label-filter ? -1 : chip.label); }
+                                    changed has-focus => { if (self.has-focus) { chip-scroll.reveal(self.x, self.width); } }
+                                }
+                                for chip[i] in root.filter-chips: chip-f := LabelChip {
+                                    y: (parent.height - self.height) / 2;
+                                    text: root.filter-name(chip.kind, chip.name);
+                                    hue: ListHue.slate;
+                                    selected: true;
+                                    accessible-description: @tr("Remove this filter");
+                                    clicked => { root.filter-chip-removed(i); }
+                                    changed has-focus => { if (self.has-focus) { chip-scroll.reveal(self.x, self.width); } }
+                                }
+                            }
                         }
                         if root.filter-count() > 0: Button {
                             variant: ButtonVariant.ghost;
@@ -1890,7 +1918,7 @@ export component MainWindow inherits Window {
                             y: (parent.height - self.height) / 2;
                             clicked => { root.filter-cleared(); }
                         }
-                        if root.filter-count() > 0: Text {
+                        if root.filter-count() > 0 && !root.heading-compact: Text {
                             text: @tr("{n} item" | "{n} items" % root.rows.length);
                             font-family: Fonts.sans;
                             font-size: Type.sm;

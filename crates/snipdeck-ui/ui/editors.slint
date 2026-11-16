@@ -221,10 +221,11 @@ component NoColour inherits Rectangle {
     in property <string> label;
     in property <bool> selected: false;
     in property <bool> show-focus: false;
+    in property <length> cell: Space.hit * SystemLook.text-scale;
     callback clicked();
 
-    width: Space.hit * SystemLook.text-scale;
-    height: Space.hit * SystemLook.text-scale;
+    width: root.cell;
+    height: root.cell;
     accessible-role: radio-button;
     accessible-label: root.label;
     accessible-checkable: true;
@@ -240,7 +241,7 @@ component NoColour inherits Rectangle {
     Rectangle {
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
-        width: (touch.has-hover || touch.pressed ? 22px : 20px) * SystemLook.text-scale;
+        width: root.cell * (touch.has-hover || touch.pressed ? 22 : 20) / 28;
         height: self.width;
         border-radius: Radius.sm;
         border-width: 1px;
@@ -249,7 +250,7 @@ component NoColour inherits Rectangle {
         animate width { duration: Motion.instant; easing: Motion.out; }
         Icon {
             source: Icons.x;
-            size: 12px * SystemLook.text-scale;
+            size: root.cell * 12 / 28;
             tint: Theme.text-secondary;
             x: (parent.width - self.width) / 2;
             y: (parent.height - self.height) / 2;
@@ -288,23 +289,40 @@ component ColourPicker inherits Rectangle {
         }
     }
 
-    height: Space.hit * SystemLook.text-scale;
+    // The targets grow with the text size, but never past the room the row has: the cell is the 28 px hit target at
+    // the least, the text-size scaled one at the most, and what the targets (plus gaps) leave of the width between.
+    // Set from `changed` handlers, not bound to `root.width`: the row's width comes from its parent's layout, which
+    // also reads its height, which follows the cell.
+    property <length> gap: Space.s1 / SystemLook.text-scale;
+    property <length> cell: Space.hit * SystemLook.text-scale;
+    property <float> text-scale: SystemLook.text-scale;
+    function refit() {
+        if (root.width > 0px) {
+            root.cell = max(Space.hit, min(Space.hit * root.text-scale, (root.width - root.hues.length * root.gap) / (root.hues.length + 1)));
+        }
+    }
+    init => { root.refit(); }
+    changed width => { root.refit(); }
+    changed text-scale => { root.refit(); }
+    height: root.cell;
     forward-focus: scope;
     accessible-role: radio-group;
     accessible-label: root.label;
 
     HorizontalLayout {
-        // The targets grow with the text size and the window cannot get wider than its minimum, so the gap shrinks
-        // by the same factor: nine targets at 2.25x still end inside the window (final-audit-2 re-audit).
-        spacing: Space.s1 / SystemLook.text-scale;
+        // The gap shrinks with the text size as the targets grow, and the targets give way when the row is still too
+        // narrow: every choice ends inside the row at 2.25x.
+        spacing: root.gap;
         alignment: start;
         NoColour {
+            cell: root.cell;
             label: root.none-label;
             selected: root.accent == -1;
             show-focus: scope.has-focus && root.accent == -1;
             clicked => { root.move(-1); }
         }
         for h[i] in root.hues: Swatch {
+            cell: root.cell;
             hue: h;
             label: root.names[i];
             selected: i == root.accent;
@@ -1804,10 +1822,11 @@ component IconCell inherits Rectangle {
     in property <string> label;
     in property <bool> selected: false;
     in property <bool> show-focus: false;
+    in property <length> cell: Space.hit * SystemLook.text-scale;
     callback clicked();
 
-    width: Space.hit * SystemLook.text-scale;
-    height: Space.hit * SystemLook.text-scale;
+    width: root.cell;
+    height: root.cell;
     accessible-role: radio-button;
     accessible-label: root.label;
     accessible-checkable: true;
@@ -1823,13 +1842,13 @@ component IconCell inherits Rectangle {
     Rectangle {
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
-        width: 22px * SystemLook.text-scale;
-        height: 22px * SystemLook.text-scale;
+        width: root.cell * 22 / 28;
+        height: root.cell * 22 / 28;
         border-radius: Radius.sm;
         background: touch.pressed ? Theme.bg-sunken : touch.has-hover ? Theme.bg-hover : root.selected ? Theme.bg-selected : transparent;
         Icon {
             source: root.source;
-            size: 16px * SystemLook.text-scale;
+            size: root.cell * 16 / 28;
             tint: root.selected ? Theme.text-on-selected : Theme.text-secondary;
             x: (parent.width - self.width) / 2;
             y: (parent.height - self.height) / 2;
@@ -1867,7 +1886,19 @@ component IconPicker inherits Rectangle {
         }
     }
 
-    height: 3 * Space.hit * SystemLook.text-scale + 2 * Space.s1;
+    // As the colour picker: the cells give way (to no less than the 28 px hit target) when nine of them do not fit the
+    // row at the text size in use. Set from `changed` handlers; the row's width comes from a layout that reads its height.
+    property <length> cell: Space.hit * SystemLook.text-scale;
+    property <float> text-scale: SystemLook.text-scale;
+    function refit() {
+        if (root.width > 0px) {
+            root.cell = max(Space.hit, min(Space.hit * root.text-scale, (root.width - (root.columns - 1) * Space.s1) / root.columns));
+        }
+    }
+    init => { root.refit(); }
+    changed width => { root.refit(); }
+    changed text-scale => { root.refit(); }
+    height: 3 * root.cell + 2 * Space.s1;
     forward-focus: scope;
     accessible-role: radio-group;
     accessible-label: root.label;
@@ -1881,15 +1912,17 @@ component IconPicker inherits Rectangle {
             for col in root.columns: Rectangle {
                 // 0 is "no icon"; 1 to 24 are the icons.
                 property <int> cell: row * root.columns + col;
-                width: Space.hit * SystemLook.text-scale;
-                height: Space.hit * SystemLook.text-scale;
+                width: root.cell;
+                height: root.cell;
                 if cell == 0: NoColour {
+                    cell: root.cell;
                     label: root.none-label;
                     selected: root.icon == -1;
                     show-focus: scope.has-focus && root.icon == -1;
                     clicked => { root.move(-1); }
                 }
                 if cell > 0 && cell <= root.total: IconCell {
+                    cell: root.cell;
                     source: ListIcons.all[cell - 1];
                     label: root.names[cell - 1];
                     selected: cell - 1 == root.icon;
@@ -2454,7 +2487,7 @@ export component TagManager inherits Window {
                             padding-left: Space.s3;
                             padding-right: Space.s2;
                             spacing: Space.s2;
-                            if root.editing != i && root.colours[i] >= 0: Rectangle {
+                            if root.editing != i && i < root.colours.length && root.colours[i] >= 0: Rectangle {
                                 width: Space.s3;
                                 height: Space.s3;
                                 y: (parent.height - self.height) / 2;
