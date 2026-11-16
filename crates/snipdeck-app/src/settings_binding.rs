@@ -20,6 +20,7 @@ use slint::{ComponentHandle, Global, SharedString};
 use snipdeck_platform::{
     chord::Chord,
     clipboard_history::{self, ClipboardHistoryEntry, HistoryRead},
+    command_line::AutostartStatus,
     pipeline::{Clipboard, Keyboard, Timing},
 };
 use snipdeck_portable::{
@@ -66,6 +67,9 @@ pub enum AutostartError {
     Other(String),
 }
 
+/// What happens when [`SettingsHost::set_autostart`] is done.
+pub type AutostartDone = Box<dyn FnOnce(Result<(), AutostartError>)>;
+
 impl AutostartError {
     /// The toast that tells the user, in their language.
     #[must_use]
@@ -84,16 +88,16 @@ pub trait SettingsHost {
     /// registered. Returns the ones that could not be.
     fn apply_hotkeys(&self, hotkeys: &Hotkeys) -> Vec<HotkeyProblem>;
 
-    /// Adds or removes the "Start with Windows" entry.
-    ///
-    /// # Errors
-    ///
-    /// Why it could not be changed.
-    fn set_autostart(&self, on: bool, hidden: bool) -> Result<(), AutostartError>;
+    /// Adds or removes the "Start with Windows" entry, then calls `done` with the outcome (or
+    /// why it could not be changed) **on the UI thread**. It may call it at once, or later: the
+    /// packaged build asks Windows, which can wait for the user's consent, and must not freeze
+    /// the window meanwhile.
+    fn set_autostart(&self, on: bool, hidden: bool, done: AutostartDone);
 
-    /// Whether the "Start with Windows" entry exists now (the user may have deleted it outside
-    /// Snipdeck). Where there is no such entry the setting is only remembered, so it reads `true`.
-    fn autostart_registered(&self) -> bool;
+    /// What "Start with Windows" is now: the entry may be gone (removed outside Snipdeck) or
+    /// switched off in Windows. Where there is no such entry the setting is only remembered, so
+    /// it reads `On`. Never waits for Windows.
+    fn autostart_status(&self) -> AutostartStatus;
 
     /// Gives the Panel a taskbar button, or takes it away, while the app runs.
     fn set_panel_in_taskbar(&self, on: bool);
@@ -188,11 +192,35 @@ pub struct SystemHost {
     panel_taskbar: PanelTaskbar,
 }
 
+/// Waits (on the UI thread, polling every 50 ms) for the worker thread to put its answer in
+/// `slot`, then hands it to `done`. The closure `done` is not `Send`, so it cannot be called from
+/// the worker itself.
+#[cfg(windows)]
+fn deliver_when_ready(
+    slot: std::sync::Arc<std::sync::Mutex<Option<Result<(), AutostartError>>>>,
+    done: AutostartDone,
+) {
+    let ready = slot.lock().ok().and_then(|mut slot| slot.take());
+    if let Some(result) = ready {
+        done(result);
+        return;
+    }
+    slint::Timer::single_shot(std::time::Duration::from_millis(50), move || {
+        deliver_when_ready(slot, done);
+    });
+}
+
 impl SystemHost {
     /// A host that registers shortcuts with `hotkeys` and changes the Panel's taskbar button
     /// with `panel_taskbar`.
     #[must_use]
     pub fn new(hotkeys: Rc<RefCell<Box<dyn HotkeyBackend>>>, panel_taskbar: PanelTaskbar) -> Self {
+        #[cfg(windows)]
+        if snipdeck_platform::windows::package::is_packaged() {
+            // Read the startup task's state in the background, so the first look at Settings
+            // knows it without waiting.
+            snipdeck_platform::windows::package::refresh_startup_task();
+        }
         Self {
             hotkeys,
             panel_taskbar,
@@ -205,48 +233,65 @@ impl SettingsHost for SystemHost {
         apply_hotkeys(&mut **self.hotkeys.borrow_mut(), hotkeys)
     }
 
-    fn set_autostart(&self, on: bool, hidden: bool) -> Result<(), AutostartError> {
+    fn set_autostart(&self, on: bool, hidden: bool, done: AutostartDone) {
         #[cfg(windows)]
         {
             use snipdeck_platform::{startup_task::Blocked, windows::package};
             if package::is_packaged() {
                 // The package's startup task cannot carry `--hidden`: `main` reads the saved
-                // "When Windows starts" choice instead.
+                // "When Windows starts" choice instead. Windows answers on its own thread,
+                // possibly after a consent prompt: the answer is picked up on the UI thread.
                 let _ = hidden;
-                return package::set_startup_task(on).map_err(|e| match e {
-                    package::TaskError::Blocked(Blocked::ByUser) => AutostartError::SwitchedOff,
-                    package::TaskError::Blocked(Blocked::ByPolicy) => AutostartError::Policy,
-                    package::TaskError::Os(e) => AutostartError::Other(e.to_string()),
+                let slot = std::sync::Arc::new(std::sync::Mutex::new(None));
+                let answer = std::sync::Arc::clone(&slot);
+                package::request_startup_task(on, move |result| {
+                    let result = result.map_err(|e| match e {
+                        package::TaskError::Blocked(Blocked::ByUser) => AutostartError::SwitchedOff,
+                        package::TaskError::Blocked(Blocked::ByPolicy) => AutostartError::Policy,
+                        package::TaskError::Os(e) => AutostartError::Other(e.to_string()),
+                    });
+                    if let Ok(mut slot) = answer.lock() {
+                        *slot = Some(result);
+                    }
                 });
+                deliver_when_ready(slot, done);
+                return;
             }
-            let exe = std::env::current_exe().map_err(|e| AutostartError::Other(e.to_string()))?;
-            snipdeck_platform::windows::autostart::set_enabled(
-                &exe,
-                if hidden { "--hidden" } else { "" },
-                on,
-            )
-            .map_err(|e| AutostartError::Other(e.to_string()))
+            let result = std::env::current_exe()
+                .map_err(|e| AutostartError::Other(e.to_string()))
+                .and_then(|exe| {
+                    snipdeck_platform::windows::autostart::set_enabled(
+                        &exe,
+                        if hidden { "--hidden" } else { "" },
+                        on,
+                    )
+                    .map_err(|e| AutostartError::Other(e.to_string()))
+                });
+            done(result);
         }
         #[cfg(not(windows))]
         {
             // Only Windows has the entry; elsewhere the setting is just remembered.
             let _ = (on, hidden);
-            Ok(())
+            done(Ok(()));
         }
     }
 
-    fn autostart_registered(&self) -> bool {
+    fn autostart_status(&self) -> AutostartStatus {
         #[cfg(windows)]
         {
-            if snipdeck_platform::windows::package::is_packaged() {
-                snipdeck_platform::windows::package::startup_task_enabled()
+            use snipdeck_platform::windows::package;
+            if package::is_packaged() {
+                // Whatever was read last; a fresh read (throttled) lands for the next look.
+                package::refresh_startup_task();
+                package::startup_task_status()
             } else {
-                snipdeck_platform::windows::autostart::is_enabled()
+                snipdeck_platform::windows::autostart::status()
             }
         }
         #[cfg(not(windows))]
         {
-            true
+            AutostartStatus::On
         }
     }
 
@@ -725,6 +770,8 @@ struct PageView {
     panel_start_visible_index: i32,
     language_index: i32,
     autostart: bool,
+    /// Registered, but switched off in Windows (Task Manager, Settings > Apps > Startup).
+    autostart_off_in_windows: bool,
     close_to_tray: bool,
     panel_in_taskbar: bool,
     panel_hide_on_blur: bool,
@@ -984,6 +1031,7 @@ where
         panel_start_visible_index: i32::from(settings.panel_start_visible),
         language_index: language_index(&settings.language),
         autostart: settings.autostart,
+        autostart_off_in_windows: false,
         close_to_tray: settings.close_to_tray,
         panel_in_taskbar: settings.panel_in_taskbar,
         panel_hide_on_blur: settings.panel_hide_on_blur,
@@ -1053,7 +1101,10 @@ struct SettingsCore<C, K, T> {
     save_timer: Rc<Cell<bool>>,
     /// Whether Windows holds the start-up entry, read when the page opens and after the toggle
     /// changes it (the read can be a blocking call), not on each redraw.
-    autostart_registered: Cell<bool>,
+    autostart_status: Cell<AutostartStatus>,
+    /// A change to "Start with Windows" is waiting for Windows' answer (the packaged build can
+    /// wait for the user's consent): a second flip is ignored until it is answered.
+    autostart_pending: Cell<bool>,
 }
 
 /// A bound Settings page. Dropping it does not unbind the window; the window's callbacks keep the
@@ -1127,8 +1178,7 @@ where
     }
 
     fn refresh_autostart(&self) {
-        self.autostart_registered
-            .set(self.host.autostart_registered());
+        self.autostart_status.set(self.host.autostart_status());
     }
 
     fn refresh_backups(&self) {
@@ -1156,8 +1206,11 @@ where
             self.data_dir.is_some(),
         );
         // The switch shows what Windows will do, not only what was chosen here: an entry removed
-        // outside Snipdeck (Task Manager, a moved install) reads as off.
-        view.autostart = view.autostart && self.autostart_registered.get();
+        // outside Snipdeck reads as off, and one Windows switched off (Task Manager, Settings >
+        // Apps > Startup) reads as off with its own explanation.
+        let status = self.autostart_status.get();
+        view.autostart = view.autostart && status == AutostartStatus::On;
+        view.autostart_off_in_windows = status == AutostartStatus::SwitchedOffInWindows;
         render(&window, self.shown.borrow().as_ref(), &view);
         if let Some(toast) = &view.toast
             && self.controller.borrow_mut().claim_toast_timer(toast.seq)
@@ -1372,30 +1425,62 @@ where
     fn panel_start_visible_chosen(self: &Rc<Self>, index: i32) {
         let visible = index == 1;
         self.refresh_autostart();
-        let rewrite =
-            self.controller.borrow().settings().autostart && self.autostart_registered.get();
-        if rewrite && let Err(error) = self.host.set_autostart(true, !visible) {
-            crate::trace!("autostart rewrite: {error}");
-            self.toast(ToastKind::Danger, error.toast());
+        let rewrite = self.controller.borrow().settings().autostart
+            && self.autostart_status.get() == AutostartStatus::On;
+        if !rewrite {
+            self.act(|ctl| ctl.update_settings(|s| s.panel_start_visible = visible));
+            return;
+        }
+        if self.autostart_pending.replace(true) {
             self.force_redraw();
             return;
         }
-        self.act(|ctl| ctl.update_settings(|s| s.panel_start_visible = visible));
+        let core = Rc::clone(self);
+        self.host.set_autostart(
+            true,
+            !visible,
+            Box::new(move |result| {
+                core.autostart_pending.set(false);
+                match result {
+                    Ok(()) => {
+                        core.act(|ctl| ctl.update_settings(|s| s.panel_start_visible = visible));
+                    }
+                    Err(error) => {
+                        crate::trace!("autostart rewrite: {error}");
+                        core.toast(ToastKind::Danger, error.toast());
+                        core.force_redraw();
+                    }
+                }
+            }),
+        );
     }
 
     fn autostart_toggled(self: &Rc<Self>, on: bool) {
-        let hidden = !self.controller.borrow().settings().panel_start_visible;
-        match self.host.set_autostart(on, hidden) {
-            Ok(()) => {
-                self.refresh_autostart();
-                self.act(|ctl| ctl.update_settings(|s| s.autostart = on));
-            }
-            Err(error) => {
-                crate::trace!("autostart {on}: {error}");
-                self.toast(ToastKind::Danger, error.toast());
-                self.force_redraw();
-            }
+        if self.autostart_pending.replace(true) {
+            self.force_redraw();
+            return;
         }
+        let hidden = !self.controller.borrow().settings().panel_start_visible;
+        let core = Rc::clone(self);
+        self.host.set_autostart(
+            on,
+            hidden,
+            Box::new(move |result| {
+                core.autostart_pending.set(false);
+                match result {
+                    Ok(()) => {
+                        core.refresh_autostart();
+                        core.act(|ctl| ctl.update_settings(|s| s.autostart = on));
+                    }
+                    Err(error) => {
+                        crate::trace!("autostart {on}: {error}");
+                        core.refresh_autostart();
+                        core.toast(ToastKind::Danger, error.toast());
+                        core.force_redraw();
+                    }
+                }
+            }),
+        );
     }
 
     // ---- Backups, data ----------------------------------------------------------------------
@@ -1735,7 +1820,8 @@ where
                     }
                 }),
                 save_timer: Rc::default(),
-                autostart_registered: Cell::new(false),
+                autostart_status: Cell::new(AutostartStatus::On),
+                autostart_pending: Cell::new(false),
             }
         });
         register_redraw(&core.redraw);
@@ -2093,6 +2179,7 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     if differs(&|p| p.language_index == view.language_index) {
         window.set_language_index(view.language_index);
     }
+    window.set_autostart_off_in_windows(view.autostart_off_in_windows);
     if differs(&|p| p.autostart == view.autostart) {
         window.set_autostart(view.autostart);
     }

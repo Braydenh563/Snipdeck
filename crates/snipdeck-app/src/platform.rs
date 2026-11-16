@@ -574,6 +574,34 @@ pub fn launched_by_startup_task() -> bool {
     }
 }
 
+/// At start-up with "Start with Windows" on: points a `Run` entry left by a moved or older
+/// install at this executable (a portable folder that was moved), with the arguments the saved
+/// "When Windows starts" choice calls for. An entry the user removed stays removed; the packaged
+/// build has no such entry. Failures are only logged. Unverified on Windows.
+pub fn sync_autostart(setting_on: bool, starts_visible: bool) {
+    #[cfg(windows)]
+    {
+        if !setting_on || snipdeck_platform::windows::package::is_packaged() {
+            return;
+        }
+        match std::env::current_exe() {
+            Ok(exe) => {
+                let args = if starts_visible { "" } else { "--hidden" };
+                match snipdeck_platform::windows::autostart::rewrite_if_stale(&exe, args, true) {
+                    Ok(true) => crate::trace!("autostart: rewrote a stale Run entry"),
+                    Ok(false) => {}
+                    Err(error) => crate::trace!("autostart rewrite: {error}"),
+                }
+            }
+            Err(error) => crate::trace!("autostart rewrite: {error}"),
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (setting_on, starts_visible);
+    }
+}
+
 /// Windows Hello on this machine; none elsewhere.
 #[must_use]
 pub fn hello() -> Option<std::sync::Arc<dyn snipdeck_platform::hello::HelloAuthenticator>> {

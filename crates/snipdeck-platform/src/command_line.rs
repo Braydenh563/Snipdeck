@@ -52,6 +52,50 @@ pub fn run_value(exe: &str, args: &str) -> Result<String, CommandLineError> {
     Ok(value)
 }
 
+/// What "Start with Windows" amounts to, from the `Run` value and Windows' own switch.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AutostartStatus {
+    /// No `Run` value: nothing starts at sign-in.
+    Off,
+    /// A `Run` value exists and Windows has not switched it off.
+    On,
+    /// A `Run` value exists but the user switched it off in Task Manager or Settings > Apps >
+    /// Startup (`StartupApproved\Run`): it will not run at the next sign-in.
+    SwitchedOffInWindows,
+}
+
+/// Whether the `StartupApproved\Run` data for our value says "disabled".
+///
+/// The value is a `REG_BINARY` of 12 bytes: a state word (the first byte: even, `02` / `06`, is
+/// enabled; odd, `03`, is disabled) and the time of the change. Anything unreadable (missing or
+/// empty) is "not disabled": Windows treats a value without a record as enabled. Format from
+/// community documentation, **unverified on Windows**.
+#[must_use]
+pub fn approval_disables(data: Option<&[u8]>) -> bool {
+    data.and_then(|bytes| bytes.first())
+        .is_some_and(|b| b & 1 == 1)
+}
+
+/// The status given the stored `Run` value (`None` if absent) and the `StartupApproved` data.
+#[must_use]
+pub fn autostart_status(run_value: Option<&str>, approved: Option<&[u8]>) -> AutostartStatus {
+    match run_value {
+        None => AutostartStatus::Off,
+        Some(_) if approval_disables(approved) => AutostartStatus::SwitchedOffInWindows,
+        Some(_) => AutostartStatus::On,
+    }
+}
+
+/// Whether the stored `Run` value must be rewritten at start-up: the setting is on, a value
+/// exists, and it is not the command this process would register (a portable folder that was
+/// moved, an old install, an older argument). A value that is absent is left absent: the user
+/// removed it (the Settings switch then reads off), and start-up does not bring it back.
+/// Windows paths are case-insensitive, so the comparison ignores case.
+#[must_use]
+pub fn stale_run_value(setting_on: bool, stored: Option<&str>, expected: &str) -> bool {
+    setting_on && stored.is_some_and(|stored| !stored.eq_ignore_ascii_case(expected))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -106,5 +150,49 @@ mod tests {
         // An astral character is two UTF-16 units.
         let exe = format!("C:\\{}\u{1F600}", "a".repeat(MAX_CHARS - 2 - 3 - 1));
         assert_eq!(run_value(&exe, ""), Err(CommandLineError::TooLong));
+    }
+
+    #[test]
+    fn approval_data_says_disabled_by_an_odd_first_byte() {
+        let enabled = [0x02, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8];
+        let enabled_by_user = [0x06, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8];
+        let disabled = [0x03, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8];
+        assert!(!approval_disables(Some(&enabled)));
+        assert!(!approval_disables(Some(&enabled_by_user)));
+        assert!(approval_disables(Some(&disabled)));
+        assert!(!approval_disables(Some(&[])), "empty: no record");
+        assert!(!approval_disables(None), "no record means enabled");
+    }
+
+    #[test]
+    fn status_has_three_states() {
+        let on = [0x02, 0, 0, 0];
+        let off = [0x03, 0, 0, 0];
+        assert_eq!(autostart_status(None, None), AutostartStatus::Off);
+        assert_eq!(autostart_status(None, Some(&off)), AutostartStatus::Off);
+        assert_eq!(autostart_status(Some("x"), None), AutostartStatus::On);
+        assert_eq!(autostart_status(Some("x"), Some(&on)), AutostartStatus::On);
+        assert_eq!(
+            autostart_status(Some("x"), Some(&off)),
+            AutostartStatus::SwitchedOffInWindows
+        );
+    }
+
+    #[test]
+    fn a_stale_value_is_rewritten_only_when_the_setting_is_on() {
+        let now = r#""C:\new\snipdeck.exe" --hidden"#;
+        let old = r#""D:\old\snipdeck.exe" --hidden"#;
+        assert!(stale_run_value(true, Some(old), now));
+        assert!(!stale_run_value(false, Some(old), now), "setting off");
+        assert!(!stale_run_value(true, Some(now), now), "already current");
+        assert!(
+            !stale_run_value(true, Some(&now.to_uppercase()), now),
+            "paths ignore case"
+        );
+        assert!(!stale_run_value(true, None, now), "the user removed it");
+        assert!(
+            stale_run_value(true, Some(r#""C:\new\snipdeck.exe""#), now),
+            "other arguments (the start-visible choice changed)"
+        );
     }
 }

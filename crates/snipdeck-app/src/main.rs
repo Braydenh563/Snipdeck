@@ -261,6 +261,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
             by_startup_task,
             settings.starts_visible(),
         );
+    platform::sync_autostart(settings.autostart, settings.panel_start_visible);
     // The text size, before any window draws: the setting over Windows' own.
     snipdeck_app::text_scale::configure(settings.text_size);
     snipdeck_app::text_scale::set_system(look.text_scale());

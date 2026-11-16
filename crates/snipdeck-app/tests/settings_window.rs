@@ -43,6 +43,7 @@ use snipdeck_app::{
 use snipdeck_core::Timestamp;
 use snipdeck_platform::{
     clipboard_history::{ClipboardHistoryEntry, HistoryRead},
+    command_line::AutostartStatus,
     testing::{FakeClipboard, FakeKeyboard, FakeTiming},
     tray::TrayEvent,
 };
@@ -102,18 +103,23 @@ impl SettingsHost for FakeHost {
         settings_binding::apply_hotkeys(&mut *self.hotkeys.borrow_mut(), hotkeys)
     }
 
-    fn set_autostart(&self, on: bool, hidden: bool) -> Result<(), AutostartError> {
+    fn set_autostart(&self, on: bool, hidden: bool, done: settings_binding::AutostartDone) {
         if self.autostart_fails.get() {
-            return Err(AutostartError::Other("the registry said no".into()));
+            done(Err(AutostartError::Other("the registry said no".into())));
+            return;
         }
         self.autostart.set(Some(on));
         self.autostart_hidden.set(Some(hidden));
-        Ok(())
+        done(Ok(()));
     }
 
-    fn autostart_registered(&self) -> bool {
+    fn autostart_status(&self) -> AutostartStatus {
         self.autostart_reads.set(self.autostart_reads.get() + 1);
-        self.autostart.get() == Some(true)
+        if self.autostart.get() == Some(true) {
+            AutostartStatus::On
+        } else {
+            AutostartStatus::Off
+        }
     }
 
     fn set_panel_in_taskbar(&self, on: bool) {

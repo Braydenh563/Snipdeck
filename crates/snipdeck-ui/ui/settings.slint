@@ -291,6 +291,8 @@ export component SettingsPage inherits Window {
     in property <[string]> languages;
     in property <int> language-index: 0;
     in-out property <bool> autostart: false;
+    // The entry exists but Windows has it switched off (Task Manager, Settings > Apps > Startup).
+    in property <bool> autostart-off-in-windows: false;
     in-out property <bool> close-to-tray: true;
     in-out property <bool> panel-in-taskbar: false;
     in-out property <bool> panel-hide-on-blur: true;
@@ -1041,7 +1043,9 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Start with Windows");
-                        description: @tr("Snipdeck waits in the tray so the shortcuts work after you sign in.");
+                        description: root.autostart-off-in-windows
+                            ? @tr("Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there.")
+                            : @tr("Snipdeck waits in the tray so the shortcuts work after you sign in.");
                         Toggle {
                             a11y-label: @tr("Start with Windows");
                             checked <=> root.autostart;

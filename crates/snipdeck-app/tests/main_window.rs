@@ -28,11 +28,12 @@ use snipdeck_app::{
     native_window::{self, Surface},
     onboarding_binding::OnboardingUi,
     settings::{Hotkeys, Settings},
-    settings_binding::{AutostartError, SettingsHost},
+    settings_binding::{AutostartDone, SettingsHost},
 };
 use snipdeck_app::{commands::Command, host::HotkeyProblem};
 use snipdeck_core::Timestamp;
 use snipdeck_platform::{
+    command_line::AutostartStatus,
     testing::{FakeClipboard, FakeKeyboard, FakeTiming},
     tray::TrayEvent,
 };
@@ -1057,12 +1058,12 @@ impl SettingsHost for NoHost {
         Vec::new()
     }
 
-    fn set_autostart(&self, _on: bool, _hidden: bool) -> Result<(), AutostartError> {
-        Ok(())
+    fn set_autostart(&self, _on: bool, _hidden: bool, done: AutostartDone) {
+        done(Ok(()));
     }
 
-    fn autostart_registered(&self) -> bool {
-        false
+    fn autostart_status(&self) -> AutostartStatus {
+        AutostartStatus::Off
     }
 
     fn set_panel_in_taskbar(&self, _on: bool) {}
