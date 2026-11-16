@@ -12,6 +12,7 @@
 //     Dialog gives it, see README).
 //
 // Colour names and kind order are the host's mapping to its enums; they are listed next to each property.
+import { TipHost, TipLayer } from "components/tip-host.slint";
 import { ListView } from "std-widgets.slint";
 import { Theme, Type, Space, Radius, Motion, Fonts, Palette, ListHue, SystemLook } from "theme.slint";
 import { Icons } from "icons.slint";
@@ -997,6 +998,10 @@ export component ItemEditor inherits Window {
 
     scope := FocusScope {
         capture-key-pressed(event) => {
+            // Esc first closes a tooltip on screen, and does nothing else on that press.
+            if (event.text == Key.Escape && TipHost.dismiss()) {
+                return accept;
+            }
             if (event.text == "\n" && event.modifiers.control && !root.discard-open) {
                 root.try-save();
                 return accept;
@@ -1544,6 +1549,9 @@ export component ItemEditor inherits Window {
             }
         }
     }
+
+    // The window's tooltip layer: last, so no sibling paints over a tooltip and no container clips it.
+    TipLayer { suppressed: root.discard-open || root.tags-open; }
 }
 
 // ---- List and board editors ----------------------------------------------------------------------
@@ -1789,6 +1797,10 @@ component EntityEditorBody inherits Rectangle {
 
     scope := FocusScope {
         capture-key-pressed(event) => {
+            // Esc first closes a tooltip on screen, and does nothing else on that press.
+            if (event.text == Key.Escape && TipHost.dismiss()) {
+                return accept;
+            }
             if (event.text == "\n" && event.modifiers.control && !root.discard-open && !root.delete-open) {
                 root.try-save();
                 return accept;
@@ -1999,6 +2011,9 @@ export component ListEditor inherits Window {
         delete-confirmed => { root.delete-confirmed(); }
         edited => { root.edited(); }
     }
+
+    // The window's tooltip layer: last, so no sibling paints over a tooltip and no container clips it.
+    TipLayer { suppressed: root.discard-open || root.delete-open; }
 }
 
 // Boards carry a name only in the data model today (snipdeck-core `Board`); colour and sort are shown because the
@@ -2054,6 +2069,9 @@ export component BoardEditor inherits Window {
         delete-confirmed => { root.delete-confirmed(); }
         edited => { root.edited(); }
     }
+
+    // The window's tooltip layer: last, so no sibling paints over a tooltip and no container clips it.
+    TipLayer { suppressed: root.discard-open || root.delete-open; }
 }
 
 // ---- Tag management ------------------------------------------------------------------------------
@@ -2103,6 +2121,13 @@ export component TagManager inherits Window {
     changed dark => { Palette.dark = root.dark; }
 
     scope := FocusScope {
+        // Esc first closes a tooltip on screen, and does nothing else on that press, before the rename field sees it.
+        capture-key-pressed(event) => {
+            if (event.text == Key.Escape && TipHost.dismiss()) {
+                return accept;
+            }
+            return reject;
+        }
         key-pressed(event) => {
             if (event.text == Key.Escape && root.delete-index < 0) {
                 if (root.editing >= 0) {
@@ -2270,4 +2295,7 @@ export component TagManager inherits Window {
             }
         }
     }
+
+    // The window's tooltip layer: last, so no sibling paints over a tooltip and no container clips it.
+    TipLayer { suppressed: root.delete-index >= 0; }
 }

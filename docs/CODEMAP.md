@@ -9060,7 +9060,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-ui/tests/inputs.rs` | 17 |
 | `crates/snipdeck-ui/tests/inputs_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/lib_units.rs` | 7 |
-| `crates/snipdeck-ui/tests/main_window.rs` | 27 |
+| `crates/snipdeck-ui/tests/main_window.rs` | 28 |
 | `crates/snipdeck-ui/tests/main_window_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/no_paid_tier_strings.rs` | 2 |
 | `crates/snipdeck-ui/tests/panel.rs` | 59 |
@@ -9086,6 +9086,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-ui/tests/support/picker_fixture.rs` | 0 |
 | `crates/snipdeck-ui/tests/symbol_nav.rs` | 5 |
 | `crates/snipdeck-ui/tests/symbols.rs` | 15 |
+| `crates/snipdeck-ui/tests/tooltips.rs` | 4 |
 | `crates/snipdeck-ui/tests/tray_texts.rs` | 1 |
 | `crates/snipdeck-ui/tests/ux_fit.rs` | 7 |
 | `scripts/test_bump_version.py` | 6 |

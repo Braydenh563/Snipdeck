@@ -294,7 +294,7 @@ component ChipGrid inherits Rectangle {
     callback removed(int);
     // The chip, then where to open a menu (absolute).
     callback menu(int, length, length);
-    callback tip(string, length, length, bool);
+    callback tip(string, length, length, length, length, bool);
     // The text of the chip the keyboard is on (for the footer).
     callback focus-text(string);
     // The selected chip's top (absolute) and height, so the tab can scroll it into view.
@@ -407,7 +407,7 @@ component ChipGrid inherits Rectangle {
             touch := TouchArea {
                 mouse-cursor: pointer;
                 changed has-hover => {
-                    root.tip(chip.label, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover);
+                    root.tip(chip.label, self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.has-hover);
                 }
                 pointer-event(event) => {
                     if (event.button == PointerEventButton.left && event.kind == PointerEventKind.up
@@ -444,7 +444,7 @@ component FormatList inherits Rectangle {
     callback copied(int);
     // The row, then where to open a menu (absolute).
     callback menu(int, length, length);
-    callback tip(string, length, length, bool);
+    callback tip(string, length, length, length, length, bool);
     // The pointer is on (or left) a row: its text, for the footer.
     callback hovered(string, bool);
     callback focus-text(string);
@@ -611,7 +611,7 @@ component FormatList inherits Rectangle {
                 accessible-role: none;
                 clicked => { root.copied(i); }
                 changed has-hover => {
-                    root.tip(@tr("Copy"), self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover);
+                    root.tip(@tr("Copy"), self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.has-hover);
                 }
                 Icon {
                     source: Icons.copy;
@@ -1008,7 +1008,7 @@ component ChannelField inherits FocusScope {
 }
 
 export component ColoursView inherits Rectangle {
-    callback tip(string, length, length, bool);
+    callback tip(string, length, length, length, length, bool);
     // Which popup `ColourState.popup` has open: whose chip or row it is, where it opened (relative to this view),
     // where the keyboard goes back to when it closes (1 recents, 2 saved, 3 scheme, 4 formats) and what "Save to…"
     // saves (0 the current colour, 1 the chip, 2 the format row).
@@ -1404,9 +1404,9 @@ export component ColoursView inherits Rectangle {
                         root.popup-from = 1;
                         root.open-popup(1, x, y);
                     }
-                    tip(t, x, y, on) => {
+                    tip(t, x, y, w, h, on) => {
                         root.hover-text = on ? t : "";
-                        root.tip(t, x, y, on);
+                        root.tip(t, x, y, w, h, on);
                     }
                     focus-text(t) => { root.focus-text = t; }
                     reveal(top, h) => { root.reveal(top, h); }
@@ -1460,9 +1460,9 @@ export component ColoursView inherits Rectangle {
                         root.popup-from = 2;
                         root.open-popup(1, x, y);
                     }
-                    tip(t, x, y, on) => {
+                    tip(t, x, y, w, h, on) => {
                         root.hover-text = on ? t : "";
-                        root.tip(t, x, y, on);
+                        root.tip(t, x, y, w, h, on);
                     }
                     focus-text(t) => { root.focus-text = t; }
                     reveal(top, h) => { root.reveal(top, h); }
@@ -1483,9 +1483,9 @@ export component ColoursView inherits Rectangle {
                         root.popup-from = 4;
                         root.open-popup(2, x, y);
                     }
-                    tip(t, x, y, on) => {
+                    tip(t, x, y, w, h, on) => {
                         root.hover-text = on ? t : (root.hover-text == t ? "" : root.hover-text);
-                        root.tip(t, x, y, on);
+                        root.tip(t, x, y, w, h, on);
                     }
                     hovered(t, on) => { root.hover-text = on ? t : (root.hover-text == t ? "" : root.hover-text); }
                     focus-text(t) => { root.focus-text = t; }
@@ -1559,9 +1559,9 @@ export component ColoursView inherits Rectangle {
                         root.popup-from = 3;
                         root.open-popup(1, x, y);
                     }
-                    tip(t, x, y, on) => {
+                    tip(t, x, y, w, h, on) => {
                         root.hover-text = on ? t : "";
-                        root.tip(t, x, y, on);
+                        root.tip(t, x, y, w, h, on);
                     }
                     focus-text(t) => { root.focus-text = t; }
                     reveal(top, h) => { root.reveal(top, h); }

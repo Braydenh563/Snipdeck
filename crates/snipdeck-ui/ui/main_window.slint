@@ -17,6 +17,7 @@
 //             Alt+Up / Alt+Down move the row within its list (`item-reorder-requested`)
 //   anywhere  Ctrl+F or / search, Ctrl+N new item, Ctrl+K (or Ctrl+Shift+P) the command palette, Ctrl+, Settings,
 //             Ctrl+/ the keyboard shortcuts, F1 the user guide
+import { TipHost, TipLayer, TipSource } from "components/tip-host.slint";
 import { ListView } from "std-widgets.slint";
 import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook, Palette, ListHue } from "theme.slint";
 import { Icons } from "icons.slint";
@@ -31,7 +32,7 @@ import { SearchField } from "components/text_field.slint";
 import { Button, ButtonVariant, ButtonSize } from "components/button.slint";
 import { IconButton, IconButtonSize } from "components/icon-button.slint";
 import { EmptyState, EmptyStateKind } from "components/empty_state.slint";
-import { Toast, ToastKind, ToastPhase, Skeleton, SkeletonKind, Tooltip } from "components/feedback.slint";
+import { Toast, ToastKind, ToastPhase, Skeleton, SkeletonKind } from "components/feedback.slint";
 import { Menu, MenuEntry } from "components/menu.slint";
 import { SuggestDropdown, SuggestRow } from "components/suggest-dropdown.slint";
 import { Dialog, DialogVariant } from "components/dialog.slint";
@@ -175,11 +176,26 @@ component ToolbarButton inherits Rectangle {
         border-radius: Radius.md + 2px;
         background: transparent;
     }
-    touch := TouchArea { clicked => { root.clicked(); } }
+    // The icon-only form names itself in the window's tooltip.
+    tip := TipSource {
+        text: root.tooltip;
+        wanted: root.compact && (root.has-hover || root.has-focus);
+        left: root.absolute-position.x;
+        top: root.absolute-position.y;
+        box-width: root.width;
+        box-height: root.height;
+    }
+    touch := TouchArea {
+        clicked => {
+            tip.close();
+            root.clicked();
+        }
+    }
     scope := FocusScope {
         focus-on-click: false;
         key-pressed(event) => {
             if (event.text == " " || event.text == "\n") {
+                tip.close();
                 root.clicked();
                 return accept;
             }
@@ -557,8 +573,14 @@ export component MainWindow inherits Window {
     property <bool> narrow: false;
     property <float> text-scale: SystemLook.text-scale;
     // One height for every toolbar control (the standard Button height).
-    // Below 560px (at 100% text size) of item area the Commands and View buttons are icon-only (spec 3 Toolbar).
-    property <bool> toolbar-compact: false;
+    // The toolbar sheds its least valuable content as the item area (less the caption strip, at 100% text size) narrows,
+    // so every control keeps its hit target and its gap: the Ctrl K chips go below 736px, the Commands label below
+    // 658px, the View label below 608px, and the three view toggles below 574px (the View menu then holds all three).
+    property <bool> toolbar-keys: true;
+    property <bool> commands-compact: false;
+    property <bool> view-compact: false;
+    property <bool> toolbar-toggles: true;
+    property <length> caption-inset: SystemLook.caption-inset;
     property <length> ctl-h: max(Space.s8 * SystemLook.text-scale, Type.line-base + Space.s2);
     property <length> bar-h: max(Space.s8 + Space.s3, Type.line-base + Space.s2 + Space.s3);
     // A group header row: a full hit target inside its focus-ring inset, growing with the text size so its name never spills.
@@ -639,7 +661,11 @@ export component MainWindow inherits Window {
     function update-narrow() {
         root.auto-rail = root.width < 720px;
         root.narrow = root.auto-rail || root.sidebar-collapsed;
-        root.toolbar-compact = root.width - root.sidebar-w < 560px * root.text-scale;
+        let room = (root.width - root.sidebar-w - root.caption-inset) / root.text-scale;
+        root.toolbar-keys = room >= 736px;
+        root.commands-compact = room < 658px;
+        root.view-compact = room < 608px;
+        root.toolbar-toggles = room >= 574px;
     }
     // The Colour block needs room above the list. Set from `changed height` (not bound to `root.height`: the
     // block changes the layout, and a binding on the height would loop).
@@ -655,6 +681,9 @@ export component MainWindow inherits Window {
         root.update-narrow();
     }
     changed sidebar-width => {
+        root.update-narrow();
+    }
+    changed caption-inset => {
         root.update-narrow();
     }
     // Ctrl+B and the toolbar button. Below 720px the rail is automatic and wins, so there is nothing to fold.
@@ -1095,7 +1124,15 @@ export component MainWindow inherits Window {
 
     root-scope := FocusScope {
         capture-key-pressed(event) => {
-            if (root.overlay-open || search.composing) {
+            // An IME composition gets every key, Esc included (it cancels the composition).
+            if (search.composing) {
+                return reject;
+            }
+            // Esc first closes a tooltip on screen, and does nothing else on that press.
+            if (event.text == Key.Escape && TipHost.dismiss()) {
+                return accept;
+            }
+            if (root.overlay-open) {
                 return reject;
             }
             if (search.has-focus && suggest.handle-key(event)) {
@@ -1573,10 +1610,10 @@ export component MainWindow inherits Window {
                                 }
                                 commands-button := ToolbarButton {
                                     h: root.ctl-h;
-                                    compact: root.toolbar-compact;
+                                    compact: root.commands-compact;
                                     icon: Icons.keyboard;
                                     label: @tr("Commands");
-                                    keys: ["Ctrl", "K"];
+                                    keys: root.toolbar-keys ? ["Ctrl", "K"] : [];
                                     tooltip: @tr("Commands (Ctrl+K)");
                                     clicked => { root.open-palette(); }
                                 }
@@ -1593,7 +1630,7 @@ export component MainWindow inherits Window {
                                 }
                                 view-button := ToolbarButton {
                                     h: root.ctl-h;
-                                    compact: root.toolbar-compact;
+                                    compact: root.view-compact;
                                     icon: Icons.rows;
                                     label: @tr("View");
                                     caret: true;
@@ -1602,8 +1639,9 @@ export component MainWindow inherits Window {
                                     clicked => { root.open-view-menu(); }
                                 }
                                 Rectangle {
-                                    width: Space.s3;
+                                    width: root.toolbar-toggles ? Space.s3 : 0px;
                                     height: root.ctl-h;
+                                    visible: root.toolbar-toggles;
                                     Rectangle {
                                         width: 1px;
                                         height: root.ctl-h * 0.6;
@@ -1613,7 +1651,8 @@ export component MainWindow inherits Window {
                                     }
                                 }
                                 segmented := Rectangle {
-                                    width: seg-row.preferred-width;
+                                    width: root.toolbar-toggles ? seg-row.preferred-width : 0px;
+                                    visible: root.toolbar-toggles;
                                     height: root.ctl-h;
                                     background: Theme.bg-surface;
                                     border-width: 1px;
@@ -1627,6 +1666,7 @@ export component MainWindow inherits Window {
                                     side-override: root.ctl-h - 2 * Space.s0-5;
                                     icon: Icons.rows;
                                     tooltip: @tr("Comfortable view");
+                                    own-tooltip: true;
                                     active: root.view == MainView.comfortable;
                                     accessible-checkable: true;
                                     accessible-checked: root.view == MainView.comfortable;
@@ -1640,6 +1680,7 @@ export component MainWindow inherits Window {
                                     side-override: root.ctl-h - 2 * Space.s0-5;
                                     icon: Icons.list-bullets;
                                     tooltip: @tr("Compact view");
+                                    own-tooltip: true;
                                     active: root.view == MainView.compact;
                                     accessible-checkable: true;
                                     accessible-checked: root.view == MainView.compact;
@@ -1653,6 +1694,7 @@ export component MainWindow inherits Window {
                                     side-override: root.ctl-h - 2 * Space.s0-5;
                                     icon: Icons.squares-four;
                                     tooltip: @tr("Tile view");
+                                    own-tooltip: true;
                                     // Groups draw rows, never tiles: the button rests while they show.
                                     enabled: !root.has-groups;
                                     active: root.view == MainView.tile && !root.has-groups;
@@ -2068,7 +2110,7 @@ export component MainWindow inherits Window {
                                                 root.act(ItemAction.use-plain, i);
                                             }
                                             edit => { root.act(ItemAction.edit, i); }
-                                            tip(text, cx, bottom, on) => { root.card-tip-set(text, cx, bottom, on); }
+                                            tip(text, left, top, w, h, on) => { root.card-tip-set(i, text, left, top, w, h, on); }
                                             picked(shift, control) => { root.pick(i, shift, control); }
                                             context-menu-requested(x, y) => {
                                                 if (!row.selected) {
@@ -2228,7 +2270,7 @@ export component MainWindow inherits Window {
                                         edit-action: !root.in-trash;
                                         show-actions: root.rows[root.tile-index(r, c)].selected;
                                         actions-hidden: root.selected-count > 1;
-                                        tip(text, cx, bottom, on) => { root.card-tip-set(text, cx, bottom, on); }
+                                        tip(text, left, top, w, h, on) => { root.card-tip-set(root.tile-index(r, c), text, left, top, w, h, on); }
                                         edit => { root.act(ItemAction.edit, root.tile-index(r, c)); }
                                         show-focus: root.tile-index(r, c) == root.cur && items-scope.has-focus && root.kbd-focus;
                                         revealed: root.tile-index(r, c) == root.revealed-index;
@@ -2703,68 +2745,34 @@ export component MainWindow inherits Window {
         }
     }
 
-    // ---- Tooltips for the icon-only toolbar buttons (500ms rest, instant between buttons) -----------
-    property <string> tip: root.toolbar-compact && (commands-button.has-hover || commands-button.has-focus) ? @tr("Commands (Ctrl+K)")
-        : root.toolbar-compact && (view-button.has-hover || view-button.has-focus) ? @tr("View")
-        : view-comfortable.has-hover || view-comfortable.has-focus ? @tr("Comfortable view")
-        : view-compact.has-hover || view-compact.has-focus ? @tr("Compact view")
-        : view-tile.has-hover || view-tile.has-focus ? @tr("Tile view") : root.card-tip;
-    property <bool> toolbar-tip: (root.toolbar-compact && (commands-button.has-hover || commands-button.has-focus || view-button.has-hover || view-button.has-focus)) || view-comfortable.has-hover || view-comfortable.has-focus
-        || view-compact.has-hover || view-compact.has-focus || view-tile.has-hover || view-tile.has-focus;
-    property <length> tip-x: root.toolbar-compact && (commands-button.has-hover || commands-button.has-focus) ? commands-button.absolute-position.x
-        : root.toolbar-compact && (view-button.has-hover || view-button.has-focus) ? view-button.absolute-position.x
-        : view-comfortable.has-hover || view-comfortable.has-focus ? view-comfortable.absolute-position.x
-        : view-compact.has-hover || view-compact.has-focus ? view-compact.absolute-position.x
-        : view-tile.has-hover || view-tile.has-focus ? view-tile.absolute-position.x : root.card-tip-cx;
-    // A row action's tooltip (Use, Copy, Edit, More): the card reports it, centred under the button.
+    // ---- A row action's tooltip (Use, Copy, Edit, More, the type tile): the card reports it, centred under the button.
+    // Keyed on the card and the words, so a leave from one card's Copy that arrives after the enter on another's does
+    // not close the new one. The card answers the layer's ping, so a card removed in place loses its tip.
     property <string> card-tip;
-    property <length> card-tip-cx;
-    property <length> card-tip-bottom;
-    function card-tip-set(text: string, cx: length, bottom: length, on: bool) {
+    property <int> card-tip-card: -1;
+    property <int> card-tip-id: -1;
+    function card-tip-set(card: int, text: string, left: length, top: length, box-width: length, box-height: length, on: bool) {
         if (on) {
             root.card-tip = text;
-            root.card-tip-cx = cx;
-            root.card-tip-bottom = bottom;
-        } else if (text == root.card-tip) {
-            root.card-tip = "";
+            root.card-tip-card = card;
+            root.card-tip-id = TipHost.show(text, left, top, box-width, box-height);
+            TipHost.watched = true;
+        } else if (card == root.card-tip-card && text == root.card-tip) {
+            root.card-tip-close();
         }
+    }
+    // A row that is deleted, replaced or scrolled away under a resting pointer never reports the pointer leaving.
+    function card-tip-close() {
+        TipHost.hide(root.card-tip-id);
+        root.card-tip = "";
     }
     out property <length> scroll-y: list.content-y;
     out property <length> list-height: list.height;
     out property <length> list-content-height: list.content-height;
     out property <length> grid-scroll-y: grid.content-y;
     property <length> list-scroll: root.scroll-y;
-    changed rows => { root.card-tip = ""; }
-    changed list-scroll => { root.card-tip = ""; }
-    property <bool> tip-open: false;
-    changed tip => {
-        if (root.tip == "") {
-            root.tip-open = false;
-            tip-timer.running = false;
-        } else if (!root.tip-open) {
-            tip-timer.running = true;
-        }
-    }
-    tip-timer := Timer {
-        interval: 500ms;
-        running: false;
-        triggered => {
-            self.running = false;
-            root.tip-open = root.tip != "";
-        }
-    }
-    if root.tip != "": Tooltip {
-        text: root.tip;
-        open: root.tip-open;
-        limit-width: root.width - 2 * Space.s2;
-        width: self.preferred-width;
-        height: self.preferred-height;
-        // The window's edges win over the placement (max last).
-        x: max(Space.s2, root.toolbar-tip ? min(root.tip-x, root.width - self.width - Space.s2)
-            : min(root.tip-x - self.width / 2, root.width - self.width - Space.s2));
-        y: min(root.toolbar-tip ? root.bar-h - Space.s1 : root.card-tip-bottom + Space.s1, root.height - self.height - Space.s2);
-    }
-
+    changed rows => { root.card-tip-close(); }
+    changed list-scroll => { root.card-tip-close(); }
     // ---- Overlays: a scrim that dismisses on click, then the menu --------------------------------
     if root.board-menu-open: TouchArea {
         clicked => { root.board-menu-dismissed(); }
@@ -2913,6 +2921,8 @@ export component MainWindow inherits Window {
             { separator: true },
             { text: @tr("Main list density: Comfortable"), icon: root.view == MainView.comfortable ? Icons.check : root.no-icon },
             { text: @tr("Main list density: Compact"), icon: root.view == MainView.compact ? Icons.check : root.no-icon },
+            // The same three choices as the toggles beside it, which the toolbar drops when it is narrow.
+            { text: @tr("Tile view"), icon: root.view == MainView.tile && !root.has-groups ? Icons.check : root.no-icon, disabled: root.has-groups },
         ];
         label: @tr("View");
         init => {
@@ -2931,6 +2941,9 @@ export component MainWindow inherits Window {
             } else if (i == 5) {
                 root.view = MainView.compact;
                 root.view-changed(MainView.compact);
+            } else if (i == 6) {
+                root.view = MainView.tile;
+                root.view-changed(MainView.tile);
             }
         }
         dismissed => { root.close-menus(); }
@@ -3046,4 +3059,8 @@ export component MainWindow inherits Window {
             clicked => { root.confirmed(); }
         }
     }
+
+    // The window's tooltip layer: last, so no sibling paints over a tooltip and no container clips it.
+    // A menu, dialog or the palette hides it, so a resting pointer's tip never sits above their scrim.
+    TipLayer { suppressed: root.overlay-open || root.suggest-open; }
 }
