@@ -84,13 +84,15 @@ fn the_main_item_menu_has_the_shared_rows_in_the_shared_order_with_the_same_word
         let line = rows[at..]
             .iter()
             .position(|l| row_says(l, shared.words))
-            .map(|p| p + at)
-            .unwrap_or_else(|| {
-                panic!(
-                    "Main lacks {:?} ({}) after row {at}: {rows:#?}",
-                    shared.kind, shared.words
-                )
-            });
+            .map_or_else(
+                || {
+                    panic!(
+                        "Main lacks {:?} ({}) after row {at}: {rows:#?}",
+                        shared.kind, shared.words
+                    )
+                },
+                |p| p + at,
+            );
         at = line + 1;
     }
     // Every Main row is a shared one, a separator or listed as Main-only.

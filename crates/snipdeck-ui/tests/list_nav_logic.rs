@@ -1,4 +1,4 @@
-//! UX-6: PageUp / PageDown and type-ahead in the floating lists (Menu, Chooser) and PageUp / PageDown in the command
+//! UX-6: `PageUp` / `PageDown` and type-ahead in the floating lists (Menu, Chooser) and `PageUp` / `PageDown` in the command
 //! palette. Time is mocked: the type-ahead word ends after a pause of `ListNav.pause`.
 
 #![allow(

@@ -27,6 +27,7 @@ mod editor_ctl;
 mod eyedrop_ctl;
 mod group_ctl;
 mod history_ctl;
+#[cfg(test)]
 mod item_menu;
 mod library;
 mod lock_ctl;
