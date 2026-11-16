@@ -14,7 +14,7 @@ import { Toggle } from "components/choice.slint";
 import { HotkeyRecorder } from "components/hotkey_recorder.slint";
 import { HotkeyHealthLine } from "components/hotkey_health.slint";
 import { FieldError } from "components/text_field.slint";
-import { FormSection, SettingRow, Segmented } from "components/form.slint";
+import { FormScroll, FormSection, SettingRow, Segmented } from "components/form.slint";
 import { HotkeySetting } from "settings.slint";
 
 // One thing the welcome step explains: a glyph, a name and a sentence.
@@ -195,8 +195,9 @@ export component OnboardingWindow inherits Window {
     preferred-height: root.wanted-height;
 
     // The size the window opens at; the host cuts it to the screen before the window exists.
-    out property <length> wanted-width: 560px;
-    out property <length> wanted-height: 540px;
+    // Both follow the text size (MAIN-55): the content at the current scale, never less than the old fixed size.
+    out property <length> wanted-width: 560px + (SystemLook.text-scale - 1) * 160px;
+    out property <length> wanted-height: max(540px, 2 * Space.s6 + 2 * Space.s4 + head.preferred-height + step-body.preferred-height + foot.preferred-height);
 
     in property <bool> dark: false;
     // The step shown, 0 to `step-count - 1`: Welcome, Shortcuts, Panel, Start-up.
@@ -262,7 +263,7 @@ export component OnboardingWindow inherits Window {
             spacing: Space.s4;
 
             // Which step this is, and its heading.
-            VerticalLayout {
+            head := VerticalLayout {
                 spacing: Space.s1;
                 Text {
                     text: @tr("Step {} of {}", root.step + 1, root.step-count);
@@ -288,9 +289,17 @@ export component OnboardingWindow inherits Window {
                 }
             }
 
-            // The step's content. Only one exists at a time.
-            VerticalLayout {
+            // The step's content. Only one exists at a time. It scrolls when the window is smaller than the
+            // content at this text size; the Skip / Back / Next row below stays in view.
+            step-scroll := FormScroll {
                 vertical-stretch: 1;
+                min-height: 0px;
+                content-height: step-body.preferred-height;
+                content-width: self.viewport-width;
+
+                step-body := VerticalLayout {
+                x: 0px;
+                width: step-scroll.viewport-width;
                 alignment: start;
                 spacing: Space.s2;
 
@@ -427,10 +436,11 @@ export component OnboardingWindow inherits Window {
                         }
                     }
                 }
+                }
             }
 
             // Skip is on every step; Back from the second; Next becomes the last step's button.
-            HorizontalLayout {
+            foot := HorizontalLayout {
                 spacing: Space.s2;
                 Button {
                     text: @tr("Skip");
