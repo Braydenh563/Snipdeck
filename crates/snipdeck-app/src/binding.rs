@@ -96,6 +96,46 @@ pub(crate) fn arm_toast<S, C, K, T>(
     });
 }
 
+/// Starts the timer chain that polls a paste waiting for its target, unless one runs: each tick
+/// looks once, never sleeps, and redraws the windows when the paste ends.
+pub(crate) fn arm_paste<S, C, K, T>(controller: &Rc<RefCell<Controller<S, C, K, T>>>)
+where
+    S: Library + 'static,
+    C: Clipboard + ClipboardText + 'static,
+    K: Keyboard + 'static,
+    T: Timing + 'static,
+{
+    if !controller.borrow_mut().claim_paste_timer() {
+        return;
+    }
+    paste_tick_after(Rc::downgrade(controller));
+}
+
+fn paste_tick_after<S, C, K, T>(controller: Weak<RefCell<Controller<S, C, K, T>>>)
+where
+    S: Library + 'static,
+    C: Clipboard + ClipboardText + 'static,
+    K: Keyboard + 'static,
+    T: Timing + 'static,
+{
+    slint::Timer::single_shot(crate::controller::PASTE_TICK, move || {
+        let Some(strong) = controller.upgrade() else {
+            return;
+        };
+        let Ok(mut ctl) = strong.try_borrow_mut() else {
+            // Busy in a handler: look again next tick.
+            paste_tick_after(controller);
+            return;
+        };
+        let again = ctl.paste_timer_next();
+        drop(ctl);
+        redraw_all();
+        if again {
+            paste_tick_after(controller);
+        }
+    });
+}
+
 /// How long after a collapse the handle's frame is asked for once more (see `Core::apply`).
 const DOCK_REPLACE_AFTER: std::time::Duration = std::time::Duration::from_millis(50);
 
@@ -289,8 +329,6 @@ struct Core<S, C: Clipboard, K, T> {
     idle_timer: Cell<bool>,
     /// Sends the dock its ticks while a hover or leave delay runs.
     dock_timer: slint::Timer,
-    /// Polls a paste that waits for its target ([`crate::controller::PASTE_TICK`]).
-    paste_timer: slint::Timer,
     drag_timer: slint::Timer,
     /// Looks at the clipboard while "Take screenshot" waits for its picture.
     screen_clip_timer: slint::Timer,
@@ -331,7 +369,6 @@ where
                 clipboard_timer: Cell::new(false),
                 idle_timer: Cell::new(false),
                 dock_timer: slint::Timer::default(),
-                paste_timer: slint::Timer::default(),
                 drag_timer: slint::Timer::default(),
                 screen_clip_timer: slint::Timer::default(),
                 colours: colours::Glue::default(),
@@ -608,36 +645,8 @@ where
         *self.shown.borrow_mut() = Some(view);
         self.arm_settings();
         self.arm_clipboard_clear();
-        self.arm_paste();
+        arm_paste(&self.controller);
         self.arm_idle_lock();
-    }
-
-    /// Runs a timer while a paste waits for its target: each tick looks once, never sleeps.
-    fn arm_paste(self: &Rc<Self>) {
-        let needed = self.controller.borrow().paste_pending();
-        if needed == self.paste_timer.running() {
-            return;
-        }
-        if !needed {
-            self.paste_timer.stop();
-            return;
-        }
-        let core = Rc::downgrade(self);
-        self.paste_timer.start(
-            slint::TimerMode::Repeated,
-            crate::controller::PASTE_TICK,
-            move || {
-                let Some(core) = core.upgrade() else {
-                    return;
-                };
-                let Ok(mut ctl) = core.controller.try_borrow_mut() else {
-                    return;
-                };
-                ctl.paste_tick();
-                drop(ctl);
-                core.sync();
-            },
-        );
     }
 
     /// Runs the dock's timer while the Panel is docked, may tuck and is on screen, and only

@@ -264,6 +264,7 @@ where
         }
         self.sync_editors(&screen);
         self.sync_tag_manager(&screen, false);
+        crate::binding::arm_paste(&self.controller);
         *self.shown.borrow_mut() = Some(screen);
     }
 

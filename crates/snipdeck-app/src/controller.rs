@@ -206,6 +206,8 @@ pub struct Controller<S, C: Clipboard, K, T> {
     /// time, the restore) is polled by [`Controller::paste_tick`], never slept through on the UI
     /// thread (PANEL-13).
     paste: Option<use_ctl::PendingPaste<C>>,
+    /// A timer chain is polling [`Self::paste`] (one chain, however many windows are bound).
+    paste_timer: bool,
     /// A sensitive Files item was pasted: its decrypted files wait in the temp folder until the
     /// lock or the quit deletes them.
     secret_files_pasted: bool,
@@ -497,6 +499,7 @@ where
             tz: TimeZone::system(),
             clipboard_clear: None,
             paste: None,
+            paste_timer: false,
             secret_files_pasted: false,
             secret_files_due: None,
             model,
@@ -887,6 +890,11 @@ where
     #[must_use]
     pub fn services(&self) -> &Services<C, K, T> {
         &self.services
+    }
+
+    /// The platform services, for tests that move a fake clock by hand.
+    pub fn services_mut(&mut self) -> &mut Services<C, K, T> {
+        &mut self.services
     }
 
     // ---- Hotkeys, the Target and the window ---------------------------------------------------

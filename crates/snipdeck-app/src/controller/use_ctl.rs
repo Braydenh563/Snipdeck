@@ -515,6 +515,23 @@ where
         self.paste.is_some()
     }
 
+    /// Whether the caller should start the timer chain that polls the waiting paste: true once
+    /// per paste, until [`paste_timer_next`](Self::paste_timer_next) ends the chain.
+    pub fn claim_paste_timer(&mut self) -> bool {
+        if self.paste.is_none() || self.paste_timer {
+            return false;
+        }
+        self.paste_timer = true;
+        true
+    }
+
+    /// One tick of the chain: looks at the paste and says whether to tick again.
+    pub fn paste_timer_next(&mut self) -> bool {
+        self.paste_tick();
+        self.paste_timer = self.paste.is_some();
+        self.paste_timer
+    }
+
     /// One look at the waiting paste, without sleeping: when it is over, the toast, the
     /// clipboard bookkeeping and the refresh happen now.
     pub fn paste_tick(&mut self) {
