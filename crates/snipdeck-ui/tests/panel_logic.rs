@@ -1265,6 +1265,16 @@ ui_tests! {
         assert_eq!(find(&ui, "Keep Panel open", AccessibleRole::Button).accessible_checked(), Some(false));
     }
 
+    fn the_more_button_says_whether_its_menu_is_open() {
+        let (ui, _log) = start();
+        let more = find(&ui, "More", AccessibleRole::Button);
+        assert_eq!(more.accessible_expandable(), Some(true));
+        assert_eq!(more.accessible_expanded(), Some(false));
+        ui.set_app_menu_open(true);
+        settle();
+        assert_eq!(find(&ui, "More", AccessibleRole::Button).accessible_expanded(), Some(true));
+    }
+
     fn ctrl_shift_p_opens_the_commands_like_in_the_main_window_and_leaves_the_pin_alone() {
         let (ui, log) = start();
         press(ui.window(), &key(Key::DownArrow));
