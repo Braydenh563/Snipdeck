@@ -5,7 +5,7 @@
 //!
 //! The patterns are Windows' own (`dd/MM/yyyy`, `h:mm tt`); `snipdeck_core::template::Locale::with_regional`
 //! reads them. Only the decoding of the answer is portable; the call itself is
-//! [`windows::regional`](crate::windows). Off Windows [`read`] returns [`RegionalPatterns::NONE`], and
+//! `windows::regional` (built on Windows only). Off Windows [`read`] returns [`RegionalPatterns::NONE`], and
 //! the template engine keeps the style of the language table.
 //!
 //! **Unverified on Windows:** `GetLocaleInfoEx` has never run. The owner must check on a PC whose

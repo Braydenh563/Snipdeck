@@ -607,7 +607,9 @@ mod tests {
 
     #[test]
     fn library_21_sixty_four_prompts_make_sixty_four_fields() {
-        let src: String = (1..=64).map(|i| format!("{{field:F{i}}} ")).collect();
+        let src: String = (1..=64)
+            .map(|i| ["{field:F", &i.to_string(), "} "].concat())
+            .collect();
         let mut m = form(&src);
         assert_eq!(m.fields().len(), 64);
         let values: Vec<String> = (0..64)
