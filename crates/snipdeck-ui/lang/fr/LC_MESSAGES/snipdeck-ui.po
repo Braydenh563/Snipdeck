@@ -76,6 +76,9 @@ msgstr "Une petite fenêtre que vous pouvez faire glisser n'importe où."
 msgid "A smiley tab next to Recent with emoji, kaomoji and icons to paste. Turn it off to hide the tab and its Ctrl+K command."
 msgstr "Un onglet en forme de smiley à côté de Récent, avec des emoji, des kaomoji et des icônes à coller. Désactivez-le pour masquer l’onglet et sa commande Ctrl+K."
 
+msgid "A stack is running. End it before you mark more snippets."
+msgstr "Une pile est en cours. Terminez-la avant de marquer d'autres extraits."
+
 msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
 msgstr "Une bande de vos extraits à côté de l'application dans laquelle vous travaillez. Cliquez sur l'un d'eux pour le coller."
 
@@ -3019,6 +3022,9 @@ msgstr "L'Historique du Presse-papiers ne contient encore aucun texte. Copiez du
 
 msgid "The file dialog couldn't open. Type the path instead."
 msgstr "La boîte de dialogue de fichiers n'a pas pu s'ouvrir. Saisissez plutôt le chemin."
+
+msgid "The form was closed without pasting."
+msgstr "Le formulaire a été fermé sans coller."
 
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
 msgstr "L'importation s'est arrêtée plus tôt car la source est plus volumineuse que ce que Snipdeck lit d'un coup."

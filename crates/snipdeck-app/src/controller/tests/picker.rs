@@ -220,6 +220,11 @@ fn a_template_chosen_in_the_picker_closes_it_and_opens_the_fill_form() {
     // And the other way: summoning the Picker drops a form that was open.
     w.ctl.on_hotkey(HotkeyAction::Picker);
     assert!(w.ctl.view().fill.is_none() && w.ctl.view().picker.is_some());
+    // PANEL-22: and it says so instead of dropping the form silently.
+    assert_eq!(
+        w.ctl.view().toast.map(|t| t.message),
+        Some(crate::toast::ToastMessage::FormClosed)
+    );
 }
 
 #[test]

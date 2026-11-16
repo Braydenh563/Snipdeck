@@ -76,6 +76,9 @@ msgstr "Ein kleines Fenster, das du überallhin ziehen kannst."
 msgid "A smiley tab next to Recent with emoji, kaomoji and icons to paste. Turn it off to hide the tab and its Ctrl+K command."
 msgstr "Ein Smiley-Tab neben „Zuletzt“ mit Emoji, Kaomoji und Symbolen zum Einfügen. Ausschalten blendet den Tab und seinen Ctrl+K-Befehl aus."
 
+msgid "A stack is running. End it before you mark more snippets."
+msgstr "Ein Stapel läuft. Beende ihn, bevor du weitere Snippets markierst."
+
 msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
 msgstr "Eine Leiste mit deinen Textbausteinen neben der App, in der du arbeitest. Ein Klick fügt den Baustein dort ein."
 
@@ -3019,6 +3022,9 @@ msgstr "Der Zwischenablageverlauf enthält noch keinen Text. Kopiere etwas Text 
 
 msgid "The file dialog couldn't open. Type the path instead."
 msgstr "Der Dateidialog konnte nicht geöffnet werden. Gib stattdessen den Pfad ein."
+
+msgid "The form was closed without pasting."
+msgstr "Das Formular wurde geschlossen, ohne einzufügen."
 
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
 msgstr "Der Import wurde früh abgebrochen, weil die Quelle größer ist, als Snipdeck auf einmal einlesen kann."

@@ -76,6 +76,9 @@ msgstr "Una ventana pequeña que puedes arrastrar a cualquier lugar."
 msgid "A smiley tab next to Recent with emoji, kaomoji and icons to paste. Turn it off to hide the tab and its Ctrl+K command."
 msgstr "Una pestaña con una carita junto a Reciente, con emoji, kaomoji e iconos para pegar. Desactívala para ocultar la pestaña y su comando de Ctrl+K."
 
+msgid "A stack is running. End it before you mark more snippets."
+msgstr "Hay una pila en marcha. Termínala antes de marcar más fragmentos."
+
 msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
 msgstr "Una tira con tus fragmentos junto a la aplicación en la que trabajas. Haz clic en uno para pegarlo allí."
 
@@ -3019,6 +3022,9 @@ msgstr "El Historial del Portapapeles aún no tiene texto. Copia algo de texto y
 
 msgid "The file dialog couldn't open. Type the path instead."
 msgstr "No se pudo abrir el diálogo de archivos. Escribe la ruta en su lugar."
+
+msgid "The form was closed without pasting."
+msgstr "El formulario se cerró sin pegar."
 
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
 msgstr "La importación se detuvo pronto porque el origen es más grande de lo que Snipdeck lee de una vez."

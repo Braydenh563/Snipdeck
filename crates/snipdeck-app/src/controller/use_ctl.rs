@@ -71,7 +71,10 @@ where
     /// the focus: the Picker takes the foreground to type into, and the paste goes back to
     /// the window it came from.
     pub fn open_picker(&mut self) {
-        self.fill = None;
+        if self.fill.take().is_some() {
+            // The Picker replaces an open form; say so rather than drop it silently.
+            self.show_toast(neutral(ToastMessage::FormClosed));
+        }
         self.fill_erase = None;
         self.on_target_changed();
         match PickerModel::load_cached(&self.store, self.model.board(), &self.index_cache) {
@@ -445,6 +448,7 @@ where
     /// Marks `item` for the paste stack, or unmarks it. Ignored while a stack runs.
     pub fn toggle_stack_mark(&mut self, item: ItemId) {
         if self.stack_running {
+            self.show_toast(neutral(ToastMessage::StackRunning));
             return;
         }
         if let Some(at) = self.stack.iter().position(|id| *id == item) {

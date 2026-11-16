@@ -76,6 +76,9 @@ msgstr "可以拖到任意位置的小窗口。"
 msgid "A smiley tab next to Recent with emoji, kaomoji and icons to paste. Turn it off to hide the tab and its Ctrl+K command."
 msgstr "“最近”旁边的笑脸标签页，提供可粘贴的表情符号、颜文字和图标。关闭后将隐藏该标签页及其 Ctrl+K 命令。"
 
+msgid "A stack is running. End it before you mark more snippets."
+msgstr "正在运行一个堆叠。请先结束它，再标记更多片段。"
+
 msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
 msgstr "在你正在使用的应用旁边显示的片段栏。点击其中一条，即可粘贴到该应用。"
 
@@ -3011,6 +3014,9 @@ msgstr "剪贴板历史记录中还没有文本。请先复制一些文本，然
 
 msgid "The file dialog couldn't open. Type the path instead."
 msgstr "无法打开文件对话框。请改为输入路径。"
+
+msgid "The form was closed without pasting."
+msgstr "表单已关闭，未粘贴。"
 
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
 msgstr "导入已提前停止，因为源内容比 Snipdeck 一次能读取的量大。"

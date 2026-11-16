@@ -245,3 +245,4 @@ Post-1.0, decided:
 - Erase checks the window handle (PANEL-21): needs the Target's window handle and focused control remembered at trigger time, Windows-only and unverifiable here. Today the erase checks the app name.
 - F2 rename on Panel Recent (PANEL-10): Recent rows are clipboard history with no name to edit, so the key does not apply.
 - Friendly app names from the version resource (PANEL-15): the name comes from a table of well-known programs plus a CamelCase split. Reading each program's `FileDescription` or its Start-menu name needs Windows and is unverifiable here; a Store app still reads "Windows app".
+- Paste next without a stack (PANEL-22): it keeps walking the pinned items before the shown list. That order is the documented one (the pinned strip is the fast path), and the toast already names the pasted item, so no extra feedback was added.

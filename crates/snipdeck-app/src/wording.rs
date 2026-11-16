@@ -264,6 +264,8 @@ where
         ToastMessage::TooLargeToSave => t.invoke_too_large_to_save(),
         ToastMessage::NoListToSave => t.invoke_no_list_to_save(),
         ToastMessage::NothingToPasteNext => t.invoke_nothing_to_paste_next(),
+        ToastMessage::StackRunning => t.invoke_stack_running(),
+        ToastMessage::FormClosed => t.invoke_form_closed(),
         ToastMessage::TaskbarEdge => t.invoke_taskbar_edge(),
         ToastMessage::PasteNextFinished => t.invoke_paste_next_finished(),
         ToastMessage::HotkeyInUse { chord } => t.invoke_hotkey_in_use(chord.into()),

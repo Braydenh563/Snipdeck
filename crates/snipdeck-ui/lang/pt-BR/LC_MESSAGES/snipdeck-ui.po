@@ -76,6 +76,9 @@ msgstr "Uma janela pequena que você pode arrastar para qualquer lugar."
 msgid "A smiley tab next to Recent with emoji, kaomoji and icons to paste. Turn it off to hide the tab and its Ctrl+K command."
 msgstr "Uma aba com um rosto sorridente ao lado de Recentes, com emoji, kaomoji e ícones para colar. Desative para ocultar a aba e o comando do Ctrl+K."
 
+msgid "A stack is running. End it before you mark more snippets."
+msgstr "Há uma pilha em andamento. Termine-a antes de marcar mais trechos."
+
 msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
 msgstr "Uma faixa com seus trechos ao lado do aplicativo em que você trabalha. Clique em um para colá-lo ali."
 
@@ -3019,6 +3022,9 @@ msgstr "O Histórico da Área de Transferência ainda não tem texto. Copie algu
 
 msgid "The file dialog couldn't open. Type the path instead."
 msgstr "A caixa de diálogo de arquivos não pôde ser aberta. Digite o caminho."
+
+msgid "The form was closed without pasting."
+msgstr "O formulário foi fechado sem colar."
 
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
 msgstr "A importação parou cedo porque a origem é maior do que o Snipdeck lê de uma vez."

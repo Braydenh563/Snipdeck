@@ -22,3 +22,4 @@ none
 - Done: 18 (own SendInput tagged `OWN_INPUT_TAG`; hook skips only those), 28 (`wScan` via MapVirtualKeyW). Cross-checked only.
 - Post-1.0 in SPEC: 27, 21, F2 on Recent.
 - Next: 15, 22, 23, 31, then 2, 3, 12, 16, 17, 19, 20, 24, 25, 26, 29, 40, 45, 10k probe.
+- Done: 15 (names table + CamelCase), 22 (toasts for ignored stack mark and closed form; paste-next order kept, noted in SPEC).

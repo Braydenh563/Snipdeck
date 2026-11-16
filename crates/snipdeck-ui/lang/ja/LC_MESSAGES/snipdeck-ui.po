@@ -76,6 +76,9 @@ msgstr "好きな場所にドラッグできる小さなウィンドウです。
 msgid "A smiley tab next to Recent with emoji, kaomoji and icons to paste. Turn it off to hide the tab and its Ctrl+K command."
 msgstr "「最近」の隣にある顔アイコンのタブで、貼り付け用の絵文字、顔文字、アイコンを使えます。オフにするとタブと Ctrl+K のコマンドが非表示になります。"
 
+msgid "A stack is running. End it before you mark more snippets."
+msgstr "スタックを実行中です。さらにスニペットを選ぶ前に終了してください。"
+
 msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
 msgstr "作業中のアプリの横に、スニペットを並べた帯が表示されます。クリックすると、そのアプリに貼り付けます。"
 
@@ -3011,6 +3014,9 @@ msgstr "クリップボードの履歴にはまだテキストがありません
 
 msgid "The file dialog couldn't open. Type the path instead."
 msgstr "ファイルダイアログを開けませんでした。代わりにパスを入力してください。"
+
+msgid "The form was closed without pasting."
+msgstr "貼り付けずにフォームを閉じました。"
 
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
 msgstr "取り込み元が Snipdeck が一度に読み込める量より大きいため、取り込みを途中で停止しました。"

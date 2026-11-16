@@ -272,3 +272,17 @@ fn the_panel_menu_paste_stack_row_starts_and_ends_the_stack() {
     w.ctl.choose_app_menu(row);
     assert_eq!(w.ctl.view().stack, None, "a second choice ends it");
 }
+
+#[test]
+fn marking_while_a_stack_runs_says_why_it_is_ignored() {
+    let mut w = world();
+    w.ctl.toggle_stack_mark(w.ids[0]);
+    w.ctl.start_stack();
+    assert!(w.ctl.view().toast.is_none());
+    w.ctl.toggle_stack_mark(w.ids[1]);
+    assert_eq!(
+        w.ctl.view().toast.map(|t| t.message),
+        Some(ToastMessage::StackRunning)
+    );
+    assert_eq!(w.ctl.view().stack.expect("running").count, 1);
+}

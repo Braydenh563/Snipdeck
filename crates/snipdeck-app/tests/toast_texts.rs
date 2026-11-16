@@ -51,6 +51,8 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::TooLargeToSave => 19,
         ToastMessage::NoListToSave => 20,
         ToastMessage::NothingToPasteNext => 21,
+        ToastMessage::StackRunning => 112,
+        ToastMessage::FormClosed => 113,
         ToastMessage::PasteNextFinished => 22,
         ToastMessage::HotkeyInUse { .. } => 23,
         ToastMessage::HotkeyInvalid { .. } => 24,
@@ -178,6 +180,8 @@ fn samples() -> Vec<ToastMessage> {
         M::TooLargeToSave,
         M::NoListToSave,
         M::NothingToPasteNext,
+        M::StackRunning,
+        M::FormClosed,
         M::PasteNextFinished,
         M::HotkeyInUse {
             chord: s("Ctrl+Alt+Space"),

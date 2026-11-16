@@ -127,6 +127,10 @@ pub enum ToastMessage {
     NoListToSave,
     /// "Nothing to paste next. Pin a snippet, or add one to this list."
     NothingToPasteNext,
+    /// "A stack is running. End it before you mark more snippets."
+    StackRunning,
+    /// "The form was closed without pasting."
+    FormClosed,
     /// "The taskbar is on that edge. Pick another edge, or move the taskbar."
     TaskbarEdge,
     /// "That was the last one. Paste next starts again from the first."
