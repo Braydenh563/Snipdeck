@@ -1573,8 +1573,8 @@ fn choosing_a_more_format_copies_it_and_closes_the_menu() {
     );
     let ctl = r.ctl.borrow();
     let last = ctl.services().clipboard.written.last().expect("a copy");
-    assert!(
-        format!("{:?}", last.data()).contains(&want),
-        "copied {want}"
-    );
+    match &last.data()[0] {
+        snipdeck_platform::payload::Data::Text(t) => assert_eq!(t, &want),
+        other => panic!("not text: {other:?}"),
+    }
 }

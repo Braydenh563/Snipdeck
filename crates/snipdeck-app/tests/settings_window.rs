@@ -596,8 +596,8 @@ fn the_accent_applies_at_once_and_blue_keeps_the_built_in_palette() {
         assert!(look.get_accent_custom());
         assert_eq!(
             look.get_accent_light().default,
-            slint::Color::from_rgb_u8(0x04, 0x84, 0x84),
-            "teal-600"
+            slint::Color::from_rgb_u8(0x03, 0x6c, 0x6c),
+            "teal-700: teal-600 is 4.4:1 against the ink"
         );
         r.ui.invoke_accent_chosen(0);
         assert!(!look.get_accent_custom());
