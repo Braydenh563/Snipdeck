@@ -130,8 +130,11 @@ msgstr "追加"
 msgid "Add a snippet, or move items here from another list."
 msgstr "ここにスニペットを追加するか、別のリストから移動します。"
 
-msgid "Add a snippet… (Enter to save)"
-msgstr "スニペットを追加… (Enterで保存)"
+msgid "Add an item… (Enter to save)"
+msgstr "項目を追加… (Enter で保存)"
+
+msgid "Add item"
+msgstr "項目を追加"
 
 msgid "Add list"
 msgstr "リストを追加"
@@ -788,14 +791,8 @@ msgstr "このスニペットを使用できませんでした。ライブラリ
 msgid "Couldn't write to your library. Check that the disk has room."
 msgstr "ライブラリに書き込めませんでした。ディスクに空きがあるか確認してください。"
 
-msgid "Create"
-msgstr "作成"
-
 msgid "Create (Enter)"
 msgstr "作成 (Enter)"
-
-msgid "Create item"
-msgstr "項目を作成"
 
 msgid "Create “{}”"
 msgstr "「{}」を作成"
@@ -1334,9 +1331,6 @@ msgstr "取り込む…"
 
 msgid "Include"
 msgstr "含める"
-
-msgid "Insert"
-msgstr "貼り付け"
 
 msgid "Insert the suggested item (Windows only)"
 msgstr "提案された項目を挿入（Windows のみ）"

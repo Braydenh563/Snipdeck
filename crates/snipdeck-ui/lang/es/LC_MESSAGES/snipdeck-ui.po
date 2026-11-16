@@ -130,8 +130,11 @@ msgstr "Añadir"
 msgid "Add a snippet, or move items here from another list."
 msgstr "Añade un fragmento o mueve aquí elementos de otra lista."
 
-msgid "Add a snippet… (Enter to save)"
-msgstr "Añade un fragmento… (Intro para guardar)"
+msgid "Add an item… (Enter to save)"
+msgstr "Añadir un elemento… (Intro para guardar)"
+
+msgid "Add item"
+msgstr "Añadir elemento"
 
 msgid "Add list"
 msgstr "Añadir lista"
@@ -789,14 +792,8 @@ msgstr "No se pudo usar este fragmento: tu biblioteca está bloqueada. Desbloqu�
 msgid "Couldn't write to your library. Check that the disk has room."
 msgstr "No se pudo escribir en tu biblioteca. Comprueba que el disco tenga espacio."
 
-msgid "Create"
-msgstr "Crear"
-
 msgid "Create (Enter)"
 msgstr "Crear (Intro)"
-
-msgid "Create item"
-msgstr "Crear elemento"
 
 msgid "Create “{}”"
 msgstr "Crear “{}”"
@@ -1336,9 +1333,6 @@ msgstr "Importar…"
 
 msgid "Include"
 msgstr "Incluir"
-
-msgid "Insert"
-msgstr "Pegar"
 
 msgid "Insert the suggested item (Windows only)"
 msgstr "Insertar el elemento sugerido (solo Windows)"

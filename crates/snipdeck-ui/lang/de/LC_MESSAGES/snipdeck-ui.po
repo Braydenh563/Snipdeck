@@ -130,8 +130,11 @@ msgstr "Hinzufügen"
 msgid "Add a snippet, or move items here from another list."
 msgstr "Füge einen Textbaustein hinzu oder verschiebe Textbausteine aus einer anderen Liste hierher."
 
-msgid "Add a snippet… (Enter to save)"
-msgstr "Snippet hinzufügen… (Enter zum Speichern)"
+msgid "Add an item… (Enter to save)"
+msgstr "Element hinzufügen … (Eingabe zum Speichern)"
+
+msgid "Add item"
+msgstr "Element hinzufügen"
 
 msgid "Add list"
 msgstr "Liste hinzufügen"
@@ -789,14 +792,8 @@ msgstr "Dieser Textbaustein konnte nicht verwendet werden: Deine Bibliothek ist 
 msgid "Couldn't write to your library. Check that the disk has room."
 msgstr "In deine Bibliothek konnte nicht geschrieben werden. Prüfe, ob auf dem Datenträger Platz ist."
 
-msgid "Create"
-msgstr "Erstellen"
-
 msgid "Create (Enter)"
 msgstr "Erstellen (Enter)"
-
-msgid "Create item"
-msgstr "Element erstellen"
 
 msgid "Create “{}”"
 msgstr "„{}“ erstellen"
@@ -1336,9 +1333,6 @@ msgstr "Importieren…"
 
 msgid "Include"
 msgstr "Einschließen"
-
-msgid "Insert"
-msgstr "Einfügen"
 
 msgid "Insert the suggested item (Windows only)"
 msgstr "Vorgeschlagenen Eintrag einfügen (nur Windows)"

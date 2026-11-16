@@ -162,7 +162,7 @@ msgstr ""
 msgid "Activities"
 msgstr ""
 
-#: ui/settings.slint:135 ui/settings.slint:238
+#: ui/components/quick-add.slint:191 ui/settings.slint:135 ui/settings.slint:238
 msgid "Add"
 msgstr ""
 
@@ -171,7 +171,11 @@ msgid "Add a snippet, or move items here from another list."
 msgstr ""
 
 #: ui/components/quick-add.slint:150
-msgid "Add a snippet… (Enter to save)"
+msgid "Add an item… (Enter to save)"
+msgstr ""
+
+#: ui/components/quick-add.slint:193
+msgid "Add item"
 msgstr ""
 
 #: ui/main_window.slint:1359 ui/panel.slint:2066
@@ -564,7 +568,7 @@ msgstr ""
 msgid "Clear recent history?"
 msgstr ""
 
-#: ui/components/command-palette.slint:203 ui/help.slint:271 ui/main_window.slint:1541 ui/panel.slint:1922 ui/panel.slint:2626 ui/picker.slint:467 ui/symbols.slint:173
+#: ui/components/command-palette.slint:223 ui/help.slint:271 ui/main_window.slint:1541 ui/panel.slint:1922 ui/panel.slint:2626 ui/picker.slint:467 ui/symbols.slint:173
 msgid "Clear search"
 msgstr ""
 
@@ -1048,16 +1052,8 @@ msgstr ""
 msgid "Couldn't write to your library. Check that the disk has room."
 msgstr ""
 
-#: ui/components/quick-add.slint:191
-msgid "Create"
-msgstr ""
-
 #: ui/components/quick-add.slint:194
 msgid "Create (Enter)"
-msgstr ""
-
-#: ui/components/quick-add.slint:193
-msgid "Create item"
 msgstr ""
 
 #: ui/panel.slint:2624
@@ -1778,10 +1774,6 @@ msgstr ""
 msgid "Include"
 msgstr ""
 
-#: ui/template_fill.slint:66
-msgid "Insert"
-msgstr ""
-
 #: ui/shortcut_texts.slint:24
 msgid "Insert the suggested item (Windows only)"
 msgstr ""
@@ -2302,7 +2294,7 @@ msgstr ""
 msgid "No colour"
 msgstr ""
 
-#: ui/components/command-palette.slint:277
+#: ui/components/command-palette.slint:297
 msgid "No commands match “{}”"
 msgstr ""
 
@@ -2690,7 +2682,7 @@ msgstr ""
 msgid "Panel width"
 msgstr ""
 
-#: ui/components/text_field.slint:234 ui/gallery/i18n_probe.slint:9 ui/menu_texts.slint:115 ui/panel.slint:599 ui/picker.slint:189
+#: ui/components/text_field.slint:234 ui/gallery/i18n_probe.slint:9 ui/menu_texts.slint:115 ui/panel.slint:599 ui/picker.slint:189 ui/template_fill.slint:66
 msgid "Paste"
 msgstr ""
 

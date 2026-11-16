@@ -130,8 +130,11 @@ msgstr "添加"
 msgid "Add a snippet, or move items here from another list."
 msgstr "添加片段，或从其他列表移动到这里。"
 
-msgid "Add a snippet… (Enter to save)"
-msgstr "添加片段…(按 Enter 保存)"
+msgid "Add an item… (Enter to save)"
+msgstr "添加项目… (按 Enter 保存)"
+
+msgid "Add item"
+msgstr "添加项目"
 
 msgid "Add list"
 msgstr "添加列表"
@@ -788,14 +791,8 @@ msgstr "无法使用此片段：你的资料库已锁定。请先解锁，然后
 msgid "Couldn't write to your library. Check that the disk has room."
 msgstr "无法写入你的资料库。请检查磁盘是否有足够空间。"
 
-msgid "Create"
-msgstr "创建"
-
 msgid "Create (Enter)"
 msgstr "创建(Enter)"
-
-msgid "Create item"
-msgstr "创建项目"
 
 msgid "Create “{}”"
 msgstr "创建“{}”"
@@ -1334,9 +1331,6 @@ msgstr "导入…"
 
 msgid "Include"
 msgstr "包含"
-
-msgid "Insert"
-msgstr "粘贴"
 
 msgid "Insert the suggested item (Windows only)"
 msgstr "插入建议的项目（仅限 Windows）"

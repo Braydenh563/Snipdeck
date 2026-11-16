@@ -707,7 +707,7 @@ ui_tests! {
         settle();
         type_text(ui.window(), "https://example.com");
         take(&log);
-        find(&ui, "Create item", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Add item", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["quick-add:https://example.com:1:false"]);
         settle();
         assert!(

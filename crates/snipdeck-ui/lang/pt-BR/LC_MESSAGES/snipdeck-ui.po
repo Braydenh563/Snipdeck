@@ -130,8 +130,11 @@ msgstr "Adicionar"
 msgid "Add a snippet, or move items here from another list."
 msgstr "Adicione um trecho ou mova itens para cá a partir de outra lista."
 
-msgid "Add a snippet… (Enter to save)"
-msgstr "Adicionar um trecho… (Enter para salvar)"
+msgid "Add an item… (Enter to save)"
+msgstr "Adicionar um item… (Enter para salvar)"
+
+msgid "Add item"
+msgstr "Adicionar item"
 
 msgid "Add list"
 msgstr "Adicionar lista"
@@ -789,14 +792,8 @@ msgstr "Não foi possível usar este item: sua biblioteca está bloqueada. Desbl
 msgid "Couldn't write to your library. Check that the disk has room."
 msgstr "Não foi possível gravar na sua biblioteca. Verifique se o disco tem espaço."
 
-msgid "Create"
-msgstr "Criar"
-
 msgid "Create (Enter)"
 msgstr "Criar (Enter)"
-
-msgid "Create item"
-msgstr "Criar item"
 
 msgid "Create “{}”"
 msgstr "Criar “{}”"
@@ -1336,9 +1333,6 @@ msgstr "Importar…"
 
 msgid "Include"
 msgstr "Incluir"
-
-msgid "Insert"
-msgstr "Colar"
 
 msgid "Insert the suggested item (Windows only)"
 msgstr "Inserir o item sugerido (somente Windows)"

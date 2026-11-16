@@ -1998,7 +1998,7 @@ ui_tests! {
         assert_eq!(take(&log), ["quick-add:hi:0:false"], "the box is open and focused");
         press(ui.window(), &key(Key::Escape));
         settle();
-        assert!(missing(&ui, "Create item", AccessibleRole::Button), "Esc closes it again");
+        assert!(missing(&ui, "Add item", AccessibleRole::Button), "Esc closes it again");
     }
 
     fn ctrl_n_and_the_buttons_report_what_was_asked() {
