@@ -567,7 +567,7 @@ where
     fn drag_row(&self, s: Surface, index: usize) -> Option<DragRow> {
         match s {
             Surface::Panel => {
-                let row = self.model.rows().into_iter().nth(index)?;
+                let row = self.model.rows().get(index)?.clone();
                 Some(if row.header.is_some() {
                     DragRow::Header
                 } else {

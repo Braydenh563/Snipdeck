@@ -7,11 +7,12 @@
 
 use std::{
     cell::{Cell, RefCell},
+    collections::HashMap,
     rc::{Rc, Weak},
 };
 
 use slint::{ComponentHandle, Global, Model, ModelRc, SharedString, VecModel};
-use snipdeck_core::{ItemKind, ItemLabel, ListIcon, UseMode};
+use snipdeck_core::{ItemId, ItemKind, ItemLabel, ListIcon, UseMode};
 use snipdeck_platform::{
     pipeline::{Clipboard, Keyboard, Timing},
     system_look::SystemLook,
@@ -1685,44 +1686,41 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
             && p.stack.as_ref().map(|s| &s.items) == view.stack.as_ref().map(|s| &s.items)
     }) {
         let marked = view.stack.as_ref().map_or(&[][..], |s| s.items.as_slice());
-        let rows = view
-            .rows
-            .iter()
-            .enumerate()
-            .map(|(i, r)| {
-                let mut row = panel_row(r, view.dark);
-                // Collapsed "Deleted · Undo" rows do not take a number: the live rows count 1, 2, 3.
-                // Neither do group headers.
-                row.ghosts_before = to_i32(
-                    view.rows[..i]
-                        .iter()
-                        .filter(|x| x.deleted_pending || x.header.is_some())
-                        .count(),
-                );
-                // A group's items count off under their header: "2 of 5".
-                if r.grouped {
-                    let before = view.rows[..i]
-                        .iter()
-                        .rev()
-                        .take_while(|x| x.grouped)
-                        .count();
-                    let header = view.rows[..i - before]
-                        .last()
-                        .and_then(|x| x.header.as_ref());
-                    row.set_position = to_i32(before + 1);
-                    row.set_size = header.map_or(0, |h| to_i32(h.count));
-                }
-                row.stack_position = marked
-                    .iter()
-                    .position(|id| *id == r.id)
-                    .map_or(0, |at| to_i32(at + 1));
-                // The one sensitive row held revealed: the controller put its text in the preview.
-                if view.revealed == Some(i) {
-                    row.preview = r.preview.as_str().into();
-                }
-                row
-            })
-            .collect();
+        // One pass with running counters (the row builds were quadratic in the rows shown).
+        let mut stack_at: HashMap<ItemId, i32> = HashMap::with_capacity(marked.len());
+        for (at, id) in marked.iter().enumerate() {
+            stack_at.entry(*id).or_insert_with(|| to_i32(at + 1));
+        }
+        // Collapsed "Deleted · Undo" rows and group headers do not take a number.
+        let mut ghosts_before = 0_usize;
+        // The grouped rows just above, and the header of the row above that run.
+        let mut run = 0_usize;
+        let mut header_above: Option<&crate::panel::GroupHeader> = None;
+        let mut rows = Vec::with_capacity(view.rows.len());
+        for (i, r) in view.rows.iter().enumerate() {
+            let mut row = panel_row(r, view.dark);
+            row.ghosts_before = to_i32(ghosts_before);
+            // A group's items count off under their header: "2 of 5".
+            if r.grouped {
+                row.set_position = to_i32(run + 1);
+                row.set_size = header_above.map_or(0, |h| to_i32(h.count));
+            }
+            row.stack_position = stack_at.get(&r.id).copied().unwrap_or(0);
+            // The one sensitive row held revealed: the controller put its text in the preview.
+            if view.revealed == Some(i) {
+                row.preview = r.preview.as_str().into();
+            }
+            rows.push(row);
+            if r.deleted_pending || r.header.is_some() {
+                ghosts_before += 1;
+            }
+            if r.grouped {
+                run += 1;
+            } else {
+                run = 0;
+                header_above = r.header.as_ref();
+            }
+        }
         if let Some(fresh) = refreshed_model(&window.get_rows(), rows) {
             window.set_rows(fresh);
         }
@@ -1995,11 +1993,20 @@ pub(crate) fn refreshed_model<T: Clone + PartialEq + 'static>(
         tail += 1;
     }
     let (old_mid, new_mid) = (old - head - tail, new - head - tail);
+    if old_mid.abs_diff(new_mid) > BULK_ROWS {
+        // Many rows come or go (a long list replaced by a short one): one reset instead of one
+        // notification per row removed.
+        vec.set_vec(rows);
+        return None;
+    }
     let shared = old_mid.min(new_mid);
     let mut rows = rows.into_iter().skip(head);
     for i in 0..shared {
         if let Some(row) = rows.next() {
-            vec.set_row_data(head + i, row);
+            // An unchanged row is not set again: each set notifies the view.
+            if vec.row_data(head + i).as_ref() != Some(&row) {
+                vec.set_row_data(head + i, row);
+            }
         }
     }
     // Deleted rows go from the back, added ones go in after the rows just set.
@@ -2011,6 +2018,9 @@ pub(crate) fn refreshed_model<T: Clone + PartialEq + 'static>(
     }
     None
 }
+
+/// More rows than this added or removed at once are replaced in one reset.
+const BULK_ROWS: usize = 16;
 
 pub(crate) fn to_i32(n: usize) -> i32 {
     i32::try_from(n).unwrap_or(i32::MAX)

@@ -119,9 +119,9 @@ where
     pub(super) fn live_row(&self, index: usize) -> Option<crate::panel::Row> {
         self.model
             .rows()
-            .into_iter()
-            .nth(index)
-            .filter(crate::panel::Row::is_item)
+            .get(index)
+            .filter(|r| r.is_item())
+            .cloned()
     }
 
     /// The row delete button in Delete mode: the item goes to the Trash (one history step) and
@@ -175,9 +175,9 @@ where
         let Some(row) = self
             .model
             .rows()
-            .into_iter()
-            .nth(index)
+            .get(index)
             .filter(|r| r.deleted_pending)
+            .cloned()
         else {
             return;
         };
@@ -225,7 +225,12 @@ where
         let list = self.store.list(id).ok()?;
         Some(ClearListView {
             name: list.name.as_str().to_owned(),
-            count: self.store.items(id).map_or(0, |items| items.len()),
+            // The shown list's items are in the model: no store read on each redraw.
+            count: if self.model.list().is_some_and(|l| l.id == id) {
+                self.model.list_item_ids().len()
+            } else {
+                self.store.items(id).map_or(0, |items| items.len())
+            },
         })
     }
 
@@ -307,10 +312,15 @@ where
         }
         let mut parts = Vec::new();
         for id in ids.iter().copied() {
-            let Ok(item) = self.store.item(id) else {
-                continue;
+            // The sensitive flag comes from the library snapshot: one read per item, not two.
+            let sensitive = match self.model.item(id) {
+                Some(item) => item.sensitive,
+                None => match self.store.item(id) {
+                    Ok(item) => item.sensitive,
+                    Err(_) => continue,
+                },
             };
-            if item.sensitive {
+            if sensitive {
                 continue;
             }
             if let Ok(Some(text)) = usecase::item_text(&self.store, id) {

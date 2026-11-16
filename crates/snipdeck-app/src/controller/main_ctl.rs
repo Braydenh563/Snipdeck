@@ -281,7 +281,7 @@ where
             tags: self.main.side_tags(),
             tag_choices: self.tag_choices(),
             counts: Counts {
-                recent: self.recent_entries().len(),
+                recent: self.recent_shared().len(),
                 ..self.main.counts()
             },
             recent_on: self.settings.recent_history,

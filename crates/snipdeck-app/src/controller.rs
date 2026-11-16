@@ -488,7 +488,7 @@ where
         let colour =
             colour_ctl::colour_or(&settings.colour_current, crate::settings::DEFAULT_COLOUR);
         let colour_other = colour_ctl::colour_or(&settings.colour_contrast_with, "#ffffff");
-        let mut main = MainModel::new();
+        let mut main = MainModel::with_cache(index_cache.clone());
         main.set_view_mode(ViewMode::from(settings.row_density));
         Ok(Self {
             store,
@@ -650,7 +650,7 @@ where
         {
             revealed = Some(at);
             if let Ok(Some(text)) = usecase::item_text(&self.store, id) {
-                rows[at].preview = text
+                std::rc::Rc::make_mut(&mut rows)[at].preview = text
                     .chars()
                     .take(snipdeck_core::Item::PREVIEW_CHARS)
                     .collect();

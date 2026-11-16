@@ -191,7 +191,7 @@ pub struct View {
     /// The pinned strip.
     pub pinned: Vec<Row>,
     /// The item rows. A revealed sensitive row carries its real text in `preview`.
-    pub rows: Vec<Row>,
+    pub rows: std::rc::Rc<Vec<Row>>,
     /// The index in `rows` of the sensitive row held revealed.
     pub revealed: Option<usize>,
     /// The search text.

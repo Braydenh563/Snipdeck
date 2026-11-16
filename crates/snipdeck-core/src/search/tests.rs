@@ -457,3 +457,31 @@ fn search_10k_items_stays_within_budget() {
         );
     }
 }
+
+#[test]
+fn a_cloned_index_shares_its_entries_and_a_patch_copies_one() {
+    let items = sample();
+    let index = SearchIndex::new(&items);
+    let mut patched = index.clone();
+    let mut edited = items[1].clone();
+    edited.title = "Renamed link".to_owned();
+    patched.upsert(&edited);
+    // Three of four entries are the very same allocation; only the edited one was replaced.
+    let shared = (0..items.len())
+        .filter(|&i| Arc::ptr_eq(&index.entries[i], &patched.entries[i]))
+        .count();
+    assert_eq!(shared, 3);
+    assert!(Arc::ptr_eq(&index.positions, &patched.positions), "positions untouched");
+    assert_eq!(titles(&index, &items, "Meeting", 5), ["Meeting link"], "the original is intact");
+    // A use count moves one entry only.
+    let mut used = items[0].clone();
+    used.use_count = 3;
+    let mut counted = index.clone();
+    assert!(counted.refresh_usage([&used]));
+    assert_eq!(
+        (0..items.len())
+            .filter(|&i| Arc::ptr_eq(&index.entries[i], &counted.entries[i]))
+            .count(),
+        3
+    );
+}

@@ -105,7 +105,7 @@ impl PickerModel {
         let snapshot = cache.snapshot(store)?;
         let mut by_list: HashMap<ListId, Vec<&Item>> = HashMap::new();
         for item in &snapshot.all {
-            by_list.entry(item.list_id).or_default().push(item);
+            by_list.entry(item.list_id).or_default().push(&**item);
         }
         let mut places = Vec::new();
         for (b, lists) in &snapshot.boards {

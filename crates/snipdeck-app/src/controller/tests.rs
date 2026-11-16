@@ -44,6 +44,7 @@ mod main_groups;
 mod menus_frame;
 mod onboarding;
 mod panel_select;
+mod perf;
 mod picker;
 mod predictable;
 mod recent;
