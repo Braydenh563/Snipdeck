@@ -127,6 +127,9 @@ msgstr "活动"
 msgid "Add"
 msgstr "添加"
 
+msgid "Add Ctrl, Alt or Win to this key."
+msgstr "请给这个键加上 Ctrl、Alt 或 Win。"
+
 msgid "Add a snippet, or move items here from another list."
 msgstr "添加片段，或从其他列表移动到这里。"
 
@@ -397,6 +400,9 @@ msgstr "选择要导入的内容"
 msgid "Clear"
 msgstr "清除"
 
+msgid "Clear a recorded hotkey"
+msgstr "清除已录制的快捷键"
+
 msgid "Clear filter"
 msgstr "清除筛选"
 
@@ -600,6 +606,9 @@ msgstr "先复制一些内容，然后在面板中保存。"
 
 msgid "Copy something, then save it here."
 msgstr "先复制一些内容，然后保存到这里。"
+
+msgid "Copy the colour (Colours tab)"
+msgstr "复制颜色(“颜色”标签页)"
 
 msgid "Copy the item"
 msgstr "复制该片段"
@@ -1114,6 +1123,9 @@ msgstr "格式"
 msgid "Formatted"
 msgstr "带格式"
 
+msgid "Function keys need Ctrl, Alt or Win too."
+msgstr "功能键还需要配合 Ctrl、Alt 或 Win。"
+
 msgid "Get started"
 msgstr "开始使用"
 
@@ -1197,9 +1209,6 @@ msgstr "在列表中隐藏，直到按住空格键才显示；不记入剪贴板
 
 msgid "Hidden. Hold Space to reveal."
 msgstr "已隐藏。按住空格键即可显示。"
-
-msgid "Hidden. Open it in the Panel to reveal."
-msgstr "已隐藏。在面板中打开即可显示。"
 
 msgid "Hide Panel"
 msgstr "隐藏面板"
@@ -1871,6 +1880,12 @@ msgstr "在光标处打开选择器"
 msgid "Open the Support Snipdeck page in your browser"
 msgstr "在浏览器中打开“支持 Snipdeck”页面"
 
+msgid "Open the colour in the Colours tab"
+msgstr "在“颜色”标签页中打开该颜色"
+
+msgid "Open the full editor from quick add"
+msgstr "从快速添加打开完整编辑器"
+
 msgid "Open the item's menu"
 msgstr "打开项目菜单"
 
@@ -2003,6 +2018,9 @@ msgstr "粘贴堆栈：已标记 {} 项"
 msgid "Paste the Nth result"
 msgstr "粘贴第 N 个结果"
 
+msgid "Paste the clipboard as a new item"
+msgstr "将剪贴板粘贴为新项目"
+
 msgid "Paste the item as plain text"
 msgstr "将该条目以纯文本粘贴"
 
@@ -2059,6 +2077,9 @@ msgstr "PhraseExpress 导出文件（CSV）"
 
 msgid "Pick a colour from the screen"
 msgstr "从屏幕上取色"
+
+msgid "Pick a colour from the screen (Colours tab)"
+msgstr "从屏幕取色(“颜色”标签页)"
 
 msgid "Pick a colour from the screen (Ctrl+I)"
 msgstr "从屏幕上取色（Ctrl+I）"
@@ -2176,6 +2197,9 @@ msgstr "退出"
 
 msgid "RGB"
 msgstr "RGB"
+
+msgid "Reach the notification's buttons"
+msgstr "跳到通知的按钮"
 
 msgid "Ready. Press Test to check it."
 msgstr "已就绪。按“测试”进行检查。"
@@ -2355,6 +2379,12 @@ msgstr "另存为 SVG…"
 
 msgid "Save from clipboard"
 msgstr "从剪贴板保存"
+
+msgid "Save the colour to a list (Colours tab)"
+msgstr "将颜色保存到列表(“颜色”标签页)"
+
+msgid "Save the symbol or the colour (Symbols and Colours tabs)"
+msgstr "保存符号或颜色(“符号”和“颜色”标签页)"
 
 msgid "Save to"
 msgstr "保存到"
@@ -3018,6 +3048,9 @@ msgstr "此片段已被删除，因此未保存任何内容。"
 
 msgid "This item was deleted. Nothing was saved."
 msgstr "此片段已删除。未保存任何内容。"
+
+msgid "This key cannot be part of a shortcut."
+msgstr "此键不能作为快捷键的一部分。"
 
 msgid "This list is empty"
 msgstr "此列表为空"

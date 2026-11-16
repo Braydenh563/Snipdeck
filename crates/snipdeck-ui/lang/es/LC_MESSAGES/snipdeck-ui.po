@@ -127,6 +127,9 @@ msgstr "Actividades"
 msgid "Add"
 msgstr "Añadir"
 
+msgid "Add Ctrl, Alt or Win to this key."
+msgstr "Añade Ctrl, Alt o Win a esta tecla."
+
 msgid "Add a snippet, or move items here from another list."
 msgstr "Añade un fragmento o mueve aquí elementos de otra lista."
 
@@ -397,6 +400,9 @@ msgstr "Elige qué importar"
 msgid "Clear"
 msgstr "Borrar"
 
+msgid "Clear a recorded hotkey"
+msgstr "Borrar un atajo grabado"
+
 msgid "Clear filter"
 msgstr "Quitar filtro"
 
@@ -600,6 +606,9 @@ msgstr "Copia algo y luego guárdalo desde el panel."
 
 msgid "Copy something, then save it here."
 msgstr "Copia algo y guárdalo aquí."
+
+msgid "Copy the colour (Colours tab)"
+msgstr "Copiar el color (pestaña Colores)"
 
 msgid "Copy the item"
 msgstr "Copia el elemento"
@@ -1114,6 +1123,9 @@ msgstr "Formatos"
 msgid "Formatted"
 msgstr "Con formato"
 
+msgid "Function keys need Ctrl, Alt or Win too."
+msgstr "Las teclas de función también necesitan Ctrl, Alt o Win."
+
 msgid "Get started"
 msgstr "Empezar"
 
@@ -1197,9 +1209,6 @@ msgstr "Oculto en las listas hasta que mantengas pulsado Espacio, fuera del hist
 
 msgid "Hidden. Hold Space to reveal."
 msgstr "Oculto. Mantén pulsada la barra espaciadora para mostrarlo."
-
-msgid "Hidden. Open it in the Panel to reveal."
-msgstr "Oculto. Ábrelo en el panel para mostrarlo."
 
 msgid "Hide Panel"
 msgstr "Ocultar panel"
@@ -1875,6 +1884,12 @@ msgstr "Abre el selector en el cursor"
 msgid "Open the Support Snipdeck page in your browser"
 msgstr "Abrir la página de apoyo a Snipdeck en el navegador"
 
+msgid "Open the colour in the Colours tab"
+msgstr "Abrir el color en la pestaña Colores"
+
+msgid "Open the full editor from quick add"
+msgstr "Abrir el editor completo desde la adición rápida"
+
 msgid "Open the item's menu"
 msgstr "Abrir el menú del elemento"
 
@@ -2007,6 +2022,9 @@ msgstr "Pila de pegado: {} marcados"
 msgid "Paste the Nth result"
 msgstr "Pega el resultado n"
 
+msgid "Paste the clipboard as a new item"
+msgstr "Pegar el portapapeles como elemento nuevo"
+
 msgid "Paste the item as plain text"
 msgstr "Pegar el elemento como texto sin formato"
 
@@ -2063,6 +2081,9 @@ msgstr "Exportación de PhraseExpress (CSV)"
 
 msgid "Pick a colour from the screen"
 msgstr "Elegir un color de la pantalla"
+
+msgid "Pick a colour from the screen (Colours tab)"
+msgstr "Tomar un color de la pantalla (pestaña Colores)"
 
 msgid "Pick a colour from the screen (Ctrl+I)"
 msgstr "Elegir un color de la pantalla (Ctrl+I)"
@@ -2180,6 +2201,9 @@ msgstr "Salir"
 
 msgid "RGB"
 msgstr "RGB"
+
+msgid "Reach the notification's buttons"
+msgstr "Ir a los botones del aviso"
 
 msgid "Ready. Press Test to check it."
 msgstr "Listo. Pulsa Probar para comprobarlo."
@@ -2361,6 +2385,12 @@ msgstr "Guardar como SVG…"
 
 msgid "Save from clipboard"
 msgstr "Guardar desde el portapapeles"
+
+msgid "Save the colour to a list (Colours tab)"
+msgstr "Guardar el color en una lista (pestaña Colores)"
+
+msgid "Save the symbol or the colour (Symbols and Colours tabs)"
+msgstr "Guardar el símbolo o el color (pestañas Símbolos y Colores)"
 
 msgid "Save to"
 msgstr "Guardar en"
@@ -3024,6 +3054,9 @@ msgstr "Este elemento se eliminó, así que no se guardó nada."
 
 msgid "This item was deleted. Nothing was saved."
 msgstr "Este elemento se eliminó. No se guardó nada."
+
+msgid "This key cannot be part of a shortcut."
+msgstr "Esta tecla no puede formar parte de un atajo."
 
 msgid "This list is empty"
 msgstr "Esta lista está vacía"

@@ -334,6 +334,24 @@ Decided 2026-11-16 (UX audit UX-1..4). `Ctrl+P` kept for pin because two windows
 
 The Panel's keep-on-top pin has no chord: use the header button or the palette.
 
+`F6` moves the keyboard to the toast's action (Undo, else Edit, else the x) in Main and the Panel; `Esc` on one drops the toast. Lists, menus, the chooser and the palette take `PageUp`/`PageDown`; menus and the chooser also take type-ahead (a typed prefix, repeated letters cycle). The palette keeps plain `Home`/`End` for its field, so it uses `Ctrl+Home`/`Ctrl+End`.
+
+### Item menu (one definition)
+
+Main and the Panel offer one item menu: Use, Copy, Paste as, Open in Colours, Edit, Duplicate, Move to list, Pin, Move up, Move down, Group, Move to Trash, in that order and with the same words (`controller/item_menu.rs`; `item_menu_parity.rs` checks both). Window-only entries, with the reason:
+- Main only: **Tags...** (the tag chooser lives in Main).
+- Panel only: **Colour** and **Sensitive** (Main sets them in the editor), **Stack** (the paste stack is a Panel feature).
+
+### Hotkey recorder
+
+A key the recorder ignores says why under the prompt: a bare function key, a key with no modifier, or a key that cannot be part of a shortcut. A chord the system or another hotkey already holds is reported by the host's conflict message, not by the recorder.
+
+## Not done (UX audit batch B)
+
+- UX-5, one table for the catalogue and the handlers: not done. Slint handlers cannot be generated from Rust. A test (`shortcut_coverage.rs`) scans the `.slint` sources for Ctrl-letter handlers and fails when one is missing from the list; special keys are checked by name.
+- UX-6, type-ahead beyond 40 rows: Slint has no loops, so the prefix scan is unrolled for 40 rows. A longer menu still takes paging and Home/End. Not done: no menu is that long today.
+- UX-6, plain `Home`/`End` and type-ahead in the palette and Picker: the search field owns those keys there, which is the type-ahead. `Ctrl+Home`/`Ctrl+End` jump instead.
+
 ### Names (one name per concept)
 
 Decided 2026-11-16 (UX-7..18). Every surface (menus, bars, toasts, tips, tour, Help, user guide, catalogue, all six `.po` files) uses these words, and no surface invents its own verb:

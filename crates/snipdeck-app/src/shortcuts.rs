@@ -107,7 +107,7 @@ use Scope::{Anywhere, Editors, Main, Panel, Picker, Unlock};
 
 /// Every shortcut, in the order of `ShortcutTexts.titles` (a test in `tests/help_window.rs` checks the
 /// length) and grouped by scope in the order of [`Scope::ALL`].
-pub const CATALOGUE: [Shortcut; 84] = [
+pub const CATALOGUE: [Shortcut; 99] = [
     // Anywhere in Windows.
     global(HotkeyAction::TogglePanel),
     global(HotkeyAction::Picker),
@@ -136,7 +136,11 @@ pub const CATALOGUE: [Shortcut; 84] = [
     row(Main, "Ctrl+A"),
     row(Main, "Ctrl+Space"),
     row(Main, "Ctrl+Z"),
-    row(Main, "Ctrl+Y"),
+    custom(
+        Main,
+        &["Ctrl", "Y", ALT, "Ctrl", "Shift", "Z"],
+        "Ctrl+Y or Ctrl+Shift+Z",
+    ),
     row(Main, "Ctrl+W"),
     row(Main, "Ctrl+B"),
     custom(
@@ -145,6 +149,11 @@ pub const CATALOGUE: [Shortcut; 84] = [
         "Alt+Up or Alt+Down",
     ),
     custom(Main, &["Space"], "Hold Space"),
+    row(Main, "Ctrl+C"),
+    row(Main, "Ctrl+V"),
+    custom(Main, &["/"], "Slash"),
+    custom(Main, &["Shift", "F10"], "Shift+F10 or the Menu key"),
+    row(Main, "F6"),
     // Groups in the Main window.
     row(Main, "Ctrl+G"),
     custom(
@@ -191,11 +200,23 @@ pub const CATALOGUE: [Shortcut; 84] = [
     row(Panel, "Ctrl+Shift+N"),
     row(Panel, "Ctrl+,"),
     row(Panel, "Ctrl+Z"),
-    row(Panel, "Ctrl+Y"),
+    custom(
+        Panel,
+        &["Ctrl", "Y", ALT, "Ctrl", "Shift", "Z"],
+        "Ctrl+Y or Ctrl+Shift+Z",
+    ),
     row(Panel, "Ctrl+W"),
     row(Panel, "Ctrl+/"),
     row(Panel, "F1"),
     row(Panel, "Esc"),
+    row(Panel, "Ctrl+C"),
+    row(Panel, "Ctrl+V"),
+    row(Panel, "F6"),
+    // The Symbols and Colours tabs.
+    row(Panel, "Ctrl+S"),
+    row(Panel, "Ctrl+Shift+S"),
+    row(Panel, "Ctrl+I"),
+    custom(Panel, &["Ctrl", "C"], "Ctrl+C in the Colours tab"),
     // Groups.
     row(Panel, "Ctrl+G"),
     custom(
@@ -218,6 +239,7 @@ pub const CATALOGUE: [Shortcut; 84] = [
     custom(Picker, &["Alt", "1-9"], "Alt+1 to 9"),
     custom(Picker, &["Tab", ALT, "Shift", "Tab"], "Tab or Shift+Tab"),
     row(Picker, "Ctrl+E"),
+    row(Picker, "Ctrl+O"),
     row(Picker, "Esc"),
     // Editors.
     custom(
@@ -227,6 +249,8 @@ pub const CATALOGUE: [Shortcut; 84] = [
     ),
     row(Editors, "Alt+P"),
     custom(Editors, &["Esc", ALT, "Ctrl", "W"], "Esc or Ctrl+W"),
+    row(Editors, "Ctrl+Shift+Enter"),
+    row(Editors, "Del"),
     // The unlock window.
     plain(Unlock, "Hello", "Unlock with Windows Hello"),
 ];
