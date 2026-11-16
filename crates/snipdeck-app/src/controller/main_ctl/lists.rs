@@ -71,16 +71,29 @@ where
                 std::fs::create_dir_all(folder).map_err(|e| Cause::of_io(&e))?;
                 std::fs::write(&path, list_text::render(&name, &entries))
                     .map_err(|e| Cause::of_io(&e))?;
-                Ok(path)
+                Ok((path, entries.len(), items.len()))
             });
-        if let Ok(path) = &written {
+        let written = written.map(|(path, count, total)| {
             let file = path
                 .file_name()
                 .map(|n| n.to_string_lossy().into_owned())
                 .unwrap_or_default();
+            // A list with items left out says how many were written (MAIN-25).
+            let message = if count < total {
+                ToastMessage::ExportedSome {
+                    file,
+                    written: count,
+                    total,
+                }
+            } else {
+                ToastMessage::Exported { file }
+            };
+            (path, message)
+        });
+        if let Ok((path, message)) = &written {
             self.show_toast(Toast {
                 kind: ToastKind::Success,
-                message: ToastMessage::Exported { file },
+                message: message.clone(),
             });
         } else {
             let cause = written.as_ref().err().copied().unwrap_or(Cause::Other);
@@ -89,7 +102,7 @@ where
                 message: ToastMessage::ExportFailed(cause),
             });
         }
-        written.ok()
+        written.ok().map(|(path, _)| path)
     }
 
     pub(in crate::controller) fn trash_list(&mut self, id: ListId, name: String) {
@@ -161,7 +174,8 @@ where
             return;
         }
         // Alt+Up on the first row lands on itself, not nowhere: the sorted-list offer is the same at both ends.
-        let onto = from.saturating_add_signed(delta);
+        let last = self.main.keys().len().saturating_sub(1);
+        let onto = from.saturating_add_signed(delta).min(last);
         self.main_drop_row(from, onto);
     }
 

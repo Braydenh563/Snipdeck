@@ -812,7 +812,7 @@ fn a_shortcut_that_clashes_is_refused_and_says_which_action_has_it() {
             rows.row_data(2)
                 .unwrap()
                 .conflict
-                .contains("Open the picker"),
+                .contains("Open the Picker"),
             "{:?}",
             rows.row_data(2).unwrap().conflict
         );
@@ -2145,7 +2145,7 @@ fn clearing_recent_emoji_and_colours_asks_first_then_clears_and_says_so() {
         });
         element(
             &r.ui,
-            "Clear recent emoji and colours…",
+            "Clear recent emoji and colours",
             AccessibleRole::Button,
         )
         .invoke_accessible_default_action();
@@ -2154,15 +2154,15 @@ fn clearing_recent_emoji_and_colours_asks_first_then_clears_and_says_so() {
             1,
             "asked first"
         );
-        element(&r.ui, "Keep them", AccessibleRole::Button).invoke_accessible_default_action();
+        element(&r.ui, "Cancel", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(r.ctl.borrow().settings().colours_recent.len(), 1, "kept");
         element(
             &r.ui,
-            "Clear recent emoji and colours…",
+            "Clear recent emoji and colours",
             AccessibleRole::Button,
         )
         .invoke_accessible_default_action();
-        element(&r.ui, "Clear them", AccessibleRole::Button).invoke_accessible_default_action();
+        element(&r.ui, "Clear emoji and colours", AccessibleRole::Button).invoke_accessible_default_action();
         assert!(r.ctl.borrow().settings().colours_recent.is_empty());
         assert_eq!(
             r.ui.get_toast_text(),
@@ -2771,6 +2771,22 @@ fn the_text_size_row_changes_the_setting_and_scales_the_page_at_once() {
         r.ui.invoke_text_size_chosen(1);
         assert!(near(look.get_text_scale(), 1.0));
         snipdeck_app::text_scale::set_system(1.0);
+    });
+}
+
+/// MAIN-35: Windows goes to 225 %, so the fixed sizes do too.
+#[test]
+fn the_text_size_row_offers_200_and_225_percent() {
+    on_ui_thread(|| {
+        let r = rig();
+        let look = r.ui.global::<snipdeck_ui::SystemLook<'_>>();
+        r.ui.invoke_text_size_chosen(5);
+        assert_eq!(r.ctl.borrow().settings().text_size, TextSize::P200);
+        assert!((look.get_text_scale() - 2.0).abs() < 1e-6);
+        r.ui.invoke_text_size_chosen(6);
+        assert_eq!(r.ctl.borrow().settings().text_size, TextSize::P225);
+        assert!((look.get_text_scale() - 2.25).abs() < 1e-6);
+        r.ui.invoke_text_size_chosen(0);
     });
 }
 

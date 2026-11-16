@@ -139,10 +139,13 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::TypingUnavailable => 101,
         ToastMessage::AutostartSwitchedOff => 102,
         ToastMessage::AutostartPolicy => 103,
+        ToastMessage::ExportedSome { .. } => 112,
+        ToastMessage::ItemsTagged { .. } => 113,
+        ToastMessage::TagDeleted { .. } => 114,
     }
 }
 
-const VARIANTS: usize = 112;
+const VARIANTS: usize = 115;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -228,6 +231,20 @@ fn samples() -> Vec<ToastMessage> {
         M::Exported {
             file: s("snipdeck.zip"),
         },
+        M::ExportedSome {
+            file: s("list.txt"),
+            written: 12,
+            total: 15,
+        },
+        M::ItemsTagged {
+            count: 3,
+            added: true,
+        },
+        M::ItemsTagged {
+            count: 1,
+            added: false,
+        },
+        M::TagDeleted { name: s("Work") },
         M::ExportFailed(Cause::Locked),
         M::LibraryErased,
         M::EraseFailed,

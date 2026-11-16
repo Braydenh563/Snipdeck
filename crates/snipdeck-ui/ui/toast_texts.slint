@@ -340,6 +340,16 @@ export global ToastTexts {
     pure public function exported(file: string) -> string {
         return @tr("Saved {}", file);
     }
+    pure public function exported-some(file: string, written: int, total: int) -> string {
+        return @tr("Saved {}: {} of {} items. Sensitive items and items with no text are left out.", file, written, total);
+    }
+    pure public function items-tagged(count: int, added: bool) -> string {
+        return added ? @tr("Tag added to {} item" | "Tag added to {} items" % count, count)
+            : @tr("Tag removed from {} item" | "Tag removed from {} items" % count, count);
+    }
+    pure public function tag-deleted(name: string) -> string {
+        return @tr("Deleted the tag “{}”", name);
+    }
     pure public function export-failed(cause: int) -> string {
         if (cause == 1) {
             return @tr("Couldn't export your library: the disk is full. Free up some space, then try again.");

@@ -191,7 +191,7 @@ fn search_problems(c: &Case, case: &str, scale: f32, scene: &str) -> Vec<String>
             None => return vec![format!("{case}: no Move button in the bulk bar")],
         }
     }
-    match bs.iter().find(|b| b.0 == "Search snippets") {
+    match bs.iter().find(|b| b.0 == "Search items") {
         Some(s) if s.3 >= 150.0 * scale - 0.5 => Vec::new(),
         Some(s) => vec![format!(
             "{case}: the search field is {:.0} px wide, under {}",
