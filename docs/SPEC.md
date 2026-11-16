@@ -95,13 +95,14 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 - Settings, onboarding, import/export and the optional Support Snipdeck link live here.
 
 ### 5.4 Editors
-- **Size limits (M0 S3, measured on a Linux VM with the software renderer):** Slint's `TextEdit` re-lays-out all text on every keystroke (about 1 ms per KB). Inline editing is therefore capped at **16 KB**. From 16 KB to **5 MB** an item opens in a **read-only virtualised viewer** (rope-based; find, copy, whole-text transforms; measured ≤ 12 ms per interaction). Text over 5 MB is rejected on capture with an explanatory toast (limit to be revisited after Windows measurements).
+- **Size limits (M0 S3, measured on a Linux VM with the software renderer):** Slint's `TextEdit` re-lays-out all text on every keystroke (about 1 ms per KB). Inline editing is therefore capped at **16 KB**. From 16 KB to **5 MB** an item opens in a **read-only virtualised viewer** (rope-based; find, copy, whole-text transforms; measured ≤ 12 ms per interaction). Text over 5 MB is rejected on capture with an explanatory toast (limit to be revisited after Windows measurements). **Not built yet:** the rope viewer, its find and its whole-text transforms. Text over 16 KB opens as a prefix of the first 16 KB; the rest of the text is kept as it was.
 - **Text**: plain editor (wrap, monospace toggle, line numbers for long text), find/replace,
   transforms (UPPER/lower/Title, trim, strip formatting, dedupe lines, sort lines),
   **template field inserter** with live preview. Rich-text items: formatting preserved on paste;
   edited as text (rich-text editing is v1.x).
 - **Editor footer:** Trash, Cancel and Save share one row; when the row does not fit, Trash moves above Cancel/Save instead of clipping. The template placeholder help lists its rows with one shared chip column so descriptions line up.
-- **Image**: crop, rotate/flip, resize/scale, **redact** (blur / solid box). Non-destructive until save.
+- **Image**: crop, rotate/flip, resize/scale, **redact** (blur / solid box). Non-destructive until save. **Not built yet:** the whole image editor, decoding JPEG, WebP, GIF and BMP to the stored PNG (an Image item takes a PNG only; the `image` crate is only a transitive dependency with PNG and JPEG, so the other formats need new crates and a `deny.toml` check), and Replace on an existing Image or File item (delete it and add a new one). A File item takes one file.
+- **Not built yet (Text):** find/replace, the monospace toggle and line numbers. They need a text widget that Slint's `TextEdit` does not give (measured costs are under the size limits above); the editor offers a plain wrapped text box.
 
 ### 5.5 Capture & OCR
 - Hotkey (off until the user sets a chord; no default) → Snipdeck's own region-select overlay (multi-monitor, DPI-aware). **Not built yet:** v1.0's capture hotkey saves the text on the clipboard as a new item in the list the Panel shows (off until a chord is set), and Settings says so.

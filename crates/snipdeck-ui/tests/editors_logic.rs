@@ -340,6 +340,7 @@ ui_tests! {
         };
         assert_eq!(desc(&ui).as_deref(), Some(HELPER), "the helper is spoken");
         ui.set_trigger(";".into());
+        ui.set_trigger_warning(ONE_CHAR.into());
         settle();
         assert_eq!(desc(&ui).as_deref(), Some(ONE_CHAR), "the warning replaces it");
         ui.set_trigger_error("That trigger is taken.".into());
@@ -358,6 +359,37 @@ ui_tests! {
             AccessibleRole::Text,
         );
         assert!(reason.accessible_label().is_some(), "the reason is a text node");
+    }
+
+    fn the_trigger_options_show_with_a_trigger_below_its_field() {
+        let (ui, _log) = item_editor();
+        ui.set_trigger("".into());
+        settle();
+        let combo = AccessibleRole::Combobox;
+        assert!(missing(&ui, "Trigger fires", combo), "no trigger, no options");
+        assert!(missing(&ui, "Trigger and letter case", combo));
+        ui.set_trigger(";sig".into());
+        ui.set_trigger_end_index(1);
+        ui.set_trigger_case_index(2);
+        settle();
+        let field = find(&ui, "Trigger", AccessibleRole::TextInput);
+        let fires = find(&ui, "Trigger fires", combo);
+        let case = find(&ui, "Trigger and letter case", combo);
+        assert!(fires.absolute_position().y > field.absolute_position().y + field.size().height - 1.0);
+        assert!(case.absolute_position().y > fires.absolute_position().y);
+        assert_eq!(
+            fires.accessible_value().as_deref(),
+            Some("When a space or punctuation follows"),
+            "the chosen option is spoken"
+        );
+        assert_eq!(
+            case.accessible_value().as_deref(),
+            Some("Ignore case and follow what I typed")
+        );
+        ui.set_sensitive(true);
+        settle();
+        assert!(missing(&ui, "Trigger fires", combo), "a sensitive item has no trigger");
+        assert!(missing(&ui, "Trigger and letter case", combo));
     }
 
     fn escape_leaves_a_clean_editor_and_asks_before_discarding_changes() {

@@ -104,6 +104,10 @@ fn typing_scenes(s: f32, w: f32, sw: f32, all: &mut Vec<String>, checked: &mut u
     editor::text_item(&ui);
     ui.set_more_open(true);
     ui.set_trigger("a".into());
+    ui.set_trigger_warning(
+        "A one-character trigger fires every time you type it, even inside words. Two or more characters are safer."
+            .into(),
+    );
     let ew = if s > 1.5 { 608.0 } else { w };
     ui.window().set_size(slint::LogicalSize::new(ew, 1800.0));
     ui.show().unwrap();

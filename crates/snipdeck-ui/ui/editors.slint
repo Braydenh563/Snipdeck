@@ -1354,37 +1354,6 @@ export component ItemEditor inherits Window {
                             }
                         }
                     }
-                    if !root.sensitive && root.trigger != "": FormField {
-                        label: @tr("Trigger fires");
-                        trigger-end-field := SelectField {
-                            label: @tr("Trigger fires");
-                            options: [@tr("As soon as it is typed"), @tr("When a space or punctuation follows")];
-                            current: root.trigger-end-index;
-                            chosen(i) => {
-                                root.touch();
-                                root.trigger-end-chosen(i);
-                            }
-                            changed has-focus => {
-                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
-                            }
-                        }
-                    }
-                    if !root.sensitive && root.trigger != "": FormField {
-                        label: @tr("Trigger and letter case");
-                        trigger-case-field := SelectField {
-                            label: @tr("Trigger and letter case");
-                            options: [@tr("Match case exactly"), @tr("Ignore case"), @tr("Ignore case and follow what I typed")];
-                            current: root.trigger-case-index;
-                            chosen(i) => {
-                                root.touch();
-                                root.trigger-case-chosen(i);
-                            }
-                            changed has-focus => {
-                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
-                            }
-                        }
-                    }
-
                     FormField {
                         label: @tr("Colour label");
                         ColourPicker {
@@ -1534,6 +1503,36 @@ export component ItemEditor inherits Window {
                             text <=> root.trigger;
                             edited(t) => { root.touch(); root.trigger-edited(t); }
                             accepted(t) => { root.try-save(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    if !root.sensitive && root.trigger != "": FormField {
+                        label: @tr("Trigger fires");
+                        trigger-end-field := SelectField {
+                            label: @tr("Trigger fires");
+                            options: [@tr("As soon as it is typed"), @tr("When a space or punctuation follows")];
+                            current: root.trigger-end-index;
+                            chosen(i) => {
+                                root.touch();
+                                root.trigger-end-chosen(i);
+                            }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    if !root.sensitive && root.trigger != "": FormField {
+                        label: @tr("Trigger and letter case");
+                        trigger-case-field := SelectField {
+                            label: @tr("Trigger and letter case");
+                            options: [@tr("Match case exactly"), @tr("Ignore case"), @tr("Ignore case and follow what I typed")];
+                            current: root.trigger-case-index;
+                            chosen(i) => {
+                                root.touch();
+                                root.trigger-case-chosen(i);
+                            }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }
