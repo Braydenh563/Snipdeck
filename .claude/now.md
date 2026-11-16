@@ -97,6 +97,7 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - 2026-11-12: Colour tool UI and the editor preview toggle are built by cloud worker sessions (branches claude/colour-tool, claude/editor-preview), merged into PR #5 by the coordinator. Reason: this machine fits one snipdeck_ui compile at a time, so local parallel builds OOM; the local colour workflow wf_8676d216-bbf is superseded and not resumed.
 
 ## Inbox
+- 2026-11-16 owner: "I removed the key from github and Ive just made a developers account on the partner centre" -> SNIPDECK_LICENCE_PUBLIC_KEY secret removed (done); next owner steps: reserve name, set MSIX_* repo variables.
 - 2026-11-16 owner: "dont stop at 85% but be very token efficient and try to have everything done"
 - 2026-11-16 owner: "so once you are finished all the issues and things found previously, and once all the fable audits are finished, I want you to fix absolutely everything they find. leave nothing undone or partly done. absolutely nothing left, and lemme know when everything is done, these fable checks are like the ultimate final check."
 - 2026-11-16 owner: "please run one fable agent at a time"
