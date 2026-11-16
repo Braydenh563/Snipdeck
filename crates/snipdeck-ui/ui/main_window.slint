@@ -1158,6 +1158,10 @@ export component MainWindow inherits Window {
     pure function tile-index(r: int, c: int) -> int {
         return r * root.cols + c;
     }
+    // What the card of cell `c` of grid row `r` needs: nothing for a cell past the last row.
+    pure function cell-need(r: int, c: int, need: length) -> length {
+        return root.tile-index(r, c) < root.rows.length ? need : 0px;
+    }
     property <length> tile-w: (grid.width - 2 * root.ring - (root.cols - 1) * root.tile-gap) / root.cols;
     // ---- Keyboard ---------------------------------------------------------------------------------
     pure function section-name() -> string {
@@ -2317,11 +2321,11 @@ export component MainWindow inherits Window {
                             visible: root.rows.length > 0;
                             scrolled => { root.follow-cursor = false; }
 
-                            for r in root.grid-row-count: Rectangle {
+                            for r in root.grid-row-count: grid-row := Rectangle {
                                 property <bool> has-cursor: floor(root.cur / root.cols) == r;
                                 // Each cell reports the height its card needs; a grid row takes its tallest card (min 96).
                                 property <[length]> need: [0px, 0px, 0px, 0px, 0px, 0px];
-                                height: max(self.need[0], self.need[1], self.need[2], self.need[3], self.need[4], self.need[5]) + root.tile-gap + (r == root.grid-row-count - 1 ? 2 * root.ring : 0px);
+                                height: max(root.cell-need(r, 0, self.need[0]), root.cell-need(r, 1, self.need[1]), root.cell-need(r, 2, self.need[2]), root.cell-need(r, 3, self.need[3]), root.cell-need(r, 4, self.need[4]), root.cell-need(r, 5, self.need[5])) + root.tile-gap + (r == root.grid-row-count - 1 ? 2 * root.ring : 0px);
 
                                 init => {
                                     if (self.has-cursor && root.follow-cursor) { root.reveal-grid(self.y, self.height); }
@@ -2352,16 +2356,11 @@ export component MainWindow inherits Window {
                                     }
                                 }
 
-                                for c in root.cols: tile-cell := Rectangle {
+                                for c in root.cols: Rectangle {
                                     x: root.ring + c * (root.tile-w + root.tile-gap);
                                     y: root.ring;
                                     width: root.tile-w;
                                     height: parent.height - root.tile-gap - (r == root.grid-row-count - 1 ? 2 * root.ring : 0px);
-                                    // The real card reports its own preferred height (no hidden second card per tile).
-                                    property <length> measured: 0px;
-                                    property <length> need: root.tile-index(r, c) < root.rows.length ? self.measured : 0px;
-                                    init => { parent.need[c] = self.need; }
-                                    changed need => { parent.need[c] = self.need; }
                                     if root.tile-index(r, c) < root.rows.length: tile-drop := DropArea {
                                         // The tile being dragged over this one: a drop lands after it when coming from before.
                                         property <int> tile-from: -1;
@@ -2387,8 +2386,8 @@ export component MainWindow inherits Window {
                                         variant: ItemCardVariant.tile;
                                         data: root.rows[root.tile-index(r, c)];
                                         inline-tile: true;
-                                        init => { tile-cell.measured = self.preferred-height; }
-                                        changed preferred-height => { tile-cell.measured = self.preferred-height; }
+                                        init => { grid-row.need[c] = self.preferred-height; }
+                                        changed preferred-height => { grid-row.need[c] = self.preferred-height; }
                                         // Use first (Restore in the Trash), then Copy (not when Use already copies), Edit, More.
                                         use-action: true;
                                         use-glyph: root.in-trash ? Icons.arrow-counter-clockwise : Icons.arrow-bend-down-left;
