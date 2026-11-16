@@ -311,10 +311,17 @@ where
             return Some(self.use_item(*id, snipdeck_core::UseMode::Copy));
         }
         let mut parts = Vec::new();
+        // Sensitivity is read from the store, never the snapshot (a stale flag would copy a
+        // secret): one query for the shown list covers the usual selection.
+        let shown: std::collections::HashMap<ItemId, bool> = self
+            .model
+            .list()
+            .and_then(|l| self.store.items(l.id).ok())
+            .map(|items| items.into_iter().map(|i| (i.id, i.sensitive)).collect())
+            .unwrap_or_default();
         for id in ids.iter().copied() {
-            // The sensitive flag comes from the library snapshot: one read per item, not two.
-            let sensitive = match self.model.item(id) {
-                Some(item) => item.sensitive,
+            let sensitive = match shown.get(&id) {
+                Some(sensitive) => *sensitive,
                 None => match self.store.item(id) {
                     Ok(item) => item.sensitive,
                     Err(_) => continue,
