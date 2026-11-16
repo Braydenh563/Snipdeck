@@ -75,13 +75,7 @@ impl Snapshot {
                         .filter_map(|t| tag_names.get(t).map(String::as_str)),
                 );
             }
-            let suggest = Index::build(
-                self.all.iter().map(|i| &**i),
-                self.tags.iter().map(|t| t.name.as_str()),
-                self.boards
-                    .iter()
-                    .flat_map(|(_, lists)| lists.iter().map(|l| l.name.as_str())),
-            );
+            let suggest = suggest_of(&self.all, &self.tags, &self.boards);
             self.builds.set(self.builds.get() + 1);
             crate::trace!(
                 "index build {} us for {} items",
@@ -112,6 +106,17 @@ impl Snapshot {
     pub fn item(&self, id: ItemId) -> Option<&Rc<Item>> {
         self.positions.get(&id).and_then(|&at| self.all.get(at))
     }
+}
+
+/// The names the search suggestions are made of: item titles, tags, and list names.
+fn suggest_of(all: &[Rc<Item>], tags: &[Tag], boards: &[(Board, Vec<List>)]) -> Index {
+    Index::build(
+        all.iter().map(|i| &**i),
+        tags.iter().map(|t| t.name.as_str()),
+        boards
+            .iter()
+            .flat_map(|(_, lists)| lists.iter().map(|l| l.name.as_str())),
+    )
 }
 
 fn positions_of(all: &[Rc<Item>]) -> HashMap<ItemId, usize> {
@@ -380,13 +385,7 @@ impl IndexCache {
             && edited
             && names_changed
         {
-            *suggest = Rc::new(Index::build(
-                all.iter().map(|i| &**i),
-                tags.iter().map(|t| t.name.as_str()),
-                old.boards
-                    .iter()
-                    .flat_map(|(_, lists)| lists.iter().map(|l| l.name.as_str())),
-            ));
+            *suggest = Rc::new(suggest_of(&all, &tags, &old.boards));
         }
         let pinned = if pin_touched {
             Rc::new(pinned_of(&all))
