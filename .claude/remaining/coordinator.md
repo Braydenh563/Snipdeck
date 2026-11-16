@@ -1,36 +1,17 @@
-# Coordinator state (2026-11-16 ~01:45 UTC)
+# Coordinator state (2026-11-16 14:08 UTC)
 
-PR #5, branch claude/compassionate-pascal-pod8ux. CI green on df614a06; pushed head adds checklist, inbox, gate.sh fix.
+PR #5 head pushed (tools merge, 1.99 clippy fixes, CodeQL keyring fix). CI: Windows, audits ok; Linux and CodeQL Rust were running.
 
-## Owner orders (in force)
-- Deep audit: Fable agents, ONE at a time, owner must re-say "use fable" per launch (plugin guard; mid-turn messages don't count). If blocked: PushNotification the owner.
-- No cap on findings: every finding recorded and listed. Then fix absolutely everything; tell owner when nothing is left. Owner tests on Windows after.
-- Checklist: .claude/skills/deep-audit/checklist.md. Findings: scratchpad/deep-audit/<agent>.md
-  (/tmp/claude-0/-home-user-Snipdeck/924dfb27-0b1b-5011-b96d-4161f926cf4e/scratchpad/deep-audit/).
+## Areas
+- data: DONE, 7d3c212 on claude/fix-audit-data (toast queue added), gate green. Next: Sonnet reviewer (no checkout) on a1db682..7d3c212, then merge into PR #5.
+- perf: f5306da done; perf pt2 session_01NKjURujwKd9MubADsQ4Ane on PERF-8 (pushed 66d0bce, fixing a test compile), PERF-4/11/19.
+- main: pt4 session_01NKjURuzGHcwKpr8pazWMZj on all deferred MAIN items + 10 binding-audit findings (GATE_BASE=506333b).
+- panel: 0f54f85; told to un-defer Import/Export/Back up/Empty Trash palette commands and PANEL-43.
+- platform, UX, library, extras: working; awaiting reports.
+- tools, privacy: merged.
 
-## Audit progress (10 areas, map in extras.md)
-- [x] extras: 15 findings EXTRAS-1..15 (language setting not applied, CI skips python checks, Plex OFL notice + MSIX licences, English-only Rust strings, terminology drift, no log file, empty crash reports, --check-db writes, half-built bits, CLI). Not reached: failure.rs ownership.rs host.rs tips.rs tour.rs demo.rs screenshot.rs main.rs 260-870.
-- [x] library: 56 findings LIBRARY-1..56 (4 high: 1,2,26,35). UI walk not reached.
-- [x] panel: 45 findings PANEL-1..45 (1 high: 13 paste sleeps on UI thread). ALL code-only (disk ran out); runs owed for PANEL-1,7,9,12,24,45 + 10k perf; reproduce in fix phase.
-- [ ] main, privacy: running (Fable).
-- [ ] data, tools, platform, ux, perf.
+## Merge recipe
+toast_texts.rs ids + VARIANTS; union .po hunks, `python3 scripts/i18n.py extract` + `check --strict`; `python3 scripts/codemap.py`; clippy +1.99.1 (CARGO_TARGET_DIR=/tmp/target-199, delete after); gate --changed; push. Disk fills fast: prune /tmp/target-panel/debug/deps test binaries.
 
-## In flight
-- Sonnet local agent: branch fix/sidebar-expand (sidebar toggle hidden below 720px auto-rail -> overlay drawer; help "?" vs "N items" footer gap). Verify, gate, merge.
-- Cloud session_01NKjURsVa5FL9t3AAoppKaw (claude/fable2-last): Part A done (bb956d2, gate green); asked to do Part B (G28 two-phase portable API). Then Opus review (no checkout), merge.
-- scroll-tooltips: MERGED (2d8ec99f), pushed, gate green.
-- Tell owner about PR #29 (against claude/all-free).
-
-## After
-Ranked fix list (all findings), fix by class, review, gate --full, CI green, HANDOVER morning summary, retro.
-Cargo: flock /tmp/target-panel/.audit.lock; env CARGO_TARGET_DIR=/tmp/target-panel CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_BUILD_JOBS=2 CARGO_INCREMENTAL=0.
-
-## Fix sessions (cloud, Sonnet; owner: start fixes as audits arrive; merge each branch after verify+gate)
-- extras -> session_01NKjURvnHFVMoYZ2xeg3MSJ, branch claude/fix-audit-extras
-- library -> session_01NKjURvL8svpNDsnWjzGkp8, branch claude/fix-audit-library
-- panel -> session_01NKjURu2Ui2oqJRKoriWaT6, branch claude/fix-audit-panel
-- Next audits: copy findings to .claude/audit/<area>.md, push, start a session per area.
-Older open items: fable2-last Part B (session_01NKjURsVa5FL9t3AAoppKaw), fix/sidebar-expand (local), PR #29 (owner decision), blind usability tests, gate --full, CI, handover, retro.
-- 06:20 2026-11-16: all 10 audits in. perf.md + ux.md committed (push after gate24). main fixer handed over partial at 506333b -> part 2 session_01NKjURvCgQT1PLfp8nNrme1. Next: perf + ux cloud fix sessions once pushed; sidebar fix (d4ae69cf) after ux-auditor; CI Windows fix aa114c40.
-- 07:55 2026-11-16: privacy review MERGE-WITH-FIXES (pre-v10 .bak keeps previous key; backoff docs; lock 2s typing; keep_unknown_source toggle) -> local Sonnet fixer pushes claude/fix-audit-privacy; then merge, gate, push. gate26 (sidebar dd361706) running.
-- 08:22 2026-11-16: pushed 7ecbe075 (sidebar). Pushed fix branches: privacy 6c16ff3 (review fixer running locally), panel 93c81c3, tools 488a0ae, main part1 506333b, fable2-last 42bd122. Asked extras/ux/main2 to push, tools/panel to confirm final. Data part 2 session_01NKjURwbF14wPLCdeoEXgfd on claude/fable2-last. Running: library, platform, perf.
+## Final
+blind tests, gate --full, green CI, HANDOVER morning summary, Windows checklist for owner, retro.
