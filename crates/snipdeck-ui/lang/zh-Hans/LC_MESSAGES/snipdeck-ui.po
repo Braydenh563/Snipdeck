@@ -43,6 +43,9 @@ msgstr "通过快捷键或托盘显示的面板会在粘贴或复制后隐藏。
 msgid "A docked Panel opens at its edge. Set Dock to Floating to choose where it opens."
 msgstr "已停靠的面板会在其边缘打开。将“停靠到”设为“浮动”，即可选择它的打开位置。"
 
+msgid "A double click on the tray icon opens the Main window. Turn this off and a single click acts at once, with no wait for a second click."
+msgstr "双击托盘图标会打开主窗口。关闭后，单击会立即生效，无需等待第二次点击。"
+
 msgid "A link can't contain spaces or line breaks."
 msgstr "链接不能包含空格或换行。"
 
@@ -952,6 +955,9 @@ msgstr "停靠在右侧"
 
 msgid "Done"
 msgstr "完成"
+
+msgid "Double-click opens the Main window"
+msgstr "双击打开主窗口"
 
 msgid "Drag along the edge to move. Pull away from the edge to float."
 msgstr "沿边缘拖动可移动。拖离边缘可变为浮动。"

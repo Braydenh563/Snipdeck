@@ -43,6 +43,9 @@ msgstr "Un Panneau affiché par un raccourci ou par la zone de notification se m
 msgid "A docked Panel opens at its edge. Set Dock to Floating to choose where it opens."
 msgstr "Un Panneau ancré s'ouvre sur son bord. Réglez Ancrer à sur Flottant pour choisir où il s'ouvre."
 
+msgid "A double click on the tray icon opens the Main window. Turn this off and a single click acts at once, with no wait for a second click."
+msgstr "Un double-clic sur l'icône de la zone de notification ouvre la fenêtre principale. Désactivez-le et un simple clic agit aussitôt, sans attendre un second clic."
+
 msgid "A link can't contain spaces or line breaks."
 msgstr "Un lien ne peut pas contenir d'espaces ni de sauts de ligne."
 
@@ -953,6 +956,9 @@ msgstr "Ancré à droite"
 
 msgid "Done"
 msgstr "Terminé"
+
+msgid "Double-click opens the Main window"
+msgstr "Le double-clic ouvre la fenêtre principale"
 
 msgid "Drag along the edge to move. Pull away from the edge to float."
 msgstr "Faites glisser le long du bord pour déplacer. Éloignez-le du bord pour le rendre flottant."

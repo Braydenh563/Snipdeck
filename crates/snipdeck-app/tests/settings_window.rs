@@ -3140,3 +3140,16 @@ fn restoring_shows_the_busy_state_while_the_backup_is_read_and_then_the_preview(
         assert!(!r.ctl.borrow().archive_busy());
     });
 }
+
+#[test]
+fn the_tray_double_click_choice_starts_on_and_is_stored() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert!(r.ui.get_tray_double_click_opens(), "on by default");
+        r.ui.invoke_tray_double_click_opens_toggled(false);
+        assert!(!r.ctl.borrow().settings().tray_double_click_opens);
+        assert!(!r.ui.get_tray_double_click_opens());
+        r.ui.invoke_tray_double_click_opens_toggled(true);
+        assert!(r.ctl.borrow().settings().tray_double_click_opens);
+    });
+}

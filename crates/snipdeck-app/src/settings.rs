@@ -838,6 +838,10 @@ pub struct Settings {
     pub panel_switcher: PanelSwitcher,
     /// What a left click on the tray icon opens.
     pub tray_click: TrayClick,
+    /// A double click on the tray icon opens the Main window. On by default. Off, a single click
+    /// acts at once instead of waiting out the double-click time, and a double click does nothing
+    /// of its own.
+    pub tray_double_click_opens: bool,
     /// Where a floating Panel opens (ignored while it is docked).
     pub panel_open_at: PanelOpenAt,
     /// A floating Panel that is not pinned hides after a paste or copy. On for a new install
@@ -919,6 +923,7 @@ impl Default for Settings {
             panel_search: PanelSearch::OnType,
             panel_switcher: PanelSwitcher::Tabs,
             tray_click: TrayClick::Panel,
+            tray_double_click_opens: true,
             panel_open_at: PanelOpenAt::Last,
             panel_hide_after_use: false,
             panel_start_visible: false,
@@ -1068,6 +1073,7 @@ impl Settings {
         field!(panel_search);
         field!(panel_switcher);
         field!(tray_click);
+        field!(tray_double_click_opens);
         field!(panel_open_at);
         field!(symbols_recent);
         settings.colour_fields(map);

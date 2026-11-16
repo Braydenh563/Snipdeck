@@ -102,6 +102,12 @@ pub trait SettingsHost {
     /// Gives the Panel a taskbar button, or takes it away, while the app runs.
     fn set_panel_in_taskbar(&self, on: bool);
 
+    /// Tells the tray icon whether a double click opens the Main window (off: a single click
+    /// acts at once). Where there is no tray this does nothing.
+    fn set_tray_double_click_opens(&self, on: bool) {
+        let _ = on;
+    }
+
     /// Shows `folder` in the file manager.
     ///
     /// # Errors
@@ -193,7 +199,11 @@ pub type PanelTaskbar = Rc<dyn Fn(bool)>;
 pub struct SystemHost {
     hotkeys: Rc<RefCell<Box<dyn HotkeyBackend>>>,
     panel_taskbar: PanelTaskbar,
+    tray: Option<SharedTray>,
 }
+
+/// The tray the host shares (none off Windows or when it failed to start).
+pub type SharedTray = Rc<RefCell<Option<Box<dyn snipdeck_platform::tray::Tray>>>>;
 
 impl SystemHost {
     /// A host that registers shortcuts with `hotkeys` and changes the Panel's taskbar button
@@ -209,7 +219,15 @@ impl SystemHost {
         Self {
             hotkeys,
             panel_taskbar,
+            tray: None,
         }
+    }
+
+    /// The same host that also tells `tray` about the double-click choice.
+    #[must_use]
+    pub fn with_tray(mut self, tray: SharedTray) -> Self {
+        self.tray = Some(tray);
+        self
     }
 }
 
@@ -277,6 +295,18 @@ impl SettingsHost for SystemHost {
 
     fn set_panel_in_taskbar(&self, on: bool) {
         (self.panel_taskbar)(on);
+    }
+
+    fn set_tray_double_click_opens(&self, on: bool) {
+        let Some(tray) = &self.tray else {
+            return;
+        };
+        if let Ok(mut guard) = tray.try_borrow_mut()
+            && let Some(tray) = guard.as_mut()
+            && let Err(e) = tray.set_double_click_opens(on)
+        {
+            crate::trace!("tray double click: {e}");
+        }
     }
 
     fn open_folder(&self, folder: &Path) -> Result<(), String> {
@@ -761,6 +791,7 @@ struct PageView {
     show_colours_tab: bool,
     colour_copy_on_pick: bool,
     tray_click_index: i32,
+    tray_double_click_opens: bool,
     panel_open_at_index: i32,
     panel_open_at_enabled: bool,
     panel_hide_after_use_index: i32,
@@ -1017,6 +1048,7 @@ where
         show_colours_tab: settings.show_colours_tab,
         colour_copy_on_pick: settings.colour_copy_on_pick,
         tray_click_index: i32::from(settings.tray_click == TrayClick::Main),
+        tray_double_click_opens: settings.tray_double_click_opens,
         panel_open_at_index: match settings.panel_open_at {
             PanelOpenAt::Last => 0,
             PanelOpenAt::Mouse => 1,
@@ -1931,6 +1963,10 @@ where
                     TrayClick::Panel
                 };
             })));
+        wire!(on_tray_double_click_opens_toggled, |core, on| {
+            core.host.set_tray_double_click_opens(on);
+            core.act(|ctl| ctl.update_settings(|s| s.tray_double_click_opens = on));
+        });
         wire!(on_panel_open_at_chosen, |core, i| core.act(|ctl| ctl
             .update_settings(|s| {
                 s.panel_open_at = match i {
@@ -2174,6 +2210,9 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     }
     if differs(&|p| p.tray_click_index == view.tray_click_index) {
         window.set_tray_click_index(view.tray_click_index);
+    }
+    if differs(&|p| p.tray_double_click_opens == view.tray_double_click_opens) {
+        window.set_tray_double_click_opens(view.tray_double_click_opens);
     }
     if differs(&|p| p.panel_open_at_index == view.panel_open_at_index) {
         window.set_panel_open_at_index(view.panel_open_at_index);

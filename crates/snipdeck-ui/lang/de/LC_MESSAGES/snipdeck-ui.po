@@ -43,6 +43,9 @@ msgstr "Ein Panel, das ein Tastenkürzel oder das Tray-Symbol angezeigt hat, wir
 msgid "A docked Panel opens at its edge. Set Dock to Floating to choose where it opens."
 msgstr "Ein angedocktes Panel öffnet sich an seinem Rand. Stelle „Andocken an“ auf Frei, um zu wählen, wo es sich öffnet."
 
+msgid "A double click on the tray icon opens the Main window. Turn this off and a single click acts at once, with no wait for a second click."
+msgstr "Ein Doppelklick auf das Tray-Symbol öffnet das Hauptfenster. Schalte das aus, dann reagiert ein einzelner Klick sofort, ohne auf einen zweiten Klick zu warten."
+
 msgid "A link can't contain spaces or line breaks."
 msgstr "Ein Link darf keine Leerzeichen oder Zeilenumbrüche enthalten."
 
@@ -953,6 +956,9 @@ msgstr "Rechts angedockt"
 
 msgid "Done"
 msgstr "Fertig"
+
+msgid "Double-click opens the Main window"
+msgstr "Doppelklick öffnet das Hauptfenster"
 
 msgid "Drag along the edge to move. Pull away from the edge to float."
 msgstr "Am Rand entlang ziehen, um es zu verschieben. Vom Rand wegziehen, um es zu lösen."
