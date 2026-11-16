@@ -530,14 +530,14 @@ fn an_app_added_in_settings_is_no_longer_captured_end_to_end() {
                     ..Default::default()
                 });
         };
-        copy_from("KeePass.exe");
+        copy_from("Scratchpad.exe");
         assert_eq!(
             r.ctl.borrow().recent_entries().len(),
             1,
             "captured before it is excluded"
         );
-        r.ui.invoke_no_history_app_added("keepass.exe".into());
-        copy_from("KeePass.exe");
+        r.ui.invoke_no_history_app_added("scratchpad.exe".into());
+        copy_from("Scratchpad.exe");
         copy_from("notepad.exe");
         let texts: Vec<_> = r
             .ctl
@@ -548,7 +548,7 @@ fn an_app_added_in_settings_is_no_longer_captured_end_to_end() {
             .collect();
         assert_eq!(
             texts,
-            ["from notepad.exe", "from KeePass.exe"],
+            ["from notepad.exe", "from Scratchpad.exe"],
             "the excluded app is not captured again"
         );
     });
@@ -2105,6 +2105,7 @@ fn the_recent_inbox_is_off_for_a_new_install_can_be_switched_on_and_its_clear_bu
             .borrow_mut()
             .on_clipboard_change(&snipdeck_app::recent::ClipboardObservation {
                 text: Some("copied".into()),
+                source_app: Some("notepad.exe".into()),
                 ..Default::default()
             });
         assert_eq!(r.ctl.borrow().recent_entries().len(), 1);

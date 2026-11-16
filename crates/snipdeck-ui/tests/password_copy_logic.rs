@@ -1,5 +1,5 @@
 //! PRIVACY-4: a password field never copies or cuts, by key or by menu. Driven through Slint's testing
-//! backend, whose clipboard is in memory: after every copy or cut attempt, a paste must bring back nothing.
+//! backend, whose clipboard is in memory: after every copy or cut attempt, a paste must bring back what was there before.
 
 #![allow(
     clippy::expect_used,
@@ -24,6 +24,11 @@ fn attempt(name: &str, modifiers: &[Key], keystroke: &str) {
     // Nothing typed yet: the field has the focus (the host bumps focus-request when it shows the window).
     ui.set_focus_request(1);
     slint::platform::update_timers_and_animations();
+    // Whatever an earlier test left on the (shared, in-memory) clipboard is the baseline.
+    chord(window, &[Key::Control], "v");
+    let baseline = ui.get_password().to_string();
+    chord(window, &[Key::Control], "a");
+    press(window, &key(Key::Delete));
     type_text(window, SECRET);
     assert_eq!(
         ui.get_password(),
@@ -43,7 +48,7 @@ fn attempt(name: &str, modifiers: &[Key], keystroke: &str) {
     chord(window, &[Key::Control], "v");
     assert_eq!(
         ui.get_password(),
-        "",
+        baseline,
         "{name}: the password reached the clipboard"
     );
 }
@@ -66,4 +71,71 @@ fn ctrl_insert_does_not_copy_a_password() {
 #[test]
 fn shift_delete_does_not_cut_a_password() {
     on_ui_thread(|| attempt("Shift+Delete", &[Key::Shift], &key(Key::Delete)));
+}
+
+// ---- PRIVACY-5: a field that holds a secret copies through the host, never the system clipboard -------------
+
+use i_slint_backend_testing as _;
+use slint::{ModelRc, SharedString, VecModel};
+use snipdeck_ui::ItemEditor;
+use std::{cell::RefCell, rc::Rc};
+
+type Seen = Rc<RefCell<Vec<(String, i32, i32, bool)>>>;
+
+/// An editor with the content `text`, `sensitive` or not, the whole text selected, and the host's hooks logging.
+fn editor_with_selection(sensitive: bool) -> (ItemEditor, Seen) {
+    let ui = ItemEditor::new().expect("editor");
+    ui.window().set_size(slint::LogicalSize::new(640.0, 1200.0));
+    ui.set_content("hunter2 and more".into());
+    ui.set_sensitive(sensitive);
+    ui.show().expect("show");
+    slint::platform::update_timers_and_animations();
+    ui.invoke_place_caret(0);
+    slint::platform::update_timers_and_animations();
+    let seen: Seen = Rc::default();
+    {
+        let seen = seen.clone();
+        ui.on_private_copied(move |t, a, b| seen.borrow_mut().push((t.to_string(), a, b, false)));
+    }
+    {
+        let seen = seen.clone();
+        ui.on_private_cut(move |t, a, b| {
+            seen.borrow_mut().push((t.to_string(), a, b, true));
+            ModelRc::new(VecModel::from(vec![SharedString::from("rest")]))
+        });
+    }
+    chord(ui.window(), &[Key::Control], "a");
+    (ui, seen)
+}
+
+#[test]
+fn copy_and_cut_in_a_sensitive_editor_go_to_the_host() {
+    on_ui_thread(|| {
+        for (name, modifiers, keystroke, cut) in [
+            ("Ctrl+C", vec![Key::Control], "c".to_string(), false),
+            ("Ctrl+Insert", vec![Key::Control], key(Key::Insert), false),
+            ("Ctrl+X", vec![Key::Control], "x".to_string(), true),
+            ("Shift+Delete", vec![Key::Shift], key(Key::Delete), true),
+        ] {
+            let (ui, seen) = editor_with_selection(true);
+            chord(ui.window(), &modifiers, &keystroke);
+            assert_eq!(
+                *seen.borrow(),
+                [("hunter2 and more".to_string(), 0, 16, cut)].map(|(t, a, b, c)| (t, a, b, c)),
+                "{name}"
+            );
+            let expect = if cut { "rest" } else { "hunter2 and more" };
+            assert_eq!(ui.get_content(), expect, "{name}");
+        }
+    });
+}
+
+#[test]
+fn an_ordinary_editor_keeps_the_fields_own_copy() {
+    on_ui_thread(|| {
+        let (ui, seen) = editor_with_selection(false);
+        chord(ui.window(), &[Key::Control], "c");
+        chord(ui.window(), &[Key::Control], "x");
+        assert!(seen.borrow().is_empty());
+    });
 }

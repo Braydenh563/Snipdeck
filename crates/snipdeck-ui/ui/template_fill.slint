@@ -63,6 +63,10 @@ export component TemplateFillWindow inherits Window {
     in property <string> preview;
     // The submit button: "Insert" when the form ends in a paste, "Copy" when it ends in a copy.
     in property <bool> copies: false;
+    // The template is sensitive: copying from its fields goes through the host (privacy markers, auto-clear).
+    in property <bool> private: false;
+    callback private-copied(text: string, start: int, end: int);
+    callback private-cut(text: string, start: int, end: int) -> [string];
     in property <string> submit-label: root.copies ? @tr("Copy") : @tr("Insert");
 
     // ---- State both ways ----------------------------------------------------------------------
@@ -247,6 +251,9 @@ export component TemplateFillWindow inherits Window {
                                 root.fields[i].value = field.options[field.choice-index];
                             }
                         }
+                        private-copy: root.private;
+                        private-copied(t, a, b) => { root.private-copied(t, a, b); }
+                        private-cut(t, a, b) => { return root.private-cut(t, a, b); }
                         edited(v) => { root.edited(i, v); }
                         chosen(index) => {
                             root.fields[i].choice-index = index;

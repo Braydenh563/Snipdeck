@@ -311,6 +311,23 @@ where
             core.show_preview(&w);
         });
         let core = Rc::downgrade(self);
+        w.on_private_copied(move |text, start, end| {
+            if let Some(core) = core.upgrade() {
+                core.act(|ctl| ctl.copy_private_selection(text.as_str(), start, end));
+            }
+        });
+        let core = Rc::downgrade(self);
+        w.on_private_cut(move |text, start, end| {
+            let rest = core.upgrade().and_then(|core| {
+                core.act(|ctl| ctl.cut_private_selection(text.as_str(), start, end))
+            });
+            slint::ModelRc::new(slint::VecModel::from(
+                rest.into_iter()
+                    .map(slint::SharedString::from)
+                    .collect::<Vec<_>>(),
+            ))
+        });
+        let core = Rc::downgrade(self);
         w.on_paste_requested(move || {
             core.upgrade()
                 .is_some_and(|core| core.act(Controller::refuse_pasted_image))
