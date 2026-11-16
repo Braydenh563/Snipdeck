@@ -294,9 +294,9 @@ export component TextField inherits VerticalLayout {
                                     // (Ctrl+C, Ctrl+X, Ctrl+Insert, Shift+Delete; Cmd on a Mac). The control characters
                                     // are what some platforms report for Ctrl+C and Ctrl+X.
                                     if (root.input-type == InputType.password
-                                        && ((event.modifiers.control || event.modifiers.meta)
+                                        && (((event.modifiers.control || event.modifiers.meta)
                                             && (event.text == "c" || event.text == "C" || event.text == "x" || event.text == "X"
-                                                || event.text == "\u{3}" || event.text == "\u{18}" || event.text == Key.Insert)
+                                                || event.text == "\u{3}" || event.text == "\u{18}" || event.text == Key.Insert))
                                             || (event.modifiers.shift && event.text == Key.Delete))) {
                                         return accept;
                                     }

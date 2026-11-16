@@ -61,7 +61,29 @@ pub struct RecentSettings {
     pub excluded_apps: Vec<String>,
     /// Keep the pictures' bytes within this total; the oldest go first.
     pub max_blob_bytes: u64,
+    /// Keep a copy whose source program could not be found (no clipboard owner, or an owner
+    /// that cannot be queried). Off: such a copy is skipped, because a password manager that
+    /// writes with no owner would otherwise bypass the exclusion list.
+    pub keep_unknown_source: bool,
 }
+
+/// Password managers whose copies are never kept, whatever the user's own list says (lower
+/// case executable names). The user's list adds to it.
+pub const KNOWN_PASSWORD_MANAGERS: &[&str] = &[
+    "1password.exe",
+    "bitwarden.exe",
+    "keepass.exe",
+    "keepassxc.exe",
+    "dashlane.exe",
+    "lastpass.exe",
+    "nordpass.exe",
+    "protonpass.exe",
+    "proton pass.exe",
+    "enpass.exe",
+    "roboform.exe",
+    "keeper.exe",
+    "keeperpasswordmanager.exe",
+];
 
 impl Default for RecentSettings {
     fn default() -> Self {
@@ -72,6 +94,7 @@ impl Default for RecentSettings {
             max_age: Duration::from_hours(24 * DEFAULT_MAX_AGE_DAYS),
             excluded_apps: Vec::new(),
             max_blob_bytes: BLOB_BUDGET,
+            keep_unknown_source: false,
         }
     }
 }
@@ -84,6 +107,7 @@ impl RecentSettings {
             enabled: settings.recent_history,
             paused,
             excluded_apps: settings.no_history_apps.clone(),
+            keep_unknown_source: settings.recent_keep_unknown_source,
             ..Self::default()
         }
     }
@@ -150,6 +174,8 @@ pub enum Skipped {
     ExcludedFormat,
     /// The source app is on the exclusion list.
     ExcludedApp,
+    /// The source program is unknown and the setting keeps only copies with a known source.
+    UnknownSource,
     /// No text, files or picture, or only whitespace.
     Empty,
     /// Over [`MAX_ENTRY_BYTES`], a picture over [`MAX_IMAGE_PIXELS`] or [`MAX_IMAGE_BYTES`], or
@@ -208,11 +234,15 @@ impl RecentCapture {
             return skip(Skipped::ExcludedFormat);
         }
         let app = obs.source_app.as_deref().map(str::to_ascii_lowercase);
-        if app
-            .as_ref()
-            .is_some_and(|a| settings.excluded_apps.iter().any(|x| x == a))
-        {
-            return skip(Skipped::ExcludedApp);
+        match app.as_deref() {
+            Some(a)
+                if KNOWN_PASSWORD_MANAGERS.contains(&a)
+                    || settings.excluded_apps.iter().any(|x| x == a) =>
+            {
+                return skip(Skipped::ExcludedApp);
+            }
+            None if !settings.keep_unknown_source => return skip(Skipped::UnknownSource),
+            _ => {}
         }
         let id = if let Some(text) = obs.text.as_deref().filter(|t| !t.trim().is_empty()) {
             if text.len() > MAX_ENTRY_BYTES {
@@ -604,13 +634,37 @@ mod tests {
             ("exactly 64 KiB", on(), obs(&edge), None),
             ("plain text", on(), obs("hello"), None),
             (
-                "unknown source app",
+                "unknown source app is skipped by default",
                 on(),
                 ClipboardObservation {
                     source_app: None,
                     ..obs("a")
                 },
+                Some(Skipped::UnknownSource),
+            ),
+            (
+                "unknown source app, when the setting keeps it",
+                RecentSettings {
+                    keep_unknown_source: true,
+                    ..on()
+                },
+                ClipboardObservation {
+                    source_app: None,
+                    ..obs("a")
+                },
                 None,
+            ),
+            (
+                "a known password manager with an empty user list",
+                RecentSettings {
+                    excluded_apps: Vec::new(),
+                    ..on()
+                },
+                ClipboardObservation {
+                    source_app: Some("Bitwarden.exe".to_owned()),
+                    ..obs("a")
+                },
+                Some(Skipped::ExcludedApp),
             ),
         ];
         for (name, settings, observation, expect) in cases {

@@ -61,7 +61,8 @@ pub trait ClipboardText {
     /// The clipboard's text, or `None` when it holds none or stays busy. Writes nothing.
     fn read_text(&mut self) -> Option<String>;
     /// The clipboard's text with its HTML and RTF flavours (only next to text; over the size cap
-    /// they are dropped). Writes nothing.
+    /// they are dropped). A copy that carries a "keep me out" marker is not read: `excluded`.
+    /// Writes nothing.
     fn read_rich(&mut self) -> snipdeck_platform::clipboard_watch::RichClip;
     /// Whether the clipboard holds a picture (a screenshot, say).
     fn has_image(&mut self) -> bool;
@@ -133,13 +134,29 @@ impl ClipboardText for snipdeck_platform::testing::FakeClipboard {
         })
     }
     fn read_rich(&mut self) -> snipdeck_platform::clipboard_watch::RichClip {
+        if self.held_excluded
+            || self
+                .written
+                .last()
+                .is_some_and(snipdeck_platform::payload::Payload::is_private)
+        {
+            return snipdeck_platform::clipboard_watch::RichClip {
+                excluded: true,
+                ..Default::default()
+            };
+        }
         let text = ClipboardText::read_text(self);
         let (html, rtf) = if text.is_some() {
             (self.held_html.clone(), self.held_rtf.clone())
         } else {
             (None, None)
         };
-        snipdeck_platform::clipboard_watch::RichClip { text, html, rtf }
+        snipdeck_platform::clipboard_watch::RichClip {
+            text,
+            html,
+            rtf,
+            excluded: false,
+        }
     }
     fn has_image(&mut self) -> bool {
         self.written.last().is_some_and(|p| {

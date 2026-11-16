@@ -351,6 +351,9 @@ msgstr "Abbrechen"
 msgid "Cancel the test of {}"
 msgstr "Test von {} abbrechen"
 
+msgid "Caps Lock is on."
+msgstr "Die Feststelltaste ist an."
+
 msgid "Captured items keep their kind."
 msgstr "Erfasste Textbausteine behalten ihre Art."
 
@@ -1242,6 +1245,9 @@ msgstr "Panel ausblenden"
 msgid "Hide Panel ({})"
 msgstr "Panel ausblenden ({})"
 
+msgid "Hide password"
+msgstr "Passwort verbergen"
+
 msgid "Hide the Panel"
 msgstr "Panel ausblenden"
 
@@ -1795,6 +1801,9 @@ msgstr "Funktioniert nicht"
 msgid "Nothing copied yet"
 msgstr "Noch nichts kopiert"
 
+msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
+msgstr "Ohne dein Ja wird nichts gespeichert, und du kannst das jederzeit in den Einstellungen ändern. „Zuletzt“ speichert den Text, den du kopierst, nur auf diesem Computer, für die letzten {} Kopien oder {} Tage, je nachdem, was zuerst eintritt. Passwörter aus Passwortmanagern und vertrauliche Einträge werden nie gespeichert."
+
 msgid "Nothing matches “{}”"
 msgstr "Nichts passt zu „{}“"
 
@@ -2257,9 +2266,6 @@ msgstr "Aktionen für Zuletzt Kopiertes"
 msgid "Recent history cleared"
 msgstr "Verlauf „Zuletzt“ gelöscht"
 
-msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
-msgstr "Ohne dein Ja wird nichts gespeichert, und du kannst das jederzeit in den Einstellungen ändern. „Zuletzt“ speichert den Text, den du kopierst, nur auf diesem Computer, für die letzten {} Kopien oder {} Tage, je nachdem, was zuerst eintritt. Passwörter aus Passwortmanagern und vertrauliche Einträge werden nie gespeichert."
-
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "„Zuletzt“ behält den kopierten Text, nur auf diesem Computer, für die letzten {} Kopien oder {} Tage, je nachdem, was zuerst eintritt. Passwörter aus Passwortmanagern und vertrauliche Textbausteine werden nie gespeichert. Du kannst das jederzeit in den Einstellungen ändern."
 
@@ -2647,6 +2653,9 @@ msgstr "Panel anzeigen oder ausblenden"
 
 msgid "Show or hide the sidebar"
 msgstr "Seitenleiste ein- oder ausblenden"
+
+msgid "Show password"
+msgstr "Passwort anzeigen"
 
 msgid "Show the Panel"
 msgstr "Das Panel anzeigen"
@@ -3142,6 +3151,9 @@ msgstr "Heutiges Datum"
 
 msgid "Toggle keep Panel open"
 msgstr "Panel offen halten umschalten"
+
+msgid "Too many wrong passwords. Wait a few seconds and try again."
+msgstr "Zu viele falsche Passwörter. Warte ein paar Sekunden und versuche es erneut."
 
 msgid "Tools"
 msgstr "Werkzeuge"

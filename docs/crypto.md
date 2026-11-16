@@ -157,7 +157,32 @@ Hello once to sign a random per-seal challenge (kept with the in-memory sealed c
 password unlock. Turning Hello on signs twice (two prompts) and refuses a Hello whose two signatures differ; every later seal (after a password unlock) signs once. A later Hello prompt re-signs the challenge and opens it. A restart
 forgets the copy; after 7 days from the last password unlock (injected clock; a clock set back counts as
 expired) the copy is dropped and the password is asked, without a Hello prompt. A cancelled unlock keeps the copy (the button stays for another try); failure, a removed PIN or a wrong signature (for example a PIN reset made a new credential) fall back to the
-password and drop the copy; the option stays on and the next password unlock seals a new copy (one prompt). A cancelled seal never turns Hello off and never counts. A seal that fails twice in a row after password unlocks, or a Hello that is not repeatable, turns the option off and says why (toast, and a line in the unlock window); turning Hello on that fails or is cancelled leaves the switch off. After a changed credential the unlock window says so once, and the next password unlock re-checks that the signature repeats before it seals. Only the first Hello answer after start-up seals; opening Settings or the unlock window later never prompts. The copy is bound to the stored key record it was sealed for: if the record changed (the library was erased, the key forgotten) the copy is refused, Hello is turned off and the password is asked. Erasing the library, removing or newly setting a password forgets the copy and switches Hello off; changing the password drops the copy and seals a new one at once (one Hello prompt). A switch-on cut short by a lock, or made while locked, goes back off with a message. Closing the unlock window stops a Hello unlock under way. Keys and signatures are zeroized after use, and so is the SHA-256 state that derives the wrapping key (sha2 `zeroize` feature).
+password and drop the copy; the option stays on and the next password unlock seals a new copy (one prompt). A cancelled seal never turns Hello off and never counts. A seal that fails twice in a row after password unlocks, or a Hello that is not repeatable, turns the option off and says why (toast, and a line in the unlock window); turning Hello on that fails or is cancelled leaves the switch off. After a changed credential the unlock window says so once, and the next password unlock re-checks that the signature repeats before it seals. Only the first Hello answer after start-up seals; opening Settings or the unlock window later never prompts. The copy is bound to the stored key record it was sealed for: if the record changed (the library was erased, the key forgotten) the copy is refused, Hello is turned off and the password is asked. Turning Hello off, erasing the library, removing or newly setting a password forgets the copy, switches Hello off and deletes the Windows credential "Snipdeck" (`HelloAuthenticator::delete_credential`, `KeyCredentialManager::DeleteAsync`; UNVERIFIED on Windows); changing the password drops the copy and seals a new one at once (one Hello prompt). A switch-on cut short by a lock, or made while locked, goes back off with a message. Closing the unlock window stops a Hello unlock under way. Keys and signatures are zeroized after use, and so is the SHA-256 state that derives the wrapping key (sha2 `zeroize` feature).
+
+## Master password text and wrong tries
+
+* The password is composed to Unicode NFC before it is hashed (sealing and opening), so the same
+  visible text opens the library however the keyboard or a paste produced it. Records made before
+  this were sealed under the raw text: when the NFC form does not open a record, the text as typed
+  and its decomposed (NFD) form are tried too. A record is re-sealed in NFC at the next password
+  change or removal (rotation, `KeyRing::rotate`).
+* Three wrong passwords in a row start a wait of 2, 4, 8, 16 and then 30 seconds before the next
+  try (unlock, change and remove); a right one clears it. The clock is the controller's injected
+  clock and the count lives in memory, so it is a speed bump for typing and not a defence against
+  someone who has copies of the files (that is what Argon2id is for).
+* The password fields warn when Caps Lock seems on (guessed from the keys typed; Slint has no
+  Caps Lock state) and have a Show button that draws the text as typed.
+
+## Plain metadata of sealed rows (audit PRIVACY-19)
+
+Only the payload of a sensitive item is encrypted. Its `items` row still holds, in plain form: id,
+list, title, kind, the pinned and sensitive flags, use count, last-used, created, updated and
+deleted times, the source app name and its rank; its `item_formats` rows hold the format names and
+the length of each sealed payload. (The preview of a sensitive item is empty.) Someone with the
+database file can therefore see which items are sensitive, their titles, how big their content is,
+which app they came from and when they were used, but not their text. Do not put a secret in a title. SQLite's temporary
+files are kept in memory (`PRAGMA temp_store = MEMORY` on every open) so sorting and indexing do
+not write row content to a temp file.
 
 ## Limits and non-goals
 

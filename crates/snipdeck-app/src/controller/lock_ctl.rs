@@ -56,6 +56,8 @@ pub enum MasterProblem {
     Mismatch,
     /// No key protection on this machine.
     Unavailable,
+    /// Too many wrong passwords in a row: wait a moment. Nothing was tried.
+    Wait,
     /// Windows Hello did not unlock (cancelled, failed, removed or expired); the password does.
     HelloFailed,
     /// The user cancelled the Hello prompt (the button stays).
@@ -97,6 +99,10 @@ pub(super) struct LockState {
     pub(super) kdf: Option<KdfParams>,
     /// Windows Hello unlock (`hello_ctl.rs`).
     hello: hello_ctl::HelloState,
+    /// Wrong passwords in a row (unlock, change, remove); a right one clears it.
+    wrong_in_a_row: u32,
+    /// No password is tried before this moment (the clock is injected, never read directly).
+    wait_until: Option<Timestamp>,
 }
 
 impl LockState {
@@ -110,6 +116,8 @@ impl LockState {
             generation: 0,
             kdf: None,
             hello: hello_ctl::HelloState::default(),
+            wrong_in_a_row: 0,
+            wait_until: None,
         }
     }
 }
@@ -120,6 +128,16 @@ pub(super) fn ring_on(provider: &dyn KeyProvider, kdf: Option<KdfParams>) -> Key
     match kdf {
         Some(kdf) => ring.with_kdf_params(kdf),
         None => ring,
+    }
+}
+
+/// The wait after the `n`th wrong password in a row: none for two, then 2, 4, 8, 16 and 30
+/// seconds. A speed bump for typing, not a defence against someone with a copy of the files.
+fn wrong_password_wait(n: u32) -> Duration {
+    match n {
+        0..=2 => Duration::ZERO,
+        3..=6 => Duration::from_secs(1 << (n - 2)),
+        _ => Duration::from_secs(30),
     }
 }
 
@@ -313,6 +331,7 @@ where
         if password.is_empty() {
             return Err(MasterProblem::CurrentEmpty);
         }
+        self.check_not_waiting()?;
         let provider = self.provider()?;
         let record = self.stored_record()?;
         let job = MasterJob::unlock(record, password, provider, self.lock.kdf);
@@ -428,11 +447,25 @@ where
         }
         self.lock.busy = None;
         let op = done.op;
-        let opened = done.outcome.map_err(|e| match op {
-            // A first password has no "current" to get wrong.
-            MasterOp::Set { .. } => MasterProblem::Failed,
-            _ => problem_of_crypto(&e),
-        })?;
+        let opened = match done.outcome {
+            Ok(opened) => opened,
+            Err(e) => {
+                // A first password has no "current" to get wrong.
+                let problem = if matches!(op, MasterOp::Set { .. }) {
+                    MasterProblem::Failed
+                } else {
+                    problem_of_crypto(&e)
+                };
+                if problem == MasterProblem::WrongPassword {
+                    self.note_wrong_password();
+                }
+                return Err(problem);
+            }
+        };
+        if !matches!(op, MasterOp::Set { .. }) {
+            self.lock.wrong_in_a_row = 0;
+            self.lock.wait_until = None;
+        }
         match (op, opened) {
             (MasterOp::Unlock, Opened::Key(key)) => {
                 self.store
@@ -514,6 +547,25 @@ where
         Ok(())
     }
 
+    /// Refuses a password try while the wait after wrong ones runs.
+    fn check_not_waiting(&self) -> Result<(), MasterProblem> {
+        match self.lock.wait_until {
+            Some(until) if self.clock.now() < until => Err(MasterProblem::Wait),
+            _ => Ok(()),
+        }
+    }
+
+    fn note_wrong_password(&mut self) {
+        self.lock.wrong_in_a_row = self.lock.wrong_in_a_row.saturating_add(1);
+        let wait = wrong_password_wait(self.lock.wrong_in_a_row);
+        self.lock.wait_until = self
+            .clock
+            .now()
+            .checked_add(wait)
+            .ok()
+            .filter(|_| !wait.is_zero());
+    }
+
     fn provider(&self) -> Result<Arc<dyn KeyProvider>, MasterProblem> {
         self.editor_env
             .keys
@@ -537,6 +589,7 @@ where
         if current.is_empty() {
             return Err(MasterProblem::CurrentEmpty);
         }
+        self.check_not_waiting()?;
         Ok(provider)
     }
 

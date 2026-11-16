@@ -356,7 +356,23 @@ impl<'p> KeyRing<'p> {
     }
 }
 
+/// The password as typed, composed to NFC so the same visible text always gives the same key
+/// whatever the keyboard or paste source produced. Zeroized on drop.
+fn nfc(password: &str) -> Zeroizing<String> {
+    use unicode_normalization::UnicodeNormalization as _;
+    Zeroizing::new(password.nfc().collect())
+}
+
 fn seal_with_password(
+    key: &DataKey,
+    password: &str,
+    kdf: KdfParams,
+) -> Result<Zeroizing<Vec<u8>>, CryptoError> {
+    seal_with_exact_password(key, &nfc(password), kdf)
+}
+
+/// Seals under `password` exactly as given (no normalisation).
+fn seal_with_exact_password(
     key: &DataKey,
     password: &str,
     kdf: KdfParams,
@@ -377,7 +393,30 @@ fn seal_with_password(
     Ok(Zeroizing::new(inner))
 }
 
+/// Opens with the NFC form of `password`; records made before normalisation was added were
+/// sealed under the raw text, so a password that is not already NFC is tried raw too. A record
+/// is re-sealed (NFC) at the next password change or rotation.
 fn unseal_with_password(inner: &[u8], password: &str) -> Result<DataKey, CryptoError> {
+    use unicode_normalization::UnicodeNormalization as _;
+    let composed = nfc(password);
+    let first = unseal_with_exact_password(inner, &composed);
+    if !matches!(first, Err(CryptoError::WrongPassword)) {
+        return first;
+    }
+    // Old records: the raw text (as typed), or the decomposed form of what is typed now.
+    let decomposed: Zeroizing<String> = Zeroizing::new(password.nfd().collect());
+    for other in [password, decomposed.as_str()] {
+        if other != composed.as_str() {
+            let tried = unseal_with_exact_password(inner, other);
+            if !matches!(tried, Err(CryptoError::WrongPassword)) {
+                return tried;
+            }
+        }
+    }
+    first
+}
+
+fn unseal_with_exact_password(inner: &[u8], password: &str) -> Result<DataKey, CryptoError> {
     if password.is_empty() {
         return Err(CryptoError::EmptyPassword);
     }
@@ -426,6 +465,44 @@ mod tests {
         let ring = KeyRing::new(&provider);
         let (key, record) = ring.create(None).unwrap();
         assert!(same_key(&key, &ring.unlock(&record, None).unwrap()));
+    }
+
+    /// "e" + combining acute (NFD) and the single code point U+00E9 (NFC) look the same.
+    const NFD: &str = "caf\u{65}\u{301} secret";
+    const NFC: &str = "caf\u{e9} secret";
+
+    #[test]
+    fn the_same_visible_password_opens_whatever_its_unicode_form() {
+        let provider = provider();
+        let ring = KeyRing::new(&provider).with_kdf_params(fast());
+        let (key, record) = ring.create(Some(NFD)).unwrap();
+        assert!(same_key(&key, &ring.unlock(&record, Some(NFC)).unwrap()));
+        assert!(same_key(&key, &ring.unlock(&record, Some(NFD)).unwrap()));
+        assert!(matches!(
+            ring.unlock(&record, Some("cafe secret")),
+            Err(CryptoError::WrongPassword)
+        ));
+    }
+
+    #[test]
+    fn a_record_made_from_a_non_nfc_password_before_normalising_still_opens() {
+        let provider = provider();
+        let ring = KeyRing::new(&provider).with_kdf_params(fast());
+        let (key, _) = ring.create(None).unwrap();
+        // An old record: sealed under the raw (NFD) text, as earlier versions did.
+        let inner = seal_with_exact_password(&key, NFD, fast()).unwrap();
+        let old = record_with_inner(&provider, &inner);
+        assert!(same_key(&key, &ring.unlock(&old, Some(NFD)).unwrap()));
+        // The NFC form of the same text is tried as its decomposed form too.
+        assert!(same_key(&key, &ring.unlock(&old, Some(NFC)).unwrap()));
+        assert!(matches!(
+            ring.unlock(&old, Some("wrong")),
+            Err(CryptoError::WrongPassword)
+        ));
+        // Rotation re-seals under NFC: a new record opens with either form.
+        let rotation = ring.rotate(&old, Some(NFD), Some(NFD)).unwrap();
+        let fresh = ring.unlock(&rotation.record, Some(NFC)).unwrap();
+        assert!(same_key(&rotation.new, &fresh));
     }
 
     #[test]

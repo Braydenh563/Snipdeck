@@ -350,6 +350,9 @@ msgstr "取消"
 msgid "Cancel the test of {}"
 msgstr "取消 {} 的测试"
 
+msgid "Caps Lock is on."
+msgstr "大写锁定已开启。"
+
 msgid "Captured items keep their kind."
 msgstr "捕获的片段保留其类型。"
 
@@ -1241,6 +1244,9 @@ msgstr "隐藏面板"
 msgid "Hide Panel ({})"
 msgstr "隐藏面板 ({})"
 
+msgid "Hide password"
+msgstr "隐藏密码"
+
 msgid "Hide the Panel"
 msgstr "隐藏面板"
 
@@ -1789,6 +1795,9 @@ msgstr "无法使用"
 msgid "Nothing copied yet"
 msgstr "尚未复制任何内容"
 
+msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
+msgstr "除非你选择“是”，否则不会保存任何内容，你也可以随时在设置中更改。“最近”只在此电脑上保存你复制的文本，保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感项目绝不会保存。"
+
 msgid "Nothing matches “{}”"
 msgstr "没有与“{}”匹配的内容"
 
@@ -2251,9 +2260,6 @@ msgstr "最近条目操作"
 msgid "Recent history cleared"
 msgstr "已清除最近记录"
 
-msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
-msgstr "除非你选择“是”，否则不会保存任何内容，你也可以随时在设置中更改。“最近”只在此电脑上保存你复制的文本，保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感项目绝不会保存。"
-
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "“最近”会保留你复制的文本，仅保存在这台电脑上，最多保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感片段不会被保留。你可以随时在设置中更改。"
 
@@ -2639,6 +2645,9 @@ msgstr "显示或隐藏面板"
 
 msgid "Show or hide the sidebar"
 msgstr "显示或隐藏侧边栏"
+
+msgid "Show password"
+msgstr "显示密码"
 
 msgid "Show the Panel"
 msgstr "显示面板"
@@ -3134,6 +3143,9 @@ msgstr "今天的日期"
 
 msgid "Toggle keep Panel open"
 msgstr "切换保持面板打开"
+
+msgid "Too many wrong passwords. Wait a few seconds and try again."
+msgstr "错误密码次数过多。请稍等几秒后重试。"
 
 msgid "Tools"
 msgstr "工具"

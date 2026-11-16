@@ -565,8 +565,15 @@ impl Formats {
         }
     }
 
-    fn markers(self) -> [u32; 3] {
-        [self.exclude_monitor, self.history, self.cloud]
+    /// The four "keep me out" markers, `Clipboard Viewer Ignore` included (older viewers and
+    /// managers read only that one).
+    fn markers(self) -> [u32; 4] {
+        [
+            self.exclude_monitor,
+            self.viewer_ignore,
+            self.history,
+            self.cloud,
+        ]
     }
 }
 
@@ -1302,6 +1309,11 @@ fn read_rich_job(formats: &Formats) -> clipboard_watch::RichClip {
         return clipboard_watch::RichClip::default();
     };
     let mut clip = clipboard_watch::RichClip::default();
+    // The markers are read first: a password manager's copy is never read (UNVERIFIED on Windows).
+    if clipboard_watch::excluded_by_markers(read_markers(formats)) {
+        clip.excluded = true;
+        return clip;
+    }
     // SAFETY: the clipboard is open by this thread; the handle stays owned by the system.
     if let Ok(handle) = unsafe { GetClipboardData(u32::from(CF_UNICODETEXT.0)) }
         && let Some(mut bytes) = read_global(HGLOBAL(handle.0), READ_TEXT_LIMIT)
@@ -1643,6 +1655,29 @@ mod tests {
         for marker in clipboard.formats.markers() {
             assert!(has_format(&clipboard, marker));
         }
+    }
+
+    /// PRIVACY-11. UNVERIFIED on Windows (needs the real clipboard).
+    #[test]
+    #[ignore = "uses the real Windows clipboard"]
+    fn a_private_copy_carries_the_viewer_ignore_marker() {
+        let _lock = CLIPBOARD.lock().unwrap_or_else(PoisonError::into_inner);
+        let mut clipboard = WinClipboard::new().unwrap();
+        assert!(
+            clipboard
+                .formats
+                .markers()
+                .contains(&clipboard.formats.viewer_ignore)
+        );
+        clipboard
+            .write_persistent(&text("secret").private())
+            .unwrap();
+        assert!(has_format(&clipboard, clipboard.formats.viewer_ignore));
+        let written = clipboard
+            .write_transient(&text("secret").private())
+            .unwrap();
+        let _ = written;
+        assert!(has_format(&clipboard, clipboard.formats.viewer_ignore));
     }
 
     #[test]

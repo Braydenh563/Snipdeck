@@ -351,6 +351,9 @@ msgstr "Annuler"
 msgid "Cancel the test of {}"
 msgstr "Annuler le test de {}"
 
+msgid "Caps Lock is on."
+msgstr "Le verrouillage des majuscules est activé."
+
 msgid "Captured items keep their kind."
 msgstr "Les extraits capturés gardent leur type."
 
@@ -1242,6 +1245,9 @@ msgstr "Masquer le panneau"
 msgid "Hide Panel ({})"
 msgstr "Masquer le panneau ({})"
 
+msgid "Hide password"
+msgstr "Masquer le mot de passe"
+
 msgid "Hide the Panel"
 msgstr "Masquer le panneau"
 
@@ -1795,6 +1801,9 @@ msgstr "Ne fonctionne pas"
 msgid "Nothing copied yet"
 msgstr "Rien n'a encore été copié"
 
+msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
+msgstr "Rien n’est conservé tant que vous ne répondez pas Oui, et vous pouvez le modifier à tout moment dans les Paramètres. Récent conserve le texte que vous copiez, uniquement sur cet ordinateur, pour les {} dernières copies ou les {} derniers jours, selon la première limite atteinte. Les mots de passe des gestionnaires de mots de passe et les éléments Sensibles ne sont jamais conservés."
+
 msgid "Nothing matches “{}”"
 msgstr "Rien ne correspond à « {} »"
 
@@ -2257,9 +2266,6 @@ msgstr "Actions sur les entrées récentes"
 msgid "Recent history cleared"
 msgstr "Historique récent effacé"
 
-msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
-msgstr "Rien n’est conservé tant que vous ne répondez pas Oui, et vous pouvez le modifier à tout moment dans les Paramètres. Récent conserve le texte que vous copiez, uniquement sur cet ordinateur, pour les {} dernières copies ou les {} derniers jours, selon la première limite atteinte. Les mots de passe des gestionnaires de mots de passe et les éléments Sensibles ne sont jamais conservés."
-
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "Récents conserve le texte que vous copiez, sur cet ordinateur uniquement, pour les {} dernières copies ou les {} derniers jours, selon la première limite atteinte. Les mots de passe des gestionnaires de mots de passe et les extraits sensibles ne sont jamais conservés. Vous pouvez le modifier à tout moment dans les paramètres."
 
@@ -2647,6 +2653,9 @@ msgstr "Afficher ou masquer le panneau"
 
 msgid "Show or hide the sidebar"
 msgstr "Afficher ou masquer la barre latérale"
+
+msgid "Show password"
+msgstr "Afficher le mot de passe"
 
 msgid "Show the Panel"
 msgstr "Afficher le Panneau"
@@ -3142,6 +3151,9 @@ msgstr "Date du jour"
 
 msgid "Toggle keep Panel open"
 msgstr "Basculer Garder le Panneau ouvert"
+
+msgid "Too many wrong passwords. Wait a few seconds and try again."
+msgstr "Trop de mots de passe incorrects. Attendez quelques secondes et réessayez."
 
 msgid "Tools"
 msgstr "Outils"

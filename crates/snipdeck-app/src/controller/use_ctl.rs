@@ -268,6 +268,11 @@ where
     /// default list (the list the Panel shows), and says so in a toast.
     pub fn quick_capture(&mut self) {
         let clip = self.services.clipboard.read_rich();
+        if clip.excluded {
+            // The source asked to be left out (a password manager): nothing is saved.
+            self.show_toast(neutral(ToastMessage::NothingToSave));
+            return;
+        }
         self.save_rich(
             clip.text.as_deref(),
             clip.html.as_deref(),

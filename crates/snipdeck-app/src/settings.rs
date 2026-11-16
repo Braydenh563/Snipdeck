@@ -814,6 +814,9 @@ pub struct Settings {
     pub recent_history_asked: bool,
     /// Executable names that are never kept in the Recent inbox (lower case).
     pub no_history_apps: Vec<String>,
+    /// Keep a Recent copy whose source program is unknown. Off by default: a copy with no
+    /// known source could come from a password manager, so it is skipped.
+    pub recent_keep_unknown_source: bool,
     /// The edge dock: when a docked Panel collapses to a handle, and the delays.
     pub dock: DockSettings,
     /// The welcome tour has been finished or skipped. Absent (false) in older files; the tour
@@ -908,6 +911,7 @@ impl Default for Settings {
             recent_history: false,
             recent_history_asked: false,
             no_history_apps: Vec::new(),
+            recent_keep_unknown_source: false,
             dock: DockSettings::default(),
             onboarded: false,
             editor_more_open: false,
@@ -1057,6 +1061,7 @@ impl Settings {
         field!(recent_history);
         field!(recent_history_asked);
         field!(no_history_apps);
+        field!(recent_keep_unknown_source);
         field!(dock);
         field!(onboarded);
         field!(editor_more_open);

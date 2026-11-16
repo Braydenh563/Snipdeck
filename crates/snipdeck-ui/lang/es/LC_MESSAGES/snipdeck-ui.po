@@ -351,6 +351,9 @@ msgstr "Cancelar"
 msgid "Cancel the test of {}"
 msgstr "Cancelar la prueba de {}"
 
+msgid "Caps Lock is on."
+msgstr "Bloq Mayús está activado."
+
 msgid "Captured items keep their kind."
 msgstr "Los fragmentos capturados conservan su tipo."
 
@@ -1242,6 +1245,9 @@ msgstr "Ocultar panel"
 msgid "Hide Panel ({})"
 msgstr "Ocultar panel ({})"
 
+msgid "Hide password"
+msgstr "Ocultar contraseña"
+
 msgid "Hide the Panel"
 msgstr "Ocultar el panel"
 
@@ -1795,6 +1801,9 @@ msgstr "No funciona"
 msgid "Nothing copied yet"
 msgstr "Todavía no se ha copiado nada"
 
+msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
+msgstr "No se guarda nada si no dices que Sí, y puedes cambiarlo cuando quieras en Ajustes. Reciente guarda el texto que copias, solo en este equipo, de las últimas {} copias o {} días, lo que ocurra primero. Las contraseñas de los gestores de contraseñas y los elementos Sensibles nunca se guardan."
+
 msgid "Nothing matches “{}”"
 msgstr "Nada coincide con “{}”"
 
@@ -2257,9 +2266,6 @@ msgstr "Acciones de entradas recientes"
 msgid "Recent history cleared"
 msgstr "Historial reciente borrado"
 
-msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
-msgstr "No se guarda nada si no dices que Sí, y puedes cambiarlo cuando quieras en Ajustes. Reciente guarda el texto que copias, solo en este equipo, de las últimas {} copias o {} días, lo que ocurra primero. Las contraseñas de los gestores de contraseñas y los elementos Sensibles nunca se guardan."
-
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "Recientes guarda el texto que copias, solo en este equipo, durante las últimas {} copias o {} días, lo que ocurra primero. Las contraseñas de los gestores de contraseñas y los fragmentos sensibles nunca se guardan. Puedes cambiarlo cuando quieras en Configuración."
 
@@ -2647,6 +2653,9 @@ msgstr "Mostrar u ocultar el panel"
 
 msgid "Show or hide the sidebar"
 msgstr "Mostrar u ocultar la barra lateral"
+
+msgid "Show password"
+msgstr "Mostrar contraseña"
 
 msgid "Show the Panel"
 msgstr "Mostrar el panel"
@@ -3142,6 +3151,9 @@ msgstr "Fecha de hoy"
 
 msgid "Toggle keep Panel open"
 msgstr "Alternar mantener el Panel abierto"
+
+msgid "Too many wrong passwords. Wait a few seconds and try again."
+msgstr "Demasiadas contraseñas incorrectas. Espera unos segundos e inténtalo de nuevo."
 
 msgid "Tools"
 msgstr "Herramientas"

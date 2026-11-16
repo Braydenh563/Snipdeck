@@ -350,6 +350,9 @@ msgstr "キャンセル"
 msgid "Cancel the test of {}"
 msgstr "{} のテストをキャンセル"
 
+msgid "Caps Lock is on."
+msgstr "Caps Lock がオンです。"
+
 msgid "Captured items keep their kind."
 msgstr "キャプチャしたスニペットは種類を保持します。"
 
@@ -1241,6 +1244,9 @@ msgstr "パネルを隠す"
 msgid "Hide Panel ({})"
 msgstr "パネルを隠す ({})"
 
+msgid "Hide password"
+msgstr "パスワードを隠す"
+
 msgid "Hide the Panel"
 msgstr "パネルを隠す"
 
@@ -1789,6 +1795,9 @@ msgstr "動作しません"
 msgid "Nothing copied yet"
 msgstr "まだコピーされたものはありません"
 
+msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
+msgstr "「はい」を選ぶまで何も保存されず、設定でいつでも変更できます。「最近」は、コピーしたテキストを、直近 {} 件または {} 日間のどちらか先に達した分だけ、このコンピューターにのみ保存します。パスワード管理ツールからのパスワードや機密アイテムは保存されません。"
+
 msgid "Nothing matches “{}”"
 msgstr "「{}」に一致する項目はありません"
 
@@ -2251,9 +2260,6 @@ msgstr "最近の項目の操作"
 msgid "Recent history cleared"
 msgstr "最近の履歴を消去しました"
 
-msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
-msgstr "「はい」を選ぶまで何も保存されず、設定でいつでも変更できます。「最近」は、コピーしたテキストを、直近 {} 件または {} 日間のどちらか先に達した分だけ、このコンピューターにのみ保存します。パスワード管理ツールからのパスワードや機密アイテムは保存されません。"
-
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "「最近」は、コピーしたテキストをこのコンピューターにのみ、直近 {} 回のコピーまたは {} 日間のどちらか早い方まで保持します。パスワードマネージャーのパスワードと機密スニペットは保持されません。設定でいつでも変更できます。"
 
@@ -2639,6 +2645,9 @@ msgstr "パネルを表示または非表示"
 
 msgid "Show or hide the sidebar"
 msgstr "サイドバーの表示/非表示"
+
+msgid "Show password"
+msgstr "パスワードを表示"
 
 msgid "Show the Panel"
 msgstr "パネルを表示"
@@ -3134,6 +3143,9 @@ msgstr "今日の日付"
 
 msgid "Toggle keep Panel open"
 msgstr "パネルを開いたままにする（切り替え）"
+
+msgid "Too many wrong passwords. Wait a few seconds and try again."
+msgstr "パスワードの誤りが続きました。数秒待ってからもう一度お試しください。"
 
 msgid "Tools"
 msgstr "ツール"

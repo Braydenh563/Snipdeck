@@ -71,6 +71,22 @@ fn quick_capture_with_nothing_on_the_clipboard_saves_nothing() {
 }
 
 #[test]
+fn quick_capture_leaves_out_a_copy_that_asks_to_be_left_out() {
+    let mut w = build(Opts {
+        clipboard: Some("hunter2"),
+        ..Opts::default()
+    });
+    w.ctl.services.clipboard.held_excluded = true;
+    w.ctl.on_hotkey(HotkeyAction::Capture);
+    assert_eq!(w.ctl.view().rows.len(), 4);
+    let toast = w.ctl.view().toast.expect("toast");
+    assert_eq!(
+        (toast.kind, toast.message),
+        (ToastKind::Neutral, ToastMessage::NothingToSave)
+    );
+}
+
+#[test]
 fn quick_capture_without_any_list_says_so() {
     let now = at("2026-10-17T09:00:00Z");
     let mut store = Store::open_in_memory().expect("store");
