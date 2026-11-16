@@ -468,12 +468,6 @@ msgstr "Clic o Enter selecciona · Esc cancela · las flechas mueven"
 msgid "Click pastes into {} · Shift+click copies"
 msgstr "Clic pega en {} · Shift+clic copia"
 
-msgid "Click to copy."
-msgstr "Clic para copiar."
-
-msgid "Click to paste into {}. Shift+click copies."
-msgstr "Clic para pegar en {}. Mayús+clic copia."
-
 msgid "Clip {}"
 msgstr "Clip {}"
 
@@ -482,6 +476,9 @@ msgstr "Tiempo para vaciar el portapapeles"
 
 msgid "Close"
 msgstr "Cerrar"
+
+msgid "Close panel"
+msgstr "Cerrar panel"
 
 msgid "Close panel (Esc)"
 msgstr "Cerrar panel (Esc)"
@@ -1404,6 +1401,9 @@ msgstr "Conservar más copias"
 msgid "Keep panel on top"
 msgstr "Mantener el panel encima"
 
+msgid "Keep panel on top: on"
+msgstr "Mantener panel encima: activado"
+
 msgid "Keep running in the tray when the window closes"
 msgstr "Seguir ejecutándose en la bandeja al cerrar la ventana"
 
@@ -1795,6 +1795,9 @@ msgstr "No funciona"
 msgid "Nothing copied yet"
 msgstr "Todavía no se ha copiado nada"
 
+msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
+msgstr "No se guarda nada si no dices que Sí, y puedes cambiarlo cuando quieras en Ajustes. Reciente guarda el texto que copias, solo en este equipo, de las últimas {} copias o {} días, lo que ocurra primero. Las contraseñas de los gestores de contraseñas y los elementos Sensibles nunca se guardan."
+
 msgid "Nothing matches “{}”"
 msgstr "Nada coincide con “{}”"
 
@@ -1887,6 +1890,9 @@ msgstr "Abrir configuración"
 
 msgid "Open Snipdeck"
 msgstr "Abrir Snipdeck"
+
+msgid "Open Snipdeck Panel"
+msgstr "Abrir el panel de Snipdeck"
 
 msgid "Open a docked panel by"
 msgstr "Abrir un panel acoplado con"
@@ -2038,11 +2044,20 @@ msgstr "Pegar pila (marca elementos)"
 msgid "Paste stack, item {} of {}, next: {}"
 msgstr "Pila de pegado, elemento {} de {}, siguiente: {}"
 
+msgid "Paste stack, item {} of {}, next: {}, into {}"
+msgstr "Pila de pegado, elemento {} de {}, siguiente: {}, en {}"
+
 msgid "Paste stack, {} marked"
 msgstr "Pila de pegado, {} marcados"
 
+msgid "Paste stack, {} marked, into {}"
+msgstr "Pila de pegado, {} marcados, en {}"
+
 msgid "Paste stack: {} marked"
 msgstr "Pila de pegado: {} marcados"
+
+msgid "Paste stack: {} marked · into {}"
+msgstr "Pila de pegado: {} marcados · en {}"
 
 msgid "Paste the Nth result"
 msgstr "Pega el resultado n"
@@ -2256,9 +2271,6 @@ msgstr "Acciones de entradas recientes"
 
 msgid "Recent history cleared"
 msgstr "Historial reciente borrado"
-
-msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
-msgstr "No se guarda nada si no dices que Sí, y puedes cambiarlo cuando quieras en Ajustes. Reciente guarda el texto que copias, solo en este equipo, de las últimas {} copias o {} días, lo que ocurra primero. Las contraseñas de los gestores de contraseñas y los elementos Sensibles nunca se guardan."
 
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "Recientes guarda el texto que copias, solo en este equipo, durante las últimas {} copias o {} días, lo que ocurra primero. Las contraseñas de los gestores de contraseñas y los fragmentos sensibles nunca se guardan. Puedes cambiarlo cuando quieras en Configuración."
@@ -2726,9 +2738,6 @@ msgstr "Snipdeck no pudo escribir en tu biblioteca. Comprueba que el disco tenga
 msgid "Snipdeck found a problem in your library. Export a copy to be safe."
 msgstr "Snipdeck encontró un problema en tu biblioteca. Exporta una copia por si acaso."
 
-msgid "Snipdeck handle, press the Panel hotkey to open"
-msgstr "Tirador de Snipdeck, pulsa el atajo del panel para abrir"
-
 msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
 msgstr "Snipdeck no tiene cuenta, ni servidor, ni telemetría, y no abre ningún puerto de red. Nada de lo que guardas sale de este PC."
 
@@ -2755,6 +2764,9 @@ msgstr "Snipdeck guarda una copia de tu biblioteca una vez al día y conserva la
 
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "Snipdeck espera en la bandeja para que los atajos funcionen tras iniciar sesión."
+
+msgid "Snipdeck: search snippets"
+msgstr "Snipdeck: buscar fragmentos"
 
 msgid "Snippets"
 msgstr "Fragmentos"
@@ -3967,6 +3979,9 @@ msgstr "{} de las comprobaciones requieren atención."
 
 msgid "{} of {} · next: {}"
 msgstr "{} de {} · siguiente: {}"
+
+msgid "{} of {} · next: {} · into {}"
+msgstr "{} de {} · siguiente: {} · en {}"
 
 msgid "{} percent"
 msgstr "{} por ciento"

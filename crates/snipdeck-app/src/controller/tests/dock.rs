@@ -316,6 +316,17 @@ fn closing_a_docked_panel_tucks_it_and_losing_the_foreground_does_not_hide_it() 
 }
 
 #[test]
+fn a_foreground_change_asks_the_host_for_the_target_once() {
+    let mut w = floating(DockTrigger::Both);
+    with_tray(&mut w);
+    w.ctl.set_on_top(false);
+    advance(&w, 5_000);
+    let before = w.targets.probe_count();
+    w.ctl.on_foreground_changed();
+    assert_eq!(w.targets.probe_count() - before, 1);
+}
+
+#[test]
 fn the_pointer_near_the_tab_reveals_the_panel_and_leaving_tucks_it() {
     let mut w = docked(DockTrigger::Both, DockEdge::Right);
     assert!(w.ctl.dock_live());

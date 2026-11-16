@@ -467,12 +467,6 @@ msgstr "クリックまたは Enter で選択 · Esc でキャンセル · 矢�
 msgid "Click pastes into {} · Shift+click copies"
 msgstr "クリックで {} に貼り付け · Shift+クリックでコピー"
 
-msgid "Click to copy."
-msgstr "クリックでコピー。"
-
-msgid "Click to paste into {}. Shift+click copies."
-msgstr "クリックで{}に貼り付け。Shift+クリックでコピー。"
-
 msgid "Clip {}"
 msgstr "クリップ {}"
 
@@ -481,6 +475,9 @@ msgstr "クリップボードの消去時間"
 
 msgid "Close"
 msgstr "閉じる"
+
+msgid "Close panel"
+msgstr "パネルを閉じる"
 
 msgid "Close panel (Esc)"
 msgstr "パネルを閉じる (Esc)"
@@ -1400,6 +1397,9 @@ msgstr "バックアップを増やす"
 msgid "Keep panel on top"
 msgstr "パネルを手前に表示"
 
+msgid "Keep panel on top: on"
+msgstr "パネルを常に手前に表示: オン"
+
 msgid "Keep running in the tray when the window closes"
 msgstr "ウィンドウを閉じても通知領域で実行を続ける"
 
@@ -1789,6 +1789,9 @@ msgstr "動作しません"
 msgid "Nothing copied yet"
 msgstr "まだコピーされたものはありません"
 
+msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
+msgstr "「はい」を選ぶまで何も保存されず、設定でいつでも変更できます。「最近」は、コピーしたテキストを、直近 {} 件または {} 日間のどちらか先に達した分だけ、このコンピューターにのみ保存します。パスワード管理ツールからのパスワードや機密アイテムは保存されません。"
+
 msgid "Nothing matches “{}”"
 msgstr "「{}」に一致する項目はありません"
 
@@ -1881,6 +1884,9 @@ msgstr "設定を開く"
 
 msgid "Open Snipdeck"
 msgstr "Snipdeck を開く"
+
+msgid "Open Snipdeck Panel"
+msgstr "Snipdeck パネルを開く"
 
 msgid "Open a docked panel by"
 msgstr "固定したパネルを開く操作"
@@ -2032,11 +2038,20 @@ msgstr "スタック貼り付け(項目を選択)"
 msgid "Paste stack, item {} of {}, next: {}"
 msgstr "貼り付けスタック、{} / {} 件目、次: {}"
 
+msgid "Paste stack, item {} of {}, next: {}, into {}"
+msgstr "貼り付けスタック、{} / {} 件目、次: {}、貼り付け先: {}"
+
 msgid "Paste stack, {} marked"
 msgstr "貼り付けスタック、{} 件選択中"
 
+msgid "Paste stack, {} marked, into {}"
+msgstr "貼り付けスタック、{} 件選択、貼り付け先: {}"
+
 msgid "Paste stack: {} marked"
 msgstr "貼り付けスタック: {} 件選択中"
+
+msgid "Paste stack: {} marked · into {}"
+msgstr "貼り付けスタック: {} 件選択 · 貼り付け先: {}"
 
 msgid "Paste the Nth result"
 msgstr "N番目の結果を貼り付け"
@@ -2250,9 +2265,6 @@ msgstr "最近の項目の操作"
 
 msgid "Recent history cleared"
 msgstr "最近の履歴を消去しました"
-
-msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
-msgstr "「はい」を選ぶまで何も保存されず、設定でいつでも変更できます。「最近」は、コピーしたテキストを、直近 {} 件または {} 日間のどちらか先に達した分だけ、このコンピューターにのみ保存します。パスワード管理ツールからのパスワードや機密アイテムは保存されません。"
 
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "「最近」は、コピーしたテキストをこのコンピューターにのみ、直近 {} 回のコピーまたは {} 日間のどちらか早い方まで保持します。パスワードマネージャーのパスワードと機密スニペットは保持されません。設定でいつでも変更できます。"
@@ -2718,9 +2730,6 @@ msgstr "Snipdeck はライブラリに書き込めませんでした。ディス
 msgid "Snipdeck found a problem in your library. Export a copy to be safe."
 msgstr "Snipdeck がライブラリに問題を見つけました。念のため、コピーをエクスポートしてください。"
 
-msgid "Snipdeck handle, press the Panel hotkey to open"
-msgstr "Snipdeck のハンドル。開くにはパネルのショートカットを押してください"
-
 msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
 msgstr "Snipdeckにはアカウントもサーバーもテレメトリもなく、ネットワークポートも開きません。保存した内容がこのPCの外に出ることはありません。"
 
@@ -2747,6 +2756,9 @@ msgstr "Snipdeckはライブラリのコピーを1日1回保存し、新しい{}
 
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "Snipdeck はサインイン後にショートカットが使えるよう、通知領域で待機します。"
+
+msgid "Snipdeck: search snippets"
+msgstr "Snipdeck: スニペットを検索"
 
 msgid "Snippets"
 msgstr "スニペット"
@@ -3944,6 +3956,9 @@ msgstr "{} 件の項目に確認が必要です。"
 
 msgid "{} of {} · next: {}"
 msgstr "{} / {} · 次: {}"
+
+msgid "{} of {} · next: {} · into {}"
+msgstr "{} / {} · 次: {} · 貼り付け先: {}"
 
 msgid "{} percent"
 msgstr "{} パーセント"

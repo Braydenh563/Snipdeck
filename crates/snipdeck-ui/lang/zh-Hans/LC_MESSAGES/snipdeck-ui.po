@@ -467,12 +467,6 @@ msgstr "点击或按 Enter 取色 · Esc 取消 · 方向键移动"
 msgid "Click pastes into {} · Shift+click copies"
 msgstr "点击粘贴到 {} · Shift+点击为复制"
 
-msgid "Click to copy."
-msgstr "点击复制。"
-
-msgid "Click to paste into {}. Shift+click copies."
-msgstr "点击粘贴到 {}。Shift+点击为复制。"
-
 msgid "Clip {}"
 msgstr "剪贴 {}"
 
@@ -481,6 +475,9 @@ msgstr "剪贴板清除时间"
 
 msgid "Close"
 msgstr "关闭"
+
+msgid "Close panel"
+msgstr "关闭面板"
 
 msgid "Close panel (Esc)"
 msgstr "关闭面板 (Esc)"
@@ -1400,6 +1397,9 @@ msgstr "增加保留的备份"
 msgid "Keep panel on top"
 msgstr "面板保持在最前"
 
+msgid "Keep panel on top: on"
+msgstr "保持面板置顶：开"
+
 msgid "Keep running in the tray when the window closes"
 msgstr "关闭窗口时继续在通知区域运行"
 
@@ -1789,6 +1789,9 @@ msgstr "无法使用"
 msgid "Nothing copied yet"
 msgstr "尚未复制任何内容"
 
+msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
+msgstr "除非你选择“是”，否则不会保存任何内容，你也可以随时在设置中更改。“最近”只在此电脑上保存你复制的文本，保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感项目绝不会保存。"
+
 msgid "Nothing matches “{}”"
 msgstr "没有与“{}”匹配的内容"
 
@@ -1881,6 +1884,9 @@ msgstr "打开设置"
 
 msgid "Open Snipdeck"
 msgstr "打开 Snipdeck"
+
+msgid "Open Snipdeck Panel"
+msgstr "打开 Snipdeck 面板"
 
 msgid "Open a docked panel by"
 msgstr "展开已停靠面板的方式"
@@ -2032,11 +2038,20 @@ msgstr "粘贴堆栈(请先标记项目)"
 msgid "Paste stack, item {} of {}, next: {}"
 msgstr "粘贴堆栈，第 {} 项（共 {} 项），下一项：{}"
 
+msgid "Paste stack, item {} of {}, next: {}, into {}"
+msgstr "粘贴栈，第 {} / {} 项，下一项：{}，目标：{}"
+
 msgid "Paste stack, {} marked"
 msgstr "粘贴堆栈，已标记 {} 项"
 
+msgid "Paste stack, {} marked, into {}"
+msgstr "粘贴栈，已标记 {} 项，目标：{}"
+
 msgid "Paste stack: {} marked"
 msgstr "粘贴堆栈：已标记 {} 项"
+
+msgid "Paste stack: {} marked · into {}"
+msgstr "粘贴栈：已标记 {} 项 · 目标：{}"
 
 msgid "Paste the Nth result"
 msgstr "粘贴第 N 个结果"
@@ -2250,9 +2265,6 @@ msgstr "最近条目操作"
 
 msgid "Recent history cleared"
 msgstr "已清除最近记录"
-
-msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
-msgstr "除非你选择“是”，否则不会保存任何内容，你也可以随时在设置中更改。“最近”只在此电脑上保存你复制的文本，保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感项目绝不会保存。"
 
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "“最近”会保留你复制的文本，仅保存在这台电脑上，最多保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感片段不会被保留。你可以随时在设置中更改。"
@@ -2718,9 +2730,6 @@ msgstr "Snipdeck 无法写入你的资料库。请检查磁盘是否有足够空
 msgid "Snipdeck found a problem in your library. Export a copy to be safe."
 msgstr "Snipdeck 在你的资料库中发现问题。为安全起见，请导出一份副本。"
 
-msgid "Snipdeck handle, press the Panel hotkey to open"
-msgstr "Snipdeck 拉手，按面板快捷键即可展开"
-
 msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
 msgstr "Snipdeck 没有账户、没有服务器、没有遥测，也不开放任何网络端口。你保存的内容不会离开这台电脑。"
 
@@ -2747,6 +2756,9 @@ msgstr "Snipdeck 每天保存一份资料库副本，并保留最新的 {} 份�
 
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "Snipdeck 会待在系统托盘中，以便登录后快捷键仍可使用。"
+
+msgid "Snipdeck: search snippets"
+msgstr "Snipdeck：搜索片段"
 
 msgid "Snippets"
 msgstr "片段"
@@ -3944,6 +3956,9 @@ msgstr "有 {} 项检查需要留意。"
 
 msgid "{} of {} · next: {}"
 msgstr "{} / {} · 下一项：{}"
+
+msgid "{} of {} · next: {} · into {}"
+msgstr "第 {} / {} 项 · 下一项：{} · 目标：{}"
 
 msgid "{} percent"
 msgstr "{}%"
