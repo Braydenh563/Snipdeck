@@ -9392,7 +9392,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-ui/tests/colours_scroll_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/deck.rs` | 13 |
 | `crates/snipdeck-ui/tests/deck_logic.rs` | 1 |
-| `crates/snipdeck-ui/tests/editors.rs` | 33 |
+| `crates/snipdeck-ui/tests/editors.rs` | 34 |
 | `crates/snipdeck-ui/tests/editors_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/fill.rs` | 14 |
 | `crates/snipdeck-ui/tests/fill_logic.rs` | 1 |

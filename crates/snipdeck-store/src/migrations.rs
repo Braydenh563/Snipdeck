@@ -416,7 +416,7 @@ mod tests {
             [],
         )
         .unwrap();
-        let outcome = migrate(&mut conn, MIGRATIONS, Path::new(":memory:"), false).unwrap();
+        let outcome = migrate(&mut conn, &MIGRATIONS[..10], Path::new(":memory:"), false).unwrap();
         assert_eq!(outcome, Outcome { from: 9, to: 10 });
         let row: (i64, String, String) = conn
             .query_row("SELECT rowid, title, body FROM item_fts", [], |r| {

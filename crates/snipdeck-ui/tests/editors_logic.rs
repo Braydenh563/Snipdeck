@@ -475,7 +475,8 @@ ui_tests! {
         assert!(!ui.get_has_backup());
         ui.set_has_backup(true);
         ui.set_tool_backup("old".into());
-        find(&ui, "Content", AccessibleRole::TextInput).invoke_accessible_default_action();
+        ui.invoke_place_caret(0);
+        settle();
         type_text(ui.window(), "x");
         assert!(!ui.get_has_backup(), "typing forgets the undo");
     }
