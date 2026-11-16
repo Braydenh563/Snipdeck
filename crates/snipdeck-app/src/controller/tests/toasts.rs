@@ -11,6 +11,35 @@ fn close_hides_with_a_tray_icon_and_show_brings_it_back() {
     assert_eq!(w.ctl.show(), [Effect::ShowPanel]);
 }
 
+fn store_reminder(w: &World) -> bool {
+    w.ctl
+        .view()
+        .toast
+        .is_some_and(|t| t.message == ToastMessage::StoreDataReminder)
+}
+
+#[test]
+fn the_store_build_is_reminded_once_that_uninstalling_removes_the_library() {
+    let mut w = world();
+    w.ctl.remind_store_data(true);
+    assert!(store_reminder(&w));
+    assert!(w.ctl.settings().store_data_reminded);
+    w.ctl.show_toast(Toast {
+        kind: ToastKind::Neutral,
+        message: ToastMessage::Copied,
+    });
+    w.ctl.remind_store_data(true);
+    assert!(!store_reminder(&w), "not a second time");
+}
+
+#[test]
+fn other_builds_are_not_reminded() {
+    let mut w = world();
+    w.ctl.remind_store_data(false);
+    assert!(!store_reminder(&w));
+    assert!(!w.ctl.settings().store_data_reminded);
+}
+
 fn hide_hint(w: &World) -> Option<ToastMessage> {
     w.ctl
         .view()

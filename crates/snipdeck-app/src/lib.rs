@@ -68,6 +68,7 @@ pub mod settings_binding;
 pub mod settings_store;
 pub mod shortcuts;
 pub mod starter;
+pub mod store_data;
 pub mod suggest_hint;
 pub mod symbols_binding;
 pub mod symbols_panel;

@@ -1071,6 +1071,19 @@ where
         effects
     }
 
+    /// The Store build's one-time reminder that uninstalling removes the library, shown when the
+    /// Panel first comes up (`store_data`). Remembered in the settings so it comes once.
+    pub fn remind_store_data(&mut self, packaged: bool) {
+        if !crate::store_data::reminder_due(packaged, self.settings.store_data_reminded) {
+            return;
+        }
+        self.update_settings(|s| s.store_data_reminded = true);
+        self.show_toast(Toast {
+            kind: ToastKind::Neutral,
+            message: ToastMessage::StoreDataReminder,
+        });
+    }
+
     /// The close button or Esc on an empty search. With `close_to_tray` on and a tray icon to
     /// get it back from, the Panel hides; otherwise closing it quits the app.
     pub fn close(&mut self) -> Vec<Effect> {

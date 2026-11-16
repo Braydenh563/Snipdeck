@@ -762,6 +762,9 @@ pub struct Settings {
     /// The one-time "Snipdeck is still running" toast has been shown (the first time the Panel
     /// hid itself by the close button or by losing focus).
     pub hide_hint_shown: bool,
+    /// The one-time Store-build reminder that uninstalling removes the library has been shown
+    /// (`store_data`, PLATFORM-33).
+    pub store_data_reminded: bool,
     /// Panel width in logical pixels.
     pub panel_width: u32,
     /// How many daily backups to keep (1 to 60).
@@ -896,6 +899,7 @@ impl Default for Settings {
             panel_pinned: true,
             screenshot_keep_panel: false,
             hide_hint_shown: false,
+            store_data_reminded: false,
             panel_width: PANEL_WIDTH_DEFAULT,
             backups_keep: BACKUPS_KEEP_DEFAULT,
             reduce_motion: false,
@@ -1033,6 +1037,7 @@ impl Settings {
         field!(panel_pinned);
         field!(screenshot_keep_panel);
         field!(hide_hint_shown);
+        field!(store_data_reminded);
         field!(panel_width);
         field!(backups_keep);
         field!(reduce_motion);
@@ -2121,6 +2126,7 @@ mod tests {
             panel_pinned: false,
             screenshot_keep_panel: true,
             hide_hint_shown: true,
+            store_data_reminded: true,
             ..Settings::default()
         };
         assert_eq!(Settings::from_json(&settings.to_json()), settings);

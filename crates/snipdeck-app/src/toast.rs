@@ -236,6 +236,9 @@ pub enum ToastMessage {
     BackupMade,
     /// "Another backup or export is still running. Try again when it has finished."
     ArchiveBusy,
+    /// "The Store version keeps your library inside the app, so uninstalling removes it. Back up
+    /// now also saves a copy in Documents > Snipdeck backups." Shown once (`store_data`).
+    StoreDataReminder,
     /// "Couldn't make a backup: the disk is full. ..." (a backup the user asked for)
     BackupFailed(Cause),
     /// "Couldn't make today's backup. Check the disk has room, then use Back up now in

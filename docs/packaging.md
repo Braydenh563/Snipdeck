@@ -234,10 +234,15 @@ Store reviews). The rule is:
 - **Setup and Store are separate libraries.** Neither installs over, reads or removes the other's data. To move
   from one to the other, export in the old one and import in the new one. (Whether Windows shows the Setup
   library to the packaged app through its merged view has not been run; do not rely on it.)
-- **Not built yet:** a one-time reminder in the packaged build and a default backup folder in Documents. Both
-  need app code and UI strings (`.pot` plus six `.po`) and belong to the app side; they are listed in
-  `.claude/remaining/fix-packaging.md`. Until then this paragraph is the user-facing rule: copy it into the Store
-  description's notes.
+- **Built (unverified on a real Store build):** the first time the Panel comes up in the packaged build, a toast
+  says that uninstalling removes the library (once, remembered in the settings as `store_data_reminded`), and
+  Back up now also saves an export in `Documents\Snipdeck backups`, outside the package. Code: `store_data.rs`.
+  Copy this paragraph into the Store description's notes as well.
+
+**Tested Windows builds.** Only Windows 11 build 26300 has been run. The installer floor (10.0.18362, Windows 10
+1903) and the MSIX `MinVersion` are unchanged: every build-dependent call (dark title bar attributes 19 and 20,
+the corner preference from build 22000) is gated by build number and fails soft. Windows 10 is untested until the
+owner runs the list in `.claude/remaining/fix-misc.md`.
 
 ### Sideload test with a self-signed certificate
 

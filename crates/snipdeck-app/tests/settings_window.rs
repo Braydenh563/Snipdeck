@@ -86,6 +86,8 @@ struct FakeHost {
     /// Opening a link fails (no browser).
     url_fails: Cell<bool>,
     documents: RefCell<Option<PathBuf>>,
+    /// Pretends to be the Store build.
+    packaged: Cell<bool>,
     /// What the import dialog answers, once.
     import_pick: RefCell<Option<PathBuf>>,
     /// Every `pick_import` call: the kind and whether one file was asked for.
@@ -141,6 +143,10 @@ impl SettingsHost for FakeHost {
 
     fn documents_folder(&self) -> Option<PathBuf> {
         self.documents.borrow().clone()
+    }
+
+    fn packaged(&self) -> bool {
+        self.packaged.get()
     }
 
     fn pick_export_folder(&self, _owner: Option<isize>, done: Box<dyn FnOnce(ExportFolder)>) {
@@ -1325,6 +1331,33 @@ fn back_up_now_replaces_todays_backup_instead_of_refusing() {
         assert_eq!(after.len(), 1, "still one file for today");
         assert!(after[0].bytes > 100, "{} bytes", after[0].bytes);
         assert_eq!(r.ui.get_backups().row_count(), 1);
+    });
+}
+
+#[test]
+fn the_store_build_also_copies_a_backup_into_documents_snipdeck_backups() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.host.packaged.set(true);
+        r.ui.invoke_backup_now_requested();
+        let copies = r.dir.path().join("Documents").join("Snipdeck backups");
+        let count = std::fs::read_dir(&copies).map(Iterator::count);
+        assert_eq!(count.unwrap(), 1, "one export beside the backup");
+        assert_eq!(
+            snipdeck_portable::backup::list_backups(r.dir.path())
+                .unwrap()
+                .len(),
+            1
+        );
+    });
+}
+
+#[test]
+fn other_builds_keep_the_backup_in_the_data_folder_only() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_backup_now_requested();
+        assert!(!r.dir.path().join("Documents").exists());
     });
 }
 

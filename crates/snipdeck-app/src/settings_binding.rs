@@ -108,6 +108,12 @@ pub trait SettingsHost {
         let _ = on;
     }
 
+    /// Whether this is the Store (MSIX) build, whose library is deleted with the package
+    /// ([`crate::store_data`]). The default is no.
+    fn packaged(&self) -> bool {
+        false
+    }
+
     /// Shows `folder` in the file manager.
     ///
     /// # Errors
@@ -319,6 +325,10 @@ impl SettingsHost for SystemHost {
 
     fn documents_folder(&self) -> Option<PathBuf> {
         crate::paths::documents_folder()
+    }
+
+    fn packaged(&self) -> bool {
+        crate::platform::is_packaged()
     }
 
     fn pick_export_folder(&self, owner: Option<isize>, done: Box<dyn FnOnce(ExportFolder)>) {
@@ -1605,6 +1615,25 @@ where
         spawn_archive(&self.controller, begun, move |_| {
             this.show_busy();
             this.refresh_backups();
+            this.copy_backup_out_of_the_package();
+            redraw_all();
+        });
+    }
+
+    /// In the Store build, also saves an export in `Documents\Snipdeck backups`, outside the
+    /// package, so a copy survives an uninstall ([`crate::store_data`]). Nothing elsewhere.
+    fn copy_backup_out_of_the_package(self: &Rc<Self>) {
+        let Some(folder) = crate::store_data::copy_folder(
+            self.host.packaged(),
+            self.host.documents_folder().as_deref(),
+        ) else {
+            return;
+        };
+        let begun = self.act(|ctl| ctl.begin_export(&folder));
+        self.show_busy();
+        let this = Rc::clone(self);
+        spawn_archive(&self.controller, begun, move |_| {
+            this.show_busy();
             redraw_all();
         });
     }

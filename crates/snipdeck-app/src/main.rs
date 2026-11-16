@@ -618,6 +618,12 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         if tour_due && let Err(e) = onboarding_ui.open() {
             eprintln!("snipdeck: cannot open the welcome tour: {e}");
         }
+        // The Store build says once that uninstalling removes the library; the tour comes first.
+        if !tour_due {
+            controller
+                .borrow_mut()
+                .remind_store_data(snipdeck_app::platform::is_packaged());
+        }
     }
     // The backup, the Trash purge (30 days, SPEC 5.7a) and the weekly check start 2 s after the
     // first show and repeat every 6 h. Not in the demo, which has no data folder.

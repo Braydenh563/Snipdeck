@@ -2982,6 +2982,9 @@ msgstr "该文本太大，无法保存。"
 msgid "That was the last one. Paste next starts again from the first."
 msgstr "这是最后一项。再次粘贴将从第一项重新开始。"
 
+msgid "The Store version keeps your library inside the app, so uninstalling removes it. Back up now also saves a copy in Documents > Snipdeck backups."
+msgstr "应用商店版将资源库保存在应用内，卸载时会一并删除。“立即备份”还会在 文档 > Snipdeck backups 中保存一份副本。"
+
 msgid "The Trash is empty"
 msgstr "回收站为空"
 

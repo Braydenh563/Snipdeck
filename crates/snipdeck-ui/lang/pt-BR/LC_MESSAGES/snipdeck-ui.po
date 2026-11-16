@@ -2990,6 +2990,9 @@ msgstr "Esse texto é grande demais para salvar."
 msgid "That was the last one. Paste next starts again from the first."
 msgstr "Esse era o último. Colar em seguida recomeça pelo primeiro."
 
+msgid "The Store version keeps your library inside the app, so uninstalling removes it. Back up now also saves a copy in Documents > Snipdeck backups."
+msgstr "A versão da Store guarda sua biblioteca dentro do app, então desinstalar a remove. \"Fazer backup agora\" também salva uma cópia em Documentos > Snipdeck backups."
+
 msgid "The Trash is empty"
 msgstr "A lixeira está vazia"
 

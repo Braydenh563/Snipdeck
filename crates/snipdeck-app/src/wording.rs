@@ -335,6 +335,7 @@ where
         ToastMessage::FolderNotOpened => t.invoke_folder_not_opened(),
         ToastMessage::LinkNotOpened => t.invoke_link_not_opened(),
         ToastMessage::AutostartFailed => t.invoke_autostart_failed(),
+        ToastMessage::StoreDataReminder => t.invoke_store_data_reminder(),
         ToastMessage::AutostartSwitchedOff => t.invoke_autostart_switched_off(),
         ToastMessage::AutostartPolicy => t.invoke_autostart_policy(),
         ToastMessage::CannotOpenLog => t.invoke_cannot_open_log(),

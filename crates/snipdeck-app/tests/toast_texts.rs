@@ -140,10 +140,11 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::AutostartSwitchedOff => 102,
         ToastMessage::AutostartPolicy => 103,
         ToastMessage::ArchiveBusy => 112,
+        ToastMessage::StoreDataReminder => 113,
     }
 }
 
-const VARIANTS: usize = 113;
+const VARIANTS: usize = 114;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -238,6 +239,7 @@ fn samples() -> Vec<ToastMessage> {
         M::AutostartSwitchedOff,
         M::AutostartPolicy,
         M::ArchiveBusy,
+        M::StoreDataReminder,
         M::CannotOpenLog,
         M::KeyUnavailable,
         M::ItemGone,
