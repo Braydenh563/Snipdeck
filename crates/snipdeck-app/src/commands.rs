@@ -381,11 +381,12 @@ fn fuzzy(label: &str, word: &str) -> bool {
     let mut at_word_start = true;
     let mut started = false;
     for c in label.chars() {
-        if let Some(w) = want {
-            if c == w && (started || at_word_start) {
-                started = true;
-                want = letters.next();
-            }
+        if let Some(w) = want
+            && c == w
+            && (started || at_word_start)
+        {
+            started = true;
+            want = letters.next();
         }
         at_word_start = !c.is_alphanumeric();
     }
