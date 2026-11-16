@@ -112,6 +112,7 @@ pub fn import_warning_text(window: &SettingsPage, warning: &Warning) -> String {
     let texts = ImportTexts::get(window);
     let count = |n: usize| i32::try_from(n).unwrap_or(i32::MAX);
     let name = |name: &str| entry_label(&texts, name);
+    let count_u64 = |n: u64| i32::try_from(n).unwrap_or(i32::MAX);
     let text = match warning {
         Warning::NewerMinorVersion { found } => texts.invoke_newer_minor_version(found.into()),
         Warning::UnknownEntries { count: n } => texts.invoke_unknown_entries(count(*n)),
@@ -119,8 +120,9 @@ pub fn import_warning_text(window: &SettingsPage, warning: &Warning) -> String {
         Warning::SensitiveNeedKey { count: n } => texts.invoke_sensitive_need_key(count(*n)),
         Warning::CannotDecrypt { title } => texts.invoke_cannot_decrypt(title.into()),
         Warning::SensitiveOmittedByExport { count: n } => {
-            texts.invoke_sensitive_omitted_by_export(i32::try_from(*n).unwrap_or(i32::MAX))
+            texts.invoke_sensitive_omitted_by_export(count_u64(*n))
         }
+        Warning::SkippedByExport { count: n } => texts.invoke_skipped_by_export(count_u64(*n)),
         Warning::LossyText { name: n } => texts.invoke_lossy_text(name(n)),
         Warning::TooLarge { name: n, size } => {
             texts.invoke_too_large(name(n), size_text(window, *size).into())

@@ -37,6 +37,7 @@
 
 mod archive;
 pub mod backup;
+mod check;
 mod decoded;
 mod dto;
 mod error;
@@ -47,9 +48,12 @@ mod limits;
 mod plan;
 mod report;
 
+pub use check::{ArchiveSummary, Depth, check_archive_path};
 pub use decoded::{Decoded, Known};
 pub use error::{Error, Result};
-pub use export::{ExportOptions, ExportReport, SensitivePolicy, export_to_path, export_to_writer};
+pub use export::{
+    ExportOptions, ExportReport, SensitivePolicy, SkippedItem, export_to_path, export_to_writer,
+};
 pub use import::{
     BoardLayout, ImportOptions, KeySource, MergeStrategy, decode_archive, decode_archive_path,
     import_archive, import_archive_path,

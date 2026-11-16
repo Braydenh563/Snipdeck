@@ -41,7 +41,7 @@ pub struct ExportOptions<'k> {
 }
 
 /// What an export wrote.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ExportReport {
     /// Boards written.
     pub boards: usize,
@@ -59,6 +59,20 @@ pub struct ExportReport {
     pub sensitive_omitted: u64,
     /// Total uncompressed size of the archive's entries.
     pub uncompressed_bytes: u64,
+    /// Items left out because an attachment could not be read or was over a limit. The
+    /// archive holds everything else (a backup degrades instead of stopping).
+    pub skipped: Vec<SkippedItem>,
+}
+
+/// An item an export could not write, and why.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SkippedItem {
+    /// The item's title.
+    pub title: String,
+    /// The list it is in.
+    pub list: String,
+    /// What went wrong, for a log or the details view.
+    pub reason: String,
 }
 
 /// Writes the library as a `.snipdeck` zip to `out`.
@@ -139,6 +153,19 @@ fn part_path(path: &Path) -> PathBuf {
     path.with_file_name(name)
 }
 
+/// A payload read and ready to be written as an asset.
+struct Staged {
+    hash: BlobRef,
+    bytes: Vec<u8>,
+    compress: bool,
+}
+
+/// Whether an error is the item's own (an unreadable attachment, an item over a size limit), so
+/// the item is left out and the rest is written. Everything else stops the export.
+fn left_out(error: &Error) -> bool {
+    matches!(error, Error::Store(_) | Error::ItemTooLarge { .. })
+}
+
 struct Exporter<'a, L, W: Write + Seek> {
     lib: &'a L,
     options: &'a ExportOptions<'a>,
@@ -195,12 +222,23 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
                             self.report.sensitive_omitted += 1;
                             continue;
                         }
-                        (true, SensitivePolicy::Encrypt(key)) => {
-                            self.report.sensitive_encrypted += 1;
-                            Some(key)
-                        }
+                        (true, SensitivePolicy::Encrypt(key)) => Some(key),
                     };
-                    let format_dtos = self.item_formats(item.id, &item.title, key)?;
+                    let format_dtos = match self.item_formats(item.id, &item.title, key) {
+                        Ok(dtos) => dtos,
+                        Err(error) if left_out(&error) => {
+                            self.report.skipped.push(SkippedItem {
+                                title: item.title.clone(),
+                                list: list.name.to_string(),
+                                reason: error.to_string(),
+                            });
+                            continue;
+                        }
+                        Err(error) => return Err(error),
+                    };
+                    if key.is_some() {
+                        self.report.sensitive_encrypted += 1;
+                    }
                     used_tags.extend(item.tags.iter().copied());
                     items.push(ItemDto {
                         id: item.id.to_string(),
@@ -265,7 +303,9 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
         Ok(ItemsDoc { tags, boards })
     }
 
-    /// Every format of one item, with an archive limit error naming the item.
+    /// Every format of one item, with an archive limit error naming the item. Every payload is
+    /// read before any is written, so an item that cannot be read leaves nothing behind in the
+    /// archive.
     fn item_formats(
         &mut self,
         item: ItemId,
@@ -273,12 +313,24 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
         key: Option<&DataKey>,
     ) -> Result<Vec<FormatDto>> {
         let formats = self.lib.formats(item)?;
+        let mut staged = Vec::new();
         let mut dtos = Vec::with_capacity(formats.iter().count());
         for format in &formats {
             let dto = self
-                .format_dto(item, format, key)
+                .format_dto(item, format, key, &mut staged)
                 .map_err(|e| name_the_item(e, title))?;
             dtos.push(dto);
+        }
+        for payload in staged {
+            if self.written.insert(payload.hash) {
+                self.writer
+                    .add(
+                        &format!("{ASSET_DIR}{}", payload.hash),
+                        &payload.bytes,
+                        payload.compress,
+                    )
+                    .map_err(|e| name_the_item(e, title))?;
+            }
         }
         Ok(dtos)
     }
@@ -288,27 +340,27 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
         item: ItemId,
         format: &Format,
         key: Option<&DataKey>,
+        staged: &mut Vec<Staged>,
     ) -> Result<FormatDto> {
         let kind = format.kind();
-        let single = |content: &Content, this: &mut Self| -> Result<FormatDto> {
-            let (asset, size, encrypted) =
-                this.payload(item, kind, Slot::Format(kind), content, key)?;
-            Ok(FormatDto {
-                kind: kind.key().to_owned(),
-                asset: Some(asset),
-                size: Some(size),
-                encrypted,
-                files: None,
-            })
-        };
         match format {
-            Format::Text(c) | Format::Html(c) | Format::Rtf(c) | Format::Png(c) => single(c, self),
+            Format::Text(c) | Format::Html(c) | Format::Rtf(c) | Format::Png(c) => {
+                let (asset, size, encrypted) =
+                    self.payload(item, kind, Slot::Format(kind), c, key, staged)?;
+                Ok(FormatDto {
+                    kind: kind.key().to_owned(),
+                    asset: Some(asset),
+                    size: Some(size),
+                    encrypted,
+                    files: None,
+                })
+            }
             Format::Files(files) => {
                 let mut out = Vec::with_capacity(files.len());
                 for (index, file) in files.iter().enumerate() {
                     let slot = Slot::File(u32::try_from(index).unwrap_or(u32::MAX));
                     let (asset, size, encrypted) =
-                        self.payload(item, FormatKind::Files, slot, file.content(), key)?;
+                        self.payload(item, FormatKind::Files, slot, file.content(), key, staged)?;
                     out.push(FileDto {
                         name: file.name().to_owned(),
                         asset,
@@ -327,8 +379,9 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
         }
     }
 
-    /// Writes one payload as an asset (once per distinct content) and returns its hash name,
-    /// stored size and whether it is encrypted.
+    /// Reads one payload and stages it as an asset (written once per distinct content, when
+    /// the whole item has been read); returns its hash name, stored size and whether it is
+    /// encrypted.
     fn payload(
         &mut self,
         item: ItemId,
@@ -336,24 +389,21 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
         slot: Slot,
         content: &Content,
         key: Option<&DataKey>,
+        staged: &mut Vec<Staged>,
     ) -> Result<(String, u64, bool)> {
         let plain = self.lib.read(content)?;
         let (bytes, encrypted) = match key {
-            Some(key) => (
-                std::borrow::Cow::Owned(encrypt_payload(key, &item, slot, &plain)?),
-                true,
-            ),
-            None => (plain, false),
+            Some(key) => (encrypt_payload(key, &item, slot, &plain)?, true),
+            None => (plain.into_owned(), false),
         };
         let hash = BlobRef::from_bytes(*blake3::hash(&bytes).as_bytes());
-        if self.written.insert(hash) {
-            self.writer.add(
-                &format!("{ASSET_DIR}{hash}"),
-                &bytes,
-                kind != FormatKind::Png,
-            )?;
-        }
-        Ok((hash.to_string(), bytes.len() as u64, encrypted))
+        let size = bytes.len() as u64;
+        staged.push(Staged {
+            hash,
+            bytes,
+            compress: kind != FormatKind::Png,
+        });
+        Ok((hash.to_string(), size, encrypted))
     }
 
     fn finish(mut self, now: Timestamp, doc: &ItemsDoc) -> Result<ExportReport> {
@@ -382,6 +432,7 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
             },
             encryption: (self.report.sensitive_encrypted > 0).then(|| ENCRYPTION.to_owned()),
             sensitive_omitted: self.report.sensitive_omitted,
+            skipped_unreadable: self.report.skipped.len() as u64,
         };
         let manifest_json = serde_json::to_vec_pretty(&manifest)
             .map_err(|e| Error::malformed(MANIFEST, format!("could not serialise: {e}")))?;

@@ -25,6 +25,9 @@ export global ImportTexts {
     pure public function sensitive-omitted-by-export(count: int) -> string {
         return @tr("{} sensitive item was left out when this file was made." | "{} sensitive items were left out when this file was made." % count, count);
     }
+    pure public function skipped-by-export(count: int) -> string {
+        return @tr("{} item with an attachment that could not be read was left out when this file was made." | "{} items with an attachment that could not be read were left out when this file was made." % count, count);
+    }
     pure public function lossy-text(name: string) -> string {
         return @tr("{} is not valid UTF-8, so characters that could not be read were replaced.", name);
     }

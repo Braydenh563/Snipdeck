@@ -43,6 +43,11 @@ pub enum Warning {
         /// How many items the exporter left out.
         count: u64,
     },
+    /// The exporter could not read some items' attachments and left those items out.
+    SkippedByExport {
+        /// How many items.
+        count: u64,
+    },
     /// A file was not valid UTF-8; invalid bytes were replaced with U+FFFD.
     LossyText {
         /// The file or item.
@@ -314,6 +319,10 @@ impl fmt::Display for Warning {
             Self::SensitiveOmittedByExport { count } => write!(
                 f,
                 "{count} sensitive item(s) were left out when this file was exported"
+            ),
+            Self::SkippedByExport { count } => write!(
+                f,
+                "{count} item(s) with an unreadable attachment were left out when this file was exported"
             ),
             Self::LossyText { name } => write!(
                 f,

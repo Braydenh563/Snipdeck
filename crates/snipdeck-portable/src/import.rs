@@ -264,6 +264,11 @@ pub fn decode_archive<'a, R: Read + Seek + Send + 'a>(
             count: manifest.sensitive_omitted,
         });
     }
+    if manifest.skipped_unreadable > 0 {
+        report.warn(Warning::SkippedByExport {
+            count: manifest.skipped_unreadable,
+        });
+    }
 
     // Decrypted payloads are moved into the plan here, so the key is no longer needed after.
     let key = match options.key {
