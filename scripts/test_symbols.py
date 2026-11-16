@@ -4,8 +4,10 @@
   python3 -I scripts/test_symbols.py
 """
 import json
+import os
 import pathlib
 import sys
+import tempfile
 import unittest
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
@@ -370,6 +372,25 @@ class Committed(unittest.TestCase):
         for k, s in lock["sources"].items():
             self.assertRegex(s["sha256"], r"^[0-9a-f]{64}$", k)
             self.assertTrue(s["url"].startswith("https://"), k)
+
+    def test_every_emoji_of_the_pinned_emoji_test_file_is_in_the_catalogue_live(self):
+        """TOOLS-45: the catalogue is the pinned emoji-test.txt, sequence for sequence.
+
+        Opt-in (`SNIPDECK_LIVE=1`): it downloads the file (the sha256 pin is checked, a changed
+        upstream file is refused) and compares every default-tone emoji with `emoji.tsv.z`.
+        """
+        if os.environ.get("SNIPDECK_LIVE") != "1":
+            self.skipTest("set SNIPDECK_LIVE=1 to download the pinned emoji-test.txt")
+        lock = json.loads(symbols.LOCK.read_text())
+        raw = symbols.fetch(lock["sources"]["emoji-test"], pathlib.Path(tempfile.mkdtemp()))
+        entries, _ = symbols.parse_emoji_test(raw.decode("utf-8"))
+        rows = symbols.inflate((symbols.DATA / "emoji.tsv.z").read_bytes()).decode("utf-8").splitlines()
+        self.assertEqual([e["seq"] for e in entries], [r.split("\t")[0] for r in rows])
+
+    def test_the_manifest_pins_the_same_emoji_test_hash_as_the_lock(self):
+        lock = json.loads(symbols.LOCK.read_text())
+        m = json.loads(symbols.MANIFEST.read_text())
+        self.assertEqual(m["sources"]["emoji-test"], lock["sources"]["emoji-test"]["sha256"])
 
 
 if __name__ == "__main__":

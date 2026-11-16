@@ -1584,6 +1584,12 @@ msgstr "Microsoft Store"
 msgid "More"
 msgstr "Plus"
 
+msgid "More formats"
+msgstr "Autres formats"
+
+msgid "More formats…"
+msgstr "Autres formats…"
+
 msgid "More options"
 msgstr "Plus d’options"
 
@@ -1743,6 +1749,9 @@ msgstr "Aucune couleur dans le presse-papiers"
 
 msgid "No commands match “{}”"
 msgstr "Aucune commande ne correspond à « {} »"
+
+msgid "No hue to rotate. Greys, white and black have none."
+msgstr "Aucune teinte à faire pivoter. Les gris, le blanc et le noir n'en ont pas."
 
 msgid "No icon"
 msgstr "Aucune icône"

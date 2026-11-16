@@ -1584,6 +1584,12 @@ msgstr "Microsoft Store"
 msgid "More"
 msgstr "Más"
 
+msgid "More formats"
+msgstr "Más formatos"
+
+msgid "More formats…"
+msgstr "Más formatos…"
+
 msgid "More options"
 msgstr "Más opciones"
 
@@ -1743,6 +1749,9 @@ msgstr "No hay ningún color en el portapapeles"
 
 msgid "No commands match “{}”"
 msgstr "Ningún comando coincide con «{}»"
+
+msgid "No hue to rotate. Greys, white and black have none."
+msgstr "Sin tono que rotar. Los grises, el blanco y el negro no tienen."
 
 msgid "No icon"
 msgstr "Sin icono"

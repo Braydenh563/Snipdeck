@@ -166,7 +166,7 @@ export global ColourState {
     // The current colour in each of the extra formats (code, frameworks), in menu order.
     in property <[MenuEntry]> extras;
     callback extra-copied(int);
-    // Open popup: 0 none, 1 a chip's menu, 2 a format row's menu, 3 Save to…, 4 Copy as…. The Panel closes it on Esc.
+    // Open popup: 0 none, 1 a chip's menu, 2 a format row's menu, 3 Save to…, 4 Copy as…, 5 More formats…. The Panel closes it on Esc.
     in-out property <int> popup: 0;
     // Ctrl+Shift+S asks the tab to open Save to…; a printable key asks it to type `typed` into the input line.
     in-out property <int> save-to-ticks: 0;

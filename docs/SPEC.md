@@ -243,3 +243,6 @@ Post-1.0, decided:
 - Symbols, a skin tone drawn in the grid as art: tones paste and are remembered, but the grid shows the default (yellow) art, because tone art would cost about 5x the people art (~1.2 MB).
 - Symbols, Add to list for an icon: an icon is not text; saving it as an Image item needs the item editor's PNG path and is not planned before 1.1.
 - Symbols, the Windows verification of system-style emoji and kaomoji fonts: needs the owner on Windows (`tools/windows-test/`).
+- Colours and Symbols as standalone or pinnable windows (TOOLS-58): the Panel is one window with tabs and hides on focus loss by design; a second always-open window needs its own focus, dock and z-order rules and a Windows pass that cannot be done before release. The eyedropper already hides and restores the main window around a pick.
+- Colours, nearest Tailwind colour: needs a vendored palette and a licence check; the nearest CSS name already covers naming.
+- Colours, a custom copy-format template editor and a hex-case setting UI: `custom_format` exists in the colour crate and is tested, but a template editor needs Settings layout, validation wording and six translations; hex stays lower-case.

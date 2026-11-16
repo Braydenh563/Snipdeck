@@ -1509,3 +1509,72 @@ fn the_colours_tab_light_and_dark_at_default_and_150_percent_text() {
         );
     }
 }
+
+#[test]
+fn more_formats_lists_every_code_format_and_the_note_names_a_colour_without_hue() {
+    let r = rig(false, (320, 900));
+    r.state().invoke_input_edited("#808080".into());
+    r.settle();
+    assert_eq!(
+        r.state().get_extras().row_count(),
+        snipdeck_colour::ExtraFormat::ALL.len()
+    );
+    assert_eq!(
+        r.state().get_extras().row_data(0).unwrap().text.as_str(),
+        snipdeck_colour::extra_text(
+            Rgba8::from_hex("#808080").unwrap(),
+            snipdeck_colour::ExtraFormat::ALL[0]
+        )
+    );
+    assert!(r.state().get_scheme_no_hue(), "a grey has no hue to rotate");
+    r.state().invoke_input_edited("#3a7bd5".into());
+    r.settle();
+    assert!(!r.state().get_scheme_no_hue());
+}
+
+#[test]
+fn the_more_formats_button_fits_and_opens_its_menu_at_every_text_size() {
+    for (width, scale) in [(260_u32, 1.0_f32), (260, 1.5), (320, 2.25), (480, 1.0)] {
+        let r = rig(false, (width, 1400));
+        r.set_text_scale(scale);
+        let at = format!("{width}px, text x{scale}");
+        let button = r.by_label(AccessibleRole::Button, "More formats…");
+        let (p, s) = (button.absolute_position(), button.size());
+        assert!(s.height >= 24.0 && s.width >= 24.0, "{at}: {s:?}");
+        assert!(
+            p.x >= 0.0 && p.x + s.width <= width as f32,
+            "{at}: x {} w {}",
+            p.x,
+            s.width
+        );
+        button.invoke_accessible_default_action();
+        r.settle();
+        assert_eq!(r.state().get_popup(), 5, "{at}: the menu is open");
+        r.press(&key(Key::Escape));
+        assert_eq!(r.state().get_popup(), 0, "{at}: Esc closes only the menu");
+        assert!(r.h.component.get_colours_open(), "{at}");
+    }
+}
+
+#[test]
+fn choosing_a_more_format_copies_it_and_closes_the_menu() {
+    let r = rig(false, (320, 1400));
+    r.state().invoke_input_edited("#3a7bd5".into());
+    r.settle();
+    r.by_label(AccessibleRole::Button, "More formats…")
+        .invoke_accessible_default_action();
+    r.settle();
+    assert_eq!(r.state().get_popup(), 5);
+    r.state().invoke_extra_copied(0);
+    r.settle();
+    let want = snipdeck_colour::extra_text(
+        Rgba8::from_hex("#3a7bd5").unwrap(),
+        snipdeck_colour::ExtraFormat::ALL[0],
+    );
+    let ctl = r.ctl.borrow();
+    let last = ctl.services().clipboard.written.last().expect("a copy");
+    assert!(
+        format!("{:?}", last.data()).contains(&want),
+        "copied {want}"
+    );
+}

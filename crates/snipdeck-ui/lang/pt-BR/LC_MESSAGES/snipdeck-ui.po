@@ -1584,6 +1584,12 @@ msgstr "Microsoft Store"
 msgid "More"
 msgstr "Mais"
 
+msgid "More formats"
+msgstr "Mais formatos"
+
+msgid "More formats…"
+msgstr "Mais formatos…"
+
 msgid "More options"
 msgstr "Mais opções"
 
@@ -1743,6 +1749,9 @@ msgstr "Nenhuma cor na área de transferência"
 
 msgid "No commands match “{}”"
 msgstr "Nenhum comando corresponde a “{}”"
+
+msgid "No hue to rotate. Greys, white and black have none."
+msgstr "Nenhum matiz para girar. Cinzas, branco e preto não têm."
 
 msgid "No icon"
 msgstr "Sem ícone"

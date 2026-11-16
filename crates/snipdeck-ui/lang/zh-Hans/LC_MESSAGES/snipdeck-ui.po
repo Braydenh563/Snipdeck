@@ -1580,6 +1580,12 @@ msgstr "Microsoft Store"
 msgid "More"
 msgstr "更多"
 
+msgid "More formats"
+msgstr "更多格式"
+
+msgid "More formats…"
+msgstr "更多格式…"
+
 msgid "More options"
 msgstr "更多选项"
 
@@ -1737,6 +1743,9 @@ msgstr "剪贴板中没有颜色"
 
 msgid "No commands match “{}”"
 msgstr "没有与“{}”匹配的命令"
+
+msgid "No hue to rotate. Greys, white and black have none."
+msgstr "没有可旋转的色相。灰色、白色和黑色没有色相。"
 
 msgid "No icon"
 msgstr "无图标"

@@ -1580,6 +1580,12 @@ msgstr "Microsoft Store"
 msgid "More"
 msgstr "その他"
 
+msgid "More formats"
+msgstr "その他の形式"
+
+msgid "More formats…"
+msgstr "その他の形式…"
+
 msgid "More options"
 msgstr "その他のオプション"
 
@@ -1737,6 +1743,9 @@ msgstr "クリップボードに色がありません"
 
 msgid "No commands match “{}”"
 msgstr "「{}」に一致するコマンドはありません"
+
+msgid "No hue to rotate. Greys, white and black have none."
+msgstr "回転できる色相がありません。グレー、白、黒には色相がありません。"
 
 msgid "No icon"
 msgstr "アイコンなし"

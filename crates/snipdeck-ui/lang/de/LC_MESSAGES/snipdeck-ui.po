@@ -1584,6 +1584,12 @@ msgstr "Microsoft Store"
 msgid "More"
 msgstr "Mehr"
 
+msgid "More formats"
+msgstr "Weitere Formate"
+
+msgid "More formats…"
+msgstr "Weitere Formate…"
+
 msgid "More options"
 msgstr "Weitere Optionen"
 
@@ -1743,6 +1749,9 @@ msgstr "Keine Farbe in der Zwischenablage"
 
 msgid "No commands match “{}”"
 msgstr "Keine Befehle passen zu „{}“"
+
+msgid "No hue to rotate. Greys, white and black have none."
+msgstr "Kein Farbton zum Drehen. Grau, Weiß und Schwarz haben keinen."
 
 msgid "No icon"
 msgstr "Kein Symbol"
