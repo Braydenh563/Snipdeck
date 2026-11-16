@@ -481,8 +481,14 @@ mod tests {
         let provider = provider();
         let ring = KeyRing::new(&provider).with_kdf_params(fast());
         let (key, record) = ring.create(Some(nfd.as_str())).unwrap();
-        assert!(same_key(&key, &ring.unlock(&record, Some(nfc.as_str())).unwrap()));
-        assert!(same_key(&key, &ring.unlock(&record, Some(nfd.as_str())).unwrap()));
+        assert!(same_key(
+            &key,
+            &ring.unlock(&record, Some(nfc.as_str())).unwrap()
+        ));
+        assert!(same_key(
+            &key,
+            &ring.unlock(&record, Some(nfd.as_str())).unwrap()
+        ));
         assert!(matches!(
             ring.unlock(&record, Some(accented("e").as_str())),
             Err(CryptoError::WrongPassword)
@@ -498,15 +504,23 @@ mod tests {
         // An old record: sealed under the raw (NFD) text, as earlier versions did.
         let inner = seal_with_exact_password(&key, &nfd, fast()).unwrap();
         let old = record_with_inner(&provider, &inner);
-        assert!(same_key(&key, &ring.unlock(&old, Some(nfd.as_str())).unwrap()));
+        assert!(same_key(
+            &key,
+            &ring.unlock(&old, Some(nfd.as_str())).unwrap()
+        ));
         // The NFC form of the same text is tried as its decomposed form too.
-        assert!(same_key(&key, &ring.unlock(&old, Some(nfc.as_str())).unwrap()));
+        assert!(same_key(
+            &key,
+            &ring.unlock(&old, Some(nfc.as_str())).unwrap()
+        ));
         assert!(matches!(
             ring.unlock(&old, Some("wrong")),
             Err(CryptoError::WrongPassword)
         ));
         // Rotation re-seals under NFC: a new record opens with either form.
-        let rotation = ring.rotate(&old, Some(nfd.as_str()), Some(nfd.as_str())).unwrap();
+        let rotation = ring
+            .rotate(&old, Some(nfd.as_str()), Some(nfd.as_str()))
+            .unwrap();
         let fresh = ring.unlock(&rotation.record, Some(nfc.as_str())).unwrap();
         assert!(same_key(&rotation.new, &fresh));
     }
