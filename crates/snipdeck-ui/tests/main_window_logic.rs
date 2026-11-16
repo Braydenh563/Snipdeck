@@ -1639,7 +1639,7 @@ ui_tests! {
             assert!(p.x >= 0.0 && p.y >= 0.0, "inside at the top left: {p:?} at {w}x{h}@{scale}");
             assert!(p.x + s.width <= w + 0.5, "inside at the right: {p:?} {s:?} at {w}x{h}@{scale}");
             assert!(p.y + s.height <= h + 0.5, "inside at the bottom: {p:?} {s:?} at {w}x{h}@{scale}");
-            if scale == 1.0 {
+            if scale < 1.5 {
                 assert!((p.x - bp.x).abs() <= 1.0, "left edge on the button: {p:?} vs {bp:?}");
                 // Below the button, or pushed up by its real height (300px) when the bar is at the bottom.
                 let want = (bp.y + bs.height).min(h - 300.0);
