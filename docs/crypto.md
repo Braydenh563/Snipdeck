@@ -151,7 +151,7 @@ What is **not** guaranteed:
 ## Windows Hello (v1.1)
 
 Hello never holds the data key and nothing is written to disk. After a password unlock the app asks
-Hello once to sign a fixed challenge (`KeyCredentialManager`, RSA PKCS#1 v1.5, deterministic).
+Hello once to sign a random per-seal challenge (kept with the in-memory sealed copy, so every seal has its own secret) (`KeyCredentialManager`, RSA PKCS#1 v1.5, deterministic).
 `KEK = SHA-256("snipdeck-hello-kek-v1" || signature)` seals the data key with `aead.rs`
 (`store/crypto/hello.rs`, `SealedKey`) into an in-memory copy that also records the time of the
 password unlock. Turning Hello on signs twice (two prompts) and refuses a Hello whose two signatures differ; every later seal (after a password unlock) signs once. A later Hello prompt re-signs the challenge and opens it. A restart
