@@ -653,6 +653,8 @@ export component MainWindow inherits Window {
     property <bool> chooser-paste: false;
     // ... and they are a colour row's formats.
     property <bool> chooser-colour: false;
+    // 240px at text size, never wider than the window (MAIN-5).
+    property <length> chooser-w: min(240px * root.text-scale, root.width);
     property <length> chooser-x: 0px;
     property <length> chooser-y: 0px;
     // What the confirmation dialog is asking: 0 none, 1 delete a list, 2 delete a tag, 3 empty the Trash,
@@ -892,7 +894,7 @@ export component MainWindow inherits Window {
             root.colour-choices-requested(index);
         }
         // The chooser is `240px * text-scale` wide: clamp with its real size, so it never leaves the window (MAIN-5).
-        root.chooser-x = max(0px, min(root.item-menu-x, root.width - 240px * root.text-scale));
+        root.chooser-x = max(0px, min(root.item-menu-x, root.width - root.chooser-w));
         root.chooser-y = max(0px, min(root.item-menu-y, root.height - 300px * root.text-scale));
         root.chooser-open = true;
     }
@@ -3103,7 +3105,7 @@ export component MainWindow inherits Window {
     if root.chooser-open: Chooser {
         x: root.chooser-x;
         y: root.chooser-y;
-        width: 240px * SystemLook.text-scale;
+        width: root.chooser-w;
         multi: root.chooser-tags;
         entries: root.chooser-paste ? (root.chooser-colour ? root.colour-choices : root.paste-choices) : root.chooser-tags ? root.tag-choices : root.lists;
         label: root.chooser-paste ? MenuTexts.item-paste-as() : root.chooser-tags ? @tr("Tags") : @tr("Move to list");
