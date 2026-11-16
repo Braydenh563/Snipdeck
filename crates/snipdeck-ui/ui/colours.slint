@@ -52,7 +52,6 @@ export global ColourTexts {
     pure public function format-name() -> string { return @tr("Name"); }
     pure public function near(name: string) -> string { return @tr("near {}", name); }
     pure public function exact(name: string) -> string { return @tr("{}", name); }
-    pure public function no-name() -> string { return @tr("no close name"); }
     pure public function not-a-colour(sample: string) -> string {
         return @tr("Not a colour. Try {}", sample);
     }

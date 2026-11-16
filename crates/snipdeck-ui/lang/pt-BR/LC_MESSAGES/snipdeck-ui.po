@@ -1560,9 +1560,6 @@ msgstr "Senha mestra definida."
 msgid "Menu"
 msgstr "Menu"
 
-msgid "Microsoft Store"
-msgstr "Microsoft Store"
-
 msgid "More"
 msgstr "Mais"
 
@@ -1905,9 +1902,6 @@ msgstr "Abrir pasta de logs"
 
 msgid "Open the Colours list"
 msgstr "Abrir a lista Cores"
-
-msgid "Open the Microsoft Store page"
-msgstr "Abrir a página da Microsoft Store"
 
 msgid "Open the Panel from anywhere"
 msgstr "Abra o painel de qualquer lugar"
@@ -3686,9 +3680,6 @@ msgstr "perto de {}"
 
 msgid "never paste excluded apps"
 msgstr "nunca colar apps excluídos"
-
-msgid "no close name"
-msgstr "nenhum nome próximo"
 
 msgid "notepad.exe"
 msgstr "notepad.exe"

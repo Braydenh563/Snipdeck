@@ -1556,9 +1556,6 @@ msgstr "主密码已设置。"
 msgid "Menu"
 msgstr "菜单"
 
-msgid "Microsoft Store"
-msgstr "Microsoft Store"
-
 msgid "More"
 msgstr "更多"
 
@@ -1899,9 +1896,6 @@ msgstr "打开日志文件夹"
 
 msgid "Open the Colours list"
 msgstr "打开“颜色”列表"
-
-msgid "Open the Microsoft Store page"
-msgstr "打开 Microsoft Store 页面"
 
 msgid "Open the Panel from anywhere"
 msgstr "随处打开面板"
@@ -3676,9 +3670,6 @@ msgstr "接近 {}"
 
 msgid "never paste excluded apps"
 msgstr "从不粘贴 排除的程序"
-
-msgid "no close name"
-msgstr "无相近名称"
 
 msgid "notepad.exe"
 msgstr "notepad.exe"

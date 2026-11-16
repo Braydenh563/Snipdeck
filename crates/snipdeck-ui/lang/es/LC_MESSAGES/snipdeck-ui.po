@@ -1560,9 +1560,6 @@ msgstr "Contraseña maestra establecida."
 msgid "Menu"
 msgstr "Menú"
 
-msgid "Microsoft Store"
-msgstr "Microsoft Store"
-
 msgid "More"
 msgstr "Más"
 
@@ -1905,9 +1902,6 @@ msgstr "Abrir carpeta de registros"
 
 msgid "Open the Colours list"
 msgstr "Abrir la lista Colores"
-
-msgid "Open the Microsoft Store page"
-msgstr "Abrir la página de Microsoft Store"
 
 msgid "Open the Panel from anywhere"
 msgstr "Abre el panel desde cualquier lugar"
@@ -3686,9 +3680,6 @@ msgstr "cerca de {}"
 
 msgid "never paste excluded apps"
 msgstr "nunca pegar programas excluidos"
-
-msgid "no close name"
-msgstr "ningún nombre cercano"
 
 msgid "notepad.exe"
 msgstr "notepad.exe"

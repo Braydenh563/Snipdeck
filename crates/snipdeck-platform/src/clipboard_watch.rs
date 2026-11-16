@@ -101,12 +101,8 @@ pub fn rich_flavours(html: Option<&[u8]>, rtf: Option<&[u8]>) -> (Option<String>
     )
 }
 
-/// The registered clipboard format that password managers add to say "do not monitor this".
-pub const EXCLUDE_MONITOR_FORMAT: &str = "ExcludeClipboardContentFromMonitorProcessing";
 /// The older marker (older `KeePass` and others): present means "viewers must ignore this".
 pub const VIEWER_IGNORE_FORMAT: &str = "Clipboard Viewer Ignore";
-/// The DWORD format that is 0 when the content must stay out of Windows clipboard history.
-pub const HISTORY_FORMAT: &str = "CanIncludeInClipboardHistory";
 
 /// Which "keep me out of history" markers are on the clipboard, read while it is open.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]

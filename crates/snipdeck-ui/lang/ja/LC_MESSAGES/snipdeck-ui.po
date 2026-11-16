@@ -1556,9 +1556,6 @@ msgstr "マスターパスワードを設定しました。"
 msgid "Menu"
 msgstr "メニュー"
 
-msgid "Microsoft Store"
-msgstr "Microsoft Store"
-
 msgid "More"
 msgstr "その他"
 
@@ -1899,9 +1896,6 @@ msgstr "ログフォルダーを開く"
 
 msgid "Open the Colours list"
 msgstr "カラーのリストを開く"
-
-msgid "Open the Microsoft Store page"
-msgstr "Microsoft Store のページを開く"
 
 msgid "Open the Panel from anywhere"
 msgstr "どこからでもパネルを開く"
@@ -3676,9 +3670,6 @@ msgstr "{}に近い"
 
 msgid "never paste excluded apps"
 msgstr "貼り付けない 除外するプログラム"
-
-msgid "no close name"
-msgstr "近い名前なし"
 
 msgid "notepad.exe"
 msgstr "notepad.exe"

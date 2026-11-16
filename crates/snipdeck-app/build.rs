@@ -15,9 +15,32 @@ const ICON_ID: &str = "1";
 /// The icon, relative to this crate.
 const ICON: &str = "../../assets/logo/snipdeck.ico";
 
+/// The UTC date (`YYYY-MM-DD`) of a Unix time, by the civil-from-days rule.
+fn date_of(secs: i64) -> String {
+    let z = secs.div_euclid(86_400) + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z.rem_euclid(146_097);
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = yoe + era * 400 + i64::from(month <= 2);
+    format!("{year:04}-{month:02}-{day:02}")
+}
+
 fn main() {
     println!("cargo:rerun-if-changed={ICON}");
     println!("cargo:rerun-if-changed=build.rs");
+    // The build date shown in Help: the reproducible-builds time (the release job sets it from
+    // the tagged commit), never the machine's clock. Without it the row stays empty.
+    println!("cargo:rerun-if-env-changed=SOURCE_DATE_EPOCH");
+    if let Some(secs) = std::env::var("SOURCE_DATE_EPOCH")
+        .ok()
+        .and_then(|v| v.trim().parse::<i64>().ok())
+    {
+        println!("cargo:rustc-env=SNIPDECK_BUILD_DATE={}", date_of(secs));
+    }
     // The target, not the machine building: a cross build from Linux to Windows needs the
     // resource, a native Windows build for another target does not.
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("windows") {

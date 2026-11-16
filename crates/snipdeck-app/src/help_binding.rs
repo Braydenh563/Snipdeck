@@ -54,8 +54,6 @@ pub const SUPPORT_URL: &str = "https://buymeacoffee.com/braydenh563";
 
 /// The user guide, opened in the browser by [`HelpTopic::Guide`].
 pub const GUIDE_URL: &str = "https://github.com/Braydenh563/Snipdeck/blob/main/docs/user-guide.md";
-/// The Microsoft Store page; the link stays hidden while this is `None`.
-pub const STORE_URL: Option<&str> = None;
 
 // ---- What the machine is asked to do -----------------------------------------------------------
 
@@ -397,7 +395,6 @@ where
         window.set_version(env!("CARGO_PKG_VERSION").into());
         window.set_build_date(build_date().into());
         window.set_source_url(REPO_URL.into());
-        window.set_show_store_link(STORE_URL.is_some());
         {
             let checks = self.checks.borrow();
             window.set_problems(
@@ -667,11 +664,6 @@ where
         wire!(on_support_requested, |core| core.open_url(SUPPORT_URL));
         wire!(on_source_requested, |core| core.open_url(REPO_URL));
         wire!(on_releases_requested, |core| core.open_url(updates_url()));
-        wire!(on_store_requested, |core| {
-            if let Some(url) = STORE_URL {
-                core.open_url(url);
-            }
-        });
         wire!(on_notices_requested, |core| {
             let opened = core
                 .host

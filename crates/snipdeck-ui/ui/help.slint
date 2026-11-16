@@ -68,8 +68,6 @@ export component HelpWindow inherits Window {
     in property <string> version: "0.1.0";
     in property <string> build-date;
     in property <string> source-url;
-    // The Microsoft Store link is hidden until there is a page to link to.
-    in property <bool> show-store-link: false;
     callback toast-dismissed();
     in property <string> toast-text;
     in property <ToastKind> toast-kind: ToastKind.neutral;
@@ -91,7 +89,6 @@ export component HelpWindow inherits Window {
     callback tour-requested();
     callback source-requested();
     callback releases-requested();
-    callback store-requested();
     // "Support Snipdeck": the host opens the optional donation page in the browser.
     callback support-requested();
     callback notices-requested();
@@ -478,14 +475,6 @@ export component HelpWindow inherits Window {
                                 text: @tr("Open");
                                 a11y-label: @tr("Open the Support Snipdeck page in your browser");
                                 clicked => { root.support-requested(); }
-                            }
-                        }
-                        if root.show-store-link: SettingRow {
-                            title: @tr("Microsoft Store");
-                            Button {
-                                text: @tr("Open");
-                                a11y-label: @tr("Open the Microsoft Store page");
-                                clicked => { root.store-requested(); }
                             }
                         }
                         SettingRow {

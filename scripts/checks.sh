@@ -20,6 +20,7 @@ run installer-tests python3 -I scripts/test_installer_check.py
 run msix-tests python3 -I scripts/test_msix_manifest.py
 run bump-tests python3 -I scripts/test_bump_version.py
 run notices python3 scripts/third_party_notices.py --check
+run halfbuilt python3 scripts/halfbuilt.py --check
 
 for t in scripts/test_*.py; do
   grep -q "$t" scripts/checks.sh || { echo "not wired into scripts/checks.sh: $t"; failed+=("unwired $t"); }

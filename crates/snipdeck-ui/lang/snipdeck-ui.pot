@@ -6,11 +6,11 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: ui/colours.slint:1155
+#: ui/colours.slint:1154
 msgid "#3a7bd5, rgb(58, 123, 213), royalblue"
 msgstr ""
 
-#: ui/colours.slint:1513
+#: ui/colours.slint:1512
 msgid "#ffffff"
 msgstr ""
 
@@ -122,23 +122,23 @@ msgstr ""
 msgid "A trigger is 1 to 32 characters with no spaces."
 msgstr ""
 
-#: ui/colours.slint:919
+#: ui/colours.slint:918
 msgid "AA"
 msgstr ""
 
-#: ui/colours.slint:926
+#: ui/colours.slint:925
 msgid "AA large"
 msgstr ""
 
-#: ui/colours.slint:933
+#: ui/colours.slint:932
 msgid "AAA"
 msgstr ""
 
-#: ui/colours.slint:940
+#: ui/colours.slint:939
 msgid "AAA large"
 msgstr ""
 
-#: ui/help.slint:139
+#: ui/help.slint:136
 msgid "About"
 msgstr ""
 
@@ -244,7 +244,7 @@ msgstr[1] ""
 msgid "All {} recent copies are removed. This can’t be undone."
 msgstr ""
 
-#: ui/colours.slint:1327
+#: ui/colours.slint:1326
 msgid "Alpha"
 msgstr ""
 
@@ -284,7 +284,7 @@ msgstr ""
 msgid "An item is open in the editor, so the pasted text was not added. Close it, then paste again."
 msgstr ""
 
-#: ui/colours.slint:69
+#: ui/colours.slint:68
 msgid "Analogous"
 msgstr ""
 
@@ -364,7 +364,7 @@ msgstr ""
 msgid "Back to editing (Ctrl+P)"
 msgstr ""
 
-#: ui/help.slint:113 ui/settings.slint:1462
+#: ui/help.slint:110 ui/settings.slint:1462
 msgid "Back up now"
 msgstr ""
 
@@ -424,7 +424,7 @@ msgstr ""
 msgid "Bottom edge"
 msgstr ""
 
-#: ui/colours.slint:1317
+#: ui/colours.slint:1316
 msgid "Brightness"
 msgstr ""
 
@@ -448,15 +448,15 @@ msgstr ""
 msgid "Browse…"
 msgstr ""
 
-#: ui/help.slint:425
+#: ui/help.slint:422
 msgid "Built on"
 msgstr ""
 
-#: ui/colours.slint:76
+#: ui/colours.slint:75
 msgid "CMYK"
 msgstr ""
 
-#: ui/components/hotkey_health.slint:39 ui/components/quick-add.slint:182 ui/editors.slint:1522 ui/editors.slint:1906 ui/editors.slint:1944 ui/editors.slint:2285 ui/help.slint:516 ui/main_window.slint:2917 ui/main_window.slint:2939 ui/master_password.slint:270 ui/master_password.slint:405 ui/panel.slint:3150 ui/panel.slint:3168 ui/panel.slint:3186 ui/settings.slint:1113 ui/settings.slint:1661 ui/settings.slint:1735 ui/template_fill.slint:330
+#: ui/components/hotkey_health.slint:39 ui/components/quick-add.slint:182 ui/editors.slint:1522 ui/editors.slint:1906 ui/editors.slint:1944 ui/editors.slint:2285 ui/help.slint:505 ui/main_window.slint:2917 ui/main_window.slint:2939 ui/master_password.slint:270 ui/master_password.slint:405 ui/panel.slint:3150 ui/panel.slint:3168 ui/panel.slint:3186 ui/settings.slint:1113 ui/settings.slint:1661 ui/settings.slint:1735 ui/template_fill.slint:330
 msgid "Cancel"
 msgstr ""
 
@@ -492,15 +492,15 @@ msgstr ""
 msgid "Change…"
 msgstr ""
 
-#: ui/help.slint:226
+#: ui/help.slint:223
 msgid "Check again"
 msgstr ""
 
-#: ui/help.slint:466
+#: ui/help.slint:463
 msgid "Check for updates"
 msgstr ""
 
-#: ui/help.slint:167
+#: ui/help.slint:164
 msgid "Checks"
 msgstr ""
 
@@ -564,7 +564,7 @@ msgstr ""
 msgid "Clear recent history?"
 msgstr ""
 
-#: ui/components/command-palette.slint:189 ui/help.slint:270 ui/main_window.slint:1539 ui/panel.slint:1897 ui/panel.slint:2584 ui/picker.slint:467 ui/symbols.slint:167
+#: ui/components/command-palette.slint:189 ui/help.slint:267 ui/main_window.slint:1539 ui/panel.slint:1897 ui/panel.slint:2584 ui/picker.slint:467 ui/symbols.slint:167
 msgid "Clear search"
 msgstr ""
 
@@ -604,7 +604,7 @@ msgstr ""
 msgid "Click"
 msgstr ""
 
-#: ui/colours.slint:99 ui/panel.slint:2539
+#: ui/colours.slint:98 ui/panel.slint:2539
 msgid "Click copies"
 msgstr ""
 
@@ -612,11 +612,11 @@ msgstr ""
 msgid "Click or Enter pastes. Shift+click or Shift+Enter copies."
 msgstr ""
 
-#: ui/colours.slint:100
+#: ui/colours.slint:99
 msgid "Click or Enter picks · Esc cancels · arrows move"
 msgstr ""
 
-#: ui/colours.slint:79 ui/panel.slint:2539
+#: ui/colours.slint:78 ui/panel.slint:2539
 msgid "Click pastes into {} · Shift+click copies"
 msgstr ""
 
@@ -664,7 +664,7 @@ msgstr ""
 msgid "Collapse sidebar (Ctrl+B)"
 msgstr ""
 
-#: ui/colours.slint:1154 ui/colours.slint:1604 ui/editors.slint:1850 ui/editors.slint:1853 ui/main_window.slint:2418 ui/menu_texts.slint:88 ui/panel.slint:2651
+#: ui/colours.slint:1153 ui/colours.slint:1603 ui/editors.slint:1850 ui/editors.slint:1853 ui/main_window.slint:2418 ui/menu_texts.slint:88 ui/panel.slint:2651
 msgid "Colour"
 msgstr ""
 
@@ -672,7 +672,7 @@ msgstr ""
 msgid "Colour label"
 msgstr ""
 
-#: ui/colours.slint:66 ui/command_texts.slint:20 ui/panel.slint:2024
+#: ui/colours.slint:65 ui/command_texts.slint:20 ui/panel.slint:2024
 msgid "Colours"
 msgstr ""
 
@@ -712,7 +712,7 @@ msgstr ""
 msgid "Compact view"
 msgstr ""
 
-#: ui/colours.slint:68
+#: ui/colours.slint:67
 msgid "Complementary"
 msgstr ""
 
@@ -720,7 +720,7 @@ msgstr ""
 msgid "Content"
 msgstr ""
 
-#: ui/colours.slint:1496
+#: ui/colours.slint:1495
 msgid "Contrast"
 msgstr ""
 
@@ -756,7 +756,7 @@ msgstr ""
 msgid "Copied. {} runs as administrator, so Snipdeck can’t paste into it."
 msgstr ""
 
-#: ui/colours.slint:614 ui/colours.slint:1643 ui/components/item-card.slint:925 ui/components/text_field.slint:229 ui/main_window.slint:957 ui/main_window.slint:2702 ui/menu_texts.slint:136 ui/panel.slint:597 ui/panel.slint:3099 ui/panel.slint:3104 ui/picker.slint:189 ui/picker.slint:625 ui/template_fill.slint:66
+#: ui/colours.slint:613 ui/colours.slint:1642 ui/components/item-card.slint:925 ui/components/text_field.slint:229 ui/main_window.slint:957 ui/main_window.slint:2702 ui/menu_texts.slint:136 ui/panel.slint:597 ui/panel.slint:3099 ui/panel.slint:3104 ui/picker.slint:189 ui/picker.slint:625 ui/template_fill.slint:66
 msgid "Copy"
 msgstr ""
 
@@ -776,7 +776,7 @@ msgstr ""
 msgid "Copy all"
 msgstr ""
 
-#: ui/colours.slint:1698
+#: ui/colours.slint:1697
 msgid "Copy as"
 msgstr ""
 
@@ -784,15 +784,15 @@ msgstr ""
 msgid "Copy as CSS variables"
 msgstr ""
 
-#: ui/colours.slint:1608
+#: ui/colours.slint:1607
 msgid "Copy as…"
 msgstr ""
 
-#: ui/help.slint:240
+#: ui/help.slint:237
 msgid "Copy diagnostic report"
 msgstr ""
 
-#: ui/colours.slint:1644
+#: ui/colours.slint:1643
 msgid "Copy only"
 msgstr ""
 
@@ -1336,7 +1336,7 @@ msgstr ""
 msgid "Emoji"
 msgstr ""
 
-#: ui/help.slint:493
+#: ui/help.slint:482
 msgid "Emoji art: Microsoft Fluent Emoji (MIT). Icons: Phosphor (MIT). Emoji names and keywords: Unicode CLDR (Unicode-3.0)."
 msgstr ""
 
@@ -1408,7 +1408,7 @@ msgstr ""
 msgid "Every command, one search away"
 msgstr ""
 
-#: ui/help.slint:156
+#: ui/help.slint:153
 msgid "Everything checks out."
 msgstr ""
 
@@ -1516,11 +1516,11 @@ msgstr ""
 msgid "Forgets the emoji, symbols and colours you used lately. Searches are never kept, so there is nothing else to clear."
 msgstr ""
 
-#: ui/colours.slint:1640
+#: ui/colours.slint:1639
 msgid "Format"
 msgstr ""
 
-#: ui/colours.slint:462 ui/colours.slint:1472
+#: ui/colours.slint:461 ui/colours.slint:1471
 msgid "Formats"
 msgstr ""
 
@@ -1596,7 +1596,7 @@ msgstr ""
 msgid "Group…"
 msgstr ""
 
-#: ui/colours.slint:101
+#: ui/colours.slint:100
 msgid "HDR is on for this screen: values are approximate"
 msgstr ""
 
@@ -1604,15 +1604,15 @@ msgstr ""
 msgid "HDR is on for this screen: {} is approximate."
 msgstr ""
 
-#: ui/colours.slint:76
+#: ui/colours.slint:75
 msgid "HEX"
 msgstr ""
 
-#: ui/colours.slint:76
+#: ui/colours.slint:75
 msgid "HSB"
 msgstr ""
 
-#: ui/colours.slint:76
+#: ui/colours.slint:75
 msgid "HSL"
 msgstr ""
 
@@ -1628,7 +1628,7 @@ msgstr ""
 msgid "Help"
 msgstr ""
 
-#: ui/help.slint:138
+#: ui/help.slint:135
 msgid "Help sections"
 msgstr ""
 
@@ -1708,15 +1708,15 @@ msgstr ""
 msgid "How wide the Panel opens, from {} to {} pixels."
 msgstr ""
 
-#: ui/colours.slint:1306
+#: ui/colours.slint:1305
 msgid "Hue"
 msgstr ""
 
-#: ui/colours.slint:1296
+#: ui/colours.slint:1295
 msgid "Hue and saturation"
 msgstr ""
 
-#: ui/colours.slint:96
+#: ui/colours.slint:95
 msgid "Hue {} degrees, saturation {} percent, brightness {} percent"
 msgstr ""
 
@@ -1950,7 +1950,7 @@ msgstr ""
 msgid "Link"
 msgstr ""
 
-#: ui/help.slint:437
+#: ui/help.slint:434
 msgid "Links"
 msgstr ""
 
@@ -2010,11 +2010,11 @@ msgstr ""
 msgid "Main window"
 msgstr ""
 
-#: ui/colours.slint:1607
+#: ui/colours.slint:1606
 msgid "Make current"
 msgstr ""
 
-#: ui/colours.slint:1645
+#: ui/colours.slint:1644
 msgid "Make default format"
 msgstr ""
 
@@ -2072,10 +2072,6 @@ msgstr ""
 
 #: ui/settings.slint:805
 msgid "Menu"
-msgstr ""
-
-#: ui/help.slint:484
-msgid "Microsoft Store"
 msgstr ""
 
 #: ui/components/item-card.slint:905 ui/panel.slint:1811
@@ -2234,11 +2230,11 @@ msgstr ""
 msgid "New item in {}"
 msgstr ""
 
-#: ui/colours.slint:88 ui/command_texts.slint:12 ui/command_texts.slint:16 ui/editors.slint:1959 ui/panel.slint:627 ui/panel.slint:2582 ui/panel.slint:2955 ui/shortcut_texts.slint:29 ui/shortcut_texts.slint:80
+#: ui/colours.slint:87 ui/command_texts.slint:12 ui/command_texts.slint:16 ui/editors.slint:1959 ui/panel.slint:627 ui/panel.slint:2582 ui/panel.slint:2955 ui/shortcut_texts.slint:29 ui/shortcut_texts.slint:80
 msgid "New list"
 msgstr ""
 
-#: ui/colours.slint:87
+#: ui/colours.slint:86
 msgid "New list…"
 msgstr ""
 
@@ -2370,7 +2366,7 @@ msgstr ""
 msgid "No target: click copies"
 msgstr ""
 
-#: ui/colours.slint:57
+#: ui/colours.slint:56
 msgid "Not a colour. Try {}"
 msgstr ""
 
@@ -2446,7 +2442,7 @@ msgstr ""
 msgid "Numbers the first nine rows so pressing Alt+1 to 9 uses that item."
 msgstr ""
 
-#: ui/help.slint:104
+#: ui/help.slint:101
 msgid "OK"
 msgstr ""
 
@@ -2466,19 +2462,19 @@ msgstr ""
 msgid "Off: a docked Panel does not tuck and hides like a floating one. Otherwise it tucks into a thin tab at its edge, and the Panel shortcut opens it too."
 msgstr ""
 
-#: ui/colours.slint:63
+#: ui/colours.slint:62
 msgid "On black"
 msgstr ""
 
-#: ui/colours.slint:64
+#: ui/colours.slint:63
 msgid "On this colour"
 msgstr ""
 
-#: ui/colours.slint:65
+#: ui/colours.slint:64
 msgid "On this colour (on white)"
 msgstr ""
 
-#: ui/colours.slint:62
+#: ui/colours.slint:61
 msgid "On white"
 msgstr ""
 
@@ -2490,7 +2486,7 @@ msgstr ""
 msgid "Only with Start with Windows: wait in the tray, or open the Panel as well."
 msgstr ""
 
-#: ui/help.slint:442 ui/help.slint:460 ui/help.slint:469 ui/help.slint:478 ui/help.slint:486 ui/help.slint:499 ui/settings.slint:1769
+#: ui/help.slint:439 ui/help.slint:457 ui/help.slint:466 ui/help.slint:475 ui/help.slint:488 ui/settings.slint:1769
 msgid "Open"
 msgstr ""
 
@@ -2502,7 +2498,7 @@ msgstr ""
 msgid "Open Picker"
 msgstr ""
 
-#: ui/help.slint:113 ui/main_window.slint:2377
+#: ui/help.slint:110 ui/main_window.slint:2377
 msgid "Open Settings"
 msgstr ""
 
@@ -2518,7 +2514,7 @@ msgstr ""
 msgid "Open backups folder"
 msgstr ""
 
-#: ui/help.slint:114 ui/help.slint:244 ui/settings.slint:1470
+#: ui/help.slint:111 ui/help.slint:241 ui/settings.slint:1470
 msgid "Open data folder"
 msgstr ""
 
@@ -2526,16 +2522,12 @@ msgstr ""
 msgid "Open in Colours"
 msgstr ""
 
-#: ui/help.slint:114 ui/help.slint:249
+#: ui/help.slint:111 ui/help.slint:246
 msgid "Open logs folder"
 msgstr ""
 
-#: ui/colours.slint:1444
+#: ui/colours.slint:1443
 msgid "Open the Colours list"
-msgstr ""
-
-#: ui/help.slint:487
-msgid "Open the Microsoft Store page"
 msgstr ""
 
 #: ui/tip_texts.slint:7
@@ -2546,7 +2538,7 @@ msgstr ""
 msgid "Open the Picker at your cursor"
 msgstr ""
 
-#: ui/help.slint:479 ui/settings.slint:1770
+#: ui/help.slint:476 ui/settings.slint:1770
 msgid "Open the Support Snipdeck page in your browser"
 msgstr ""
 
@@ -2558,19 +2550,19 @@ msgstr ""
 msgid "Open the picker"
 msgstr ""
 
-#: ui/help.slint:470
+#: ui/help.slint:467
 msgid "Open the releases page"
 msgstr ""
 
-#: ui/help.slint:461
+#: ui/help.slint:458
 msgid "Open the source code"
 msgstr ""
 
-#: ui/help.slint:500
+#: ui/help.slint:489
 msgid "Open the third-party notices"
 msgstr ""
 
-#: ui/help.slint:443
+#: ui/help.slint:440
 msgid "Open the user guide"
 msgstr ""
 
@@ -2586,11 +2578,11 @@ msgstr ""
 msgid "Opens"
 msgstr ""
 
-#: ui/help.slint:440
+#: ui/help.slint:437
 msgid "Opens in your browser."
 msgstr ""
 
-#: ui/help.slint:476 ui/settings.slint:1767
+#: ui/help.slint:473 ui/settings.slint:1767
 msgid "Optional. Snipdeck is free and stays free. This opens a donation page in your browser and unlocks nothing."
 msgstr ""
 
@@ -2602,7 +2594,7 @@ msgstr ""
 msgid "Orange"
 msgstr ""
 
-#: ui/colours.slint:1512
+#: ui/colours.slint:1511
 msgid "Other colour"
 msgstr ""
 
@@ -2690,7 +2682,7 @@ msgstr ""
 msgid "Paste next pastes the next item each time you press it."
 msgstr ""
 
-#: ui/colours.slint:1643
+#: ui/colours.slint:1642
 msgid "Paste or copy"
 msgstr ""
 
@@ -2742,7 +2734,7 @@ msgstr ""
 msgid "Pasted"
 msgstr ""
 
-#: ui/colours.slint:90
+#: ui/colours.slint:89
 msgid "Pasted image"
 msgstr ""
 
@@ -2806,7 +2798,7 @@ msgstr ""
 msgid "Pick a colour from the screen"
 msgstr ""
 
-#: ui/colours.slint:1177
+#: ui/colours.slint:1176
 msgid "Pick a colour from the screen (Ctrl+I)"
 msgstr ""
 
@@ -2818,7 +2810,7 @@ msgstr ""
 msgid "Pick one and it pastes where you were typing."
 msgstr ""
 
-#: ui/colours.slint:1230 ui/colours.slint:1252 ui/shortcut_texts.slint:11
+#: ui/colours.slint:1229 ui/colours.slint:1251 ui/shortcut_texts.slint:11
 msgid "Picker"
 msgstr ""
 
@@ -2826,7 +2818,7 @@ msgstr ""
 msgid "Picker position"
 msgstr ""
 
-#: ui/colours.slint:1274
+#: ui/colours.slint:1273
 msgid "Picker style"
 msgstr ""
 
@@ -2914,7 +2906,7 @@ msgstr ""
 msgid "Privacy"
 msgstr ""
 
-#: ui/help.slint:104
+#: ui/help.slint:101
 msgid "Problem"
 msgstr ""
 
@@ -2962,7 +2954,7 @@ msgstr ""
 msgid "Quit"
 msgstr ""
 
-#: ui/colours.slint:76
+#: ui/colours.slint:75
 msgid "RGB"
 msgstr ""
 
@@ -2970,15 +2962,15 @@ msgstr ""
 msgid "Ready. Press Test to check it."
 msgstr ""
 
-#: ui/help.slint:521
+#: ui/help.slint:510
 msgid "Rebuild"
 msgstr ""
 
-#: ui/help.slint:114
+#: ui/help.slint:111
 msgid "Rebuild from backup…"
 msgstr ""
 
-#: ui/help.slint:512
+#: ui/help.slint:501
 msgid "Rebuild from the newest backup?"
 msgstr ""
 
@@ -3006,7 +2998,7 @@ msgstr ""
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr ""
 
-#: ui/colours.slint:1385 ui/colours.slint:1388 ui/editors.slint:1886 ui/main_window.slint:1112 ui/main_window.slint:2844 ui/symbols.slint:39
+#: ui/colours.slint:1384 ui/colours.slint:1387 ui/editors.slint:1886 ui/main_window.slint:1112 ui/main_window.slint:2844 ui/symbols.slint:39
 msgid "Recently used"
 msgstr ""
 
@@ -3058,7 +3050,7 @@ msgstr ""
 msgid "Remove from paste stack"
 msgstr ""
 
-#: ui/colours.slint:1611
+#: ui/colours.slint:1610
 msgid "Remove from recents"
 msgstr ""
 
@@ -3182,15 +3174,15 @@ msgstr ""
 msgid "Sad"
 msgstr ""
 
-#: ui/colours.slint:1296
+#: ui/colours.slint:1295
 msgid "Saturation and brightness"
 msgstr ""
 
-#: ui/colours.slint:92
+#: ui/colours.slint:91
 msgid "Saturation {} percent, brightness {} percent"
 msgstr ""
 
-#: ui/colours.slint:1422 ui/editors.slint:1523 ui/editors.slint:1907 ui/shortcut_texts.slint:103
+#: ui/colours.slint:1421 ui/editors.slint:1523 ui/editors.slint:1907 ui/shortcut_texts.slint:103
 msgid "Save"
 msgstr ""
 
@@ -3214,23 +3206,23 @@ msgstr ""
 msgid "Save the clipboard as an item"
 msgstr ""
 
-#: ui/colours.slint:1676
+#: ui/colours.slint:1675
 msgid "Save to"
 msgstr ""
 
-#: ui/colours.slint:1609 ui/colours.slint:1646
+#: ui/colours.slint:1608 ui/colours.slint:1645
 msgid "Save to Colours"
 msgstr ""
 
-#: ui/colours.slint:1424
+#: ui/colours.slint:1423
 msgid "Save to Colours (Ctrl+S)"
 msgstr ""
 
-#: ui/colours.slint:1431
+#: ui/colours.slint:1430
 msgid "Save to a list (Ctrl+Shift+S)"
 msgstr ""
 
-#: ui/colours.slint:1428 ui/colours.slint:1610 ui/colours.slint:1647 ui/main_window.slint:2701 ui/main_window.slint:2726 ui/panel.slint:3098 ui/panel.slint:3103 ui/panel.slint:3128
+#: ui/colours.slint:1427 ui/colours.slint:1609 ui/colours.slint:1646 ui/main_window.slint:2701 ui/main_window.slint:2726 ui/panel.slint:3098 ui/panel.slint:3103 ui/panel.slint:3128
 msgid "Save to…"
 msgstr ""
 
@@ -3238,11 +3230,11 @@ msgstr ""
 msgid "Save what you paste often."
 msgstr ""
 
-#: ui/colours.slint:1416
+#: ui/colours.slint:1415
 msgid "Saved"
 msgstr ""
 
-#: ui/colours.slint:1451 ui/command_texts.slint:21
+#: ui/colours.slint:1450 ui/command_texts.slint:21
 msgid "Saved colours"
 msgstr ""
 
@@ -3278,11 +3270,11 @@ msgstr ""
 msgid "Saving…"
 msgstr ""
 
-#: ui/colours.slint:1540
+#: ui/colours.slint:1539
 msgid "Scheme"
 msgstr ""
 
-#: ui/colours.slint:1531
+#: ui/colours.slint:1530
 msgid "Schemes"
 msgstr ""
 
@@ -3454,7 +3446,7 @@ msgstr ""
 msgid "Shift+Insert"
 msgstr ""
 
-#: ui/help.slint:139 ui/onboarding.slint:319 ui/onboarding.slint:336 ui/settings.slint:479 ui/settings.slint:603 ui/settings.slint:620
+#: ui/help.slint:136 ui/onboarding.slint:319 ui/onboarding.slint:336 ui/settings.slint:479 ui/settings.slint:603 ui/settings.slint:620
 msgid "Shortcuts"
 msgstr ""
 
@@ -3474,7 +3466,7 @@ msgstr ""
 msgid "Shorten the leave delay"
 msgstr ""
 
-#: ui/help.slint:451
+#: ui/help.slint:448
 msgid "Show"
 msgstr ""
 
@@ -3518,7 +3510,7 @@ msgstr ""
 msgid "Show the Panel in the taskbar and Alt+Tab"
 msgstr ""
 
-#: ui/help.slint:452
+#: ui/help.slint:449
 msgid "Show the welcome tour again"
 msgstr ""
 
@@ -3638,7 +3630,7 @@ msgstr ""
 msgid "Snipdeck keeps the text you paste again and again, one shortcut away. The basics:"
 msgstr ""
 
-#: ui/help.slint:467
+#: ui/help.slint:464
 msgid "Snipdeck never checks by itself. This opens the releases page in your browser."
 msgstr ""
 
@@ -3690,7 +3682,7 @@ msgstr ""
 msgid "Sort: {}"
 msgstr ""
 
-#: ui/help.slint:457
+#: ui/help.slint:454
 msgid "Source code"
 msgstr ""
 
@@ -3698,11 +3690,11 @@ msgstr ""
 msgid "Space"
 msgstr ""
 
-#: ui/colours.slint:71
+#: ui/colours.slint:70
 msgid "Split-complementary"
 msgstr ""
 
-#: ui/colours.slint:1208 ui/colours.slint:1272
+#: ui/colours.slint:1207 ui/colours.slint:1271
 msgid "Square"
 msgstr ""
 
@@ -3754,7 +3746,7 @@ msgstr ""
 msgid "Support"
 msgstr ""
 
-#: ui/command_texts.slint:33 ui/help.slint:475 ui/settings.slint:495 ui/settings.slint:1765
+#: ui/command_texts.slint:33 ui/help.slint:472 ui/settings.slint:495 ui/settings.slint:1765
 msgid "Support Snipdeck"
 msgstr ""
 
@@ -3762,7 +3754,7 @@ msgstr ""
 msgid "Surprise"
 msgstr ""
 
-#: ui/colours.slint:1524
+#: ui/colours.slint:1523
 msgid "Swap the two colours"
 msgstr ""
 
@@ -3778,7 +3770,7 @@ msgstr ""
 msgid "Symbols at your fingertips"
 msgstr ""
 
-#: ui/help.slint:492
+#: ui/help.slint:481
 msgid "Symbols data"
 msgstr ""
 
@@ -3850,7 +3842,7 @@ msgstr ""
 msgid "Test {}"
 msgstr ""
 
-#: ui/colours.slint:72
+#: ui/colours.slint:71
 msgid "Tetradic"
 msgstr ""
 
@@ -3978,7 +3970,7 @@ msgstr ""
 msgid "The library could not be unlocked or changed. Nothing was changed."
 msgstr ""
 
-#: ui/help.slint:497
+#: ui/help.slint:486
 msgid "The licences of the libraries Snipdeck is built from."
 msgstr ""
 
@@ -3990,7 +3982,7 @@ msgstr ""
 msgid "The list holds at most {} programs."
 msgstr ""
 
-#: ui/help.slint:513
+#: ui/help.slint:502
 msgid "The newest backup is from {} and holds {} items on {} boards. Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read."
 msgstr ""
 
@@ -4002,7 +3994,7 @@ msgstr ""
 msgid "The picker"
 msgstr ""
 
-#: ui/help.slint:255
+#: ui/help.slint:252
 msgid "The report holds versions and settings switches, never your items."
 msgstr ""
 
@@ -4066,7 +4058,7 @@ msgstr ""
 msgid "These shortcuts are not working: {}. Settings > Shortcuts says why."
 msgstr ""
 
-#: ui/help.slint:496
+#: ui/help.slint:485
 msgid "Third-party notices"
 msgstr ""
 
@@ -4074,7 +4066,7 @@ msgstr ""
 msgid "This board"
 msgstr ""
 
-#: ui/help.slint:413
+#: ui/help.slint:410
 msgid "This copy"
 msgstr ""
 
@@ -4130,11 +4122,11 @@ msgstr ""
 msgid "Tile view"
 msgstr ""
 
-#: ui/colours.slint:73
+#: ui/colours.slint:72
 msgid "Tints & shades"
 msgstr ""
 
-#: ui/help.slint:139 ui/onboarding.slint:420 ui/tray_texts.slint:8
+#: ui/help.slint:136 ui/onboarding.slint:420 ui/tray_texts.slint:8
 msgid "Tips"
 msgstr ""
 
@@ -4166,7 +4158,7 @@ msgstr ""
 msgid "Toggle keep Panel open"
 msgstr ""
 
-#: ui/help.slint:234
+#: ui/help.slint:231
 msgid "Tools"
 msgstr ""
 
@@ -4186,7 +4178,7 @@ msgstr ""
 msgid "Tray icon click opens"
 msgstr ""
 
-#: ui/colours.slint:70
+#: ui/colours.slint:69
 msgid "Triadic"
 msgstr ""
 
@@ -4198,7 +4190,7 @@ msgstr ""
 msgid "Trimmed"
 msgstr ""
 
-#: ui/help.slint:139
+#: ui/help.slint:136
 msgid "Troubleshoot"
 msgstr ""
 
@@ -4254,7 +4246,7 @@ msgstr ""
 msgid "Typing triggers work on Windows only."
 msgstr ""
 
-#: ui/colours.slint:947
+#: ui/colours.slint:946
 msgid "UI"
 msgstr ""
 
@@ -4402,15 +4394,15 @@ msgstr ""
 msgid "Use {} for {}"
 msgstr ""
 
-#: ui/command_texts.slint:28 ui/help.slint:439 ui/main_window.slint:2771 ui/menu_texts.slint:97 ui/shortcut_texts.slint:33 ui/shortcut_texts.slint:86
+#: ui/command_texts.slint:28 ui/help.slint:436 ui/main_window.slint:2771 ui/menu_texts.slint:97 ui/shortcut_texts.slint:33 ui/shortcut_texts.slint:86
 msgid "User guide"
 msgstr ""
 
-#: ui/colours.slint:1346
+#: ui/colours.slint:1345
 msgid "Values as"
 msgstr ""
 
-#: ui/help.slint:415
+#: ui/help.slint:412
 msgid "Version"
 msgstr ""
 
@@ -4418,7 +4410,7 @@ msgstr ""
 msgid "View"
 msgstr ""
 
-#: ui/colours.slint:1441
+#: ui/colours.slint:1440
 msgid "View list"
 msgstr ""
 
@@ -4426,11 +4418,11 @@ msgstr ""
 msgid "Violet"
 msgstr ""
 
-#: ui/help.slint:449
+#: ui/help.slint:446
 msgid "Walk through the basics again."
 msgstr ""
 
-#: ui/components/feedback.slint:137 ui/help.slint:104
+#: ui/components/feedback.slint:137 ui/help.slint:101
 msgid "Warning"
 msgstr ""
 
@@ -4438,7 +4430,7 @@ msgstr ""
 msgid "Welcome to Snipdeck"
 msgstr ""
 
-#: ui/command_texts.slint:29 ui/help.slint:448
+#: ui/command_texts.slint:29 ui/help.slint:445
 msgid "Welcome tour"
 msgstr ""
 
@@ -4462,7 +4454,7 @@ msgstr ""
 msgid "What you changed in this item has not been saved."
 msgstr ""
 
-#: ui/colours.slint:1215 ui/colours.slint:1272
+#: ui/colours.slint:1214 ui/colours.slint:1271
 msgid "Wheel"
 msgstr ""
 
@@ -4760,7 +4752,7 @@ msgstr ""
 msgid "creates “{}” in {}"
 msgstr ""
 
-#: ui/colours.slint:475 ui/colours.slint:576
+#: ui/colours.slint:474 ui/colours.slint:575
 msgid "default"
 msgstr ""
 
@@ -4820,7 +4812,7 @@ msgstr ""
 msgid "eyedropper color pick sample screen"
 msgstr ""
 
-#: ui/colours.slint:81
+#: ui/colours.slint:80
 msgid "fail"
 msgstr ""
 
@@ -4906,10 +4898,6 @@ msgstr ""
 msgid "never paste excluded apps"
 msgstr ""
 
-#: ui/colours.slint:55
-msgid "no close name"
-msgstr ""
-
 #: ui/settings.slint:125 ui/settings.slint:228
 msgid "notepad.exe"
 msgstr ""
@@ -4934,7 +4922,7 @@ msgstr ""
 msgid "or"
 msgstr ""
 
-#: ui/colours.slint:81
+#: ui/colours.slint:80
 msgid "pass"
 msgstr ""
 
@@ -5132,7 +5120,7 @@ msgstr ""
 msgid "{} d ago"
 msgstr ""
 
-#: ui/colours.slint:1311
+#: ui/colours.slint:1310
 msgid "{} degrees"
 msgstr ""
 
@@ -5234,7 +5222,7 @@ msgstr[1] ""
 msgid "{} min ago"
 msgstr ""
 
-#: ui/colours.slint:60
+#: ui/colours.slint:59
 msgid "{} needs a number"
 msgstr ""
 
@@ -5248,7 +5236,7 @@ msgid_plural "{} new boards will be made"
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/help.slint:157
+#: ui/help.slint:154
 msgid "{} of the checks need a look."
 msgstr ""
 
@@ -5256,7 +5244,7 @@ msgstr ""
 msgid "{} of {} · next: {}"
 msgstr ""
 
-#: ui/colours.slint:1321 ui/colours.slint:1331
+#: ui/colours.slint:1320 ui/colours.slint:1330
 msgid "{} percent"
 msgstr ""
 
@@ -5292,7 +5280,7 @@ msgstr[1] ""
 msgid "{} takes no argument"
 msgstr ""
 
-#: ui/colours.slint:86
+#: ui/colours.slint:85
 msgid "{} · {}"
 msgstr ""
 
@@ -5304,7 +5292,7 @@ msgstr ""
 msgid "{}, match {}"
 msgstr ""
 
-#: ui/colours.slint:98
+#: ui/colours.slint:97
 msgid "{}, {}"
 msgstr ""
 
@@ -5376,7 +5364,7 @@ msgstr ""
 msgid "{}: {} has no Snipdeck equivalent and was left as written."
 msgstr ""
 
-#: ui/colours.slint:84
+#: ui/colours.slint:83
 msgid "{}: {} to 1. AA text {}. AA large text {}. AAA text {}. AAA large text {}. Interface parts {}."
 msgstr ""
 

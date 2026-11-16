@@ -1560,9 +1560,6 @@ msgstr "Mot de passe principal défini."
 msgid "Menu"
 msgstr "Menu"
 
-msgid "Microsoft Store"
-msgstr "Microsoft Store"
-
 msgid "More"
 msgstr "Plus"
 
@@ -1905,9 +1902,6 @@ msgstr "Ouvrir le dossier des journaux"
 
 msgid "Open the Colours list"
 msgstr "Ouvrir la liste Couleurs"
-
-msgid "Open the Microsoft Store page"
-msgstr "Ouvrir la page du Microsoft Store"
 
 msgid "Open the Panel from anywhere"
 msgstr "Ouvrez le panneau de n'importe où"
@@ -3686,9 +3680,6 @@ msgstr "proche de {}"
 
 msgid "never paste excluded apps"
 msgstr "ne jamais coller programmes exclus"
-
-msgid "no close name"
-msgstr "aucun nom proche"
 
 msgid "notepad.exe"
 msgstr "notepad.exe"
