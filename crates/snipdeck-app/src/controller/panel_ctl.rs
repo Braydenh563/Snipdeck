@@ -65,6 +65,11 @@ where
         self.update_settings(|s| s.main_sidebar_width = width);
     }
 
+    /// The Detail pane was switched on or off in the Main window's View menu.
+    pub fn set_main_detail_open(&mut self, open: bool) {
+        self.update_settings(|s| s.main_detail_open = open);
+    }
+
     /// The Main sidebar was collapsed to its rail or opened again (Ctrl+B, the collapse button).
     pub fn set_main_sidebar_collapsed(&mut self, collapsed: bool) {
         self.update_settings(|s| s.main_sidebar_collapsed = collapsed);

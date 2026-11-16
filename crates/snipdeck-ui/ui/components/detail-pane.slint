@@ -1,0 +1,203 @@
+import { Theme, Type, Space, Radius, Fonts } from "../theme.slint";
+import { ItemKind } from "item-card.slint";
+
+// What the Detail pane shows for the item under the cursor (SPEC §5.3). The host fills it; the dates are
+// already formatted ("2026-11-16 13:20"), empty when there is none.
+export struct DetailData {
+    // False when the cursor is on no item (an empty list, a group header, the Trash): the pane then says so.
+    has-item: bool,
+    kind: ItemKind,
+    title: string,
+    // The text, or the mask of a sensitive item that is not revealed (a picture and a file item have none).
+    text: string,
+    // True while `text` is cut: the item holds more.
+    text-cut: bool,
+    // A picture's preview (an empty image when the item has none).
+    image: image,
+    // The formats the item keeps: 0 text, 1 HTML, 2 RTF, 3 image, 4 files.
+    formats: [int],
+    use-count: int,
+    last-used: string,
+    created: string,
+    updated: string,
+    source-app: string,
+    list-name: string,
+    tags: string,
+}
+
+// One "name: value" line of the metadata.
+component DetailField inherits Rectangle {
+    in property <string> name;
+    in property <string> value;
+    height: row.preferred-height;
+    accessible-role: text;
+    accessible-label: root.name + ": " + root.value;
+
+    row := HorizontalLayout {
+        spacing: Space.s2;
+        alignment: start;
+        Text {
+            width: 88px * Type.sm / 12px;
+            text: root.name;
+            font-family: Fonts.sans;
+            font-size: Type.sm;
+            color: Theme.text-secondary;
+            vertical-alignment: top;
+            accessible-role: none;
+        }
+        Text {
+            horizontal-stretch: 1;
+            text: root.value;
+            font-family: Fonts.sans;
+            font-size: Type.sm;
+            color: Theme.text-primary;
+            wrap: word-wrap;
+            vertical-alignment: top;
+            accessible-role: none;
+        }
+    }
+}
+
+// The Detail pane (SPEC §5.3, DESIGN.md Main window): a preview of the item under the cursor and its metadata.
+// It sits right of the item list when the window is wide enough; the window decides that.
+export component DetailPane inherits Rectangle {
+    in property <DetailData> data;
+
+    background: Theme.bg-app;
+    accessible-role: groupbox;
+    accessible-label: @tr("Details");
+
+    // "Text, HTML": the names of the formats the item keeps.
+    property <string> formats-text: root.format-name(root.data.formats, 0) + root.format-name(root.data.formats, 1)
+        + root.format-name(root.data.formats, 2) + root.format-name(root.data.formats, 3) + root.format-name(root.data.formats, 4);
+
+    pure function format-name(formats: [int], at: int) -> string {
+        if (at >= formats.length) {
+            return "";
+        }
+        return (at > 0 ? ", " : "") + (formats[at] == 0 ? @tr("Text") : formats[at] == 1 ? @tr("HTML") : formats[at] == 2 ? @tr("RTF") : formats[at] == 3 ? @tr("Image") : @tr("Files"));
+    }
+
+    // The edge toward the list.
+    Rectangle {
+        x: 0px;
+        width: 1px;
+        height: parent.height;
+        background: Theme.border-subtle;
+    }
+
+    if !root.data.has-item: Text {
+        x: Space.s4;
+        y: Space.s4;
+        width: parent.width - 2 * Space.s4;
+        text: @tr("Select an item to see its details.");
+        font-family: Fonts.sans;
+        font-size: Type.base;
+        color: Theme.text-secondary;
+        wrap: word-wrap;
+    }
+
+    if root.data.has-item: Flickable {
+        x: 1px;
+        width: parent.width - 1px;
+        height: parent.height;
+        content-height: content.preferred-height + 2 * Space.s4;
+
+        content := VerticalLayout {
+            x: Space.s4;
+            y: Space.s4;
+            width: parent.width - 2 * Space.s4;
+            spacing: Space.s3;
+
+            Text {
+                text: root.data.title;
+                font-family: Fonts.sans;
+                font-size: Type.lg;
+                font-weight: Type.medium;
+                color: Theme.text-primary;
+                wrap: word-wrap;
+                accessible-role: text;
+                accessible-label: @tr("Title: {}", root.data.title);
+            }
+
+            // The preview: the text as stored, or the picture.
+            Rectangle {
+                background: Theme.bg-surface;
+                border-radius: Radius.md;
+                border-width: 1px;
+                border-color: Theme.border-subtle;
+                accessible-role: text;
+                accessible-label: @tr("Preview");
+                accessible-description: root.data.image.width > 0 ? @tr("Picture") : root.data.text;
+                height: pv.preferred-height + 2 * Space.s3;
+
+                pv := VerticalLayout {
+                    x: Space.s3;
+                    y: Space.s3;
+                    width: parent.width - 2 * Space.s3;
+                    spacing: Space.s2;
+                    if root.data.image.width > 0: Image {
+                        source: root.data.image;
+                        image-fit: contain;
+                        height: min(root.data.image.height * 1px * (parent.width / max(1px, root.data.image.width * 1px)), 240px);
+                    }
+                    if root.data.image.width == 0 && root.data.text != "": Text {
+                        text: root.data.text;
+                        font-family: root.data.kind == ItemKind.code ? Fonts.mono : Fonts.sans;
+                        font-size: Type.base;
+                        color: Theme.text-primary;
+                        wrap: word-wrap;
+                    }
+                    if root.data.image.width == 0 && root.data.text == "": Text {
+                        text: @tr("Nothing to preview.");
+                        font-family: Fonts.sans;
+                        font-size: Type.base;
+                        color: Theme.text-secondary;
+                    }
+                    if root.data.text-cut: Text {
+                        text: @tr("Only the start is shown.");
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        color: Theme.text-secondary;
+                    }
+                }
+            }
+
+            VerticalLayout {
+                spacing: Space.s2;
+                DetailField {
+                    name: @tr("Formats");
+                    value: root.formats-text;
+                }
+                if root.data.list-name != "": DetailField {
+                    name: @tr("List");
+                    value: root.data.list-name;
+                }
+                if root.data.tags != "": DetailField {
+                    name: @tr("Tags");
+                    value: root.data.tags;
+                }
+                DetailField {
+                    name: @tr("Used");
+                    value: root.data.use-count == 0 ? @tr("Never") : @tr("{n} time" | "{n} times" % root.data.use-count);
+                }
+                if root.data.last-used != "": DetailField {
+                    name: @tr("Last used");
+                    value: root.data.last-used;
+                }
+                DetailField {
+                    name: @tr("Created");
+                    value: root.data.created;
+                }
+                DetailField {
+                    name: @tr("Changed");
+                    value: root.data.updated;
+                }
+                if root.data.source-app != "": DetailField {
+                    name: @tr("Source");
+                    value: root.data.source-app;
+                }
+            }
+        }
+    }
+}

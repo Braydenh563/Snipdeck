@@ -731,7 +731,7 @@ fn a_parked_list_editor_closes_and_comes_back_with_its_typed_fields() {
     let mut ctl = seeded();
     let index = list_index(&ctl.main_screen(), "Addresses");
     ctl.main_edit_list(index);
-    ctl.main_editor_park("Places (typed)", None, None, ListSort::RecentlyUsed);
+    ctl.main_editor_park("Places (typed)", None, None, ListSort::RecentlyUsed, 0);
     assert!(ctl.main_screen().editor.is_none());
     ctl.main_edit_list(index);
     let editor = ctl.main_screen().editor.expect("editor");
@@ -755,7 +755,13 @@ fn a_parked_editor_with_nothing_typed_leaves_no_draft() {
     let index = list_index(&ctl.main_screen(), "Addresses");
     ctl.main_edit_list(index);
     let editor = ctl.main_screen().editor.expect("editor");
-    ctl.main_editor_park(&editor.name, editor.accent, editor.icon, editor.sort);
+    ctl.main_editor_park(
+        &editor.name,
+        editor.accent,
+        editor.icon,
+        editor.sort,
+        editor.board_index,
+    );
     ctl.main_edit_list(index);
     ctl.main_editor_save("Renamed", None, None, ListSort::Manual);
     ctl.main_edit_list(index);

@@ -804,6 +804,8 @@ pub struct Settings {
     pub main_sidebar_width: u32,
     /// The Main sidebar is collapsed to its icon rail (Ctrl+B).
     pub main_sidebar_collapsed: bool,
+    /// The Main window's Detail pane is on (View menu); it shows only while the window is wide.
+    pub main_detail_open: bool,
     /// How Snipdeck pastes into each program, lower-case executable name first: the paste key,
     /// or "never paste" (SPEC §5.8). A program with no rule gets `Ctrl+V`. A new file starts
     /// with the programs known to need another key.
@@ -919,6 +921,7 @@ impl Default for Settings {
             main_window: None,
             main_sidebar_width: MAIN_SIDEBAR_WIDTH_DEFAULT,
             main_sidebar_collapsed: false,
+            main_detail_open: true,
             programs: builtin_program_rules(),
             no_paste_apps: Vec::new(),
             recent_history: false,
@@ -1055,6 +1058,7 @@ impl Settings {
         field!(main_window);
         field!(main_sidebar_width);
         field!(main_sidebar_collapsed);
+        field!(main_detail_open);
         if let Some(rules) = map.get("programs").and_then(programs_from_value) {
             settings.programs = rules;
         }
@@ -1562,6 +1566,10 @@ mod tests {
         let old = Settings::from_json(r#"{"version":1,"theme":"dark","panel_width":400}"#);
         assert_eq!(old.main_sidebar_width, 232);
         assert!(!old.main_sidebar_collapsed);
+        assert!(
+            old.main_detail_open,
+            "the pane is on until the user turns it off"
+        );
         assert_eq!(old.panel_width, 400);
         let saved = Settings {
             main_sidebar_collapsed: true,
@@ -1573,6 +1581,11 @@ mod tests {
             (back.main_sidebar_width, back.main_sidebar_collapsed),
             (280, true)
         );
+        let off = Settings {
+            main_detail_open: false,
+            ..Settings::default()
+        };
+        assert!(!Settings::from_json(&off.to_json()).main_detail_open);
     }
 
     #[test]

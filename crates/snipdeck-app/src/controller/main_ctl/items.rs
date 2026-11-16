@@ -260,10 +260,10 @@ where
     /// The *Move to list* chooser picked list `index`: the rows it was opened for go to its end.
     pub fn main_move_to(&mut self, index: usize) {
         self.main_fresh();
-        let Some(list) = self.main.lists().get(index) else {
+        let Some(target) = self.main.move_targets().into_iter().nth(index) else {
             return;
         };
-        let (list, name) = (list.id, list.name.as_str().to_owned());
+        let (list, name) = (target.list, target.label);
         let items: Vec<ItemId> = self
             .main
             .chooser()

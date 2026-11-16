@@ -270,6 +270,10 @@ pub struct Controller<S, C, K, T> {
     /// List and board editors closed with the window that opened them: what was typed in each,
     /// for the next time it opens (this app session only).
     parked_editors: Vec<(main_ctl::EditorTarget, crate::main_window::EditorView)>,
+    /// Decoded thumbnails of the Main window's image rows (MAIN-21).
+    thumbs: crate::thumb_cache::ThumbCache,
+    /// What the Detail pane read for the item it shows last.
+    detail_body: Option<main_ctl::detail::DetailBody>,
     /// The item editor, while one is open.
     item_editor: Option<editor_ctl::ItemEditorSlot>,
     item_editor_seq: u64,
@@ -525,6 +529,8 @@ where
             editor_seq: 0,
             board_delete: None,
             parked_editors: Vec::new(),
+            thumbs: crate::thumb_cache::ThumbCache::new(crate::thumb_cache::ROW_CAPACITY),
+            detail_body: None,
             item_editor: None,
             item_editor_seq: 0,
             editor_env: editor_ctl::EditorEnv::default(),
