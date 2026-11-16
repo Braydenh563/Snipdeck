@@ -99,6 +99,7 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 ## Inbox
 - 2026-11-16 owner: "I removed the key from github and Ive just made a developers account on the partner centre" -> SNIPDECK_LICENCE_PUBLIC_KEY secret removed (done); next owner steps: reserve name, set MSIX_* repo variables.
 - 2026-11-16 owner: name reserved (Store ID 9N358S63JBHH), MSIX_IDENTITY_NAME/PUBLISHER/PUBLISHER_DISPLAY_NAME repo variables set (verified from screenshot). Done.
+- 2026-11-16 owner: "i like option 1 but ive mever heard of that or used azure" (option 1 = auto-submit releases to the Store from GitHub Actions via Store Developer CLI). Plan: after the first manual Store submission; I draft the workflow + step-by-step Entra setup doc, owner commits the workflow and adds secrets.
 - 2026-11-16 owner: "dont stop at 85% but be very token efficient and try to have everything done"
 - 2026-11-16 owner: "so once you are finished all the issues and things found previously, and once all the fable audits are finished, I want you to fix absolutely everything they find. leave nothing undone or partly done. absolutely nothing left, and lemme know when everything is done, these fable checks are like the ultimate final check."
 - 2026-11-16 owner: "please run one fable agent at a time"
