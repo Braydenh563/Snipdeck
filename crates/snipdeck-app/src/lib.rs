@@ -45,6 +45,7 @@ pub mod maintenance;
 pub mod master_job;
 pub mod master_password;
 pub mod native_window;
+pub mod notices;
 pub mod onboarding_binding;
 pub mod ownership;
 pub mod palette;

@@ -710,7 +710,6 @@ fn help_about_light_and_dark() {
     let h = Harness::new(HelpWindow::new, HELP.0, HELP.1);
     fixture::help(&h.component);
     h.component.set_tab(1);
-    h.component.set_has_notices(true);
     assert_golden("help-about-light", &render(&h));
     drop(h);
 

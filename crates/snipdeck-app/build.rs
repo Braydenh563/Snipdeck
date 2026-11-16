@@ -35,6 +35,12 @@ fn main() {
     resource
         .set_icon_with_id(ICON, ICON_ID)
         .set("ProductName", "Snipdeck")
+        // Explorer's Details tab and SmartScreen show these two.
+        .set("CompanyName", "Snipdeck")
+        .set(
+            "LegalCopyright",
+            "Copyright (c) Snipdeck contributors. Licensed under GPL-3.0-only.",
+        )
         .set("FileDescription", "Snipdeck")
         .set("OriginalFilename", "snipdeck.exe")
         .set("InternalName", "snipdeck");

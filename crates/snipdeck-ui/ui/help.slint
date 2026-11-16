@@ -68,9 +68,8 @@ export component HelpWindow inherits Window {
     in property <string> version: "0.1.0";
     in property <string> build-date;
     in property <string> source-url;
-    // The Microsoft Store link and the third-party notices are hidden until the host has them.
+    // The Microsoft Store link is hidden until there is a page to link to.
     in property <bool> show-store-link: false;
-    in property <bool> has-notices: false;
     callback toast-dismissed();
     in property <string> toast-text;
     in property <ToastKind> toast-kind: ToastKind.neutral;
@@ -493,7 +492,7 @@ export component HelpWindow inherits Window {
                             title: @tr("Symbols data");
                             description: @tr("Emoji art: Microsoft Fluent Emoji (MIT). Icons: Phosphor (MIT). Emoji names and keywords: Unicode CLDR (Unicode-3.0).");
                         }
-                        if root.has-notices: SettingRow {
+                        SettingRow {
                             title: @tr("Third-party notices");
                             description: @tr("The licences of the libraries Snipdeck is built from.");
                             Button {
