@@ -649,6 +649,7 @@ fn add_list_works_again_after_the_editor_and_the_main_window_were_closed() {
     });
 }
 
+// The demo has two boards, so the list editor also carries its Board field.
 #[test]
 fn add_list_sizes_the_editor_to_its_content() {
     on_ui_thread(|| {
@@ -660,7 +661,7 @@ fn add_list_sizes_the_editor_to_its_content() {
             .window()
             .size()
             .to_logical(editor.window().scale_factor());
-        assert!(wanted > 150.0 && wanted < 440.0, "{wanted}");
+        assert!(wanted > 150.0 && wanted < 520.0, "{wanted}");
         assert!(
             (size.height - wanted).abs() < 1.0,
             "{} vs {wanted}",
