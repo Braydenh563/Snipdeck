@@ -1,7 +1,6 @@
-// The words and pictures of the Tips tab (Help > Tips), one entry per card, in the order of `snipdeck-app`'s
+// The words of the Tips tab (Help > Tips), one entry per card, in the order of `snipdeck-app`'s
 // `tips::TIPS` (a test in `tests/help_window.rs` checks the lengths). The app builds the cards because Rust cannot
-// reach `@tr` or `@image-url`. The pictures are crops of the golden renders (`scripts/tips_images.py`); the text
-// inside them stays English.
+// reach `@tr`. The pictures are drawn in `tip_art.slint` (one per card, by its index) and carry no words.
 export global TipTexts {
     out property <[string]> titles: [
         @tr("Open the Panel from anywhere"),
@@ -41,18 +40,5 @@ export global TipTexts {
         @tr("Light, dark or follow Windows."),
         @tr("A master password locks your sensitive items."),
         @tr("Then type it in any app. Turn this on in Settings, under Typing."),
-    ];
-    out property <[image]> images: [
-        @image-url("images/tips/01-open-panel.png"),
-        @image-url("images/tips/02-search.png"),
-        @image-url("images/tips/03-pinned.png"),
-        @image-url("images/tips/04-paste-next.png"),
-        @image-url("images/tips/05-templates.png"),
-        @image-url("images/tips/06-capture.png"),
-        @image-url("images/tips/07-symbols.png"),
-        @image-url("images/tips/08-commands.png"),
-        @image-url("images/tips/09-view.png"),
-        @image-url("images/tips/10-sensitive.png"),
-        @image-url("images/tips/11-trigger.png"),
     ];
 }

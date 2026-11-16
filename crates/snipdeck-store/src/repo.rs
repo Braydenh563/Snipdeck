@@ -22,8 +22,8 @@
 //!   [`Error::EncryptionLocked`](crate::Error::EncryptionLocked).
 
 use snipdeck_core::{
-    Board, BoardId, Format, Formats, Group, GroupId, Item, ItemId, List, ListId, Placement, Tag,
-    TagId, Timestamp, Trigger,
+    Board, BoardId, Format, Formats, Group, GroupId, Item, ItemId, List, ListId, Name, Placement,
+    Tag, TagId, Timestamp, Trigger,
 };
 
 use crate::Result;
@@ -224,6 +224,15 @@ pub trait TagRepo {
 
     /// Deletes a tag and removes it from every item.
     fn delete_tag(&mut self, id: TagId) -> Result<()>;
+
+    /// The tag whose name equals `name` the way [`TagRepo::insert_tag`] compares names (ignoring
+    /// case and Unicode normalisation), if there is one.
+    fn find_tag(&self, name: &Name) -> Result<Option<Tag>>;
+
+    /// Merges tag `from` into `into`: every item that carries `from` carries `into` instead
+    /// (once, if it had both), and `from` is deleted. Returns how many items gained `into`.
+    /// Merging a tag into itself changes nothing; a missing tag is [`Error::NotFound`](crate::Error::NotFound).
+    fn merge_tag(&mut self, from: TagId, into: TagId) -> Result<usize>;
 }
 
 /// Something that can be put in the trash.

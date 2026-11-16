@@ -35,8 +35,17 @@ mod lists;
 pub enum TagRenameError {
     /// The new name is not a valid name (blank, too long, a control character).
     Name(NameError),
-    /// Another tag already has that name (compared ignoring case).
+    /// Another tag already has that name (compared ignoring case): a new tag is refused.
     Exists,
+    /// Renaming would give the tag another tag's name: the two merge once the user confirms.
+    /// `into` is that other tag (an index of [`MainScreen::tags`](crate::controller::MainScreen::tags)),
+    /// `count` how many items the renamed tag has.
+    Merge {
+        /// The tag that keeps the name.
+        into: usize,
+        /// Items of the renamed tag, which carry `into` afterwards.
+        count: usize,
+    },
     /// The library could not be written; a toast says so.
     Failed,
 }

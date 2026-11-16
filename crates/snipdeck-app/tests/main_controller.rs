@@ -472,19 +472,61 @@ fn renaming_a_tag_changes_it_everywhere() {
 }
 
 #[test]
-fn renaming_to_an_existing_name_is_refused_without_a_toast() {
+fn renaming_to_an_existing_name_asks_to_merge_and_changes_nothing() {
     let mut ctl = rig_with_tags();
     let names = tag_names(&mut ctl);
     // Compared ignoring case, like the store does.
     let other = names[1].to_uppercase();
-    assert_eq!(ctl.main_rename_tag(0, &other), Err(TagRenameError::Exists));
+    let count = ctl.main_screen().tags[0].count;
+    assert_eq!(
+        ctl.main_rename_tag(0, &other),
+        Err(TagRenameError::Merge { into: 1, count })
+    );
     assert_eq!(tag_names(&mut ctl), names, "nothing changed");
     assert!(
         ctl.main_screen().toast.is_none(),
-        "the editor says it, not a toast"
+        "the manager asks, not a toast"
     );
     // Keeping its own name (only the case differs) is not a clash.
     assert_eq!(ctl.main_rename_tag(0, &names[0].to_uppercase()), Ok(()));
+}
+
+#[test]
+fn merging_tags_moves_the_items_and_removes_the_first_tag() {
+    let mut ctl = rig_with_tags();
+    let screen = ctl.main_screen();
+    let at = row_of(&screen, "Invoice reminder");
+    ctl.main_action(MainAction::Tag, at);
+    ctl.main_toggle_tag(0, true);
+    let names = tag_names(&mut ctl);
+    let before = ctl.main_screen().tags.clone();
+    assert_eq!(before[0].count, 1);
+
+    ctl.main_merge_tag(0, 1);
+
+    let after = ctl.main_screen();
+    assert_eq!(tag_names(&mut ctl), [names[1].clone()]);
+    assert_eq!(after.tags[0].count, before[0].count + before[1].count);
+    // The same index twice, or a stale one, does nothing.
+    ctl.main_merge_tag(0, 0);
+    ctl.main_merge_tag(0, 7);
+    assert_eq!(tag_names(&mut ctl), [names[1].clone()]);
+}
+
+#[test]
+fn a_new_tag_is_added_unless_the_name_is_bad_or_taken() {
+    let mut ctl = rig_with_tags();
+    let names = tag_names(&mut ctl);
+    assert_eq!(ctl.main_new_tag("  Fresh "), Ok(()));
+    let after = tag_names(&mut ctl);
+    assert_eq!(after.len(), names.len() + 1);
+    assert!(after.contains(&"Fresh".to_owned()), "{after:?}");
+    assert_eq!(ctl.main_new_tag("FRESH"), Err(TagRenameError::Exists));
+    assert_eq!(
+        ctl.main_new_tag("   "),
+        Err(TagRenameError::Name(NameError::Empty))
+    );
+    assert_eq!(tag_names(&mut ctl), after);
 }
 
 #[test]
@@ -2409,4 +2451,77 @@ fn a_tag_on_several_rows_and_a_tag_delete_are_announced() {
         Some(ToastMessage::TagDeleted { name: said }) => assert_eq!(said, name),
         other => panic!("expected a TagDeleted toast, got {other:?}"),
     }
+}
+
+// ---- Dropping rows on the sidebar's Trash and tags (MAIN-15) --------------------------------
+
+#[test]
+fn dropping_a_row_on_the_trash_trashes_it_with_an_undo() {
+    let mut ctl = seeded();
+    let at = row_of(&ctl.main_screen(), "Out of office");
+    ctl.main_drop_on_trash(at);
+    let screen = ctl.main_screen();
+    assert!(!titles(&screen).contains(&"Out of office".to_owned()));
+    assert_eq!(screen.counts.trash, 1);
+    assert_eq!(message(&screen), ToastMessage::ItemsTrashed { count: 1 });
+    assert!(screen.toast.as_ref().unwrap().undo);
+}
+
+#[test]
+fn dropping_a_selection_on_the_trash_takes_every_selected_row() {
+    let mut ctl = seeded();
+    ctl.main_select_all();
+    ctl.main_drop_on_trash(0);
+    let screen = ctl.main_screen();
+    assert_eq!(screen.counts.all, 0);
+    assert_eq!(screen.counts.trash, 11);
+}
+
+#[test]
+fn dropping_in_the_trash_itself_does_nothing() {
+    let mut ctl = seeded();
+    ctl.main_action(MainAction::Delete, 0);
+    ctl.main_open(Section::Trash);
+    ctl.main_drop_on_trash(0);
+    assert_eq!(ctl.main_screen().counts.trash, 1);
+    assert_eq!(ctl.main_screen().rows.len(), 1);
+}
+
+#[test]
+fn dropping_a_row_on_a_tag_tags_it_and_says_so() {
+    let tag = Tag::new(Name::new("invoices").unwrap());
+    let mut store = demo::store(now()).unwrap();
+    store.insert_tag(&tag).unwrap();
+    let (mut ctl, _) = rig_on(store);
+    let at = row_of(&ctl.main_screen(), "Invoice reminder");
+    ctl.main_drop_on_tag(at, 0);
+    let screen = ctl.main_screen();
+    assert_eq!(screen.tags[0].count, 1);
+    assert_eq!(
+        message(&screen),
+        ToastMessage::ItemsTagged {
+            count: 1,
+            added: true
+        }
+    );
+    // A second drop changes nothing and says nothing new.
+    ctl.main_drop_on_tag(at, 0);
+    assert_eq!(ctl.main_screen().tags[0].count, 1);
+    // Out of range targets are ignored.
+    ctl.main_drop_on_tag(at, 9);
+    ctl.main_drop_on_tag(99, 0);
+    assert_eq!(ctl.main_screen().tags[0].count, 1);
+}
+
+#[test]
+fn a_tag_drop_is_one_undo_step() {
+    let tag = Tag::new(Name::new("invoices").unwrap());
+    let mut store = demo::store(now()).unwrap();
+    store.insert_tag(&tag).unwrap();
+    let (mut ctl, _) = rig_on(store);
+    ctl.main_select_all();
+    ctl.main_drop_on_tag(0, 0);
+    assert_eq!(ctl.main_screen().tags[0].count, 11);
+    ctl.main_undo();
+    assert_eq!(ctl.main_screen().tags[0].count, 0);
 }

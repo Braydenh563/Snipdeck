@@ -313,10 +313,45 @@ where
                         w.set_rename_error(SharedString::new());
                         w.invoke_finish_rename();
                     }
+                    Err(crate::controller::TagRenameError::Merge { into, count }) => {
+                        // Ask first; the field stays until the user confirms or cancels.
+                        w.set_rename_error(SharedString::new());
+                        w.set_merge_into(to_i32(into));
+                        w.set_merge_count(to_i32(count));
+                        w.set_merge_from(i);
+                    }
                     Err(error) => {
                         w.set_rename_error(wording::tag_rename_error_text(&w, &error).into());
                     }
                 }
+            }
+        });
+        let (core, weak) = (Rc::clone(self), w.as_weak());
+        w.on_create_requested(move |name| {
+            crate::trace!(
+                "callback tags create_requested (<{} chars>)",
+                name.chars().count()
+            );
+            let result = core.act(|ctl| ctl.main_new_tag(name.as_str()));
+            if let Some(w) = weak.upgrade() {
+                match result {
+                    Ok(()) => {
+                        w.set_new_error(SharedString::new());
+                        w.invoke_finish_create();
+                    }
+                    Err(error) => {
+                        w.set_new_error(wording::tag_rename_error_text(&w, &error).into());
+                    }
+                }
+            }
+        });
+        let (core, weak) = (Rc::clone(self), w.as_weak());
+        w.on_merge_confirmed(move |from, into| {
+            crate::trace!("callback tags merge_confirmed ({from}, {into})");
+            core.act(|ctl| ctl.main_merge_tag(index(from), index(into)));
+            if let Some(w) = weak.upgrade() {
+                w.set_rename_error(SharedString::new());
+                w.invoke_finish_rename();
             }
         });
         let core = Rc::clone(self);
@@ -350,7 +385,10 @@ where
         let screen = self.controller.borrow_mut().main_screen();
         self.sync_tag_manager(&screen, true);
         window.set_rename_error(SharedString::new());
+        window.set_new_error(SharedString::new());
+        window.set_merge_from(-1);
         window.invoke_finish_rename();
+        window.invoke_finish_create();
         place_over_owner(window.window());
         let _ = window.show();
         crate::ownership::opened(crate::ownership::Win::TagManager);
@@ -768,6 +806,10 @@ where
             .main_drop_row_above(index(from), index(onto)));
         wire!(on_row_dropped_on_list, |ctl, row, list| ctl
             .main_drop_on_list(index(row), index(list)));
+        wire!(on_row_dropped_on_trash, |ctl, row| ctl
+            .main_drop_on_trash(index(row)));
+        wire!(on_row_dropped_on_tag, |ctl, row, tag| ctl
+            .main_drop_on_tag(index(row), index(tag)));
         wire!(on_list_dropped, |ctl, from, onto| ctl
             .main_drop_list(index(from), index(onto)));
         {

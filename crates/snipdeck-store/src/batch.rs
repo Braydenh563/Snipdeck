@@ -9,8 +9,8 @@ use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 
 use rusqlite::{Connection, Transaction};
 use snipdeck_core::{
-    Board, BoardId, Content, Formats, Group, GroupId, Item, ItemId, List, ListId, Placement, Tag,
-    TagId, Timestamp, Trigger,
+    Board, BoardId, Content, Formats, Group, GroupId, Item, ItemId, List, ListId, Name, Placement,
+    Tag, TagId, Timestamp, Trigger,
 };
 
 use crate::blobs::{BlobMark, Blobs};
@@ -561,6 +561,14 @@ macro_rules! repo_impls {
 
             fn delete_tag(&mut self, id: TagId) -> Result<()> {
                 self.writer(|cx| tags::delete_tag(cx, id))
+            }
+
+            fn find_tag(&self, name: &Name) -> Result<Option<Tag>> {
+                tags::find_tag(self.reader().conn, name)
+            }
+
+            fn merge_tag(&mut self, from: TagId, into: TagId) -> Result<usize> {
+                self.writer(|cx| tags::merge_tag(cx, from, into))
             }
         }
 

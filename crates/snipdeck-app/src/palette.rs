@@ -96,6 +96,44 @@ pub fn list_icon_tint(accent: Option<ListAccent>, dark: bool) -> slint::Color {
 mod tests {
     use super::*;
 
+    /// The one named palette: the nine list hues. Item labels and accents offer subsets, under the
+    /// same keys and names, and every key they store is one of these.
+    #[test]
+    fn labels_and_accents_are_subsets_of_the_one_named_palette() {
+        use crate::accent::AccentChoice;
+        use snipdeck_core::ItemLabel;
+        let palette: Vec<&str> = ListAccent::ALL.iter().map(|a| a.key()).collect();
+        assert_eq!(
+            palette,
+            [
+                "blue", "teal", "green", "amber", "orange", "red", "rose", "violet", "slate"
+            ]
+        );
+        // Labels: all but Rose (the library file restricts the stored keys), same names and colours.
+        let labels: Vec<&str> = ItemLabel::ALL.iter().map(|l| l.key()).collect();
+        assert_eq!(labels.len(), 8);
+        for label in ItemLabel::ALL {
+            let key = label.key();
+            assert!(palette.contains(&key), "{key}");
+            let _hue: ListAccent = key.parse().expect("a list hue with the label key");
+            let name = crate::wording::item_label_name(*label);
+            assert_eq!(name.to_lowercase(), key, "one name per hue");
+        }
+        assert!(!labels.contains(&"rose"));
+        // Accents: six presets under the palette's keys; their stored ids stay the kebab names.
+        for choice in AccentChoice::ALL {
+            let stored = serde_json::to_string(&choice).expect("json");
+            let key = choice.hue().unwrap_or(match choice {
+                AccentChoice::Windows => "windows",
+                _ => "blue",
+            });
+            assert_eq!(stored, format!("\"{key}\""));
+            if choice != AccentChoice::Windows {
+                assert!(palette.contains(&key), "{key}");
+            }
+        }
+    }
+
     #[test]
     fn a_list_icon_is_tinted_only_where_it_keeps_three_to_one() {
         let mut tinted = 0;

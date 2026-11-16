@@ -25,7 +25,6 @@ Notes for the builder
   fallback because the palette is not in `Command::ALL`.
 - Tip 10 uses a dark golden on purpose? No: keep all pictures light (decision: one theme for crops); find or
   render a light Sensitive row.
-- Crops: 2x software-renderer goldens are large; crop to the feature (about 360 x 200 logical) and store
-  under `crates/snipdeck-ui/ui/images/tips/NN-name.png`; a small script under `scripts/` regenerates them
-  from the goldens so they never drift (test `every_tip_has_an_image_that_exists`).
+- Pictures (superseded, MAIN-32): the cards first used crops of English goldens; they are now wordless drawings in
+  `crates/snipdeck-ui/ui/tip_art.slint`, so there is nothing to translate or regenerate.
 - All strings go through `@tr` / the .po files (six locales). Picture text stays English (now.md decision).

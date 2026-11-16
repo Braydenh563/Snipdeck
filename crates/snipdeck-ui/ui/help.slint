@@ -8,6 +8,7 @@
 import { Theme, Type, Space, Radius, Fonts, Palette, SystemLook } from "theme.slint";
 import { Icons } from "icons.slint";
 import { Icon } from "components/icon.slint";
+import { TipArt } from "tip_art.slint";
 import { Button, ButtonSize, ButtonVariant } from "components/button.slint";
 import { Toast, ToastKind, ToastPhase } from "components/feedback.slint";
 import { Dialog, DialogVariant } from "components/dialog.slint";
@@ -18,12 +19,12 @@ import { ShortcutTexts } from "shortcut_texts.slint";
 
 export { ShortcutGroup, ShortcutLineData }
 
-// One card of the Tips tab, already in words and with its picture (the app builds it from `TipTexts`).
+// One card of the Tips tab, already in words and with the index of its picture (`TipArt`) (the app builds it from `TipTexts`).
 export struct TipCard {
     title: string,
     first-line: string,
     second-line: string,
-    picture: image,
+    art: int,
 }
 
 // One line of the Troubleshoot list, already in words (the doctor's English; see snipdeck-app `doctor`).
@@ -355,10 +356,10 @@ export component HelpWindow inherits Window {
                                     accessible-role: none;
                                 }
                             }
-                            // The picture is a crop of the app drawn in the light theme, so it keeps a hairline of its own
-                            // in the dark one. The words around it say everything it shows.
+                            // The picture is drawn in the theme's own colours and holds no words; the words around it say
+                            // everything it shows.
                             Rectangle {
-                                height: min(self.width, 320px) * tip.picture.height / tip.picture.width;
+                                height: min(self.width, 320px) * 150 / 320;
                                 horizontal-stretch: 1;
                                 min-width: 0px;
                                 Rectangle {
@@ -369,12 +370,10 @@ export component HelpWindow inherits Window {
                                     border-color: Theme.border-default;
                                     border-radius: Radius.md;
                                     clip: true;
-                                    Image {
-                                        source: tip.picture;
+                                    TipArt {
+                                        art: tip.art;
                                         width: parent.width;
                                         height: parent.height;
-                                        image-fit: contain;
-                                        accessible-role: none;
                                     }
                                 }
                             }

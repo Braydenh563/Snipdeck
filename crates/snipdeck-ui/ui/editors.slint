@@ -14,7 +14,7 @@
 // Colour names and kind order are the host's mapping to its enums; they are listed next to each property.
 import { TipHost, TipLayer } from "components/tip-host.slint";
 import { ListView } from "std-widgets.slint";
-import { Theme, Type, Space, Radius, Motion, Fonts, Palette, ListHue, SystemLook } from "theme.slint";
+import { Theme, Type, Space, Radius, Motion, Fonts, Palette, ListHue, HueNames, SystemLook } from "theme.slint";
 import { Icons } from "icons.slint";
 import { ListIcons } from "list-icons.slint";
 import { Icon } from "components/icon.slint";
@@ -787,9 +787,16 @@ export component ItemEditor inherits Window {
     // From the host: a title or content problem only the store or the parser knows ("Link needs a scheme").
     in property <string> title-error;
     in property <string> content-error;
-    // The text is over the inline limit (16 KB, SPEC §5.4): shown read-only; `content-size` is its size ("2.4 MB").
+    // The text is over one part (16 KB, SPEC §5.4): the field shows `parts[part-index]` and the host keeps the rest, so a
+    // keystroke never re-shapes more than a part. `content-size` is the whole text's size ("2.4 MB"). The host puts the
+    // field back into `parts` and shows another one on `part-requested`; it also cuts a pasted text that grew past a part
+    // (`content-edited`).
     in property <bool> content-large: false;
     in property <string> content-size;
+    in-out property <[string]> parts;
+    in-out property <int> part-index: 0;
+    callback part-requested(target: int);
+    callback content-edited();
     // Image and file items.
     in property <image> preview;
     in property <string> attachment-name;
@@ -881,7 +888,11 @@ export component ItemEditor inherits Window {
     }
 
     property <bool> text-kind: root.kind-index <= 3;
-    property <[string]> label-names: [@tr("Blue"), @tr("Teal"), @tr("Green"), @tr("Amber"), @tr("Orange"), @tr("Red"), @tr("Violet"), @tr("Slate")];
+    property <[string]> label-names: [
+        HueNames.name(ListHue.blue), HueNames.name(ListHue.teal), HueNames.name(ListHue.green),
+        HueNames.name(ListHue.amber), HueNames.name(ListHue.orange), HueNames.name(ListHue.red),
+        HueNames.name(ListHue.violet), HueNames.name(ListHue.slate),
+    ];
     property <[string]> kind-names: [@tr("Text"), @tr("Code"), @tr("Link"), @tr("Template"), @tr("Image"), @tr("File")];
     // The kind index of this window mapped to the card's kinds (a sensitive text item draws as the masked card).
     property <ItemKind> card-kind: root.sensitive && root.text-kind ? ItemKind.sensitive
@@ -1145,10 +1156,9 @@ export component ItemEditor inherits Window {
                                 min-lines: 6;
                                 max-lines: 14;
                                 monospace: root.kind-index == 1;
-                                read-only: root.content-large;
                                 error: root.content-shown-error;
                                 text <=> root.content;
-                                edited(t) => { root.touch(); }
+                                edited(t) => { root.touch(); root.content-edited(); }
                                 changed has-focus => {
                                     if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                                 }
@@ -1165,7 +1175,30 @@ export component ItemEditor inherits Window {
                                 }
                             }
                             if root.content-large: Notice {
-                                text: @tr("This text is {}. Anything over 16 KB opens read-only here, and the first 16 KB are shown.", root.content-size);
+                                text: @tr("This text is {}. It opens a part at a time, so typing stays fast; all the parts are saved together.", root.content-size);
+                            }
+                            if root.content-large: HorizontalLayout {
+                                spacing: Space.s2;
+                                Button {
+                                    text: @tr("Previous part");
+                                    enabled: root.part-index > 0;
+                                    clicked => { root.part-requested(root.part-index - 1); }
+                                }
+                                Text {
+                                    horizontal-stretch: 1;
+                                    text: @tr("Part {} of {}", root.part-index + 1, root.parts.length);
+                                    color: Theme.text-secondary;
+                                    font-family: Fonts.sans;
+                                    font-size: Type.sm;
+                                    horizontal-alignment: center;
+                                    vertical-alignment: center;
+                                    accessible-role: AccessibleRole.text;
+                                }
+                                Button {
+                                    text: @tr("Next part");
+                                    enabled: root.part-index + 1 < root.parts.length;
+                                    clicked => { root.part-requested(root.part-index + 1); }
+                                }
                             }
                         }
                         attachment := VerticalLayout {
@@ -1274,7 +1307,7 @@ export component ItemEditor inherits Window {
                         for ph in root.placeholders: PlaceholderRow {
                             token: ph.token;
                             help: ph.help;
-                            chip-enabled: !root.content-large;
+                            chip-enabled: true;
                             chip-w: chip-measure.preferred-width;
                             // The form's width less its side padding.
                             avail: flick.viewport-width - Space.s4 * 2;
@@ -1749,8 +1782,9 @@ component EntityEditorBody inherits Rectangle {
     property <string> name-shown-error: root.name-error != "" ? root.name-error
         : (root.show-errors && root.name-missing) ? root.missing-name-text : "";
     property <[string]> colour-names: [
-        @tr("Blue"), @tr("Teal"), @tr("Green"), @tr("Amber"), @tr("Orange"),
-        @tr("Red"), @tr("Rose"), @tr("Violet"), @tr("Slate"),
+        HueNames.name(ListHue.blue), HueNames.name(ListHue.teal), HueNames.name(ListHue.green),
+        HueNames.name(ListHue.amber), HueNames.name(ListHue.orange), HueNames.name(ListHue.red),
+        HueNames.name(ListHue.rose), HueNames.name(ListHue.violet), HueNames.name(ListHue.slate),
     ];
 
     function touch() {
@@ -2084,8 +2118,9 @@ export component BoardEditor inherits Window {
 
 // ---- Tag management ------------------------------------------------------------------------------
 
-// Rename and delete tags. A row shows the tag and how many items carry it; Rename turns the name into a field
-// (Enter applies, Esc cancels), Delete asks first and says how many items lose the tag (the items stay).
+// Add, rename, merge and delete tags. A row shows the tag and how many items carry it; Rename turns the name into a
+// field (Enter applies, Esc cancels; a name another tag has asks to merge the two), Delete asks first and says how
+// many items lose the tag (the items stay). The field above the list adds a tag no item carries yet.
 export component TagManager inherits Window {
     title: @tr("Tags");
     background: Theme.bg-app;
@@ -2093,7 +2128,7 @@ export component TagManager inherits Window {
     min-height: 280px;
     preferred-width: 440px;
     // Fits its content (the intro, one row per tag, the Close row), at most 520px; a long list scrolls.
-    out property <length> wanted-height: min(520px, max(280px, 2 * Space.s4 + 2 * Space.s3 + intro.preferred-height + max(root.tags.length, 2) * root.row-h + 2px + close-row.preferred-height));
+    out property <length> wanted-height: min(520px, max(280px, 2 * Space.s4 + 2 * Space.s3 + intro.preferred-height + new-row.preferred-height + Space.s3 + max(root.tags.length, 2) * root.row-h + 2px + close-row.preferred-height));
     preferred-height: root.wanted-height;
 
     in property <bool> dark: false;
@@ -2106,18 +2141,34 @@ export component TagManager inherits Window {
     in-out property <string> rename-text;
     // The row whose deletion the dialog asks about, or -1 (dialog closed).
     in-out property <int> delete-index: -1;
+    // The tag being renamed onto another tag's name (`merge-from`) and that other tag (`merge-into`), both rows of
+    // `tags`, or -1 (dialog closed). `merge-count` = items the renamed tag has.
+    in-out property <int> merge-from: -1;
+    in-out property <int> merge-into: -1;
+    in-out property <int> merge-count: 0;
+    // The "New tag" field and the reason the host refused its text.
+    in-out property <string> new-text;
+    in property <string> new-error;
 
     callback rename-requested(index: int, name: string);
+    callback create-requested(name: string);
+    callback merge-confirmed(from: int, into: int);
     callback delete-confirmed(index: int);
     callback close-requested();
 
     public function finish-rename() { root.editing = -1; }
+    public function finish-create() { root.new-text = ""; }
 
     property <length> row-h: max(Space.hit + Space.s2, Type.line-base + Space.s3);
 
     function begin-rename(i: int) {
         root.rename-text = root.tags[i].label;
         root.editing = i;
+    }
+    function apply-create() {
+        if (root.new-text != "") {
+            root.create-requested(root.new-text);
+        }
     }
     function apply-rename() {
         if (root.editing >= 0 && root.rename-text != "") {
@@ -2137,7 +2188,7 @@ export component TagManager inherits Window {
             return reject;
         }
         key-pressed(event) => {
-            if (event.text == Key.Escape && root.delete-index < 0) {
+            if (event.text == Key.Escape && root.delete-index < 0 && root.merge-from < 0) {
                 if (root.editing >= 0) {
                     root.editing = -1;
                     // The field is gone: keep the keys (a second Esc closes the page).
@@ -2155,12 +2206,32 @@ export component TagManager inherits Window {
             spacing: Space.s3;
 
             intro := Text {
-                text: @tr("Rename or delete tags. Deleting a tag removes it from its items; the items stay.");
+                text: @tr("Add, rename, merge or delete tags. A new name another tag already has merges the two. Deleting a tag removes it from its items; the items stay.");
                 color: Theme.text-secondary;
                 font-family: Fonts.sans;
                 font-size: Type.sm;
                 wrap: word-wrap;
                 accessible-role: none;
+            }
+
+            new-row := HorizontalLayout {
+                spacing: Space.s2;
+                TextField {
+                    horizontal-stretch: 1;
+                    label: @tr("New tag");
+                    placeholder: @tr("New tag");
+                    error: root.new-error;
+                    text <=> root.new-text;
+                    accepted(t) => { root.apply-create(); }
+                }
+                VerticalLayout {
+                    alignment: start;
+                    Button {
+                        text: @tr("Add tag");
+                        enabled: root.new-text != "";
+                        clicked => { root.apply-create(); }
+                    }
+                }
             }
 
             Rectangle {
@@ -2306,6 +2377,30 @@ export component TagManager inherits Window {
         }
     }
 
+    Dialog {
+        open: root.merge-from >= 0;
+        title: @tr("Merge these tags?");
+        body: (root.merge-from >= 0 && root.merge-from < root.tags.length && root.merge-into >= 0 && root.merge-into < root.tags.length)
+            ? @tr("{n} item will carry \"{}\" instead of \"{}\"." | "{n} items will carry \"{}\" instead of \"{}\"." % root.merge-count, root.tags[root.merge-into].label, root.tags[root.merge-from].label)
+            : "";
+        dismissed => { root.merge-from = -1; }
+        closed => { scope.focus(); }
+        Button {
+            text: @tr("Cancel");
+            clicked => { root.merge-from = -1; }
+        }
+        Button {
+            text: @tr("Merge tags");
+            variant: ButtonVariant.primary;
+            clicked => {
+                let from = root.merge-from;
+                let into = root.merge-into;
+                root.merge-from = -1;
+                root.merge-confirmed(from, into);
+            }
+        }
+    }
+
     // The window's tooltip layer: last, so no sibling paints over a tooltip and no container clips it.
-    TipLayer { suppressed: root.delete-index >= 0; }
+    TipLayer { suppressed: root.delete-index >= 0 || root.merge-from >= 0; }
 }

@@ -224,6 +224,10 @@ fn start() -> (MainWindow, Log) {
     hook!(on_row_dropped_on_list, |row, list| format!(
         "row-on-list:{row}:{list}"
     ));
+    hook!(on_row_dropped_on_trash, |row| format!("row-on-trash:{row}"));
+    hook!(on_row_dropped_on_tag, |row, tag| format!(
+        "row-on-tag:{row}:{tag}"
+    ));
     hook!(on_list_dropped, |from, onto| format!(
         "list-dropped:{from}:{onto}"
     ));
@@ -762,6 +766,17 @@ ui_tests! {
         let code = centre_of(&find(&ui, "Code", AccessibleRole::ListItem));
         drag(row0, code);
         assert_eq!(take(&log), ["row-on-list:0:2"], "row onto a sidebar list");
+
+        // The Trash and a tag take dropped rows too.
+        let trash = centre_of(&find(&ui, "Trash", AccessibleRole::ListItem));
+        drag(row0, trash);
+        assert_eq!(take(&log), ["row-on-trash:0"], "row onto the Trash");
+        let tag = centre_of(&find(&ui, "billing", AccessibleRole::ListItem));
+        drag(row2, tag);
+        assert_eq!(take(&log), ["row-on-tag:2:0"], "row onto a sidebar tag");
+        // A list dragged onto the Trash or a tag is not a row: nothing happens.
+        drag(code, trash);
+        assert_eq!(take(&log), Vec::<String>::new(), "a list is not dropped on the Trash");
 
         let email = centre_of(&find(&ui, "Email replies", AccessibleRole::ListItem));
         drag(code, email);

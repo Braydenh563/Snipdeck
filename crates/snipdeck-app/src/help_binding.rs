@@ -345,11 +345,10 @@ where
     /// selected for the UI now.
     fn sync_tips(&self, window: &ui::HelpWindow) {
         let words = ui::TipTexts::get(window);
-        let (titles, firsts, seconds, images) = (
+        let (titles, firsts, seconds) = (
             words.get_titles(),
             words.get_first_lines(),
             words.get_second_lines(),
-            words.get_images(),
         );
         let shown: Vec<String> = titles.iter().map(|t| t.to_string()).collect();
         if *self.tips_shown.borrow() == shown {
@@ -359,7 +358,7 @@ where
             title: titles.row_data(i).unwrap_or_default(),
             first_line: firsts.row_data(i).unwrap_or_default(),
             second_line: seconds.row_data(i).unwrap_or_default(),
-            picture: images.row_data(i).unwrap_or_default(),
+            art: i32::try_from(i).unwrap_or_default(),
         });
         window.set_tips(model(cards));
         *self.tips_shown.borrow_mut() = shown;

@@ -11,7 +11,7 @@ use crate::{
     capture,
     drafts::Draft,
     host::ClipboardText,
-    item_editor::{self, AttachmentView, EDIT_LIMIT_BYTES, EditorInput, EditorProblem, Origin},
+    item_editor::{self, AttachmentView, EditorInput, EditorProblem, Origin},
     usecase,
 };
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
@@ -234,7 +234,6 @@ where
             original_text: None,
             formatted: false,
             stamp: None,
-            large: None,
             attachment: None,
             restored: false,
             baseline: Draft::new(
@@ -275,7 +274,7 @@ where
             source_path: String::new(),
             label: item.label,
         };
-        let (mut original_text, mut large, mut attachment) = (None, None, None);
+        let (mut original_text, mut attachment) = (None, None);
         if item_editor::is_text_kind(item.kind) {
             let text = usecase::item_text(&self.store, id)
                 .map_err(|e| match e {
@@ -283,13 +282,9 @@ where
                     _ => snipdeck_store::Error::Invalid("the item's text is not text".to_owned()),
                 })?
                 .unwrap_or_default();
-            if text.len() > EDIT_LIMIT_BYTES {
-                large = u64::try_from(text.len()).ok();
-                item_editor::prefix_of(&text, EDIT_LIMIT_BYTES).clone_into(&mut fields.content);
-            } else {
-                fields.content.clone_from(&text);
-                original_text = Some(text);
-            }
+            // The whole text: the window shows it a part at a time.
+            fields.content.clone_from(&text);
+            original_text = Some(text);
         } else {
             attachment = Some(self.attachment_of(item.kind, id)?);
         }
@@ -325,7 +320,6 @@ where
             original_text,
             formatted,
             stamp: Some(item.updated_at.to_string()),
-            large,
             attachment,
             restored: false,
             baseline: Draft::new(
@@ -409,7 +403,7 @@ where
             ItemTarget::New => true,
             ItemTarget::Item(_) => draft.base == slot.stamp,
         };
-        if !fresh || slot.original_sensitive || slot.large.is_some() {
+        if !fresh || slot.original_sensitive {
             if let Err(e) = drafts.clear(key) {
                 crate::trace!("stale draft not removed: {e}");
             }
