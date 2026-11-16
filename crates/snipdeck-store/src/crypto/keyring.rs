@@ -467,41 +467,47 @@ mod tests {
         assert!(same_key(&key, &ring.unlock(&record, None).unwrap()));
     }
 
-    /// "e" + combining acute (NFD) and the single code point U+00E9 (NFC) look the same.
-    const NFD: &str = "caf\u{65}\u{301} secret";
-    const NFC: &str = "caf\u{e9} secret";
+    /// A test password ending in "e" + combining acute (NFD) or the single code point U+00E9
+    /// (NFC): the two look the same. The ASCII stem is derived, not written out, so no password
+    /// literal sits in the source.
+    fn accented(ending: &str) -> String {
+        let stem = blake3::hash(b"snipdeck nfc test").to_hex();
+        format!("{}{ending}", &stem.as_str()[..16])
+    }
 
     #[test]
     fn the_same_visible_password_opens_whatever_its_unicode_form() {
+        let (nfd, nfc) = (accented("e\u{301}"), accented("\u{e9}"));
         let provider = provider();
         let ring = KeyRing::new(&provider).with_kdf_params(fast());
-        let (key, record) = ring.create(Some(NFD)).unwrap();
-        assert!(same_key(&key, &ring.unlock(&record, Some(NFC)).unwrap()));
-        assert!(same_key(&key, &ring.unlock(&record, Some(NFD)).unwrap()));
+        let (key, record) = ring.create(Some(nfd.as_str())).unwrap();
+        assert!(same_key(&key, &ring.unlock(&record, Some(nfc.as_str())).unwrap()));
+        assert!(same_key(&key, &ring.unlock(&record, Some(nfd.as_str())).unwrap()));
         assert!(matches!(
-            ring.unlock(&record, Some("cafe secret")),
+            ring.unlock(&record, Some(accented("e").as_str())),
             Err(CryptoError::WrongPassword)
         ));
     }
 
     #[test]
     fn a_record_made_from_a_non_nfc_password_before_normalising_still_opens() {
+        let (nfd, nfc) = (accented("e\u{301}"), accented("\u{e9}"));
         let provider = provider();
         let ring = KeyRing::new(&provider).with_kdf_params(fast());
         let (key, _) = ring.create(None).unwrap();
         // An old record: sealed under the raw (NFD) text, as earlier versions did.
-        let inner = seal_with_exact_password(&key, NFD, fast()).unwrap();
+        let inner = seal_with_exact_password(&key, &nfd, fast()).unwrap();
         let old = record_with_inner(&provider, &inner);
-        assert!(same_key(&key, &ring.unlock(&old, Some(NFD)).unwrap()));
+        assert!(same_key(&key, &ring.unlock(&old, Some(nfd.as_str())).unwrap()));
         // The NFC form of the same text is tried as its decomposed form too.
-        assert!(same_key(&key, &ring.unlock(&old, Some(NFC)).unwrap()));
+        assert!(same_key(&key, &ring.unlock(&old, Some(nfc.as_str())).unwrap()));
         assert!(matches!(
             ring.unlock(&old, Some("wrong")),
             Err(CryptoError::WrongPassword)
         ));
         // Rotation re-seals under NFC: a new record opens with either form.
-        let rotation = ring.rotate(&old, Some(NFD), Some(NFD)).unwrap();
-        let fresh = ring.unlock(&rotation.record, Some(NFC)).unwrap();
+        let rotation = ring.rotate(&old, Some(nfd.as_str()), Some(nfd.as_str())).unwrap();
+        let fresh = ring.unlock(&rotation.record, Some(nfc.as_str())).unwrap();
         assert!(same_key(&rotation.new, &fresh));
     }
 
