@@ -101,6 +101,7 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - 2026-11-16 owner: name reserved (Store ID 9N358S63JBHH), MSIX_IDENTITY_NAME/PUBLISHER/PUBLISHER_DISPLAY_NAME repo variables set (verified from screenshot). Done.
 - 2026-11-16 owner: "i like option 1 but ive mever heard of that or used azure" (option 1 = auto-submit releases to the Store from GitHub Actions via Store Developer CLI). Plan: after the first manual Store submission; I draft the workflow + step-by-step Entra setup doc, owner commits the workflow and adds secrets.
 - 2026-11-16 owner: Partner Center now signed in as Entra tenant global admin (braydenh563.onmicrosoft.com); next: Entra app registration + Manager role (guide given in chat).
+- 2026-11-16 owner: Entra app "Snipdeck Store CI" registered (client 9619dca2-..., tenant 2aa21dc5-...); Seller ID 97391640; adding STORE_* repo secrets; pending: Entra app Manager role in Partner Center.
 - 2026-11-16 owner: "dont stop at 85% but be very token efficient and try to have everything done"
 - 2026-11-16 owner: "so once you are finished all the issues and things found previously, and once all the fable audits are finished, I want you to fix absolutely everything they find. leave nothing undone or partly done. absolutely nothing left, and lemme know when everything is done, these fable checks are like the ultimate final check."
 - 2026-11-16 owner: "please run one fable agent at a time"
