@@ -19,9 +19,14 @@
 - 47 "Sensitive item" stand-in title (item-card.slint, StandInProbe).
 - i18n: 12 new strings in the .pot and six .po files.
 
-## Next
-- Run the targeted tests, fmt, clippy; fix failures.
-- UI walk for the stand-in title and the Delete forever button (headless screenshots).
+## Verified (last run)
+- Targeted tests green: snipdeck-app lib 1306, editor_controller 53, help_window 8, history 17, main_controller 102, toast_texts 5, undo_steps 12, history_bypass 1; snipdeck-ui stand_in_title_logic, i18n, deck_logic, quiet_card_logic.
+- cargo fmt clean; cargo clippy --workspace --all-targets --locked -D warnings clean.
 
-## Blocked
-- Windows CRLF / clipboard behaviour is unverified (no Windows here).
+## Next (coordinator)
+- Regenerate docs/CODEMAP.md (python3 scripts/codemap.py); run the full gate.
+- Full UI walk (text scale 1.0/1.5/2.25, light/dark/high contrast, window sizes, focus order) for the stand-in title and the Delete forever toast button: only an accessible-label test and a StandInProbe width measurement exist.
+
+## Blocked / unverified
+- Windows CRLF / clipboard behaviour (no Windows here).
+- Toast button labels "Undo", "Switch", "Open log" remain untranslated English constants (pre-existing).
