@@ -548,6 +548,8 @@ export component MainWindow inherits Window {
     out property <bool> sidebar-focused: nav-scope.has-focus;
     out property <bool> search-focused: search.has-focus;
     out property <bool> rail: root.narrow;
+    // The room the sidebar takes beside the list (the rail's, or the chosen width), in logical pixels.
+    out property <length> sidebar-slot-width: root.sidebar-w;
     out property <int> columns: root.cols;
     out property <bool> confirm-open: root.confirm-shown;
     out property <bool> menu-open: item-menu-open || nav-menu-open || chooser-open || help-menu-open || view-menu-open || sort-menu-open || recent-menu-open || recent-save-open;
@@ -571,7 +573,18 @@ export component MainWindow inherits Window {
     property <length> header-h: Space.hit * SystemLook.text-scale + 2 * root.ring;
     // Below 720px the sidebar is a rail whatever was chosen; the chosen width and the collapsed flag apply above it.
     property <bool> auto-rail: false;
-    property <length> sidebar-w: root.narrow ? Space.s12 * root.text-scale : root.sidebar-width * 1px + (root.text-scale - 1) * 96px;
+    // The room the sidebar takes in the layout: the rail's, or the chosen width.
+    property <length> sidebar-w: root.narrow ? Space.s12 * root.text-scale : root.full-w;
+    property <length> full-w: root.sidebar-width * 1px + (root.text-scale - 1) * 96px;
+    // The automatic rail's drawer: the full sidebar over the list, with a scrim, from the toggle or Ctrl+B.
+    out property <bool> drawer-open: false;
+    // The sidebar shows its rail form: narrow, and not open as the drawer.
+    property <bool> compact: root.narrow && !root.drawer-open;
+    // 40% scrim (DESIGN.md §6), as the dialogs have: dark in both themes; the window colour in high contrast.
+    property <color> scrim: ((Theme.dark || Theme.hc-border != transparent) ? Theme.bg-app : Theme.text-primary).with-alpha(0.4);
+    // How wide the sidebar is drawn: the drawer is wider than the room it takes.
+    property <length> view-w: root.drawer-open ? root.full-w : root.sidebar-w;
+    property <int> toggle-focus: 0;
     property <length> splitter-w: 8px;
     property <length> splitter-grab: 0px;
     property <bool> splitter-focused: false;
@@ -645,6 +658,9 @@ export component MainWindow inherits Window {
     function update-narrow() {
         root.auto-rail = root.width < 720px;
         root.narrow = root.auto-rail || root.sidebar-collapsed;
+        if (!root.auto-rail) {
+            root.drawer-open = false;
+        }
         let room = (root.width - root.sidebar-w - root.caption-inset) / root.text-scale;
         root.toolbar-keys = room >= 736px;
         root.commands-compact = room < 658px;
@@ -670,9 +686,26 @@ export component MainWindow inherits Window {
     changed caption-inset => {
         root.update-narrow();
     }
-    // Ctrl+B and the toolbar button. Below 720px the rail is automatic and wins, so there is nothing to fold.
+    // Ctrl+B and the sidebar toggle. Below 720px the rail is automatic: the toggle opens the full sidebar as a
+    // drawer over the list instead of folding it.
+    function open-drawer() {
+        root.drawer-open = true;
+        root.nav-cursor = root.nav-selected;
+        nav-scope.focus();
+    }
+    function close-drawer() {
+        if (root.drawer-open) {
+            root.drawer-open = false;
+            root.toggle-focus += 1;
+        }
+    }
     function toggle-sidebar() {
         if (root.auto-rail) {
+            if (root.drawer-open) {
+                root.close-drawer();
+            } else {
+                root.open-drawer();
+            }
             return;
         }
         // The splitter goes away on the rail: the keys go to the list, not nowhere.
@@ -723,6 +756,7 @@ export component MainWindow inherits Window {
             root.query-changed("");
         }
         root.section-selected(root.section, root.section-index);
+        root.close-drawer();
     }
 
     // Where the keys go back to when a menu, chooser or confirmation closes: the sidebar when it was opened there.
@@ -1111,6 +1145,10 @@ export component MainWindow inherits Window {
             if (root.overlay-open || search.composing) {
                 return reject;
             }
+            if (root.drawer-open && event.text == Key.Escape) {
+                root.close-drawer();
+                return accept;
+            }
             if (search.has-focus && suggest.handle-key(event)) {
                 return accept;
             }
@@ -1170,8 +1208,27 @@ export component MainWindow inherits Window {
 
         HorizontalLayout {
             // ======== Sidebar ====================================================================
-            sidebar := Rectangle {
+            // The layout's slot for the sidebar. The drawer is drawn from it, over the list (above it, by `z`).
+            Rectangle {
                 width: root.sidebar-w;
+                z: root.drawer-open ? 20 : 0;
+                if root.drawer-open: Rectangle {
+                    x: 0px;
+                    width: root.width;
+                    height: root.height;
+                    background: root.scrim;
+                    TouchArea {
+                        pointer-event(event) => {
+                            if (event.kind == PointerEventKind.down) {
+                                root.close-drawer();
+                            }
+                        }
+                    }
+                }
+            sidebar := Rectangle {
+                x: 0px;
+                width: root.view-w;
+                height: parent.height;
                 background: Theme.bg-app;
                 accessible-role: AccessibleRole.list;
                 accessible-label: @tr("Navigation");
@@ -1182,11 +1239,11 @@ export component MainWindow inherits Window {
                     Rectangle {
                         height: root.bar-h;
                         HorizontalLayout {
-                            padding-left: root.narrow ? 0px : Space.s2;
-                            padding-right: root.narrow ? 0px : Space.s2;
-                            alignment: root.narrow ? center : start;
+                            padding-left: root.compact ? 0px : Space.s2;
+                            padding-right: root.compact ? 0px : Space.s2;
+                            alignment: root.compact ? center : start;
                             spacing: Space.s2;
-                            if !root.narrow: switcher := BoardSwitcher {
+                            if !root.compact: switcher := BoardSwitcher {
                                 horizontal-stretch: 0;
                                 board-name: root.board-name;
                                 menu-open: root.board-menu-open;
@@ -1195,19 +1252,20 @@ export component MainWindow inherits Window {
                                 menu-requested => { root.board-menu-requested(); }
                             }
                         }
-                        if !root.auto-rail: sidebar-toggle := IconButton {
+                        sidebar-toggle := IconButton {
                             scaled: true;
                             side-override: root.ctl-h;
-                            icon: root.sidebar-collapsed ? Icons.caret-double-right : Icons.caret-double-left;
-                            tooltip: root.sidebar-collapsed ? @tr("Expand sidebar (Ctrl+B)") : @tr("Collapse sidebar (Ctrl+B)");
+                            focus-request: root.toggle-focus;
+                            icon: root.compact ? Icons.caret-double-right : Icons.caret-double-left;
+                            tooltip: root.compact ? @tr("Expand sidebar (Ctrl+B)") : root.drawer-open ? @tr("Close sidebar (Ctrl+B)") : @tr("Collapse sidebar (Ctrl+B)");
                             own-tooltip: true;
-                            active: root.sidebar-collapsed;
-                            x: root.narrow ? (parent.width - self.width) / 2 : parent.width - self.width - Space.s2;
+                            active: root.compact;
+                            x: root.compact ? (parent.width - self.width) / 2 : parent.width - self.width - Space.s2;
                             y: (parent.height - self.height) / 2;
                             clicked => { root.toggle-sidebar(); }
                         }
                     }
-                    if root.narrow: Rectangle {
+                    if root.compact: Rectangle {
                         height: Space.hit + Space.s1;
                         IconButton {
                             scaled: true;
@@ -1270,7 +1328,7 @@ export component MainWindow inherits Window {
                                     }
                                     if (event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10)) {
                                         if (root.nav-cursor >= 3) {
-                                            root.open-nav-menu(root.nav-cursor, root.sidebar-w, root.bar-h + Space.s8);
+                                            root.open-nav-menu(root.nav-cursor, root.view-w, root.bar-h + Space.s8);
                                         }
                                         return accept;
                                     }
@@ -1288,7 +1346,7 @@ export component MainWindow inherits Window {
                                         icon: Icons.tray;
                                         label: @tr("All items");
                                         count: root.count-all;
-                                        rail: root.narrow;
+                                        rail: root.compact;
                                         selected: root.nav-selected == 0;
                                         keyboard-focusable: false;
                                         show-focus: nav-scope.has-focus && root.nav-cursor == 0;
@@ -1299,7 +1357,7 @@ export component MainWindow inherits Window {
                                         icon: Icons.push-pin;
                                         label: @tr("Pinned");
                                         count: root.count-pinned;
-                                        rail: root.narrow;
+                                        rail: root.compact;
                                         selected: root.nav-selected == 1;
                                         keyboard-focusable: false;
                                         show-focus: nav-scope.has-focus && root.nav-cursor == 1;
@@ -1310,7 +1368,7 @@ export component MainWindow inherits Window {
                                         icon: Icons.clock;
                                         label: @tr("Recent");
                                         count: root.count-recent;
-                                        rail: root.narrow;
+                                        rail: root.compact;
                                         selected: root.nav-selected == 2;
                                         keyboard-focusable: false;
                                         show-focus: nav-scope.has-focus && root.nav-cursor == 2;
@@ -1321,21 +1379,21 @@ export component MainWindow inherits Window {
                                         icon: Icons.trash;
                                         label: @tr("Trash");
                                         count: root.count-trash;
-                                        rail: root.narrow;
+                                        rail: root.compact;
                                         selected: root.nav-selected == 3;
                                         keyboard-focusable: false;
                                         show-focus: nav-scope.has-focus && root.nav-cursor == 3;
                                         clicked => { root.open-section(3); }
-                                        context-menu-requested(x, y) => { root.open-nav-menu(3, root.sidebar-w, self.absolute-position.y + y); }
+                                        context-menu-requested(x, y) => { root.open-nav-menu(3, root.view-w, self.absolute-position.y + y); }
                                     }
 
-                                    if !root.narrow: SidebarHeading {
+                                    if !root.compact: SidebarHeading {
                                         text: @tr("Lists");
                                         action-icon: Icons.plus;
                                         action-label: @tr("Add list");
                                         action => { root.add-list-requested(); }
                                     }
-                                    if root.narrow: Rectangle {
+                                    if root.compact: Rectangle {
                                         height: Space.s2;
                                         Rectangle {
                                             y: (parent.height - self.height) / 2;
@@ -1373,13 +1431,13 @@ export component MainWindow inherits Window {
                                                     count: entry.count;
                                                     mark-color: entry.color;
                                                     icon: entry.icon;
-                                                    rail: root.narrow;
+                                                    rail: root.compact;
                                                     selected: root.nav-selected == 4 + i;
                                                 drop-target: side-drop.has-drag && list-from < 0;
                                                     keyboard-focusable: false;
                                                     show-focus: nav-scope.has-focus && root.nav-cursor == 4 + i;
                                                     clicked => { root.open-section(4 + i); }
-                                                    context-menu-requested(x, y) => { root.open-nav-menu(4 + i, root.sidebar-w, self.absolute-position.y + y); }
+                                                    context-menu-requested(x, y) => { root.open-nav-menu(4 + i, root.view-w, self.absolute-position.y + y); }
                                                 }
                                             }
                                         }
@@ -1392,13 +1450,13 @@ export component MainWindow inherits Window {
                                     }
                                     }
 
-                                    if !root.narrow: SidebarHeading {
+                                    if !root.compact: SidebarHeading {
                                         text: @tr("Tags");
                                         action-icon: Icons.gear;
                                         action-label: @tr("Manage tags");
                                         action => { root.manage-tags-requested(); }
                                     }
-                                    if root.narrow && root.n-tags > 0: Rectangle {
+                                    if root.compact && root.n-tags > 0: Rectangle {
                                         height: Space.s2;
                                         Rectangle {
                                             y: (parent.height - self.height) / 2;
@@ -1410,12 +1468,12 @@ export component MainWindow inherits Window {
                                         kind: SidebarItemKind.tag;
                                         label: entry.label;
                                         count: entry.count;
-                                        rail: root.narrow;
+                                        rail: root.compact;
                                         selected: root.nav-selected == 4 + root.n-lists + i;
                                         keyboard-focusable: false;
                                         show-focus: nav-scope.has-focus && root.nav-cursor == 4 + root.n-lists + i;
                                         clicked => { root.open-section(4 + root.n-lists + i); }
-                                        context-menu-requested(x, y) => { root.open-nav-menu(4 + root.n-lists + i, root.sidebar-w, self.absolute-position.y + y); }
+                                        context-menu-requested(x, y) => { root.open-nav-menu(4 + root.n-lists + i, root.view-w, self.absolute-position.y + y); }
                                     }
                                 }
                             }
@@ -1429,41 +1487,53 @@ export component MainWindow inherits Window {
                         }
                     }
 
-                    // Settings, pinned to the foot of the sidebar.
+                    // Settings and Help, pinned to the foot of the sidebar. On the rail they are stacked so neither
+                    // reaches past the rail's edge into the status line.
                     Rectangle {
-                        height: root.bar-h;
-                        HorizontalLayout {
+                        height: root.compact ? 2 * Space.hit * root.text-scale + 3 * Space.s1 : root.bar-h;
+                        if !root.compact: HorizontalLayout {
                             padding: Space.s2;
-                            alignment: root.narrow ? center : start;
-                            if !root.narrow: Button {
+                            alignment: start;
+                            Button {
                                 variant: ButtonVariant.ghost;
                                 icon: Icons.gear;
                                 text: @tr("Settings");
                                 y: (parent.height - self.height) / 2;
                                 clicked => { root.settings-requested(); }
                             }
-                            if !root.narrow: Button {
+                            Button {
                                 variant: ButtonVariant.ghost;
                                 icon: Icons.question;
                                 text: @tr("Help");
                                 y: (parent.height - self.height) / 2;
                                 clicked => { root.open-help-menu(); }
                             }
-                            if root.narrow: IconButton {
-                                scaled: true;
-                                icon: Icons.gear;
-                                tooltip: @tr("Settings");
-                                own-tooltip: true;
-                                y: (parent.height - self.height) / 2;
-                                clicked => { root.settings-requested(); }
+                        }
+                        if root.compact: VerticalLayout {
+                            padding-top: Space.s1;
+                            spacing: Space.s1;
+                            alignment: start;
+                            Rectangle {
+                                height: Space.hit * root.text-scale;
+                                IconButton {
+                                    scaled: true;
+                                    icon: Icons.gear;
+                                    tooltip: @tr("Settings");
+                                    own-tooltip: true;
+                                    x: (parent.width - self.width) / 2;
+                                    clicked => { root.settings-requested(); }
+                                }
                             }
-                            if root.narrow: IconButton {
-                                scaled: true;
-                                icon: Icons.question;
-                                tooltip: @tr("Help");
-                                own-tooltip: true;
-                                y: (parent.height - self.height) / 2;
-                                clicked => { root.open-help-menu(); }
+                            Rectangle {
+                                height: Space.hit * root.text-scale;
+                                IconButton {
+                                    scaled: true;
+                                    icon: Icons.question;
+                                    tooltip: @tr("Help");
+                                    own-tooltip: true;
+                                    x: (parent.width - self.width) / 2;
+                                    clicked => { root.open-help-menu(); }
+                                }
                             }
                         }
                     }
@@ -1475,6 +1545,8 @@ export component MainWindow inherits Window {
                     width: 1px;
                     background: Theme.border-subtle;
                 }
+
+            }
 
             }
 
@@ -2707,7 +2779,7 @@ export component MainWindow inherits Window {
     // Keeps the sidebar's cursor row in view. The row's place follows from the row heights, not from measuring
     // the element (a measurement taken before the first layout would scroll the sidebar away).
     property <length> nav-row-h: max(Space.hit, Type.line-base + Space.s2) + Space.s0-5;
-    property <length> nav-head-h: (root.narrow ? Space.s2 : max(Space.hit, Type.line-xs + Space.s2)) + Space.s0-5;
+    property <length> nav-head-h: (root.compact ? Space.s2 : max(Space.hit, Type.line-xs + Space.s2)) + Space.s0-5;
     changed nav-cursor => {
         let y = Space.s1 + root.nav-cursor * root.nav-row-h + (root.nav-cursor >= 4 ? root.nav-head-h : 0px)
             + (root.nav-cursor >= 4 + root.n-lists ? root.nav-head-h : 0px);

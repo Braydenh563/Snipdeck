@@ -169,7 +169,7 @@ Icons: **Phosphor (Regular)**, MIT licence, 16px in rows and 20px in toolbars. T
 | Meaning | Glyph | Where | Never |
 |---|---|---|---|
 | More actions on this object or region | `dots-three` (horizontal ···) | end of a row or card on hover; end of a toolbar or header; tooltip "More" | `dots-three-vertical` (the Android kebab); a hamburger |
-| Primary navigation drawer | none: Snipdeck has no drawer; the Main window sidebar collapses to an icon rail | | `list` as a hamburger |
+| Primary navigation drawer | none as a hamburger menu: the Main window sidebar folds to an icon rail, and below 720px the rail's toggle (`caret-double-right`, "Expand sidebar (Ctrl+B)") opens the full sidebar as a drawer over the list | | `list` as a hamburger |
 | App launcher / switcher | none | | `dots-nine` (bento) |
 | Choose from a list (Board switcher, Select) | `caret-down` after the label | | a hamburger or ··· |
 | Disclose / collapse | `caret-right` / `caret-down`; strip scroll `caret-left` / `caret-right` | | |
@@ -301,7 +301,7 @@ One row, `components/item-card.slint`, used by the Panel, the Picker and the Mai
 ### Main window (3-pane)
 | Zone | Width | Content |
 |---|---|---|
-| Sidebar | 232 (resizable 200–320), on Mica | Search, Recent, Pinned, Boards ▸ Lists, Tags, Trash |
+| Sidebar | 232 (resizable 200–320), on Mica; folds to a 48px rail (Ctrl+B or the toggle at the right of its header), and the toggle is always visible: below 720px it opens the full sidebar as a drawer | Search, Recent, Pinned, Boards ▸ Lists, Tags, Trash |
 | Item list | flex, min 320 | toolbar (view, sort, filter) + ItemCards / tiles. Toolbar controls are 32px tall; as the item area (less the caption strip, at 100% text size) narrows, the toolbar sheds content before it shrinks a target: the Ctrl K chips go below 736px, the Commands label below 658px, the View label below 608px (icon-only, tooltips "Commands (Ctrl+K)", "View"), and the three view toggles below 574px (the View menu then lists all three). The search field takes the rest and every control keeps a 4px gap or more. |
 | Detail | 400 (resizable 320–640) | preview, editor, metadata |
 
@@ -358,7 +358,7 @@ Layering: window → cards → lifted (drag) → popovers/menus → toasts → c
 | Panel | < 300 | New and Open Snipdeck go icon-only; Compact drops the Edit action (it stays in More); Cards fall to one column below 288. Title column 170 at 260 |
 | Panel | docked full-height | Pinned strip wraps to 2 rows max, then scrolls |
 | Main | < 960 | Detail becomes an overlay sheet from the right (400px) |
-| Main | < 720 | Sidebar collapses to a 48px icon rail |
+| Main | < 720 | Sidebar collapses to a 48px icon rail (scaled with the text size). The toggle at the top of the rail, and Ctrl+B, open the full sidebar as a drawer over the list with a 40% scrim; Esc, a click on the scrim or choosing an item closes it. Focus moves into the drawer and returns to the toggle. Settings and Help stack in a column on the rail, so neither reaches the status line |
 | All | Windows text scale 100–225% | Layout grows. Rows never truncate the title to < 12 chars; the preview truncates first |
 | All | High contrast mode | Switch to system colours (`SystemColors`); keep 1px borders on everything |
 | All | Reduced motion | All durations 0, except ≤ 90ms opacity fades |
