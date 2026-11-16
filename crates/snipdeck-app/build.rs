@@ -1,4 +1,9 @@
-//! Embeds the app icon and the version information in the Windows executable.
+//! Embeds the app icon, the version information and the application manifest in the Windows
+//! executable.
+//!
+//! The manifest (`snipdeck.manifest`, PLATFORM-15) asks for Common Controls v6, long paths,
+//! Windows 10/11 compatibility, per-monitor v2 DPI awareness, `asInvoker` and the UTF-8 code
+//! page. Unverified on Windows.
 //!
 //! The icon is resource id 1 (`IDI_APP`): Explorer and the taskbar show it for the exe, and the
 //! tray loads the same resource (`snipdeck-platform`'s `windows/tray.rs`). Only a Windows
@@ -14,9 +19,12 @@
 const ICON_ID: &str = "1";
 /// The icon, relative to this crate.
 const ICON: &str = "../../assets/logo/snipdeck.ico";
+/// The application manifest, relative to this crate (`scripts/installer_check.py` checks it).
+const MANIFEST: &str = "snipdeck.manifest";
 
 fn main() {
     println!("cargo:rerun-if-changed={ICON}");
+    println!("cargo:rerun-if-changed={MANIFEST}");
     println!("cargo:rerun-if-changed=build.rs");
     // The target, not the machine building: a cross build from Linux to Windows needs the
     // resource, a native Windows build for another target does not.
@@ -34,6 +42,7 @@ fn main() {
     // The file and product versions come from `CARGO_PKG_VERSION`; the texts are set here.
     resource
         .set_icon_with_id(ICON, ICON_ID)
+        .set_manifest_file(MANIFEST)
         .set("ProductName", "Snipdeck")
         .set("FileDescription", "Snipdeck")
         .set("OriginalFilename", "snipdeck.exe")

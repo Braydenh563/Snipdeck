@@ -16,12 +16,22 @@
 //! A `WM_PAINT` with an update region followed by a `WM_ERASEBKGND` for the same window means
 //! the renderer presented nothing for that region.
 //!
+//! The hook procedures do no formatting and no I/O (PLATFORM-40): they push a
+//! [`PaintRecord`] to a channel and a writer thread formats and logs it
+//! ([`crate::paint_record`]), so the diagnostics change the timing they measure as little as
+//! possible. Each line carries the time the hook saw the message (`hook_at`).
+//!
 //! Off unless asked for; the log never carries window titles or content. **Unverified on
 //! Windows.**
 
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::fmt::Write as _;
+use std::sync::OnceLock;
+use std::sync::mpsc::{Sender, channel};
+use std::time::Instant;
+
+use crate::paint_record::{PaintRecord, format_record, rect_text as rect_fields};
 
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, RECT, WPARAM};
 use windows::Win32::Graphics::Dwm::{
@@ -44,6 +54,17 @@ use windows::Win32::UI::WindowsAndMessaging::{
 /// Where the log lines go (the app's `trace` writer).
 pub type LogFn = fn(&str);
 
+/// Where the hooks push records, and when the hooks were installed (the zero of `hook_at`).
+static RECORDS: OnceLock<(Sender<(PaintRecord, u64)>, Instant)> = OnceLock::new();
+
+/// Hands `record` to the writer thread. Never blocks and never formats; a stopped writer drops it.
+fn push(record: PaintRecord) {
+    if let Some((sender, zero)) = RECORDS.get() {
+        let at_ms = u64::try_from(zero.elapsed().as_millis()).unwrap_or(u64::MAX);
+        let _ = sender.send((record, at_ms));
+    }
+}
+
 thread_local! {
     static LOG: std::cell::Cell<Option<LogFn>> = const { std::cell::Cell::new(None) };
     /// Windows whose last `WM_PAINT` carried an update region Windows made.
@@ -57,10 +78,30 @@ fn log(line: &str) {
     }
 }
 
+/// Starts the thread that formats and writes the records, once. It keeps the first `log_fn`
+/// (the log has one destination) and ends when the process does.
+fn start_writer(log_fn: LogFn) {
+    RECORDS.get_or_init(|| {
+        let (sender, receiver) = channel::<(PaintRecord, u64)>();
+        let zero = Instant::now();
+        // A thread that cannot start leaves the log empty; the hooks still run.
+        let _ = std::thread::Builder::new()
+            .name("snipdeck-paint-diag".into())
+            .spawn(move || {
+                // Each record is stamped when the hook saw it, not when it is written.
+                for (record, at_ms) in receiver {
+                    log_fn(&format_record(&record, at_ms));
+                }
+            });
+        (sender, zero)
+    });
+}
+
 /// Installs the two hooks on this thread (the UI thread, before or after windows exist).
 /// Calling it again only changes where the lines go. Returns `false` when Windows refused a hook.
 pub fn install(log_fn: LogFn) -> bool {
     LOG.with(|l| l.set(Some(log_fn)));
+    start_writer(log_fn);
     if HOOKS.with(std::cell::Cell::get) != (0, 0) {
         return true;
     }
@@ -93,13 +134,7 @@ pub fn take_os_invalidated(hwnd: isize) -> bool {
 }
 
 fn rect_text(r: &RECT) -> String {
-    format!(
-        "({},{} {}x{})",
-        r.left,
-        r.top,
-        r.right - r.left,
-        r.bottom - r.top
-    )
+    rect_fields(r.left, r.top, r.right - r.left, r.bottom - r.top)
 }
 
 /// The virtual screen (all monitors) as `(x, y, width, height)` in physical pixels.
@@ -202,10 +237,10 @@ unsafe extern "system" fn get_message_hook(code: i32, wparam: WPARAM, lparam: LP
                 // `try_`: a re-entrant call inside this hook must not panic (a panic cannot
                 // unwind out of an `extern "system"` function and would abort the process).
                 OS_INVALIDATED.with(|s| s.try_borrow_mut().map(|mut s| s.insert(hwnd)).ok());
-                log(&format!(
-                    "diag render: WM_PAINT hwnd={hwnd:#x} os_update={}",
-                    rect_text(&r)
-                ));
+                push(PaintRecord::Paint {
+                    hwnd,
+                    update: (r.left, r.top, r.right - r.left, r.bottom - r.top),
+                });
             }
         }
     }
@@ -219,39 +254,52 @@ unsafe extern "system" fn call_wnd_proc_hook(code: i32, wparam: WPARAM, lparam: 
         // SAFETY: for HC_ACTION, `lparam` points to a CWPSTRUCT for this call; checked for null.
         if let Some(cwp) = unsafe { (lparam.0 as *const CWPSTRUCT).as_ref() } {
             let hwnd = cwp.hwnd.0 as isize;
-            let what = match cwp.message {
+            let record = match cwp.message {
                 // Logged before the window sees it: the erase subclass may still skip it. The count is
                 // of erases skipped before this one; it grows by one when this one is skipped too.
-                WM_ERASEBKGND => Some(format!(
-                    "WM_ERASEBKGND (class brush, unless a frame was just presented; skipped so far={})",
-                    super::erase::skipped_erases()
-                )),
+                WM_ERASEBKGND => Some(PaintRecord::EraseBackground {
+                    hwnd,
+                    skipped: super::erase::skipped_erases(),
+                }),
                 WM_WINDOWPOSCHANGED => {
                     // SAFETY: for this message `lParam` points to a WINDOWPOS; checked for null.
                     unsafe { (cwp.lParam.0 as *const WINDOWPOS).as_ref() }.map(|p| {
-                        format!(
-                            "WM_WINDOWPOSCHANGED at=({},{}) size={}x{} flags={:#x}",
-                            p.x, p.y, p.cx, p.cy, p.flags.0
-                        )
+                        PaintRecord::PosChanged {
+                            hwnd,
+                            x: p.x,
+                            y: p.y,
+                            cx: p.cx,
+                            cy: p.cy,
+                            flags: p.flags.0,
+                        }
                     })
                 }
-                WM_SIZE => Some(format!(
-                    "WM_SIZE type={} {}x{}",
-                    cwp.wParam.0,
-                    cwp.lParam.0 & 0xffff,
-                    (cwp.lParam.0 >> 16) & 0xffff
-                )),
-                WM_ENTERSIZEMOVE => Some("WM_ENTERSIZEMOVE (modal move/size loop starts)".into()),
-                WM_EXITSIZEMOVE => Some("WM_EXITSIZEMOVE".into()),
-                WM_DPICHANGED => Some(format!("WM_DPICHANGED dpi={}", cwp.wParam.0 & 0xffff)),
-                WM_DISPLAYCHANGE => Some("WM_DISPLAYCHANGE".into()),
-                WM_DWMCOMPOSITIONCHANGED => Some("WM_DWMCOMPOSITIONCHANGED".into()),
-                WM_SHOWWINDOW => Some(format!("WM_SHOWWINDOW show={}", cwp.wParam.0)),
-                WM_ACTIVATE => Some(format!("WM_ACTIVATE state={}", cwp.wParam.0 & 0xffff)),
+                WM_SIZE => Some(PaintRecord::Size {
+                    hwnd,
+                    kind: cwp.wParam.0,
+                    width: (cwp.lParam.0 & 0xffff).cast_unsigned(),
+                    height: ((cwp.lParam.0 >> 16) & 0xffff).cast_unsigned(),
+                }),
+                WM_ENTERSIZEMOVE => Some(PaintRecord::EnterSizeMove { hwnd }),
+                WM_EXITSIZEMOVE => Some(PaintRecord::ExitSizeMove { hwnd }),
+                WM_DPICHANGED => Some(PaintRecord::DpiChanged {
+                    hwnd,
+                    dpi: cwp.wParam.0 & 0xffff,
+                }),
+                WM_DISPLAYCHANGE => Some(PaintRecord::DisplayChange { hwnd }),
+                WM_DWMCOMPOSITIONCHANGED => Some(PaintRecord::CompositionChanged { hwnd }),
+                WM_SHOWWINDOW => Some(PaintRecord::ShowWindow {
+                    hwnd,
+                    show: cwp.wParam.0,
+                }),
+                WM_ACTIVATE => Some(PaintRecord::Activate {
+                    hwnd,
+                    state: cwp.wParam.0 & 0xffff,
+                }),
                 _ => None,
             };
-            if let Some(what) = what {
-                log(&format!("diag render: {what} hwnd={hwnd:#x}"));
+            if let Some(record) = record {
+                push(record);
             }
         }
     }

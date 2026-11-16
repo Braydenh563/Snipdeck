@@ -30,6 +30,7 @@ pub mod handover;
 pub mod hello;
 pub mod instance_names;
 pub mod keys;
+pub mod paint_record;
 pub mod payload;
 pub mod pipeline;
 pub mod route;

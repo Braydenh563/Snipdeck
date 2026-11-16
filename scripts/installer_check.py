@@ -26,6 +26,19 @@ PLATFORM = ROOT / "crates/snipdeck-app/src/platform.rs"
 ASSETS_SCRIPT = ROOT / "scripts/make_msix_assets.py"
 TABLE = ROOT / "packaging/registration.json"
 LAUNCHER_DATA = ROOT / "tools/launcher/data.ps1"
+APP_MANIFEST = ROOT / "crates/snipdeck-app/snipdeck.manifest"
+APP_BUILD_RS = ROOT / "crates/snipdeck-app/build.rs"
+# What the exe's own manifest must carry (PLATFORM-15), as (needle, why).
+APP_MANIFEST_PARTS = (
+    ("Microsoft.Windows.Common-Controls", "Common Controls v6"),
+    ('version="6.0.0.0"', "Common Controls v6"),
+    ("<longPathAware", "long paths"),
+    (">true</longPathAware>", "long paths turned on"),
+    ("8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a", "supportedOS Windows 10/11"),
+    (">PerMonitorV2", "per-monitor v2 DPI awareness"),
+    ('level="asInvoker"', "asInvoker"),
+    (">UTF-8</activeCodePage>", "the UTF-8 code page"),
+)
 PACKAGING_DOCS = (ROOT / "docs/packaging.md", ROOT / "packaging/msix/README.md")
 # Custom messages that Inno itself defines in every language file.
 BUILTIN_MESSAGES = {"AdditionalIcons", "LaunchProgram"}
@@ -261,6 +274,22 @@ def check_arch(errors, text, setup):
             errors.append(f"{key} must be {{#Arch}}; got {setup.get(key)!r}")
 
 
+def check_app_manifest(errors, manifest_text=None, build_text=None):
+    """The exe's embedded manifest must carry every part we rely on, and build.rs must embed it."""
+    text = manifest_text if manifest_text is not None else APP_MANIFEST.read_text(encoding="utf-8")
+    build = build_text if build_text is not None else APP_BUILD_RS.read_text(encoding="utf-8")
+    try:
+        ET.fromstring(text.encode("utf-8"))
+    except ET.ParseError as err:
+        errors.append(f"snipdeck.manifest is not well-formed: {err}")
+        return
+    for needle, why in APP_MANIFEST_PARTS:
+        if needle not in text:
+            errors.append(f"snipdeck.manifest lacks {why} ({needle!r})")
+    if "set_manifest_file(MANIFEST)" not in build or 'MANIFEST: &str = "snipdeck.manifest"' not in build:
+        errors.append("crates/snipdeck-app/build.rs must embed snipdeck.manifest with set_manifest_file")
+
+
 def check_docs(errors, texts=None):
     """The packaging recipe must build resources.pri with makepri (the target-size icons need it)."""
     texts = texts if texts is not None else [p.read_text(encoding="utf-8") for p in PACKAGING_DOCS]
@@ -380,6 +409,7 @@ def run():
         check_registration(errors, iss_text, json.loads(TABLE.read_text(encoding="utf-8")),
                            MANIFEST.read_text(encoding="utf-8"), LAUNCHER_DATA.read_text(encoding="utf-8"))
         check_docs(errors)
+        check_app_manifest(errors)
     except (OSError, ValueError, AttributeError, KeyError) as err:
         errors.append(f"could not check: {err}")
     return errors

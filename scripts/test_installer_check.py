@@ -142,6 +142,15 @@ class NewRules(unittest.TestCase):
     def test_docs_need_makepri(self):
         self.assertTrue(run_check(ic.check_docs, ["no step", "makepri new resources.pri"]))
 
+    def test_app_manifest_parts_required(self):
+        text = ic.APP_MANIFEST.read_text(encoding="utf-8")
+        build = ic.APP_BUILD_RS.read_text(encoding="utf-8")
+        self.assertEqual(run_check(ic.check_app_manifest, text, build), [])
+        for needle, _ in ic.APP_MANIFEST_PARTS:
+            self.assertIn(needle, text)
+            self.assertTrue(run_check(ic.check_app_manifest, text.replace(needle, "x", 1), build), needle)
+        self.assertTrue(run_check(ic.check_app_manifest, text, build.replace("set_manifest_file", "other")))
+
 
 if __name__ == "__main__":
     unittest.main()
