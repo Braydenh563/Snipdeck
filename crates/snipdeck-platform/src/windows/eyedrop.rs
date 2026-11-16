@@ -268,7 +268,7 @@ fn solid_brush(r: u8, g: u8, b: u8) -> (HBRUSH, GdiObject) {
 struct Surface {
     // Field order is drop order: the bitmap goes after `Drop::drop` selected it out, then the DC.
     // Shared with the pixels a [`Shot`] reads from the DIB (see `DibPixels`).
-    _bitmap: Rc<GdiObject>,
+    bitmap: Rc<GdiObject>,
     dc: MemDc,
     previous: HGDIOBJ,
     /// The pixels of a DIB section (`None` for a compatible bitmap).
@@ -334,7 +334,7 @@ impl Surface {
             return Err(Error::Unavailable("could not select a bitmap"));
         }
         Ok(Self {
-            _bitmap: bitmap,
+            bitmap,
             dc,
             previous,
             bits,
@@ -585,7 +585,7 @@ fn capture(screen: &ScreenDc, monitor: &MonitorFacts, hdr: bool) -> Result<(Shot
     let bgra = Pixels::new(DibPixels {
         bits: bits.cast::<u8>().cast_const(),
         len,
-        _bitmap: Rc::clone(&surface._bitmap),
+        _bitmap: Rc::clone(&surface.bitmap),
     });
     let shot = Shot {
         bounds: monitor.bounds,
