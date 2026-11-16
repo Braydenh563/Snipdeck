@@ -4128,3 +4128,6 @@ msgstr "{}：{} は、トリガーにスペースは使えず 32 文字までな
 
 msgid "{}: {} was not kept as a trigger, because it fires after a separator and a Snipdeck trigger does not wait for one."
 msgstr "{}：{} は区切り文字の後で動作するもので、Snipdeck のトリガーは区切りを待たないため、トリガーとして残しませんでした。"
+
+msgid "≈ {}, not an exact colour name. Nothing copied. Click the Name row to switch to {}."
+msgstr "≈ {}、正確な色名ではありません。何もコピーしませんでした。「名前」行をクリックすると {} に切り替わります。"

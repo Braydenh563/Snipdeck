@@ -97,6 +97,14 @@ pub enum ToastMessage {
         /// The list's name.
         list: String,
     },
+    /// "≈ royalblue, not exactly a colour name. Nothing copied" (a copy as Name of a colour that no
+    /// CSS keyword is exactly).
+    NameNotExact {
+        /// The nearest keyword.
+        name: String,
+        /// That keyword's colour, as hex.
+        hex: String,
+    },
     /// "Added to {list}" / "Added {count} items to {list}" (Ctrl+V on a list), with Undo and Edit.
     AddedTo {
         /// The list's name.

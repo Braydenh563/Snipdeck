@@ -4155,3 +4155,6 @@ msgstr "{}: {} não foi mantido como gatilho, porque um gatilho não tem espaço
 
 msgid "{}: {} was not kept as a trigger, because it fires after a separator and a Snipdeck trigger does not wait for one."
 msgstr "{}: {} não foi mantido como gatilho, porque dispara depois de um separador e um gatilho do Snipdeck não espera por um."
+
+msgid "≈ {}, not an exact colour name. Nothing copied. Click the Name row to switch to {}."
+msgstr "≈ {}, não é um nome de cor exato. Nada foi copiado. Clique na linha Nome para mudar para {}."

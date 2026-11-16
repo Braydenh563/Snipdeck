@@ -145,10 +145,11 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::EyedropRefused => 115,
         ToastMessage::EyedropEnded { .. } => 116,
         ToastMessage::EyedropKeysBusy { .. } => 117,
+        ToastMessage::NameNotExact { .. } => 118,
     }
 }
 
-const VARIANTS: usize = 118;
+const VARIANTS: usize = 119;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -338,6 +339,10 @@ fn samples() -> Vec<ToastMessage> {
         M::EyedropEnded { timed_out: true },
         M::EyedropEnded { timed_out: false },
         M::EyedropKeysBusy { keys: s("+, -") },
+        M::NameNotExact {
+            name: s("royalblue"),
+            hex: s("#4169e1"),
+        },
     ]
 }
 

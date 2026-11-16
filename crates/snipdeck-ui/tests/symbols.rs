@@ -384,6 +384,27 @@ fn enter_grid(s: &Shown) {
     c.set_symbol_enter_grid_ticks(c.get_symbol_enter_grid_ticks() + 1);
 }
 
+/// TOOLS-54: Down in the search field really bumps the hook that gives the grid the keyboard; it is
+/// not a selection move (the old key block sent `symbol-move(3)` and nothing counted the ticks).
+#[test]
+fn down_in_the_search_field_enters_the_grid_instead_of_moving_the_selection() {
+    let s = open(320, false, 1, emoji_rows);
+    let _ = render(&s);
+    // The Symbols field takes the focus when the tab opens.
+    let before = s.h.component.get_symbol_enter_grid_ticks();
+    key(&s, &char::from(slint::platform::Key::DownArrow).to_string());
+    assert_eq!(
+        s.h.component.get_symbol_enter_grid_ticks(),
+        before + 1,
+        "Down in the field bumps the enter-grid counter"
+    );
+    assert!(
+        s.moves.borrow().is_empty(),
+        "and moves no selection: {:?}",
+        s.moves.borrow()
+    );
+}
+
 /// TOOLS-54: Down leaves the search field for the grid, which is a focus stop of its own; all the
 /// arrows, Page keys, Home and End move in it, Enter uses and Shift+Enter copies.
 #[test]

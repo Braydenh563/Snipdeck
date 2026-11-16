@@ -77,6 +77,9 @@ export global ToastTexts {
     pure public function no-colour-on-clipboard() -> string {
         return @tr("No colour in the clipboard");
     }
+    pure public function name-not-exact(name: string, hex: string) -> string {
+        return @tr("≈ {}, not an exact colour name. Nothing copied. Click the Name row to switch to {}.", name, hex);
+    }
     pure public function already-saved(list: string) -> string {
         return @tr("Already saved in {}", list);
     }

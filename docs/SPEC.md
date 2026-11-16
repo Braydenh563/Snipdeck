@@ -243,6 +243,9 @@ Post-1.0, decided:
 - Symbols, a skin tone drawn in the grid as art: tones paste and are remembered, but the grid shows the default (yellow) art, because tone art would cost about 5x the people art (~1.2 MB).
 - Symbols, Add to list for an icon: an icon is not text; saving it as an Image item needs the item editor's PNG path and is not planned before 1.1.
 - Symbols, the Windows verification of system-style emoji and kaomoji fonts: needs the owner on Windows (`tools/windows-test/`).
+- Colours, HSL and HSB copies keep one decimal (`hsl(214.8, 64.9%, 53.1%)`): copy then paste round-trips to the same colour; whole-number text did so for only about 10-12% of colours.
+- Colours, the Name row on a colour no CSS keyword equals: copying fails with a toast ("≈ royalblue, not an exact colour name. Nothing copied.") and the row shows "Use royalblue (#4169e1)", which switches the colour to the keyword.
+- Symbols data: `scripts/symbols.lock` pins every input by sha256, including the `emoji/latest/emoji-test.txt` URL. After a Unicode release `latest` changes and regenerating fails the hash check; re-pin the lock (and review the diff) on purpose.
 - Colours and Symbols as standalone or pinnable windows (TOOLS-58): the Panel is one window with tabs and hides on focus loss by design; a second always-open window needs its own focus, dock and z-order rules and a Windows pass that cannot be done before release. The eyedropper already hides and restores the main window around a pick.
 - Colours, nearest Tailwind colour: needs a vendored palette and a licence check; the nearest CSS name already covers naming.
 - Colours, a custom copy-format template editor and a hex-case setting UI: `custom_format` exists in the colour crate and is tested, but a template editor needs Settings layout, validation wording and six translations; hex stays lower-case.

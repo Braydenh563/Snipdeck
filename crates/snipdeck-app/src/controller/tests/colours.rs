@@ -975,6 +975,15 @@ fn the_name_row_copies_nothing_for_a_near_keyword_and_offers_the_exact_switch() 
         0,
         "nothing copied"
     );
+    // Not a bare failure: the toast says the colour is only close to a keyword.
+    assert!(
+        matches!(
+            w.ctl.view().toast.map(|t| t.message),
+            Some(ToastMessage::NameNotExact { ref name, ref hex })
+                if name == "royalblue" && hex == "#4169e1"
+        ),
+        "the toast explains why"
+    );
     w.ctl.set_colour(near);
     w.ctl.use_nearest_name();
     assert_eq!(w.ctl.colour_view().current, Rgba8::rgb(0x41, 0x69, 0xe1));

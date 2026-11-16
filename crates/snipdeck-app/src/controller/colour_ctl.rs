@@ -219,7 +219,14 @@ where
         // The Name row copies the keyword only when it is exactly `c`; the nearest one is another
         // colour (`use_nearest_name` is the explicit way to switch to it).
         let Some(text) = snipdeck_colour::copy_text(c, f) else {
-            self.show_toast(failed());
+            let near = snipdeck_colour::nearest_name(c);
+            self.show_toast(Toast {
+                kind: ToastKind::Neutral,
+                message: ToastMessage::NameNotExact {
+                    name: near.name.to_owned(),
+                    hex: near.rgb.to_hex(),
+                },
+            });
             return UseResult::Failed;
         };
         let result = self.use_text(text, mode);
