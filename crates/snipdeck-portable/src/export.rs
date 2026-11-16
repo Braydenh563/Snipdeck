@@ -202,6 +202,7 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
                     };
                     let format_dtos = self.item_formats(item.id, &item.title, key)?;
                     used_tags.extend(item.tags.iter().copied());
+                    let (trigger_fires, trigger_case) = option_keys(triggers.get(&item.id));
                     items.push(ItemDto {
                         id: item.id.to_string(),
                         title: item.title.clone(),
@@ -211,17 +212,8 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
                         always_plain: item.always_plain,
                         label: item.label.map(|l| l.key().to_owned()),
                         trigger: triggers.get(&item.id).map(ToString::to_string),
-                        // Only what differs from the default is written.
-                        trigger_fires: triggers
-                            .get(&item.id)
-                            .map(|t| t.options().end)
-                            .filter(|e| *e != snipdeck_core::TriggerEnd::default())
-                            .map(|e| e.key().to_owned()),
-                        trigger_case: triggers
-                            .get(&item.id)
-                            .map(|t| t.options().case)
-                            .filter(|c| *c != snipdeck_core::CaseMode::default())
-                            .map(|c| c.key().to_owned()),
+                        trigger_fires,
+                        trigger_case,
                         group: group_of.get(&item.id).map(|g| {
                             written_groups.insert(*g);
                             g.to_string()
@@ -440,4 +432,17 @@ fn group_map(
     runs.iter()
         .flat_map(|run| run.items.iter().map(|id| (*id, run.group.id)))
         .collect()
+}
+
+/// The keys of a trigger's options, for `trigger_fires` and `trigger_case`. Only what differs from
+/// the default is written.
+fn option_keys(trigger: Option<&snipdeck_core::Trigger>) -> (Option<String>, Option<String>) {
+    let options = trigger
+        .map(snipdeck_core::Trigger::options)
+        .unwrap_or_default();
+    let fires =
+        (options.end != snipdeck_core::TriggerEnd::default()).then(|| options.end.key().to_owned());
+    let case =
+        (options.case != snipdeck_core::CaseMode::default()).then(|| options.case.key().to_owned());
+    (fires, case)
 }

@@ -356,6 +356,10 @@ fn trigger_options(dto: &ItemDto) -> snipdeck_core::TriggerOptions {
     }
 }
 
+fn invalid_trigger(id: ItemId, e: &snipdeck_core::Error) -> Error {
+    Error::malformed(ITEMS, format!("item {id} has an invalid trigger: {e}"))
+}
+
 fn parse_key<T: FromStr<Err = snipdeck_core::Error>>(text: &str, what: &str) -> Result<T> {
     text.parse().map_err(|_| {
         Error::malformed(
@@ -644,13 +648,8 @@ impl<R: Read + Seek> Builder<'_, R> {
                 .as_deref()
                 .map(|t| {
                     Trigger::new(t)
-                        .map(|t| t.with_options(trigger_options(&dto)))
-                        .map_err(|e| {
-                            Error::malformed(
-                                ITEMS,
-                                format!("item {id} has an invalid trigger: {e}"),
-                            )
-                        })
+                        .map(|t| t.with_options(trigger_options(dto)))
+                        .map_err(|e| invalid_trigger(id, &e))
                 })
                 .transpose()?,
             group: dto

@@ -16,7 +16,7 @@ use crate::{Error, ItemId};
 /// The most characters the matcher remembers, and the longest [`Trigger`].
 pub const BUFFER_CHARS: usize = 32;
 
-/// When a trigger fires (TextExpander's "expand immediately or at a delimiter").
+/// When a trigger fires (as in other text expanders: "expand immediately or at a delimiter").
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub enum TriggerEnd {
     /// On the typing of its last character, once a boundary stands before it (the default).
@@ -47,7 +47,7 @@ impl TriggerEnd {
     }
 }
 
-/// How a trigger treats the case of what is typed (TextExpander and Alfred: "ignore case" and
+/// How a trigger treats the case of what is typed (as in other text expanders: "ignore case" and
 /// "adapt to typed case").
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub enum CaseMode {

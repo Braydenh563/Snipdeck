@@ -7,7 +7,10 @@
 - i18n: all new strings in pot + six .po
 
 ## Next
-- UI headless goldens for the editor and the main menu
+- Not run (memory-cgroup OOM: snipdeck-ui needs ~7 GB and other agents' clippy runs took the rest):
+  `UPDATE_GOLDEN=1 cargo test -p snipdeck-ui --test editors` (3 goldens change: the title counter, and
+  item-editor-trigger now 420x1250 to show the trigger options), `--test focus_scroll_logic`, the new
+  editors_logic test `the_trigger_options_show_with_a_trigger_below_its_field`, and clippy on snipdeck-app/ui
 - 32 for capture / paste-as-new (not done)
 - 29, 30, rope viewer, image editor: not built (see SPEC 5.4, HANDOVER)
 
