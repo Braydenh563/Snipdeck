@@ -300,6 +300,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
             by_startup_task,
             settings.starts_visible(),
         );
+    platform::sync_autostart(settings.autostart, settings.panel_start_visible);
     // The text size, before any window draws: the setting over Windows' own.
     snipdeck_app::text_scale::configure(settings.text_size);
     snipdeck_app::text_scale::set_system(look.text_scale());
@@ -374,6 +375,9 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     // (off Windows, or it failed to start) or while no icon is there, closing the Panel quits.
     let tray = Rc::new(RefCell::new(tray));
     show_tray(&mut tray.borrow_mut(), &window);
+    if let Some(tray) = tray.borrow_mut().as_mut() {
+        let _ = tray.set_double_click_opens(controller.borrow().settings().tray_double_click_opens);
+    }
     // "Pause history" is in the tray menu while clipboard history is on, checked while paused.
     // The sink can run while the tray is borrowed by an effect: the newest state is then kept
     // and applied on the next turn of the event loop, so an update is never dropped.
@@ -427,10 +431,10 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     let settings_ui = Rc::new(SettingsUi::new(
         &controller,
         settings_folder.clone(),
-        Rc::new(SystemHost::new(
-            Rc::clone(&hotkeys),
-            Rc::clone(&panel_taskbar),
-        )),
+        Rc::new(
+            SystemHost::new(Rc::clone(&hotkeys), Rc::clone(&panel_taskbar))
+                .with_tray(Rc::clone(&tray)),
+        ),
     ));
     // The master password prompt, made when a locked sensitive item is first needed.
     let unlock_ui = Rc::new(UnlockUi::new(&controller));
@@ -442,10 +446,10 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     // The welcome tour window, made when it is first opened (the first run, or Help).
     let onboarding_ui = OnboardingUi::new(
         &controller,
-        Rc::new(SystemHost::new(
-            Rc::clone(&hotkeys),
-            Rc::clone(&panel_taskbar),
-        )),
+        Rc::new(
+            SystemHost::new(Rc::clone(&hotkeys), Rc::clone(&panel_taskbar))
+                .with_tray(Rc::clone(&tray)),
+        ),
     );
     // The Panel's native window exists once it has been shown. Attached on the first show, which
     // a `--hidden` start reaches later, from the tray or the hotkey.

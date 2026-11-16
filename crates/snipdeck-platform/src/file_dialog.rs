@@ -4,8 +4,13 @@
 //! (`windows::file_dialog::WinFilePicker`: `GetOpenFileNameW` for files, `IFileOpenDialog` in
 //! folder mode for folders; both **unverified on Windows**) and tests with
 //! [`FakeFilePicker`]. Off Windows the app has no picker and the editor only offers its path
-//! field. The pure parts of the Win32 call (the filter string, reading the chosen path back)
-//! live here so they are tested everywhere.
+//! field. The pure parts of the Win32 call (the filter string, reading the chosen path back, the
+//! option flags) live here so they are tested everywhere.
+//!
+//! The dialogs do not block the caller: the answer comes to a [`Done`] callback, which the
+//! Windows picker calls from the thread that ran the dialog. The app hands it a callback that
+//! hops back to the UI thread, so the UI's timers, hotkeys and repainting keep running while a
+//! dialog is up.
 
 use std::path::PathBuf;
 
@@ -85,33 +90,101 @@ impl SaveKind {
     }
 }
 
+/// What a dialog answers: the path chosen, `Ok(None)` when the user cancelled, or why the dialog
+/// could not be shown (the call name and code, never a path).
+pub type Answer = Result<Option<PathBuf>, Error>;
+
+/// Where a dialog's [`Answer`] goes. Called exactly once, on whichever thread ran the dialog (the
+/// calling thread itself for a fake).
+pub type Done = Box<dyn FnOnce(Answer) + Send>;
+
 /// Lets the user choose one existing file, or the name of a file to write.
 pub trait FilePicker {
-    /// Shows the dialog and waits. `owner` is the native handle of the window the dialog
-    /// belongs to (it is disabled meanwhile), if known.
-    ///
-    /// Returns `Ok(None)` when the user cancelled.
-    ///
-    /// # Errors
-    ///
-    /// The dialog could not be shown. It carries the call name and code, never a path.
-    fn pick(&self, kind: PickKind, owner: Option<isize>) -> Result<Option<PathBuf>, Error>;
+    /// Shows the dialog without blocking the caller and gives the [`Answer`] to `done`. `owner`
+    /// is the native handle of the window the dialog belongs to (it is disabled meanwhile), if
+    /// known.
+    fn pick(&self, kind: PickKind, owner: Option<isize>, done: Done);
 
     /// Shows the Save dialog with `suggested` (a file name, with or without the extension) filled
-    /// in and waits. The dialog asks before replacing a file. It writes nothing itself: the
-    /// caller writes the file at the path returned.
-    ///
-    /// Returns `Ok(None)` when the user cancelled.
-    ///
-    /// # Errors
-    ///
-    /// The dialog could not be shown. It carries the call name and code, never a path.
-    fn save(
-        &self,
-        kind: SaveKind,
-        suggested: &str,
-        owner: Option<isize>,
-    ) -> Result<Option<PathBuf>, Error>;
+    /// in, without blocking the caller, and gives the [`Answer`] to `done`. The dialog asks
+    /// before replacing a file. It writes nothing itself: the caller writes the file at the path
+    /// answered.
+    fn save(&self, kind: SaveKind, suggested: &str, owner: Option<isize>, done: Done);
+}
+
+/// Which dialog the option flags are for.
+#[cfg(any(windows, test))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DialogUse {
+    /// `IFileOpenDialog` picking a folder.
+    PickFolder,
+    /// `IFileSaveDialog`.
+    SaveFile,
+}
+
+// `FILEOPENDIALOGOPTIONS` bits; the Windows backend asserts they equal the `windows` crate's.
+/// `FOS_OVERWRITEPROMPT`.
+#[cfg(any(windows, test))]
+pub(crate) const FOS_OVERWRITEPROMPT: u32 = 0x2;
+/// `FOS_NOCHANGEDIR`.
+#[cfg(any(windows, test))]
+pub(crate) const FOS_NOCHANGEDIR: u32 = 0x8;
+/// `FOS_PICKFOLDERS`.
+#[cfg(any(windows, test))]
+pub(crate) const FOS_PICKFOLDERS: u32 = 0x20;
+/// `FOS_FORCEFILESYSTEM`.
+#[cfg(any(windows, test))]
+pub(crate) const FOS_FORCEFILESYSTEM: u32 = 0x40;
+/// `FOS_PATHMUSTEXIST`.
+#[cfg(any(windows, test))]
+pub(crate) const FOS_PATHMUSTEXIST: u32 = 0x800;
+/// `FOS_DONTADDTORECENT` (the same bit as `OFN_DONTADDTORECENT`).
+#[cfg(any(windows, test))]
+pub(crate) const FOS_DONTADDTORECENT: u32 = 0x0200_0000;
+
+// `OFN_*` bits of `OPENFILENAMEW::Flags`.
+/// `OFN_HIDEREADONLY`.
+#[cfg(any(windows, test))]
+pub(crate) const OFN_HIDEREADONLY: u32 = 0x4;
+/// `OFN_NOCHANGEDIR`.
+#[cfg(any(windows, test))]
+pub(crate) const OFN_NOCHANGEDIR: u32 = 0x8;
+/// `OFN_PATHMUSTEXIST`.
+#[cfg(any(windows, test))]
+pub(crate) const OFN_PATHMUSTEXIST: u32 = 0x800;
+/// `OFN_FILEMUSTEXIST`.
+#[cfg(any(windows, test))]
+pub(crate) const OFN_FILEMUSTEXIST: u32 = 0x1000;
+/// `OFN_EXPLORER`.
+#[cfg(any(windows, test))]
+pub(crate) const OFN_EXPLORER: u32 = 0x8_0000;
+/// `OFN_DONTADDTORECENT`.
+#[cfg(any(windows, test))]
+pub(crate) const OFN_DONTADDTORECENT: u32 = 0x0200_0000;
+
+/// The options for an `IFileDialog` of `usage`, on top of the `current` ones. The one place the
+/// flags are built: no dialog adds the file it names (a backup, an export, an import) to Windows'
+/// Recent files and jump lists.
+#[cfg(any(windows, test))]
+pub(crate) const fn item_dialog_options(current: u32, usage: DialogUse) -> u32 {
+    let own = match usage {
+        DialogUse::PickFolder => FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST,
+        DialogUse::SaveFile => {
+            FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST | FOS_OVERWRITEPROMPT | FOS_NOCHANGEDIR
+        }
+    };
+    current | own | FOS_DONTADDTORECENT
+}
+
+/// The flags of the Open dialog for a file (`GetOpenFileNameW`), likewise without Recent.
+#[cfg(any(windows, test))]
+pub(crate) const fn open_file_name_flags() -> u32 {
+    OFN_EXPLORER
+        | OFN_FILEMUSTEXIST
+        | OFN_PATHMUSTEXIST
+        | OFN_HIDEREADONLY
+        | OFN_NOCHANGEDIR
+        | OFN_DONTADDTORECENT
 }
 
 /// The Win32 filter string: `(label, pattern)` pairs, each part and the whole ended by a NUL.
@@ -209,31 +282,60 @@ impl FakeFilePicker {
 
 #[cfg(any(test, feature = "testing"))]
 impl FilePicker for FakeFilePicker {
-    fn pick(&self, kind: PickKind, owner: Option<isize>) -> Result<Option<PathBuf>, Error> {
-        let Ok(mut state) = self.state.lock() else {
-            return Err(Error::Unavailable("the fake file picker is poisoned"));
+    /// Answers at once, on the calling thread.
+    fn pick(&self, kind: PickKind, owner: Option<isize>, done: Done) {
+        let answer = match self.state.lock() {
+            Ok(mut state) => {
+                state.asked.push((kind, owner));
+                state.answers.pop_front().unwrap_or(Ok(None))
+            }
+            Err(_) => Err(Error::Unavailable("the fake file picker is poisoned")),
         };
-        state.asked.push((kind, owner));
-        state.answers.pop_front().unwrap_or(Ok(None))
+        done(answer);
     }
 
-    fn save(
-        &self,
-        kind: SaveKind,
-        suggested: &str,
-        owner: Option<isize>,
-    ) -> Result<Option<PathBuf>, Error> {
-        let Ok(mut state) = self.state.lock() else {
-            return Err(Error::Unavailable("the fake file picker is poisoned"));
+    /// Answers at once, on the calling thread.
+    fn save(&self, kind: SaveKind, suggested: &str, owner: Option<isize>, done: Done) {
+        let answer = match self.state.lock() {
+            Ok(mut state) => {
+                state.save_asked.push((kind, suggested.to_owned(), owner));
+                state.save_answers.pop_front().unwrap_or(Ok(None))
+            }
+            Err(_) => Err(Error::Unavailable("the fake file picker is poisoned")),
         };
-        state.save_asked.push((kind, suggested.to_owned(), owner));
-        state.save_answers.pop_front().unwrap_or(Ok(None))
+        done(answer);
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The fake answers before `pick` returns: collect the answer it gave `done`.
+    fn picked(picker: &FakeFilePicker, kind: PickKind, owner: Option<isize>) -> Answer {
+        let (tx, rx) = std::sync::mpsc::channel();
+        picker.pick(
+            kind,
+            owner,
+            Box::new(move |answer| {
+                let _ = tx.send(answer);
+            }),
+        );
+        rx.try_recv().expect("the fake answers at once")
+    }
+
+    fn saved(picker: &FakeFilePicker, kind: SaveKind, name: &str, owner: Option<isize>) -> Answer {
+        let (tx, rx) = std::sync::mpsc::channel();
+        picker.save(
+            kind,
+            name,
+            owner,
+            Box::new(move |answer| {
+                let _ = tx.send(answer);
+            }),
+        );
+        rx.try_recv().expect("the fake answers at once")
+    }
 
     #[test]
     fn each_kind_offers_its_own_extension_first_and_all_files_last() {
@@ -270,14 +372,14 @@ mod tests {
         picker.push_save(Ok(Some(PathBuf::from("out.png"))));
         picker.push_save(Err(Error::Unavailable("no dialog")));
         assert_eq!(
-            picker.save(SaveKind::Png, "trash", Some(3)),
+            saved(&picker, SaveKind::Png, "trash", Some(3)),
             Ok(Some(PathBuf::from("out.png")))
         );
         assert_eq!(
-            picker.save(SaveKind::Svg, "trash", None),
+            saved(&picker, SaveKind::Svg, "trash", None),
             Err(Error::Unavailable("no dialog"))
         );
-        assert_eq!(picker.save(SaveKind::Svg, "x", None), Ok(None));
+        assert_eq!(saved(&picker, SaveKind::Svg, "x", None), Ok(None));
         assert_eq!(
             picker.asked_save(),
             [
@@ -321,14 +423,14 @@ mod tests {
         picker.push(Err(Error::Unavailable("no dialog")));
         let clone = picker.clone();
         assert_eq!(
-            picker.pick(PickKind::Image, Some(7)),
+            picked(&picker, PickKind::Image, Some(7)),
             Ok(Some(PathBuf::from("a.png")))
         );
         assert_eq!(
-            clone.pick(PickKind::Any, None),
+            picked(&clone, PickKind::Any, None),
             Err(Error::Unavailable("no dialog"))
         );
-        assert_eq!(picker.pick(PickKind::Any, None), Ok(None));
+        assert_eq!(picked(&picker, PickKind::Any, None), Ok(None));
         assert_eq!(
             picker.asked(),
             [
@@ -336,6 +438,52 @@ mod tests {
                 (PickKind::Any, None),
                 (PickKind::Any, None)
             ]
+        );
+    }
+
+    #[test]
+    fn no_dialog_adds_its_file_to_recent() {
+        for usage in [DialogUse::PickFolder, DialogUse::SaveFile] {
+            assert_ne!(
+                item_dialog_options(0, usage) & FOS_DONTADDTORECENT,
+                0,
+                "{usage:?}"
+            );
+            assert_ne!(
+                item_dialog_options(0x1234, usage) & FOS_DONTADDTORECENT,
+                0,
+                "{usage:?} keeps what the dialog had and adds to it"
+            );
+        }
+        assert_ne!(open_file_name_flags() & OFN_DONTADDTORECENT, 0);
+        assert_eq!(FOS_DONTADDTORECENT, OFN_DONTADDTORECENT);
+    }
+
+    #[test]
+    fn each_dialog_keeps_its_own_options() {
+        let folder = item_dialog_options(0, DialogUse::PickFolder);
+        assert_eq!(
+            folder,
+            FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST | FOS_DONTADDTORECENT
+        );
+        let save = item_dialog_options(0, DialogUse::SaveFile);
+        assert_eq!(
+            save,
+            FOS_FORCEFILESYSTEM
+                | FOS_PATHMUSTEXIST
+                | FOS_OVERWRITEPROMPT
+                | FOS_NOCHANGEDIR
+                | FOS_DONTADDTORECENT
+        );
+        assert_eq!(save & FOS_PICKFOLDERS, 0, "a save is not a folder pick");
+        assert_eq!(
+            open_file_name_flags(),
+            OFN_EXPLORER
+                | OFN_FILEMUSTEXIST
+                | OFN_PATHMUSTEXIST
+                | OFN_HIDEREADONLY
+                | OFN_NOCHANGEDIR
+                | OFN_DONTADDTORECENT
         );
     }
 }

@@ -43,6 +43,9 @@ msgstr "Un panel que se mostró con un atajo o desde la bandeja se oculta tras p
 msgid "A docked Panel opens at its edge. Set Dock to Floating to choose where it opens."
 msgstr "Un panel acoplado se abre en su borde. Pon Acoplar a en Flotante para elegir dónde se abre."
 
+msgid "A double click on the tray icon opens the Main window. Turn this off and a single click acts at once, with no wait for a second click."
+msgstr "Un doble clic en el icono de la bandeja abre la ventana principal. Desactívalo y un solo clic actúa al instante, sin esperar un segundo clic."
+
 msgid "A link can't contain spaces or line breaks."
 msgstr "Un enlace no puede contener espacios ni saltos de línea."
 
@@ -953,6 +956,9 @@ msgstr "Acoplado a la derecha"
 
 msgid "Done"
 msgstr "Listo"
+
+msgid "Double-click opens the Main window"
+msgstr "El doble clic abre la ventana principal"
 
 msgid "Drag along the edge to move. Pull away from the edge to float."
 msgstr "Arrastra a lo largo del borde para mover. Aléjalo del borde para dejarlo flotante."

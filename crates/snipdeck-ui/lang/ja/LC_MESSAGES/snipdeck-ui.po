@@ -43,6 +43,9 @@ msgstr "ショートカットまたはトレイから表示したパネルは、
 msgid "A docked Panel opens at its edge. Set Dock to Floating to choose where it opens."
 msgstr "固定したパネルは端に開きます。開く場所を選ぶには、固定先を「フローティング」にします。"
 
+msgid "A double click on the tray icon opens the Main window. Turn this off and a single click acts at once, with no wait for a second click."
+msgstr "トレイアイコンをダブルクリックするとメインウィンドウが開きます。オフにすると、2回目のクリックを待たずに1回のクリックですぐ動作します。"
+
 msgid "A link can't contain spaces or line breaks."
 msgstr "リンクに空白や改行を含めることはできません。"
 
@@ -952,6 +955,9 @@ msgstr "右に固定"
 
 msgid "Done"
 msgstr "完了"
+
+msgid "Double-click opens the Main window"
+msgstr "ダブルクリックでメインウィンドウを開く"
 
 msgid "Drag along the edge to move. Pull away from the edge to float."
 msgstr "端に沿ってドラッグすると移動します。端から引き離すとフローティングになります。"

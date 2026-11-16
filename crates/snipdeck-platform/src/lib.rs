@@ -38,6 +38,7 @@ pub mod system_look;
 #[cfg(any(test, feature = "testing"))]
 pub mod testing;
 pub mod tray;
+pub mod tray_timing;
 pub mod typing;
 pub mod win_formats;
 pub mod win_logic;

@@ -280,6 +280,7 @@ export component SettingsPage inherits Window {
     // text cursor (off while the Panel is docked); 0 hide after a paste or copy, 1 keep open; 0 stay in the tray, 1 show
     // the Panel at start (off without Start with Windows).
     in property <int> tray-click-index: 0;
+    in-out property <bool> tray-double-click-opens: true;
     in property <int> panel-open-at-index: 0;
     in property <bool> panel-open-at-enabled: true;
     in property <int> panel-hide-after-use-index: 0;
@@ -291,6 +292,8 @@ export component SettingsPage inherits Window {
     in property <[string]> languages;
     in property <int> language-index: 0;
     in-out property <bool> autostart: false;
+    // The entry exists but Windows has it switched off (Task Manager, Settings > Apps > Startup).
+    in property <bool> autostart-off-in-windows: false;
     in-out property <bool> close-to-tray: true;
     in-out property <bool> panel-in-taskbar: false;
     in-out property <bool> panel-hide-on-blur: true;
@@ -409,6 +412,7 @@ export component SettingsPage inherits Window {
     callback show-colours-tab-toggled(on: bool);
     callback colour-copy-on-pick-toggled(on: bool);
     callback tray-click-chosen(index: int);
+    callback tray-double-click-opens-toggled(on: bool);
     callback panel-open-at-chosen(index: int);
     callback panel-hide-after-use-chosen(index: int);
     callback panel-start-visible-chosen(index: int);
@@ -883,6 +887,18 @@ export component SettingsPage inherits Window {
                         }
                     }
                     SettingRow {
+                        title: @tr("Double-click opens the Main window");
+                        description: @tr("A double click on the tray icon opens the Main window. Turn this off and a single click acts at once, with no wait for a second click.");
+                        Toggle {
+                            a11y-label: @tr("Double-click opens the Main window");
+                            checked <=> root.tray-double-click-opens;
+                            toggled(on) => { root.tray-double-click-opens-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
                         title: @tr("Panel opens");
                         description: root.panel-open-at-enabled
                             ? @tr("Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none.")
@@ -1041,7 +1057,9 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Start with Windows");
-                        description: @tr("Snipdeck waits in the tray so the shortcuts work after you sign in.");
+                        description: root.autostart-off-in-windows
+                            ? @tr("Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there.")
+                            : @tr("Snipdeck waits in the tray so the shortcuts work after you sign in.");
                         Toggle {
                             a11y-label: @tr("Start with Windows");
                             checked <=> root.autostart;

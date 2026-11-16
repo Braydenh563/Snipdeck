@@ -78,6 +78,7 @@ pub mod toast_binding;
 pub mod tour;
 pub mod trace;
 pub mod typing_worker;
+pub mod ui_thread;
 pub mod unlock_binding;
 pub mod usecase;
 pub mod window_kind;

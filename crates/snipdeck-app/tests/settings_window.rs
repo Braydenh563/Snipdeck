@@ -43,6 +43,7 @@ use snipdeck_app::{
 use snipdeck_core::Timestamp;
 use snipdeck_platform::{
     clipboard_history::{ClipboardHistoryEntry, HistoryRead},
+    command_line::AutostartStatus,
     testing::{FakeClipboard, FakeKeyboard, FakeTiming},
     tray::TrayEvent,
 };
@@ -102,18 +103,23 @@ impl SettingsHost for FakeHost {
         settings_binding::apply_hotkeys(&mut *self.hotkeys.borrow_mut(), hotkeys)
     }
 
-    fn set_autostart(&self, on: bool, hidden: bool) -> Result<(), AutostartError> {
+    fn set_autostart(&self, on: bool, hidden: bool, done: settings_binding::AutostartDone) {
         if self.autostart_fails.get() {
-            return Err(AutostartError::Other("the registry said no".into()));
+            done(Err(AutostartError::Other("the registry said no".into())));
+            return;
         }
         self.autostart.set(Some(on));
         self.autostart_hidden.set(Some(hidden));
-        Ok(())
+        done(Ok(()));
     }
 
-    fn autostart_registered(&self) -> bool {
+    fn autostart_status(&self) -> AutostartStatus {
         self.autostart_reads.set(self.autostart_reads.get() + 1);
-        self.autostart.get() == Some(true)
+        if self.autostart.get() == Some(true) {
+            AutostartStatus::On
+        } else {
+            AutostartStatus::Off
+        }
     }
 
     fn set_panel_in_taskbar(&self, on: bool) {
@@ -137,12 +143,14 @@ impl SettingsHost for FakeHost {
         self.documents.borrow().clone()
     }
 
-    fn pick_export_folder(&self, _owner: Option<isize>) -> ExportFolder {
+    fn pick_export_folder(&self, _owner: Option<isize>, done: Box<dyn FnOnce(ExportFolder)>) {
         self.export_asked.set(self.export_asked.get() + 1);
-        self.export_pick
-            .borrow()
-            .clone()
-            .unwrap_or(ExportFolder::NoDialog)
+        done(
+            self.export_pick
+                .borrow()
+                .clone()
+                .unwrap_or(ExportFolder::NoDialog),
+        );
     }
 
     fn pick_import(
@@ -150,9 +158,11 @@ impl SettingsHost for FakeHost {
         kind: snipdeck_app::controller::ImportKind,
         single_file: bool,
         _owner: Option<isize>,
-    ) -> Option<PathBuf> {
+        done: Box<dyn FnOnce(Option<PathBuf>)>,
+    ) {
         self.import_asked.borrow_mut().push((kind, single_file));
-        self.import_pick.borrow_mut().take()
+        let answer = self.import_pick.borrow_mut().take();
+        done(answer);
     }
 
     fn clipboard_history_supported(&self) -> bool {
@@ -3128,5 +3138,18 @@ fn restoring_shows_the_busy_state_while_the_backup_is_read_and_then_the_preview(
             "the preview opens when the read is done"
         );
         assert!(!r.ctl.borrow().archive_busy());
+    });
+}
+
+#[test]
+fn the_tray_double_click_choice_starts_on_and_is_stored() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert!(r.ui.get_tray_double_click_opens(), "on by default");
+        r.ui.invoke_tray_double_click_opens_toggled(false);
+        assert!(!r.ctl.borrow().settings().tray_double_click_opens);
+        assert!(!r.ui.get_tray_double_click_opens());
+        r.ui.invoke_tray_double_click_opens_toggled(true);
+        assert!(r.ctl.borrow().settings().tray_double_click_opens);
     });
 }
