@@ -1335,14 +1335,14 @@ fn back_up_now_replaces_todays_backup_instead_of_refusing() {
 }
 
 #[test]
-fn the_store_build_also_copies_a_backup_into_documents_snipdeck_backups() {
+fn back_up_now_makes_no_second_export_the_copy_is_the_backup_jobs_own() {
     on_ui_thread(|| {
         let r = rig();
         r.host.packaged.set(true);
         r.ui.invoke_backup_now_requested();
-        let copies = r.dir.path().join("Documents").join("Snipdeck backups");
-        let count = std::fs::read_dir(&copies).map(Iterator::count);
-        assert_eq!(count.unwrap(), 1, "one export beside the backup");
+        // The Store build's copy is made by the backup job (`archive_jobs` tests it), so this
+        // binding writes no export of its own and raises no second toast.
+        assert!(!r.dir.path().join("Documents").exists());
         assert_eq!(
             snipdeck_portable::backup::list_backups(r.dir.path())
                 .unwrap()
