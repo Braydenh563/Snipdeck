@@ -731,6 +731,7 @@ struct PageView {
     screenshot_keep_panel: bool,
     dock_full_edge: bool,
     recent_history: bool,
+    recent_keep_unknown_source: bool,
     expand_triggers: bool,
     suggest_triggers: bool,
     reduce_motion: bool,
@@ -741,6 +742,11 @@ struct PageView {
     dock_leave_delay: i32,
     backups_keep: i32,
     clipboard_clear_secs: i32,
+    recent_max_entries: i32,
+    recent_max_days: i32,
+    /// How many entries Recent holds now (what a switch-off would offer to clear).
+    recent_count: i32,
+    idle_lock_minutes: i32,
     paste_rules: Vec<(String, i32)>,
     paste_rule_error: String,
     no_history_apps: Vec<String>,
@@ -990,6 +996,7 @@ where
         screenshot_keep_panel: settings.screenshot_keep_panel,
         dock_full_edge: settings.dock.full_edge,
         recent_history: settings.recent_history,
+        recent_keep_unknown_source: settings.recent_keep_unknown_source,
         expand_triggers: settings.expand_triggers,
         suggest_triggers: settings.suggest_triggers,
         reduce_motion: settings.reduce_motion,
@@ -1000,6 +1007,10 @@ where
         dock_leave_delay: i32::try_from(settings.dock.leave_delay_ms).unwrap_or(400),
         backups_keep: i32::try_from(settings.backups_keep).unwrap_or(7),
         clipboard_clear_secs: i32::try_from(settings.clipboard_clear_secs).unwrap_or(30),
+        recent_max_entries: i32::try_from(settings.recent_max_entries).unwrap_or(200),
+        recent_max_days: i32::try_from(settings.recent_max_days).unwrap_or(7),
+        recent_count: i32::try_from(controller.recent_entries().len()).unwrap_or(i32::MAX),
+        idle_lock_minutes: i32::try_from(settings.idle_lock_minutes).unwrap_or(15),
         paste_rules: settings
             .programs
             .iter()
@@ -1876,6 +1887,9 @@ where
         ));
         wire!(on_recent_history_toggled, |core, on| core
             .act(|ctl| ctl.set_recent_history(on)));
+        wire!(on_recent_keep_unknown_source_toggled, |core, on| core.act(
+            |ctl| ctl.update_settings(|s| s.recent_keep_unknown_source = on)
+        ));
         wire!(on_expand_triggers_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.expand_triggers = on)));
         wire!(on_suggest_triggers_toggled, |core, on| core
@@ -1910,8 +1924,19 @@ where
                 |s| s.backups_keep = u32::try_from(n).unwrap_or(0)
             )));
         wire!(on_clipboard_clear_secs_chosen, |core, n| core.act(|ctl| {
-            ctl.update_settings(|s| s.clipboard_clear_secs = u32::try_from(n).unwrap_or(0));
+            ctl.update_settings(|s| s.clipboard_clear_secs = u32::try_from(n).unwrap_or(0).max(1));
         }));
+        wire!(on_recent_max_entries_chosen, |core, n| core.act(|ctl| {
+            ctl.update_settings(|s| s.recent_max_entries = u32::try_from(n).unwrap_or(0));
+        }));
+        wire!(on_recent_max_days_chosen, |core, n| core.act(|ctl| {
+            ctl.update_settings(|s| s.recent_max_days = u32::try_from(n).unwrap_or(0));
+        }));
+        wire!(on_idle_lock_minutes_chosen, |core, n| core.act(|ctl| {
+            ctl.update_settings(|s| s.idle_lock_minutes = u32::try_from(n).unwrap_or(0));
+        }));
+        wire!(on_recent_history_off_kept, |core| core
+            .act(Controller::set_recent_history_off_keeping_entries));
         wire!(on_paste_rule_added, |core, name| core
             .paste_rule_added(&name));
         wire!(on_paste_rule_chosen, |core, i, choice| core
@@ -1938,9 +1963,6 @@ where
         wire!(on_master_unlock_requested, |core| core
             .act(Controller::request_unlock));
         window.on_master_strength(|password| crate::master_password::strength(&password).level());
-        window.set_master_idle_minutes(
-            i32::try_from(crate::master_password::IDLE_LOCK.as_secs() / 60).unwrap_or(15),
-        );
         window.set_master_min_length(to_i32(crate::master_password::MIN_LEN));
         wire!(on_support_requested, |core| core.open_support());
         wire!(on_backup_now_requested, |core| core.backup_now());
@@ -2111,6 +2133,9 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     if differs(&|p| p.screenshot_keep_panel == view.screenshot_keep_panel) {
         window.set_screenshot_keep_panel(view.screenshot_keep_panel);
     }
+    if differs(&|p| p.recent_keep_unknown_source == view.recent_keep_unknown_source) {
+        window.set_recent_keep_unknown_source(view.recent_keep_unknown_source);
+    }
     if differs(&|p| p.expand_triggers == view.expand_triggers) {
         window.set_expand_triggers(view.expand_triggers);
     }
@@ -2119,8 +2144,18 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     }
     if differs(&|p| p.recent_history == view.recent_history) {
         window.set_recent_history(view.recent_history);
-        window.set_recent_max_entries(crate::recent::max_entries_count());
-        window.set_recent_max_days(crate::recent::max_age_days());
+    }
+    if differs(&|p| p.recent_max_entries == view.recent_max_entries) {
+        window.set_recent_max_entries(view.recent_max_entries);
+    }
+    if differs(&|p| p.recent_max_days == view.recent_max_days) {
+        window.set_recent_max_days(view.recent_max_days);
+    }
+    if differs(&|p| p.recent_count == view.recent_count) {
+        window.set_recent_count(view.recent_count);
+    }
+    if differs(&|p| p.idle_lock_minutes == view.idle_lock_minutes) {
+        window.set_master_idle_minutes(view.idle_lock_minutes);
     }
     if differs(&|p| p.backups_keep == view.backups_keep) {
         window.set_backups_keep(view.backups_keep);

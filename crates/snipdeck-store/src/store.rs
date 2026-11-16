@@ -639,6 +639,9 @@ pub(crate) fn begin(conn: &mut Connection) -> Result<Transaction<'_>> {
 /// writes when rows are deleted or shrink, which for a clipboard library is small.
 fn secure_delete(conn: &Connection) -> Result<()> {
     conn.pragma_update(None, "secure_delete", "ON")?;
+    // SQLite's own temporary files (sorting, indexes, big statements, VACUUM) can hold row
+    // content outside the database file and its log: keep them in memory (2 = MEMORY).
+    conn.pragma_update(None, "temp_store", 2)?;
     Ok(())
 }
 
@@ -695,6 +698,19 @@ mod tests {
     use super::*;
     use crate::BlobStore as _;
     use crate::blobs::FAIL_REMOVES;
+
+    /// Temporary files (sorts, indexes, large statements) hold row content: keep them in memory.
+    #[test]
+    fn temp_store_is_memory_on_every_open_path() {
+        let temp_store = |s: &Store| -> i64 {
+            s.conn
+                .pragma_query_value(None, "temp_store", |r| r.get(0))
+                .unwrap()
+        };
+        assert_eq!(temp_store(&Store::open_in_memory().unwrap()), 2);
+        let dir = tempfile::tempdir().unwrap();
+        assert_eq!(temp_store(&Store::open(dir.path()).unwrap()), 2);
+    }
 
     #[test]
     fn a_reader_sees_the_open_database_beside_its_writer_and_cannot_write() {

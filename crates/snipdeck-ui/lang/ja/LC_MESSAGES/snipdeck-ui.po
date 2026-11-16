@@ -353,6 +353,9 @@ msgstr "キャンセル"
 msgid "Cancel the test of {}"
 msgstr "{} のテストをキャンセル"
 
+msgid "Caps Lock is on."
+msgstr "Caps Lock がオンです。"
+
 msgid "Captured items keep their kind."
 msgstr "キャプチャしたスニペットは種類を保持します。"
 
@@ -574,6 +577,9 @@ msgstr "コピーしました。使用中だったウィンドウは閉じられ
 
 msgid "Copied. {} runs as administrator, so Snipdeck can't paste into it."
 msgstr "コピーしました。{}は管理者として実行されているため、Snipdeck は貼り付けできません。"
+
+msgid "Copies older than this are deleted, even when Recent is off or paused."
+msgstr "これより古いコピーは、最近がオフや一時停止でも削除されます。"
 
 msgid "Copy"
 msgstr "コピー"
@@ -833,6 +839,9 @@ msgstr "任意の形式の日付と時刻"
 msgid "Dates are today's; a field you fill in when you use the item shows its name or default."
 msgstr "日付は今日のものです。使用時に入力するフィールドには、名前または既定値が表示されます。"
 
+msgid "Days a copy stays in Recent"
+msgstr "コピーが「最近」に残る日数"
+
 msgid "Delete"
 msgstr "削除"
 
@@ -892,6 +901,9 @@ msgstr "このリストを削除しますか？"
 
 msgid "Delete this tag?"
 msgstr "このタグを削除しますか？"
+
+msgid "Delete what Recent has kept?"
+msgstr "「最近」に残っているものを削除しますか？"
 
 msgid "Delete “{}”"
 msgstr "「{}」を削除"
@@ -1247,6 +1259,9 @@ msgstr "パネルを隠す"
 msgid "Hide Panel ({})"
 msgstr "パネルを隠す ({})"
 
+msgid "Hide password"
+msgstr "パスワードを隠す"
+
 msgid "Hide the Panel"
 msgstr "パネルを隠す"
 
@@ -1385,11 +1400,23 @@ msgstr "顔文字"
 msgid "Keep Panel visible during screenshots"
 msgstr "スクリーンショット中もパネルを表示したままにする"
 
+msgid "Keep Recent on"
+msgstr "「最近」をオンのままにする"
+
 msgid "Keep a Recent inbox of what you copy"
 msgstr "コピーした内容を「最近」の受信箱に残す"
 
 msgid "Keep a Recent list of what you copy?"
 msgstr "コピーした内容の「最近」リストを残しますか？"
+
+msgid "Keep copies for fewer days"
+msgstr "コピーを残す日数を減らす"
+
+msgid "Keep copies for more days"
+msgstr "コピーを残す日数を増やす"
+
+msgid "Keep copies from unknown sources"
+msgstr "コピー元が不明なコピーも残す"
 
 msgid "Keep editing"
 msgstr "編集を続ける"
@@ -1400,8 +1427,14 @@ msgstr "お気に入りをすぐ手の届く所に"
 msgid "Keep fewer backups"
 msgstr "バックアップを減らす"
 
+msgid "Keep fewer copies"
+msgstr "保持するコピーを減らす"
+
 msgid "Keep more backups"
 msgstr "バックアップを増やす"
+
+msgid "Keep more copies"
+msgstr "保持するコピーを増やす"
 
 msgid "Keep panel on top"
 msgstr "パネルを手前に表示"
@@ -1493,6 +1526,15 @@ msgstr "リストにはスニペットが入ります。"
 msgid "Loading"
 msgstr "読み込み中"
 
+msgid "Lock after"
+msgstr "ロックまでの時間"
+
+msgid "Lock later"
+msgstr "ロックを遅くする"
+
+msgid "Lock sooner"
+msgstr "ロックを早くする"
+
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "ログはSnipdeckが異常終了したときだけ書き込まれ、スニペットの内容は含まれず、どこにも送信されません。"
 
@@ -1565,6 +1607,12 @@ msgstr "メニュー"
 msgid "Microsoft Store"
 msgstr "Microsoft Store"
 
+msgid "Minutes before the library locks"
+msgstr "ライブラリがロックされるまでの分数"
+
+msgid "Minutes without use before a master password locks your sensitive items again."
+msgstr "マスターパスワードが機密項目を再びロックするまでの、操作のない時間（分）。"
+
 msgid "More"
 msgstr "その他"
 
@@ -1576,6 +1624,9 @@ msgstr "その他のオプション: 完全なエディターを開く"
 
 msgid "More pinned snippets"
 msgstr "その他のピン留めスニペット"
+
+msgid "Most copies kept in Recent"
+msgstr "「最近」に残すコピーの最大数"
 
 msgid "Most used"
 msgstr "よく使う順"
@@ -1857,6 +1908,9 @@ msgstr "オフ: 左右に固定したパネルは、置いた位置の高さの�
 
 msgid "Off: a docked panel does not tuck and hides like a floating one. Otherwise it tucks into a thin tab at its edge, and the panel shortcut opens it too."
 msgstr "オフ: 固定したパネルはタブに収まらず、フローティングのパネルと同じように隠れます。それ以外: 端の細いタブに収まり、パネルのショートカットでも開きます。"
+
+msgid "Older copies are deleted when there are more than this many."
+msgstr "この数を超えると古いコピーから削除されます。"
 
 msgid "On black"
 msgstr "黒の上"
@@ -2260,8 +2314,20 @@ msgstr "最近の項目の操作"
 msgid "Recent history cleared"
 msgstr "最近の履歴を消去しました"
 
+msgid "Recent holds {} copies. Turning it off deletes them, unless you choose to keep them hidden; kept copies show again if you turn Recent back on."
+msgstr "「最近」には{}件のコピーがあります。オフにすると削除されます（非表示のまま残すこともできます。残したコピーは「最近」をオンに戻すと再表示されます）。"
+
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "「最近」は、コピーしたテキストをこのコンピューターにのみ、直近 {} 回のコピーまたは {} 日間のどちらか早い方まで保持します。パスワードマネージャーのパスワードと機密スニペットは保持されません。設定でいつでも変更できます。"
+
+msgid "Recent skips a copy when Snipdeck cannot tell which program it came from, because it could be a password manager. Turn this on to keep those copies too."
+msgstr "Snipdeck がコピー元のプログラムを特定できない場合、パスワードマネージャーの可能性があるため、「最近」はそのコピーを記録しません。オンにすると、それらのコピーも残します。"
+
+msgid "Recent: days kept"
+msgstr "最近：保持する日数"
+
+msgid "Recent: most copies kept"
+msgstr "最近：保持するコピーの最大数"
 
 msgid "Recently used"
 msgstr "最近使ったもの"
@@ -2412,6 +2478,12 @@ msgstr "PNG として保存…"
 msgid "Save as SVG…"
 msgstr "SVG として保存…"
 
+msgid "Save as Sensitive to…"
+msgstr "機密として保存先へ…"
+
+msgid "Save as Sensitive…"
+msgstr "機密として保存…"
+
 msgid "Save from clipboard"
 msgstr "クリップボードから保存"
 
@@ -2532,8 +2604,8 @@ msgstr "あなたの言語の名前で検索できます。"
 msgid "Searched every board and list."
 msgstr "すべてのボードとリストを検索しました。"
 
-msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
-msgstr "機密スニペットをコピーしてから、その後他に何もコピーされなければ、クリップボードから消去されるまでの秒数。0 にすると消去しません。貼り付けると、代わりにご自身のクリップボードの内容が復元されます。"
+msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. Pasting restores your own clipboard instead."
+msgstr "機密スニペットをコピーしてから、その後他に何もコピーされなければ、クリップボードから消去されるまでの秒数。貼り付けると、代わりにご自身のクリップボードの内容が復元されます。"
 
 msgid "See the tips"
 msgstr "ヒントを見る"
@@ -2645,6 +2717,9 @@ msgstr "パネルを表示または非表示"
 
 msgid "Show or hide the sidebar"
 msgstr "サイドバーの表示/非表示"
+
+msgid "Show password"
+msgstr "パスワードを表示"
 
 msgid "Show the Panel"
 msgstr "パネルを表示"
@@ -3141,6 +3216,9 @@ msgstr "今日の日付"
 msgid "Toggle keep Panel open"
 msgstr "パネルを開いたままにする（切り替え）"
 
+msgid "Too many wrong passwords. Wait a few seconds and try again."
+msgstr "パスワードの誤りが続きました。数秒待ってからもう一度お試しください。"
+
 msgid "Tools"
 msgstr "ツール"
 
@@ -3176,6 +3254,12 @@ msgstr "別の言葉や別の種類をお試しください。"
 
 msgid "Try it"
 msgstr "試す"
+
+msgid "Turn off and delete"
+msgstr "オフにして削除"
+
+msgid "Turn off, keep them"
+msgstr "オフにして残す"
 
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "設定でクリップボード履歴をオンにすると、コピーした内容が保存されます。"
@@ -3462,6 +3546,9 @@ msgstr "しばらくしてライブラリがロックされました。入力中
 msgid "Your library locked after a while. The sensitive item you were editing was closed without saving."
 msgstr "しばらくするとライブラリがロックされました。編集中の機密スニペットは保存されずに閉じられました。"
 
+msgid "Your library locked. What you were typing in the sensitive item is kept, and comes back when you unlock."
+msgstr "ライブラリがロックされました。機密項目に入力していた内容は保持され、ロック解除後に戻ります。"
+
 msgid "Your library was erased."
 msgstr "ライブラリを削除しました。"
 
@@ -3586,6 +3673,9 @@ msgstr "「{}」を作成"
 msgid "creates “{}” in {}"
 msgstr "「{}」を {} に作成"
 
+msgid "days"
+msgstr "日"
+
 msgid "default"
 msgstr "既定"
 
@@ -3676,6 +3766,9 @@ msgstr "小文字"
 
 msgid "make new folder together section collect"
 msgstr "作成 新規 フォルダ まとめる セクション 集める"
+
+msgid "min"
+msgstr "分"
 
 msgid "move"
 msgstr "移動"

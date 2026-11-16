@@ -858,6 +858,7 @@ where
         self.editor = None;
         self.undo = None;
         self.item_editor_cancel();
+        self.parked_editor = None;
         self.queue.reset();
         self.index_cache.reset();
         self.clear_history();

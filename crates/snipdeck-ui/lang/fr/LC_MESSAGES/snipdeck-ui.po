@@ -354,6 +354,9 @@ msgstr "Annuler"
 msgid "Cancel the test of {}"
 msgstr "Annuler le test de {}"
 
+msgid "Caps Lock is on."
+msgstr "Le verrouillage des majuscules est activé."
+
 msgid "Captured items keep their kind."
 msgstr "Les extraits capturés gardent leur type."
 
@@ -575,6 +578,9 @@ msgstr "Copié. La fenêtre que vous utilisiez a disparu."
 
 msgid "Copied. {} runs as administrator, so Snipdeck can't paste into it."
 msgstr "Copié. {} s'exécute en tant qu'administrateur, donc Snipdeck ne peut pas coller dedans."
+
+msgid "Copies older than this are deleted, even when Recent is off or paused."
+msgstr "Les copies plus anciennes sont supprimées, même quand Récent est désactivé ou en pause."
 
 msgid "Copy"
 msgstr "Copier"
@@ -834,6 +840,9 @@ msgstr "Date et heure dans le format de votre choix"
 msgid "Dates are today's; a field you fill in when you use the item shows its name or default."
 msgstr "Les dates sont celles d'aujourd'hui ; un champ à remplir à l'utilisation affiche son nom ou sa valeur par défaut."
 
+msgid "Days a copy stays in Recent"
+msgstr "Jours pendant lesquels une copie reste dans Récent"
+
 msgid "Delete"
 msgstr "Supprimer"
 
@@ -893,6 +902,9 @@ msgstr "Supprimer cette liste ?"
 
 msgid "Delete this tag?"
 msgstr "Supprimer cette étiquette ?"
+
+msgid "Delete what Recent has kept?"
+msgstr "Supprimer ce que Récent a conservé ?"
 
 msgid "Delete “{}”"
 msgstr "Supprimer « {} »"
@@ -1248,6 +1260,9 @@ msgstr "Masquer le panneau"
 msgid "Hide Panel ({})"
 msgstr "Masquer le panneau ({})"
 
+msgid "Hide password"
+msgstr "Masquer le mot de passe"
+
 msgid "Hide the Panel"
 msgstr "Masquer le panneau"
 
@@ -1389,11 +1404,23 @@ msgstr "Kaomoji"
 msgid "Keep Panel visible during screenshots"
 msgstr "Garder le panneau visible pendant les captures"
 
+msgid "Keep Recent on"
+msgstr "Garder Récent activé"
+
 msgid "Keep a Recent inbox of what you copy"
 msgstr "Garder une boîte Récents de ce que vous copiez"
 
 msgid "Keep a Recent list of what you copy?"
 msgstr "Garder une liste Récent de ce que vous copiez ?"
+
+msgid "Keep copies for fewer days"
+msgstr "Garder les copies moins de jours"
+
+msgid "Keep copies for more days"
+msgstr "Garder les copies plus de jours"
+
+msgid "Keep copies from unknown sources"
+msgstr "Garder les copies de sources inconnues"
 
 msgid "Keep editing"
 msgstr "Continuer la modification"
@@ -1404,8 +1431,14 @@ msgstr "Gardez vos favoris à portée de main"
 msgid "Keep fewer backups"
 msgstr "Conserver moins de sauvegardes"
 
+msgid "Keep fewer copies"
+msgstr "Garder moins de copies"
+
 msgid "Keep more backups"
 msgstr "Conserver plus de sauvegardes"
+
+msgid "Keep more copies"
+msgstr "Garder plus de copies"
 
 msgid "Keep panel on top"
 msgstr "Garder le panneau au premier plan"
@@ -1497,6 +1530,15 @@ msgstr "Les listes contiennent vos extraits."
 msgid "Loading"
 msgstr "Chargement"
 
+msgid "Lock after"
+msgstr "Verrouiller après"
+
+msgid "Lock later"
+msgstr "Verrouiller plus tard"
+
+msgid "Lock sooner"
+msgstr "Verrouiller plus tôt"
+
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "Les journaux ne sont écrits que si Snipdeck plante, ne contiennent aucun extrait et ne sont envoyés nulle part."
 
@@ -1569,6 +1611,12 @@ msgstr "Menu"
 msgid "Microsoft Store"
 msgstr "Microsoft Store"
 
+msgid "Minutes before the library locks"
+msgstr "Minutes avant le verrouillage de la bibliothèque"
+
+msgid "Minutes without use before a master password locks your sensitive items again."
+msgstr "Minutes sans utilisation avant qu'un mot de passe principal reverrouille vos éléments sensibles."
+
 msgid "More"
 msgstr "Plus"
 
@@ -1580,6 +1628,9 @@ msgstr "Plus d’options : ouvrir l’éditeur complet"
 
 msgid "More pinned snippets"
 msgstr "Plus d'extraits épinglés"
+
+msgid "Most copies kept in Recent"
+msgstr "Nombre maximal de copies dans Récent"
 
 msgid "Most used"
 msgstr "Les plus utilisés"
@@ -1863,6 +1914,9 @@ msgstr "Désactivé : un panneau ancré à gauche ou à droite garde la hauteur 
 
 msgid "Off: a docked panel does not tuck and hides like a floating one. Otherwise it tucks into a thin tab at its edge, and the panel shortcut opens it too."
 msgstr "Désactivé : un panneau ancré ne se replie pas et se masque comme un panneau flottant. Sinon, il se replie en un onglet fin sur son bord, et le raccourci du panneau l'ouvre aussi."
+
+msgid "Older copies are deleted when there are more than this many."
+msgstr "Les copies plus anciennes sont supprimées au-delà de ce nombre."
 
 msgid "On black"
 msgstr "Sur noir"
@@ -2266,8 +2320,20 @@ msgstr "Actions sur les entrées récentes"
 msgid "Recent history cleared"
 msgstr "Historique récent effacé"
 
+msgid "Recent holds {} copies. Turning it off deletes them, unless you choose to keep them hidden; kept copies show again if you turn Recent back on."
+msgstr "Récent contient {} copies. Le désactiver les supprime, sauf si vous choisissez de les garder cachées ; elles réapparaissent si vous réactivez Récent."
+
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "Récents conserve le texte que vous copiez, sur cet ordinateur uniquement, pour les {} dernières copies ou les {} derniers jours, selon la première limite atteinte. Les mots de passe des gestionnaires de mots de passe et les extraits sensibles ne sont jamais conservés. Vous pouvez le modifier à tout moment dans les paramètres."
+
+msgid "Recent skips a copy when Snipdeck cannot tell which program it came from, because it could be a password manager. Turn this on to keep those copies too."
+msgstr "Récents ignore une copie quand Snipdeck ne peut pas savoir de quel programme elle vient, car il pourrait s'agir d'un gestionnaire de mots de passe. Activez cette option pour garder aussi ces copies."
+
+msgid "Recent: days kept"
+msgstr "Récent : jours conservés"
+
+msgid "Recent: most copies kept"
+msgstr "Récent : nombre maximal de copies"
 
 msgid "Recently used"
 msgstr "Utilisés récemment"
@@ -2420,6 +2486,12 @@ msgstr "Enregistrer en PNG…"
 msgid "Save as SVG…"
 msgstr "Enregistrer en SVG…"
 
+msgid "Save as Sensitive to…"
+msgstr "Enregistrer comme Sensible dans…"
+
+msgid "Save as Sensitive…"
+msgstr "Enregistrer comme Sensible…"
+
 msgid "Save from clipboard"
 msgstr "Enregistrer depuis le presse-papiers"
 
@@ -2540,8 +2612,8 @@ msgstr "Cherchez-les par nom, dans votre langue."
 msgid "Searched every board and list."
 msgstr "Recherche effectuée dans tous les tableaux et listes."
 
-msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
-msgstr "Secondes avant que l'extrait sensible copié ne soit vidé du presse-papiers, si rien d'autre n'a été copié depuis. 0 ne le vide jamais. Le collage restaure à la place votre propre presse-papiers."
+msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. Pasting restores your own clipboard instead."
+msgstr "Secondes avant que l'extrait sensible copié ne soit vidé du presse-papiers, si rien d'autre n'a été copié depuis. Le collage restaure à la place votre propre presse-papiers."
 
 msgid "See the tips"
 msgstr "Voir les astuces"
@@ -2653,6 +2725,9 @@ msgstr "Afficher ou masquer le panneau"
 
 msgid "Show or hide the sidebar"
 msgstr "Afficher ou masquer la barre latérale"
+
+msgid "Show password"
+msgstr "Afficher le mot de passe"
 
 msgid "Show the Panel"
 msgstr "Afficher le Panneau"
@@ -3149,6 +3224,9 @@ msgstr "Date du jour"
 msgid "Toggle keep Panel open"
 msgstr "Basculer Garder le Panneau ouvert"
 
+msgid "Too many wrong passwords. Wait a few seconds and try again."
+msgstr "Trop de mots de passe incorrects. Attendez quelques secondes et réessayez."
+
 msgid "Tools"
 msgstr "Outils"
 
@@ -3184,6 +3262,12 @@ msgstr "Essayez un autre mot, ou un autre type."
 
 msgid "Try it"
 msgstr "Essayer"
+
+msgid "Turn off and delete"
+msgstr "Désactiver et supprimer"
+
+msgid "Turn off, keep them"
+msgstr "Désactiver, les garder"
 
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "Activez l'historique du presse-papiers dans les paramètres pour collecter ce que vous copiez."
@@ -3470,6 +3554,9 @@ msgstr "Votre bibliothèque s'est verrouillée au bout d'un moment. Le formulair
 msgid "Your library locked after a while. The sensitive item you were editing was closed without saving."
 msgstr "Votre bibliothèque s'est verrouillée après un moment. L'extrait sensible que vous modifiiez a été fermé sans enregistrement."
 
+msgid "Your library locked. What you were typing in the sensitive item is kept, and comes back when you unlock."
+msgstr "Votre bibliothèque s'est verrouillée. Ce que vous saisissiez dans l'élément sensible est conservé et revient au déverrouillage."
+
 msgid "Your library was erased."
 msgstr "Votre bibliothèque a été effacée."
 
@@ -3595,6 +3682,9 @@ msgstr "crée « {} »"
 msgid "creates “{}” in {}"
 msgstr "crée « {} » dans {}"
 
+msgid "days"
+msgstr "jours"
+
 msgid "default"
 msgstr "par défaut"
 
@@ -3686,6 +3776,9 @@ msgstr "minuscules"
 
 msgid "make new folder together section collect"
 msgstr "créer nouveau dossier ensemble section rassembler"
+
+msgid "min"
+msgstr "min"
 
 msgid "move"
 msgstr "déplacement"

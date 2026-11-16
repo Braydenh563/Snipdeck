@@ -530,14 +530,14 @@ fn an_app_added_in_settings_is_no_longer_captured_end_to_end() {
                     ..Default::default()
                 });
         };
-        copy_from("KeePass.exe");
+        copy_from("Scratchpad.exe");
         assert_eq!(
             r.ctl.borrow().recent_entries().len(),
             1,
             "captured before it is excluded"
         );
-        r.ui.invoke_no_history_app_added("keepass.exe".into());
-        copy_from("KeePass.exe");
+        r.ui.invoke_no_history_app_added("scratchpad.exe".into());
+        copy_from("Scratchpad.exe");
         copy_from("notepad.exe");
         let texts: Vec<_> = r
             .ctl
@@ -548,7 +548,7 @@ fn an_app_added_in_settings_is_no_longer_captured_end_to_end() {
             .collect();
         assert_eq!(
             texts,
-            ["from notepad.exe", "from KeePass.exe"],
+            ["from notepad.exe", "from Scratchpad.exe"],
             "the excluded app is not captured again"
         );
     });
@@ -1155,13 +1155,13 @@ fn the_reduce_motion_switch_turns_animation_off_in_the_page_itself() {
 }
 
 #[test]
-fn the_clipboard_clear_time_is_held_between_zero_and_ten_minutes() {
+fn the_clipboard_clear_time_is_held_between_five_seconds_and_ten_minutes() {
     on_ui_thread(|| {
         let r = rig();
         assert_eq!(r.ui.get_clipboard_clear_secs(), 30);
-        r.ui.invoke_clipboard_clear_secs_chosen(0);
-        assert_eq!(r.ctl.borrow().settings().clipboard_clear_secs, 0);
-        assert_eq!(r.ui.get_clipboard_clear_secs(), 0);
+        r.ui.invoke_clipboard_clear_secs_chosen(1);
+        assert_eq!(r.ctl.borrow().settings().clipboard_clear_secs, 5);
+        assert_eq!(r.ui.get_clipboard_clear_secs(), 5);
         r.ui.invoke_clipboard_clear_secs_chosen(99_999);
         assert_eq!(r.ctl.borrow().settings().clipboard_clear_secs, 600);
     });
@@ -2105,6 +2105,7 @@ fn the_recent_inbox_is_off_for_a_new_install_can_be_switched_on_and_its_clear_bu
             .borrow_mut()
             .on_clipboard_change(&snipdeck_app::recent::ClipboardObservation {
                 text: Some("copied".into()),
+                source_app: Some("notepad.exe".into()),
                 ..Default::default()
             });
         assert_eq!(r.ctl.borrow().recent_entries().len(), 1);
@@ -3034,6 +3035,24 @@ fn the_hello_row_appears_with_a_password_and_a_ready_hello_and_the_switch_seals(
         }
         r.binding.redraw();
         assert!(!r.ui.get_hello_offered());
+    });
+}
+
+#[test]
+fn the_recent_unknown_source_toggle_is_off_by_default_and_changes_the_setting() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert!(!r.ui.get_recent_keep_unknown_source());
+        assert!(!r.ctl.borrow().settings().recent_keep_unknown_source);
+        element(
+            &r.ui,
+            "Keep copies from unknown sources",
+            AccessibleRole::Switch,
+        );
+        r.ui.invoke_recent_keep_unknown_source_toggled(true);
+        assert!(r.ctl.borrow().settings().recent_keep_unknown_source);
+        r.binding.redraw();
+        assert!(r.ui.get_recent_keep_unknown_source());
     });
 }
 

@@ -276,6 +276,8 @@ pub struct Controller<S, C, K, T> {
     parked_editors: Vec<(main_ctl::EditorTarget, crate::main_window::EditorView)>,
     /// The item editor, while one is open.
     item_editor: Option<editor_ctl::ItemEditorSlot>,
+    /// A sensitive editor the lock took off the screen, sealed, until the unlock.
+    parked_editor: Option<editor_ctl::ParkedEditor>,
     item_editor_seq: u64,
     /// What the item editor needs from the machine (drafts folder, key protection, file dialog).
     editor_env: editor_ctl::EditorEnv,
@@ -435,8 +437,6 @@ struct Session {
     /// A fingerprint of the chord each shortcut had when the "press it now" test heard it; a
     /// changed chord is untested again.
     hotkeys_heard: [Option<u64>; 4],
-    /// "Pause history" is on: the Recent inbox collects nothing until Snipdeck restarts.
-    history_paused: bool,
     /// The Panel's clock tab is the one selected.
     recent_open: bool,
     /// The last settings save failed and the user was told.
@@ -534,6 +534,7 @@ where
             board_delete: None,
             parked_editors: Vec::new(),
             item_editor: None,
+            parked_editor: None,
             item_editor_seq: 0,
             editor_env: editor_ctl::EditorEnv::default(),
             log_opener: None,
@@ -729,6 +730,8 @@ where
             fill: self.fill_view(),
             recent: self.recent_view(),
             recent_question: self.recent_question_due(),
+            recent_max_entries: self.settings.recent_max_entries,
+            recent_days: self.settings.recent_max_days,
         }
     }
 

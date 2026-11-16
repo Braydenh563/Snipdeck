@@ -741,7 +741,8 @@ fn when_the_hello_button_disappears_the_focus_goes_to_the_password_field() {
     on_ui_thread(|| {
         let hello = std::sync::Arc::new(FakeHello::new());
         let r = rig_with(Some(&hello));
-        // Tab moves the focus to the Hello button.
+        // Tab moves the focus past the Show button to the Hello button.
+        press(r.ui.window(), "\t");
         press(r.ui.window(), "\t");
         settle();
         type_text(r.ui.window(), "x");

@@ -354,6 +354,9 @@ msgstr "Cancelar"
 msgid "Cancel the test of {}"
 msgstr "Cancelar la prueba de {}"
 
+msgid "Caps Lock is on."
+msgstr "Bloq Mayús está activado."
+
 msgid "Captured items keep their kind."
 msgstr "Los fragmentos capturados conservan su tipo."
 
@@ -575,6 +578,9 @@ msgstr "Copiado. La ventana que usabas ya no está."
 
 msgid "Copied. {} runs as administrator, so Snipdeck can't paste into it."
 msgstr "Copiado. {} se ejecuta como administrador, así que Snipdeck no puede pegar en él."
+
+msgid "Copies older than this are deleted, even when Recent is off or paused."
+msgstr "Las copias más antiguas se eliminan, incluso con Recientes apagado o en pausa."
 
 msgid "Copy"
 msgstr "Copiar"
@@ -834,6 +840,9 @@ msgstr "Fecha y hora en el formato que elijas"
 msgid "Dates are today's; a field you fill in when you use the item shows its name or default."
 msgstr "Las fechas son las de hoy; un campo que rellenas al usar el elemento muestra su nombre o valor predeterminado."
 
+msgid "Days a copy stays in Recent"
+msgstr "Días que una copia permanece en Recientes"
+
 msgid "Delete"
 msgstr "Eliminar"
 
@@ -893,6 +902,9 @@ msgstr "¿Eliminar esta lista?"
 
 msgid "Delete this tag?"
 msgstr "¿Eliminar esta etiqueta?"
+
+msgid "Delete what Recent has kept?"
+msgstr "¿Eliminar lo que guardó Recientes?"
 
 msgid "Delete “{}”"
 msgstr "Eliminar «{}»"
@@ -1248,6 +1260,9 @@ msgstr "Ocultar panel"
 msgid "Hide Panel ({})"
 msgstr "Ocultar panel ({})"
 
+msgid "Hide password"
+msgstr "Ocultar contraseña"
+
 msgid "Hide the Panel"
 msgstr "Ocultar el panel"
 
@@ -1389,11 +1404,23 @@ msgstr "Kaomoji"
 msgid "Keep Panel visible during screenshots"
 msgstr "Mantener el panel visible durante las capturas"
 
+msgid "Keep Recent on"
+msgstr "Mantener Recientes activado"
+
 msgid "Keep a Recent inbox of what you copy"
 msgstr "Guardar una bandeja Recientes con lo que copias"
 
 msgid "Keep a Recent list of what you copy?"
 msgstr "¿Guardar una lista Reciente de lo que copias?"
+
+msgid "Keep copies for fewer days"
+msgstr "Conservar las copias menos días"
+
+msgid "Keep copies for more days"
+msgstr "Conservar las copias más días"
+
+msgid "Keep copies from unknown sources"
+msgstr "Conservar copias de fuentes desconocidas"
 
 msgid "Keep editing"
 msgstr "Seguir editando"
@@ -1404,7 +1431,13 @@ msgstr "Ten tus favoritos a mano"
 msgid "Keep fewer backups"
 msgstr "Conservar menos copias"
 
+msgid "Keep fewer copies"
+msgstr "Conservar menos copias"
+
 msgid "Keep more backups"
+msgstr "Conservar más copias"
+
+msgid "Keep more copies"
 msgstr "Conservar más copias"
 
 msgid "Keep panel on top"
@@ -1497,6 +1530,15 @@ msgstr "Las listas contienen tus fragmentos."
 msgid "Loading"
 msgstr "Cargando"
 
+msgid "Lock after"
+msgstr "Bloquear tras"
+
+msgid "Lock later"
+msgstr "Bloquear más tarde"
+
+msgid "Lock sooner"
+msgstr "Bloquear antes"
+
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "Los registros solo se escriben cuando Snipdeck se cierra por un error, no contienen el contenido de los fragmentos y no se envían a ningún sitio."
 
@@ -1569,6 +1611,12 @@ msgstr "Menú"
 msgid "Microsoft Store"
 msgstr "Microsoft Store"
 
+msgid "Minutes before the library locks"
+msgstr "Minutos antes de que se bloquee la biblioteca"
+
+msgid "Minutes without use before a master password locks your sensitive items again."
+msgstr "Minutos sin uso antes de que una contraseña maestra vuelva a bloquear tus elementos sensibles."
+
 msgid "More"
 msgstr "Más"
 
@@ -1580,6 +1628,9 @@ msgstr "Más opciones: abrir el editor completo"
 
 msgid "More pinned snippets"
 msgstr "Más fragmentos fijados"
+
+msgid "Most copies kept in Recent"
+msgstr "Máximo de copias en Recientes"
 
 msgid "Most used"
 msgstr "Más usados"
@@ -1863,6 +1914,9 @@ msgstr "Desactivado: un panel acoplado a la izquierda o a la derecha mantiene la
 
 msgid "Off: a docked panel does not tuck and hides like a floating one. Otherwise it tucks into a thin tab at its edge, and the panel shortcut opens it too."
 msgstr "Desactivado: un panel acoplado no se recoge y se oculta como uno flotante. Si no, se recoge en una pestaña fina en su borde, y el atajo del panel también lo abre."
+
+msgid "Older copies are deleted when there are more than this many."
+msgstr "Las copias más antiguas se eliminan cuando hay más que este número."
 
 msgid "On black"
 msgstr "Sobre negro"
@@ -2266,8 +2320,20 @@ msgstr "Acciones de entradas recientes"
 msgid "Recent history cleared"
 msgstr "Historial reciente borrado"
 
+msgid "Recent holds {} copies. Turning it off deletes them, unless you choose to keep them hidden; kept copies show again if you turn Recent back on."
+msgstr "Recientes guarda {} copias. Al apagarlo se eliminan, salvo que elijas conservarlas ocultas; las conservadas reaparecen si vuelves a activar Recientes."
+
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "Recientes guarda el texto que copias, solo en este equipo, durante las últimas {} copias o {} días, lo que ocurra primero. Las contraseñas de los gestores de contraseñas y los fragmentos sensibles nunca se guardan. Puedes cambiarlo cuando quieras en Configuración."
+
+msgid "Recent skips a copy when Snipdeck cannot tell which program it came from, because it could be a password manager. Turn this on to keep those copies too."
+msgstr "Recientes omite una copia cuando Snipdeck no puede saber de qué programa viene, porque podría ser un gestor de contraseñas. Actívalo para conservar también esas copias."
+
+msgid "Recent: days kept"
+msgstr "Recientes: días conservados"
+
+msgid "Recent: most copies kept"
+msgstr "Recientes: máximo de copias"
 
 msgid "Recently used"
 msgstr "Usados recientemente"
@@ -2420,6 +2486,12 @@ msgstr "Guardar como PNG…"
 msgid "Save as SVG…"
 msgstr "Guardar como SVG…"
 
+msgid "Save as Sensitive to…"
+msgstr "Guardar como Sensible en…"
+
+msgid "Save as Sensitive…"
+msgstr "Guardar como Sensible…"
+
 msgid "Save from clipboard"
 msgstr "Guardar desde el portapapeles"
 
@@ -2540,8 +2612,8 @@ msgstr "Búscalos por nombre, en tu idioma."
 msgid "Searched every board and list."
 msgstr "Se buscó en todos los tableros y listas."
 
-msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
-msgstr "Segundos antes de que un fragmento sensible copiado se borre del portapapeles, si desde entonces no se ha copiado nada más. 0 nunca lo borra. Al pegar se restaura tu propio portapapeles."
+msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. Pasting restores your own clipboard instead."
+msgstr "Segundos antes de que un fragmento sensible copiado se borre del portapapeles, si desde entonces no se ha copiado nada más. Al pegar se restaura tu propio portapapeles."
 
 msgid "See the tips"
 msgstr "Ver los consejos"
@@ -2653,6 +2725,9 @@ msgstr "Mostrar u ocultar el panel"
 
 msgid "Show or hide the sidebar"
 msgstr "Mostrar u ocultar la barra lateral"
+
+msgid "Show password"
+msgstr "Mostrar contraseña"
 
 msgid "Show the Panel"
 msgstr "Mostrar el panel"
@@ -3149,6 +3224,9 @@ msgstr "Fecha de hoy"
 msgid "Toggle keep Panel open"
 msgstr "Alternar mantener el Panel abierto"
 
+msgid "Too many wrong passwords. Wait a few seconds and try again."
+msgstr "Demasiadas contraseñas incorrectas. Espera unos segundos e inténtalo de nuevo."
+
 msgid "Tools"
 msgstr "Herramientas"
 
@@ -3184,6 +3262,12 @@ msgstr "Prueba con otra palabra o con otro tipo."
 
 msgid "Try it"
 msgstr "Probar"
+
+msgid "Turn off and delete"
+msgstr "Apagar y eliminar"
+
+msgid "Turn off, keep them"
+msgstr "Apagar y conservarlas"
 
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "Activa el historial del portapapeles en Configuración para registrar lo que copias."
@@ -3470,6 +3554,9 @@ msgstr "Tu biblioteca se bloqueó tras un tiempo. Se cerró el formulario de la 
 msgid "Your library locked after a while. The sensitive item you were editing was closed without saving."
 msgstr "Tu biblioteca se bloqueó tras un rato. El fragmento sensible que editabas se cerró sin guardar."
 
+msgid "Your library locked. What you were typing in the sensitive item is kept, and comes back when you unlock."
+msgstr "Tu biblioteca se bloqueó. Lo que escribías en el elemento sensible se conserva y vuelve al desbloquear."
+
 msgid "Your library was erased."
 msgstr "Tu biblioteca se borró."
 
@@ -3595,6 +3682,9 @@ msgstr "crea «{}»"
 msgid "creates “{}” in {}"
 msgstr "crea «{}» en {}"
 
+msgid "days"
+msgstr "días"
+
 msgid "default"
 msgstr "predeterminado"
 
@@ -3686,6 +3776,9 @@ msgstr "minúsculas"
 
 msgid "make new folder together section collect"
 msgstr "crear nuevo carpeta juntos sección reunir"
+
+msgid "min"
+msgstr "min"
 
 msgid "move"
 msgstr "mover"

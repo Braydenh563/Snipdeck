@@ -82,6 +82,9 @@ pub enum ToastMessage {
     UnlockFirst,
     /// "Your library locked. The sensitive item you were editing was closed without saving."
     LockedEditorClosed,
+    /// "Your library locked. What you were typing in the sensitive item is kept, and comes back
+    /// when you unlock."
+    LockedEditorKept,
     /// "Your library locked after a while. The form for the sensitive template you were filling in
     /// was closed."
     LockedFillClosed,

@@ -48,6 +48,9 @@ pub(super) struct EditorEnv {
     /// The file dialog. Shared so the window can ask it without holding the controller: the
     /// dialog runs its own message loop, and the controller must be free meanwhile.
     picker: Option<Rc<dyn FilePicker>>,
+    /// Reads what the editor window shows right now, so the lock does not depend on the last
+    /// two-second tick. Must not touch the controller.
+    text_source: Option<Rc<dyn Fn() -> Option<EditorInput>>>,
 }
 
 /// What the editor edits.
@@ -122,6 +125,47 @@ pub(super) struct ItemEditorSlot {
     /// The Sensitive switch as the window last reported it (the two-second tick): an editor of a
     /// plain item becomes sensitive when the user turns it on.
     live_sensitive: bool,
+    /// The fields of a sensitive editor as the last tick saw them, so a lock can keep them.
+    /// Always `None` for an editor with nothing sensitive in it.
+    latest: Option<EditorInput>,
+}
+
+/// What the lock did to a sensitive editor that was open.
+pub(super) enum Parked {
+    /// Kept sealed in memory; it comes back after the unlock.
+    Kept,
+    /// Closed, its text dropped (no key to seal it with).
+    Dropped,
+}
+
+/// A sensitive editor the lock took off the screen: its window fields and the title and text
+/// sealed under the data key (the key itself is gone while locked). Given back after the unlock.
+pub(super) struct ParkedEditor {
+    /// The editor with its title and text blanked and the saved text forgotten.
+    slot: ItemEditorSlot,
+    /// The id the envelope is bound to.
+    seal_id: ItemId,
+    /// Title and text, sealed.
+    sealed: Vec<u8>,
+}
+
+/// Title and text as one sealed message: the title's length, the title, the text.
+fn pack_texts(title: &str, content: &str) -> Vec<u8> {
+    let mut out = Vec::with_capacity(4 + title.len() + content.len());
+    out.extend_from_slice(&u32::try_from(title.len()).unwrap_or(u32::MAX).to_le_bytes());
+    out.extend_from_slice(title.as_bytes());
+    out.extend_from_slice(content.as_bytes());
+    out
+}
+
+fn unpack_texts(bytes: &[u8]) -> Option<(String, String)> {
+    let (len, rest) = bytes.split_at_checked(4)?;
+    let len = usize::try_from(u32::from_le_bytes(len.try_into().ok()?)).ok()?;
+    let (title, content) = rest.split_at_checked(len)?;
+    Some((
+        String::from_utf8(title.to_vec()).ok()?,
+        String::from_utf8(content.to_vec()).ok()?,
+    ))
 }
 
 impl ItemEditorSlot {
@@ -184,6 +228,12 @@ where
     /// Wraps the library's encryption key with `provider` (DPAPI on Windows).
     pub fn set_key_provider(&mut self, provider: Box<dyn KeyProvider>) {
         self.editor_env.keys = Some(Arc::from(provider));
+    }
+
+    /// Lets the lock read the editor window's text at that moment (it must not borrow the
+    /// controller). Without it the last autosave tick supplies the text.
+    pub fn set_editor_text_source(&mut self, source: Box<dyn Fn() -> Option<EditorInput>>) {
+        self.editor_env.text_source = Some(Rc::from(source));
     }
 
     /// Lets the item editor open a file dialog with `picker`.
@@ -313,19 +363,86 @@ where
         }
     }
 
-    /// Closes the item editor if it holds a sensitive item's text, as the lock does: the text is
-    /// dropped, not saved, and no draft is kept. Returns whether one was closed.
-    pub(super) fn close_sensitive_item_editor(&mut self) -> bool {
-        if !self
-            .item_editor
-            .as_ref()
-            .is_some_and(ItemEditorSlot::sensitive)
-        {
+    /// The lock takes a sensitive item's editor off the screen: its title and text are sealed under
+    /// the data key (so call this before the key is dropped) and kept in memory, and the editor
+    /// comes back with them after the unlock. Nothing is written to disk and no draft is kept.
+    /// With no key to seal with the editor is closed and its text dropped. Returns what happened
+    /// to an editor that was open: `None` when none held anything sensitive.
+    pub(super) fn park_sensitive_item_editor(&mut self) -> Option<Parked> {
+        let mut slot = self.item_editor.take_if(|slot| slot.sensitive())?;
+        // Ask the window for its text now: the tick may be up to two seconds old.
+        if let Some(live) = self.editor_env.text_source.as_ref().and_then(|read| read()) {
+            slot.latest = Some(live);
+        }
+        let input = slot.latest.take().unwrap_or_else(|| slot.fields.clone());
+        let seal_id = ItemId::generate();
+        let sealed = self.store.duplicate_data_key().and_then(|key| {
+            snipdeck_store::crypto::encrypt_item(
+                &key,
+                &seal_id,
+                &pack_texts(&input.title, &input.content),
+            )
+            .ok()
+        });
+        let Some(sealed) = sealed else {
+            self.clear_draft(&slot);
+            return Some(Parked::Dropped);
+        };
+        slot.fields = EditorInput {
+            title: String::new(),
+            content: String::new(),
+            ..input
+        };
+        slot.original_text = None;
+        self.clear_draft(&slot);
+        self.parked_editor = Some(ParkedEditor {
+            slot,
+            seal_id,
+            sealed,
+        });
+        Some(Parked::Kept)
+    }
+
+    /// After an unlock: opens the parked editor again with what was typed, marked as unsaved.
+    /// Returns `false` when something was parked but could not come back (the item is gone, the
+    /// text does not open, or another editor is open now).
+    pub(super) fn restore_parked_editor(&mut self) -> bool {
+        let Some(parked) = self.parked_editor.take() else {
+            return true;
+        };
+        if self.item_editor.is_some() {
             return false;
         }
-        if let Some(slot) = self.item_editor.take() {
-            self.clear_draft(&slot);
+        let ParkedEditor {
+            mut slot,
+            seal_id,
+            sealed,
+        } = parked;
+        let texts = self
+            .store
+            .duplicate_data_key()
+            .and_then(|key| snipdeck_store::crypto::decrypt_item(&key, &seal_id, &sealed).ok())
+            .and_then(|bytes| unpack_texts(bytes.as_slice()));
+        let Some((title, content)) = texts else {
+            return false;
+        };
+        if let ItemTarget::Item(id) = slot.target {
+            // What "changed" is measured against comes from the stored item again.
+            let Ok(fresh) = self.existing_slot(id) else {
+                return false;
+            };
+            slot.original_text = fresh.original_text;
+            slot.large = fresh.large;
+            slot.attachment = fresh.attachment;
+            slot.formatted = fresh.formatted;
+            slot.stamp = fresh.stamp;
         }
+        slot.fields.title = title;
+        slot.fields.content = content;
+        slot.restored = true;
+        self.item_editor_seq += 1;
+        slot.seq = self.item_editor_seq;
+        self.item_editor = Some(slot);
         true
     }
 
@@ -422,6 +539,7 @@ where
             return false;
         };
         slot.live_sensitive = input.sensitive;
+        slot.latest = (input.sensitive || slot.original_sensitive).then(|| input.clone());
         if slot.no_draft {
             return false;
         }

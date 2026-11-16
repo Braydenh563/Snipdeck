@@ -217,6 +217,20 @@ where
             let values: Vec<String> = fields.iter().map(|f| f.value.to_string()).collect();
             core.submit(&values);
         });
+        wire!(on_private_copied, |core, text, start, end| {
+            core.act(|ctl| ctl.copy_private_selection(text.as_str(), start, end));
+        });
+        let weak: Weak<Self> = Rc::downgrade(self);
+        window.on_private_cut(move |text, start, end| {
+            let rest = weak.upgrade().and_then(|core| {
+                core.act(|ctl| ctl.cut_private_selection(text.as_str(), start, end))
+            });
+            slint::ModelRc::new(slint::VecModel::from(
+                rest.into_iter()
+                    .map(slint::SharedString::from)
+                    .collect::<Vec<_>>(),
+            ))
+        });
         wire!(on_cancelled, |core| core.act(Controller::cancel_fill));
         wire!(on_help_requested, |core| core
             .act(|ctl| ctl.main_open_help(HelpTopic::Guide)));
@@ -345,6 +359,7 @@ fn render(
         window.set_fields(model(fill.fields.iter().map(form_field)));
     }
     if differs(&|p| p.preview == fill.preview && p.masked == fill.masked) {
+        window.set_private(fill.masked);
         window.set_preview(if fill.masked {
             crate::binding::MASKED_PREVIEW.into()
         } else {

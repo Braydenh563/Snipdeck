@@ -424,6 +424,8 @@ export component PanelWindow inherits Window {
     callback recent-plain(int);
     callback recent-deleted(int);
     callback recent-saved(int, int);
+    // "Save as Sensitive…": the same chooser, and the item is saved as Sensitive (text entries only).
+    callback recent-saved-sensitive(int, int);
     callback recent-unlock-requested();
     callback add-list-requested();
     callback settings-requested();
@@ -657,6 +659,10 @@ export component PanelWindow inherits Window {
     property <int> rsel: root.recent-rows.length == 0 ? -1 : min(max(root.recent-selected, 0), root.recent-rows.length - 1);
     property <bool> recent-menu-open: false;
     property <bool> recent-save-open: false;
+    // The open "Save to…" chooser saves as Sensitive.
+    property <bool> recent-save-sensitive: false;
+    // The entry the menu is on is text, so "Save as Sensitive…" is offered.
+    property <bool> recent-menu-text: true;
     property <int> recent-menu-row: 0;
     // The entry the open menu acts on, by id (the rows may shift while it is open).
     property <int> recent-menu-id: 0;
@@ -1057,6 +1063,7 @@ export component PanelWindow inherits Window {
 
     function recent-menu-at(row: int, x: length, y: length) {
         root.recent-menu-row = row;
+        root.recent-menu-text = root.recent-rows[row].kind != ItemKind.image && root.recent-rows[row].kind != ItemKind.file;
         root.recent-menu-id = root.recent-rows[row].id;
         root.recent-menu-x = x;
         root.recent-menu-y = y;
@@ -1065,6 +1072,7 @@ export component PanelWindow inherits Window {
     }
 
     function recent-save-at(row: int, x: length, y: length) {
+        root.recent-save-sensitive = false;
         root.recent-menu-row = row;
         root.recent-menu-id = root.recent-rows[row].id;
         root.recent-menu-x = x;
@@ -3109,25 +3117,40 @@ export component PanelWindow inherits Window {
             x: max(Space.s2, min(root.recent-menu-x, root.width - self.width - Space.s2));
             y: max(Space.s2, min(root.recent-menu-y, root.height - self.height - Space.s2 - Space.menu-clear));
             menu-max-h: root.height - 2 * Space.s2 - Space.menu-clear;
-            entries: root.pastes ? [
+            entries: root.pastes ? (root.recent-menu-text ? [
                 { text: @tr("Save to…"), icon: Icons.folder },
+                { text: @tr("Save as Sensitive…"), icon: Icons.lock },
                 { text: @tr("Copy"), icon: Icons.copy },
                 { text: @tr("Paste as plain text"), icon: Icons.clipboard },
                 { text: @tr("Remove from Recent"), icon: Icons.trash, destructive: true },
             ] : [
                 { text: @tr("Save to…"), icon: Icons.folder },
                 { text: @tr("Copy"), icon: Icons.copy },
+                { text: @tr("Paste as plain text"), icon: Icons.clipboard },
                 { text: @tr("Remove from Recent"), icon: Icons.trash, destructive: true },
-            ];
+            ]) : (root.recent-menu-text ? [
+                { text: @tr("Save to…"), icon: Icons.folder },
+                { text: @tr("Save as Sensitive…"), icon: Icons.lock },
+                { text: @tr("Copy"), icon: Icons.copy },
+                { text: @tr("Remove from Recent"), icon: Icons.trash, destructive: true },
+            ] : [
+                { text: @tr("Save to…"), icon: Icons.folder },
+                { text: @tr("Copy"), icon: Icons.copy },
+                { text: @tr("Remove from Recent"), icon: Icons.trash, destructive: true },
+            ]);
             label: @tr("Recent entry actions");
             init => { self.focus-menu(); }
             activated(i) => {
                 root.recent-menu-open = false;
-                if (i == 0) {
+                // The position in the full list [save, sensitive, copy, plain, remove], skipping what is not offered.
+                let skipped-sensitive = (i >= 1 && !root.recent-menu-text) ? i + 1 : i;
+                let a = (skipped-sensitive >= 3 && !root.pastes) ? skipped-sensitive + 1 : skipped-sensitive;
+                if (a == 0 || a == 1) {
+                    root.recent-save-sensitive = a == 1;
                     root.recent-save-open = true;
-                } else if (i == 1) {
+                } else if (a == 2) {
                     root.recent-copied(root.recent-menu-id);
-                } else if (i == 2 && root.pastes) {
+                } else if (a == 3) {
                     root.recent-plain(root.recent-menu-id);
                 } else {
                     root.recent-deleted(root.recent-menu-id);
@@ -3140,7 +3163,7 @@ export component PanelWindow inherits Window {
             y: max(Space.s2, min(root.recent-menu-y, root.height - self.height - Space.s2));
             width: min(240px, root.width - 2 * Space.s2);
             entries: root.recent-targets;
-            label: @tr("Save to…");
+            label: root.recent-save-sensitive ? @tr("Save as Sensitive to…") : @tr("Save to…");
             empty-text: @tr("No lists yet");
             init => {
                 self.current = 0;
@@ -3148,7 +3171,11 @@ export component PanelWindow inherits Window {
             }
             chosen(i) => {
                 root.recent-save-open = false;
-                root.recent-saved(root.recent-menu-id, i);
+                if (root.recent-save-sensitive) {
+                    root.recent-saved-sensitive(root.recent-menu-id, i);
+                } else {
+                    root.recent-saved(root.recent-menu-id, i);
+                }
             }
             dismissed => { root.recent-save-open = false; }
         }

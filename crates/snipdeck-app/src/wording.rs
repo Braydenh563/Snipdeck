@@ -248,6 +248,7 @@ where
         ToastMessage::HelloEnrolFailed => t.invoke_hello_enrol_failed(),
         ToastMessage::MasterPasswordRemovedNotOpen => t.invoke_master_password_removed_not_open(),
         ToastMessage::LockedEditorClosed => t.invoke_locked_editor_closed(),
+        ToastMessage::LockedEditorKept => t.invoke_locked_editor_kept(),
         ToastMessage::LockedFillClosed => t.invoke_locked_fill_closed(),
         ToastMessage::UnlockFirst => t.invoke_unlock_first(),
         ToastMessage::Saved { list } => t.invoke_saved(list.into()),

@@ -11,10 +11,12 @@
 //! * With a password set, the library starts locked and stays locked until the user types it. The
 //!   prompt opens the first time a locked sensitive item is needed ([`Effect::OpenUnlock`]), not
 //!   at start-up, so a tray app that starts with Windows does not greet the user with a dialog.
-//! * The library locks again after [`IDLE_LOCK`] without use, by the controller's clock.
+//! * The library locks again after the idle time in the settings ([`master_password::IDLE_LOCK`] by default) without use, by the controller's clock.
 
 use std::{sync::Arc, time::Duration};
 
+use crate::master_job::Opened;
+use snipdeck_core::Timestamp;
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::crypto::{CryptoError, KdfParams, KeyProvider, KeyRecord, KeyRing};
 
@@ -24,7 +26,7 @@ use super::{Controller, Effect, Library, Toast, ToastKind, ToastMessage};
 use crate::{
     host::ClipboardText,
     master_job::{MasterDone, MasterJob, MasterOp},
-    master_password::{self, IDLE_LOCK, NewProblem},
+    master_password::{self, NewProblem},
 };
 
 /// Whether a master password can be used on this machine, and whether one is set.
@@ -54,6 +56,8 @@ pub enum MasterProblem {
     Mismatch,
     /// No key protection on this machine.
     Unavailable,
+    /// Too many wrong passwords in a row: wait a moment. Nothing was tried.
+    Wait,
     /// Windows Hello did not unlock (cancelled, failed, removed or expired); the password does.
     HelloFailed,
     /// The user cancelled the Hello prompt (the button stays).
@@ -95,6 +99,10 @@ pub(super) struct LockState {
     pub(super) kdf: Option<KdfParams>,
     /// Windows Hello unlock (`hello_ctl.rs`).
     hello: hello_ctl::HelloState,
+    /// Wrong passwords in a row (unlock, change, remove); a right one clears it.
+    wrong_in_a_row: u32,
+    /// No password is tried before this moment (the clock is injected, never read directly).
+    wait_until: Option<Timestamp>,
 }
 
 impl LockState {
@@ -108,6 +116,8 @@ impl LockState {
             generation: 0,
             kdf: None,
             hello: hello_ctl::HelloState::default(),
+            wrong_in_a_row: 0,
+            wait_until: None,
         }
     }
 }
@@ -118,6 +128,16 @@ pub(super) fn ring_on(provider: &dyn KeyProvider, kdf: Option<KdfParams>) -> Key
     match kdf {
         Some(kdf) => ring.with_kdf_params(kdf),
         None => ring,
+    }
+}
+
+/// The wait after the `n`th wrong password in a row: none for two, then 2, 4, 8, 16 and 30
+/// seconds. A speed bump for typing, not a defence against someone with a copy of the files.
+fn wrong_password_wait(n: u32) -> Duration {
+    match n {
+        0..=2 => Duration::ZERO,
+        3..=6 => Duration::from_secs(1 << (n - 2)),
+        _ => Duration::from_secs(30),
     }
 }
 
@@ -311,6 +331,7 @@ where
         if password.is_empty() {
             return Err(MasterProblem::CurrentEmpty);
         }
+        self.check_not_waiting()?;
         let provider = self.provider()?;
         let record = self.stored_record()?;
         let job = MasterJob::unlock(record, password, provider, self.lock.kdf);
@@ -426,13 +447,27 @@ where
         }
         self.lock.busy = None;
         let op = done.op;
-        let (key, record) = done.outcome.map_err(|e| match op {
-            // A first password has no "current" to get wrong.
-            MasterOp::Set { .. } => MasterProblem::Failed,
-            _ => problem_of_crypto(&e),
-        })?;
-        match (op, record) {
-            (MasterOp::Unlock, _) => {
+        let opened = match done.outcome {
+            Ok(opened) => opened,
+            Err(e) => {
+                // A first password has no "current" to get wrong.
+                let problem = if matches!(op, MasterOp::Set { .. }) {
+                    MasterProblem::Failed
+                } else {
+                    problem_of_crypto(&e)
+                };
+                if problem == MasterProblem::WrongPassword {
+                    self.note_wrong_password();
+                }
+                return Err(problem);
+            }
+        };
+        if !matches!(op, MasterOp::Set { .. }) {
+            self.lock.wrong_in_a_row = 0;
+            self.lock.wait_until = None;
+        }
+        match (op, opened) {
+            (MasterOp::Unlock, Opened::Key(key)) => {
                 self.store
                     .open_with_key(key)
                     .map_err(|_| MasterProblem::Failed)?;
@@ -440,71 +475,58 @@ where
                 self.complete_unlock();
                 Ok(())
             }
-            (MasterOp::Set { exists }, Some(record)) => {
-                if exists {
-                    self.store
-                        .replace_key_record(&record)
-                        .map_err(|_| MasterProblem::Failed)?;
-                    // The password is set for good from here, whether or not the library
-                    // opens now: a retry must ask for it, not offer to set it again.
-                    self.lock.set = true;
-                    self.forget_hello();
-                    self.store
-                        .open_with_key(key)
-                        .map_err(|_| MasterProblem::Failed)?;
-                } else {
-                    self.store
-                        .install_key_ring(key, &record)
-                        .map_err(|_| MasterProblem::Failed)?;
-                    self.lock.set = true;
-                    self.forget_hello();
-                }
+            (MasterOp::Set { exists: false }, Opened::Created(key, record)) => {
+                self.store
+                    .install_key_ring(key, &record)
+                    .map_err(|_| MasterProblem::Failed)?;
+                self.lock.set = true;
+                self.forget_hello();
                 self.note_activity();
                 self.show_toast(neutral(ToastMessage::MasterPasswordSet));
                 self.refresh_or_notice("setting a master password");
                 Ok(())
             }
-            (MasterOp::Change, Some(record)) => {
+            (MasterOp::Set { exists: true }, Opened::Rotated(rotation)) => {
+                // The data key is replaced and everything re-sealed in one transaction; the
+                // key record that opened without a password is gone with the old key.
                 self.store
-                    .replace_key_record(&record)
+                    .rotate_key_ring(rotation)
                     .map_err(|_| MasterProblem::Failed)?;
-                // The password is changed for good from here. The user just proved the old one,
-                // so the library opens if it was locked; if that fails the change still stands
-                // and the toast says the library is locked.
-                // The record changed, so a sealed copy no longer fits it: the password just
-                // proved counts as a fresh unlock, and the host seals a new copy (one prompt).
-                self.note_password_unlock();
-                let reopened = self.open_after_change(key);
+                self.lock.set = true;
+                self.lock.prompt = false;
+                self.forget_hello();
                 self.note_activity();
-                self.show_toast(neutral(if reopened {
-                    ToastMessage::MasterPasswordChanged
-                } else {
-                    ToastMessage::MasterPasswordChangedNotOpen
-                }));
+                self.show_toast(neutral(ToastMessage::MasterPasswordSet));
+                self.refresh_or_notice("setting a master password");
                 Ok(())
             }
-            (MasterOp::Remove, Some(record)) => {
+            (MasterOp::Change, Opened::Rotated(rotation)) => {
                 self.store
-                    .replace_key_record(&record)
+                    .rotate_key_ring(rotation)
                     .map_err(|_| MasterProblem::Failed)?;
-                // The record is OS-only from here, so there is no password to ask for, whether
-                // or not the key opens now.
+                // The key changed, so a Hello copy no longer fits: the password just proved
+                // counts as a fresh unlock, and the host seals a new copy (one prompt).
+                self.lock.prompt = false;
+                self.note_password_unlock();
+                self.note_activity();
+                self.show_toast(neutral(ToastMessage::MasterPasswordChanged));
+                self.refresh_or_notice("changing the master password");
+                Ok(())
+            }
+            (MasterOp::Remove, Opened::Rotated(rotation)) => {
+                self.store
+                    .rotate_key_ring(rotation)
+                    .map_err(|_| MasterProblem::Failed)?;
+                // The record is OS-only from here, so there is no password to ask for.
                 self.lock.set = false;
                 self.lock.prompt = false;
                 self.forget_hello();
-                let reopened = self.open_after_change(key);
                 self.note_activity();
-                self.show_toast(neutral(if reopened {
-                    ToastMessage::MasterPasswordRemoved
-                } else {
-                    ToastMessage::MasterPasswordRemovedNotOpen
-                }));
+                self.show_toast(neutral(ToastMessage::MasterPasswordRemoved));
                 self.refresh_or_notice("removing the master password");
                 Ok(())
             }
-            (MasterOp::Set { .. } | MasterOp::Change | MasterOp::Remove, None) => {
-                Err(MasterProblem::Failed)
-            }
+            _ => Err(MasterProblem::Failed),
         }
     }
 
@@ -512,9 +534,17 @@ where
     fn complete_unlock(&mut self) {
         self.lock.prompt = false;
         self.note_activity();
+        // Entries that aged out while locked go now, not at the next maintenance round.
+        self.prune_recent();
+        let had_parked_editor = self.parked_editor.is_some();
+        let editor_back = self.restore_parked_editor();
         self.sync_recent_gate();
         // Unlocking answers the "locked" error on screen, so it replaces it.
-        self.show_toast(neutral(ToastMessage::Unlocked));
+        if had_parked_editor && !editor_back {
+            self.show_toast(neutral(ToastMessage::LockedEditorClosed));
+        } else {
+            self.show_toast(neutral(ToastMessage::Unlocked));
+        }
         self.refresh_or_notice("unlocking");
     }
 
@@ -548,6 +578,25 @@ where
         Ok(())
     }
 
+    /// Refuses a password try while the wait after wrong ones runs.
+    fn check_not_waiting(&self) -> Result<(), MasterProblem> {
+        match self.lock.wait_until {
+            Some(until) if self.clock.now() < until => Err(MasterProblem::Wait),
+            _ => Ok(()),
+        }
+    }
+
+    fn note_wrong_password(&mut self) {
+        self.lock.wrong_in_a_row = self.lock.wrong_in_a_row.saturating_add(1);
+        let wait = wrong_password_wait(self.lock.wrong_in_a_row);
+        self.lock.wait_until = self
+            .clock
+            .now()
+            .checked_add(wait)
+            .ok()
+            .filter(|_| !wait.is_zero());
+    }
+
     fn provider(&self) -> Result<Arc<dyn KeyProvider>, MasterProblem> {
         self.editor_env
             .keys
@@ -571,20 +620,17 @@ where
         if current.is_empty() {
             return Err(MasterProblem::CurrentEmpty);
         }
+        self.check_not_waiting()?;
         Ok(provider)
     }
 
-    /// After a change that proved the password, opens the key if it is still locked. `false` when
-    /// the store would not.
-    fn open_after_change(&mut self, key: snipdeck_store::crypto::DataKey) -> bool {
-        if self.store.open_with_key(key).is_err() {
-            return false;
-        }
-        self.lock.prompt = false;
-        true
-    }
-
     // ---- The idle lock -------------------------------------------------------------------------
+
+    /// The idle time before a master password locks the library again (the setting).
+    #[must_use]
+    pub fn idle_lock(&self) -> Duration {
+        Duration::from_mins(u64::from(self.settings.idle_lock_minutes))
+    }
 
     /// How long until the idle lock is due, while a password is set and the library is open. The
     /// host arms a timer for this and then calls [`lock_if_idle`](Self::lock_if_idle).
@@ -598,10 +644,10 @@ where
             .clock
             .elapsed()
             .saturating_sub(self.lock.active_at.get());
-        Some(IDLE_LOCK.saturating_sub(idle))
+        Some(self.idle_lock().saturating_sub(idle))
     }
 
-    /// Locks the library if it has been idle for [`IDLE_LOCK`]. Returns whether it locked.
+    /// Locks the library if it has been idle for the idle time. Returns whether it locked.
     pub fn lock_if_idle(&mut self) -> bool {
         match self.idle_lock_wait() {
             Some(wait) if wait.is_zero() => {
@@ -624,15 +670,24 @@ where
         // A Hello step under way is told to stop and its outcome is refused; the sealed copy stays
         // (it is what Hello unlocks with).
         self.give_up_hello_step(true);
+        // An open editor of a sensitive item is sealed under the key before it goes.
+        let parked = self.park_sensitive_item_editor();
         self.store.lock_key_ring();
         self.index_cache.forget_recent();
-        self.forget_secret_files();
+        // A sensitive copy still on the clipboard does not outlive the lock.
+        self.clear_pending_clipboard_now();
         self.revealed = None;
         self.panel_revealed = None;
         self.sync_recent_gate();
-        // An open editor of a sensitive item holds its text in the window: it closes, unsaved.
-        if self.close_sensitive_item_editor() {
-            self.show_toast(neutral(ToastMessage::LockedEditorClosed));
+        // The editor's window closes with the lock; what was typed waits sealed for the unlock.
+        match parked {
+            Some(super::editor_ctl::Parked::Kept) => {
+                self.show_toast(neutral(ToastMessage::LockedEditorKept));
+            }
+            Some(super::editor_ctl::Parked::Dropped) => {
+                self.show_toast(neutral(ToastMessage::LockedEditorClosed));
+            }
+            None => {}
         }
         // The fill form of a sensitive template holds the decrypted template and its answers.
         if self.close_sensitive_fill() {

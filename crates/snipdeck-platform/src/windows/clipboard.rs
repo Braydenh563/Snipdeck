@@ -589,8 +589,15 @@ impl Formats {
         }
     }
 
-    fn markers(self) -> [u32; 3] {
-        [self.exclude_monitor, self.history, self.cloud]
+    /// The four "keep me out" markers, `Clipboard Viewer Ignore` included (older viewers and
+    /// managers read only that one).
+    fn markers(self) -> [u32; 4] {
+        [
+            self.exclude_monitor,
+            self.viewer_ignore,
+            self.history,
+            self.cloud,
+        ]
     }
 }
 
@@ -726,7 +733,7 @@ fn write_paste_files(files: &[FilePayload], sensitive: bool) -> Result<Vec<Vec<u
     win_formats::remove_paste_dirs(&root, previous.as_deref());
     let dir = win_formats::claim_paste_dir(&root, win_formats::os_random).map_err(io)?;
     if sensitive && let Ok(mut list) = SENSITIVE_PASTE_DIRS.lock() {
-        list.push(dir.clone());
+        list.push((root.clone(), dir.clone()));
     }
     let mut paths = Vec::with_capacity(files.len());
     // Two files of the same name (from different folders) must both paste.
@@ -747,7 +754,7 @@ fn write_paste_files(files: &[FilePayload], sensitive: bool) -> Result<Vec<Vec<u
 
 /// The paste folders that hold a sensitive item's decrypted files; only these are deleted when
 /// the clipboard clear is due, so a plain file item the clipboard still points to keeps its files.
-static SENSITIVE_PASTE_DIRS: std::sync::Mutex<Vec<std::path::PathBuf>> =
+static SENSITIVE_PASTE_DIRS: std::sync::Mutex<Vec<win_formats::ListedPasteDir>> =
     std::sync::Mutex::new(Vec::new());
 
 /// Deletes the folders of sensitive pastes (see [`SENSITIVE_PASTE_DIRS`]).
@@ -755,7 +762,7 @@ fn forget_sensitive_paste_files() {
     let Ok(mut list) = SENSITIVE_PASTE_DIRS.lock() else {
         return;
     };
-    win_formats::remove_listed_paste_dirs(&std::env::temp_dir().join("Snipdeck"), &mut list);
+    win_formats::remove_listed_paste_dirs(&mut list);
 }
 
 /// Removes every pasted-file folder at the next start (not on exit: a persistent `CF_HDROP` may
@@ -1326,6 +1333,11 @@ fn read_rich_job(formats: &Formats) -> clipboard_watch::RichClip {
         return clipboard_watch::RichClip::default();
     };
     let mut clip = clipboard_watch::RichClip::default();
+    // The markers are read first: a password manager's copy is never read (UNVERIFIED on Windows).
+    if clipboard_watch::excluded_by_markers(read_markers(formats)) {
+        clip.excluded = true;
+        return clip;
+    }
     // SAFETY: the clipboard is open by this thread; the handle stays owned by the system.
     if let Ok(handle) = unsafe { GetClipboardData(u32::from(CF_UNICODETEXT.0)) }
         && let Some(mut bytes) = read_global(HGLOBAL(handle.0), READ_TEXT_LIMIT)
@@ -1667,6 +1679,29 @@ mod tests {
         for marker in clipboard.formats.markers() {
             assert!(has_format(&clipboard, marker));
         }
+    }
+
+    /// PRIVACY-11. UNVERIFIED on Windows (needs the real clipboard).
+    #[test]
+    #[ignore = "uses the real Windows clipboard"]
+    fn a_private_copy_carries_the_viewer_ignore_marker() {
+        let _lock = CLIPBOARD.lock().unwrap_or_else(PoisonError::into_inner);
+        let mut clipboard = WinClipboard::new().unwrap();
+        assert!(
+            clipboard
+                .formats
+                .markers()
+                .contains(&clipboard.formats.viewer_ignore)
+        );
+        clipboard
+            .write_persistent(&text("secret").private())
+            .unwrap();
+        assert!(has_format(&clipboard, clipboard.formats.viewer_ignore));
+        let written = clipboard
+            .write_transient(&text("secret").private())
+            .unwrap();
+        let _ = written;
+        assert!(has_format(&clipboard, clipboard.formats.viewer_ignore));
     }
 
     #[test]

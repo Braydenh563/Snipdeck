@@ -929,6 +929,8 @@ where
             .recent_delete(i64::from(id)));
         wire!(on_recent_saved, |ctl, id, target| ctl
             .recent_promote_to(i64::from(id), index(target)));
+        wire!(on_recent_saved_sensitive, |ctl, id, target| ctl
+            .recent_promote_sensitive_to(i64::from(id), index(target)));
 
         // ---- The Symbols tab: its state lives in `symbols_binding`; uses go through the controller ----
         let symbols = Rc::new(crate::symbols_binding::Glue::default());
@@ -1532,11 +1534,15 @@ fn render_recent(window: &ui::PanelWindow, previous: Option<&View>, view: &View)
     if window.get_recent_question_open() != view.recent_question {
         window.set_recent_question_open(view.recent_question);
     }
-    if window.get_recent_max_entries() != crate::recent::max_entries_count() {
-        window.set_recent_max_entries(crate::recent::max_entries_count());
+    let (max_entries, days) = (
+        i32::try_from(view.recent_max_entries).unwrap_or(i32::MAX),
+        i32::try_from(view.recent_days).unwrap_or(i32::MAX),
+    );
+    if window.get_recent_max_entries() != max_entries {
+        window.set_recent_max_entries(max_entries);
     }
-    if window.get_recent_days() != crate::recent::max_age_days() {
-        window.set_recent_days(crate::recent::max_age_days());
+    if window.get_recent_days() != days {
+        window.set_recent_days(days);
     }
     let paused = view.recent.as_ref().is_some_and(|r| r.paused);
     if window.get_recent_paused() != paused {

@@ -1,4 +1,4 @@
-//! Creating, unlocking and re-wrapping the data key.
+//! Creating, unlocking and rotating the data key.
 //!
 //! # `SNKEY1` key record
 //!
@@ -16,9 +16,9 @@
 //! The AEAD tag is also the password verifier: a wrong password fails to open the DEK and is
 //! reported as [`CryptoError::WrongPassword`] without any separate hash to attack.
 //!
-//! Changing the password re-seals the same DEK under a new salt, so no item is re-encrypted.
-//! It does not rotate the DEK: someone who kept a copy of an old record and knows the old
-//! password can still open that old record (re-wrapping is not revocation).
+//! Setting, changing or removing the password **rotates the DEK** ([`KeyRing::rotate`]): a new
+//! DEK is made and every sealed payload is re-sealed under it in one transaction, so a copy of
+//! the database or of a key record made earlier opens nothing written after the change.
 
 use zeroize::Zeroizing;
 
@@ -200,7 +200,24 @@ impl core::fmt::Debug for KeyRecord {
     }
 }
 
-/// Creates, unlocks and re-wraps the [`DataKey`] using a [`KeyProvider`].
+/// What [`KeyRing::rotate`] made: the key to move away from, the key to move to, and the record
+/// that protects the new one.
+pub struct Rotation {
+    /// The data key the library is sealed under now.
+    pub old: DataKey,
+    /// The fresh data key everything is re-sealed under.
+    pub new: DataKey,
+    /// The record that protects [`Rotation::new`].
+    pub record: KeyRecord,
+}
+
+impl core::fmt::Debug for Rotation {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Rotation").finish_non_exhaustive()
+    }
+}
+
+/// Creates, unlocks and rotates the [`DataKey`] using a [`KeyProvider`].
 pub struct KeyRing<'p> {
     provider: &'p dyn KeyProvider,
     kdf: KdfParams,
@@ -291,39 +308,31 @@ impl<'p> KeyRing<'p> {
         }
     }
 
-    /// Re-wraps the data key in `record` under a new master password (`None` removes it).
-    /// The data key is unchanged, so encrypted items stay readable and are not rewritten.
-    /// `current` must be the present password (`None` if there is none). On any error the old
-    /// record is still the one to keep.
+    /// Opens `record` with `current` and makes a **new** data key protected by `new` (`None`
+    /// removes the master password). Nothing is stored: the caller re-seals every encrypted
+    /// payload from [`Rotation::old`] to [`Rotation::new`] and replaces the record in one
+    /// step ([`Store::rotate_key_ring`](crate::Store::rotate_key_ring)). A copy of the
+    /// database or of a key record made before the change then opens nothing made after it,
+    /// whatever password it was sealed with. `current` must be the present password (`None`
+    /// if there is none).
     ///
     /// # Errors
     ///
-    /// As [`KeyRing::unlock`] for `current`; [`CryptoError::EmptyPassword`] for `new`.
-    pub fn change_password(
+    /// As [`KeyRing::unlock`] for `current`; [`CryptoError::EmptyPassword`] for `new`;
+    /// [`CryptoError::Random`].
+    pub fn rotate(
         &self,
         record: &KeyRecord,
         current: Option<&str>,
         new: Option<&str>,
-    ) -> Result<KeyRecord, CryptoError> {
-        self.rekey(record, current, new).map(|(_, record)| record)
-    }
-
-    /// As [`change_password`](Self::change_password), and also returns the data key it opened on
-    /// the way, so a caller that must open the library after the change does not derive the
-    /// password twice.
-    ///
-    /// # Errors
-    ///
-    /// As [`change_password`](Self::change_password).
-    pub fn rekey(
-        &self,
-        record: &KeyRecord,
-        current: Option<&str>,
-        new: Option<&str>,
-    ) -> Result<(DataKey, KeyRecord), CryptoError> {
-        let key = self.unlock(record, current)?;
-        let changed = self.protect(&key, new)?;
-        Ok((key, changed))
+    ) -> Result<Rotation, CryptoError> {
+        let old = self.unlock(record, current)?;
+        let (key, record) = self.create(new)?;
+        Ok(Rotation {
+            old,
+            new: key,
+            record,
+        })
     }
 
     fn protect(&self, key: &DataKey, password: Option<&str>) -> Result<KeyRecord, CryptoError> {
@@ -347,7 +356,23 @@ impl<'p> KeyRing<'p> {
     }
 }
 
+/// The password as typed, composed to NFC so the same visible text always gives the same key
+/// whatever the keyboard or paste source produced. Zeroized on drop.
+fn nfc(password: &str) -> Zeroizing<String> {
+    use unicode_normalization::UnicodeNormalization as _;
+    Zeroizing::new(password.nfc().collect())
+}
+
 fn seal_with_password(
+    key: &DataKey,
+    password: &str,
+    kdf: KdfParams,
+) -> Result<Zeroizing<Vec<u8>>, CryptoError> {
+    seal_with_exact_password(key, &nfc(password), kdf)
+}
+
+/// Seals under `password` exactly as given (no normalisation).
+fn seal_with_exact_password(
     key: &DataKey,
     password: &str,
     kdf: KdfParams,
@@ -368,7 +393,30 @@ fn seal_with_password(
     Ok(Zeroizing::new(inner))
 }
 
+/// Opens with the NFC form of `password`; records made before normalisation was added were
+/// sealed under the raw text, so a password that is not already NFC is tried raw too. A record
+/// is re-sealed (NFC) at the next password change or rotation.
 fn unseal_with_password(inner: &[u8], password: &str) -> Result<DataKey, CryptoError> {
+    use unicode_normalization::UnicodeNormalization as _;
+    let composed = nfc(password);
+    let first = unseal_with_exact_password(inner, &composed);
+    if !matches!(first, Err(CryptoError::WrongPassword)) {
+        return first;
+    }
+    // Old records: the raw text (as typed), or the decomposed form of what is typed now.
+    let decomposed: Zeroizing<String> = Zeroizing::new(password.nfd().collect());
+    for other in [password, decomposed.as_str()] {
+        if other != composed.as_str() {
+            let tried = unseal_with_exact_password(inner, other);
+            if !matches!(tried, Err(CryptoError::WrongPassword)) {
+                return tried;
+            }
+        }
+    }
+    first
+}
+
+fn unseal_with_exact_password(inner: &[u8], password: &str) -> Result<DataKey, CryptoError> {
     if password.is_empty() {
         return Err(CryptoError::EmptyPassword);
     }
@@ -417,6 +465,44 @@ mod tests {
         let ring = KeyRing::new(&provider);
         let (key, record) = ring.create(None).unwrap();
         assert!(same_key(&key, &ring.unlock(&record, None).unwrap()));
+    }
+
+    /// "e" + combining acute (NFD) and the single code point U+00E9 (NFC) look the same.
+    const NFD: &str = "caf\u{65}\u{301} secret";
+    const NFC: &str = "caf\u{e9} secret";
+
+    #[test]
+    fn the_same_visible_password_opens_whatever_its_unicode_form() {
+        let provider = provider();
+        let ring = KeyRing::new(&provider).with_kdf_params(fast());
+        let (key, record) = ring.create(Some(NFD)).unwrap();
+        assert!(same_key(&key, &ring.unlock(&record, Some(NFC)).unwrap()));
+        assert!(same_key(&key, &ring.unlock(&record, Some(NFD)).unwrap()));
+        assert!(matches!(
+            ring.unlock(&record, Some("cafe secret")),
+            Err(CryptoError::WrongPassword)
+        ));
+    }
+
+    #[test]
+    fn a_record_made_from_a_non_nfc_password_before_normalising_still_opens() {
+        let provider = provider();
+        let ring = KeyRing::new(&provider).with_kdf_params(fast());
+        let (key, _) = ring.create(None).unwrap();
+        // An old record: sealed under the raw (NFD) text, as earlier versions did.
+        let inner = seal_with_exact_password(&key, NFD, fast()).unwrap();
+        let old = record_with_inner(&provider, &inner);
+        assert!(same_key(&key, &ring.unlock(&old, Some(NFD)).unwrap()));
+        // The NFC form of the same text is tried as its decomposed form too.
+        assert!(same_key(&key, &ring.unlock(&old, Some(NFC)).unwrap()));
+        assert!(matches!(
+            ring.unlock(&old, Some("wrong")),
+            Err(CryptoError::WrongPassword)
+        ));
+        // Rotation re-seals under NFC: a new record opens with either form.
+        let rotation = ring.rotate(&old, Some(NFD), Some(NFD)).unwrap();
+        let fresh = ring.unlock(&rotation.record, Some(NFC)).unwrap();
+        assert!(same_key(&rotation.new, &fresh));
     }
 
     #[test]
@@ -490,8 +576,7 @@ mod tests {
             CryptoError::EmptyPassword
         );
         assert_eq!(
-            ring.change_password(&record, Some(pw("pw")), Some(""))
-                .unwrap_err(),
+            ring.rotate(&record, Some(pw("pw")), Some("")).unwrap_err(),
             CryptoError::EmptyPassword
         );
     }
@@ -508,28 +593,28 @@ mod tests {
     }
 
     #[test]
-    fn changing_the_password_keeps_the_data_key_and_old_items() {
+    fn changing_the_password_makes_a_new_data_key_that_the_old_one_cannot_follow() {
         let provider = provider();
         let ring = KeyRing::new(&provider).with_kdf_params(fast());
         let (key, record) = ring.create(Some(pw("old"))).unwrap();
         let id = ItemId::generate();
         let envelope = encrypt_item(&key, &id, b"my secret").unwrap();
 
-        let changed = ring
-            .change_password(&record, Some(pw("old")), Some(pw("new")))
+        let rotation = ring
+            .rotate(&record, Some(pw("old")), Some(pw("new")))
             .unwrap();
 
-        assert_ne!(changed, record);
+        assert!(same_key(&key, &rotation.old));
+        assert!(!same_key(&key, &rotation.new));
         assert_eq!(
-            ring.unlock(&changed, Some(pw("old"))).unwrap_err(),
+            ring.unlock(&rotation.record, Some(pw("old"))).unwrap_err(),
             CryptoError::WrongPassword
         );
-        let unlocked = ring.unlock(&changed, Some(pw("new"))).unwrap();
-        assert!(same_key(&key, &unlocked));
-        assert_eq!(
-            *decrypt_item(&unlocked, &id, &envelope).unwrap(),
-            b"my secret"
-        );
+        let unlocked = ring.unlock(&rotation.record, Some(pw("new"))).unwrap();
+        assert!(same_key(&rotation.new, &unlocked));
+        // What was sealed under the old key is not readable with the new one: it must be
+        // re-sealed, and a copy kept from before stays tied to the old key and old record.
+        assert!(decrypt_item(&unlocked, &id, &envelope).is_err());
     }
 
     #[test]
@@ -538,18 +623,25 @@ mod tests {
         let ring = KeyRing::new(&provider).with_kdf_params(fast());
         let (key, plain) = ring.create(None).unwrap();
 
-        let locked = ring.change_password(&plain, None, Some(pw("pw"))).unwrap();
+        let set = ring.rotate(&plain, None, Some(pw("pw"))).unwrap();
+        assert!(same_key(&key, &set.old));
+        assert!(!same_key(&key, &set.new));
         assert_eq!(
-            ring.unlock(&locked, None).unwrap_err(),
+            ring.unlock(&set.record, None).unwrap_err(),
             CryptoError::PasswordRequired
         );
         assert!(same_key(
-            &key,
-            &ring.unlock(&locked, Some(pw("pw"))).unwrap()
+            &set.new,
+            &ring.unlock(&set.record, Some(pw("pw"))).unwrap()
         ));
 
-        let unlocked = ring.change_password(&locked, Some(pw("pw")), None).unwrap();
-        assert!(same_key(&key, &ring.unlock(&unlocked, None).unwrap()));
+        let removed = ring.rotate(&set.record, Some(pw("pw")), None).unwrap();
+        assert!(same_key(&set.new, &removed.old));
+        assert!(!same_key(&set.new, &removed.new));
+        assert!(same_key(
+            &removed.new,
+            &ring.unlock(&removed.record, None).unwrap()
+        ));
     }
 
     #[test]
@@ -558,7 +650,7 @@ mod tests {
         let ring = KeyRing::new(&provider).with_kdf_params(fast());
         let (key, record) = ring.create(Some(pw("pw"))).unwrap();
         assert_eq!(
-            ring.change_password(&record, Some(pw("nope")), Some(pw("new")))
+            ring.rotate(&record, Some(pw("nope")), Some(pw("new")))
                 .unwrap_err(),
             CryptoError::WrongPassword
         );
@@ -596,8 +688,9 @@ mod tests {
         ));
         // Re-setting the password adopts the new settings.
         let upgraded = ring
-            .change_password(&record, Some(pw("pw")), Some(pw("pw")))
-            .unwrap();
+            .rotate(&record, Some(pw("pw")), Some(pw("pw")))
+            .unwrap()
+            .record;
         let inner = provider.unwrap_key(&upgraded.as_bytes()[6..]).unwrap();
         assert_eq!(u32::from_le_bytes(inner[1..5].try_into().unwrap()), 128);
         assert_eq!(u32::from_le_bytes(inner[5..9].try_into().unwrap()), 2);

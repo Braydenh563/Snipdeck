@@ -12,7 +12,7 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
 
 use snipdeck_store::crypto::{
-    CryptoError, DataKey, KdfParams, KeyProvider, KeyRecord, KeyRing, Zeroizing,
+    CryptoError, DataKey, KdfParams, KeyProvider, KeyRecord, KeyRing, Rotation, Zeroizing,
 };
 
 /// Which step a job is, so [`Controller::finish_master`](crate::controller::Controller::finish_master)
@@ -156,21 +156,21 @@ impl MasterJob {
         let outcome = match &self.work {
             Work::Unlock { record, password } => ring
                 .unlock(record, Some(password.as_str()))
-                .map(|key| (key, None)),
+                .map(Opened::Key),
             Work::Rekey {
                 record,
                 current,
                 new,
             } => ring
-                .rekey(
+                .rotate(
                     record,
                     current.as_ref().map(|p| p.as_str()),
                     new.as_ref().map(|p| p.as_str()),
                 )
-                .map(|(key, record)| (key, Some(record))),
+                .map(Opened::Rotated),
             Work::Create { password } => ring
                 .create(Some(password.as_str()))
-                .map(|(key, record)| (key, Some(record))),
+                .map(|(key, record)| Opened::Created(key, record)),
         };
         MasterDone {
             op: self.op,
@@ -180,11 +180,22 @@ impl MasterJob {
     }
 }
 
-/// What a job produced: the opened data key and, except for an unlock, the key record to store.
+/// What a job produced.
+pub(crate) enum Opened {
+    /// An unlock: the opened data key.
+    Key(DataKey),
+    /// A first password on a library without a key: the new key and its record.
+    Created(DataKey, KeyRecord),
+    /// Set, change or removal on a library with a key: a new data key to re-seal everything
+    /// under, with the key it replaces and the record that protects it.
+    Rotated(Rotation),
+}
+
+/// What a job produced: the opened key, or the new key and record to store.
 pub struct MasterDone {
     pub(crate) op: MasterOp,
     pub(crate) generation: u64,
-    pub(crate) outcome: Result<(DataKey, Option<KeyRecord>), CryptoError>,
+    pub(crate) outcome: Result<Opened, CryptoError>,
 }
 
 impl core::fmt::Debug for MasterDone {

@@ -139,6 +139,16 @@ where
             }
         });
         register_redraw(&core.redraw);
+        let weak = Rc::downgrade(&core);
+        this.borrow_mut().set_editor_text_source(Box::new(move || {
+            let core = weak.upgrade()?;
+            let window = core
+                .window
+                .borrow()
+                .as_ref()
+                .map(ComponentHandle::clone_strong)?;
+            Some(read_input(&window))
+        }));
         EditorBinding { core }
     }
 }
@@ -309,6 +319,23 @@ where
                 return;
             };
             core.show_preview(&w);
+        });
+        let core = Rc::downgrade(self);
+        w.on_private_copied(move |text, start, end| {
+            if let Some(core) = core.upgrade() {
+                core.act(|ctl| ctl.copy_private_selection(text.as_str(), start, end));
+            }
+        });
+        let core = Rc::downgrade(self);
+        w.on_private_cut(move |text, start, end| {
+            let rest = core.upgrade().and_then(|core| {
+                core.act(|ctl| ctl.cut_private_selection(text.as_str(), start, end))
+            });
+            slint::ModelRc::new(slint::VecModel::from(
+                rest.into_iter()
+                    .map(slint::SharedString::from)
+                    .collect::<Vec<_>>(),
+            ))
         });
         let core = Rc::downgrade(self);
         w.on_paste_requested(move || {

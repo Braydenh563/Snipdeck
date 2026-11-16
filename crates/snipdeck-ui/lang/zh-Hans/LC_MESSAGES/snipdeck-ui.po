@@ -353,6 +353,9 @@ msgstr "取消"
 msgid "Cancel the test of {}"
 msgstr "取消 {} 的测试"
 
+msgid "Caps Lock is on."
+msgstr "大写锁定已开启。"
+
 msgid "Captured items keep their kind."
 msgstr "捕获的片段保留其类型。"
 
@@ -574,6 +577,9 @@ msgstr "已复制。你正在使用的窗口已关闭。"
 
 msgid "Copied. {} runs as administrator, so Snipdeck can't paste into it."
 msgstr "已复制。{} 以管理员身份运行，Snipdeck 无法粘贴到其中。"
+
+msgid "Copies older than this are deleted, even when Recent is off or paused."
+msgstr "超过此天数的副本会被删除，即使“最近”已关闭或暂停。"
 
 msgid "Copy"
 msgstr "复制"
@@ -833,6 +839,9 @@ msgstr "以你选择的格式显示日期和时间"
 msgid "Dates are today's; a field you fill in when you use the item shows its name or default."
 msgstr "日期为今天的日期；使用时才填写的字段会显示其名称或默认值。"
 
+msgid "Days a copy stays in Recent"
+msgstr "副本在“最近”中保留的天数"
+
 msgid "Delete"
 msgstr "删除"
 
@@ -892,6 +901,9 @@ msgstr "要删除此列表吗？"
 
 msgid "Delete this tag?"
 msgstr "要删除此标签吗？"
+
+msgid "Delete what Recent has kept?"
+msgstr "要删除“最近”保留的内容吗？"
 
 msgid "Delete “{}”"
 msgstr "删除“{}”"
@@ -1247,6 +1259,9 @@ msgstr "隐藏面板"
 msgid "Hide Panel ({})"
 msgstr "隐藏面板 ({})"
 
+msgid "Hide password"
+msgstr "隐藏密码"
+
 msgid "Hide the Panel"
 msgstr "隐藏面板"
 
@@ -1385,11 +1400,23 @@ msgstr "颜文字"
 msgid "Keep Panel visible during screenshots"
 msgstr "截图时保持面板可见"
 
+msgid "Keep Recent on"
+msgstr "保持“最近”开启"
+
 msgid "Keep a Recent inbox of what you copy"
 msgstr "保留你复制内容的“最近”收件箱"
 
 msgid "Keep a Recent list of what you copy?"
 msgstr "要保留你复制内容的“最近”列表吗？"
+
+msgid "Keep copies for fewer days"
+msgstr "减少副本保留天数"
+
+msgid "Keep copies for more days"
+msgstr "增加副本保留天数"
+
+msgid "Keep copies from unknown sources"
+msgstr "保留来源未知的复制内容"
 
 msgid "Keep editing"
 msgstr "继续编辑"
@@ -1400,8 +1427,14 @@ msgstr "常用内容触手可及"
 msgid "Keep fewer backups"
 msgstr "减少保留的备份"
 
+msgid "Keep fewer copies"
+msgstr "保留更少副本"
+
 msgid "Keep more backups"
 msgstr "增加保留的备份"
+
+msgid "Keep more copies"
+msgstr "保留更多副本"
 
 msgid "Keep panel on top"
 msgstr "面板保持在最前"
@@ -1493,6 +1526,15 @@ msgstr "列表用来存放你的片段。"
 msgid "Loading"
 msgstr "正在加载"
 
+msgid "Lock after"
+msgstr "锁定时间"
+
+msgid "Lock later"
+msgstr "延后锁定"
+
+msgid "Lock sooner"
+msgstr "提前锁定"
+
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "日志只在 Snipdeck 崩溃时写入，不含片段内容，也不会发送到任何地方。"
 
@@ -1565,6 +1607,12 @@ msgstr "菜单"
 msgid "Microsoft Store"
 msgstr "Microsoft Store"
 
+msgid "Minutes before the library locks"
+msgstr "资料库锁定前的分钟数"
+
+msgid "Minutes without use before a master password locks your sensitive items again."
+msgstr "主密码在无操作多少分钟后再次锁定你的敏感项目。"
+
 msgid "More"
 msgstr "更多"
 
@@ -1576,6 +1624,9 @@ msgstr "更多选项：打开完整编辑器"
 
 msgid "More pinned snippets"
 msgstr "更多置顶片段"
+
+msgid "Most copies kept in Recent"
+msgstr "“最近”中保留的最大副本数"
 
 msgid "Most used"
 msgstr "最常用"
@@ -1857,6 +1908,9 @@ msgstr "关闭：停靠在左侧或右侧的面板保持你放下时的高度。
 
 msgid "Off: a docked panel does not tuck and hides like a floating one. Otherwise it tucks into a thin tab at its edge, and the panel shortcut opens it too."
 msgstr "关闭：停靠的面板不会收起，而是像浮动面板一样隐藏。否则它会收成边缘上的一条细标签，面板快捷键也能打开它。"
+
+msgid "Older copies are deleted when there are more than this many."
+msgstr "超过此数量时，较旧的副本会被删除。"
 
 msgid "On black"
 msgstr "在黑色上"
@@ -2260,8 +2314,20 @@ msgstr "最近条目操作"
 msgid "Recent history cleared"
 msgstr "已清除最近记录"
 
+msgid "Recent holds {} copies. Turning it off deletes them, unless you choose to keep them hidden; kept copies show again if you turn Recent back on."
+msgstr "“最近”中有{}个副本。关闭后会将其删除，除非你选择隐藏保留；保留的副本会在重新开启“最近”后再次显示。"
+
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "“最近”会保留你复制的文本，仅保存在这台电脑上，最多保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感片段不会被保留。你可以随时在设置中更改。"
+
+msgid "Recent skips a copy when Snipdeck cannot tell which program it came from, because it could be a password manager. Turn this on to keep those copies too."
+msgstr "当 Snipdeck 无法判断复制内容来自哪个程序时，“最近”会跳过它，因为它可能来自密码管理器。开启后，这些内容也会被保留。"
+
+msgid "Recent: days kept"
+msgstr "最近：保留天数"
+
+msgid "Recent: most copies kept"
+msgstr "最近：最大保留副本数"
 
 msgid "Recently used"
 msgstr "最近使用"
@@ -2412,6 +2478,12 @@ msgstr "另存为 PNG…"
 msgid "Save as SVG…"
 msgstr "另存为 SVG…"
 
+msgid "Save as Sensitive to…"
+msgstr "作为敏感项目保存到…"
+
+msgid "Save as Sensitive…"
+msgstr "保存为敏感项目…"
+
 msgid "Save from clipboard"
 msgstr "从剪贴板保存"
 
@@ -2532,8 +2604,8 @@ msgstr "可用你的语言按名称搜索。"
 msgid "Searched every board and list."
 msgstr "已搜索所有看板和列表。"
 
-msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
-msgstr "复制敏感片段后，若期间未复制其他内容，则在此秒数后从剪贴板清除。设为 0 则永不清除。粘贴时会改为恢复你原本的剪贴板内容。"
+msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. Pasting restores your own clipboard instead."
+msgstr "复制敏感片段后，若期间未复制其他内容，则在此秒数后从剪贴板清除。粘贴时会改为恢复你原本的剪贴板内容。"
 
 msgid "See the tips"
 msgstr "查看提示"
@@ -2645,6 +2717,9 @@ msgstr "显示或隐藏面板"
 
 msgid "Show or hide the sidebar"
 msgstr "显示或隐藏侧边栏"
+
+msgid "Show password"
+msgstr "显示密码"
 
 msgid "Show the Panel"
 msgstr "显示面板"
@@ -3141,6 +3216,9 @@ msgstr "今天的日期"
 msgid "Toggle keep Panel open"
 msgstr "切换保持面板打开"
 
+msgid "Too many wrong passwords. Wait a few seconds and try again."
+msgstr "错误密码次数过多。请稍等几秒后重试。"
+
 msgid "Tools"
 msgstr "工具"
 
@@ -3176,6 +3254,12 @@ msgstr "试试其他词，或换一种类型。"
 
 msgid "Try it"
 msgstr "试一试"
+
+msgid "Turn off and delete"
+msgstr "关闭并删除"
+
+msgid "Turn off, keep them"
+msgstr "关闭并保留"
 
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "在设置中开启剪贴板历史，以收集你复制的内容。"
@@ -3462,6 +3546,9 @@ msgstr "你的库在一段时间后已锁定。你正在填写的敏感模板表
 msgid "Your library locked after a while. The sensitive item you were editing was closed without saving."
 msgstr "资料库在一段时间后自动锁定。你正在编辑的敏感片段已关闭，未保存。"
 
+msgid "Your library locked. What you were typing in the sensitive item is kept, and comes back when you unlock."
+msgstr "你的资料库已锁定。你在敏感项目中输入的内容已保留，解锁后会恢复。"
+
 msgid "Your library was erased."
 msgstr "资料库已删除。"
 
@@ -3586,6 +3673,9 @@ msgstr "创建“{}”"
 msgid "creates “{}” in {}"
 msgstr "创建“{}”(在 {})"
 
+msgid "days"
+msgstr "天"
+
 msgid "default"
 msgstr "默认"
 
@@ -3676,6 +3766,9 @@ msgstr "小写"
 
 msgid "make new folder together section collect"
 msgstr "创建 新建 文件夹 一起 区段 收集"
+
+msgid "min"
+msgstr "分钟"
 
 msgid "move"
 msgstr "移动"

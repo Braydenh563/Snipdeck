@@ -53,4 +53,12 @@ pub trait HelloAuthenticator: Send + Sync {
     ///
     /// [`HelloError::Cancelled`], [`HelloError::Removed`] or [`HelloError::Failed`].
     fn sign_challenge(&self, challenge: &[u8]) -> Result<Zeroizing<Vec<u8>>, HelloError>;
+    /// Deletes the Snipdeck Hello credential from the OS, if there is one. No prompt. Called when
+    /// Hello is turned off, a library is erased or the master password is removed or set, so no
+    /// key pair outlives its use. A missing credential is not an error.
+    ///
+    /// # Errors
+    ///
+    /// [`HelloError::Failed`] when the OS refuses.
+    fn delete_credential(&self) -> Result<(), HelloError>;
 }

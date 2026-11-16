@@ -68,6 +68,9 @@ export global ToastTexts {
     pure public function locked-editor-closed() -> string {
         return @tr("Your library locked after a while. The sensitive item you were editing was closed without saving.");
     }
+    pure public function locked-editor-kept() -> string {
+        return @tr("Your library locked. What you were typing in the sensitive item is kept, and comes back when you unlock.");
+    }
     pure public function locked-fill-closed() -> string {
         return @tr("Your library locked after a while. The form for the sensitive template you were filling in was closed.");
     }

@@ -701,6 +701,75 @@ fn changing_the_password_from_a_locked_library_unlocks_it() {
 }
 
 #[test]
+fn wrong_passwords_slow_down_from_the_third_and_clear_on_a_right_one() {
+    let mut r = with_password();
+    r.ctl.lock_now();
+    let wrong = support::pw("wrong");
+    // The first two wrong tries are answered at once, and the third starts a wait.
+    for _ in 0..3 {
+        assert_eq!(
+            r.ctl.unlock_with_password(wrong),
+            Err(MasterProblem::WrongPassword)
+        );
+    }
+    // During the wait nothing is derived, even for the right password.
+    assert_eq!(
+        r.ctl.unlock_with_password(password()),
+        Err(MasterProblem::Wait)
+    );
+    assert!(r.ctl.library_locked());
+    r.advance(Duration::from_secs(1));
+    assert_eq!(
+        r.ctl.unlock_with_password(password()),
+        Err(MasterProblem::Wait)
+    );
+    r.advance(Duration::from_secs(1));
+    // Waited it out: a fourth wrong try doubles the wait.
+    assert_eq!(
+        r.ctl.unlock_with_password(wrong),
+        Err(MasterProblem::WrongPassword)
+    );
+    r.advance(Duration::from_secs(3));
+    assert_eq!(
+        r.ctl.unlock_with_password(password()),
+        Err(MasterProblem::Wait)
+    );
+    r.advance(Duration::from_secs(1));
+    r.ctl.unlock_with_password(password()).expect("right one");
+    // A right password forgets the count.
+    r.ctl.lock_now();
+    for _ in 0..2 {
+        assert_eq!(
+            r.ctl.unlock_with_password(wrong),
+            Err(MasterProblem::WrongPassword)
+        );
+    }
+    r.ctl.unlock_with_password(password()).expect("no wait yet");
+}
+
+#[test]
+fn the_wait_covers_changing_and_removing_the_password_too() {
+    let mut r = with_password();
+    for _ in 0..3 {
+        assert_eq!(
+            r.ctl.remove_master_password(support::pw("wrong")),
+            Err(MasterProblem::WrongPassword)
+        );
+    }
+    assert_eq!(
+        r.ctl.remove_master_password(password()),
+        Err(MasterProblem::Wait)
+    );
+    let new = support::pw("marble");
+    assert_eq!(
+        r.ctl.change_master_password(password(), new, new),
+        Err(MasterProblem::Wait)
+    );
+    r.advance(Duration::from_secs(2));
+    r.ctl.remove_master_password(password()).expect("remove");
+}
+
+#[test]
 fn removing_the_password_needs_the_current_one_and_returns_to_the_os_key_alone() {
     let mut r = with_password();
     assert_eq!(
@@ -965,6 +1034,71 @@ fn locking_closes_a_sensitive_editor_so_no_plain_text_stays_on_screen() {
     assert!(!r.ctl.item_editor_open(), "the editor is closed");
     assert!(r.ctl.item_editor_view().is_none(), "and holds no text");
     assert!(r.ctl.library_locked());
+}
+
+#[test]
+fn locking_reads_the_editor_text_at_that_moment_not_the_last_tick() {
+    let mut r = with_password();
+    r.ctl.open_item_editor(r.id);
+    let mut stale = r.ctl.item_editor_view().expect("editor").fields;
+    stale.content = "as of the last tick".into();
+    r.ctl.item_editor_autosave(&stale);
+    let mut now = stale.clone();
+    now.content = "typed a moment before the lock".into();
+    r.ctl
+        .set_editor_text_source(Box::new(move || Some(now.clone())));
+    r.advance(IDLE_LOCK);
+    assert!(r.ctl.lock_if_idle());
+    let job = r
+        .ctl
+        .begin_unlock_with_password(password())
+        .expect("checked")
+        .expect("locked");
+    assert_eq!(r.ctl.finish_master(run_elsewhere(job)), Ok(()));
+    let back = r.ctl.item_editor_view().expect("the editor comes back");
+    assert_eq!(back.fields.content, "typed a moment before the lock");
+}
+
+#[test]
+fn locking_keeps_the_unsaved_text_sealed_and_gives_it_back_after_the_unlock() {
+    let mut r = with_password();
+    r.ctl.open_item_editor(r.id);
+    let mut typed = r.ctl.item_editor_view().expect("editor").fields;
+    typed.content = "half-typed new secret".into();
+    typed.title = "Vault code 2".into();
+    r.ctl.item_editor_autosave(&typed);
+    r.advance(IDLE_LOCK);
+    assert!(r.ctl.lock_if_idle());
+    assert!(!r.ctl.item_editor_open(), "nothing on screen while locked");
+    assert!(r.ctl.item_editor_view().is_none());
+    assert_eq!(
+        r.toast(),
+        Some(ToastMessage::LockedEditorKept),
+        "the user is told the text is kept"
+    );
+    let job = r
+        .ctl
+        .begin_unlock_with_password(password())
+        .expect("checked")
+        .expect("locked");
+    assert_eq!(r.ctl.finish_master(run_elsewhere(job)), Ok(()));
+    let back = r.ctl.item_editor_view().expect("the editor comes back");
+    assert_eq!(back.fields.content, "half-typed new secret");
+    assert_eq!(back.fields.title, "Vault code 2");
+    assert!(back.restored, "marked as not yet saved");
+    assert_eq!(r.secret().as_deref(), Some(SECRET), "nothing was saved");
+}
+
+#[test]
+fn a_parked_editor_is_dropped_when_the_library_is_erased_or_the_item_is_gone() {
+    let mut r = with_password();
+    r.ctl.open_item_editor(r.id);
+    r.advance(IDLE_LOCK);
+    assert!(r.ctl.lock_if_idle());
+    assert!(r.ctl.erase_library(r.data.path(), true));
+    assert!(!r.ctl.item_editor_open(), "no editor of an erased library");
+    assert!(r.ctl.item_editor_view().is_none());
+    assert!(r.ctl.unlock_prompt_open() || !r.ctl.library_locked());
 }
 
 #[test]
@@ -1781,6 +1915,33 @@ mod hello {
         assert!(r.ctl.set_hello_unlock(true).is_none(), "no key to seal");
         assert!(!r.ctl.settings().hello_unlock);
         assert_eq!(r.toast(), Some(ToastMessage::HelloNotTurnedOn));
+    }
+
+    #[test]
+    fn the_hello_credential_is_deleted_when_hello_goes_off_or_the_key_goes() {
+        // Switched off.
+        let hello = fake();
+        let mut r = with_password();
+        enable(&mut r, &hello);
+        assert_eq!(hello.deletions(), 0);
+        assert!(r.ctl.set_hello_unlock(false).is_none());
+        assert_eq!(hello.deletions(), 1, "turning Hello off");
+        // Erased.
+        let hello = fake();
+        let mut r = with_password();
+        enable(&mut r, &hello);
+        assert!(r.ctl.erase_library(r.data.path(), false));
+        assert_eq!(hello.deletions(), 1, "erasing the library");
+        // Password removed, then set again.
+        let hello = fake();
+        let mut r = with_password();
+        enable(&mut r, &hello);
+        r.ctl.remove_master_password(password()).expect("removed");
+        assert_eq!(hello.deletions(), 1, "removing the password");
+        r.ctl
+            .set_master_password(support::pw("again"), support::pw("again"))
+            .expect("set again");
+        assert_eq!(hello.deletions(), 2, "setting a password");
     }
 
     #[test]

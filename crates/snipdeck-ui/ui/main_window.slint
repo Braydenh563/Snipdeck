@@ -411,6 +411,8 @@ export component MainWindow inherits Window {
     callback recent-copied(int);
     callback recent-deleted(int);
     callback recent-saved(int, int);
+    // "Save as Sensitive…": the same chooser; the item is saved as Sensitive (text entries only).
+    callback recent-saved-sensitive(int, int);
     callback recent-cleared();
     callback recent-unlock-requested();
     callback move-chosen(int);
@@ -641,6 +643,8 @@ export component MainWindow inherits Window {
     // The Recent entry menu and its "Save to…" chooser: the row they act on, and where they open.
     property <bool> recent-menu-open: false;
     property <bool> recent-save-open: false;
+    property <bool> recent-save-sensitive: false;
+    property <bool> recent-menu-text: true;
     property <int> recent-menu-row: 0;
     // The entry the open menu acts on, by id: the list can shift (a new copy, a search edit) while it is open.
     property <int> recent-menu-id: 0;
@@ -960,6 +964,7 @@ export component MainWindow inherits Window {
     function open-recent-menu(row: int, x: length, y: length) {
         root.nav-origin = false;
         root.recent-menu-row = row;
+        root.recent-menu-text = root.recent-rows[row].kind != ItemKind.image && root.recent-rows[row].kind != ItemKind.file;
         root.recent-menu-id = root.recent-rows[row].id;
         root.recent-menu-x = x;
         root.recent-menu-y = y;
@@ -969,6 +974,7 @@ export component MainWindow inherits Window {
 
     function open-recent-save(row: int, x: length, y: length) {
         root.nav-origin = false;
+        root.recent-save-sensitive = false;
         root.recent-menu-row = row;
         root.recent-menu-id = root.recent-rows[row].id;
         root.recent-menu-x = x;
@@ -2933,7 +2939,12 @@ export component MainWindow inherits Window {
         menu-max-h: root.height - 2 * Space.s2;
         x: max(0px, min(root.recent-menu-x, root.width - self.width - Space.s2));
         y: max(0px, min(root.recent-menu-y, root.height - self.height - Space.s2));
-        entries: [
+        entries: root.recent-menu-text ? [
+            { text: @tr("Save to…"), icon: Icons.folder },
+            { text: @tr("Save as Sensitive…"), icon: Icons.lock },
+            { text: @tr("Copy"), icon: Icons.copy },
+            { text: @tr("Remove from Recent"), icon: Icons.trash, destructive: true },
+        ] : [
             { text: @tr("Save to…"), icon: Icons.folder },
             { text: @tr("Copy"), icon: Icons.copy },
             { text: @tr("Remove from Recent"), icon: Icons.trash, destructive: true },
@@ -2942,9 +2953,12 @@ export component MainWindow inherits Window {
         init => { self.focus-menu(); }
         activated(i) => {
             root.recent-menu-open = false;
-            if (i == 0) {
+            // The position in the full list [save, sensitive, copy, remove], skipping what is not offered.
+            let a = (i >= 1 && !root.recent-menu-text) ? i + 1 : i;
+            if (a == 0 || a == 1) {
+                root.recent-save-sensitive = a == 1;
                 root.recent-save-open = true;
-            } else if (i == 1) {
+            } else if (a == 2) {
                 root.recent-copied(root.recent-menu-id);
                 root.restore-focus();
             } else {
@@ -2959,7 +2973,7 @@ export component MainWindow inherits Window {
         y: max(0px, min(root.recent-menu-y, root.height - self.height - Space.s2));
         width: min(240px, root.width - 2 * Space.s2);
         entries: root.recent-targets;
-        label: @tr("Save to…");
+        label: root.recent-save-sensitive ? @tr("Save as Sensitive to…") : @tr("Save to…");
         empty-text: @tr("No lists yet");
         init => {
             self.current = 0;
@@ -2967,7 +2981,11 @@ export component MainWindow inherits Window {
         }
         chosen(i) => {
             root.recent-save-open = false;
-            root.recent-saved(root.recent-menu-id, i);
+            if (root.recent-save-sensitive) {
+                root.recent-saved-sensitive(root.recent-menu-id, i);
+            } else {
+                root.recent-saved(root.recent-menu-id, i);
+            }
             root.restore-focus();
         }
         dismissed => { root.close-menus(); }
