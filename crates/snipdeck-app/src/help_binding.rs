@@ -719,7 +719,7 @@ pub fn shortcut_groups(
         .iter()
         .map(|t| t.to_string())
         .collect();
-    shortcuts::groups(&titles, hotkeys, query)
+    shortcuts::groups(&titles, &crate::wording::key_words(window), hotkeys, query)
 }
 
 /// One group as the window draws it: the scope's name, and the note under the global hotkeys.

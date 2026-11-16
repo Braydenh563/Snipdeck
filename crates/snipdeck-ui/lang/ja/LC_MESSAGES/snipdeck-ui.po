@@ -326,8 +326,17 @@ msgstr "ボード"
 msgid "Boards and lists"
 msgstr "ボードとリスト"
 
+msgid "Book"
+msgstr "本"
+
+msgid "Bookmark"
+msgstr "しおり"
+
 msgid "Bottom edge"
 msgstr "下端"
+
+msgid "Briefcase"
+msgstr "ブリーフケース"
 
 msgid "Brightness"
 msgstr "明度"
@@ -352,6 +361,12 @@ msgstr "ビルド日"
 
 msgid "CMYK"
 msgstr "CMYK"
+
+msgid "Calendar"
+msgstr "カレンダー"
+
+msgid "Camera"
+msgstr "カメラ"
 
 msgid "Cancel"
 msgstr "キャンセル"
@@ -379,6 +394,9 @@ msgstr "変更はすぐに適用されます。"
 
 msgid "Change…"
 msgstr "変更…"
+
+msgid "Chat"
+msgstr "チャット"
 
 msgid "Check again"
 msgstr "もう一度確認"
@@ -467,6 +485,9 @@ msgstr "クリック"
 msgid "Click copies"
 msgstr "クリックでコピー"
 
+msgid "Click me to paste"
+msgstr "クリックして貼り付け"
+
 msgid "Click or Enter pastes. Shift+click or Shift+Enter copies."
 msgstr "クリックまたは Enter で貼り付け。Shift+クリックまたは Shift+Enter でコピー。"
 
@@ -524,6 +545,9 @@ msgstr "ゆったり"
 msgid "Comfortable view"
 msgstr "ゆったり表示"
 
+msgid "Comma"
+msgstr "カンマ"
+
 msgid "Commands"
 msgstr "コマンド"
 
@@ -553,6 +577,9 @@ msgstr "内容"
 
 msgid "Contrast"
 msgstr "コントラスト"
+
+msgid "Control"
+msgstr "コントロール"
 
 msgid "Control Enter"
 msgstr "Ctrl Enter"
@@ -812,6 +839,9 @@ msgstr "スニペットを作成"
 msgid "Create “{}”"
 msgstr "「{}」を作成"
 
+msgid "Credit card"
+msgstr "クレジットカード"
+
 msgid "Ctrl+Shift+V"
 msgstr "Ctrl+Shift+V"
 
@@ -1058,6 +1088,9 @@ msgstr "ライブラリの機密スニペットを使うには、マスターパ
 msgid "Enter your password."
 msgstr "パスワードを入力してください。"
 
+msgid "Envelope"
+msgstr "封筒"
+
 msgid "Erase everything"
 msgstr "すべて削除"
 
@@ -1124,6 +1157,9 @@ msgstr "カラーラベルで絞り込み"
 msgid "Find anything by typing"
 msgstr "入力するだけで何でも見つかる"
 
+msgid "Flag"
+msgstr "旗"
+
 msgid "Flags"
 msgstr "旗"
 
@@ -1135,6 +1171,9 @@ msgstr "グループを折りたたむ"
 
 msgid "Fold or unfold a group"
 msgstr "グループを折りたたむ／展開する"
+
+msgid "Folder"
+msgstr "フォルダー"
 
 msgid "Folder of .txt and .md files"
 msgstr ".txt と .md ファイルのフォルダー"
@@ -1172,6 +1211,9 @@ msgstr "書式あり"
 msgid "Get started"
 msgstr "はじめる"
 
+msgid "Getting started"
+msgstr "はじめに"
+
 msgid "Give an item a trigger, such as ;sig, under More options in its editor."
 msgstr "スニペットのエディターの「その他のオプション」で、;sig のようなトリガーを設定します。"
 
@@ -1186,6 +1228,9 @@ msgstr "リストに名前を付けてください。"
 
 msgid "Gives the Panel a taskbar button and an Alt+Tab entry while it is on screen. Pasting still goes to the app you were in before. Off keeps it out of both; the tray icon and the Panel shortcut still bring it back."
 msgstr "パネルが表示されている間、タスクバーのボタンと Alt+Tab の項目を表示します。貼り付けは、直前に使っていたアプリに入ります。オフにすると両方に表示されません。トレイアイコンとパネルのショートカットからは引き続き表示できます。"
+
+msgid "Globe"
+msgstr "地球儀"
 
 msgid "Go to All items"
 msgstr "すべてのスニペットへ移動"
@@ -1241,8 +1286,14 @@ msgstr "フォームを項目ごとに入力するときに便利です。"
 msgid "Heard it. This shortcut works."
 msgstr "聞こえました。このショートカットは使えます。"
 
+msgid "Heart"
+msgstr "ハート"
+
 msgid "Help"
 msgstr "ヘルプ"
+
+msgid "Help > Tips has ten short cards with a picture and a Try it button each. Open it from Help, or from the tray icon's menu."
+msgstr "ヘルプ > ヒントには、画像と「試してみる」ボタン付きの短いカードが10枚あります。ヘルプまたはトレイアイコンのメニューから開けます。"
 
 msgid "Help sections"
 msgstr "ヘルプのセクション"
@@ -1279,6 +1330,9 @@ msgstr "長押しで表示"
 
 msgid "Hold to reveal a hidden item"
 msgstr "押し続けると非表示のスニペットを表示"
+
+msgid "House"
+msgstr "家"
 
 msgid "Hover"
 msgstr "ポイント"
@@ -1478,6 +1532,9 @@ msgstr "ライブラリのロックを解除しました。"
 msgid "Light"
 msgstr "ライト"
 
+msgid "Light bulb"
+msgstr "電球"
+
 msgid "Light, dark or follow Windows."
 msgstr "ライト、ダーク、または Windows に合わせます。"
 
@@ -1507,6 +1564,9 @@ msgstr "リスト"
 
 msgid "Lists hold your items."
 msgstr "リストにはスニペットが入ります。"
+
+msgid "Location marker"
+msgstr "場所のマーカー"
 
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "ログはSnipdeckが異常終了したときだけ書き込まれ、スニペットの内容は含まれず、どこにも送信されません。"
@@ -1589,6 +1649,9 @@ msgstr "その他のオプション：完全なエディターを開く"
 msgid "More pinned items"
 msgstr "その他のピン留めスニペット"
 
+msgid "More tips"
+msgstr "その他のヒント"
+
 msgid "Most used"
 msgstr "よく使う順"
 
@@ -1656,6 +1719,12 @@ msgstr[0] "{} 件のスニペットをごみ箱へ移動しました"
 msgid "Moved {} item to {}"
 msgid_plural "Moved {} items to {}"
 msgstr[0] "{} 件のスニペットを {} に移動しました"
+
+msgid "Music"
+msgstr "音楽"
+
+msgid "My snippets"
+msgstr "マイスニペット"
 
 msgid "Name"
 msgstr "名前"
@@ -2134,6 +2203,12 @@ msgstr "一時停止中"
 msgid "People & Body"
 msgstr "人と体"
 
+msgid "Person"
+msgstr "人"
+
+msgid "Phone"
+msgstr "電話"
+
 msgid "PhraseExpress export (CSV)"
 msgstr "PhraseExpress のエクスポート（CSV）"
 
@@ -2196,6 +2271,9 @@ msgstr "プレースホルダーは {} で書きます。波括弧そのもの�
 
 msgid "Plain text"
 msgstr "プレーンテキスト"
+
+msgid "Plus"
+msgstr "プラス"
 
 msgid "Press Ctrl+K in Main to find any action by name."
 msgstr "メインウィンドウで Ctrl+K を押すと、名前で操作を探せます。"
@@ -2412,8 +2490,17 @@ msgstr "右"
 msgid "Right edge"
 msgstr "右端"
 
+msgid "Right-click a card, or press the Menu key, to edit it, pin it to the strip above the list, move it, tag it or delete it. Delete this list when you no longer need it."
+msgstr "カードを右クリックするか、メニューキーを押すと、編集、リストの上のバーへのピン留め、移動、タグ付け、削除ができます。不要になったらこのリストを削除してください。"
+
+msgid "Right-click for more"
+msgstr "右クリックでさらに"
+
 msgid "Right-click or press Menu for list actions"
 msgstr "右クリックまたはメニューキーでリストの操作を表示"
+
+msgid "Rocket"
+msgstr "ロケット"
 
 msgid "Rose"
 msgstr "ローズ"
@@ -2625,6 +2712,15 @@ msgstr "Shift F10"
 msgid "Shift+Insert"
 msgstr "Shift+Insert"
 
+msgid "Shift+click (or Shift+Enter) only copies a card to the clipboard, so you can paste it yourself."
+msgstr "Shift+クリック（またはShift+Enter）ではカードがクリップボードにコピーされるだけなので、自分で貼り付けられます。"
+
+msgid "Shift+click to copy"
+msgstr "Shift+クリックでコピー"
+
+msgid "Shopping cart"
+msgstr "ショッピングカート"
+
 msgid "Shortcuts"
 msgstr "ショートカット"
 
@@ -2687,6 +2783,9 @@ msgstr "サイドバーの幅"
 
 msgid "Skip"
 msgstr "スキップ"
+
+msgid "Slash"
+msgstr "スラッシュ"
 
 msgid "Slate"
 msgstr "スレート"
@@ -2778,6 +2877,9 @@ msgstr "Snipdeckはライブラリのコピーを1日1回保存し、新しい{}
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "Snipdeck はサインイン後にショートカットが使えるよう、通知領域で待機します。"
 
+msgid "Snippets"
+msgstr "スニペット"
+
 msgid "Some files were left out: together they are over 64 MB."
 msgstr "一部のファイルを除外しました。合計が 64 MB を超えています。"
 
@@ -2816,6 +2918,9 @@ msgstr "スプリットコンプリメンタリー"
 
 msgid "Square"
 msgstr "四角"
+
+msgid "Star"
+msgstr "星"
 
 msgid "Start stack"
 msgstr "スタックを開始"
@@ -2915,6 +3020,9 @@ msgstr "テンプレートは貼り付ける前に、名前、日付、選択肢
 
 msgid "Ten short tips"
 msgstr "10 個の短いヒント"
+
+msgid "Terminal"
+msgstr "ターミナル"
 
 msgid "Test"
 msgstr "テスト"
@@ -3156,6 +3264,9 @@ msgstr "このテキストは {} KB を超えています。ここで編集で�
 msgid "This text is {}. Anything over 16 KB opens read-only here, and the first 16 KB are shown."
 msgstr "このテキストは{}です。16 KBを超えるものはここでは読み取り専用で開き、先頭の16 KBを表示します。"
 
+msgid "This text was pasted by clicking its card. Click a card in the Panel and Snipdeck pastes it into the app you were typing in."
+msgstr "このテキストは、カードをクリックして貼り付けられました。パネルでカードをクリックすると、入力していたアプリにSnipdeckが貼り付けます。"
+
 msgid "Tile view"
 msgstr "タイル表示"
 
@@ -3179,6 +3290,9 @@ msgstr "タイトル、本文、ラベルのすべてが対象です。"
 
 msgid "To remove everything, use Erase library under Backups and your data, then delete the folder."
 msgstr "すべて削除するには、「バックアップとデータ」の「ライブラリを削除」を使い、そのあとフォルダーを削除してください。"
+
+msgid "Today is {} and it is {}. Placeholders in braces fill in when you use the card."
+msgstr "今日は{}で、時刻は{}です。波かっこ内のプレースホルダーは、カードを使うときに入力されます。"
 
 msgid "Today’s date"
 msgstr "今日の日付"
@@ -3218,6 +3332,9 @@ msgstr "トラブルシューティング"
 
 msgid "Troubleshoot…"
 msgstr "トラブルシューティング…"
+
+msgid "Try a template"
+msgstr "テンプレートを試す"
 
 msgid "Try another word, or a different kind."
 msgstr "別の言葉や別の種類をお試しください。"
@@ -3491,6 +3608,9 @@ msgstr "Windows の [設定] > [アプリ] > [スタートアップ] で Snipdec
 
 msgid "With clipboard history on, Recent keeps what you copy in other programs."
 msgstr "クリップボード履歴をオンにすると、「最近」に他のプログラムでコピーした内容が残ります。"
+
+msgid "Wrench"
+msgstr "レンチ"
 
 msgid "Writable, but only {} MB are free on its drive."
 msgstr "書き込めますが、ドライブの空き容量は {} MB しかありません。"

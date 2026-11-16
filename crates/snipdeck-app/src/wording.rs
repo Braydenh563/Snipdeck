@@ -2,16 +2,16 @@
 //!
 //! The Panel's own strings are `@tr` in Slint and translate with the bundled catalogs. Rust
 //! cannot reach those catalogs, so what it shows goes through a UI-crate global that holds the
-//! `@tr` text: `ToastTexts` (every toast, read with [`toast_text`]), `TrayTexts` ([`tray_labels`])
-//! and `ImportTexts`. The Panel's item and kebab menus below are still plain English (listed in
-//! `docs/HANDOVER.md`).
+//! `@tr` text: `ToastTexts` (every toast, read with [`toast_text`]), `TrayTexts` ([`tray_labels`]),
+//! `ImportTexts` and `NameTexts` (colour labels, list icons and the spoken key names). The Panel's
+//! item and kebab menus below are still plain English (listed in `docs/HANDOVER.md`).
 
 use slint::Global;
 use snipdeck_platform::tray::TrayLabels;
 use snipdeck_portable::{Note, Warning};
 use snipdeck_ui::{
-    FormTexts, ImportTexts, MenuTexts, PanelWindow, SettingsPage, TemplateTexts, ToastTexts,
-    TrayTexts,
+    FormTexts, ImportTexts, MenuTexts, NameTexts, PanelWindow, SettingsPage, StarterTexts,
+    TemplateTexts, ToastTexts, TrayTexts,
 };
 
 use snipdeck_core::{
@@ -20,8 +20,10 @@ use snipdeck_core::{
 };
 
 use crate::{
+    commands::KeyWords,
     item_editor::{AttachmentView, EditorProblem, SaveFailure, TemplateProblem},
     settings::{DockEdge, Theme},
+    starter::StarterWords,
     toast::ToastMessage,
 };
 
@@ -54,49 +56,69 @@ pub fn tray_labels(window: &PanelWindow) -> TrayLabels {
 }
 
 /// The name of an item colour label: shown beside the colour wherever it appears, so the colour is
-/// never the only cue.
+/// never the only cue. Worded by the UI crate's `NameTexts` global, in the language selected now.
 #[must_use]
-pub fn item_label_name(label: ItemLabel) -> &'static str {
-    match label {
-        ItemLabel::Blue => "Blue",
-        ItemLabel::Teal => "Teal",
-        ItemLabel::Green => "Green",
-        ItemLabel::Amber => "Amber",
-        ItemLabel::Orange => "Orange",
-        ItemLabel::Red => "Red",
-        ItemLabel::Violet => "Violet",
-        ItemLabel::Slate => "Slate",
-    }
+pub fn item_label_name<C>(window: &C, label: ItemLabel) -> String
+where
+    for<'a> NameTexts<'a>: Global<'a, C>,
+{
+    let index = ItemLabel::ALL.iter().position(|l| *l == label).unwrap_or(0);
+    NameTexts::get(window)
+        .invoke_label(i32::try_from(index).unwrap_or(0))
+        .into()
 }
 
 /// The spoken name of a list icon, for the icon picker.
 #[must_use]
-pub fn list_icon_name(icon: ListIcon) -> &'static str {
-    match icon {
-        ListIcon::Folder => "Folder",
-        ListIcon::Star => "Star",
-        ListIcon::Heart => "Heart",
-        ListIcon::Briefcase => "Briefcase",
-        ListIcon::House => "House",
-        ListIcon::User => "Person",
-        ListIcon::EnvelopeSimple => "Envelope",
-        ListIcon::ChatCircle => "Chat",
-        ListIcon::Phone => "Phone",
-        ListIcon::CalendarBlank => "Calendar",
-        ListIcon::ShoppingCart => "Shopping cart",
-        ListIcon::CreditCard => "Credit card",
-        ListIcon::Code => "Code",
-        ListIcon::TerminalWindow => "Terminal",
-        ListIcon::BookOpen => "Book",
-        ListIcon::Lightbulb => "Light bulb",
-        ListIcon::Flag => "Flag",
-        ListIcon::BookmarkSimple => "Bookmark",
-        ListIcon::Globe => "Globe",
-        ListIcon::MapPin => "Map pin",
-        ListIcon::Camera => "Camera",
-        ListIcon::MusicNote => "Music",
-        ListIcon::Wrench => "Wrench",
-        ListIcon::RocketLaunch => "Rocket",
+pub fn list_icon_name<C>(window: &C, icon: ListIcon) -> String
+where
+    for<'a> NameTexts<'a>: Global<'a, C>,
+{
+    let index = ListIcon::ALL.iter().position(|i| *i == icon).unwrap_or(0);
+    NameTexts::get(window)
+        .invoke_icon(i32::try_from(index).unwrap_or(0))
+        .into()
+}
+
+/// What a new library starts with, in the language selected now.
+#[must_use]
+pub fn starter_words<C>(window: &C) -> StarterWords
+where
+    for<'a> StarterTexts<'a>: Global<'a, C>,
+{
+    let texts = StarterTexts::get(window);
+    let card = |i: i32| {
+        (
+            texts.invoke_card_title(i).to_string(),
+            texts.invoke_card_text(i).to_string(),
+        )
+    };
+    StarterWords {
+        board: texts.get_board().into(),
+        list: texts.get_list().into(),
+        getting_started: texts.get_getting_started().into(),
+        cards: [card(0), card(1), card(2), card(3), card(4)],
+        new_list: texts.get_new_list().into(),
+        new_board: texts.get_new_board().into(),
+    }
+}
+
+/// How assistive technology reads the keys of a shortcut, in the language selected now.
+#[must_use]
+pub fn key_words<C>(window: &C) -> KeyWords
+where
+    for<'a> NameTexts<'a>: Global<'a, C>,
+{
+    let texts = NameTexts::get(window);
+    let word = |i: i32| texts.invoke_key(i).to_string();
+    KeyWords {
+        control: word(0),
+        enter: word(1),
+        delete: word(2),
+        escape: word(3),
+        plus: word(4),
+        comma: word(5),
+        slash: word(6),
     }
 }
 

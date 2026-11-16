@@ -50,12 +50,12 @@ TECH_TOKENS = {w.lower() for w in (
     "markdown json ok windows bytes").split()}
 # Cognates that are the right word in one locale although they read like the English source.
 SAME_BY_LOCALE = {
-    "de": {"Alpha", "Board: {}", "Boards", "Code", "Format", "Layout", "Link", "Links", "Name", "Navigation",
-           "Orange", "Problem", "Tabs", "Test", "Text", "Version"},
+    "de": {"Alpha", "Board: {}", "Boards", "Chat", "Code", "Format", "Layout", "Link", "Links", "Name",
+           "Navigation", "Orange", "Person", "Problem", "Tabs", "Terminal", "Test", "Text", "Version"},
     "fr": {"Actions", "Alpha", "Code", "Compact", "Format", "Image", "Menu", "Navigation", "Orange", "Rose",
-           "Surprise", "Type", "Version", "Violet", "Formats"},
-    "es": {"Manual", "No"},
-    "pt-BR": {"Layout", "Link", "Links", "Manual", "Menu"},
+           "Surprise", "Terminal", "Type", "Version", "Violet", "Formats"},
+    "es": {"Chat", "Control", "Manual", "No", "Terminal"},
+    "pt-BR": {"Chat", "Envelope", "Layout", "Link", "Links", "Manual", "Menu", "Terminal"},
 }
 CJK = "\u3000-\u30ff\u3400-\u9fff\uff00-\uffef"
 HALF_AFTER_CJK = re.compile("[" + CJK + "][?!:,]")

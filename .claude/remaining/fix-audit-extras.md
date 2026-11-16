@@ -37,3 +37,4 @@ EXTRAS-4 (Rust-side English into *Texts globals), 12 (portable marker, trash ret
 - palette.py --check now runs in checks.sh (was in no gate or CI job)
 - make_logo.py: no --check; needs cairosvg + fontTools (not installed here), so the generated assets/logo files are not verified against it. Owner: add a --check and `pip install cairosvg fonttools` in CI, or accept
 - readme_shots.py: now exits 1 when renders are missing
+- EXTRAS-7 done in code: `windows::exception` filter (unverified on Windows; compiles for windows-gnu), `crash::native_report`/`on_native_exception`, maintenance checks for a crash report on every tick. Needs wording follow-up in the lang batch: toast "Snipdeck closed unexpectedly last time. Open the log?" is wrong for a mid-session panic -> "Snipdeck ran into a problem. Open the log?" (toast_texts.slint:248, .pot + 6 .po)

@@ -327,8 +327,17 @@ msgstr "Tableaux"
 msgid "Boards and lists"
 msgstr "Tableaux et listes"
 
+msgid "Book"
+msgstr "Livre"
+
+msgid "Bookmark"
+msgstr "Signet"
+
 msgid "Bottom edge"
 msgstr "Bord inférieur"
+
+msgid "Briefcase"
+msgstr "Mallette"
 
 msgid "Brightness"
 msgstr "Luminosité"
@@ -353,6 +362,12 @@ msgstr "Compilé le"
 
 msgid "CMYK"
 msgstr "CMYK"
+
+msgid "Calendar"
+msgstr "Calendrier"
+
+msgid "Camera"
+msgstr "Appareil photo"
 
 msgid "Cancel"
 msgstr "Annuler"
@@ -380,6 +395,9 @@ msgstr "Les modifications s'appliquent immédiatement."
 
 msgid "Change…"
 msgstr "Modifier…"
+
+msgid "Chat"
+msgstr "Message"
 
 msgid "Check again"
 msgstr "Vérifier à nouveau"
@@ -468,6 +486,9 @@ msgstr "Clic"
 msgid "Click copies"
 msgstr "Le clic copie"
 
+msgid "Click me to paste"
+msgstr "Cliquez pour coller"
+
 msgid "Click or Enter pastes. Shift+click or Shift+Enter copies."
 msgstr "Clic ou Enter colle. Shift+clic ou Shift+Enter copie."
 
@@ -525,6 +546,9 @@ msgstr "Confortable"
 msgid "Comfortable view"
 msgstr "Affichage confortable"
 
+msgid "Comma"
+msgstr "Virgule"
+
 msgid "Commands"
 msgstr "Commandes"
 
@@ -554,6 +578,9 @@ msgstr "Contenu"
 
 msgid "Contrast"
 msgstr "Contraste"
+
+msgid "Control"
+msgstr "Contrôle"
 
 msgid "Control Enter"
 msgstr "Ctrl Enter"
@@ -813,6 +840,9 @@ msgstr "Créer l’extrait"
 msgid "Create “{}”"
 msgstr "Créer « {} »"
 
+msgid "Credit card"
+msgstr "Carte bancaire"
+
 msgid "Ctrl+Shift+V"
 msgstr "Ctrl+Shift+V"
 
@@ -1059,6 +1089,9 @@ msgstr "Saisissez votre mot de passe principal pour utiliser les extraits sensib
 msgid "Enter your password."
 msgstr "Saisissez votre mot de passe."
 
+msgid "Envelope"
+msgstr "Enveloppe"
+
 msgid "Erase everything"
 msgstr "Tout effacer"
 
@@ -1125,6 +1158,9 @@ msgstr "Filtrer par libellé de couleur"
 msgid "Find anything by typing"
 msgstr "Tout trouver en tapant"
 
+msgid "Flag"
+msgstr "Drapeau"
+
 msgid "Flags"
 msgstr "Drapeaux"
 
@@ -1136,6 +1172,9 @@ msgstr "Replier le groupe"
 
 msgid "Fold or unfold a group"
 msgstr "Replier ou déplier un groupe"
+
+msgid "Folder"
+msgstr "Dossier"
 
 msgid "Folder of .txt and .md files"
 msgstr "Dossier de fichiers .txt et .md"
@@ -1173,6 +1212,9 @@ msgstr "Mis en forme"
 msgid "Get started"
 msgstr "Commencer"
 
+msgid "Getting started"
+msgstr "Premiers pas"
+
 msgid "Give an item a trigger, such as ;sig, under More options in its editor."
 msgstr "Donnez un déclencheur à un extrait, par exemple ;sig, sous « Plus d’options » dans son éditeur."
 
@@ -1187,6 +1229,9 @@ msgstr "Donnez un nom à la liste."
 
 msgid "Gives the Panel a taskbar button and an Alt+Tab entry while it is on screen. Pasting still goes to the app you were in before. Off keeps it out of both; the tray icon and the Panel shortcut still bring it back."
 msgstr "Donne au Panneau un bouton dans la barre des tâches et une entrée dans Alt+Tab tant qu'il est affiché. Le collage va toujours dans l'application où vous étiez avant. Désactivé, il reste absent des deux ; l'icône de la zone de notification et le raccourci du Panneau le ramènent quand même."
+
+msgid "Globe"
+msgstr "Globe terrestre"
 
 msgid "Go to All items"
 msgstr "Aller à Tous les extraits"
@@ -1242,8 +1287,14 @@ msgstr "Pratique pour les formulaires remplis champ par champ."
 msgid "Heard it. This shortcut works."
 msgstr "Entendu. Ce raccourci fonctionne."
 
+msgid "Heart"
+msgstr "Cœur"
+
 msgid "Help"
 msgstr "Aide"
+
+msgid "Help > Tips has ten short cards with a picture and a Try it button each. Open it from Help, or from the tray icon's menu."
+msgstr "Aide > Astuces propose dix cartes courtes, chacune avec une image et un bouton Essayer. Ouvrez-les depuis l’Aide ou depuis le menu de l’icône de la zone de notification."
 
 msgid "Help sections"
 msgstr "Sections de l'aide"
@@ -1280,6 +1331,9 @@ msgstr "Maintenir pour afficher"
 
 msgid "Hold to reveal a hidden item"
 msgstr "Maintenez pour afficher un extrait masqué"
+
+msgid "House"
+msgstr "Maison"
 
 msgid "Hover"
 msgstr "Survol"
@@ -1482,6 +1536,9 @@ msgstr "Bibliothèque déverrouillée."
 msgid "Light"
 msgstr "Clair"
 
+msgid "Light bulb"
+msgstr "Ampoule"
+
 msgid "Light, dark or follow Windows."
 msgstr "Clair, sombre ou comme Windows."
 
@@ -1511,6 +1568,9 @@ msgstr "Listes"
 
 msgid "Lists hold your items."
 msgstr "Les listes contiennent vos extraits."
+
+msgid "Location marker"
+msgstr "Repère de lieu"
 
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "Les journaux ne sont écrits que si Snipdeck plante, ne contiennent aucun extrait et ne sont envoyés nulle part."
@@ -1593,6 +1653,9 @@ msgstr "Plus d’options : ouvrir l’éditeur complet"
 msgid "More pinned items"
 msgstr "Plus d'extraits épinglés"
 
+msgid "More tips"
+msgstr "Plus d’astuces"
+
 msgid "Most used"
 msgstr "Les plus utilisés"
 
@@ -1662,6 +1725,12 @@ msgid "Moved {} item to {}"
 msgid_plural "Moved {} items to {}"
 msgstr[0] "{} extrait déplacé vers {}"
 msgstr[1] "{} extraits déplacés vers {}"
+
+msgid "Music"
+msgstr "Musique"
+
+msgid "My snippets"
+msgstr "Mes extraits"
 
 msgid "Name"
 msgstr "Nom"
@@ -2140,6 +2209,12 @@ msgstr "En pause"
 msgid "People & Body"
 msgstr "Personnes et corps"
 
+msgid "Person"
+msgstr "Personne"
+
+msgid "Phone"
+msgstr "Téléphone"
+
 msgid "PhraseExpress export (CSV)"
 msgstr "Export PhraseExpress (CSV)"
 
@@ -2202,6 +2277,9 @@ msgstr "Les espaces réservés s'écrivent entre {}. Pour écrire une accolade l
 
 msgid "Plain text"
 msgstr "Texte brut"
+
+msgid "Plus"
+msgstr "Signe plus"
 
 msgid "Press Ctrl+K in Main to find any action by name."
 msgstr "Appuyez sur Ctrl+K dans la fenêtre principale pour trouver une action par son nom."
@@ -2420,8 +2498,17 @@ msgstr "À droite"
 msgid "Right edge"
 msgstr "Bord droit"
 
+msgid "Right-click a card, or press the Menu key, to edit it, pin it to the strip above the list, move it, tag it or delete it. Delete this list when you no longer need it."
+msgstr "Faites un clic droit sur une carte, ou appuyez sur la touche Menu, pour la modifier, l’épingler dans la bande au-dessus de la liste, la déplacer, l’étiqueter ou la supprimer. Supprimez cette liste quand vous n’en avez plus besoin."
+
+msgid "Right-click for more"
+msgstr "Clic droit pour en savoir plus"
+
 msgid "Right-click or press Menu for list actions"
 msgstr "Clic droit ou touche Menu pour les actions de la liste"
+
+msgid "Rocket"
+msgstr "Fusée"
 
 msgid "Rose"
 msgstr "Rose"
@@ -2633,6 +2720,15 @@ msgstr "Shift F10"
 msgid "Shift+Insert"
 msgstr "Shift+Insert"
 
+msgid "Shift+click (or Shift+Enter) only copies a card to the clipboard, so you can paste it yourself."
+msgstr "Shift+clic (ou Shift+Enter) copie seulement une carte dans le presse-papiers, pour que vous la colliez vous-même."
+
+msgid "Shift+click to copy"
+msgstr "Shift+clic pour copier"
+
+msgid "Shopping cart"
+msgstr "Caddie"
+
 msgid "Shortcuts"
 msgstr "Raccourcis"
 
@@ -2695,6 +2791,9 @@ msgstr "Largeur de la barre latérale"
 
 msgid "Skip"
 msgstr "Passer"
+
+msgid "Slash"
+msgstr "Barre oblique"
 
 msgid "Slate"
 msgstr "Ardoise"
@@ -2786,6 +2885,9 @@ msgstr "Snipdeck enregistre une copie de votre bibliothèque une fois par jour e
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "Snipdeck reste dans la zone de notification pour que les raccourcis fonctionnent après la connexion."
 
+msgid "Snippets"
+msgstr "Extraits"
+
 msgid "Some files were left out: together they are over 64 MB."
 msgstr "Certains fichiers ont été ignorés : ensemble, ils dépassent 64 Mo."
 
@@ -2824,6 +2926,9 @@ msgstr "Complémentaires divisées"
 
 msgid "Square"
 msgstr "Carré"
+
+msgid "Star"
+msgstr "Étoile"
 
 msgid "Start stack"
 msgstr "Démarrer la pile"
@@ -2923,6 +3028,9 @@ msgstr "Les modèles demandent des noms, des dates et des options avant de colle
 
 msgid "Ten short tips"
 msgstr "Dix astuces courtes"
+
+msgid "Terminal"
+msgstr "Terminal"
 
 msgid "Test"
 msgstr "Tester"
@@ -3164,6 +3272,9 @@ msgstr "Ce texte dépasse {} Ko, la taille maximale modifiable ici. Raccourcisse
 msgid "This text is {}. Anything over 16 KB opens read-only here, and the first 16 KB are shown."
 msgstr "Ce texte est {}. Tout contenu de plus de 16 Ko s'ouvre ici en lecture seule, et les 16 premiers Ko sont affichés."
 
+msgid "This text was pasted by clicking its card. Click a card in the Panel and Snipdeck pastes it into the app you were typing in."
+msgstr "Ce texte a été collé en cliquant sur sa carte. Cliquez sur une carte dans le Panel et Snipdeck la colle dans l’application où vous écriviez."
+
 msgid "Tile view"
 msgstr "Affichage en mosaïque"
 
@@ -3187,6 +3298,9 @@ msgstr "Les titres, le texte et les étiquettes comptent tous."
 
 msgid "To remove everything, use Erase library under Backups and your data, then delete the folder."
 msgstr "Pour tout supprimer, utilisez Effacer la bibliothèque sous Sauvegardes et vos données, puis supprimez le dossier."
+
+msgid "Today is {} and it is {}. Placeholders in braces fill in when you use the card."
+msgstr "Nous sommes le {} et il est {}. Les repères entre accolades sont remplis quand vous utilisez la carte."
 
 msgid "Today’s date"
 msgstr "Date du jour"
@@ -3226,6 +3340,9 @@ msgstr "Dépannage"
 
 msgid "Troubleshoot…"
 msgstr "Dépannage…"
+
+msgid "Try a template"
+msgstr "Essayer un modèle"
 
 msgid "Try another word, or a different kind."
 msgstr "Essayez un autre mot, ou un autre type."
@@ -3499,6 +3616,9 @@ msgstr "Windows a désactivé Snipdeck dans Paramètres > Applications > Démarr
 
 msgid "With clipboard history on, Recent keeps what you copy in other programs."
 msgstr "Avec l’historique du presse-papiers activé, Récents garde ce que vous copiez dans d’autres programmes."
+
+msgid "Wrench"
+msgstr "Clé à molette"
 
 msgid "Writable, but only {} MB are free on its drive."
 msgstr "Accessible en écriture, mais il ne reste que {} Mo sur son disque."

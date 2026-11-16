@@ -277,6 +277,32 @@ fn report_of(info: &std::panic::PanicHookInfo<'_>) -> Report {
     }
 }
 
+/// The report for a native crash (an access violation, a heap corruption): the process is dying
+/// without a panic, so there is no message or place, only the operating system's code and the
+/// faulting address (subtract the anchor line's address to find the function in the PDB).
+#[must_use]
+pub fn native_report(code: u32, address: usize) -> Report {
+    Report {
+        message: format!(
+            "native exception {code:#010x} ({}) at address {address:#x}",
+            snipdeck_platform::win_logic::exception_name(code)
+        ),
+        location: None,
+        thread: std::thread::current().name().map(str::to_owned),
+        backtrace: format!("{:#}", std::backtrace::Backtrace::force_capture()),
+    }
+}
+
+/// What the Windows exception filter calls when a native crash ends the process: writes the
+/// report (or queues it, before the data folder is known) like a panic's.
+pub fn on_native_exception(code: u32, address: usize) {
+    record(
+        data_dir().as_deref(),
+        Timestamp::now(),
+        native_report(code, address),
+    );
+}
+
 /// Opens the reports folder in the file manager (what "Open the log?" does).
 ///
 /// # Errors
@@ -309,6 +335,19 @@ mod tests {
             thread: Some("main".to_owned()),
             backtrace: "frame".to_owned(),
         }
+    }
+
+    #[test]
+    fn a_native_crash_report_names_the_code_and_the_address() {
+        let report = native_report(0xC000_0005, 0x7ff6_1234);
+        assert_eq!(
+            report.message,
+            "native exception 0xc0000005 (access violation) at address 0x7ff61234"
+        );
+        assert!(report.location.is_none());
+        let text = report.render(&zoned(start()));
+        assert!(text.contains("access violation"), "{text}");
+        assert!(text.contains("anchor: crash::install is at 0x"), "{text}");
     }
 
     #[test]

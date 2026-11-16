@@ -326,8 +326,17 @@ msgstr "看板"
 msgid "Boards and lists"
 msgstr "看板和列表"
 
+msgid "Book"
+msgstr "书"
+
+msgid "Bookmark"
+msgstr "书签"
+
 msgid "Bottom edge"
 msgstr "底边"
+
+msgid "Briefcase"
+msgstr "公文包"
 
 msgid "Brightness"
 msgstr "亮度"
@@ -352,6 +361,12 @@ msgstr "构建日期"
 
 msgid "CMYK"
 msgstr "CMYK"
+
+msgid "Calendar"
+msgstr "日历"
+
+msgid "Camera"
+msgstr "相机"
 
 msgid "Cancel"
 msgstr "取消"
@@ -379,6 +394,9 @@ msgstr "更改立即生效。"
 
 msgid "Change…"
 msgstr "更改…"
+
+msgid "Chat"
+msgstr "聊天"
 
 msgid "Check again"
 msgstr "重新检查"
@@ -467,6 +485,9 @@ msgstr "点击"
 msgid "Click copies"
 msgstr "点击为复制"
 
+msgid "Click me to paste"
+msgstr "点我粘贴"
+
 msgid "Click or Enter pastes. Shift+click or Shift+Enter copies."
 msgstr "点击或按 Enter 粘贴。Shift+点击或 Shift+Enter 为复制。"
 
@@ -524,6 +545,9 @@ msgstr "舒适"
 msgid "Comfortable view"
 msgstr "舒适视图"
 
+msgid "Comma"
+msgstr "逗号"
+
 msgid "Commands"
 msgstr "命令"
 
@@ -553,6 +577,9 @@ msgstr "内容"
 
 msgid "Contrast"
 msgstr "对比度"
+
+msgid "Control"
+msgstr "控制键"
 
 msgid "Control Enter"
 msgstr "Ctrl Enter"
@@ -812,6 +839,9 @@ msgstr "创建片段"
 msgid "Create “{}”"
 msgstr "创建“{}”"
 
+msgid "Credit card"
+msgstr "信用卡"
+
 msgid "Ctrl+Shift+V"
 msgstr "Ctrl+Shift+V"
 
@@ -1058,6 +1088,9 @@ msgstr "输入主密码以使用资料库中的敏感片段。其他片段始终
 msgid "Enter your password."
 msgstr "请输入密码。"
 
+msgid "Envelope"
+msgstr "信封"
+
 msgid "Erase everything"
 msgstr "全部删除"
 
@@ -1124,6 +1157,9 @@ msgstr "按颜色标签筛选"
 msgid "Find anything by typing"
 msgstr "输入即可找到任何内容"
 
+msgid "Flag"
+msgstr "旗帜"
+
 msgid "Flags"
 msgstr "旗帜"
 
@@ -1135,6 +1171,9 @@ msgstr "折叠分组"
 
 msgid "Fold or unfold a group"
 msgstr "折叠或展开分组"
+
+msgid "Folder"
+msgstr "文件夹"
 
 msgid "Folder of .txt and .md files"
 msgstr "包含 .txt 和 .md 文件的文件夹"
@@ -1172,6 +1211,9 @@ msgstr "带格式"
 msgid "Get started"
 msgstr "开始使用"
 
+msgid "Getting started"
+msgstr "入门"
+
 msgid "Give an item a trigger, such as ;sig, under More options in its editor."
 msgstr "在片段编辑器的“更多选项”中为它设置触发词，例如 ;sig。"
 
@@ -1186,6 +1228,9 @@ msgstr "请为列表命名。"
 
 msgid "Gives the Panel a taskbar button and an Alt+Tab entry while it is on screen. Pasting still goes to the app you were in before. Off keeps it out of both; the tray icon and the Panel shortcut still bring it back."
 msgstr "面板在屏幕上时，为它显示任务栏按钮和 Alt+Tab 条目。粘贴仍会进入你之前所在的应用。关闭后两处都不显示；仍可通过托盘图标和面板快捷键调出。"
+
+msgid "Globe"
+msgstr "地球"
 
 msgid "Go to All items"
 msgstr "前往“所有片段”"
@@ -1241,8 +1286,14 @@ msgstr "适合逐个字段填写的表单。"
 msgid "Heard it. This shortcut works."
 msgstr "收到了。此快捷键可用。"
 
+msgid "Heart"
+msgstr "心形"
+
 msgid "Help"
 msgstr "帮助"
+
+msgid "Help > Tips has ten short cards with a picture and a Try it button each. Open it from Help, or from the tray icon's menu."
+msgstr "帮助 > 提示 有十张简短的卡片，每张都带有图片和“试一试”按钮。可从帮助或托盘图标的菜单中打开。"
 
 msgid "Help sections"
 msgstr "帮助分区"
@@ -1279,6 +1330,9 @@ msgstr "按住以显示"
 
 msgid "Hold to reveal a hidden item"
 msgstr "按住以显示隐藏的片段"
+
+msgid "House"
+msgstr "房子"
 
 msgid "Hover"
 msgstr "悬停"
@@ -1478,6 +1532,9 @@ msgstr "资料库已解锁。"
 msgid "Light"
 msgstr "浅色"
 
+msgid "Light bulb"
+msgstr "灯泡"
+
 msgid "Light, dark or follow Windows."
 msgstr "浅色、深色或跟随 Windows。"
 
@@ -1507,6 +1564,9 @@ msgstr "列表"
 
 msgid "Lists hold your items."
 msgstr "列表用来存放你的片段。"
+
+msgid "Location marker"
+msgstr "位置标记"
 
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "日志只在 Snipdeck 崩溃时写入，不含片段内容，也不会发送到任何地方。"
@@ -1589,6 +1649,9 @@ msgstr "更多选项：打开完整编辑器"
 msgid "More pinned items"
 msgstr "更多置顶片段"
 
+msgid "More tips"
+msgstr "更多提示"
+
 msgid "Most used"
 msgstr "最常用"
 
@@ -1656,6 +1719,12 @@ msgstr[0] "已将 {} 个片段移到回收站"
 msgid "Moved {} item to {}"
 msgid_plural "Moved {} items to {}"
 msgstr[0] "已将 {} 个片段移到 {}"
+
+msgid "Music"
+msgstr "音乐"
+
+msgid "My snippets"
+msgstr "我的片段"
 
 msgid "Name"
 msgstr "名称"
@@ -2134,6 +2203,12 @@ msgstr "已暂停"
 msgid "People & Body"
 msgstr "人物与身体"
 
+msgid "Person"
+msgstr "人"
+
+msgid "Phone"
+msgstr "电话"
+
 msgid "PhraseExpress export (CSV)"
 msgstr "PhraseExpress 导出文件（CSV）"
 
@@ -2196,6 +2271,9 @@ msgstr "占位符写在 {} 中。若要写出字面花括号，请重复一次�
 
 msgid "Plain text"
 msgstr "纯文本"
+
+msgid "Plus"
+msgstr "加号"
 
 msgid "Press Ctrl+K in Main to find any action by name."
 msgstr "在主窗口按 Ctrl+K，可按名称查找任何操作。"
@@ -2412,8 +2490,17 @@ msgstr "右侧"
 msgid "Right edge"
 msgstr "右边"
 
+msgid "Right-click a card, or press the Menu key, to edit it, pin it to the strip above the list, move it, tag it or delete it. Delete this list when you no longer need it."
+msgstr "右键单击卡片，或按菜单键，即可编辑、置顶到列表上方的栏、移动、添加标签或删除。不再需要时，请删除此列表。"
+
+msgid "Right-click for more"
+msgstr "右键单击查看更多"
+
 msgid "Right-click or press Menu for list actions"
 msgstr "右键单击或按菜单键查看列表操作"
+
+msgid "Rocket"
+msgstr "火箭"
 
 msgid "Rose"
 msgstr "玫瑰色"
@@ -2625,6 +2712,15 @@ msgstr "Shift F10"
 msgid "Shift+Insert"
 msgstr "Shift+Insert"
 
+msgid "Shift+click (or Shift+Enter) only copies a card to the clipboard, so you can paste it yourself."
+msgstr "Shift+单击（或 Shift+Enter）只会将卡片复制到剪贴板，以便你自己粘贴。"
+
+msgid "Shift+click to copy"
+msgstr "Shift+单击以复制"
+
+msgid "Shopping cart"
+msgstr "购物车"
+
 msgid "Shortcuts"
 msgstr "快捷键"
 
@@ -2687,6 +2783,9 @@ msgstr "侧边栏宽度"
 
 msgid "Skip"
 msgstr "跳过"
+
+msgid "Slash"
+msgstr "斜杠"
 
 msgid "Slate"
 msgstr "石板灰"
@@ -2778,6 +2877,9 @@ msgstr "Snipdeck 每天保存一份资料库副本，并保留最新的 {} 份�
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "Snipdeck 会待在系统托盘中，以便登录后快捷键仍可使用。"
 
+msgid "Snippets"
+msgstr "片段"
+
 msgid "Some files were left out: together they are over 64 MB."
 msgstr "部分文件被忽略：它们加起来超过 64 MB。"
 
@@ -2816,6 +2918,9 @@ msgstr "分裂互补色"
 
 msgid "Square"
 msgstr "方形"
+
+msgid "Star"
+msgstr "星形"
 
 msgid "Start stack"
 msgstr "开始堆栈"
@@ -2915,6 +3020,9 @@ msgstr "模板会在粘贴前询问姓名、日期和选项。"
 
 msgid "Ten short tips"
 msgstr "十条简短提示"
+
+msgid "Terminal"
+msgstr "终端"
 
 msgid "Test"
 msgstr "测试"
@@ -3156,6 +3264,9 @@ msgstr "此文本超过 {} KB，这是此处可编辑的上限。请缩短它，
 msgid "This text is {}. Anything over 16 KB opens read-only here, and the first 16 KB are shown."
 msgstr "此文本为 {}。超过 16 KB 的内容将在此以只读方式打开，并显示前 16 KB。"
 
+msgid "This text was pasted by clicking its card. Click a card in the Panel and Snipdeck pastes it into the app you were typing in."
+msgstr "此文本是通过单击卡片粘贴的。在面板中单击一张卡片，Snipdeck 就会将其粘贴到你正在输入的应用中。"
+
 msgid "Tile view"
 msgstr "平铺视图"
 
@@ -3179,6 +3290,9 @@ msgstr "标题、文本和标签都会被搜索。"
 
 msgid "To remove everything, use Erase library under Backups and your data, then delete the folder."
 msgstr "要删除全部内容，请使用“备份与你的数据”下的“删除资料库”，然后删除该文件夹。"
+
+msgid "Today is {} and it is {}. Placeholders in braces fill in when you use the card."
+msgstr "今天是 {}，现在是 {}。大括号中的占位符会在你使用卡片时填入。"
 
 msgid "Today’s date"
 msgstr "今天的日期"
@@ -3218,6 +3332,9 @@ msgstr "故障排除"
 
 msgid "Troubleshoot…"
 msgstr "故障排除…"
+
+msgid "Try a template"
+msgstr "试试模板"
 
 msgid "Try another word, or a different kind."
 msgstr "试试其他词，或换一种类型。"
@@ -3491,6 +3608,9 @@ msgstr "Windows 已在“设置”>“应用”>“启动”中关闭了 Snipdec
 
 msgid "With clipboard history on, Recent keeps what you copy in other programs."
 msgstr "开启剪贴板历史后，“最近”会保存你在其他程序中复制的内容。"
+
+msgid "Wrench"
+msgstr "扳手"
 
 msgid "Writable, but only {} MB are free on its drive."
 msgstr "可写入，但其所在驱动器只剩 {} MB 可用。"

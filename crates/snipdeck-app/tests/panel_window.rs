@@ -77,7 +77,14 @@ fn rig_with_tray(tray: bool) -> Rig {
 /// A first run on a real (empty) library, as `main` opens it: the starter board is made first.
 fn first_run_rig() -> Rig {
     let mut store = Store::open_in_memory().expect("store");
-    assert!(snipdeck_app::starter::ensure_board(&mut store, now()).expect("starter"));
+    assert!(
+        snipdeck_app::starter::ensure_board(
+            &mut store,
+            &snipdeck_app::starter::StarterWords::english(),
+            now()
+        )
+        .expect("starter")
+    );
     let copied =
         snipdeck_platform::payload::Payload::new(vec![Data::Text("Copied earlier".into())])
             .expect("payload");
@@ -257,9 +264,15 @@ fn a_first_run_on_an_empty_library_has_a_board_and_working_controls() {
         let r = first_run_rig();
         r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
         slint::platform::update_timers_and_animations();
-        assert_eq!(r.ui.get_board_name(), snipdeck_app::starter::STARTER_BOARD);
+        assert_eq!(
+            r.ui.get_board_name(),
+            snipdeck_app::starter::StarterWords::english().board
+        );
 
-        let switcher = format!("Board: {}", snipdeck_app::starter::STARTER_BOARD);
+        let switcher = format!(
+            "Board: {}",
+            snipdeck_app::starter::StarterWords::english().board
+        );
         click(r.window(), &r.button(&switcher));
         assert_eq!(
             r.ui.get_board_menu_entries().row_count(),
@@ -275,7 +288,9 @@ fn a_first_run_on_an_empty_library_has_a_board_and_working_controls() {
             r.window(),
             &element(
                 &r.ui,
-                snipdeck_app::starter::STARTER_BOARD,
+                snipdeck_app::starter::StarterWords::english()
+                    .board
+                    .as_str(),
                 AccessibleRole::ListItem,
             ),
         );

@@ -470,7 +470,7 @@ where
             hdr_note: texts.invoke_eyedrop_hdr_note().to_string(),
         });
         ctl.set_colours_list_name(&texts.invoke_colours_list());
-        ctl.set_new_list_base(&texts.invoke_new_list_name());
+        ctl.set_starter_words(&crate::wording::starter_words(window));
         ctl.set_pasted_image_title(&texts.invoke_pasted_image_title());
     }
 

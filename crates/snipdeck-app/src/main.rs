@@ -86,6 +86,9 @@ fn main() -> ExitCode {
     // First, so that a panic anywhere after this leaves a report (the data folder is told to the
     // hook once it is known).
     crash::install(Timestamp::now);
+    // The operating system's own crashes (an access violation) do not pass the panic hook.
+    #[cfg(windows)]
+    snipdeck_platform::windows::exception::install(crash::on_native_exception);
     // A25: the log's clock starts here, so `first show` below is the milliseconds from main.
     snipdeck_app::trace!("main start");
     // A release build on Windows has no console of its own: borrow the parent's for the usage
@@ -236,7 +239,8 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     };
     // Only now: reading the settings may move a damaged file aside, and opening the library may
     // migrate it. A second launch (which stops just above) must not touch the running copy's files.
-    let (store, settings, settings_folder, saver_baseline, settings_toast) = open_library(args)?;
+    let (mut store, settings, settings_folder, saver_baseline, settings_toast) =
+        open_library(args)?;
     let Host {
         services,
         target,
@@ -254,11 +258,24 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         snipdeck_app::warn!("{warning}");
     }
 
+    // The reason is a technical detail that no catalogue exists to word yet (the failure is in
+    // creating the first window); `wording::startup_failure_text` frames it in the user's language.
     let window = PanelWindow::new().map_err(|e| format!("creating the Panel: {e}"))?;
     // The interface language, now that a component has registered the catalogues ("" follows the
     // system language Slint already picked).
     if let Err(e) = snipdeck_app::language::apply(&settings.language) {
         snipdeck_app::warn!("{e}");
+    }
+    // A new library has no board, and the Panel cannot make one: without this every control of a
+    // first run has nothing to act on (an empty board menu, no tabs, no rows). Made here, after the
+    // language is applied, so the starter board and its cards are written in the selected language.
+    // (The demo library has no data folder and already has boards.)
+    if settings_folder.is_some() {
+        let words = snipdeck_app::wording::starter_words(&window);
+        match snipdeck_app::starter::ensure_first_run(&mut store, &words, Timestamp::now()) {
+            Ok(made) => snipdeck_app::trace!("real library; starter board made: {made}"),
+            Err(e) => snipdeck_app::warn!("could not create the first board: {e}"),
+        }
     }
     let width = f32::from(u16::try_from(settings.panel_width).unwrap_or(320));
     window
@@ -959,13 +976,7 @@ fn open_library(args: &Args) -> Result<Library, String> {
     if args.dark {
         settings.theme = Theme::Dark;
     }
-    let mut store = Store::open(&folder).map_err(|e| format!("{}: {e}", folder.display()))?;
-    // A new library has no board, and the Panel cannot make one: without this every control of a
-    // first run has nothing to act on (an empty board menu, no tabs, no rows).
-    match snipdeck_app::starter::ensure_first_run(&mut store, now) {
-        Ok(made) => snipdeck_app::trace!("real library; starter board made: {made}"),
-        Err(e) => snipdeck_app::warn!("could not create the first board: {e}"),
-    }
+    let store = Store::open(&folder).map_err(|e| format!("{}: {e}", folder.display()))?;
     Ok((
         store,
         settings,

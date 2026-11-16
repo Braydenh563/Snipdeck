@@ -227,7 +227,8 @@ pub enum MaintenanceOutcome {
     IntegrityProblems(Vec<String>),
     /// The integrity check could not run.
     IntegrityFailed(String),
-    /// The last run ended in a crash the user has not been told about.
+    /// A crash report the user has not been told about: the last run's, or a worker thread's
+    /// panic this run (the name dates from when only the first was reported).
     CrashedLastTime,
 }
 
@@ -293,7 +294,6 @@ pub struct Maintenance {
     data_dir: PathBuf,
     clock: Box<dyn Clock>,
     state: State,
-    crash_checked: bool,
 }
 
 impl std::fmt::Debug for Maintenance {
@@ -315,7 +315,6 @@ impl Maintenance {
             data_dir,
             clock,
             state,
-            crash_checked: false,
         }
     }
 
@@ -326,7 +325,7 @@ impl Maintenance {
     }
 
     /// Runs what is due, saves when something succeeded, and returns what happened. The first
-    /// call also looks for a crash report the user has not been told about. A failed job leaves
+    /// call and every later one look for a crash report the user has not been told about. A failed job leaves
     /// its last-run time alone, so the next tick tries it again.
     pub fn tick(&mut self, jobs: &mut dyn Jobs) -> Vec<MaintenanceOutcome> {
         let now = self.clock.now();
@@ -338,15 +337,14 @@ impl Maintenance {
         // from the clock now.
         jobs.prune_recent();
 
-        if !self.crash_checked {
-            self.crash_checked = true;
-            if let Some(newest) =
-                crash::unacknowledged(&self.data_dir, self.state.crash_acknowledged.as_deref())
-            {
-                self.state.crash_acknowledged = Some(newest);
-                outcomes.push(MaintenanceOutcome::CrashedLastTime);
-                changed = true;
-            }
+        // Every tick: a worker thread's panic leaves a report while the app runs on, and is
+        // told about at once, not at the next start. A report already announced is not again.
+        if let Some(newest) =
+            crash::unacknowledged(&self.data_dir, self.state.crash_acknowledged.as_deref())
+        {
+            self.state.crash_acknowledged = Some(newest);
+            outcomes.push(MaintenanceOutcome::CrashedLastTime);
+            changed = true;
         }
 
         if is_due(self.state.last_backup, seconds, INTERVAL) {
@@ -965,7 +963,7 @@ mod tests {
     }
 
     #[test]
-    fn a_report_written_while_running_is_not_announced_until_the_next_start() {
+    fn a_report_written_while_running_is_announced_on_the_next_tick_once() {
         let dir = tempfile::tempdir().unwrap();
         let (mut m, clock) = rig(dir.path());
         let mut jobs = FakeJobs::default();
@@ -979,8 +977,15 @@ mod tests {
         crash::write_report(dir.path(), &clock.now().to_zoned(TimeZone::UTC), &report).unwrap();
         clock.set(at(t0() + 6 * HOUR));
         assert!(
+            m.tick(&mut jobs)
+                .contains(&MaintenanceOutcome::CrashedLastTime),
+            "a worker thread's panic is told about while the app still runs"
+        );
+        clock.set(at(t0() + 7 * HOUR));
+        assert!(
             !m.tick(&mut jobs)
-                .contains(&MaintenanceOutcome::CrashedLastTime)
+                .contains(&MaintenanceOutcome::CrashedLastTime),
+            "and only once"
         );
     }
 }

@@ -667,7 +667,10 @@ fn save_to_offers_a_ninth_list() {
 #[test]
 fn save_to_new_list_makes_a_list_named_by_the_translated_default_and_saves_into_it() {
     let mut w = world();
-    w.ctl.set_new_list_base("Neue Liste");
+    w.ctl.set_starter_words(&crate::starter::StarterWords {
+        new_list: "Neue Liste".into(),
+        ..crate::starter::StarterWords::english()
+    });
     let before = w.ctl.colour_save_targets().len();
     assert!(w.ctl.save_colour(BLUE, SaveTarget::NewList));
     let targets = w.ctl.colour_save_targets();

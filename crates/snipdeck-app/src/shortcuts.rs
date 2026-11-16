@@ -7,7 +7,7 @@
 //! names on the keyboard).
 
 use crate::{
-    commands::{caps, spoken},
+    commands::{KeyWords, caps, spoken},
     settings::{HotkeyAction, Hotkeys},
 };
 
@@ -250,15 +250,15 @@ pub struct Group {
 }
 
 impl Keys {
-    fn resolve(self, hotkeys: &Hotkeys) -> (Vec<String>, String) {
+    fn resolve(self, hotkeys: &Hotkeys, words: &KeyWords) -> (Vec<String>, String) {
         match self {
-            Self::Chord(text) => (caps(text), spoken(text)),
+            Self::Chord(text) => (caps(text), spoken(text, words)),
             Self::Custom { caps, spoken } => (
                 caps.iter().map(|c| (*c).to_owned()).collect(),
                 spoken.to_owned(),
             ),
             Self::Plain { text, spoken } => (vec![text.to_owned()], spoken.to_owned()),
-            Self::Global(action) => crate::commands::chord_caps(hotkeys, action),
+            Self::Global(action) => crate::commands::chord_caps(hotkeys, action, words),
         }
     }
 }
@@ -309,6 +309,7 @@ fn matches(line: &Line, words: &[String]) -> bool {
 pub fn groups_of(
     catalogue: &[Shortcut],
     titles: &[String],
+    key_words: &KeyWords,
     hotkeys: &Hotkeys,
     query: &str,
 ) -> Vec<Group> {
@@ -320,7 +321,7 @@ pub fn groups_of(
             .zip(titles)
             .filter(|(shortcut, _)| shortcut.scope == scope)
             .map(|(shortcut, title)| {
-                let (keys, spoken) = shortcut.keys.resolve(hotkeys);
+                let (keys, spoken) = shortcut.keys.resolve(hotkeys, key_words);
                 Line {
                     title: title.clone(),
                     keys,
@@ -339,8 +340,13 @@ pub fn groups_of(
 
 /// The groups of the real list for `query`.
 #[must_use]
-pub fn groups(titles: &[String], hotkeys: &Hotkeys, query: &str) -> Vec<Group> {
-    groups_of(&CATALOGUE, titles, hotkeys, query)
+pub fn groups(
+    titles: &[String],
+    key_words: &KeyWords,
+    hotkeys: &Hotkeys,
+    query: &str,
+) -> Vec<Group> {
+    groups_of(&CATALOGUE, titles, key_words, hotkeys, query)
 }
 
 #[cfg(test)]
@@ -377,7 +383,7 @@ mod tests {
             capture: String::new(),
             paste_next: String::new(),
         };
-        groups_of(&catalogue, &titles, &off, query)
+        groups_of(&catalogue, &titles, &KeyWords::english(), &off, query)
             .into_iter()
             .flat_map(|g| g.lines)
             .map(|l| l.title)
@@ -443,13 +449,13 @@ mod tests {
             capture: String::new(),
             ..Hotkeys::new_install()
         };
-        let all = groups_of(&catalogue, &titles, &hotkeys, "");
+        let all = groups_of(&catalogue, &titles, &KeyWords::english(), &hotkeys, "");
         let anywhere = &all[0];
         assert_eq!(anywhere.scope, Scope::Anywhere);
         assert_eq!(anywhere.lines[0].keys, ["Ctrl", "Alt", "Space"]);
         assert!(anywhere.lines[1].keys.is_empty() && anywhere.lines[1].spoken.is_empty());
         // The rebound chord is searchable; an off hotkey is found by its name only.
-        let by_chord = groups_of(&catalogue, &titles, &hotkeys, "space");
+        let by_chord = groups_of(&catalogue, &titles, &KeyWords::english(), &hotkeys, "space");
         assert_eq!(by_chord[0].lines[0].title, "Show or hide the Panel");
         assert_eq!(by_chord.len(), 1);
     }
@@ -457,7 +463,13 @@ mod tests {
     #[test]
     fn a_group_with_no_matching_line_is_left_out() {
         let (catalogue, titles) = fixture();
-        let groups = groups_of(&catalogue, &titles, &Hotkeys::new_install(), "trash");
+        let groups = groups_of(
+            &catalogue,
+            &titles,
+            &KeyWords::english(),
+            &Hotkeys::new_install(),
+            "trash",
+        );
         assert_eq!(groups.len(), 1);
         assert_eq!(groups[0].scope, Scope::Main);
     }
@@ -670,7 +682,7 @@ mod tests {
             .iter()
             .filter(|s| s.scope == scope)
             .map(|s| {
-                let (caps, spoken) = s.keys.resolve(&hotkeys);
+                let (caps, spoken) = s.keys.resolve(&hotkeys, &KeyWords::english());
                 atoms(&format!("{} {spoken}", caps.join(" ")))
             })
             .collect()

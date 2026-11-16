@@ -654,7 +654,11 @@ fn the_trash_keeps_things_thirty_days_by_the_injected_clock() {
 #[test]
 fn the_new_list_and_new_board_names_start_from_the_words_the_window_layer_gave() {
     let mut ctl = seeded();
-    ctl.set_new_name_bases("Neue Liste", "Neues Board");
+    ctl.set_starter_words(&snipdeck_app::starter::StarterWords {
+        new_list: "Neue Liste".into(),
+        new_board: "Neues Board".into(),
+        ..snipdeck_app::starter::StarterWords::english()
+    });
     ctl.main_new_list();
     assert_eq!(
         ctl.main_screen().editor.expect("editor").name,

@@ -1691,7 +1691,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
             .iter()
             .enumerate()
             .map(|(i, r)| {
-                let mut row = panel_row(r, view.dark);
+                let mut row = panel_row(r, view.dark, &|l| wording::item_label_name(window, l));
                 // Collapsed "Deleted · Undo" rows do not take a number: the live rows count 1, 2, 3.
                 // Neither do group headers.
                 row.ghosts_before = to_i32(
@@ -1810,7 +1810,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
                 text: match &e.label {
                     crate::controller::ChooseLabel::List(name) => name.as_str().into(),
                     crate::controller::ChooseLabel::Colour(Some(label)) => {
-                        wording::item_label_name(*label).into()
+                        wording::item_label_name(window, *label).into()
                     }
                     crate::controller::ChooseLabel::Colour(None) => "No label".into(),
                     crate::controller::ChooseLabel::ColourFormat(f, value) => {
@@ -2053,21 +2053,26 @@ pub(crate) fn swatch_fields(preview: &str, sensitive: bool) -> (slint::Color, bo
 }
 
 /// The row's colour label as the windows take it: -1 for none, else the position in
-/// [`ItemLabel::ALL`], with the label's name.
-pub(crate) fn label_fields(label: Option<ItemLabel>) -> (i32, SharedString) {
+/// [`ItemLabel::ALL`], with the label's name (`name` words it in the language selected now).
+pub(crate) fn label_fields(
+    label: Option<ItemLabel>,
+    name: &dyn Fn(ItemLabel) -> String,
+) -> (i32, SharedString) {
     label
         .and_then(|l| {
             ItemLabel::ALL
                 .iter()
                 .position(|x| *x == l)
-                .map(|i| (to_i32(i), SharedString::from(wording::item_label_name(l))))
+                .map(|i| (to_i32(i), SharedString::from(name(l))))
         })
         .unwrap_or((-1, SharedString::new()))
 }
 
 /// The item editor's label index: -1 for none, else the position in [`ItemLabel::ALL`].
 pub(crate) fn label_index(label: Option<ItemLabel>) -> i32 {
-    label_fields(label).0
+    label
+        .and_then(|l| ItemLabel::ALL.iter().position(|x| *x == l))
+        .map_or(-1, to_i32)
 }
 
 /// The label an index stands for (`None` for -1 or anything out of range).
@@ -2084,7 +2089,7 @@ pub const MASKED_PREVIEW: &str = "••••••••••••";
 
 /// One [`Row`] as the window's `PanelRow`.
 #[must_use]
-pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
+pub fn panel_row(row: &Row, dark: bool, label_name: &dyn Fn(ItemLabel) -> String) -> ui::PanelRow {
     let (list_name, list_color) = row.list.as_ref().map_or_else(
         || (SharedString::new(), slint::Color::default()),
         |label| {
@@ -2102,7 +2107,7 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
     );
     // The windowed first line replaces the preview only for a marked row; a sensitive row never has one.
     let marked = row.preview_mark.as_ref().filter(|_| !row.sensitive);
-    let (label, label_name) = label_fields(row.label);
+    let (label, label_name) = label_fields(row.label, label_name);
     let (swatch, has_swatch) =
         crate::colour_words::swatch_of_kind(row.kind, &row.preview, row.sensitive);
     ui::PanelRow {
@@ -2307,7 +2312,9 @@ mod tests {
 
     #[test]
     fn a_sensitive_row_is_masked_and_never_carries_a_preview_kind() {
-        let mapped = panel_row(&row(ItemKind::Text, true, "hunter2"), false);
+        let mapped = panel_row(&row(ItemKind::Text, true, "hunter2"), false, &|_| {
+            String::new()
+        });
         assert_eq!(mapped.kind, ui::ItemKind::Sensitive);
         assert_eq!(mapped.masked_preview.as_str(), MASKED_PREVIEW);
         assert_eq!(mapped.preview.as_str(), "");
@@ -2318,7 +2325,7 @@ mod tests {
         let mut sensitive = row(ItemKind::Text, true, "hunter2");
         sensitive.preview_mark = Some((String::new(), "hunter".into(), "2".into()));
         sensitive.tag_hit = Some("login".into());
-        let mapped = panel_row(&sensitive, false);
+        let mapped = panel_row(&sensitive, false, &|_| String::new());
         assert_eq!(
             (
                 mapped.preview.as_str(),
@@ -2330,7 +2337,7 @@ mod tests {
         );
         let mut plain = row(ItemKind::Text, false, "say hello now");
         plain.preview_mark = Some(("say ".into(), "hello".into(), " now".into()));
-        let mapped = panel_row(&plain, false);
+        let mapped = panel_row(&plain, false, &|_| String::new());
         assert_eq!(
             (
                 mapped.preview.as_str(),
@@ -2351,7 +2358,10 @@ mod tests {
             (ItemKind::Image, ui::ItemKind::Image),
             (ItemKind::File, ui::ItemKind::File),
         ] {
-            assert_eq!(panel_row(&row(core, false, "x"), false).kind, expected);
+            assert_eq!(
+                panel_row(&row(core, false, "x"), false, &|_| String::new()).kind,
+                expected
+            );
         }
     }
 
@@ -2363,14 +2373,14 @@ mod tests {
             name: "Links".into(),
             accent: Some(ListAccent::Violet),
         });
-        let mapped = panel_row(&r, false);
+        let mapped = panel_row(&r, false, &|_| String::new());
         assert_eq!(mapped.list_name, "Links");
         assert_eq!(
             mapped.list_color,
             list_color(Some(ListAccent::Violet), false)
         );
         assert_eq!(
-            panel_row(&row(ItemKind::Text, false, "x"), false).list_name,
+            panel_row(&row(ItemKind::Text, false, "x"), false, &|_| String::new()).list_name,
             ""
         );
     }

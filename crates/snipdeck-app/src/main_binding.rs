@@ -18,7 +18,7 @@ use slint::{
     CloseRequestResponse, ComponentHandle, Global, SharedString,
     winit_030::{WinitWindowAccessor, winit},
 };
-use snipdeck_core::{ListAccent, ListIcon, ListSort};
+use snipdeck_core::{ItemLabel, ListAccent, ListIcon, ListSort};
 use snipdeck_platform::{
     pipeline::{Clipboard, Keyboard, Timing},
     system_look::HighContrast,
@@ -192,8 +192,7 @@ where
         let mut ctl = self.controller.borrow_mut();
         // The editors for a new list or board start from words in the language shown now.
         if let Some(window) = self.window.upgrade() {
-            let words = window.global::<ui::CommandTexts<'_>>();
-            ctl.set_new_name_bases(&words.get_new_list_name(), &words.get_new_board_name());
+            ctl.set_starter_words(&crate::wording::starter_words(&window));
         }
         let result = f(&mut ctl);
         drop(ctl);
@@ -1120,7 +1119,9 @@ impl MainUi {
 /// The colour-label filter row.
 fn set_label_filter(window: &ui::MainWindow, screen: &MainScreen) {
     window.set_label_chips(model(screen.label_chips.iter().map(|chip| {
-        let (label, label_name) = crate::binding::label_fields(Some(chip.label));
+        let (label, label_name) = crate::binding::label_fields(Some(chip.label), &|l| {
+            wording::item_label_name(window, l)
+        });
         ui::LabelChipEntry {
             label,
             name: label_name,
@@ -1268,7 +1269,7 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
             .iter()
             .enumerate()
             .map(|(i, r)| {
-                let mut row = main_row(r, screen.dark);
+                let mut row = main_row(r, screen.dark, &|l| wording::item_label_name(window, l));
                 // The one sensitive row held revealed: the controller put its text in the preview.
                 if screen.revealed == Some(i) {
                     row.preview = r.preview.as_str().into();
@@ -1431,7 +1432,11 @@ fn list_total(rows: &[crate::main_window::Row]) -> usize {
         .sum()
 }
 
-fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
+fn main_row(
+    row: &crate::main_window::Row,
+    dark: bool,
+    label_name: &dyn Fn(ItemLabel) -> String,
+) -> ui::MainRow {
     let (list_name, color) = row.list.as_ref().map_or_else(
         || (SharedString::new(), slint::Color::default()),
         |label| {
@@ -1441,7 +1446,7 @@ fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
             )
         },
     );
-    let (label, label_name) = crate::binding::label_fields(row.label);
+    let (label, label_name) = crate::binding::label_fields(row.label, label_name);
     let marks = row.marks.fields();
     let (swatch, has_swatch) =
         crate::colour_words::swatch_of_kind(row.kind, &row.preview, row.sensitive);
@@ -1524,7 +1529,7 @@ fn fill_list_editor(window: &ui::ListEditor, view: &EditorView) {
     window.set_icon_names(model(
         ListIcon::ALL
             .iter()
-            .map(|i| SharedString::from(wording::list_icon_name(*i))),
+            .map(|i| SharedString::from(wording::list_icon_name(window, *i))),
     ));
     window.set_icon_index(icon_index(view.icon));
     window.set_sort_index(sort_index(view.sort));
@@ -1861,14 +1866,14 @@ mod tests {
             header: None,
             grouped: false,
         };
-        let mapped = main_row(&row, false);
+        let mapped = main_row(&row, false, &|_| String::new());
         assert_eq!(mapped.mark_before.as_str(), "Q3 ");
         assert_eq!(mapped.mark_text.as_str(), "Report");
         assert_eq!(mapped.preview_before.as_str(), "see the ");
         assert_eq!(mapped.preview_match.as_str(), "report");
         row.sensitive = true;
         row.marks = crate::search_mark::marks("Q3 Report", "hunter", true, None, "report");
-        let secret = main_row(&row, false);
+        let secret = main_row(&row, false, &|_| String::new());
         assert_eq!(secret.preview.as_str(), "");
         assert_eq!(secret.preview_match.as_str(), "");
         assert_eq!(

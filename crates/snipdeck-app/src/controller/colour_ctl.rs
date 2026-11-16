@@ -395,7 +395,7 @@ where
             .map(|l| l.name.as_str().to_owned())
             .collect();
         let name =
-            crate::starter::numbered_name(&self.new_list_base, taken.iter().map(String::as_str));
+            crate::starter::numbered_name(&self.starter.new_list, taken.iter().map(String::as_str));
         self.make_list_for_save(&name)
     }
 
@@ -471,12 +471,6 @@ where
     /// window layer.
     pub fn set_pasted_image_title(&mut self, title: &str) {
         title.clone_into(&mut self.pasted_image_title);
-    }
-
-    /// Sets the words a list made by "Save to… New list…" is named from, translated by the window
-    /// layer.
-    pub fn set_new_list_base(&mut self, base: &str) {
-        base.clone_into(&mut self.new_list_base);
     }
 
     /// The colour items of the home list, in list order, at most 24.
