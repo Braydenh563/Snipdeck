@@ -12,4 +12,4 @@
 
 ## Part B (G28 remainder): two-phase portable API
 - Done: portable `Decoded`/`Known` (decode without a library, read-only preview, one-transaction apply); app `Work::Decode` on the archive worker, `Context::Import`, `begin_import_preview`/`begin_restore_preview`/`begin_apply_import`/`begin_restore_backup`, async Settings and Help bindings; tests in portable `two_phase.rs` and app `archive_jobs.rs`.
-- Open: rebuild's readability check (`backup_unreadable`) and the two post-swap imports (`import_now`) still decode on the UI thread.
+- Rebuild: now a worker job (`Work::Rebuild` reads the backup, cuts the salvage and reads it back; a stale copy is cut again via `ArchiveEnd::Again`, max 3 passes). Only the one-transaction apply into the fresh store stays on the UI thread. Busy state measured in the harness for Settings (`backup_busy`) and Help (`archive_busy`). Nothing open.

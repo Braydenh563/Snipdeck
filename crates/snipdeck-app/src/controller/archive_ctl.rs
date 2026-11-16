@@ -46,6 +46,9 @@ pub enum ArchiveEnd {
     ImportPreview(Result<super::ImportPreview, super::ImportProblem>),
     /// An import or a restore: whether it worked.
     Imported(bool),
+    /// The step needs another pass on a worker (a rebuild whose library changed while it was
+    /// being copied): run this job, then finish it the same way.
+    Again(ArchiveJob),
     /// An outcome for a step that is not running (a stale one): nothing to do.
     Ignored,
 }
@@ -71,6 +74,8 @@ pub(super) struct Rebuild {
     /// The library's change counter when the worker's snapshot was taken: if it has moved by the
     /// time the swap runs, the salvage lacks what was written since.
     pub(super) counter: u64,
+    /// How many times the copy was cut again because the library changed meanwhile.
+    pub(super) attempt: u8,
 }
 
 /// What the controller keeps about the running step beyond the job itself.
@@ -274,7 +279,7 @@ where
         match (op, done.made, context) {
             (ArchiveOp::DailyBackup, made, _) => ArchiveEnd::Daily(made.map(|made| match made {
                 Made::Backup(outcome) => outcome,
-                Made::File | Made::Decoded(_) => BackupOutcome::NotDue {
+                Made::File | Made::Decoded(_) | Made::Rebuilt(_) => BackupOutcome::NotDue {
                     existing: PathBuf::new(),
                 },
             })),
@@ -311,10 +316,7 @@ where
                 }
             },
             (ArchiveOp::Salvage, made, Context::Rebuild(rebuild)) => {
-                if let Err(e) = &made {
-                    crate::trace!("salvage copy failed: {e}");
-                }
-                ArchiveEnd::Rebuilt(self.finish_rebuild(*rebuild, made.is_ok()))
+                self.finish_rebuild(*rebuild, made)
             }
             (ArchiveOp::Decode, made, Context::Import(run)) => self.finish_import(&run, made),
             // A context that does not belong to its step cannot be built.
@@ -340,15 +342,19 @@ pub fn spawn<C, K, T>(
         Begun::Finished(end) => return after(end),
         Begun::Job(job) => job,
     };
-    let controller = Rc::downgrade(controller);
+    let controller_weak = Rc::downgrade(controller);
     archive_job::offload().run(
         job,
         Box::new(move |done| {
-            let Some(controller) = controller.upgrade() else {
+            let Some(controller) = controller_weak.upgrade() else {
                 return;
             };
             let end = controller.borrow_mut().finish_archive(done);
-            after(end);
+            match end {
+                // Another pass on a worker; the caller hears only the last end.
+                ArchiveEnd::Again(job) => spawn(&controller, Begun::Job(job), after),
+                end => after(end),
+            }
             crate::binding::redraw_all();
         }),
     );

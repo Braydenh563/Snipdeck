@@ -1439,6 +1439,7 @@ export component SettingsPage inherits Window {
                                     text: @tr("Restore");
                                     icon: Icons.arrow-counter-clockwise;
                                     variant: ButtonVariant.ghost;
+                                    enabled: !root.backup-busy;
                                     a11y-label: @tr("Restore the backup of {}", backup.date);
                                     clicked => { root.backup-restore-requested(i); }
                                     changed has-focus => {
@@ -1495,7 +1496,7 @@ export component SettingsPage inherits Window {
                         description: @tr("Bring in items from a Snipdeck file or another clipboard manager. You see what will be added before anything is written.");
                         Button {
                             text: @tr("Import…");
-                            enabled: root.has-data-folder && !root.import-open;
+                            enabled: root.has-data-folder && !root.import-open && !root.backup-busy;
                             a11y-label: @tr("Import into your library, see a preview first");
                             clicked => { root.import-choosing = !root.import-choosing; }
                             changed has-focus => {

@@ -13,9 +13,9 @@ use std::{
 use jiff::tz::TimeZone;
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_portable::{
-    BoardLayout, Decoded, HistoryEntry, ImportOptions, ImportReport, KeySource, MergeStrategy,
-    decode_archive_path, decode_beeftext, decode_copyq_json, decode_ditto, decode_entries,
-    decode_espanso, decode_folder, decode_phraseexpress_csv, decode_textexpander_csv,
+    BoardLayout, Decoded, HistoryEntry, ImportOptions, decode_archive_path, decode_beeftext,
+    decode_copyq_json, decode_ditto, decode_entries, decode_espanso, decode_folder,
+    decode_phraseexpress_csv, decode_textexpander_csv,
 };
 use snipdeck_store::{
     ItemRepo, Store,
@@ -382,51 +382,72 @@ where
                 })
             }
         };
-        // The backup must be readable before anything is touched.
-        if self.backup_unreadable(backup_file) {
-            return failed(self);
-        }
         let salvage = data_dir.join("snipdeck.salvage.snipdeck");
+        // The worker reads the backup before anything is touched; unreadable, the rebuild ends
+        // in `finish_rebuild` without a swap.
+        self.begin_rebuild_pass(Rebuild {
+            data_dir: data_dir.to_path_buf(),
+            backup_file: backup_file.to_path_buf(),
+            salvage,
+            carry,
+            counter: 0,
+            attempt: 0,
+        })
+    }
+
+    /// Hands one pass of a rebuild (read the backup, cut the salvage copy and read it back) to a
+    /// worker.
+    fn begin_rebuild_pass(&mut self, mut rebuild: Rebuild) -> Begun {
         let job = self.archive_job(
             ArchiveOp::Salvage,
-            Work::Salvage {
-                path: salvage.clone(),
+            Work::Rebuild {
+                backup: rebuild.backup_file.clone(),
+                salvage: rebuild.salvage.clone(),
                 now: self.clock.now(),
             },
         );
-        self.begin_running(
-            job,
-            Context::Rebuild(Box::new(Rebuild {
-                data_dir: data_dir.to_path_buf(),
-                backup_file: backup_file.to_path_buf(),
-                salvage,
-                carry,
-                counter: self.store.change_counter(),
-            })),
-        )
+        rebuild.counter = self.store.change_counter();
+        self.begin_running(job, Context::Rebuild(Box::new(rebuild)))
     }
 
-    /// "Rebuild from backup…", second half, on the UI thread once the salvage copy is written
-    /// (or failed: a rebuild goes on without it). Whether it worked.
-    pub(super) fn finish_rebuild(&mut self, rebuild: Rebuild, salvaged: bool) -> bool {
+    /// "Rebuild from backup…", second half, on the UI thread once the worker has read the backup
+    /// and cut the salvage copy (or failed to cut it: a rebuild goes on without it). Whether it
+    /// worked, or [`ArchiveEnd::Again`] when the library changed meanwhile.
+    pub(super) fn finish_rebuild(
+        &mut self,
+        rebuild: Rebuild,
+        made: Result<Made, JobError>,
+    ) -> ArchiveEnd {
         let Rebuild {
             data_dir,
             backup_file,
             salvage,
             carry,
             counter,
+            attempt,
         } = rebuild;
         let data_dir = data_dir.as_path();
-        let backup_file = backup_file.as_path();
         let failed = |ctl: &mut Self| {
+            let _ = fs::remove_file(&salvage);
             ctl.show_toast(danger(ToastMessage::RestoreFailed(Cause::Other)));
-            false
+            ArchiveEnd::Rebuilt(false)
         };
-        // The library stays editable while the worker copies it. Whatever was written after the
-        // worker's snapshot is included by cutting the copy again here, on the UI thread: it is
-        // rare (the user must edit during the few seconds of the copy) and the swap that follows
-        // is on this thread anyway. Blocking edits for the duration was the alternative; it
-        // would have needed a guard on every write path.
+        let prepared = match made {
+            Ok(Made::Rebuilt(prepared)) => *prepared,
+            Ok(_) => return failed(self),
+            Err(e) => {
+                crate::trace!("rebuild worker failed: {e}");
+                return failed(self);
+            }
+        };
+        // The backup must be readable before anything is touched.
+        let backup = match prepared.backup {
+            Ok(backup) => backup,
+            Err(e) => {
+                crate::trace!("the backup cannot be read: {e}");
+                return failed(self);
+            }
+        };
         // A password step is refused while a rebuild runs; if the key record moved anyway
         // (another process, a bug), applying the old one would undo it: stop, change nothing.
         let record_now = self.store.key_record().ok();
@@ -436,14 +457,47 @@ where
             _ => false,
         };
         if !unchanged {
-            let _ = fs::remove_file(&salvage);
             return failed(self);
         }
-        let salvaged = salvaged && (self.store.change_counter() == counter || self.recut(&salvage));
+        // The library stays editable while the worker copies it. If it changed after the
+        // worker's snapshot, the copy lacks what was written since: cut it again on a worker
+        // (a few tries; a library that keeps changing under the copy is not rebuilt).
+        if prepared.salvage.is_some() && self.store.change_counter() != counter {
+            if attempt >= MAX_REBUILD_PASSES {
+                return failed(self);
+            }
+            let again = Rebuild {
+                data_dir: data_dir.to_path_buf(),
+                backup_file,
+                salvage: salvage.clone(),
+                carry,
+                counter,
+                attempt: attempt + 1,
+            };
+            return match self.begin_rebuild_pass(again) {
+                Begun::Job(job) => ArchiveEnd::Again(job),
+                Begun::Finished(end) => end,
+                Begun::Refused => failed(self),
+            };
+        }
+        let salvaged = prepared.salvage.is_some();
         let sensitive_before = self.sensitive_count();
-        let outcome =
-            self.swap_in_rebuilt(data_dir, backup_file, salvaged.then_some(&salvage), carry);
+        let outcome = self.swap_in_rebuilt(data_dir, backup, prepared.salvage, carry);
         let _ = fs::remove_file(&salvage);
+        ArchiveEnd::Rebuilt(self.rebuild_end(outcome, sensitive_before, salvaged))
+    }
+
+    /// The toast and the cleanup for what the swap came to. Whether it worked.
+    fn rebuild_end(
+        &mut self,
+        outcome: Result<(usize, usize, String), Swap>,
+        sensitive_before: usize,
+        salvaged: bool,
+    ) -> bool {
+        let failed = |ctl: &mut Self| {
+            ctl.show_toast(danger(ToastMessage::RestoreFailed(Cause::Other)));
+            false
+        };
         match outcome {
             Ok((restored, recovered, kept)) => {
                 self.history = crate::history::History::new();
@@ -484,18 +538,6 @@ where
     }
 
     /// How many sensitive items the open library holds (0 when it cannot be read).
-    /// Writes the salvage copy again from the open library. Whether it worked.
-    fn recut(&self, salvage: &Path) -> bool {
-        let job = self.archive_job(
-            ArchiveOp::Salvage,
-            Work::Salvage {
-                path: salvage.to_path_buf(),
-                now: self.clock.now(),
-            },
-        );
-        job.run_on(&self.store).is_ok()
-    }
-
     fn sensitive_count(&self) -> usize {
         self.store
             .all_items()
@@ -512,8 +554,8 @@ where
     fn swap_in_rebuilt(
         &mut self,
         data_dir: &Path,
-        backup_file: &Path,
-        salvage: Option<&Path>,
+        backup: Decoded<'static>,
+        salvage: Option<Decoded<'static>>,
         carry: Option<Carry>,
     ) -> Result<(usize, usize, String), Swap> {
         let stamp = self
@@ -563,11 +605,8 @@ where
             return Err(self.roll_back(data_dir, fresh, original_key));
         }
         self.store = fresh;
-        let imported = self.import_now(
-            &ImportSource::Snipdeck(backup_file.to_path_buf()),
-            BoardLayout::KeepBoards,
-        );
-        let Ok(report) = imported else {
+        // Applying what the worker read is the one short transaction on this thread.
+        let Ok(report) = backup.apply(&mut self.store, None) else {
             let fresh = std::mem::replace(
                 &mut self.store,
                 Store::open_in_memory().map_err(|_| Swap::Stuck)?,
@@ -575,13 +614,7 @@ where
             return Err(self.roll_back(data_dir, fresh, original_key));
         };
         let recovered = salvage
-            .and_then(|file| {
-                self.import_now(
-                    &ImportSource::Snipdeck(file.to_path_buf()),
-                    BoardLayout::KeepBoards,
-                )
-                .ok()
-            })
+            .and_then(|decoded| decoded.apply(&mut self.store, None).ok())
             .map_or(0, |r| r.items_added);
         // The commit point: the marker goes. The lock is the running store's own. If the marker
         // cannot be removed the rebuilt library keeps running (the marker carries a fingerprint
@@ -778,45 +811,6 @@ where
         }
     }
 
-    /// Whether the backup cannot be read (checked on this thread, before a rebuild touches
-    /// anything).
-    fn backup_unreadable(&self, backup: &Path) -> bool {
-        let options = ImportOptions {
-            merge: MergeStrategy::SkipDuplicates,
-            layout: BoardLayout::KeepBoards,
-            key: self
-                .store
-                .data_key()
-                .map_or(KeySource::None, KeySource::Given),
-            ..ImportOptions::default()
-        };
-        ImportSource::Snipdeck(backup.to_path_buf())
-            .decode(self.clock.now(), &options)
-            .is_err()
-    }
-
-    /// Reads and writes `source` in one go, on this thread: only for the rebuild's two imports
-    /// into the library it has just swapped in.
-    fn import_now(
-        &mut self,
-        source: &ImportSource,
-        layout: BoardLayout,
-    ) -> snipdeck_portable::Result<ImportReport> {
-        let decoded = {
-            let options = ImportOptions {
-                merge: MergeStrategy::SkipDuplicates,
-                layout,
-                key: self
-                    .store
-                    .data_key()
-                    .map_or(KeySource::None, KeySource::Given),
-                ..ImportOptions::default()
-            };
-            source.decode(self.clock.now(), &options)?
-        };
-        decoded.apply(&mut self.store, None)
-    }
-
     /// "Erase library": closes the library, deletes it from `data_dir` (everything but the
     /// settings and the logs) and opens a fresh empty one there. With
     /// `forget_key` false the library's key record is carried over to the new library, so
@@ -896,6 +890,9 @@ pub(super) struct Carry {
 }
 
 /// Why a rebuild did not complete.
+/// How many times a rebuild cuts its salvage copy again because the library changed under it.
+const MAX_REBUILD_PASSES: u8 = 3;
+
 enum Swap {
     /// The original database is back and open.
     RolledBack,

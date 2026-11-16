@@ -307,12 +307,70 @@ fn an_item_written_while_the_salvage_is_copied_is_recovered_too() {
     // The worker has cut its copy; then the user keeps typing before the swap.
     let done = job.run();
     add_item(&mut ctl, "Typed during the salvage");
+    // The copy is stale: the controller asks for it to be cut again on a worker.
+    let ArchiveEnd::Again(again) = ctl.finish_archive(done) else {
+        panic!("a changed library asks for another pass");
+    };
+    assert!(ctl.archive_busy(), "busy through the second pass too");
     assert!(matches!(
-        ctl.finish_archive(done),
+        ctl.finish_archive(again.run()),
         ArchiveEnd::Rebuilt(true)
     ));
     assert!(
         titles(&ctl).iter().any(|t| t == "Typed during the salvage"),
         "the swap keeps what was written after the copy was cut"
+    );
+}
+
+#[test]
+fn an_unreadable_backup_ends_the_rebuild_before_anything_is_touched() {
+    use snipdeck_app::controller::{ArchiveEnd, Begun};
+    let dir = tempfile::tempdir().expect("dir");
+    let mut ctl = start(dir.path());
+    let before = titles(&ctl);
+    let broken = dir.path().join("broken.snipdeck");
+    std::fs::write(&broken, b"not an archive").expect("file");
+
+    let Begun::Job(job) = ctl.begin_rebuild_from_backup(dir.path(), &broken) else {
+        panic!("the backup is read on a worker, not on this thread");
+    };
+    assert!(ctl.archive_busy());
+    assert!(matches!(
+        ctl.finish_archive(job.run()),
+        ArchiveEnd::Rebuilt(false)
+    ));
+    assert!(!ctl.archive_busy());
+    assert_eq!(titles(&ctl), before, "the library is as it was");
+    let damaged = std::fs::read_dir(dir.path())
+        .expect("dir")
+        .flatten()
+        .any(|e| e.file_name().to_string_lossy().contains("damaged"));
+    assert!(!damaged, "nothing was set aside");
+    assert!(!dir.path().join("snipdeck.salvage.snipdeck").exists());
+}
+
+#[test]
+fn quitting_while_the_rebuild_reads_leaves_the_library_as_it_was() {
+    use snipdeck_app::controller::Begun;
+    let dir = tempfile::tempdir().expect("dir");
+    let mut ctl = start(dir.path());
+    assert!(ctl.backup_now(dir.path()));
+    let backup = newest_backup(dir.path());
+    let before = titles(&ctl);
+
+    let Begun::Job(job) = ctl.begin_rebuild_from_backup(dir.path(), &backup) else {
+        panic!("a worker job");
+    };
+    ctl.abandon_unfinished_archive();
+    drop(ctl);
+    let _done = job.run();
+    let reopened = start_with(Store::open(dir.path()).expect("reopen"));
+    assert_eq!(titles(&reopened), before);
+    assert!(
+        !std::fs::read_dir(dir.path())
+            .expect("dir")
+            .flatten()
+            .any(|e| e.file_name().to_string_lossy().contains("damaged")),
+        "nothing was set aside"
     );
 }

@@ -3091,3 +3091,42 @@ fn the_start_up_entry_is_read_once_when_the_page_opens_not_on_each_redraw() {
         assert!(r.ui.get_autostart(), "the toggle's result is shown");
     });
 }
+
+#[test]
+fn restoring_shows_the_busy_state_while_the_backup_is_read_and_then_the_preview() {
+    on_ui_thread(|| {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = Store::open(dir.path()).unwrap();
+        snipdeck_app::demo::seed(&mut store, now()).unwrap();
+        snipdeck_portable::backup::run_if_due(
+            &store,
+            dir.path(),
+            &now().to_zoned(jiff::tz::TimeZone::UTC),
+            7,
+            None,
+        )
+        .unwrap();
+        let r = rig_on(store, dir, true);
+        assert_eq!(r.ui.get_backups().row_count(), 1);
+        assert!(!r.ui.get_backup_busy());
+
+        let held = support::HeldArchive::default();
+        let _inline_again = held.install();
+        r.ui.invoke_backup_restore_requested(0);
+        assert_eq!(held.held(), 1, "the backup is read off this thread");
+        assert!(r.ui.get_backup_busy(), "the page shows the busy state");
+        assert!(!r.ui.get_import_open(), "no preview until the read is done");
+        assert!(r.ctl.borrow().archive_busy());
+        // A second start is refused while the first runs.
+        r.ui.invoke_backup_restore_requested(0);
+        assert_eq!(held.held(), 1);
+
+        held.release();
+        assert!(!r.ui.get_backup_busy());
+        assert!(
+            r.ui.get_import_open(),
+            "the preview opens when the read is done"
+        );
+        assert!(!r.ctl.borrow().archive_busy());
+    });
+}

@@ -325,7 +325,11 @@ fn end(
     match begun {
         Begun::Refused => ArchiveEnd::Ignored,
         Begun::Finished(end) => end,
-        Begun::Job(job) => ctl.finish_archive(job.run()),
+        Begun::Job(job) => match ctl.finish_archive(job.run()) {
+            // Another pass on a worker (a rebuild whose library changed under its copy).
+            ArchiveEnd::Again(job) => end(ctl, Begun::Job(job)),
+            done => done,
+        },
     }
 }
 
@@ -392,4 +396,53 @@ fn previewed(
 
 fn imported(end: &snipdeck_app::controller::ArchiveEnd) -> bool {
     matches!(end, snipdeck_app::controller::ArchiveEnd::Imported(true))
+}
+
+/// Holds the archive jobs of this thread instead of running them, so a test can look at the
+/// windows while a worker would be busy. Dropping the guard puts the inline offload back.
+#[derive(Clone, Default)]
+pub struct HeldArchive {
+    held: std::rc::Rc<
+        std::cell::RefCell<
+            Vec<(
+                snipdeck_app::archive_job::ArchiveJob,
+                snipdeck_app::archive_job::Finish,
+            )>,
+        >,
+    >,
+}
+
+impl snipdeck_app::archive_job::Offload for HeldArchive {
+    fn run(
+        &self,
+        job: snipdeck_app::archive_job::ArchiveJob,
+        finish: snipdeck_app::archive_job::Finish,
+    ) {
+        self.held.borrow_mut().push((job, finish));
+    }
+}
+
+pub struct HeldArchiveGuard;
+
+impl Drop for HeldArchiveGuard {
+    fn drop(&mut self) {
+        snipdeck_app::archive_job::set_offload(std::rc::Rc::new(snipdeck_app::archive_job::Inline));
+    }
+}
+
+impl HeldArchive {
+    pub fn install(&self) -> HeldArchiveGuard {
+        snipdeck_app::archive_job::set_offload(std::rc::Rc::new(self.clone()));
+        HeldArchiveGuard
+    }
+
+    pub fn held(&self) -> usize {
+        self.held.borrow().len()
+    }
+
+    /// Runs the oldest held job and hands its outcome back, as the worker thread would.
+    pub fn release(&self) {
+        let (job, finish) = self.held.borrow_mut().remove(0);
+        finish(job.run());
+    }
 }

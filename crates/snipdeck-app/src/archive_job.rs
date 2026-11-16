@@ -43,8 +43,13 @@ pub(crate) enum Work {
     },
     /// The whole library as one `.snipdeck` file at `path` (its folder is made first).
     Export { path: PathBuf, now: Timestamp },
-    /// The salvage copy for a rebuild, at `path`.
-    Salvage { path: PathBuf, now: Timestamp },
+    /// Everything a rebuild reads: the backup is read and checked (no library involved), the
+    /// salvage copy of the damaged library is written at `salvage` and read back.
+    Rebuild {
+        backup: PathBuf,
+        salvage: PathBuf,
+        now: Timestamp,
+    },
     /// Reads and checks an import or a restore (no library involved) and the duplicate set of
     /// the snapshot, for the UI thread to preview or apply.
     Decode {
@@ -76,8 +81,19 @@ pub enum Made {
     Backup(BackupOutcome),
     /// A file at the job's path.
     File,
+    /// What a rebuild will apply: the backup and the salvage, read.
+    Rebuilt(Box<Prepared>),
     /// A decoded source, or why it could not be read.
     Decoded(Box<Result<Ready, snipdeck_portable::Error>>),
+}
+
+/// A rebuild's two sources, read on the worker.
+#[derive(Debug)]
+pub struct Prepared {
+    /// The backup, or why it cannot be read (the rebuild then touches nothing).
+    pub(crate) backup: Result<Decoded<'static>, snipdeck_portable::Error>,
+    /// What the damaged library could still give up (`None`: nothing could be salvaged).
+    pub(crate) salvage: Option<Decoded<'static>>,
 }
 
 /// A decoded import and the duplicate set of the snapshot it was read beside.
@@ -149,6 +165,16 @@ impl ArchiveDone {
     }
 }
 
+/// How a worker reads a source: duplicates skipped, encrypted items opened with the library's key.
+fn read_options<L: Library>(lib: &L, layout: BoardLayout) -> ImportOptions<'_> {
+    ImportOptions {
+        merge: MergeStrategy::SkipDuplicates,
+        layout,
+        key: lib.data_key().map_or(KeySource::None, KeySource::Given),
+        ..ImportOptions::default()
+    }
+}
+
 fn failure(e: &snipdeck_portable::Error) -> JobError {
     JobError {
         cause: Cause::of_portable(e),
@@ -179,22 +205,40 @@ impl ArchiveJob {
                 .map_or(SensitivePolicy::Skip, SensitivePolicy::Encrypt),
             ..ExportOptions::default()
         };
-        if let Work::Decode {
-            source,
-            layout,
-            now,
-        } = &self.work
-        {
-            let options = ImportOptions {
-                merge: MergeStrategy::SkipDuplicates,
-                layout: *layout,
-                key: lib.data_key().map_or(KeySource::None, KeySource::Given),
-                ..ImportOptions::default()
-            };
-            let ready = source
-                .decode(*now, &options)
-                .and_then(|decoded| Known::of(lib).map(|known| Ready { decoded, known }));
-            return Ok(Made::Decoded(Box::new(ready)));
+        match &self.work {
+            Work::Decode {
+                source,
+                layout,
+                now,
+            } => {
+                let options = read_options(lib, *layout);
+                let ready = source
+                    .decode(*now, &options)
+                    .and_then(|decoded| Known::of(lib).map(|known| Ready { decoded, known }));
+                return Ok(Made::Decoded(Box::new(ready)));
+            }
+            Work::Rebuild {
+                backup,
+                salvage,
+                now,
+            } => {
+                let read = |file: &Path| {
+                    ImportSource::Snipdeck(file.to_path_buf())
+                        .decode(*now, &read_options(lib, BoardLayout::KeepBoards))
+                };
+                let backup = read(backup);
+                // An unreadable backup ends the rebuild before it starts: no copy is needed.
+                let salvaged = backup.is_ok().then(|| {
+                    export_to_path(lib, *now, &options, salvage)
+                        .and_then(|_| read(salvage))
+                        .ok()
+                });
+                return Ok(Made::Rebuilt(Box::new(Prepared {
+                    backup,
+                    salvage: salvaged.flatten(),
+                })));
+            }
+            _ => {}
         }
         match &self.work {
             Work::Backup {
@@ -215,8 +259,10 @@ impl ArchiveJob {
                     other => Ok(Made::Backup(other)),
                 }
             }
-            Work::Decode { .. } => Err(JobError::other("not an archive step")),
-            Work::Export { path, now } | Work::Salvage { path, now } => {
+            Work::Decode { .. } | Work::Rebuild { .. } => {
+                Err(JobError::other("not an archive step"))
+            }
+            Work::Export { path, now } => {
                 if let Some(parent) = path.parent() {
                     std::fs::create_dir_all(parent).map_err(|e| JobError {
                         cause: Cause::of_io(&e),
@@ -233,7 +279,8 @@ impl ArchiveJob {
     #[must_use]
     pub fn path(&self) -> Option<&Path> {
         match &self.work {
-            Work::Export { path, .. } | Work::Salvage { path, .. } => Some(path),
+            Work::Export { path, .. } => Some(path),
+            Work::Rebuild { salvage, .. } => Some(salvage),
             Work::Backup { .. } | Work::Decode { .. } => None,
         }
     }

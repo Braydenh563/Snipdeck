@@ -41,38 +41,40 @@ the_choice_is_stored_as_a_word | crates/snipdeck-app/src/accent.rs:270
 ### crates/snipdeck-app/src/archive_job.rs
 
 Work | crates/snipdeck-app/src/archive_job.rs:35
-ArchiveOp | crates/snipdeck-app/src/archive_job.rs:59
-Made | crates/snipdeck-app/src/archive_job.rs:74
-Ready | crates/snipdeck-app/src/archive_job.rs:85
-Source | crates/snipdeck-app/src/archive_job.rs:92
-impl Source | crates/snipdeck-app/src/archive_job.rs:102
-open | crates/snipdeck-app/src/archive_job.rs:104
-ArchiveJob | crates/snipdeck-app/src/archive_job.rs:122
-ArchiveDone | crates/snipdeck-app/src/archive_job.rs:130
-impl ArchiveDone | crates/snipdeck-app/src/archive_job.rs:135
-op | crates/snipdeck-app/src/archive_job.rs:138
-failed | crates/snipdeck-app/src/archive_job.rs:144
-failure | crates/snipdeck-app/src/archive_job.rs:152
-impl ArchiveJob | crates/snipdeck-app/src/archive_job.rs:159
-run | crates/snipdeck-app/src/archive_job.rs:163
-run_on | crates/snipdeck-app/src/archive_job.rs:175
-path | crates/snipdeck-app/src/archive_job.rs:234
-Finish | crates/snipdeck-app/src/archive_job.rs:243
-Offload | crates/snipdeck-app/src/archive_job.rs:246
-run | crates/snipdeck-app/src/archive_job.rs:248
-set_offload | crates/snipdeck-app/src/archive_job.rs:259
-offload | crates/snipdeck-app/src/archive_job.rs:265
-Inline | crates/snipdeck-app/src/archive_job.rs:271
-impl Offload for Inline | crates/snipdeck-app/src/archive_job.rs:273
-run | crates/snipdeck-app/src/archive_job.rs:274
-deliver | crates/snipdeck-app/src/archive_job.rs:279
-Threads | crates/snipdeck-app/src/archive_job.rs:288
-impl Offload for Threads | crates/snipdeck-app/src/archive_job.rs:290
-run | crates/snipdeck-app/src/archive_job.rs:291
-guarded | crates/snipdeck-app/src/archive_job.rs:313
-guard | crates/snipdeck-app/src/archive_job.rs:318
-tests | crates/snipdeck-app/src/archive_job.rs:331
-a_panicking_worker_becomes_a_failed_outcome_of_its_step | crates/snipdeck-app/src/archive_job.rs:335
+ArchiveOp | crates/snipdeck-app/src/archive_job.rs:64
+Made | crates/snipdeck-app/src/archive_job.rs:79
+Prepared | crates/snipdeck-app/src/archive_job.rs:92
+Ready | crates/snipdeck-app/src/archive_job.rs:101
+Source | crates/snipdeck-app/src/archive_job.rs:108
+impl Source | crates/snipdeck-app/src/archive_job.rs:118
+open | crates/snipdeck-app/src/archive_job.rs:120
+ArchiveJob | crates/snipdeck-app/src/archive_job.rs:138
+ArchiveDone | crates/snipdeck-app/src/archive_job.rs:146
+impl ArchiveDone | crates/snipdeck-app/src/archive_job.rs:151
+op | crates/snipdeck-app/src/archive_job.rs:154
+failed | crates/snipdeck-app/src/archive_job.rs:160
+read_options | crates/snipdeck-app/src/archive_job.rs:169
+failure | crates/snipdeck-app/src/archive_job.rs:178
+impl ArchiveJob | crates/snipdeck-app/src/archive_job.rs:185
+run | crates/snipdeck-app/src/archive_job.rs:189
+run_on | crates/snipdeck-app/src/archive_job.rs:201
+path | crates/snipdeck-app/src/archive_job.rs:280
+Finish | crates/snipdeck-app/src/archive_job.rs:290
+Offload | crates/snipdeck-app/src/archive_job.rs:293
+run | crates/snipdeck-app/src/archive_job.rs:295
+set_offload | crates/snipdeck-app/src/archive_job.rs:306
+offload | crates/snipdeck-app/src/archive_job.rs:312
+Inline | crates/snipdeck-app/src/archive_job.rs:318
+impl Offload for Inline | crates/snipdeck-app/src/archive_job.rs:320
+run | crates/snipdeck-app/src/archive_job.rs:321
+deliver | crates/snipdeck-app/src/archive_job.rs:326
+Threads | crates/snipdeck-app/src/archive_job.rs:335
+impl Offload for Threads | crates/snipdeck-app/src/archive_job.rs:337
+run | crates/snipdeck-app/src/archive_job.rs:338
+guarded | crates/snipdeck-app/src/archive_job.rs:360
+guard | crates/snipdeck-app/src/archive_job.rs:365
+tests | crates/snipdeck-app/src/archive_job.rs:378
+a_panicking_worker_becomes_a_failed_outcome_of_its_step | crates/snipdeck-app/src/archive_job.rs:382
 
 ### crates/snipdeck-app/src/binding.rs
 
@@ -492,26 +494,26 @@ policy_of | crates/snipdeck-app/src/controller.rs:1219
 ### crates/snipdeck-app/src/controller/archive_ctl.rs
 
 ArchiveEnd | crates/snipdeck-app/src/controller/archive_ctl.rs:36
-Begun | crates/snipdeck-app/src/controller/archive_ctl.rs:55
-Rebuild | crates/snipdeck-app/src/controller/archive_ctl.rs:66
-Context | crates/snipdeck-app/src/controller/archive_ctl.rs:77
-ImportPurpose | crates/snipdeck-app/src/controller/archive_ctl.rs:88
-ImportRun | crates/snipdeck-app/src/controller/archive_ctl.rs:98
-ArchiveState | crates/snipdeck-app/src/controller/archive_ctl.rs:107
-impl ArchiveState | crates/snipdeck-app/src/controller/archive_ctl.rs:111
-is_running | crates/snipdeck-app/src/controller/archive_ctl.rs:112
-impl Controller<Store, C, K, T> | crates/snipdeck-app/src/controller/archive_ctl.rs:117
-archive_busy | crates/snipdeck-app/src/controller/archive_ctl.rs:126
-refuse_archive | crates/snipdeck-app/src/controller/archive_ctl.rs:132
-abandon_unfinished_archive | crates/snipdeck-app/src/controller/archive_ctl.rs:147
-archive_job | crates/snipdeck-app/src/controller/archive_ctl.rs:158
-begin_running | crates/snipdeck-app/src/controller/archive_ctl.rs:173
-begin_backup_now | crates/snipdeck-app/src/controller/archive_ctl.rs:190
-begin_daily_backup | crates/snipdeck-app/src/controller/archive_ctl.rs:212
-backup_keep | crates/snipdeck-app/src/controller/archive_ctl.rs:239
-begin_export | crates/snipdeck-app/src/controller/archive_ctl.rs:246
-finish_archive | crates/snipdeck-app/src/controller/archive_ctl.rs:264
-spawn | crates/snipdeck-app/src/controller/archive_ctl.rs:329
+Begun | crates/snipdeck-app/src/controller/archive_ctl.rs:58
+Rebuild | crates/snipdeck-app/src/controller/archive_ctl.rs:69
+Context | crates/snipdeck-app/src/controller/archive_ctl.rs:82
+ImportPurpose | crates/snipdeck-app/src/controller/archive_ctl.rs:93
+ImportRun | crates/snipdeck-app/src/controller/archive_ctl.rs:103
+ArchiveState | crates/snipdeck-app/src/controller/archive_ctl.rs:112
+impl ArchiveState | crates/snipdeck-app/src/controller/archive_ctl.rs:116
+is_running | crates/snipdeck-app/src/controller/archive_ctl.rs:117
+impl Controller<Store, C, K, T> | crates/snipdeck-app/src/controller/archive_ctl.rs:122
+archive_busy | crates/snipdeck-app/src/controller/archive_ctl.rs:131
+refuse_archive | crates/snipdeck-app/src/controller/archive_ctl.rs:137
+abandon_unfinished_archive | crates/snipdeck-app/src/controller/archive_ctl.rs:152
+archive_job | crates/snipdeck-app/src/controller/archive_ctl.rs:163
+begin_running | crates/snipdeck-app/src/controller/archive_ctl.rs:178
+begin_backup_now | crates/snipdeck-app/src/controller/archive_ctl.rs:195
+begin_daily_backup | crates/snipdeck-app/src/controller/archive_ctl.rs:217
+backup_keep | crates/snipdeck-app/src/controller/archive_ctl.rs:244
+begin_export | crates/snipdeck-app/src/controller/archive_ctl.rs:251
+finish_archive | crates/snipdeck-app/src/controller/archive_ctl.rs:269
+spawn | crates/snipdeck-app/src/controller/archive_ctl.rs:331
 
 ### crates/snipdeck-app/src/controller/colour_ctl.rs
 
@@ -1258,22 +1260,22 @@ settings_look | crates/snipdeck-app/src/controller/settings_ctl.rs:329
 settings_toast | crates/snipdeck-app/src/controller/settings_ctl.rs:335
 begin_restore_backup | crates/snipdeck-app/src/controller/settings_ctl.rs:342
 begin_rebuild_from_backup | crates/snipdeck-app/src/controller/settings_ctl.rs:356
-finish_rebuild | crates/snipdeck-app/src/controller/settings_ctl.rs:411
-recut | crates/snipdeck-app/src/controller/settings_ctl.rs:488
-sensitive_count | crates/snipdeck-app/src/controller/settings_ctl.rs:499
-swap_in_rebuilt | crates/snipdeck-app/src/controller/settings_ctl.rs:512
-roll_back | crates/snipdeck-app/src/controller/settings_ctl.rs:600
-reopen_original | crates/snipdeck-app/src/controller/settings_ctl.rs:613
-begin_import | crates/snipdeck-app/src/controller/settings_ctl.rs:643
-begin_import_preview | crates/snipdeck-app/src/controller/settings_ctl.rs:672
-begin_restore_preview | crates/snipdeck-app/src/controller/settings_ctl.rs:682
-begin_apply_import | crates/snipdeck-app/src/controller/settings_ctl.rs:691
-finish_import | crates/snipdeck-app/src/controller/settings_ctl.rs:702
-backup_unreadable | crates/snipdeck-app/src/controller/settings_ctl.rs:783
-import_now | crates/snipdeck-app/src/controller/settings_ctl.rs:800
-erase_library | crates/snipdeck-app/src/controller/settings_ctl.rs:826
-Carry | crates/snipdeck-app/src/controller/settings_ctl.rs:892
-Swap | crates/snipdeck-app/src/controller/settings_ctl.rs:899
+begin_rebuild_pass | crates/snipdeck-app/src/controller/settings_ctl.rs:400
+finish_rebuild | crates/snipdeck-app/src/controller/settings_ctl.rs:416
+rebuild_end | crates/snipdeck-app/src/controller/settings_ctl.rs:491
+sensitive_count | crates/snipdeck-app/src/controller/settings_ctl.rs:541
+swap_in_rebuilt | crates/snipdeck-app/src/controller/settings_ctl.rs:554
+roll_back | crates/snipdeck-app/src/controller/settings_ctl.rs:633
+reopen_original | crates/snipdeck-app/src/controller/settings_ctl.rs:646
+begin_import | crates/snipdeck-app/src/controller/settings_ctl.rs:676
+begin_import_preview | crates/snipdeck-app/src/controller/settings_ctl.rs:705
+begin_restore_preview | crates/snipdeck-app/src/controller/settings_ctl.rs:715
+begin_apply_import | crates/snipdeck-app/src/controller/settings_ctl.rs:724
+finish_import | crates/snipdeck-app/src/controller/settings_ctl.rs:735
+erase_library | crates/snipdeck-app/src/controller/settings_ctl.rs:820
+Carry | crates/snipdeck-app/src/controller/settings_ctl.rs:886
+MAX_REBUILD_PASSES | crates/snipdeck-app/src/controller/settings_ctl.rs:894
+Swap | crates/snipdeck-app/src/controller/settings_ctl.rs:896
 
 ### crates/snipdeck-app/src/controller/symbol_ctl.rs
 
@@ -8918,7 +8920,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/tests/editor_window.rs` | 35 |
 | `crates/snipdeck-app/tests/everything_free.rs` | 4 |
 | `crates/snipdeck-app/tests/fill_window.rs` | 15 |
-| `crates/snipdeck-app/tests/help_window.rs` | 8 |
+| `crates/snipdeck-app/tests/help_window.rs` | 9 |
 | `crates/snipdeck-app/tests/history.rs` | 17 |
 | `crates/snipdeck-app/tests/import_preview.rs` | 14 |
 | `crates/snipdeck-app/tests/legacy_files.rs` | 3 |
@@ -8928,11 +8930,11 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/tests/menu_form_texts.rs` | 3 |
 | `crates/snipdeck-app/tests/panel_window.rs` | 93 |
 | `crates/snipdeck-app/tests/picker_window.rs` | 20 |
-| `crates/snipdeck-app/tests/rebuild.rs` | 5 |
+| `crates/snipdeck-app/tests/rebuild.rs` | 7 |
 | `crates/snipdeck-app/tests/recent_at_rest.rs` | 5 |
 | `crates/snipdeck-app/tests/repaint_hook.rs` | 4 |
 | `crates/snipdeck-app/tests/screenshot.rs` | 2 |
-| `crates/snipdeck-app/tests/settings_window.rs` | 78 |
+| `crates/snipdeck-app/tests/settings_window.rs` | 79 |
 | `crates/snipdeck-app/tests/suggest_hint.rs` | 7 |
 | `crates/snipdeck-app/tests/support/mod.rs` | 0 |
 | `crates/snipdeck-app/tests/template_texts.rs` | 1 |
