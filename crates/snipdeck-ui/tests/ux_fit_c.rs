@@ -132,17 +132,22 @@ fn with_locales(f: impl Fn(&str, f32) -> Vec<String> + Send + 'static) {
     on_ui_thread(move || {
         let mut all = Vec::new();
         for lang in LOCALES {
-            slint::select_bundled_translation(lang).expect("bundled");
+            // The source language needs no selecting before any other was selected.
+            let selected = slint::select_bundled_translation(lang);
+            assert!(selected.is_ok() || lang.is_empty(), "{lang}: {selected:?}");
             for s in SCALES {
                 all.extend(f(lang, s));
             }
         }
-        slint::select_bundled_translation("").expect("bundled");
+        slint::select_bundled_translation("").expect("back to the source language");
         assert_eq!(all.len(), 0, "{all:#?}");
     });
 }
 
-fn settle<C: ComponentHandle>(ui: &C, s: f32, w: f32, h: f32) {
+fn settle<C: ComponentHandle>(ui: &C, s: f32, w: f32, h: f32)
+where
+    for<'a> SystemLook<'a>: slint::Global<'a, C>,
+{
     ui.global::<SystemLook<'_>>().set_text_scale(s);
     ui.window().set_size(slint::LogicalSize::new(w, h));
     ui.show().unwrap();
@@ -157,7 +162,10 @@ fn tag_manager_footer_clears_the_rows_at_its_minimum_size() {
         editor::tag_manager(&ui);
         // Two tags fill the list area at the smallest size, so every row is on screen.
         ui.set_tags(ModelRc::new(VecModel::from(
-            editor::tag_entries().into_iter().take(2).collect::<Vec<_>>(),
+            editor::tag_entries()
+                .into_iter()
+                .take(2)
+                .collect::<Vec<_>>(),
         )));
         settle(&ui, s, 0.0, 0.0);
         let (w, h) = (ui.get_min_window_width(), ui.get_min_window_height());
@@ -188,14 +196,33 @@ fn entity_scene<C: ComponentHandle + ElementRoot>(
     name: &str,
     size: (f32, f32),
     footer: &[&str],
-) -> Vec<String> {
+) -> Vec<String>
+where
+    for<'a> SystemLook<'a>: slint::Global<'a, C>,
+{
     settle(ui, s, size.0, size.1);
-    problems(ui, size.0, size.1, footer, &format!("{name} {lang:?} {s}x at {}x{}", size.0, size.1))
+    problems(
+        ui,
+        size.0,
+        size.1,
+        footer,
+        &format!("{name} {lang:?} {s}x at {}x{}", size.0, size.1),
+    )
 }
 
 const SAVE_CANCEL: [&str; 12] = [
-    "Save", "Cancel", "Delete", "Speichern", "Abbrechen", "Löschen", "Enregistrer", "Annuler",
-    "Supprimer", "Guardar", "Cancelar", "Eliminar",
+    "Save",
+    "Cancel",
+    "Delete",
+    "Speichern",
+    "Abbrechen",
+    "Löschen",
+    "Enregistrer",
+    "Annuler",
+    "Supprimer",
+    "Guardar",
+    "Cancelar",
+    "Eliminar",
 ];
 
 #[test]
@@ -213,7 +240,14 @@ fn list_and_board_editors_hold_every_element_at_minimum_and_preferred_size() {
         let min = (ui.get_min_window_width(), ui.get_min_window_height());
         let pref = (460.0f32.max(min.0), ui.get_wanted_height());
         out.extend(entity_scene(&ui, s, lang, "list editor", min, &SAVE_CANCEL));
-        out.extend(entity_scene(&ui, s, lang, "list editor", pref, &SAVE_CANCEL));
+        out.extend(entity_scene(
+            &ui,
+            s,
+            lang,
+            "list editor",
+            pref,
+            &SAVE_CANCEL,
+        ));
         let ui = BoardEditor::new().unwrap();
         ui.global::<SystemLook<'_>>().set_text_scale(s);
         ui.set_is_new(false);
@@ -223,8 +257,22 @@ fn list_and_board_editors_hold_every_element_at_minimum_and_preferred_size() {
         settle(&ui, s, 460.0, 440.0);
         let min = (ui.get_min_window_width(), ui.get_min_window_height());
         let pref = (460.0f32.max(min.0), ui.get_wanted_height());
-        out.extend(entity_scene(&ui, s, lang, "board editor", min, &SAVE_CANCEL));
-        out.extend(entity_scene(&ui, s, lang, "board editor", pref, &SAVE_CANCEL));
+        out.extend(entity_scene(
+            &ui,
+            s,
+            lang,
+            "board editor",
+            min,
+            &SAVE_CANCEL,
+        ));
+        out.extend(entity_scene(
+            &ui,
+            s,
+            lang,
+            "board editor",
+            pref,
+            &SAVE_CANCEL,
+        ));
         out
     });
 }
@@ -244,11 +292,14 @@ fn list_editor_grids_show_every_cell_inside_the_window_at_every_width() {
                 settle(&ui, s, w, 3000.0);
                 let w = w.max(ui.get_min_window_width());
                 settle(&ui, s, w, 3000.0);
-                let radios = elements(&ui)
-                    .into_iter()
-                    .filter(|e| e.w > 0.5)
-                    .count();
-                out.extend(problems(&ui, w, 3000.0, &[], &format!("list editor {s}x at {w}")));
+                let radios = elements(&ui).into_iter().filter(|e| e.w > 0.5).count();
+                out.extend(problems(
+                    &ui,
+                    w,
+                    3000.0,
+                    &[],
+                    &format!("list editor {s}x at {w}"),
+                ));
                 assert!(radios > 30, "{radios} elements at {s}x {w}");
             }
         }
@@ -268,10 +319,30 @@ fn onboarding_footer_clears_the_step_in_every_language() {
             let (w, h) = (ui.get_min_window_width(), ui.get_min_window_height());
             settle(&ui, s, w, h);
             let footer = [
-                "Skip", "Next", "Back", "Get started", "Überspringen", "Weiter", "Zurück",
-                "Los geht", "Passer", "Suivant", "Retour", "Commencer", "Omitir", "Siguiente",
-                "Atrás", "Empezar", "Pular", "Avançar", "Voltar", "Começar", "スキップ", "次へ",
-                "戻る", "始める",
+                "Skip",
+                "Next",
+                "Back",
+                "Get started",
+                "Überspringen",
+                "Weiter",
+                "Zurück",
+                "Los geht",
+                "Passer",
+                "Suivant",
+                "Retour",
+                "Commencer",
+                "Omitir",
+                "Siguiente",
+                "Atrás",
+                "Empezar",
+                "Pular",
+                "Avançar",
+                "Voltar",
+                "Começar",
+                "スキップ",
+                "次へ",
+                "戻る",
+                "始める",
             ];
             out.extend(problems(
                 &ui,
@@ -297,7 +368,11 @@ fn picker_and_help_buttons_are_not_cut_at_the_minimum_height() {
         settle(&ui, s, w, h);
         for e in elements(&ui) {
             if e.y + e.h > h + 0.5 {
-                out.push(format!("picker {lang:?} {s}x: {:?} ends at {:.0} of {h}", e.name, e.y + e.h));
+                out.push(format!(
+                    "picker {lang:?} {s}x: {:?} ends at {:.0} of {h}",
+                    e.name,
+                    e.y + e.h
+                ));
             }
         }
         let ui = HelpWindow::new().unwrap();
@@ -312,12 +387,23 @@ fn picker_and_help_buttons_are_not_cut_at_the_minimum_height() {
         // The first tip's own button is on screen at the smallest size.
         let first = elements(&ui)
             .into_iter()
-            .filter(|e| e.name.starts_with("Try") || e.name.starts_with("Probier") || e.name.starts_with("Essayer") || e.name.starts_with("Probar") || e.name.starts_with("Experimente") || e.name.starts_with("試"))
+            .filter(|e| {
+                e.name.starts_with("Try")
+                    || e.name.starts_with("Probier")
+                    || e.name.starts_with("Essayer")
+                    || e.name.starts_with("Probar")
+                    || e.name.starts_with("Experimente")
+                    || e.name.starts_with("試")
+            })
             .map(|e| e.y)
             .fold(f32::MAX, f32::min);
         for e in elements(&ui) {
             if (e.y - first).abs() < 0.5 && e.y + e.h > h + 0.5 {
-                out.push(format!("help tips {lang:?} {s}x: {:?} ends at {:.0} of {h}", e.name, e.y + e.h));
+                out.push(format!(
+                    "help tips {lang:?} {s}x: {:?} ends at {:.0} of {h}",
+                    e.name,
+                    e.y + e.h
+                ));
             }
         }
         out

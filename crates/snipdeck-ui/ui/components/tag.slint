@@ -22,7 +22,7 @@ export component Tag inherits Rectangle {
     property <bool> hovered: touch.has-hover && root.enabled;
 
     height: max(Space.hit-min * SystemLook.text-scale, Type.line-sm + Space.s2);
-    min-width: Space.hit-min;
+    min-width: Space.hit-min * SystemLook.text-scale;
     background: root.selected
         ? (root.pressed ? Theme.bg-selected.darker(0.1) : Theme.bg-selected)
         : root.pressed ? StateColor.pressed() : root.hovered ? Theme.bg-hover : Theme.bg-surface;

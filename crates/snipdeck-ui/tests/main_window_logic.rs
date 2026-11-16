@@ -1816,7 +1816,11 @@ ui_tests! {
         press_key(&ui, Key::Menu);
         find(&ui, "Delete tag…", AccessibleRole::ListItem).invoke_accessible_default_action();
         settle();
-        let _ = find(&ui, "Delete tag “sql”?", AccessibleRole::Groupbox);
+        assert_eq!(
+            find(&ui, "Delete tag “sql”?", AccessibleRole::Groupbox).accessible_description().as_deref(),
+            Some("It is removed from 3 items. The items stay."),
+            "the same words as the Tag manager (UX-18)"
+        );
         find(&ui, "Delete tag", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["tag-delete:2"]);
 

@@ -1123,7 +1123,7 @@ ui_tests! {
         settle();
         assert_eq!(ui.get_delete_index(), 0);
         assert_eq!(
-            find(&ui, "Delete this tag?", AccessibleRole::Groupbox).accessible_description().as_deref(),
+            find(&ui, "Delete tag “billing”?", AccessibleRole::Groupbox).accessible_description().as_deref(),
             Some("It is removed from 9 items. The items stay.")
         );
         press_key(&ui, Key::Escape);
@@ -1132,6 +1132,11 @@ ui_tests! {
 
         find(&ui, "Delete tag sql", AccessibleRole::Button).invoke_accessible_default_action();
         settle();
+        // The same title and body as the Main window asks for the same tag (UX-18).
+        assert_eq!(
+            find(&ui, "Delete tag “sql”?", AccessibleRole::Groupbox).accessible_description().as_deref(),
+            Some("It is removed from 3 items. The items stay.")
+        );
         let buttons = all(&ui, "Delete tag", AccessibleRole::Button);
         buttons.last().expect("confirm").invoke_accessible_default_action();
         assert_eq!(take(&log), ["delete:2"]);

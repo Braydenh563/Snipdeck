@@ -353,6 +353,29 @@ fn every_toast_message_has_words() {
     });
 }
 
+/// DESIGN.md "Names": a toast of one clause has no full stop; one of several sentences ends
+/// every sentence with one, the last included. Nothing ends in an exclamation mark.
+#[test]
+fn toast_punctuation_follows_the_one_clause_rule() {
+    on_ui_thread(|| {
+        let ui = ui();
+        let mut bad: Vec<String> = Vec::new();
+        for message in samples() {
+            let text = toast_text(&ui, &message);
+            let text = text.trim();
+            let sentences = text.matches(". ").count() + text.matches("? ").count();
+            let ends_stop = text.ends_with('.');
+            if text.ends_with('!')
+                || (sentences == 0 && ends_stop)
+                || (sentences > 0 && !ends_stop && !text.ends_with('?'))
+            {
+                bad.push(format!("{message:?}: {text}"));
+            }
+        }
+        assert_eq!(bad.len(), 0, "{bad:#?}");
+    });
+}
+
 #[test]
 #[allow(
     clippy::too_many_lines,

@@ -371,8 +371,8 @@ Decided 2026-11-16 (UX-7..18). Every surface (menus, bars, toasts, tips, tour, H
 | Recent copies | **Recent** | Recent copies, Recent inbox, clipboard history, recent history |
 | The user's content | **library**; the place on disk is the **data folder** | database, deck |
 
-Ellipsis rule: an entry that needs a further answer from the user before it acts ends in "…" ("Settings…", "Move to list…", "Troubleshoot…"). An entry that only opens a window or does the act at once does not ("User guide", "About Snipdeck", "Edit").
-Toast rule: a one-clause toast has no full stop ("Saved", "Library unlocked"); a two-clause one ends each in a full stop.
+Ellipsis rule: an entry that needs a further answer from the user before it acts ends in "…" ("Settings…", "Move to list…", "Troubleshoot…"). An entry that only opens a read-only window or does the act at once does not ("User guide", "About Snipdeck", "Copy"). "Edit…" has it because the editor asks for the new text. `wording_lint.rs` holds the whole list of entries with the mark; a new one fails until it is added there on purpose.
+Toast rule: a one-clause toast has no full stop ("Saved", "Library unlocked"); a toast of several sentences ends each in a full stop. `toast_punctuation_follows_the_one_clause_rule` (app crate, `toast_texts.rs`) checks every message.
 
 ### Confirm and undo (one rule)
 
@@ -448,3 +448,9 @@ Layering: window → cards → lifted (drag) → popovers/menus → toasts → c
 4. **Every interactive element:** 24px or larger hit target, visible focus ring, accessible name (AccessKit), keyboard path, and all five states.
 5. **One accent per surface.** List colours only as tab underlines, sidebar marks and mixed-view labels, plus the user-set 4px item label bar. Semantic colour always paired with an icon or text.
 6. **Ink commits, blue selects.** Primary buttons use `ink.*`. `accent.*` is never a button fill.
+
+## Not done (UX audit batch C)
+
+- UX-40, a dialog's content stays reachable behind its scrim: Slint 1.18 has no `inert` and no `aria-modal`, and hiding the content from the accessibility tree would blank the area under the scrim. A screen reader may still read the content behind an open dialog.
+- UX-34, high-contrast pairs on a real desktop: `hc_contrast.rs` proves that every pair in `theme.slint` is WindowText on Window, HighlightText on Highlight or GrayText on Window, and measures at least 4.5:1 for the stock High Contrast Black and White sets. Unverified: that Windows hands the app those colours (`GetSysColor` is Windows-only; run `tools/windows-test/`), and the Windows 11 contrast themes, whose colour values this repository does not carry.
+- UX-37/38/45, screen reader announcements: `ux_matrix.rs` walks the accessible tree and the Tab focus of seven windows at 1x and 2.25x in four looks. Narrator itself is Windows-only and unverified. The Panel, Main window and toast are walked by `audit_final1.rs` and `panel_logic.rs`, not by the table.

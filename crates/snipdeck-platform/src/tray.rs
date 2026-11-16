@@ -706,11 +706,7 @@ mod tests {
     fn pause_history_is_in_the_menu_only_while_clipboard_history_is_on() {
         let mut m = model();
         assert!(!m.history_available());
-        assert!(
-            menu_labels(&mut m)
-                .iter()
-                .all(|(l, _)| l != "Pause Recent")
-        );
+        assert!(menu_labels(&mut m).iter().all(|(l, _)| l != "Pause Recent"));
         m.set_history(true, false);
         let labels = menu_labels(&mut m);
         let at = labels.iter().position(|(l, _)| l == "Pause Recent");
@@ -719,11 +715,7 @@ mod tests {
         assert_eq!(labels.last().map(|(l, _)| l.as_str()), Some("Quit"));
         assert!(labels.iter().all(|(_, checked)| !checked));
         m.set_history(false, false);
-        assert!(
-            menu_labels(&mut m)
-                .iter()
-                .all(|(l, _)| l != "Pause Recent")
-        );
+        assert!(menu_labels(&mut m).iter().all(|(l, _)| l != "Pause Recent"));
     }
 
     #[test]

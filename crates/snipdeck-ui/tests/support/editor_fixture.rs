@@ -222,7 +222,7 @@ pub fn tips(ui: &HelpWindow) {
     ui.set_tips(ModelRc::new(VecModel::from(cards)));
 }
 
-/// The welcome tour on `step` (0 to 3), with the defaults of a first run.
+/// The welcome tour on `step` (0 to 4), with the defaults of a first run.
 pub fn onboarding(ui: &OnboardingWindow, step: i32) {
     ui.set_step(step);
     ui.set_hotkeys(ModelRc::new(VecModel::from(hotkeys())));

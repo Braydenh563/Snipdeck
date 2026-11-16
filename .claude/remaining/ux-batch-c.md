@@ -1,4 +1,5 @@
-# ux-batch-c
-Done: wording (UX-14..17), shared tag-delete dialog (UX-18), onboarding step 4 (UX-29), min sizes/wrapping grids (UX-35,41-44) in Slint, ux_fit_c.rs written (uncompiled), translations.
-Next: build + run ux_fit_c and tune; toast punctuation test; wording lint test; tag-delete text test; tag.slint scale fix + test (UX-36); contrast test (UX-34); a11y tree table test (UX-37/38/45); DESIGN.md Not-done (UX-40, UX-34 Windows part).
-Blocked: nothing.
+# ux-batch-c (paused by owner, usage limit)
+Done (committed d0977e9 plus WIP): UX-14..18 wording + shared tag-delete dialog (DialogTexts, tests updated in editors_logic/main_window_logic), UX-29 onboarding step 4 + 6-locale strings, UX-35/41-44 Slint min sizes and wrapping grids, UX-36 tag min-width fix + test (primitives_logic), UX-16 lint (wording_lint.rs), UX-17 toast punctuation test (app toast_texts.rs), UX-34 hc_contrast.rs, UX-37/38/45 ux_matrix.rs, DESIGN.md Not-done (batch C) entries (UX-40, UX-34 Windows, narrator).
+Next: nothing below has been compiled/run yet except ux_fit_c (4 of 7 passed before locale fix): rerun ux_fit_c (binary in target/debug/deps), fix tag_manager_footer/list_and_board/onboarding_footer failures; build+run wording_lint, hc_contrast, ux_matrix, primitives_logic (tag test), editors_logic, main_window_logic, app toast_texts/tour/onboarding/doctor/settings_window tests; clippy -D warnings; i18n check --strict; python3 scripts/codemap.py; cargo fmt.
+Blocked: none. Unresolved: Recent empty-state "Open Settings" deep link (not done; record in DESIGN Not done if skipped). UX-23/24 existing tests (primitives_logic live region, panel_logic expanded) not re-confirmed after changes.
+Note: each snipdeck-ui test build is ~4 min; run built binaries directly.

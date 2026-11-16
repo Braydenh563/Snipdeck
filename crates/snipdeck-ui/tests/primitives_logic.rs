@@ -272,6 +272,27 @@ fn tag_clicks_and_removes() {
 }
 
 #[test]
+fn tag_chip_and_remove_cell_keep_a_touch_width_at_large_text_sizes() {
+    on_ui(|| {
+        let ui = gallery();
+        for scale in [1.0_f32, 2.25] {
+            ui.global::<SystemLook<'_>>().set_text_scale(scale);
+            let min = 24.0 * scale - 0.5;
+            for label in ["work", "Remove tag snippets"] {
+                let size = by_label(&ui, label, AccessibleRole::Button).size();
+                assert!(
+                    size.width >= min && size.height >= min,
+                    "{label} at scale {scale}: {}x{} is under {min}",
+                    size.width,
+                    size.height
+                );
+            }
+        }
+        ui.global::<SystemLook<'_>>().set_text_scale(1.0);
+    });
+}
+
+#[test]
 fn tag_delete_key_removes_a_removable_chip() {
     on_ui(|| {
         let ui = gallery();
