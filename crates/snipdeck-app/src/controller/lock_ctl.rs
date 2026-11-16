@@ -638,7 +638,8 @@ where
         self.give_up_hello_step(true);
         self.store.lock_key_ring();
         self.index_cache.forget_recent();
-        self.forget_secret_files();
+        // A sensitive copy still on the clipboard does not outlive the lock.
+        self.clear_pending_clipboard_now();
         self.revealed = None;
         self.panel_revealed = None;
         self.sync_recent_gate();

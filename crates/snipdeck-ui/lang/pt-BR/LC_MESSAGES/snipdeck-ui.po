@@ -2540,8 +2540,8 @@ msgstr "Pesquise por nome, no seu idioma."
 msgid "Searched every board and list."
 msgstr "Pesquisou em todos os quadros e listas."
 
-msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
-msgstr "Segundos até que um item sensível copiado seja limpo da área de transferência, se nada mais tiver sido copiado desde então. 0 nunca o limpa. Ao colar, sua própria área de transferência é restaurada."
+msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. Pasting restores your own clipboard instead."
+msgstr "Segundos até que um item sensível copiado seja limpo da área de transferência, se nada mais tiver sido copiado desde então. Ao colar, sua própria área de transferência é restaurada."
 
 msgid "See the tips"
 msgstr "Ver as dicas"

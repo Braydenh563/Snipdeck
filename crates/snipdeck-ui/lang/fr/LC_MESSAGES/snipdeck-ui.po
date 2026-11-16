@@ -2540,8 +2540,8 @@ msgstr "Cherchez-les par nom, dans votre langue."
 msgid "Searched every board and list."
 msgstr "Recherche effectuée dans tous les tableaux et listes."
 
-msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
-msgstr "Secondes avant que l'extrait sensible copié ne soit vidé du presse-papiers, si rien d'autre n'a été copié depuis. 0 ne le vide jamais. Le collage restaure à la place votre propre presse-papiers."
+msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. Pasting restores your own clipboard instead."
+msgstr "Secondes avant que l'extrait sensible copié ne soit vidé du presse-papiers, si rien d'autre n'a été copié depuis. Le collage restaure à la place votre propre presse-papiers."
 
 msgid "See the tips"
 msgstr "Voir les astuces"

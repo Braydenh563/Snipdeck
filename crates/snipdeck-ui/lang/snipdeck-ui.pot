@@ -3379,7 +3379,7 @@ msgid "Searched every board and list."
 msgstr ""
 
 #: ui/settings.slint:1187
-msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
+msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. Pasting restores your own clipboard instead."
 msgstr ""
 
 #: ui/onboarding.slint:425

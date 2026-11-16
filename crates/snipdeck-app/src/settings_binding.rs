@@ -1880,7 +1880,7 @@ where
                 |s| s.backups_keep = u32::try_from(n).unwrap_or(0)
             )));
         wire!(on_clipboard_clear_secs_chosen, |core, n| core.act(|ctl| {
-            ctl.update_settings(|s| s.clipboard_clear_secs = u32::try_from(n).unwrap_or(0));
+            ctl.update_settings(|s| s.clipboard_clear_secs = u32::try_from(n).unwrap_or(0).max(1));
         }));
         wire!(on_paste_rule_added, |core, name| core
             .paste_rule_added(&name));

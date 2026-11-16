@@ -2532,8 +2532,8 @@ msgstr "あなたの言語の名前で検索できます。"
 msgid "Searched every board and list."
 msgstr "すべてのボードとリストを検索しました。"
 
-msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
-msgstr "機密スニペットをコピーしてから、その後他に何もコピーされなければ、クリップボードから消去されるまでの秒数。0 にすると消去しません。貼り付けると、代わりにご自身のクリップボードの内容が復元されます。"
+msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. Pasting restores your own clipboard instead."
+msgstr "機密スニペットをコピーしてから、その後他に何もコピーされなければ、クリップボードから消去されるまでの秒数。貼り付けると、代わりにご自身のクリップボードの内容が復元されます。"
 
 msgid "See the tips"
 msgstr "ヒントを見る"

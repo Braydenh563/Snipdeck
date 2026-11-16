@@ -2532,8 +2532,8 @@ msgstr "可用你的语言按名称搜索。"
 msgid "Searched every board and list."
 msgstr "已搜索所有看板和列表。"
 
-msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
-msgstr "复制敏感片段后，若期间未复制其他内容，则在此秒数后从剪贴板清除。设为 0 则永不清除。粘贴时会改为恢复你原本的剪贴板内容。"
+msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. Pasting restores your own clipboard instead."
+msgstr "复制敏感片段后，若期间未复制其他内容，则在此秒数后从剪贴板清除。粘贴时会改为恢复你原本的剪贴板内容。"
 
 msgid "See the tips"
 msgstr "查看提示"

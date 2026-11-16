@@ -317,7 +317,7 @@ export component SettingsPage inherits Window {
     in property <int> backups-keep: 7;
     in property <int> backups-keep-min: 1;
     in property <int> backups-keep-max: 60;
-    // Seconds before a copied sensitive item is cleared from the clipboard; 0 = never.
+    // Seconds before a copied sensitive item is cleared from the clipboard (5 to 600).
     in property <int> clipboard-clear-secs: 30;
     in property <int> clipboard-clear-secs-max: 600;
     // The paste key of each program ("keepass.exe": never paste, "mintty.exe": Shift+Insert).
@@ -1184,13 +1184,13 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Clear the clipboard after copying a sensitive item");
-                        description: @tr("Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead.");
+                        description: @tr("Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. Pasting restores your own clipboard instead.");
                         NumberStepper {
                             label: @tr("Clipboard clear time");
                             decrease-label: @tr("Clear the clipboard sooner");
                             increase-label: @tr("Clear the clipboard later");
                             unit: @tr("s");
-                            min: 0;
+                            min: 5;
                             max: root.clipboard-clear-secs-max;
                             step: 5;
                             value: root.clipboard-clear-secs;

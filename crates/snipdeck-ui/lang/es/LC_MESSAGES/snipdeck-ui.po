@@ -2540,8 +2540,8 @@ msgstr "Búscalos por nombre, en tu idioma."
 msgid "Searched every board and list."
 msgstr "Se buscó en todos los tableros y listas."
 
-msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
-msgstr "Segundos antes de que un fragmento sensible copiado se borre del portapapeles, si desde entonces no se ha copiado nada más. 0 nunca lo borra. Al pegar se restaura tu propio portapapeles."
+msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. Pasting restores your own clipboard instead."
+msgstr "Segundos antes de que un fragmento sensible copiado se borre del portapapeles, si desde entonces no se ha copiado nada más. Al pegar se restaura tu propio portapapeles."
 
 msgid "See the tips"
 msgstr "Ver los consejos"

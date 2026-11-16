@@ -544,6 +544,7 @@ fn a_moved_file_says_so() {
     let mut w = recent_world();
     w.ctl.on_clipboard_change(&ClipboardObservation {
         files: vec![gone.to_string_lossy().into_owned()],
+        source_app: Some("explorer.exe".to_owned()),
         ..ClipboardObservation::default()
     });
     let id = w.ctl.recent_entries()[0].id;
@@ -562,6 +563,7 @@ fn a_moved_file_says_so() {
     // A file that is still there is read now and saved as a File item.
     w.ctl.on_clipboard_change(&ClipboardObservation {
         files: vec![kept.to_string_lossy().into_owned()],
+        source_app: Some("explorer.exe".to_owned()),
         ..ClipboardObservation::default()
     });
     let id = w.ctl.recent_entries()[0].id;
@@ -584,6 +586,7 @@ fn some_missing_files_still_paste_the_rest_and_say_so() {
             gone.to_string_lossy().into_owned(),
             kept.to_string_lossy().into_owned(),
         ],
+        source_app: Some("explorer.exe".to_owned()),
         ..ClipboardObservation::default()
     });
     let id = w.ctl.recent_entries()[0].id;

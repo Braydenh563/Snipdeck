@@ -21,9 +21,9 @@ pub const MAIN_SIDEBAR_WIDTH_DEFAULT: u32 = 232;
 pub const BACKUPS_KEEP: std::ops::RangeInclusive<u32> = 1..=60;
 /// The default number of backups kept (SPEC 5.7a).
 pub const BACKUPS_KEEP_DEFAULT: u32 = 7;
-/// How long a copied sensitive item may stay on the clipboard, in seconds (Settings > Privacy);
-/// 0 never clears it (SPEC 5.7).
-pub const CLIPBOARD_CLEAR_SECS: std::ops::RangeInclusive<u32> = 0..=600;
+/// How long a copied sensitive item may stay on the clipboard, in seconds (Settings > Privacy).
+/// There is no "never": a sensitive copy always clears (an older file's 0 reads as the default).
+pub const CLIPBOARD_CLEAR_SECS: std::ops::RangeInclusive<u32> = 5..=600;
 /// The default time before a copied sensitive item is cleared from the clipboard.
 pub const CLIPBOARD_CLEAR_SECS_DEFAULT: u32 = 30;
 
@@ -1173,6 +1173,9 @@ impl Settings {
         self.backups_keep = self
             .backups_keep
             .clamp(*BACKUPS_KEEP.start(), *BACKUPS_KEEP.end());
+        if self.clipboard_clear_secs == 0 {
+            self.clipboard_clear_secs = CLIPBOARD_CLEAR_SECS_DEFAULT;
+        }
         self.clipboard_clear_secs = self
             .clipboard_clear_secs
             .clamp(*CLIPBOARD_CLEAR_SECS.start(), *CLIPBOARD_CLEAR_SECS.end());
@@ -2093,11 +2096,16 @@ mod tests {
     }
 
     #[test]
-    fn the_clipboard_clear_time_defaults_to_thirty_seconds_and_zero_means_never() {
+    fn the_clipboard_clear_time_defaults_to_thirty_seconds_and_is_never_off() {
         assert_eq!(Settings::from_json("{}").clipboard_clear_secs, 30);
+        // An older file's 0 ("never") reads as the default; a small value is held at the floor.
         assert_eq!(
             Settings::from_json(r#"{"clipboard_clear_secs":0}"#).clipboard_clear_secs,
-            0
+            30
+        );
+        assert_eq!(
+            Settings::from_json(r#"{"clipboard_clear_secs":1}"#).clipboard_clear_secs,
+            5
         );
         assert_eq!(
             Settings::from_json(r#"{"clipboard_clear_secs":99999}"#).clipboard_clear_secs,

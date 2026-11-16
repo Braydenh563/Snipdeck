@@ -616,7 +616,7 @@ where
     }
 
     /// After a copy of a sensitive item, remembers its content on the clipboard to be cleared
-    /// `clipboard_clear_secs` from now (0 = never). A paste that restored the user's own
+    /// `clipboard_clear_secs` from now (at least 5 seconds: there is no "never"). A paste that restored the user's own
     /// clipboard leaves nothing to clear; one whose snapshot or restore failed
     /// ([`UseOutcome::PastedNotRestored`]) leaves the item there, so it is cleared like a copy.
     pub(super) fn schedule_clipboard_clear(&mut self, item: ItemId, outcome: UseOutcome) {
@@ -630,18 +630,22 @@ where
         let life = Duration::from_secs(u64::from(self.settings.clipboard_clear_secs));
         // The plaintext copies go on the same timer as the clipboard, with or without a master
         // password; the clipboard's own clear below may not apply (a paste that restored it).
-        if self.secret_files_pasted && !life.is_zero() {
+        if self.secret_files_pasted {
             // Keep the earliest: a later use must not postpone the delete.
             if self.secret_files_due.is_none() {
                 self.secret_files_due = self.clock.now().checked_add(life).ok();
             }
         }
-        if life.is_zero()
-            || matches!(outcome, UseOutcome::Pasted)
+        if matches!(outcome, UseOutcome::Pasted)
             || !self.store.item(item).is_ok_and(|i| i.sensitive)
         {
             return;
         }
+        self.arm_clipboard_clear(life);
+    }
+
+    /// Remembers what our latest write left on the clipboard, to be cleared `life` from now.
+    fn arm_clipboard_clear(&mut self, life: Duration) {
         let Ok(due) = self.clock.now().checked_add(life) else {
             return;
         };
@@ -666,6 +670,48 @@ where
             sequence,
             attempts: 0,
         });
+    }
+
+    /// Copies the selected part of a sensitive field to the clipboard (a field of a sensitive
+    /// item or template; the field's own copy would write with no markers and never clear).
+    /// `start` and `end` are byte offsets into `text`, in either order. The copy carries the
+    /// privacy markers and is cleared like a sensitive item's copy. Returns whether it copied.
+    pub fn copy_private_selection(&mut self, text: &str, start: i32, end: i32) -> bool {
+        let Some(range) = selection_range(text, start, end) else {
+            return false;
+        };
+        let Some(payload) =
+            snipdeck_platform::payload::Payload::new(vec![snipdeck_platform::payload::Data::Text(
+                text[range].to_owned(),
+            )])
+        else {
+            return false;
+        };
+        if self
+            .services
+            .clipboard
+            .write_persistent(&payload.private())
+            .is_err()
+        {
+            self.show_toast(failed());
+            return false;
+        }
+        let life = Duration::from_secs(u64::from(self.settings.clipboard_clear_secs));
+        self.arm_clipboard_clear(life);
+        true
+    }
+
+    /// [`copy_private_selection`](Self::copy_private_selection), then the text without the
+    /// selection (what the field shows after a cut). `None` when nothing was cut.
+    pub fn cut_private_selection(&mut self, text: &str, start: i32, end: i32) -> Option<String> {
+        let range = selection_range(text, start, end)?;
+        if !self.copy_private_selection(text, start, end) {
+            return None;
+        }
+        let mut rest = String::with_capacity(text.len() - range.len());
+        rest.push_str(&text[..range.start]);
+        rest.push_str(&text[range.end..]);
+        Some(rest)
     }
 
     /// A paste put the earlier clipboard back, which moved the clipboard's sequence number. If
@@ -762,4 +808,13 @@ where
             self.clipboard_clear = Some(pending);
         }
     }
+}
+
+/// The byte range between two offsets (either order) when it is a non-empty selection on
+/// character boundaries of `text`.
+fn selection_range(text: &str, a: i32, b: i32) -> Option<std::ops::Range<usize>> {
+    let (a, b) = (usize::try_from(a).ok()?, usize::try_from(b).ok()?);
+    let range = a.min(b)..a.max(b);
+    (!range.is_empty() && text.is_char_boundary(range.start) && text.is_char_boundary(range.end))
+        .then_some(range)
 }
