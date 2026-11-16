@@ -74,6 +74,18 @@ pub enum Error {
         /// The offending file.
         path: std::path::PathBuf,
     },
+    /// `snipdeck.db` is zero bytes long but the folder holds backups, attachments or a
+    /// write-ahead log: what a crashed sync client or a full disk leaves. Opening would start
+    /// an empty library beside the real data, so the open is refused and nothing is changed.
+    #[error(
+        "the database in `{}` is empty, but the folder holds backups or attachments; restore the \
+         newest backup instead of starting a new library",
+        folder.display()
+    )]
+    EmptyDatabase {
+        /// The data folder.
+        folder: std::path::PathBuf,
+    },
     /// A migration failed; the database was left at the previous version.
     #[error("migration to database format {version} ({name}) failed: {reason}")]
     Migration {

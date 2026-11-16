@@ -108,7 +108,11 @@ fn folder_imports_txt_and_md_one_item_each() {
         (1, 2, 4)
     );
     assert_eq!(report.items_skipped, 0);
-    assert!(!report.has_warnings(), "{:?}", report.warnings);
+    // DATA-31: the folder below `sub` is not read, and the import says so once.
+    assert_eq!(
+        report.warnings,
+        [snipdeck_portable::Warning::DeeperFoldersSkipped { count: 1 }]
+    );
 }
 
 #[test]

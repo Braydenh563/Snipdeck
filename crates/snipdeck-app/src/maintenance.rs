@@ -98,6 +98,8 @@ impl State {
     /// The file cannot be written.
     pub fn save(&self, data_dir: &Path) -> io::Result<()> {
         let text = serde_json::to_string_pretty(self).map_err(io::Error::other)?;
+        // A crash between create and rename leaves `maintenance.json.<pid>-n.tmp`: clear them.
+        crate::settings_store::remove_stale_temps(data_dir, STATE_FILE);
         let (mut file, temp) = crate::settings_store::create_temp(data_dir, STATE_FILE)?;
         let written = file
             .write_all(text.as_bytes())
@@ -121,12 +123,17 @@ fn is_due(last: Option<i64>, now: i64, interval: Duration) -> bool {
 }
 
 /// What a backup run did.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BackupResult {
     /// Today's file was written; `pruned` older ones were deleted.
     Created {
         /// How many old backups went.
         pruned: usize,
+        /// Items in the previous backup and in this one, when this one holds under half
+        /// (nothing was pruned then).
+        shrunk: Option<(usize, usize)>,
+        /// How many items could not be written, and the first one's title.
+        skipped: Option<(usize, String)>,
     },
     /// Today's file already existed.
     NotDue,
@@ -138,8 +145,18 @@ pub enum BackupResult {
 impl From<BackupOutcome> for BackupResult {
     fn from(outcome: BackupOutcome) -> Self {
         match outcome {
-            BackupOutcome::Created { pruned, .. } => Self::Created {
+            BackupOutcome::Created {
+                pruned,
+                suspect,
+                report,
+                ..
+            } => Self::Created {
                 pruned: pruned.len(),
+                shrunk: suspect.map(|s| (s.was, s.now)),
+                skipped: report
+                    .skipped
+                    .first()
+                    .map(|first| (report.skipped.len(), first.title.clone())),
             },
             BackupOutcome::NotDue { .. } => Self::NotDue,
         }
@@ -238,6 +255,20 @@ pub enum MaintenanceOutcome {
         /// How many old backups were deleted.
         pruned: usize,
     },
+    /// The backup holds under half the items of the one before; the older ones were kept.
+    BackupShrunk {
+        /// Items in the previous backup.
+        was: usize,
+        /// Items in this one.
+        now: usize,
+    },
+    /// The backup was written without some items whose attachments could not be read.
+    BackupSkipped {
+        /// How many items were left out.
+        count: usize,
+        /// The first one's title.
+        first: String,
+    },
     /// The backup could not be made; it is tried again at the next run.
     BackupFailed(JobError),
     /// The clock jumped forward by more than the Trash's days since the last run, so the Trash
@@ -283,6 +314,14 @@ impl MaintenanceOutcome {
                 kind: ToastKind::Neutral,
                 message: ToastMessage::CrashedLastTime,
             }),
+            Self::BackupShrunk { was, now } => Some(Toast {
+                kind: ToastKind::Danger,
+                message: ToastMessage::BackupShrunk { was, now },
+            }),
+            Self::BackupSkipped { count, first } => Some(Toast {
+                kind: ToastKind::Danger,
+                message: ToastMessage::BackupMadeSkipping { count, first },
+            }),
             Self::BackupFailed(JobError {
                 cause: Cause::Locked | Cause::Busy,
                 ..
@@ -305,6 +344,12 @@ impl MaintenanceOutcome {
     pub fn log_line(&self) -> String {
         match self {
             Self::BackupCreated { pruned } => format!("backup written, {pruned} old ones deleted"),
+            Self::BackupShrunk { was, now } => {
+                format!("backup holds {now} items, the previous one {was}; older ones kept")
+            }
+            Self::BackupSkipped { count, .. } => {
+                format!("backup written without {count} items whose attachments cannot be read")
+            }
             Self::BackupFailed(e) => format!("backup failed: {e}"),
             Self::TrashPurgeHeld => {
                 "the clock jumped forward; the Trash purge waits a day".to_owned()
@@ -471,8 +516,19 @@ impl Maintenance {
             }
             Ok(result) => {
                 self.state.last_backup = Some(seconds);
-                if let BackupResult::Created { pruned } = result {
+                if let BackupResult::Created {
+                    pruned,
+                    shrunk,
+                    skipped,
+                } = result
+                {
                     outcomes.push(MaintenanceOutcome::BackupCreated { pruned });
+                    if let Some((was, now)) = shrunk {
+                        outcomes.push(MaintenanceOutcome::BackupShrunk { was, now });
+                    }
+                    if let Some((count, first)) = skipped {
+                        outcomes.push(MaintenanceOutcome::BackupSkipped { count, first });
+                    }
                 }
                 true
             }
@@ -682,6 +738,19 @@ mod tests {
     }
 
     #[test]
+    fn saving_the_state_clears_temp_files_a_crash_left() {
+        let dir = tempfile::tempdir().unwrap();
+        let stale = dir.path().join(format!("{STATE_FILE}.4242-0.tmp"));
+        let other = dir.path().join("settings.json.4242-0.tmp");
+        fs::write(&stale, b"half").unwrap();
+        fs::write(&other, b"kept for the settings writer").unwrap();
+        State::default().save(dir.path()).unwrap();
+        assert!(!stale.exists());
+        assert!(other.exists(), "only this file's own temps");
+        assert!(dir.path().join(STATE_FILE).is_file());
+    }
+
+    #[test]
     fn a_locked_library_defers_its_backup_and_the_next_tick_retries() {
         assert!(deferred_while_locked(false, false).is_ok(), "no key ring");
         assert!(deferred_while_locked(true, true).is_ok(), "unlocked");
@@ -726,7 +795,11 @@ mod tests {
             self.backups.push(now.timestamp());
             self.backup_result
                 .clone()
-                .unwrap_or(Ok(BackupResult::Created { pruned: 0 }))
+                .unwrap_or(Ok(BackupResult::Created {
+                    pruned: 0,
+                    shrunk: None,
+                    skipped: None,
+                }))
         }
         fn purge_trash(&mut self, cutoff: Timestamp) -> Result<usize, String> {
             self.purges.push(cutoff);
@@ -767,6 +840,29 @@ mod tests {
                 MaintenanceOutcome::IntegrityOk,
             ]
         );
+    }
+
+    #[test]
+    fn a_daily_backup_that_shrank_or_left_items_out_says_so() {
+        let dir = tempfile::tempdir().unwrap();
+        let (mut m, _clock) = rig(dir.path());
+        let mut jobs = FakeJobs {
+            backup_result: Some(Ok(BackupResult::Created {
+                pruned: 0,
+                shrunk: Some((120, 3)),
+                skipped: Some((2, "Screenshot".to_owned())),
+            })),
+            ..FakeJobs::default()
+        };
+        let out = m.tick(&mut jobs);
+        assert!(out.contains(&MaintenanceOutcome::BackupShrunk { was: 120, now: 3 }));
+        let toasts: Vec<_> = out.into_iter().filter_map(MaintenanceOutcome::into_toast).collect();
+        assert!(toasts.iter().any(|t| t.message == ToastMessage::BackupShrunk { was: 120, now: 3 }));
+        assert!(toasts.iter().any(|t| t.message
+            == ToastMessage::BackupMadeSkipping {
+                count: 2,
+                first: "Screenshot".to_owned()
+            }));
     }
 
     #[test]

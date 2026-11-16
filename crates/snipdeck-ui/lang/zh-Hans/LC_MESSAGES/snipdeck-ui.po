@@ -284,6 +284,10 @@ msgstr "立即备份"
 msgid "Backed up"
 msgstr "已备份"
 
+msgid "Backed up, but {} item could not be included: \"{}\". Its attachment could not be read."
+msgid_plural "Backed up, but {} items could not be included, such as \"{}\". Their attachments could not be read."
+msgstr[0] "已备份，但有 {} 个项目（如“{}”）未能包含，其附件无法读取。"
+
 msgid "Backup folder"
 msgstr "备份文件夹"
 
@@ -632,14 +636,14 @@ msgstr "CopyQ 导出"
 msgid "Couldn't change the Windows start-up entry."
 msgstr "无法更改 Windows 开机启动项。"
 
-msgid "Couldn't clear old items out of the Trash. Check the disk has room, then restart Snipdeck to try again."
-msgstr "无法清除回收站中的旧项目。请检查磁盘空间，然后重启 Snipdeck 重试。"
+msgid "Couldn't clear old items out of the Trash. Restart Snipdeck to try again; if it keeps failing, check that the data folder can be written to."
+msgstr "无法清理回收站中的旧项目。请重启 Snipdeck 重试；如果仍然失败，请检查数据文件夹是否可写入。"
 
 msgid "Couldn't erase everything. Quit Snipdeck and try again."
 msgstr "无法全部删除。请退出 Snipdeck 后重试。"
 
-msgid "Couldn't export your library. Check the disk has room, then try again."
-msgstr "无法导出你的资料库。请检查磁盘空间，然后重试。"
+msgid "Couldn't export your library. Try again, or pick another folder."
+msgstr "无法导出你的库。请重试，或选择其他文件夹。"
 
 msgid "Couldn't export your library: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then try again."
 msgstr "无法导出你的资料库：Snipdeck 没有写入该位置的权限。请检查文件夹是否为只读，以及你的账户是否可以修改它，然后重试。"
@@ -680,8 +684,8 @@ msgstr "无法导入：文件正被其他程序占用或无法读取。请关闭
 msgid "Couldn't import that: your library is locked. Unlock it, then try again."
 msgstr "无法导入：你的资料库已锁定。请先解锁，然后重试。"
 
-msgid "Couldn't make a backup. Check the disk has room, then use Back up now in Settings."
-msgstr "无法创建备份。请检查磁盘空间，然后使用“设置”中的“立即备份”。"
+msgid "Couldn't make a backup. Try Back up now in Settings again; if it keeps failing, open the data folder from Settings and check that it can be written to."
+msgstr "无法完成备份。请在设置中再试一次“立即备份”；如果仍然失败，请从设置中打开数据文件夹，检查它是否可写入。"
 
 msgid "Couldn't make a backup: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then use Back up now in Settings."
 msgstr "无法创建备份：Snipdeck 没有写入该位置的权限。请检查文件夹是否为只读，以及你的账户是否可以修改它，然后在设置中使用“立即备份”。"
@@ -713,8 +717,8 @@ msgstr "无法完成此更改：你的资料库文件正被其他程序占用。
 msgid "Couldn't make that change: your library is locked. Unlock it, then try again."
 msgstr "无法完成此更改：你的资料库已锁定。请先解锁，然后重试。"
 
-msgid "Couldn't make today's backup. Check the disk has room, then use Back up now in Settings."
-msgstr "无法创建今天的备份。请检查磁盘空间，然后使用“设置”中的“立即备份”。"
+msgid "Couldn't make today's backup. Use Back up now in Settings to try again; if it keeps failing, open the data folder from Settings and check that it can be written to."
+msgstr "无法完成今天的备份。请在设置中使用“立即备份”重试；如果仍然失败，请从设置中打开数据文件夹，检查它是否可写入。"
 
 msgid "Couldn't make today's backup: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then use Back up now in Settings."
 msgstr "无法创建今天的备份：Snipdeck 没有写入该位置的权限。请检查文件夹是否为只读，以及你的账户是否可以修改它，然后在设置中使用“立即备份”。"
@@ -1097,8 +1101,8 @@ msgstr "一切正常。"
 msgid "Everything in the Trash is deleted for good. This can't be undone."
 msgstr "回收站中的所有内容都将被永久删除，此操作无法撤销。"
 
-msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings stay."
-msgstr "资料库中的所有内容都会被删除：看板、列表、项目、图片、草稿和备份。如需副本，请先导出。你的设置会保留。"
+msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings stay. Deleted files may still be recoverable with disk tools unless your disk is encrypted."
+msgstr "库中的所有内容都会被删除：看板、列表、项目、图片、草稿和备份。如需副本，请先导出。你的设置会保留。如果磁盘未加密，已删除的文件仍可能被磁盘工具恢复。"
 
 msgid "Expand abbreviations as I type"
 msgstr "输入时展开缩写"
@@ -2482,6 +2486,10 @@ msgstr "已保存到 {}"
 msgid "Saved {}"
 msgstr "已保存 {}"
 
+msgid "Saved {}, but {} item could not be included: \"{}\". Its attachment could not be read."
+msgid_plural "Saved {}, but {} items could not be included, such as \"{}\". Their attachments could not be read."
+msgstr[0] "已保存 {}，但有 {} 个项目（如“{}”）未能包含，其附件无法读取。"
+
 msgid "Saved {}."
 msgstr "已保存 {}。"
 
@@ -3099,6 +3107,9 @@ msgstr "以下快捷键无法使用：{}。原因见 设置 > 快捷键。"
 
 msgid "Third-party notices"
 msgstr "第三方声明"
+
+msgid "This backup holds {} items; the one before held {}. The older backups were kept. Check that nothing was deleted by mistake."
+msgstr "此备份包含 {} 个项目，上一次备份包含 {} 个。较旧的备份已保留。请检查是否误删了内容。"
 
 msgid "This board"
 msgstr "此看板"
@@ -3916,6 +3927,10 @@ msgstr[0] "此压缩包中有 {} 个文件本版本无法识别，已省略。"
 msgid "{} file, {} in all"
 msgid_plural "{} files, {} in all"
 msgstr[0] "{} 个文件，共 {} 个"
+
+msgid "{} folder inside a subfolder was not read; Snipdeck reads one level of subfolders."
+msgid_plural "{} folders inside subfolders were not read; Snipdeck reads one level of subfolders."
+msgstr[0] "子文件夹内的 {} 个文件夹未被读取；Snipdeck 只读取一级子文件夹。"
 
 msgid "{} found"
 msgstr "找到 {} 个"

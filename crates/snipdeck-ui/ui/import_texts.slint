@@ -46,6 +46,9 @@ export global ImportTexts {
     pure public function non-text-skipped(count: int) -> string {
         return @tr("{} item that is not text (a picture or file) was skipped." | "{} items that are not text (pictures or files) were skipped." % count, count);
     }
+    pure public function deeper-folders-skipped(count: int) -> string {
+        return @tr("{} folder inside a subfolder was not read; Snipdeck reads one level of subfolders." | "{} folders inside subfolders were not read; Snipdeck reads one level of subfolders." % count, count);
+    }
     pure public function truncated() -> string {
         return @tr("The import stopped early because the source is bigger than Snipdeck reads in one go.");
     }

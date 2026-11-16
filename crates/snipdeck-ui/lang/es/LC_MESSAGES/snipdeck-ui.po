@@ -285,6 +285,11 @@ msgstr "Hacer copia ahora"
 msgid "Backed up"
 msgstr "Copia de seguridad realizada"
 
+msgid "Backed up, but {} item could not be included: \"{}\". Its attachment could not be read."
+msgid_plural "Backed up, but {} items could not be included, such as \"{}\". Their attachments could not be read."
+msgstr[0] "Copia hecha, pero no se pudo incluir {} elemento: «{}». No se pudo leer su adjunto."
+msgstr[1] "Copia hecha, pero no se pudieron incluir {} elementos, como «{}». No se pudieron leer sus adjuntos."
+
 msgid "Backup folder"
 msgstr "Carpeta de copias"
 
@@ -633,14 +638,14 @@ msgstr "Exportación de CopyQ"
 msgid "Couldn't change the Windows start-up entry."
 msgstr "No se pudo cambiar la entrada de inicio de Windows."
 
-msgid "Couldn't clear old items out of the Trash. Check the disk has room, then restart Snipdeck to try again."
-msgstr "No se pudieron borrar los elementos antiguos de la papelera. Comprueba que el disco tenga espacio y reinicia Snipdeck para intentarlo de nuevo."
+msgid "Couldn't clear old items out of the Trash. Restart Snipdeck to try again; if it keeps failing, check that the data folder can be written to."
+msgstr "No se pudo vaciar la Papelera de elementos antiguos. Reinicia Snipdeck para intentarlo de nuevo; si sigue fallando, comprueba que se pueda escribir en la carpeta de datos."
 
 msgid "Couldn't erase everything. Quit Snipdeck and try again."
 msgstr "No se pudo borrar todo. Cierra Snipdeck e inténtalo de nuevo."
 
-msgid "Couldn't export your library. Check the disk has room, then try again."
-msgstr "No se pudo exportar tu biblioteca. Comprueba que el disco tenga espacio e inténtalo de nuevo."
+msgid "Couldn't export your library. Try again, or pick another folder."
+msgstr "No se pudo exportar tu biblioteca. Inténtalo de nuevo o elige otra carpeta."
 
 msgid "Couldn't export your library: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then try again."
 msgstr "No se pudo exportar tu biblioteca: Snipdeck no tiene permiso para escribir ahí. Comprueba que la carpeta no sea de solo lectura y que tu cuenta pueda modificarla, y vuelve a intentarlo."
@@ -681,8 +686,8 @@ msgstr "No se pudo importar: otro programa está usando el archivo o no se puede
 msgid "Couldn't import that: your library is locked. Unlock it, then try again."
 msgstr "No se pudo importar: tu biblioteca está bloqueada. Desbloquéala e inténtalo de nuevo."
 
-msgid "Couldn't make a backup. Check the disk has room, then use Back up now in Settings."
-msgstr "No se pudo hacer la copia de seguridad. Comprueba que el disco tenga espacio y usa Hacer copia ahora en Configuración."
+msgid "Couldn't make a backup. Try Back up now in Settings again; if it keeps failing, open the data folder from Settings and check that it can be written to."
+msgstr "No se pudo hacer la copia. Vuelve a probar Hacer copia ahora en Ajustes; si sigue fallando, abre la carpeta de datos desde Ajustes y comprueba que se pueda escribir en ella."
 
 msgid "Couldn't make a backup: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then use Back up now in Settings."
 msgstr "No se pudo hacer una copia de seguridad: Snipdeck no tiene permiso para escribir ahí. Comprueba que la carpeta no sea de solo lectura y que tu cuenta pueda modificarla, y usa Hacer copia ahora en Ajustes."
@@ -714,8 +719,8 @@ msgstr "No se pudo hacer el cambio: otro programa está usando el archivo de tu 
 msgid "Couldn't make that change: your library is locked. Unlock it, then try again."
 msgstr "No se pudo hacer el cambio: tu biblioteca está bloqueada. Desbloquéala e inténtalo de nuevo."
 
-msgid "Couldn't make today's backup. Check the disk has room, then use Back up now in Settings."
-msgstr "No se pudo hacer la copia de seguridad de hoy. Comprueba que el disco tenga espacio y usa Hacer copia ahora en Configuración."
+msgid "Couldn't make today's backup. Use Back up now in Settings to try again; if it keeps failing, open the data folder from Settings and check that it can be written to."
+msgstr "No se pudo hacer la copia de hoy. Usa Hacer copia ahora en Ajustes para reintentarlo; si sigue fallando, abre la carpeta de datos desde Ajustes y comprueba que se pueda escribir en ella."
 
 msgid "Couldn't make today's backup: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then use Back up now in Settings."
 msgstr "No se pudo hacer la copia de seguridad de hoy: Snipdeck no tiene permiso para escribir ahí. Comprueba que la carpeta no sea de solo lectura y que tu cuenta pueda modificarla, y usa Hacer copia ahora en Ajustes."
@@ -1098,8 +1103,8 @@ msgstr "Todo está en orden."
 msgid "Everything in the Trash is deleted for good. This can't be undone."
 msgstr "Todo lo de la papelera se eliminará definitivamente. No se puede deshacer."
 
-msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings stay."
-msgstr "Se borra todo lo de tu biblioteca: tableros, listas, elementos, imágenes, borradores y copias de seguridad. Exporta antes si quieres una copia. Tus ajustes se conservan."
+msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings stay. Deleted files may still be recoverable with disk tools unless your disk is encrypted."
+msgstr "Se va todo lo de tu biblioteca: tableros, listas, elementos, imágenes, borradores y copias. Exporta antes si quieres conservar una copia. Tus ajustes se quedan. Los archivos borrados aún podrían recuperarse con herramientas de disco si el disco no está cifrado."
 
 msgid "Expand abbreviations as I type"
 msgstr "Expandir abreviaturas al escribir"
@@ -2491,6 +2496,11 @@ msgstr "Guardado en {}"
 msgid "Saved {}"
 msgstr "Guardado {}"
 
+msgid "Saved {}, but {} item could not be included: \"{}\". Its attachment could not be read."
+msgid_plural "Saved {}, but {} items could not be included, such as \"{}\". Their attachments could not be read."
+msgstr[0] "Guardado {}, pero no se pudo incluir {} elemento: «{}». No se pudo leer su adjunto."
+msgstr[1] "Guardado {}, pero no se pudieron incluir {} elementos, como «{}». No se pudieron leer sus adjuntos."
+
 msgid "Saved {}."
 msgstr "{} guardado."
 
@@ -3108,6 +3118,9 @@ msgstr "Estos atajos no funcionan: {}. Configuración > Atajos indica por qué."
 
 msgid "Third-party notices"
 msgstr "Avisos de terceros"
+
+msgid "This backup holds {} items; the one before held {}. The older backups were kept. Check that nothing was deleted by mistake."
+msgstr "Esta copia tiene {} elementos; la anterior tenía {}. Se conservaron las copias más antiguas. Comprueba que no se haya borrado nada por error."
 
 msgid "This board"
 msgstr "Este tablero"
@@ -3935,6 +3948,11 @@ msgid "{} file, {} in all"
 msgid_plural "{} files, {} in all"
 msgstr[0] "{} archivo, {} en total"
 msgstr[1] "{} archivos, {} en total"
+
+msgid "{} folder inside a subfolder was not read; Snipdeck reads one level of subfolders."
+msgid_plural "{} folders inside subfolders were not read; Snipdeck reads one level of subfolders."
+msgstr[0] "No se leyó {} carpeta dentro de una subcarpeta; Snipdeck lee un nivel de subcarpetas."
+msgstr[1] "No se leyeron {} carpetas dentro de subcarpetas; Snipdeck lee un nivel de subcarpetas."
 
 msgid "{} found"
 msgstr "{} encontrados"

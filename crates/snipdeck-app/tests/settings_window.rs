@@ -1672,6 +1672,7 @@ fn every_warning() -> Vec<snipdeck_portable::Warning> {
         },
         W::SymlinkSkipped { name: name() },
         W::NonTextSkipped { count: 7 },
+        W::DeeperFoldersSkipped { count: 2 },
         W::Truncated {
             reason: "too many entries".into(),
         },
@@ -1695,6 +1696,7 @@ fn every_warning() -> Vec<snipdeck_portable::Warning> {
             | W::Unreadable { .. }
             | W::SymlinkSkipped { .. }
             | W::NonTextSkipped { .. }
+            | W::DeeperFoldersSkipped { .. }
             | W::Truncated { .. }
             | W::Note(_) => {}
         }

@@ -143,6 +143,22 @@ pub struct GcReport {
     pub failed: usize,
 }
 
+/// A zero-length database next to backups, attachments or a log is damage, not a new library.
+fn refuse_empty_database(folder: &Path, db_path: &Path) -> Result<()> {
+    let empty = fs::metadata(db_path).is_ok_and(|m| m.is_file() && m.len() == 0);
+    if !empty {
+        return Ok(());
+    }
+    let has_files = |dir: &Path| fs::read_dir(dir).is_ok_and(|mut d| d.next().is_some());
+    let log = fs::metadata(folder.join("snipdeck.db-wal")).is_ok_and(|m| m.len() > 0);
+    if log || has_files(&folder.join(BLOB_DIR)) || has_files(&folder.join("backups")) {
+        return Err(Error::EmptyDatabase {
+            folder: folder.to_path_buf(),
+        });
+    }
+    Ok(())
+}
+
 impl Store {
     /// Opens (creating it if needed) the data folder at `folder`: takes its lock, opens the
     /// database in WAL mode with foreign keys on, and migrates it to the current schema.
@@ -188,6 +204,7 @@ impl Store {
     /// Opens the database and blob folder; the caller attaches the lock.
     fn open_unlocked(folder: &Path) -> Result<Self> {
         let db_path = folder.join(DB_FILE);
+        refuse_empty_database(folder, &db_path)?;
         let mut conn = Connection::open(&db_path)?;
         conn.busy_timeout(Duration::from_secs(5))?;
         // Before migrating, so the migration's own deletes are scrubbed too. Changes no file.
@@ -336,7 +353,12 @@ impl Store {
         // A file that cannot be deleted now is counted and left for the next sweep, so one
         // locked file does not stop the rest (review M4).
         for stored in blobs {
-            if !referenced.contains(&stored.blob) && old_enough(stored.modified) {
+            // A blob a `put` handed out and no row has taken yet (an editor holding a pasted
+            // image) is not an orphan, however old its file is.
+            if !referenced.contains(&stored.blob)
+                && !self.blobs.is_pending(&stored.blob)
+                && old_enough(stored.modified)
+            {
                 if self.blobs.remove(&stored.blob, false).is_ok() {
                     report.blobs += 1;
                     report.bytes += stored.len;
@@ -695,6 +717,22 @@ mod tests {
     use super::*;
     use crate::BlobStore as _;
     use crate::blobs::FAIL_REMOVES;
+
+    #[test]
+    fn the_sweep_keeps_a_pending_blob_however_old() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = Store::open(dir.path()).unwrap();
+        let held = vec![7u8; INLINE_LIMIT + 10];
+        let snipdeck_core::Content::Blob { blob, .. } = store.blobs.put(held).unwrap() else {
+            panic!("a large payload is a blob")
+        };
+        // Grace of zero: every file counts as old enough.
+        let report = store.gc_blobs(Duration::ZERO).unwrap();
+        assert_eq!(report.blobs, 0, "a pending blob is not an orphan");
+        assert!(store.blobs.is_pending(&blob));
+        store.blobs.attached([blob]);
+        assert_eq!(store.gc_blobs(Duration::ZERO).unwrap().blobs, 1, "now it is");
+    }
 
     #[test]
     fn a_reader_sees_the_open_database_beside_its_writer_and_cannot_write() {

@@ -131,6 +131,9 @@ pub fn import_warning_text(window: &SettingsPage, warning: &Warning) -> String {
         Warning::Unreadable { name: n, .. } => texts.invoke_unreadable(name(n)),
         Warning::SymlinkSkipped { name: n } => texts.invoke_symlink_skipped(name(n)),
         Warning::NonTextSkipped { count: n } => texts.invoke_non_text_skipped(count(*n)),
+        Warning::DeeperFoldersSkipped { count: n } => {
+            texts.invoke_deeper_folders_skipped(count(*n))
+        }
         Warning::Truncated { .. } => texts.invoke_truncated(),
         Warning::Note(note) => note_text(&texts, note, &count),
     };
@@ -300,6 +303,15 @@ where
         ToastMessage::LibraryProblem => t.invoke_library_problem(),
         ToastMessage::CrashedLastTime => t.invoke_crashed_last_time(),
         ToastMessage::BackupMade => t.invoke_backup_made(),
+        ToastMessage::BackupMadeSkipping { count: n, first } => {
+            t.invoke_backup_made_skipping(count(*n), first.into())
+        }
+        ToastMessage::BackupShrunk { was, now } => {
+            t.invoke_backup_shrunk(count(*was), count(*now))
+        }
+        ToastMessage::ExportedSkipping { file, count: n, first } => {
+            t.invoke_exported_skipping(file.into(), count(*n), first.into())
+        }
         ToastMessage::ArchiveBusy => t.invoke_archive_busy(),
         ToastMessage::BackupFailed(cause) => t.invoke_backup_failed(cause.code()),
         ToastMessage::DailyBackupFailed(cause) => t.invoke_daily_backup_failed(cause.code()),

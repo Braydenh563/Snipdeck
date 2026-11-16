@@ -282,13 +282,34 @@ where
         match (op, done.made, context) {
             (ArchiveOp::DailyBackup, made, _) => ArchiveEnd::Daily(made.map(|made| match made {
                 Made::Backup(outcome) => outcome,
-                Made::File | Made::Decoded(_) | Made::Rebuilt(_) => BackupOutcome::NotDue {
+                Made::File(_) | Made::Decoded(_) | Made::Rebuilt(_) => BackupOutcome::NotDue {
                     existing: PathBuf::new(),
                 },
             })),
             (ArchiveOp::BackupNow, made, _) => {
                 let worked = made.is_ok();
                 self.show_toast(match made {
+                    Ok(Made::Backup(BackupOutcome::Created {
+                        suspect: Some(shrunk),
+                        ..
+                    })) => Toast {
+                        kind: ToastKind::Danger,
+                        message: ToastMessage::BackupShrunk {
+                            was: shrunk.was,
+                            now: shrunk.now,
+                        },
+                    },
+                    Ok(Made::Backup(BackupOutcome::Created { report, .. }))
+                        if !report.skipped.is_empty() =>
+                    {
+                        Toast {
+                            kind: ToastKind::Danger,
+                            message: ToastMessage::BackupMadeSkipping {
+                                count: report.skipped.len(),
+                                first: first_title(&report.skipped),
+                            },
+                        }
+                    }
                     Ok(_) => Toast {
                         kind: ToastKind::Success,
                         message: ToastMessage::BackupMade,
@@ -302,14 +323,24 @@ where
                 ArchiveEnd::BackupNow(worked)
             }
             (ArchiveOp::Export, made, Context::Export(path)) => match made {
-                Ok(_) => {
+                Ok(made) => {
                     let file = path
                         .file_name()
                         .map(|n| n.to_string_lossy().into_owned())
                         .unwrap_or_default();
-                    self.show_toast(Toast {
-                        kind: ToastKind::Success,
-                        message: ToastMessage::Exported { file },
+                    self.show_toast(match made {
+                        Made::File(report) if !report.skipped.is_empty() => Toast {
+                            kind: ToastKind::Danger,
+                            message: ToastMessage::ExportedSkipping {
+                                file,
+                                count: report.skipped.len(),
+                                first: first_title(&report.skipped),
+                            },
+                        },
+                        _ => Toast {
+                            kind: ToastKind::Success,
+                            message: ToastMessage::Exported { file },
+                        },
                     });
                     ArchiveEnd::Exported(Some(path))
                 }
@@ -326,6 +357,17 @@ where
             (_, _, _) => ArchiveEnd::Ignored,
         }
     }
+}
+
+/// The title of the first item an export left out, cut to fit a toast.
+fn first_title(skipped: &[snipdeck_portable::SkippedItem]) -> String {
+    const MAX: usize = 40;
+    let title = skipped.first().map_or("", |s| s.title.as_str());
+    let mut cut: String = title.chars().take(MAX).collect();
+    if title.chars().count() > MAX {
+        cut.push('…');
+    }
+    cut
 }
 
 /// Runs what a `begin_*` call came to: a job goes to the archive offload and, when it is done on

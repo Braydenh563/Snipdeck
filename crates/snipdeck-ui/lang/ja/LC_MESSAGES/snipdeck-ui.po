@@ -284,6 +284,10 @@ msgstr "今すぐバックアップ"
 msgid "Backed up"
 msgstr "バックアップ済み"
 
+msgid "Backed up, but {} item could not be included: \"{}\". Its attachment could not be read."
+msgid_plural "Backed up, but {} items could not be included, such as \"{}\". Their attachments could not be read."
+msgstr[0] "バックアップしましたが、{} 件のアイテム「{}」など、添付ファイルを読み取れず含められなかったものがあります。"
+
 msgid "Backup folder"
 msgstr "バックアップフォルダー"
 
@@ -632,14 +636,14 @@ msgstr "CopyQ エクスポート"
 msgid "Couldn't change the Windows start-up entry."
 msgstr "Windows のスタートアップ項目を変更できませんでした。"
 
-msgid "Couldn't clear old items out of the Trash. Check the disk has room, then restart Snipdeck to try again."
-msgstr "ゴミ箱の古い項目を削除できませんでした。ディスクの空き容量を確認し、Snipdeck を再起動してもう一度お試しください。"
+msgid "Couldn't clear old items out of the Trash. Restart Snipdeck to try again; if it keeps failing, check that the data folder can be written to."
+msgstr "ごみ箱の古いアイテムを削除できませんでした。Snipdeck を再起動して再試行してください。失敗が続く場合は、データフォルダーに書き込めるか確認してください。"
 
 msgid "Couldn't erase everything. Quit Snipdeck and try again."
 msgstr "すべて削除できませんでした。Snipdeck を終了してから、もう一度お試しください。"
 
-msgid "Couldn't export your library. Check the disk has room, then try again."
-msgstr "ライブラリをエクスポートできませんでした。ディスクの空き容量を確認し、もう一度お試しください。"
+msgid "Couldn't export your library. Try again, or pick another folder."
+msgstr "ライブラリをエクスポートできませんでした。もう一度試すか、別のフォルダーを選んでください。"
 
 msgid "Couldn't export your library: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then try again."
 msgstr "ライブラリを書き出せませんでした：Snipdeck はそこに書き込む権限がありません。フォルダーが読み取り専用でないこと、アカウントが変更できることを確認して、もう一度お試しください。"
@@ -680,8 +684,8 @@ msgstr "取り込めませんでした。ファイルが他のプログラムで
 msgid "Couldn't import that: your library is locked. Unlock it, then try again."
 msgstr "取り込めませんでした。ライブラリがロックされています。ロックを解除して、もう一度お試しください。"
 
-msgid "Couldn't make a backup. Check the disk has room, then use Back up now in Settings."
-msgstr "バックアップを作成できませんでした。ディスクの空き容量を確認し、設定の「今すぐバックアップ」をお使いください。"
+msgid "Couldn't make a backup. Try Back up now in Settings again; if it keeps failing, open the data folder from Settings and check that it can be written to."
+msgstr "バックアップできませんでした。設定の「今すぐバックアップ」をもう一度試してください。失敗が続く場合は、設定からデータフォルダーを開き、書き込めるか確認してください。"
 
 msgid "Couldn't make a backup: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then use Back up now in Settings."
 msgstr "バックアップを作成できませんでした：Snipdeck はそこに書き込む権限がありません。フォルダーが読み取り専用でないこと、アカウントが変更できることを確認して、設定の「今すぐバックアップ」を使ってください。"
@@ -713,8 +717,8 @@ msgstr "変更できませんでした。ライブラリのファイルが他の
 msgid "Couldn't make that change: your library is locked. Unlock it, then try again."
 msgstr "変更できませんでした。ライブラリがロックされています。ロックを解除して、もう一度お試しください。"
 
-msgid "Couldn't make today's backup. Check the disk has room, then use Back up now in Settings."
-msgstr "今日のバックアップを作成できませんでした。ディスクの空き容量を確認し、設定の「今すぐバックアップ」をお使いください。"
+msgid "Couldn't make today's backup. Use Back up now in Settings to try again; if it keeps failing, open the data folder from Settings and check that it can be written to."
+msgstr "今日のバックアップを作成できませんでした。設定の「今すぐバックアップ」で再試行してください。失敗が続く場合は、設定からデータフォルダーを開き、書き込めるか確認してください。"
 
 msgid "Couldn't make today's backup: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then use Back up now in Settings."
 msgstr "今日のバックアップを作成できませんでした：Snipdeck はそこに書き込む権限がありません。フォルダーが読み取り専用でないこと、アカウントが変更できることを確認して、設定の「今すぐバックアップ」を使ってください。"
@@ -1097,8 +1101,8 @@ msgstr "問題ありません。"
 msgid "Everything in the Trash is deleted for good. This can't be undone."
 msgstr "ゴミ箱のすべてが完全に削除されます。この操作は元に戻せません。"
 
-msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings stay."
-msgstr "ライブラリの中身がすべて削除されます。ボード、リスト、アイテム、画像、下書き、バックアップが対象です。コピーが必要なら先にエクスポートしてください。設定は残ります。"
+msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings stay. Deleted files may still be recoverable with disk tools unless your disk is encrypted."
+msgstr "ライブラリのすべて（ボード、リスト、アイテム、画像、下書き、バックアップ）が削除されます。コピーが必要なら先にエクスポートしてください。設定は残ります。ディスクが暗号化されていない場合、削除したファイルはディスクツールで復元できることがあります。"
 
 msgid "Expand abbreviations as I type"
 msgstr "入力中に略語を展開する"
@@ -2482,6 +2486,10 @@ msgstr "{} に保存しました"
 msgid "Saved {}"
 msgstr "保存: {}"
 
+msgid "Saved {}, but {} item could not be included: \"{}\". Its attachment could not be read."
+msgid_plural "Saved {}, but {} items could not be included, such as \"{}\". Their attachments could not be read."
+msgstr[0] "{} を保存しましたが、{} 件のアイテム「{}」など、添付ファイルを読み取れず含められなかったものがあります。"
+
 msgid "Saved {}."
 msgstr "{} を保存しました。"
 
@@ -3099,6 +3107,9 @@ msgstr "次のショートカットが動作していません: {}。理由は �
 
 msgid "Third-party notices"
 msgstr "サードパーティの通知"
+
+msgid "This backup holds {} items; the one before held {}. The older backups were kept. Check that nothing was deleted by mistake."
+msgstr "このバックアップには {} 件、前回のバックアップには {} 件ありました。古いバックアップは残してあります。誤って削除していないか確認してください。"
 
 msgid "This board"
 msgstr "このボード"
@@ -3916,6 +3927,10 @@ msgstr[0] "このアーカイブ内の {} 件のファイルは、このバー�
 msgid "{} file, {} in all"
 msgid_plural "{} files, {} in all"
 msgstr[0] "{} 件、合計 {} 件"
+
+msgid "{} folder inside a subfolder was not read; Snipdeck reads one level of subfolders."
+msgid_plural "{} folders inside subfolders were not read; Snipdeck reads one level of subfolders."
+msgstr[0] "サブフォルダー内の {} 個のフォルダーは読み込まれませんでした。Snipdeck が読み込むのはサブフォルダー 1 階層までです。"
 
 msgid "{} found"
 msgstr "{} 件見つかりました"

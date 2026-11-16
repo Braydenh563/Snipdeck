@@ -85,6 +85,11 @@ pub enum Warning {
         /// How many.
         count: usize,
     },
+    /// Folders inside the imported subfolders were not read (one level of subfolders is).
+    DeeperFoldersSkipped {
+        /// How many.
+        count: usize,
+    },
     /// The importer stopped at its cap on items or bytes.
     Truncated {
         /// Why it stopped.
@@ -359,6 +364,9 @@ impl fmt::Display for Warning {
                     f,
                     "{count} entry(ies) without text (images, files) were skipped"
                 )
+            }
+            Self::DeeperFoldersSkipped { count } => {
+                write!(f, "{count} folder(s) inside subfolders were not read")
             }
             Self::Truncated { reason } => write!(f, "the import stopped early: {reason}"),
             Self::Note(note) => note.fmt(f),

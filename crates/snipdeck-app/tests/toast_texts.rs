@@ -140,10 +140,13 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::AutostartSwitchedOff => 102,
         ToastMessage::AutostartPolicy => 103,
         ToastMessage::ArchiveBusy => 112,
+        ToastMessage::BackupMadeSkipping { .. } => 113,
+        ToastMessage::BackupShrunk { .. } => 114,
+        ToastMessage::ExportedSkipping { .. } => 115,
     }
 }
 
-const VARIANTS: usize = 113;
+const VARIANTS: usize = 116;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -229,6 +232,16 @@ fn samples() -> Vec<ToastMessage> {
         M::Exported {
             file: s("snipdeck.zip"),
         },
+        M::ExportedSkipping {
+            file: s("snipdeck.zip"),
+            count: 2,
+            first: s("Screenshot"),
+        },
+        M::BackupMadeSkipping {
+            count: 1,
+            first: s("Screenshot"),
+        },
+        M::BackupShrunk { was: 120, now: 3 },
         M::ExportFailed(Cause::Locked),
         M::LibraryErased,
         M::EraseFailed,
@@ -528,8 +541,17 @@ fn a_failure_toast_names_its_cause_and_ends_with_what_to_do() {
         let said = |m: ToastMessage| toast_text(&ui, &m);
         assert_eq!(
             said(ToastMessage::DailyBackupFailed(Cause::Other)),
-            "Couldn't make today's backup. Check the disk has room, then use Back up now in Settings."
+            "Couldn't make today's backup. Use Back up now in Settings to try again; if it keeps failing, open the data folder from Settings and check that it can be written to."
         );
+        // DATA-35: an unknown cause never blames the disk.
+        for m in [
+            ToastMessage::DailyBackupFailed(Cause::Other),
+            ToastMessage::BackupFailed(Cause::Other),
+            ToastMessage::ExportFailed(Cause::Other),
+            ToastMessage::TrashPurgeFailed,
+        ] {
+            assert!(!said(m).contains("disk has room"));
+        }
         assert_eq!(
             said(ToastMessage::UseFailed(Cause::DiskFull)),
             "Couldn't use this item: the disk is full. Free up some space, then try again."

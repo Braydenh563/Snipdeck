@@ -171,3 +171,54 @@ fn a_corrupt_source_fails_to_decode_and_the_library_is_never_involved() {
     assert!(import_beeftext(&mut s, &path, at(9), &skip()).is_err());
     assert_eq!(snapshot(&s), before);
 }
+
+fn files_under(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
+    let mut found = Vec::new();
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(d) = stack.pop() {
+        for e in std::fs::read_dir(d).into_iter().flatten().flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                stack.push(p);
+            } else {
+                found.push(p);
+            }
+        }
+    }
+    found.sort();
+    found
+}
+
+#[test]
+fn a_preview_of_an_archive_with_pictures_writes_no_file_and_no_row() {
+    // DATA-11: the preview reads the plan; it must not store a blob and scrub it again.
+    let src_dir = tempfile::tempdir().unwrap();
+    let mut src = Store::open(src_dir.path()).unwrap();
+    let b = board(&mut src, "Src");
+    let l = list(&mut src, b.id, "L");
+    let pic = snipdeck_core::Item::new(l.id, "Shot".to_owned(), snipdeck_core::ItemKind::Image, at(3));
+    let png = snipdeck_store::BlobStore::put(&mut src, noise(80_000, 3)).unwrap();
+    src.insert_item(
+        &pic,
+        &snipdeck_core::Formats::new(vec![snipdeck_core::Format::Png(png)]).unwrap(),
+        snipdeck_core::Placement::Last,
+    )
+    .unwrap();
+    let mut bytes = Vec::new();
+    export_to_writer(&src, at(5), &ExportOptions::default(), Cursor::new(&mut bytes)).unwrap();
+
+    let target_dir = tempfile::tempdir().unwrap();
+    let mut target = Store::open(target_dir.path()).unwrap();
+    let decoded = decode_archive(Cursor::new(bytes), "x", at(7), &skip()).unwrap();
+    let files_before = files_under(target_dir.path());
+    let rows_before = snapshot(&target);
+    let report = decoded.preview(&target, None).unwrap();
+    assert_eq!(report.items_added, 1);
+    assert_eq!(files_under(target_dir.path()), files_before, "no file written");
+    assert_eq!(snapshot(&target), rows_before);
+    decoded.apply(&mut target, None).unwrap();
+    assert!(
+        files_under(&target_dir.path().join("blobs")).len() == 1,
+        "the apply stores the picture once"
+    );
+}

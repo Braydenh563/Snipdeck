@@ -256,6 +256,12 @@ export global ToastTexts {
     pure public function backup-made() -> string {
         return @tr("Backed up");
     }
+    pure public function backup-made-skipping(count: int, first: string) -> string {
+        return @tr("Backed up, but {} item could not be included: \"{}\". Its attachment could not be read." | "Backed up, but {} items could not be included, such as \"{}\". Their attachments could not be read." % count, count, first);
+    }
+    pure public function backup-shrunk(was: int, now: int) -> string {
+        return @tr("This backup holds {} items; the one before held {}. The older backups were kept. Check that nothing was deleted by mistake.", now, was);
+    }
     pure public function backup-failed(cause: int) -> string {
         if (cause == 1) {
             return @tr("Couldn't make a backup: the disk is full. Free up some space, then use Back up now in Settings.");
@@ -272,7 +278,7 @@ export global ToastTexts {
         if (cause == 6) {
             return @tr("Couldn't make a backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings.");
         }
-        return @tr("Couldn't make a backup. Check the disk has room, then use Back up now in Settings.");
+        return @tr("Couldn't make a backup. Try Back up now in Settings again; if it keeps failing, open the data folder from Settings and check that it can be written to.");
     }
     // The daily run, not asked for by the user.
     pure public function daily-backup-failed(cause: int) -> string {
@@ -288,10 +294,10 @@ export global ToastTexts {
         if (cause == 6) {
             return @tr("Couldn't make today's backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings.");
         }
-        return @tr("Couldn't make today's backup. Check the disk has room, then use Back up now in Settings.");
+        return @tr("Couldn't make today's backup. Use Back up now in Settings to try again; if it keeps failing, open the data folder from Settings and check that it can be written to.");
     }
     pure public function trash-purge-failed() -> string {
-        return @tr("Couldn't clear old items out of the Trash. Check the disk has room, then restart Snipdeck to try again.");
+        return @tr("Couldn't clear old items out of the Trash. Restart Snipdeck to try again; if it keeps failing, check that the data folder can be written to.");
     }
     pure public function backup-restored(items: int) -> string {
         return items == 0 ? @tr("Nothing to restore: your library already has everything in that backup.") : @tr("Restored {} item from the backup" | "Restored {} items from the backup" % items, items);
@@ -358,6 +364,9 @@ export global ToastTexts {
     pure public function exported(file: string) -> string {
         return @tr("Saved {}", file);
     }
+    pure public function exported-skipping(file: string, count: int, first: string) -> string {
+        return @tr("Saved {}, but {} item could not be included: \"{}\". Its attachment could not be read." | "Saved {}, but {} items could not be included, such as \"{}\". Their attachments could not be read." % count, file, count, first);
+    }
     pure public function export-failed(cause: int) -> string {
         if (cause == 1) {
             return @tr("Couldn't export your library: the disk is full. Free up some space, then try again.");
@@ -374,7 +383,7 @@ export global ToastTexts {
         if (cause == 6) {
             return @tr("Couldn't export your library: an attachment, or your attachments together, are too big for a .snipdeck file (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then try again.");
         }
-        return @tr("Couldn't export your library. Check the disk has room, then try again.");
+        return @tr("Couldn't export your library. Try again, or pick another folder.");
     }
     pure public function library-erased() -> string {
         return @tr("Your library was erased.");

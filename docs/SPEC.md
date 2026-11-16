@@ -241,3 +241,19 @@ Post-1.0, decided:
 - Global eyedropper hotkey chord: needs Windows-only verification, not possible before release.
 - Per-swatch Ctrl+S: per-swatch save is reachable from the swatch menu.
 - OLE `IDropTarget` drops from other apps: a v1.1 deferral (`docs/reviews/v101-spec.md:68`).
+
+### Data audit (`.claude/audit/data.md`): post-1.0, decided
+
+Each item below is a feature, not a defect fix, or cannot be checked before release. Reasons stay with the decision.
+
+- DATA-5, recovery window at start-up: a failed open still ends in a message box, but the box now names the cause in words (an empty database next to backups is told apart, DATA-6). The window needs a Slint window that runs with no `Store`, a backup list and a rebuild without a library: a new start-up path of its own, to be built and measured on Windows, not squeezed in at the end. Until then Rebuild lives in Settings; a hand copy of the newest `backups/*.snipdeck` through Import works.
+- DATA-18, the `snipdeck.db.pre-v<N>.bak` copy: stays, because it is the only way back from a bad upgrade and nothing in the app restores it yet; it goes with the DATA-5 window. It holds the database only, not the attachments.
+- DATA-19, set-aside `snipdeck.damaged-<stamp>/` folders: a Settings list with Delete belongs with the DATA-5 window. Erase removes them today.
+- DATA-20, "Restore from file..." and a board-layout choice for Import: a file picker, a second preview and a layout switch in the import flow; the import itself keeps the one-board layout it has. Moving to a new PC works through the `backups` folder (Restore) today.
+- DATA-21, export of a selection or board and plain formats (CSV, JSON, Markdown, Espanso): "Export this list" to text exists; the rest is a new format family. A CSV export must neutralise cells starting with `=`, `+`, `-`, `@`.
+- DATA-24, maintenance off the UI thread: the Trash purge and the blob sweep write through the one writer connection; moving them needs a job queue that owns it. Not timed on a 10,000-item library; do that first.
+- DATA-25, a `maintenance.json` that cannot be saved: the same unwritable folder already fails the daily backup (named in a toast) and the settings save (named in a toast); a third notice would repeat them.
+- DATA-29, durable attachment rename on Windows (`MoveFileExW` with write-through): Windows-only, unverified; it needs a Windows run with a power cut or a VM kill, which cannot be done here. Until then the integrity check reports a row without its file.
+- DATA-32, undo for an import: needs the ids an import created kept until the toast closes and a cascade for the tags only it used; the Trash covers deleted items.
+- DATA-34, version history of an item, restoring one item or list out of a backup, a choice of backup frequency, a backup before a bulk act, a "last backup" line: a backup browser (large). The read-back check already runs after every backup (`BackupOutcome::Created.checked`); a backup that shrinks or leaves items out now says so.
+- Interactions not reached (disk full, a read-only folder run as non-root, OneDrive or a network folder with two PCs, Windows rename durability, DPAPI, an antivirus holding files): need a size-limited file system, a non-root run or Windows; error mapping is covered by the `Cause` tests only.

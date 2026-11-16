@@ -234,12 +234,27 @@ pub enum ToastMessage {
     CrashedLastTime,
     /// "Backed up".
     BackupMade,
+    /// "Backed up, but {count} items could not be included, such as {first}." (an attachment
+    /// could not be read; the rest of the backup is whole)
+    BackupMadeSkipping {
+        /// How many items were left out.
+        count: usize,
+        /// The title of the first one.
+        first: String,
+    },
+    /// "This backup holds {now} items, the one before held {was}. The older backups were kept."
+    BackupShrunk {
+        /// Items in the previous backup.
+        was: usize,
+        /// Items in this one.
+        now: usize,
+    },
     /// "Another backup or export is still running. Try again when it has finished."
     ArchiveBusy,
     /// "Couldn't make a backup: the disk is full. ..." (a backup the user asked for)
     BackupFailed(Cause),
-    /// "Couldn't make today's backup. Check the disk has room, then use Back up now in
-    /// Settings." (the daily run)
+    /// "Couldn't make today's backup. Use Back up now in Settings to try again; ..." (the daily
+    /// run)
     DailyBackupFailed(Cause),
     /// "Couldn't clear old items out of the Trash. ..." (the daily run)
     TrashPurgeFailed,
@@ -281,6 +296,15 @@ pub enum ToastMessage {
     Exported {
         /// The file's name.
         file: String,
+    },
+    /// "Saved {file}, but {count} items could not be included, such as {first}."
+    ExportedSkipping {
+        /// The file's name.
+        file: String,
+        /// How many items were left out.
+        count: usize,
+        /// The title of the first one.
+        first: String,
     },
     /// "Couldn't export your library: ..."
     ExportFailed(Cause),

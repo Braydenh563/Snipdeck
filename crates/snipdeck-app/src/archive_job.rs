@@ -84,8 +84,8 @@ pub enum ArchiveOp {
 pub enum Made {
     /// A backup: what [`backup::run_if_due`] did.
     Backup(BackupOutcome),
-    /// A file at the job's path.
-    File,
+    /// A file at the job's path, and what went into it (items left out are named in it).
+    File(Box<snipdeck_portable::ExportReport>),
     /// What a rebuild will apply: the backup and the salvage, read.
     Rebuilt(Box<Prepared>),
     /// A decoded source, or why it could not be read.
@@ -272,8 +272,9 @@ impl ArchiveJob {
                         detail: e.to_string(),
                     })?;
                 }
-                export_to_path(lib, *now, &options, path).map_err(|e| failure(&e))?;
-                Ok(Made::File)
+                let report =
+                    export_to_path(lib, *now, &options, path).map_err(|e| failure(&e))?;
+                Ok(Made::File(Box::new(report)))
             }
         }
     }
@@ -393,7 +394,7 @@ mod tests {
         }
         let fine = guard(ArchiveOp::BackupNow, || ArchiveDone {
             op: ArchiveOp::BackupNow,
-            made: Ok(Made::File),
+            made: Ok(Made::File(Box::default())),
         });
         assert!(fine.made.is_ok(), "no panic, no change");
     }
