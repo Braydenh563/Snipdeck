@@ -110,11 +110,14 @@ pub enum Command {
     MoveGroupDown,
     /// Colour the group under the cursor (opens the colour dialog; the window owns the dialog).
     ColourGroup,
+    /// Nest the group under the cursor in another group, or take it out to the top level (opens the
+    /// chooser; the window owns it).
+    NestGroup,
 }
 
 impl Command {
     /// Every command, in the order of `CommandTexts.all`.
-    pub const ALL: [Self; 48] = [
+    pub const ALL: [Self; 49] = [
         Self::NewItem,
         Self::NewList,
         Self::Search,
@@ -163,6 +166,7 @@ impl Command {
         Self::MoveGroupUp,
         Self::MoveGroupDown,
         Self::ColourGroup,
+        Self::NestGroup,
     ];
 
     /// The command with palette id `id`.
@@ -362,6 +366,7 @@ pub fn available(command: Command, ctx: &Context<'_>) -> bool {
         Command::FoldGroup
         | Command::RenameGroup
         | Command::ColourGroup
+        | Command::NestGroup
         | Command::UngroupGroup
         | Command::DeleteGroup => ctx.group.is_some(),
         Command::MoveGroupUp => ctx.group.is_some_and(|g| g.up),
@@ -646,6 +651,7 @@ mod tests {
             ("Move the group up", "reorder earlier"),
             ("Move the group down", "reorder later"),
             ("Group colour…", "colour color dot tint"),
+            ("Nest under…", "nest inside child"),
         ] {
             all.push((label.to_owned(), words.to_owned()));
         }
@@ -670,6 +676,7 @@ mod tests {
                             | Command::MoveGroupUp
                             | Command::MoveGroupDown
                             | Command::ColourGroup
+                            | Command::NestGroup
                     )
                 })
                 .collect()
@@ -694,7 +701,8 @@ mod tests {
                 Command::UngroupGroup,
                 Command::DeleteGroup,
                 Command::MoveGroupDown,
-                Command::ColourGroup
+                Command::ColourGroup,
+                Command::NestGroup
             ]
         );
         h.group = Some(CursorGroup {

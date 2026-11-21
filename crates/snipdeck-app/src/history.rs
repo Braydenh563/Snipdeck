@@ -104,6 +104,33 @@ pub struct Snap {
 /// Where an item sits: its list and its place in it.
 pub type Spot = (ListId, Placement<ItemId>);
 
+/// The group an item is in, with the groups that hold that group (nearest first): what putting the
+/// item back exactly needs when the group was emptied and pruned since.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Membership {
+    /// The item's innermost group.
+    pub group: Group,
+    /// The groups it is nested in, nearest first.
+    pub up: Vec<Group>,
+}
+
+impl Membership {
+    /// The membership of the members of group `id`, read from the list's `runs`.
+    #[must_use]
+    pub fn of(runs: &[snipdeck_store::GroupRun], id: GroupId) -> Option<Self> {
+        let find = |id: GroupId| runs.iter().find(|r| r.group.id == id).map(|r| r.group.clone());
+        let group = find(id)?;
+        let mut up: Vec<Group> = Vec::new();
+        let mut at = group.parent;
+        while let Some(parent) = at.filter(|_| up.len() < snipdeck_core::MAX_GROUP_DEPTH) {
+            let Some(found) = find(parent) else { break };
+            at = found.parent;
+            up.push(found);
+        }
+        Some(Self { group, up })
+    }
+}
+
 /// A stored record the history can write back whole: a tag, a list or a board.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Record {
@@ -153,17 +180,32 @@ pub enum Change {
     /// A group exists, holding these items (they gather under the topmost). Undoing a
     /// creation is [`Change::Ungroup`]; undoing an ungroup is this.
     Group {
-        /// The group, with the name and collapsed flag it has.
+        /// The group, with the name, collapsed flag and parent it has.
         group: Group,
-        /// Its members, top to bottom.
+        /// Its own members, top to bottom (those of the groups nested in it are theirs).
         members: Vec<ItemId>,
+        /// The groups nested in it (made again, they sit in it).
+        children: Vec<GroupId>,
     },
-    /// The group is gone and its items stay in the list ungrouped.
+    /// The group is gone; its members and the groups nested in it go up to its parent (or stay
+    /// in the list ungrouped).
     Ungroup {
         /// The group as it was.
         group: Group,
-        /// Its members, top to bottom.
+        /// Its own members, top to bottom.
         members: Vec<ItemId>,
+        /// The groups that were nested in it.
+        children: Vec<GroupId>,
+    },
+    /// A group (with everything in it) was nested under another, or taken out to the top level,
+    /// and went from one place in its list to another.
+    Reparent {
+        /// The group.
+        group: GroupId,
+        /// What undo restores: the group it was in, and where its run was.
+        from: (Option<GroupId>, Placement<ItemId>),
+        /// What redo restores.
+        to: (Option<GroupId>, Placement<ItemId>),
     },
     /// A whole group went from one place in its list to another (members stay together).
     MoveRun {
@@ -184,7 +226,7 @@ pub enum Change {
         /// Where it was before.
         from: Spot,
         /// The group it was in before, if any: Undo restores exactly this membership.
-        from_group: Option<Group>,
+        from_group: Option<Membership>,
     },
     /// The inverse of [`Change::Join`]: the item goes back to where it was.
     Leave {
@@ -195,7 +237,7 @@ pub enum Change {
         /// Where it goes back to.
         from: Spot,
         /// The group it goes back into, if any (`None`: it ends up in no group).
-        from_group: Option<Group>,
+        from_group: Option<Membership>,
     },
     /// An item's group is set to exactly this one (`None`: no group), wherever it sits. Recorded
     /// before moves that would otherwise re-derive the membership from the row above; it
@@ -204,7 +246,7 @@ pub enum Change {
         /// The item.
         item: ItemId,
         /// The group it belongs to (made again if it was emptied since), or none.
-        group: Option<Group>,
+        group: Option<Membership>,
     },
     /// A group was renamed or folded.
     Rename {
@@ -274,13 +316,28 @@ impl Change {
                 from: *to,
                 to: *from,
             },
-            Self::Group { group, members } => Self::Ungroup {
+            Self::Group {
+                group,
+                members,
+                children,
+            } => Self::Ungroup {
                 group: group.clone(),
                 members: members.clone(),
+                children: children.clone(),
             },
-            Self::Ungroup { group, members } => Self::Group {
+            Self::Ungroup {
+                group,
+                members,
+                children,
+            } => Self::Group {
                 group: group.clone(),
                 members: members.clone(),
+                children: children.clone(),
+            },
+            Self::Reparent { group, from, to } => Self::Reparent {
+                group: *group,
+                from: *to,
+                to: *from,
             },
             Self::MoveRun { group, from, to } => Self::MoveRun {
                 group: *group,
@@ -381,6 +438,10 @@ impl Change {
             Self::MoveRun { from, to, .. } => {
                 after(out, from);
                 after(out, to);
+            }
+            Self::Reparent { from, to, .. } => {
+                after(out, &from.1);
+                after(out, &to.1);
             }
             Self::Join { item, from, .. } | Self::Leave { item, from, .. } => {
                 out.items.push(*item);

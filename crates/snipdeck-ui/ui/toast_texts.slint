@@ -236,6 +236,9 @@ export global ToastTexts {
     pure public function group-nothing() -> string {
         return @tr("Select the items to group first");
     }
+    pure public function group-too-deep() -> string {
+        return @tr("Groups nest three levels deep at most");
+    }
     pure public function tag-deleted(name: string) -> string {
         return @tr("Deleted tag \"{}\"", name);
     }

@@ -46,7 +46,7 @@ where
             // (Search moves the window's focus, Tour opens the tour window). The arm stays only so
             // the match is exhaustive.
             // The window's own: the focus move, the tour window and the colour dialog (`main_binding`).
-            Command::Search | Command::Tour | Command::ColourGroup => {}
+            Command::Search | Command::Tour | Command::ColourGroup | Command::NestGroup => {}
             Command::ShowPanel => self.main_toggle_panel(),
             Command::Symbols => {
                 if self.settings.show_symbols_tab {

@@ -240,6 +240,14 @@ where
                 crate::onboarding_binding::request_open();
                 return;
             }
+            // The nesting chooser is the window's own too, and opens over the same header.
+            crate::commands::Command::NestGroup => {
+                let cursor = self.shown.borrow().as_ref().map_or(0, |s| s.cursor);
+                if let Some(window) = self.window.upgrade() {
+                    window.invoke_open_group_nest(to_i32(cursor));
+                }
+                return;
+            }
             // The colour dialog is the window's own: it opens over the header under the cursor.
             crate::commands::Command::ColourGroup => {
                 let cursor = self.shown.borrow().as_ref().map_or(0, |s| s.cursor);
@@ -855,6 +863,11 @@ where
             .main_group_move_start(index(i)));
         wire!(on_group_ungroup_requested, |ctl, i| ctl
             .main_group_ungroup(index(i)));
+        wire!(on_group_nest_requested, |ctl, i| ctl
+            .main_group_nest_start(index(i)));
+        wire!(on_group_nest_chosen, |ctl, i| ctl
+            .main_group_nest_chosen(index(i)));
+        wire!(on_group_nest_dismissed, |ctl| ctl.main_group_nest_cancel());
         wire!(on_group_delete_requested, |ctl, i| ctl
             .main_group_delete(index(i)));
         wire!(on_item_reorder_requested, |ctl, d| ctl
@@ -1389,6 +1402,20 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
         })));
         window.set_tag_depths(model(screen.tags.iter().map(|t| to_i32(t.depth))));
     }
+    if differs(&|p| p.nest_choices == screen.nest_choices) {
+        let top = ui::MenuTexts::get(window).invoke_group_nest_top();
+        window.set_nest_choices(model(screen.nest_choices.iter().map(|c| ui::ChoiceEntry {
+            label: match &c.name {
+                // A nested group's name is set in by a step per level.
+                Some(name) => format!("{}{name}", "\u{2003}".repeat(c.depth)).into(),
+                None => top.clone(),
+            },
+            count: if c.name.is_some() { to_i32(c.count) } else { -1 },
+            color: slint::Color::default(),
+            icon: slint::Image::default(),
+            checked: false,
+        })));
+    }
     if differs(&|p| p.tag_choices == screen.tag_choices) {
         window.set_tag_choices(model(screen.tag_choices.iter().map(|t| ui::ChoiceEntry {
             label: t.name.as_str().into(),
@@ -1594,13 +1621,14 @@ fn payload_key(payload: Payload) -> Option<Key> {
     }
 }
 
-/// The items a list holds: headers stand for their group's count (members folded away included) and the members
-/// shown under an open header are not counted twice.
+/// The items a list holds: a top-level header stands for its group's count (members folded away and nested groups
+/// included) and the rows shown under it are not counted twice.
 fn list_total(rows: &[crate::main_window::Row]) -> usize {
     rows.iter()
         .map(|r| match &r.header {
-            Some(h) => h.count,
-            None => usize::from(!r.grouped),
+            Some(h) if h.depth == 0 => h.count,
+            Some(_) => 0,
+            None => usize::from(r.depth == 0),
         })
         .sum()
 }
@@ -1661,7 +1689,12 @@ fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
             .map_or(0, |h| i32::try_from(h.count).unwrap_or(i32::MAX)),
         group_collapsed: row.header.as_ref().is_some_and(|h| h.collapsed),
         group_colour: accent_index(row.header.as_ref().and_then(|h| h.colour)),
-        grouped: row.grouped,
+        depth: row
+            .header
+            .as_ref()
+            .map_or(row.depth, |h| h.depth)
+            .try_into()
+            .unwrap_or(i32::MAX),
     }
 }
 
@@ -2058,7 +2091,7 @@ mod tests {
     fn the_list_total_counts_items_not_headers_and_folded_members() {
         use crate::main_window::{Key, Row};
         use crate::panel::GroupHeader;
-        let item = |grouped: bool, header: Option<GroupHeader>| Row {
+        let item = |depth: usize, header: Option<GroupHeader>| Row {
             key: Key::Item(snipdeck_core::ItemId::generate()),
             kind: snipdeck_core::ItemKind::Text,
             sensitive: false,
@@ -2070,27 +2103,30 @@ mod tests {
             selected: false,
             marks: crate::search_mark::marks("", "", false, None, ""),
             header,
-            grouped,
+            depth,
         };
-        let head = |count, collapsed| {
+        let head = |count, collapsed, depth| {
             Some(GroupHeader {
                 group: snipdeck_core::GroupId::generate(),
                 name: "G".into(),
                 count,
                 collapsed,
                 colour: None,
+                depth,
             })
         };
         let rows = [
-            item(false, head(2, false)),
-            item(true, None),
-            item(true, None),
-            item(false, None),
-            item(false, None),
-            item(false, head(5, true)),
+            item(0, head(3, false, 0)),
+            item(1, None),
+            item(1, head(2, false, 1)),
+            item(2, None),
+            item(2, None),
+            item(0, None),
+            item(0, None),
+            item(0, head(5, true, 0)),
         ];
-        assert_eq!(list_total(&rows), 9);
-        assert_eq!(list_total(&rows[3..5]), 2);
+        assert_eq!(list_total(&rows), 10);
+        assert_eq!(list_total(&rows[5..7]), 2);
     }
 
     #[test]
@@ -2114,7 +2150,7 @@ mod tests {
                 "report",
             ),
             header: None,
-            grouped: false,
+            depth: 0,
         };
         let mapped = main_row(&row, false);
         assert_eq!(mapped.mark_before.as_str(), "Q3 ");

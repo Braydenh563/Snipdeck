@@ -19,6 +19,7 @@ use snipdeck_store::{
     TriggerRepo,
 };
 
+use crate::group_walk::GroupWalk;
 use crate::panel::{GroupHeader, ListLabel};
 use crate::search_mark::{self, Marks};
 use crate::settings::RowDensity;
@@ -200,8 +201,8 @@ pub struct Row {
     pub marks: Marks,
     /// The row is a group's header, not an item: `title` is its name.
     pub header: Option<GroupHeader>,
-    /// The item sits under a group's header: the card is indented.
-    pub grouped: bool,
+    /// How many groups the item sits in (0: not in one): the card is indented by one step each.
+    pub depth: usize,
 }
 
 /// A list in the sidebar.
@@ -383,14 +384,15 @@ impl Default for MainModel {
 
 /// A row's source, before it becomes text.
 enum Entry<'a> {
-    Item(&'a Item),
+    /// An item, with how many groups it sits in.
+    Item(&'a Item, usize),
     Trashed(&'a TrashEntry),
-    /// A group's header above its members.
-    Header(&'a GroupRun),
+    /// A group's header above its members, with how many groups it is nested in.
+    Header(&'a GroupRun, usize),
 }
 
 /// The row of a group's header.
-fn header_row(run: &GroupRun) -> Row {
+fn header_row(run: &GroupRun, depth: usize) -> Row {
     Row {
         key: Key::Group(run.group.id),
         kind: ItemKind::Text,
@@ -405,11 +407,12 @@ fn header_row(run: &GroupRun) -> Row {
         header: Some(GroupHeader {
             group: run.group.id,
             name: run.group.name.as_str().to_owned(),
-            count: run.items.len(),
+            count: run.run.len(),
             collapsed: run.group.collapsed,
             colour: run.group.colour,
+            depth,
         }),
-        grouped: false,
+        depth: 0,
     }
 }
 
@@ -814,20 +817,20 @@ impl MainModel {
                 .matches(i, self.triggered.contains(&i.id), &self.tree)
         });
         if !self.shows_groups() {
-            return items.map(Entry::Item).collect();
+            return items.map(|i| Entry::Item(i, 0)).collect();
         }
-        // A group is a run of the list's blocks: its header goes above the first member, and a
-        // folded group shows the header only.
+        // A group is a run of the list's blocks: its header goes above the first member (a nested
+        // group's below its parent's), and a folded group shows the header only, with the groups
+        // nested in it hidden too.
         let mut entries = Vec::new();
-        let mut open: Option<GroupId> = None;
+        let mut walk = GroupWalk::new(self.open_groups());
         for item in items {
-            let run = self.group_of(item.id);
-            if let Some(run) = run.filter(|r| open != Some(r.group.id)) {
-                entries.push(Entry::Header(run));
+            let step = walk.step(item.id);
+            for (run, depth) in step.headers {
+                entries.push(Entry::Header(run, depth));
             }
-            open = run.map(|r| r.group.id);
-            if run.is_none_or(|r| !r.group.collapsed) {
-                entries.push(Entry::Item(item));
+            if !step.hidden {
+                entries.push(Entry::Item(item, step.depth));
             }
         }
         entries
@@ -1075,9 +1078,9 @@ impl MainModel {
         self.entries()
             .into_iter()
             .map(|e| match e {
-                Entry::Item(i) => Key::Item(i.id),
+                Entry::Item(i, _) => Key::Item(i.id),
                 Entry::Trashed(t) => t.target.into(),
-                Entry::Header(r) => Key::Group(r.group.id),
+                Entry::Header(r, _) => Key::Group(r.group.id),
             })
             .collect()
     }
@@ -1094,7 +1097,7 @@ impl MainModel {
         self.entries()
             .into_iter()
             .map(|entry| match entry {
-                Entry::Item(item) => {
+                Entry::Item(item, depth) => {
                     let title = if item.title.trim().is_empty() {
                         item.preview.lines().next().unwrap_or_default().to_owned()
                     } else {
@@ -1125,7 +1128,7 @@ impl MainModel {
                         label: item.label,
                         selected: self.selected.contains(&Key::Item(item.id)),
                         header: None,
-                        grouped: self.group_of(item.id).is_some() && self.shows_groups(),
+                        depth,
                     }
                 }
                 Entry::Trashed(entry) => {
@@ -1164,10 +1167,10 @@ impl MainModel {
                         selected: self.selected.contains(&key),
                         marks,
                         header: None,
-                        grouped: false,
+                        depth: 0,
                     }
                 }
-                Entry::Header(run) => header_row(run),
+                Entry::Header(run, depth) => header_row(run, depth),
             })
             .collect()
     }
@@ -1577,7 +1580,7 @@ mod tests {
         let (_, ids, group) = grouped(&mut store, &mut model);
         let rows = model.rows();
         assert_eq!(rows[0].key, Key::Item(ids[0]));
-        assert!(rows[0].header.is_none() && !rows[0].grouped);
+        assert!(rows[0].header.is_none() && rows[0].depth == 0);
         assert_eq!(rows[1].key, Key::Group(group.id));
         let header = rows[1].header.as_ref().expect("header");
         assert_eq!(
@@ -1585,8 +1588,97 @@ mod tests {
             ("Pair", 2, false)
         );
         assert_eq!(rows[2].key, Key::Item(ids[1]));
-        assert!(rows[2].grouped && rows[3].grouped);
+        assert!(rows[2].depth == 1 && rows[3].depth == 1);
         assert_eq!(model.keys().len(), model.rows().len());
+    }
+
+    /// Groups the first three items of the fullest list as Outer, with Inner nested around the
+    /// last two: rows are [Outer, a, Inner, b, c, (rest)].
+    fn nested(
+        store: &mut Store,
+        model: &mut MainModel,
+    ) -> (ListId, Vec<ItemId>, snipdeck_core::Group, snipdeck_core::Group) {
+        use snipdeck_store::GroupRepo;
+        let (list, ids) = fullest_list(model, store);
+        let outer = snipdeck_core::Group::new(list, Name::new("Outer").expect("name"));
+        store.create_group(&outer, &ids[0..3]).expect("outer");
+        let inner = snipdeck_core::Group {
+            parent: Some(outer.id),
+            ..snipdeck_core::Group::new(list, Name::new("Inner").expect("name"))
+        };
+        store.create_group(&inner, &ids[1..3]).expect("inner");
+        model.reload(store).expect("reload");
+        model.open(Section::List(list));
+        (list, ids, outer, inner)
+    }
+
+    #[test]
+    fn a_nested_group_shows_its_header_below_its_parents_and_indents_by_depth() {
+        let (mut store, mut model) = loaded();
+        let (_, ids, outer, inner) = nested(&mut store, &mut model);
+        let rows = model.rows();
+        assert_eq!(
+            model.keys()[..5],
+            [
+                Key::Group(outer.id),
+                Key::Item(ids[0]),
+                Key::Group(inner.id),
+                Key::Item(ids[1]),
+                Key::Item(ids[2]),
+            ]
+        );
+        let depth = |r: &Row| r.header.as_ref().map_or(r.depth, |h| h.depth);
+        assert_eq!(rows[..5].iter().map(depth).collect::<Vec<_>>(), [0, 1, 1, 2, 2]);
+        assert_eq!(rows[0].header.as_ref().map(|h| h.count), Some(3));
+        assert_eq!(rows[2].header.as_ref().map(|h| h.count), Some(2));
+        assert_eq!(model.group_of(ids[2]).map(|r| r.group.id), Some(inner.id));
+    }
+
+    #[test]
+    fn folding_a_parent_hides_the_groups_nested_in_it() {
+        use snipdeck_store::GroupRepo;
+        let (mut store, mut model) = loaded();
+        let (list, ids, mut outer, mut inner) = nested(&mut store, &mut model);
+        outer.collapsed = true;
+        store.update_group(&outer).expect("fold");
+        model.reload(&store).expect("reload");
+        model.open(Section::List(list));
+        assert_eq!(model.keys()[..2], [Key::Group(outer.id), model.keys()[1]]);
+        assert!(
+            !model.keys().contains(&Key::Group(inner.id))
+                && !model.keys().contains(&Key::Item(ids[0]))
+                && !model.keys().contains(&Key::Item(ids[2])),
+            "the parent's own members, the nested header and its members are all hidden"
+        );
+        // Unfolded again, a folded child hides only its own members.
+        outer.collapsed = false;
+        inner.collapsed = true;
+        store.update_group(&outer).expect("unfold");
+        store.update_group(&inner).expect("fold child");
+        model.reload(&store).expect("reload");
+        model.open(Section::List(list));
+        assert_eq!(
+            model.keys()[..3],
+            [Key::Group(outer.id), Key::Item(ids[0]), Key::Group(inner.id)]
+        );
+        assert!(!model.keys().contains(&Key::Item(ids[1])));
+    }
+
+    #[test]
+    fn a_sort_orders_the_rows_inside_each_block_of_a_nested_group() {
+        let (mut store, mut model) = loaded();
+        let (list, ids, _, inner) = nested(&mut store, &mut model);
+        let mut sorted = model.lists().iter().find(|l| l.id == list).expect("list").clone();
+        sorted.sort = Sort::new(snipdeck_core::SortKey::Name, true);
+        store.update_list(&sorted).expect("sort");
+        model.reload(&store).expect("reload");
+        model.open(Section::List(list));
+        let keys = model.keys();
+        let at = |k: Key| keys.iter().position(|x| *x == k).expect("row");
+        assert!(at(Key::Item(ids[0])) < at(Key::Group(inner.id)), "the parent's member stays above the child");
+        let (b, c) = (at(Key::Item(ids[1])), at(Key::Item(ids[2])));
+        assert!(at(Key::Group(inner.id)) < b.min(c), "the child's members stay under its header");
+        assert!(b.abs_diff(c) == 1, "and together");
     }
 
     #[test]
@@ -1616,7 +1708,7 @@ mod tests {
             model
                 .rows()
                 .iter()
-                .all(|r| r.header.is_none() && !r.grouped),
+                .all(|r| r.header.is_none() && r.depth == 0),
             "a search is flat"
         );
         model.set_query(&store, "").expect("clear");

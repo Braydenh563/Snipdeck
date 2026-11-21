@@ -1,6 +1,6 @@
 //! Item actions and the Trash with its Undo.
 
-use crate::history::{Action, Change, Record};
+use crate::history::{Action, Change, Membership, Record};
 use snipdeck_core::template::transform::Transform;
 use snipdeck_core::{Item, ItemId, Name, Placement, Tag};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
@@ -63,7 +63,7 @@ where
             MainAction::Pin => self.pin(&items),
             MainAction::Duplicate => self.duplicate(&items),
             MainAction::Move | MainAction::Tag | MainAction::PasteAs => {
-                self.group_move = None;
+                self.group_move.clear();
                 self.main.set_chooser(targets);
             }
             MainAction::Delete => self.trash_items(&items),
@@ -317,7 +317,7 @@ where
             return;
         };
         let (list, name) = (list.id, list.name.as_str().to_owned());
-        let carried = self.group_move.take();
+        let carried = std::mem::take(&mut self.group_move);
         let items: Vec<ItemId> = self
             .main
             .chooser()
@@ -337,12 +337,11 @@ where
             .filter_map(|id| {
                 let from = self.store.item(*id).ok()?.list_id;
                 let runs = self.store.groups_of(from).ok()?;
-                runs.iter()
-                    .find(|r| r.items.contains(id))
-                    .map(|r| Change::Regroup {
-                        item: *id,
-                        group: Some(r.group.clone()),
-                    })
+                let run = runs.iter().find(|r| r.items.contains(id))?;
+                Some(Change::Regroup {
+                    item: *id,
+                    group: Membership::of(&runs, run.group.id),
+                })
             })
             .collect();
         let mut changes = Vec::new();
@@ -352,15 +351,29 @@ where
             for id in &items {
                 move_recorded(b, *id, list, Placement::Last, &mut changes)?;
             }
-            // A moved group stays a group: made again in the new list with the same name, fold and colour.
-            if let Some(old) = &carried {
-                let mut group = snipdeck_core::Group::new(list, old.name.clone());
-                group.collapsed = old.collapsed;
-                group.colour = old.colour;
-                b.create_group(&group, &items)?;
+            // A moved group stays a group, with the groups nested in it: made again in the new
+            // list with the same names, folds and colours. The outermost holds every item, each
+            // nested one its own.
+            let mut made: Vec<(snipdeck_core::GroupId, snipdeck_core::GroupId)> = Vec::new();
+            for old in &carried {
+                let mut group = snipdeck_core::Group::new(list, old.group.name.clone());
+                group.collapsed = old.group.collapsed;
+                group.colour = old.group.colour;
+                group.parent = old
+                    .group
+                    .parent
+                    .and_then(|p| made.iter().find(|(o, _)| *o == p).map(|(_, n)| *n));
+                let members = if group.parent.is_some() {
+                    old.items.clone()
+                } else {
+                    items.clone()
+                };
+                b.create_group(&group, &members)?;
+                made.push((old.group.id, group.id));
                 changes.push(Change::Group {
                     group,
-                    members: items.clone(),
+                    members,
+                    children: Vec::new(),
                 });
             }
             Ok(())

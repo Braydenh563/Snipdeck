@@ -6,6 +6,7 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use crate::{
+    group_walk::GroupWalk,
     index_cache::{IndexCache, Snapshot},
     main_window::SelectMode,
     search_mark,
@@ -92,6 +93,8 @@ pub struct GroupHeader {
     pub collapsed: bool,
     /// The group's colour, if it has one (the Main window shows it as a dot).
     pub colour: Option<snipdeck_core::ListAccent>,
+    /// How many groups it is nested in (0: at the top level). The Main window indents by it.
+    pub depth: usize,
 }
 
 /// A list's name and accent, shown on rows in mixed views.
@@ -480,7 +483,7 @@ impl PanelModel {
                 .iter()
                 .filter(|(i, _)| run.items.contains(&i.id))
                 .collect();
-            let mut header = Self::header_row(run);
+            let mut header = Self::header_row(run, 0);
             header.header = header.header.map(|h| GroupHeader {
                 count: mine.len(),
                 collapsed: false,
@@ -502,28 +505,21 @@ impl PanelModel {
     /// itself shows no groups: a group is a run of the manual order.
     fn list_rows(&self) -> Vec<Row> {
         let manual = self.list().is_some_and(|l| l.sort.is_manual());
-        let runs: HashMap<ItemId, &GroupRun> = if manual {
-            self.groups
-                .iter()
-                .flat_map(|run| run.items.iter().map(move |i| (*i, run)))
-                .collect()
-        } else {
-            HashMap::new()
-        };
+        let mut walk = GroupWalk::new(if manual { &self.groups } else { &[] });
         let mut rows = Vec::new();
-        let mut open: Option<GroupId> = None;
         let mut number = 0;
         for item in self.list_items() {
-            let run = runs.get(&item.id).copied();
-            if let Some(run) = run.filter(|r| open != Some(r.group.id)) {
-                rows.push(Self::header_row(run));
+            // A folded group hides the groups nested in it, and a nested group shows its header
+            // below its parent's.
+            let step = walk.step(item.id);
+            for (run, depth) in step.headers {
+                rows.push(Self::header_row(run, depth));
             }
-            open = run.map(|r| r.group.id);
-            if run.is_some_and(|r| r.group.collapsed) {
+            if step.hidden {
                 continue;
             }
             let mut row = self.row(item, number, false, None);
-            row.grouped = run.is_some();
+            row.grouped = step.depth > 0;
             rows.push(row);
             number += 1;
         }
@@ -531,7 +527,7 @@ impl PanelModel {
     }
 
     /// The header row of `run`.
-    fn header_row(run: &GroupRun) -> Row {
+    fn header_row(run: &GroupRun, depth: usize) -> Row {
         Row {
             id: ItemId::from_uuid(*run.group.id.as_uuid()),
             number: 0,
@@ -551,9 +547,10 @@ impl PanelModel {
             header: Some(GroupHeader {
                 group: run.group.id,
                 name: run.group.name.as_str().to_owned(),
-                count: run.items.len(),
+                count: run.run.len(),
                 collapsed: run.group.collapsed,
                 colour: run.group.colour,
+                depth,
             }),
             grouped: false,
         }

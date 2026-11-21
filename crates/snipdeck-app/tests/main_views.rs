@@ -180,7 +180,7 @@ fn a_group_keeps_its_header_under_a_sort_and_sorts_inside() {
     let mut expect = members.clone();
     expect.sort_by_key(|t| std::cmp::Reverse(t.to_lowercase()));
     assert_eq!(members, expect, "sorted inside the group");
-    assert!(screen.rows[at + 1].grouped && screen.rows[at + 2].grouped);
+    assert!(screen.rows[at + 1].depth == 1 && screen.rows[at + 2].depth == 1);
 }
 
 #[test]

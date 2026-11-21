@@ -119,6 +119,7 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::GroupNeedsList => 112,
         ToastMessage::GroupColourFilter => 113,
         ToastMessage::GroupNothing => 114,
+        ToastMessage::GroupTooDeep => 120,
         ToastMessage::TagDeleted { .. } => 115,
         ToastMessage::TagMerged { .. } => 119,
         ToastMessage::UndoStopped => 116,
@@ -150,7 +151,7 @@ const fn position(message: &ToastMessage) -> usize {
     }
 }
 
-const VARIANTS: usize = 120;
+const VARIANTS: usize = 121;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -303,6 +304,7 @@ fn samples() -> Vec<ToastMessage> {
         M::GroupNeedsList,
         M::GroupColourFilter,
         M::GroupNothing,
+        M::GroupTooDeep,
         M::TagDeleted { name: s("work") },
         M::TagMerged {
             from: s("work"),
@@ -490,6 +492,10 @@ fn what_a_toast_carries_reaches_its_sentence() {
         assert_eq!(
             said(ToastMessage::GroupNothing),
             "Select the items to group first"
+        );
+        assert_eq!(
+            said(ToastMessage::GroupTooDeep),
+            "Groups nest three levels deep at most"
         );
         assert_eq!(
             said(ToastMessage::TagDeleted { name: s("work") }),

@@ -282,9 +282,11 @@ pub struct Controller<S, C, K, T> {
     board_delete: Option<BoardId>,
     /// The Main window asks before deleting this folded group (its items are out of sight).
     group_delete: Option<snipdeck_core::GroupId>,
-    /// The group the *Move to list* chooser was opened for: it is made again, with its name and fold, in the list the
-    /// items land in.
-    group_move: Option<snipdeck_core::Group>,
+    /// The group the *Move to list* chooser was opened for and the groups nested in it, parents first: they are made
+    /// again, with their names, folds and colours, in the list the items land in. Empty: no group.
+    group_move: Vec<snipdeck_store::GroupRun>,
+    /// What the Main window's "Nest under…" chooser offers while it is open.
+    nest: Option<group_ctl::NestChooser>,
     /// List and board editors closed with the window that opened them: what was typed in each,
     /// for the next time it opens (this app session only).
     parked_editors: Vec<(main_ctl::EditorTarget, crate::main_window::EditorView)>,
@@ -548,7 +550,8 @@ where
             editor_seq: 0,
             board_delete: None,
             group_delete: None,
-            group_move: None,
+            group_move: Vec::new(),
+            nest: None,
             parked_editors: Vec::new(),
             item_editor: None,
             item_editor_seq: 0,

@@ -18,7 +18,7 @@ fn shape(w: &mut World) -> Vec<(String, bool, bool)> {
         .main_screen()
         .rows
         .iter()
-        .map(|r| (r.title.clone(), r.header.is_some(), r.grouped))
+        .map(|r| (r.title.clone(), r.header.is_some(), r.depth > 0))
         .collect()
 }
 
@@ -44,7 +44,7 @@ fn ctrl_g_groups_the_selected_rows_as_one_undo_step_and_starts_the_rename() {
     let screen = w.ctl.main_screen();
     assert_eq!(screen.rows.len(), 5, "a header joins the four items");
     assert_eq!(screen.rows[0].header.as_ref().map(|h| h.count), Some(2));
-    assert!(screen.rows[1].grouped && screen.rows[2].grouped && !screen.rows[3].grouped);
+    assert!(screen.rows[1].depth > 0 && screen.rows[2].depth > 0 && screen.rows[3].depth == 0);
     assert_eq!(screen.rename_row, Some(0), "the new header starts renaming");
     assert_eq!(screen.selected_count, 0, "the marks are spent");
     w.ctl.undo();

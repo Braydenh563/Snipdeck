@@ -215,6 +215,9 @@ pub enum ToastMessage {
     GroupColourFilter,
     /// "Select the items to group first".
     GroupNothing,
+    /// "Groups nest three levels deep at most": a nest or a new group inside a group would go
+    /// deeper.
+    GroupTooDeep,
     /// "Deleted tag work": the items keep their other tags.
     TagDeleted {
         /// The tag's name.

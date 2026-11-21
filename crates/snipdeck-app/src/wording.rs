@@ -294,6 +294,7 @@ where
         ToastMessage::GroupNeedsList => t.invoke_group_needs_list(),
         ToastMessage::GroupColourFilter => t.invoke_group_colour_filter(),
         ToastMessage::GroupNothing => t.invoke_group_nothing(),
+        ToastMessage::GroupTooDeep => t.invoke_group_too_deep(),
         ToastMessage::TagDeleted { name } => t.invoke_tag_deleted(name.into()),
         ToastMessage::TagMerged { from, into } => t.invoke_tag_merged(from.into(), into.into()),
         ToastMessage::UndoStopped => t.invoke_undo_stopped(),

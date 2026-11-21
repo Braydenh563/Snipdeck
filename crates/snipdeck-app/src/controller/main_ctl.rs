@@ -126,6 +126,17 @@ pub struct TagChoice {
     pub checked: bool,
 }
 
+/// One entry of the *Nest under…* chooser.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NestChoice {
+    /// The group's name; `None` is the top level.
+    pub name: Option<String>,
+    /// How many groups it is nested in.
+    pub depth: usize,
+    /// How many items it holds.
+    pub count: usize,
+}
+
 /// Everything the Main window shows, as plain data.
 #[derive(Debug, Clone, PartialEq)]
 #[allow(
@@ -158,8 +169,10 @@ pub struct MainScreen {
     pub tags: Vec<SideTag>,
     /// The *Tags* chooser's entries.
     pub tag_choices: Vec<TagChoice>,
-    /// The folded group the window asks to delete, with how many items go with it.
+    /// The group the window asks to delete, with how many items go with it.
     pub group_delete: Option<(String, usize)>,
+    /// The *Nest under…* chooser's entries.
+    pub nest_choices: Vec<NestChoice>,
     /// The numbers beside the system views.
     pub counts: Counts,
     /// The Recent inbox is on (its entries are listed in the Panel's clock tab).
@@ -302,6 +315,7 @@ where
             tags: self.main.side_tags(),
             tag_choices: self.tag_choices(),
             group_delete: self.group_delete_view(),
+            nest_choices: self.nest_choices(),
             counts: Counts {
                 recent: self.recent_entries().len(),
                 ..self.main.counts()

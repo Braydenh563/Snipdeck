@@ -77,13 +77,14 @@ export struct MainRow {
     pinned: bool,
     selected: bool,
     // A group's header takes the place of a card: `title` is its name, `group-count` its items, `group-collapsed`
-    // whether they are hidden. `grouped`: the item sits under a header, so its card is indented.
+    // whether they are hidden. `depth`: how many groups the row is nested in (a header: those above it), so it is indented
+    // by that many steps.
     is-header: bool,
     group-count: int,
     group-collapsed: bool,
     // The group's colour: -1 none, else 0 to 8 in the order of `ListHue` (the host's `ListAccent`).
     group-colour: int,
-    grouped: bool,
+    depth: int,
 }
 
 // One chip of the colour-label filter row: `label` is 0 to 7 in the order blue, teal, green, amber, orange, red,
@@ -934,7 +935,29 @@ export component MainWindow inherits Window {
         }
     }
 
+    // "Nest under…" (the header menu, or the palette): the host lists where the group at `row` can go
+    // (`nest-choices`), the chooser picks one (`group-nest-chosen`) or closes (`group-nest-dismissed`).
+    in property <[ChoiceEntry]> nest-choices;
+    callback group-nest-requested(int);
+    callback group-nest-chosen(int);
+    callback group-nest-dismissed();
+    property <bool> chooser-nest: false;
+    public function open-group-nest(row: int) {
+        if (row >= 0 && row < root.rows.length && root.rows[row].is-header) {
+            root.group-nest-requested(row);
+            root.chooser-filter = false;
+            root.chooser-tags = false;
+            root.chooser-paste = false;
+            root.chooser-colour = false;
+            root.chooser-nest = true;
+            root.chooser-x = min(max(root.item-menu-x, root.sidebar-w), max(root.sidebar-w, root.width - 240px));
+            root.chooser-y = min(root.item-menu-y, max(0px, root.height - 300px));
+            root.chooser-open = true;
+        }
+    }
+
     function open-chooser(tags: bool, paste: bool, index: int) {
+        root.chooser-nest = false;
         root.chooser-filter = false;
         root.chooser-tags = tags;
         root.chooser-paste = paste;
@@ -1016,6 +1039,10 @@ export component MainWindow inherits Window {
         root.view-menu-open = false;
         root.sort-menu-open = false;
         root.filter-menu-open = false;
+        if (root.chooser-open && root.chooser-nest) {
+            root.group-nest-dismissed();
+        }
+        root.chooser-nest = false;
         root.chooser-open = false;
         root.chooser-filter = false;
         root.restore-focus();
@@ -1025,6 +1052,7 @@ export component MainWindow inherits Window {
         { text: MenuTexts.group-rename(), icon: Icons.pencil-simple, shortcut: "F2" },
         { text: MenuTexts.group-colour(), icon: Icons.palette },
         { text: MenuTexts.group-ungroup(), icon: Icons.files },
+        { text: MenuTexts.group-nest(), icon: Icons.arrow-elbow-down-right },
         { text: MenuTexts.group-move(), icon: Icons.folder },
         { separator: true },
         { text: MenuTexts.group-delete(), icon: Icons.trash, destructive: true, shortcut: "Del" },
@@ -1073,13 +1101,15 @@ export component MainWindow inherits Window {
             } else if (i == 2) {
                 root.group-ungroup-requested(index);
             } else if (i == 3) {
+                root.open-group-nest(index);
+            } else if (i == 4) {
                 // Every item of the group goes to the chosen list: the host fills the chooser, the window opens it.
                 root.group-move-requested(index);
                 root.open-chooser(false, false, index);
-            } else if (i == 5) {
+            } else if (i == 6) {
                 root.group-delete-requested(index);
             }
-            if (i != 0 && i != 1 && i != 3) {
+            if (i != 0 && i != 1 && i != 3 && i != 4) {
                 items-scope.focus();
             }
             return;
@@ -2224,9 +2254,9 @@ export component MainWindow inherits Window {
 
                                         // A group's header takes the place of a card.
                                         if row.is-header: GroupHeader {
-                                            x: root.ring;
+                                            x: root.ring + row.depth * Space.s3;
                                             y: root.ring;
-                                            width: parent.width - 2 * root.ring;
+                                            width: parent.width - 2 * root.ring - row.depth * Space.s3;
                                             height: root.header-h - 2 * root.ring;
                                             name: row.title;
                                             collapsed: row.group-collapsed;
@@ -2249,9 +2279,9 @@ export component MainWindow inherits Window {
 
                                         card := MainCard {
                                             visible: !row.is-header;
-                                            x: root.ring + (row.grouped ? Space.s3 : 0px);
+                                            x: root.ring + row.depth * Space.s3;
                                             y: root.ring;
-                                            width: parent.width - 2 * root.ring - (row.grouped ? Space.s3 : 0px);
+                                            width: parent.width - 2 * root.ring - row.depth * Space.s3;
                                             height: self.preferred-height;
                                             variant: root.view == MainView.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
                                             data: row;
@@ -3196,15 +3226,20 @@ export component MainWindow inherits Window {
         y: root.chooser-y;
         width: 240px * SystemLook.text-scale;
         multi: root.chooser-tags;
-        entries: root.chooser-paste ? (root.chooser-colour ? root.colour-choices : root.paste-choices) : root.chooser-filter ? root.filter-tag-choices : root.chooser-tags ? root.tag-choices : root.lists;
-        label: root.chooser-paste ? MenuTexts.item-paste-as() : root.chooser-filter ? @tr("Filter by tags") : root.chooser-tags ? @tr("Tags") : @tr("Move to list");
-        empty-text: root.chooser-tags ? @tr("No tags yet") : @tr("No lists yet");
+        entries: root.chooser-nest ? root.nest-choices : root.chooser-paste ? (root.chooser-colour ? root.colour-choices : root.paste-choices) : root.chooser-filter ? root.filter-tag-choices : root.chooser-tags ? root.tag-choices : root.lists;
+        label: root.chooser-nest ? MenuTexts.group-nest() : root.chooser-paste ? MenuTexts.item-paste-as() : root.chooser-filter ? @tr("Filter by tags") : root.chooser-tags ? @tr("Tags") : @tr("Move to list");
+        empty-text: root.chooser-nest ? @tr("No other group to nest under") : root.chooser-tags ? @tr("No tags yet") : @tr("No lists yet");
         init => {
             self.current = 0;
             self.focus-chooser();
         }
         chosen(i) => {
-            if (root.chooser-paste) {
+            if (root.chooser-nest) {
+                root.chooser-open = false;
+                root.chooser-nest = false;
+                root.group-nest-chosen(i);
+                items-scope.focus();
+            } else if (root.chooser-paste) {
                 root.chooser-open = false;
                 if (root.chooser-colour) {
                     root.colour-chosen(i, self.shift);

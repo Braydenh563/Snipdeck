@@ -11,7 +11,7 @@ use snipdeck_store::{
 
 use super::{Controller, Library, Toast, ToastKind, ToastMessage, failed};
 use crate::{
-    history::{Action, Change, Record, Snap, Spot, Step},
+    history::{Action, Change, Membership, Record, Snap, Spot, Step},
     host::ClipboardText,
 };
 
@@ -146,8 +146,26 @@ fn apply(b: &mut Batch<'_>, change: &Change, now: Timestamp) -> snipdeck_store::
             }
         }
         Change::Move { id, to, .. } => b.move_item(*id, to.0, to.1)?,
-        Change::Group { group, members } => b.create_group(group, members)?,
+        Change::Group {
+            group,
+            members,
+            children,
+        } => {
+            // A plain top-level group is made as in the first place (its members gather); one
+            // with a parent or children is made again exactly where it was, without moving a row.
+            if group.parent.is_none() && children.is_empty() {
+                b.create_group(group, members)?;
+            } else {
+                let mut group = group.clone();
+                // The group it was nested under may be gone since: it comes back at the top.
+                if group.parent.is_some_and(|p| !group_exists(b, group.list_id, p)) {
+                    group.parent = None;
+                }
+                b.restore_group(&group, members, children)?;
+            }
+        }
         Change::Ungroup { group, .. } => b.delete_group(group.id, GroupDelete::Keep)?,
+        Change::Reparent { group, to, .. } => b.reparent_group(*group, to.0, to.1)?,
         Change::Rename { after, .. } => b.update_group(after)?,
         Change::MoveRun { group, to, .. } => b.move_run(*group, *to)?,
         Change::Join { item, group, .. } => b.join_group(*item, *group, GroupEnd::First)?,
@@ -176,6 +194,12 @@ fn apply(b: &mut Batch<'_>, change: &Change, now: Timestamp) -> snipdeck_store::
         Change::Barrier(_) => {}
     }
     Ok(())
+}
+
+/// Whether group `id` exists in `list` now.
+fn group_exists(b: &mut Batch<'_>, list: snipdeck_core::ListId, id: snipdeck_core::GroupId) -> bool {
+    b.groups_of(list)
+        .is_ok_and(|runs| runs.iter().any(|r| r.group.id == id))
 }
 
 /// Brings `tag` back on `items` (the ones still stored). A tag another one took the name of in the
@@ -214,25 +238,45 @@ fn permanent(error: &snipdeck_store::Error) -> bool {
             | E::AlreadyExists { .. }
             | E::TagExists(_)
             | E::TagParent
+            | E::GroupParent
             | E::Invalid(_)
             | E::Core(_)
             | E::BlobCorrupt { .. }
     )
 }
 
-/// Puts `item` in exactly `group` (made again, with the item alone, if it was emptied and
-/// pruned since) or in none, leaving its position alone.
+/// Puts `item` in exactly `member.group` (made again, with the item alone, if it was emptied and
+/// pruned since, and the groups it was nested in with it) or in none, leaving its position alone.
 fn regroup<B: GroupRepo>(
     b: &mut B,
     item: ItemId,
-    group: Option<&Group>,
+    member: Option<&Membership>,
 ) -> snipdeck_store::Result<()> {
-    match group {
-        None => b.set_item_group(item, None),
-        Some(g) => b
-            .set_item_group(item, Some(g.id))
-            .or_else(|_| b.create_group(g, &[item])),
+    let Some(member) = member else {
+        return b.set_item_group(item, None);
+    };
+    if b.set_item_group(item, Some(member.group.id)).is_ok() {
+        return Ok(());
     }
+    // The group is gone: make it again, outermost missing group first, each one around the item
+    // alone (a group it was nested in that is gone too is made again as well).
+    let list = member.group.list_id;
+    let live = |b: &B, id| {
+        b.groups_of(list)
+            .is_ok_and(|runs| runs.iter().any(|r| r.group.id == id))
+    };
+    let chain: Vec<&Group> = std::iter::once(&member.group).chain(&member.up).collect();
+    for group in chain.into_iter().rev() {
+        if live(b, group.id) {
+            continue;
+        }
+        let mut group = group.clone();
+        // One that was nested in a group that cannot be made again goes to the top level.
+        group.parent = group.parent.filter(|p| live(b, *p));
+        b.set_item_group(item, group.parent)?;
+        b.create_group(&group, &[item])?;
+    }
+    Ok(())
 }
 
 impl<S, C, K, T> Controller<S, C, K, T>
