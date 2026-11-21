@@ -79,7 +79,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 - **Paste** = write item to clipboard → paste key into Target → **restore the previous clipboard**. A fixed 300 ms wait is only the fallback: the primary signal is **delayed rendering** (the item's formats are rendered on demand and the previous clipboard is restored once the target has asked for them, with a 2 s cap), because slow targets such as Remote Desktop may otherwise receive the old content (M0 S1). **(unverified)**
 - **Copy** (`Shift+click`, `Shift+Enter`, or no Target) = item stays on the clipboard.
 - **Paste as plain text:** `Alt+click` / `Alt+Enter` (Panel items and Recent rows, Picker, Main window; also "Paste as plain text" in the Recent row menu); per-item "always paste as plain text" option.
-- **Paste stack:** multi-select items → "Start stack". The panel shows the queue; the global **Paste next** hotkey (default `Ctrl+Shift+U`) pastes the head and advances. `Ctrl+V` is never hooked. `Esc` in the panel or finishing the queue ends the stack.
+- **Paste stack:** multi-select items → "Start stack". The panel shows the queue; the global **Paste next** hotkey (default `Ctrl+Shift+U`) pastes the head and advances. `Ctrl+V` is never hooked. `Esc` in the panel or finishing the queue ends the stack. With no stack running, **Paste next** walks the board's pinned strip, or the shown list when nothing is pinned; the user guide says so, and the usual toast names each item pasted.
 - Elevated targets (UIPI) and failures fall back to Copy with an explaining toast ("Couldn't paste into Task Manager (runs as admin). Copied instead.").
 
 ### 5.2 Picker
