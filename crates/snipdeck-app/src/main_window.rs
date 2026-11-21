@@ -21,8 +21,6 @@ use crate::panel::{GroupHeader, ListLabel};
 use crate::search_mark::{self, Marks};
 use crate::settings::RowDensity;
 
-/// How many days the Trash keeps things (SPEC §5.7a).
-pub const TRASH_DAYS: u32 = 30;
 /// How many search results the Main window shows.
 const SEARCH_LIMIT: usize = 200;
 /// The preview of a trashed list.
@@ -76,7 +74,7 @@ pub enum Section {
     /// The Recent inbox (opt-in clipboard history). Its entries are not items: the controller lists
     /// them (see `recent_ctl.rs`), so the model's rows stay empty here.
     Recent,
-    /// Everything deleted in the last [`TRASH_DAYS`] days.
+    /// Everything deleted in the last `trash_days` days.
     Trash,
     /// One list of the open board.
     List(ListId),
@@ -917,12 +915,6 @@ impl MainModel {
     #[must_use]
     pub fn reorderable(&self) -> bool {
         !self.searching() && self.open_list().is_some_and(|l| l.sort == ListSort::Manual)
-    }
-
-    /// The trash entry for `key`.
-    #[must_use]
-    pub fn trash_entry(&self, key: Key) -> Option<&TrashEntry> {
-        self.trash.iter().find(|t| Key::from(t.target) == key)
     }
 
     // ---- Changing what is shown ----------------------------------------------------------------

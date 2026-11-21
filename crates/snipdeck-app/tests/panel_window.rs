@@ -77,7 +77,14 @@ fn rig_with_tray(tray: bool) -> Rig {
 /// A first run on a real (empty) library, as `main` opens it: the starter board is made first.
 fn first_run_rig() -> Rig {
     let mut store = Store::open_in_memory().expect("store");
-    assert!(snipdeck_app::starter::ensure_board(&mut store, now()).expect("starter"));
+    assert!(
+        snipdeck_app::starter::ensure_board(
+            &mut store,
+            &snipdeck_app::starter::StarterWords::english(),
+            now()
+        )
+        .expect("starter")
+    );
     let copied =
         snipdeck_platform::payload::Payload::new(vec![Data::Text("Copied earlier".into())])
             .expect("payload");
@@ -192,7 +199,7 @@ fn pointer_clicks_on_every_header_control_reach_the_controller() {
         r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
         slint::platform::update_timers_and_animations();
 
-        click(r.window(), &r.button("Keep panel on top"));
+        click(r.window(), &r.button("Keep Panel on top"));
         assert!(
             !r.ctl.borrow().view().on_top,
             "the pin click reached the controller"
@@ -219,7 +226,7 @@ fn pointer_clicks_on_every_header_control_reach_the_controller() {
             "no click on a control starts a window drag"
         );
 
-        click(r.window(), &r.button("Close panel (Esc)"));
+        click(r.window(), &r.button("Close Panel (Esc)"));
         assert!(!r.window().is_visible());
     });
 }
@@ -257,9 +264,15 @@ fn a_first_run_on_an_empty_library_has_a_board_and_working_controls() {
         let r = first_run_rig();
         r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
         slint::platform::update_timers_and_animations();
-        assert_eq!(r.ui.get_board_name(), snipdeck_app::starter::STARTER_BOARD);
+        assert_eq!(
+            r.ui.get_board_name(),
+            snipdeck_app::starter::StarterWords::english().board
+        );
 
-        let switcher = format!("Board: {}", snipdeck_app::starter::STARTER_BOARD);
+        let switcher = format!(
+            "Board: {}",
+            snipdeck_app::starter::StarterWords::english().board
+        );
         click(r.window(), &r.button(&switcher));
         assert_eq!(
             r.ui.get_board_menu_entries().row_count(),
@@ -275,7 +288,9 @@ fn a_first_run_on_an_empty_library_has_a_board_and_working_controls() {
             r.window(),
             &element(
                 &r.ui,
-                snipdeck_app::starter::STARTER_BOARD,
+                snipdeck_app::starter::StarterWords::english()
+                    .board
+                    .as_str(),
                 AccessibleRole::ListItem,
             ),
         );
@@ -731,11 +746,11 @@ fn the_close_button_hides_and_the_pin_button_reaches_the_controller() {
     on_ui_thread(|| {
         let r = rig();
         assert!(r.ctl.borrow().view().on_top);
-        r.button("Keep panel on top")
+        r.button("Keep Panel on top")
             .invoke_accessible_default_action();
         assert!(!r.ctl.borrow().view().on_top);
         assert!(!r.ui.get_on_top());
-        r.button("Close panel (Esc)")
+        r.button("Close Panel (Esc)")
             .invoke_accessible_default_action();
         assert!(!r.window().is_visible());
     });
@@ -951,7 +966,7 @@ fn the_tray_icon_toggles_the_panel_opens_the_menu_actions_and_quits() {
 fn open_panel_in_the_tray_menu_brings_back_a_panel_closed_with_its_button() {
     on_ui_thread(|| {
         let r = rig();
-        r.button("Close panel (Esc)")
+        r.button("Close Panel (Esc)")
             .invoke_accessible_default_action();
         assert!(!r.window().is_visible(), "closed to the tray");
         r.binding.tray(TrayEvent::OpenPanel);
@@ -965,7 +980,7 @@ fn open_panel_in_the_tray_menu_brings_back_a_panel_closed_with_its_button() {
         r.binding.tray(TrayEvent::OpenPanel);
         assert!(r.window().is_visible());
         // The tray's left click brings it back from hidden in the same way.
-        r.button("Close panel (Esc)")
+        r.button("Close Panel (Esc)")
             .invoke_accessible_default_action();
         r.binding.tray(TrayEvent::TogglePanel);
         assert!(r.window().is_visible());
@@ -986,7 +1001,7 @@ fn open_panel_in_the_tray_menu_brings_back_a_panel_closed_with_its_button() {
 fn without_a_tray_icon_the_close_button_quits_instead_of_hiding() {
     on_ui_thread(|| {
         let r = rig_with_tray(false);
-        r.button("Close panel (Esc)")
+        r.button("Close Panel (Esc)")
             .invoke_accessible_default_action();
         assert!(
             r.window().is_visible(),
@@ -1400,7 +1415,7 @@ fn the_menu_is_still_open_after_the_pointer_moves_into_it_and_away_from_the_butt
             move_to(r.window(), centre(&menu_row(&r, label)));
             assert!(r.ui.get_app_menu_open(), "still open over {label}");
         }
-        move_to(r.window(), centre(&r.button("Keep panel on top")));
+        move_to(r.window(), centre(&r.button("Keep Panel on top")));
         assert!(r.ui.get_app_menu_open(), "still open away from the button");
         assert_eq!(r.ui.get_tooltip_shown(), "", "no tooltip over an open menu");
         move_to(r.window(), slint::LogicalPosition::new(20.0, 300.0));
@@ -1763,7 +1778,7 @@ fn the_kebab_docks_the_panel_flush_with_the_nearest_edge_and_offers_to_undock() 
         assert_eq!(*r.effects.borrow(), [Effect::PlaceWindow(OPEN)]);
         assert_eq!(size(&r), (OPEN.w, OPEN.h));
         open_menu(&r);
-        menu_row(&r, "Undock the panel");
+        menu_row(&r, "Undock the Panel");
     });
 }
 
@@ -1867,7 +1882,7 @@ fn the_open_panel_collapses_after_the_pointer_has_left_it_for_the_leave_delay() 
         // Another window has the keyboard: only the pointer keeps the Panel out.
         r.binding.panel_focused(false);
         // The pointer over a row: a child control. The Panel still counts as hovered.
-        let row = ElementHandle::find_by_accessible_label(&r.ui, "Snippets")
+        let row = ElementHandle::find_by_accessible_label(&r.ui, "Items")
             .next()
             .expect("the list");
         r.window()

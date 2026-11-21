@@ -7,6 +7,7 @@ import contextlib
 import io
 import json
 import pathlib
+import re
 import sys
 import tempfile
 import unittest
@@ -32,11 +33,12 @@ class Project:
         self.root = pathlib.Path(self.dir.name)
         (self.root / "ui").mkdir()
         (self.root / "ui" / "a.slint").write_text(slint, encoding="utf-8")
-        self.saved = i18n.ROOT
+        self.saved = (i18n.ROOT, i18n.GLOSSARY)
         i18n.ROOT = self.root
+        i18n.GLOSSARY = self.root / "no-glossary.json"
 
     def close(self):
-        i18n.ROOT = self.saved
+        i18n.ROOT, i18n.GLOSSARY = self.saved
         self.dir.cleanup()
 
     def run(self, *args):
@@ -144,6 +146,101 @@ class Check(Base):
         text = self.p.po("de").replace('msgid_plural "{} items moved"\n', "").replace('msgstr[0] ""\nmsgstr[1] ""', 'msgstr ""')
         self.p.write_po("de", text)
         self.assertIn("plural in the source", self.p.run("check")[1])
+
+
+class Style(unittest.TestCase):
+    """The house-style rules, on single strings."""
+
+    def bad(self, lang, source, form, glossary=()):
+        return i18n.style_problems(lang, source, form, glossary)
+
+    def test_placeholder_regex_sees_named_placeholders(self):
+        self.assertEqual(i18n.placeholders("{n} of {0} and {}"), ["{0}", "{n}", "{}"])
+        self.assertNotEqual(i18n.placeholders("{n} Dinge"), i18n.placeholders("Dinge"))
+
+    def test_a_dash_the_source_lacks_fails(self):
+        self.assertTrue(self.bad("de", "{}: press Tab", "{} \u2014 Tab drücken"))
+        self.assertTrue(self.bad("de", "Pages", "Seiten \u2013 alle"))
+        self.assertEqual(self.bad("de", "A \u2014 b", "A \u2014 b2"), [])
+
+    def test_half_width_marks_after_cjk_fail_only_in_ja_and_zh(self):
+        self.assertTrue(self.bad("ja", "Delete board {}?", "ボード{}を削除しますか?"))
+        self.assertTrue(self.bad("zh-Hans", "Name, tag", "名称,标签"))
+        self.assertTrue(self.bad("ja", "Hello: you", "こんにちは: あなた"))
+        self.assertEqual(self.bad("ja", "Delete board {}?", "ボード{}を削除しますか？"), [])
+        self.assertEqual(self.bad("ja", "Open {}?", "Open {} now?"), [])
+
+    def test_end_punctuation_must_match_the_source(self):
+        self.assertTrue(self.bad("ja", "Cannot read: {}.", "読めません: {}"))
+        self.assertEqual(self.bad("ja", "Cannot read: {}.", "読めません：{}。"), [])
+        self.assertTrue(self.bad("zh-Hans", "Cannot read.", "无法读取."))
+        self.assertTrue(self.bad("de", "Done.", "Fertig"))
+        self.assertTrue(self.bad("fr", "Open\u2026", "Ouvrir"))
+        self.assertEqual(self.bad("fr", "Open\u2026", "Ouvrir\u2026"), [])
+        self.assertEqual(self.bad("zh-Hans", "Sure?", "确定？"), [])
+        self.assertEqual(self.bad("zh-Hans", "Name:", "名称："), [])
+
+    def test_a_translation_may_not_add_end_punctuation(self):
+        self.assertTrue(self.bad("de", "Open", "Öffnen."))
+        self.assertTrue(self.bad("ja", "Open", "開く。"))
+        self.assertEqual(self.bad("de", "Open", "Öffnen"), [])
+
+    def test_identical_to_the_source_fails_unless_allowed(self):
+        self.assertTrue(self.bad("de", "Cancel", "Cancel"))
+        self.assertEqual(self.bad("de", "Emoji", "Emoji"), [])
+        self.assertEqual(self.bad("de", "Panel", "Panel"), [])
+        self.assertEqual(self.bad("de", "{}", "{}"), [])
+        self.assertEqual(self.bad("de", "{} / {}", "{} / {}"), [])
+
+    def test_a_glossary_term_needs_one_of_the_chosen_stems(self):
+        glossary = [{"id": "item", "pattern": r"\bitems?\b", "stems": {"de": ["Textbaustein"]}}]
+        self.assertTrue(self.bad("de", "Delete {} items", "{} Elemente löschen", glossary))
+        self.assertEqual(self.bad("de", "Delete {} items", "{} Textbausteine löschen", glossary), [])
+        self.assertEqual(self.bad("fr", "Delete {} items", "Supprimer", glossary), [], "no stems for fr")
+        self.assertEqual(self.bad("de", "Open", "Öffnen", glossary), [], "pattern not in source")
+
+
+    def test_a_glossary_term_can_forbid_words_and_be_case_sensitive(self):
+        glossary = [{"id": "key-enter", "pattern": r"\bEnter\b", "case_sensitive": True,
+                     "stems": {"de": ["Enter"]}, "avoid": {"de": ["Eingabe"]}}]
+        self.assertTrue(self.bad("de", "Press Enter", "Eingabetaste drücken", glossary))
+        self.assertEqual(self.bad("de", "Press Enter", "Enter drücken", glossary), [])
+        self.assertEqual(self.bad("de", "enter the name", "Namen eingeben", glossary), [], "case matters")
+
+    def test_cognates_are_allowed_only_in_their_locale(self):
+        self.assertEqual(self.bad("fr", "Menu", "Menu"), [])
+        self.assertTrue(self.bad("ja", "Menu", "Menu"))
+
+    def test_an_abbreviation_full_stop_is_not_added_punctuation(self):
+        self.assertEqual(self.bad("de", "{} min ago", "vor {} Min."), [])
+        self.assertTrue(self.bad("de", "Open the board", "Das Board öffnen."))
+
+
+class Wired(Base):
+    def test_check_reports_a_dropped_named_placeholder(self):
+        (self.p.root / "ui" / "a.slint").write_text(SLINT + '\nText { text: @tr("Page {n}"); }\n', encoding="utf-8")
+        self.p.run("extract")
+        self.p.write_po("de", self.p.po("de").replace('msgid "Page {n}"\nmsgstr ""', 'msgid "Page {n}"\nmsgstr "Seite"'))
+        code, out = self.p.run("check")
+        self.assertEqual(code, 1)
+        self.assertIn("placeholders", out)
+
+    def test_check_reports_a_style_problem(self):
+        self.p.write_po("de", self.p.po("de").replace('msgid "Open"\nmsgstr ""', 'msgid "Open"\nmsgstr "Open"'))
+        code, out = self.p.run("check")
+        self.assertEqual(code, 1)
+        self.assertIn("identical to its source", out)
+
+    def test_the_real_glossary_is_well_formed(self):
+        i18n.GLOSSARY = self.p.saved[1]
+        terms = i18n.load_glossary()
+        self.assertTrue(terms)
+        for term in terms:
+            self.assertTrue(term["id"])
+            re.compile(term["pattern"])
+            if "stems" in term:
+                self.assertEqual(sorted(term["stems"]), sorted(i18n.LOCALES), term["id"])
+            self.assertTrue(set(term.get("avoid", {})) <= set(i18n.LOCALES), term["id"])
 
 
 class TodoAndApply(Base):

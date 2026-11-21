@@ -527,6 +527,24 @@ pub fn session_end(msg: u32, wparam: usize) -> Option<SessionEnd> {
     }
 }
 
+/// The name of a Windows exception code that ends a program (`winnt.h` / `ntstatus.h`), for the
+/// crash report written when the process dies without a panic. An unlisted code is "unknown
+/// exception": the report still carries the number.
+#[must_use]
+pub const fn exception_name(code: u32) -> &'static str {
+    match code {
+        0xC000_0005 => "access violation",
+        0xC000_001D => "illegal instruction",
+        0xC000_0094 => "integer divide by zero",
+        0xC000_0096 => "privileged instruction",
+        0xC000_008C => "array bounds exceeded",
+        0xC000_00FD => "stack overflow",
+        0xC000_0374 => "heap corruption",
+        0xC000_0409 => "fast fail (stack buffer overrun or abort)",
+        _ => "unknown exception",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -968,6 +986,17 @@ mod tests {
         assert!(!gate.keep_frame(7), "a destroyed window's paint is dropped");
         assert!(gate.needs_guard(7), "a reused handle is a new window");
         assert!(!gate.needs_guard(9));
+    }
+
+    #[test]
+    fn the_exceptions_that_end_a_program_have_names() {
+        assert_eq!(exception_name(0xC000_0005), "access violation");
+        assert_eq!(exception_name(0xC000_00FD), "stack overflow");
+        assert_eq!(
+            exception_name(0xC000_0409),
+            "fast fail (stack buffer overrun or abort)"
+        );
+        assert_eq!(exception_name(0x1234), "unknown exception");
     }
 }
 

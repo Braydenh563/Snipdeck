@@ -8,6 +8,7 @@
 //! | [`target`] | Foreground tracking, UIPI check, caret / UI Automation focus probe |
 //! | [`typing_hook`] | `TypingHook`: `WH_KEYBOARD_LL` on its own thread, for typed-trigger expansion |
 //! | [`window_style`] | Non-activating panel style and its `WM_STYLECHANGING` subclass |
+//! | [`exception`] | A last-chance filter that hands a native crash's code and address to the app |
 //! | [`erase`] | The theme colour a window shows before its first frame |
 //! | [`paint_diag`] | `SNIPDECK_DIAG=render`: paint, erase, move and DWM facts for a log |
 //! | [`eyedrop`] | `WinEyedropper`: [`crate::eyedrop::Eyedropper`] with a freeze-frame overlay per monitor |
@@ -40,6 +41,7 @@ pub mod dpapi;
 pub mod dpi;
 pub mod dwm;
 pub mod erase;
+pub mod exception;
 pub mod eyedrop;
 pub mod file_dialog;
 pub mod hello;

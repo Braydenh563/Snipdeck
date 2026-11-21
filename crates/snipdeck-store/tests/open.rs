@@ -159,6 +159,24 @@ fn an_empty_database_file_beside_other_library_files_is_refused_not_replaced() {
 }
 
 #[test]
+fn a_read_only_open_creates_nothing_and_a_missing_library_is_an_error() {
+    let dir = tempfile::tempdir().unwrap();
+    let missing = dir.path().join("nowhere");
+    let err = Store::open_read_only(&missing).expect_err("no library");
+    assert!(matches!(err, Error::Invalid(_)), "{err}");
+    assert!(!missing.exists(), "the folder must not be created");
+
+    let empty = dir.path().join("empty");
+    std::fs::create_dir(&empty).unwrap();
+    assert!(Store::open_read_only(&empty).is_err());
+    assert_eq!(
+        std::fs::read_dir(&empty).unwrap().count(),
+        0,
+        "no database made"
+    );
+}
+
+#[test]
 fn an_empty_database_file_in_a_folder_with_nothing_else_opens_as_new() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(dir.path().join("snipdeck.db"), b"").unwrap();
@@ -232,4 +250,12 @@ fn a_newer_database_is_never_set_aside() {
     assert!(matches!(err, Error::SchemaTooNew { .. }), "{err:?}");
     assert!(dir.path().join("snipdeck.db").is_file());
     assert!(!dir.path().join("snipdeck.damaged-4").exists());
+}
+
+#[test]
+fn a_read_only_store_checks_a_library_beside_a_running_app() {
+    let dir = tempfile::tempdir().unwrap();
+    let _running = Store::open(dir.path()).unwrap();
+    let ro = Store::open_read_only(dir.path()).expect("no folder lock is needed");
+    assert!(ro.check_integrity().unwrap().is_empty());
 }

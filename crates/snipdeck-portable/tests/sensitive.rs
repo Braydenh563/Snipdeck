@@ -773,7 +773,7 @@ fn a_total_over_the_limit_is_reported_as_the_total_and_names_no_item() {
         matches!(
             &err,
             Error::LimitExceeded {
-                what: "total uncompressed size",
+                what: snipdeck_portable::TOTAL_SIZE,
                 limit: 150_000
             }
         ),

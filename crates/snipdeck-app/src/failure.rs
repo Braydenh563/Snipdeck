@@ -73,7 +73,7 @@ impl Cause {
             Portable::FormatTooNew { .. } => Self::TooNew,
             Portable::ItemTooLarge { .. }
             | Portable::LimitExceeded {
-                what: "total uncompressed size",
+                what: snipdeck_portable::TOTAL_SIZE,
                 ..
             } => Self::TooBig,
             Portable::NotAnArchive(_)
@@ -160,7 +160,7 @@ mod tests {
     #[test]
     fn a_library_over_the_total_is_too_big_and_names_no_item() {
         let error = Portable::LimitExceeded {
-            what: "total uncompressed size",
+            what: snipdeck_portable::TOTAL_SIZE,
             limit: 8,
         };
         assert_eq!(Cause::of_portable(&error), Cause::TooBig);

@@ -1,0 +1,81 @@
+// The names Rust shows or speaks for a colour label, a list icon and a key. Each function takes the
+// position in the Rust enum's `ALL` list (`ItemLabel::ALL`, `ListIcon::ALL`), so the order here must
+// follow it (a test in `snipdeck-app/tests/name_texts.rs` checks that every position has a name).
+export global NameTexts {
+    pure public function label(index: int) -> string {
+        if index == 0 { return @tr("Blue"); }
+        if index == 1 { return @tr("Teal"); }
+        if index == 2 { return @tr("Green"); }
+        if index == 3 { return @tr("Amber"); }
+        if index == 4 { return @tr("Orange"); }
+        if index == 5 { return @tr("Red"); }
+        if index == 6 { return @tr("Violet"); }
+        if index == 7 { return @tr("Slate"); }
+        return "";
+    }
+
+    pure public function icon(index: int) -> string {
+        if index == 0 { return @tr("Folder"); }
+        if index == 1 { return @tr("Star"); }
+        if index == 2 { return @tr("Heart"); }
+        if index == 3 { return @tr("Briefcase"); }
+        if index == 4 { return @tr("House"); }
+        if index == 5 { return @tr("Person"); }
+        if index == 6 { return @tr("Envelope"); }
+        if index == 7 { return @tr("Chat"); }
+        if index == 8 { return @tr("Phone"); }
+        if index == 9 { return @tr("Calendar"); }
+        if index == 10 { return @tr("Shopping cart"); }
+        if index == 11 { return @tr("Credit card"); }
+        if index == 12 { return @tr("Code"); }
+        if index == 13 { return @tr("Terminal"); }
+        if index == 14 { return @tr("Book"); }
+        if index == 15 { return @tr("Light bulb"); }
+        if index == 16 { return @tr("Flag"); }
+        if index == 17 { return @tr("Bookmark"); }
+        if index == 18 { return @tr("Globe"); }
+        if index == 19 { return @tr("Location marker"); }
+        if index == 20 { return @tr("Camera"); }
+        if index == 21 { return @tr("Music"); }
+        if index == 22 { return @tr("Wrench"); }
+        if index == 23 { return @tr("Rocket"); }
+        return "";
+    }
+
+    // How assistive technology reads a key of a shortcut whose cap is not a word of its own
+    // (the caps themselves are key names and are not translated).
+    pure public function key(index: int) -> string {
+        if index == 0 { return @tr("Control"); }
+        if index == 1 { return @tr("Enter"); }
+        if index == 2 { return @tr("Delete"); }
+        if index == 3 { return @tr("Escape"); }
+        if index == 4 { return @tr("Plus"); }
+        if index == 5 { return @tr("Comma"); }
+        if index == 6 { return @tr("Slash"); }
+        return "";
+    }
+
+    // The spoken form of a shortcut row that is not one chord ("Up or Down"), and the two words
+    // shown instead of keys ("Trigger", "Hello"): the English text is the key of the Rust side's
+    // `commands::PHRASES`, in this order.
+    pure public function phrase(index: int) -> string {
+        if index == 0 { return @tr("The item's trigger"); }
+        if index == 1 { return @tr("Tab while the suggestion hint shows"); }
+        if index == 2 { return @tr("Alt+Up or Alt+Down"); }
+        if index == 3 { return @tr("Hold Space"); }
+        if index == 4 { return @tr("Left, Right or Enter on a group header"); }
+        if index == 5 { return @tr("shortcut row" => "Type"); }
+        if index == 6 { return @tr("Up or Down"); }
+        if index == 7 { return @tr("PageUp or PageDown"); }
+        if index == 8 { return @tr("Alt+1 to 9"); }
+        if index == 9 { return @tr("Shift+Up or Shift+Down"); }
+        if index == 10 { return @tr("Shift+F10 or the Menu key"); }
+        if index == 11 { return @tr("Left, Right, Enter or Space on a group header"); }
+        if index == 12 { return @tr("Alt+Up or Alt+Down on a group header"); }
+        if index == 13 { return @tr("Tab or Shift+Tab"); }
+        if index == 14 { return @tr("Unlock with Windows Hello"); }
+        if index == 15 { return @tr("shortcut row" => "Trigger"); }
+        if index == 16 { return @tr("shortcut row" => "Hello"); }
+        return "";
+    }
+}

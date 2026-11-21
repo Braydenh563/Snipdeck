@@ -251,7 +251,7 @@ pub struct DragCtx<'a> {
     pub monitor: &'a Monitor,
     /// The Panel's sizes there.
     pub sizes: DragSizes,
-    /// "Docked panel uses the full edge".
+    /// "Docked Panel uses the full edge".
     pub full_edge: bool,
     /// The moment of the step, from the injected clock.
     pub now: Timestamp,

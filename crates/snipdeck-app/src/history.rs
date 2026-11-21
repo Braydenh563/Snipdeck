@@ -298,12 +298,6 @@ impl History {
         self.undo.back().map(|s| s.action)
     }
 
-    /// The id of the step Undo would take back.
-    #[must_use]
-    pub fn next_undo_id(&self) -> Option<u64> {
-        self.undo.back().map(|s| s.id)
-    }
-
     /// The action Redo would bring back.
     #[must_use]
     pub fn next_redo(&self) -> Option<Action> {

@@ -54,10 +54,6 @@ pub const SUPPORT_URL: &str = "https://buymeacoffee.com/braydenh563";
 
 /// The user guide, opened in the browser by [`HelpTopic::Guide`].
 pub const GUIDE_URL: &str = "https://github.com/Braydenh563/Snipdeck/blob/main/docs/user-guide.md";
-/// The Microsoft Store page; the link stays hidden while this is `None`.
-pub const STORE_URL: Option<&str> = None;
-/// The third-party notices file shipped next to the program, if the package has one.
-pub const NOTICES_FILE: &str = "THIRD_PARTY_NOTICES.md";
 
 // ---- What the machine is asked to do -----------------------------------------------------------
 
@@ -87,8 +83,13 @@ pub trait HelpHost {
     /// The operating system and its build, for the report.
     fn os_summary(&self) -> String;
 
-    /// The third-party notices file, if the package has one.
-    fn notices_file(&self) -> Option<PathBuf>;
+    /// Writes the licence and third-party notices (compiled into the program) to a text file and
+    /// returns where it is.
+    ///
+    /// # Errors
+    ///
+    /// The file could not be written.
+    fn write_notices(&self) -> Result<PathBuf, String>;
 }
 
 /// [`HelpHost`] on the real system.
@@ -146,19 +147,9 @@ impl HelpHost for SystemHelpHost {
         std::env::consts::OS.to_owned()
     }
 
-    fn notices_file(&self) -> Option<PathBuf> {
-        find_notices(std::env::current_exe().ok()?.parent()?)
+    fn write_notices(&self) -> Result<PathBuf, String> {
+        crate::notices::write(&crate::notices::default_dir()).map_err(|e| e.to_string())
     }
-}
-
-/// The notices file beside the program (the installer and the Store package), or one folder up
-/// (the portable zip keeps the program in `app\` and the notices at the root).
-pub(crate) fn find_notices(exe_dir: &Path) -> Option<PathBuf> {
-    [Some(exe_dir), exe_dir.parent()]
-        .into_iter()
-        .flatten()
-        .map(|dir| dir.join(NOTICES_FILE))
-        .find(|file| file.is_file())
 }
 
 // ---- The doctor on the real library ------------------------------------------------------------
@@ -278,6 +269,7 @@ pub(crate) fn report_flags(settings: &crate::settings::Settings) -> Vec<(String,
         ),
         ("Panel width".into(), settings.panel_width.to_string()),
         ("Backups kept".into(), settings.backups_keep.to_string()),
+        ("Days in the Trash".into(), settings.trash_days.to_string()),
         (
             "Programs that never get a paste".into(),
             settings.no_paste_apps.len().to_string(),
@@ -405,23 +397,37 @@ where
         window.set_version(env!("CARGO_PKG_VERSION").into());
         window.set_build_date(build_date().into());
         window.set_source_url(REPO_URL.into());
-        window.set_show_store_link(STORE_URL.is_some());
-        window.set_has_notices(self.host.notices_file().is_some());
         {
             let checks = self.checks.borrow();
             window.set_problems(
                 i32::try_from(checks.iter().filter(|c| c.status != Status::Ok).count())
                     .unwrap_or(i32::MAX),
             );
-            window.set_checks(model(checks.iter().map(|c| ui::HelpCheck {
-                label: c.label.into(),
-                detail: c.detail.as_str().into(),
-                status: match c.status {
-                    Status::Ok => 0,
-                    Status::Warn => 1,
-                    Status::Fail => 2,
-                },
-                fix: c.fix.map_or(0, Fix::code),
+            let words = window.global::<ui::DoctorTexts<'_>>();
+            window.set_checks(model(checks.iter().map(|c| {
+                ui::HelpCheck {
+                    label: words.invoke_label(
+                        doctor::LABELS
+                            .iter()
+                            .position(|l| *l == c.label)
+                            .and_then(|i| i32::try_from(i).ok())
+                            .unwrap_or(-1),
+                    ),
+                    detail: {
+                        let arg = |i: usize| {
+                            c.args
+                                .get(i)
+                                .map_or_else(Default::default, |v| v.as_str().into())
+                        };
+                        words.invoke_detail(c.finding.code(), arg(0), arg(1), arg(2))
+                    },
+                    status: match c.status {
+                        Status::Ok => 0,
+                        Status::Warn => 1,
+                        Status::Fail => 2,
+                    },
+                    fix: c.fix.map_or(0, Fix::code),
+                }
             })));
         }
         if let Some(toast) = &toast {
@@ -578,6 +584,10 @@ where
                     .as_deref()
                     .map(|d| d.display().to_string())
                     .unwrap_or_default(),
+                log_tail: self
+                    .data_dir
+                    .as_deref()
+                    .map_or_else(Vec::new, |d| crate::log::tail(d, crate::log::REPORT_LINES)),
             }
         };
         let text = doctor::report(&info, &self.checks.borrow());
@@ -689,15 +699,12 @@ where
         wire!(on_support_requested, |core| core.open_url(SUPPORT_URL));
         wire!(on_source_requested, |core| core.open_url(REPO_URL));
         wire!(on_releases_requested, |core| core.open_url(updates_url()));
-        wire!(on_store_requested, |core| {
-            if let Some(url) = STORE_URL {
-                core.open_url(url);
-            }
-        });
         wire!(on_notices_requested, |core| {
-            if let Some(file) = core.host.notices_file() {
-                core.opened(core.host.open_file(&file), "the notices");
-            }
+            let opened = core
+                .host
+                .write_notices()
+                .and_then(|file| core.host.open_file(&file));
+            core.opened(opened, "the notices");
         });
         {
             let weak = window.as_weak();
@@ -731,7 +738,7 @@ pub fn shortcut_groups(
         .iter()
         .map(|t| t.to_string())
         .collect();
-    shortcuts::groups(&titles, hotkeys, query)
+    shortcuts::groups(&titles, &crate::wording::key_words(window), hotkeys, query)
 }
 
 /// One group as the window draws it: the scope's name, and the note under the global hotkeys.
@@ -859,24 +866,6 @@ impl HelpUi {
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn the_notices_are_found_beside_the_program_or_one_folder_up() {
-        let root = tempfile::tempdir().expect("dir");
-        let app = root.path().join("app");
-        std::fs::create_dir(&app).expect("app dir");
-        assert_eq!(super::find_notices(&app), None);
-        std::fs::write(root.path().join(super::NOTICES_FILE), "x").expect("write");
-        assert_eq!(
-            super::find_notices(&app),
-            Some(root.path().join(super::NOTICES_FILE))
-        );
-        std::fs::write(app.join(super::NOTICES_FILE), "y").expect("write");
-        assert_eq!(
-            super::find_notices(&app),
-            Some(app.join(super::NOTICES_FILE))
-        );
-    }
-
     use std::fmt::Write as _;
 
     use super::*;

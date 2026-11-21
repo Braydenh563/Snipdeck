@@ -10,7 +10,8 @@ use crate::tour::TourStep;
 fn first_run(settings: Settings) -> Ctl {
     let now = at("2026-10-17T09:00:00Z");
     let mut store = Store::open_in_memory().expect("store");
-    crate::starter::ensure_board(&mut store, now).expect("starter board");
+    crate::starter::ensure_board(&mut store, &crate::starter::StarterWords::english(), now)
+        .expect("starter board");
     Controller::new(
         store,
         Services {

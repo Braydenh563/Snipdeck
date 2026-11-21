@@ -1,0 +1,28 @@
+// What a new library starts with, in the language selected when the first board is made: the
+// board, its lists and the "Getting started" cards (SPEC 5.7b). The card order and count are the
+// Rust side's (`snipdeck_app::starter::StarterWords`).
+export global StarterTexts {
+    out property <string> board: @tr("My snippets");
+    out property <string> list: @tr("Snippets");
+    out property <string> getting-started: @tr("Getting started");
+    out property <string> new-list: @tr("New list");
+    out property <string> new-board: @tr("New board");
+    // Title and text of the five cards, by position. The template card's placeholders are passed in,
+    // so no translation can change their names.
+    pure public function card-title(index: int) -> string {
+        if index == 0 { return @tr("Click me to paste"); }
+        if index == 1 { return @tr("Shift+click to copy"); }
+        if index == 2 { return @tr("Try a template"); }
+        if index == 3 { return @tr("Right-click for more"); }
+        if index == 4 { return @tr("More tips"); }
+        return "";
+    }
+    pure public function card-text(index: int) -> string {
+        if index == 0 { return @tr("This text was pasted by clicking its card. Click a card in the Panel and Snipdeck pastes it into the app you were typing in."); }
+        if index == 1 { return @tr("Shift+click (or Shift+Enter) only copies a card to the clipboard, so you can paste it yourself."); }
+        if index == 2 { return @tr("Today is {} and it is {}. Placeholders in braces fill in when you use the card.", "{date}", "{time}"); }
+        if index == 3 { return @tr("Right-click a card, or press the Menu key, to edit it, pin it to the strip above the list, move it, tag it or delete it. Delete this list when you no longer need it."); }
+        if index == 4 { return @tr("Help > Tips has short cards with a picture and a Try it button each. Open it from Help, or from the tray icon's menu."); }
+        return "";
+    }
+}

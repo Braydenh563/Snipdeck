@@ -51,8 +51,8 @@ impl HelpHost for NoHost {
     fn os_summary(&self) -> String {
         "test".into()
     }
-    fn notices_file(&self) -> Option<PathBuf> {
-        None
+    fn write_notices(&self) -> Result<PathBuf, String> {
+        Ok(PathBuf::from("notices.txt"))
     }
 }
 
@@ -76,8 +76,8 @@ impl HelpHost for RecordingHost {
     fn os_summary(&self) -> String {
         NoHost.os_summary()
     }
-    fn notices_file(&self) -> Option<PathBuf> {
-        None
+    fn write_notices(&self) -> Result<PathBuf, String> {
+        Ok(PathBuf::from("notices.txt"))
     }
 }
 

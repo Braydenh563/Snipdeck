@@ -190,11 +190,6 @@ impl Snapshot {
     pub fn is_incomplete(&self) -> bool {
         self.data.incomplete
     }
-
-    /// How many formats were captured.
-    pub fn format_count(&self) -> usize {
-        self.data.formats.len()
-    }
 }
 
 impl Drop for SnapshotData {

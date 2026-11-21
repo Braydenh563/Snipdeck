@@ -650,7 +650,7 @@ component PreviewPane inherits Rectangle {
                 wrap: word-wrap;
             }
             FormField {
-                label: @tr("Small panel");
+                label: @tr("Small Panel");
                 Rectangle {
                     height: panel-item.height;
                     panel-item := ItemCard {
@@ -712,7 +712,7 @@ component PreviewPane inherits Rectangle {
             }
             if root.expanded != "": FormField {
                 label: @tr("Result with sample values");
-                helper: @tr("Dates are today's; a field you fill in when you use the item shows its name or default.");
+                helper: @tr("Dates are today’s; a field you fill in when you use the item shows its name or default.");
                 Rectangle {
                     height: result.preferred-height + 2 * Space.s3;
                     background: Theme.bg-sunken;
@@ -813,7 +813,7 @@ export component ItemEditor inherits Window {
     out property <string> trigger-warning: root.trigger.character-count == 1
         ? @tr("A one-character trigger fires every time you type it, even inside words. Two or more characters are safer.")
         : "";
-    out property <string> trigger-helper: @tr("Type this in any app to insert the snippet. Turn it on in Settings, under Typing.");
+    out property <string> trigger-helper: @tr("Type this in any app to insert the item. Turn it on in Settings, under Typing.");
     in property <string> banner;
     // The fields hold an unsaved draft from an earlier session.
     in property <bool> restored: false;
@@ -942,7 +942,7 @@ export component ItemEditor inherits Window {
     property <string> source-shown-error: root.source-error != "" ? root.source-error
         : (root.show-errors && root.source-missing) ? @tr("Choose a file, or cancel.") : "";
     property <[PlaceholderHelp]> placeholders: [
-        { token: "{date}", help: @tr("Today's date") },
+        { token: "{date}", help: @tr("Today’s date") },
         { token: "{time}", help: @tr("The time now") },
         { token: "{datetime:FORMAT}", help: @tr("Date and time in a format you choose") },
         { token: "{uuid}", help: @tr("A new random ID each time") },
@@ -1478,7 +1478,7 @@ export component ItemEditor inherits Window {
                     if root.sensitive: FormField {
                         label: @tr("Trigger");
                         Text {
-                            text: @tr("Sensitive items can't be typed in, so they have no trigger.");
+                            text: @tr("Sensitive items can’t be typed in, so they have no trigger.");
                             color: Theme.text-secondary;
                             font-family: Fonts.sans;
                             font-size: Type.sm;
@@ -1724,6 +1724,7 @@ component EntityEditorBody inherits Rectangle {
     in property <bool> show-sort: true;
     // How many items a deletion affects (the confirmation says so).
     in property <int> item-count: 0;
+    in property <int> trash-days: 30;
     // False when this one cannot be deleted (the last board); `delete-hint` says why.
     in property <bool> can-delete: true;
     in property <string> delete-hint;
@@ -1987,6 +1988,7 @@ export component ListEditor inherits Window {
     in property <bool> show-sort <=> body.show-sort;
     // How many items deleting the list affects (the confirmation says so).
     in property <int> item-count <=> body.item-count;
+    in property <int> trash-days <=> body.trash-days;
     in property <bool> can-delete <=> body.can-delete;
     in property <string> delete-hint <=> body.delete-hint;
     out property <bool> dirty <=> body.dirty;
@@ -2010,7 +2012,7 @@ export component ListEditor inherits Window {
         missing-name-text: @tr("Give the list a name.");
         delete-label: @tr("Delete list");
         delete-title: @tr("Delete this list?");
-        delete-body: @tr("{n} item will move to Trash with it. You can restore them for 30 days." | "{n} items will move to Trash with it. You can restore them for 30 days." % root.item-count);
+        delete-body: @tr("{n} item will move to Trash with it. You can restore them for {} days." | "{n} items will move to Trash with it. You can restore them for {} days." % root.item-count, root.trash-days);
         save-requested => { root.save-requested(); }
         cancel-requested => { root.cancel-requested(); }
         help-requested => { root.help-requested(); }
@@ -2045,6 +2047,7 @@ export component BoardEditor inherits Window {
     in property <bool> show-sort <=> body.show-sort;
     // How many items deleting the board affects (the confirmation says so).
     in property <int> item-count <=> body.item-count;
+    in property <int> trash-days <=> body.trash-days;
     // False for the last board; `delete-hint` says why.
     in property <bool> can-delete <=> body.can-delete;
     in property <string> delete-hint <=> body.delete-hint;
@@ -2068,7 +2071,7 @@ export component BoardEditor inherits Window {
         missing-name-text: @tr("Give the board a name.");
         delete-label: @tr("Delete board");
         delete-title: @tr("Delete this board?");
-        delete-body: @tr("Its lists and {n} item will move to Trash. You can restore them for 30 days." | "Its lists and {n} items will move to Trash. You can restore them for 30 days." % root.item-count);
+        delete-body: @tr("Its lists and {n} item will move to Trash. You can restore them for {} days." | "Its lists and {n} items will move to Trash. You can restore them for {} days." % root.item-count, root.trash-days);
         save-requested => { root.save-requested(); }
         cancel-requested => { root.cancel-requested(); }
         help-requested => { root.help-requested(); }

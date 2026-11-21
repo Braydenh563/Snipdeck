@@ -5,7 +5,10 @@
                                     to every lang/<locale>/LC_MESSAGES/snipdeck-ui.po
   python3 scripts/i18n.py check     fail if the .pot is stale, a locale lacks / has stale msgids, a
                                     plural entry has the wrong number of forms, or a translation
-                                    changes the {} / {0} placeholders of its source
+                                    changes the {} / {0} / {n} placeholders of its source, or breaks a house rule (a dash the source
+                                    lacks, half-width ?!:, after ja/zh text, end punctuation that differs
+                                    from the source, identical to the source, a term that differs from
+                                    scripts/glossary.json)
   python3 scripts/i18n.py check --strict
                                     also fail on any untranslated (empty msgstr) entry; the gate uses this
   python3 scripts/i18n.py todo LOCALE   print the untranslated entries of LOCALE as JSON
@@ -38,7 +41,30 @@ PLURAL_FORMS = {
 }
 STR = r'"((?:[^"\\]|\\.)*)"'
 TR = re.compile(r'@tr\(\s*(?:' + STR + r'\s*=>\s*)?' + STR + r'(?:\s*\|\s*' + STR + r')?')
-PLACEHOLDER = re.compile(r"\{\d*\}")
+PLACEHOLDER = re.compile(r"\{[^}]*\}")
+GLOSSARY = pathlib.Path(__file__).resolve().parent / "glossary.json"
+# Words that stay as they are in every locale (units, colour models, key names, product and format names).
+TECH_TOKENS = {w.lower() for w in (
+    "px ms s kb mb byte ui rgb hsl hsb hex cmyk aa aaa png ctrl shift alt enter insert f v space esc tab "
+    "delete microsoft store notepad exe https example com royalblue emoji panel snipdeck kaomoji clip "
+    "markdown json ok windows bytes").split()}
+# Cognates that are the right word in one locale although they read like the English source.
+SAME_BY_LOCALE = {
+    "ja": {"APCA Lc {}"},
+    "zh-Hans": {"APCA Lc {}"},
+    "de": {"APCA Lc {}", "Alpha", "Board: {}", "Boards", "Chat", "Code", "Format", "Layout", "Link", "Links", "Name",
+           "Navigation", "Orange", "Person", "Problem", "Tabs", "Terminal", "Test", "Text", "Version"},
+    "fr": {"APCA Lc {}", "min", "Actions", "Alpha", "Code", "Compact", "Format", "Image", "Menu", "Navigation", "Orange", "Rose",
+           "Surprise", "Terminal", "Type", "Version", "Violet", "Formats"},
+    "es": {"APCA Lc {}", "min", "Chat", "Control", "Manual", "No", "Terminal"},
+    "pt-BR": {"APCA Lc {}", "min", "Chat", "Envelope", "Layout", "Link", "Links", "Manual", "Menu", "Terminal"},
+}
+CJK = "\u3000-\u30ff\u3400-\u9fff\uff00-\uffef"
+HALF_AFTER_CJK = re.compile("[" + CJK + "][?!:,]")
+# end punctuation class of a string -> the endings a translation may use, per locale family
+END_CLASSES = {".": ".", "…": "…", "?": "?", "!": "!", ":": ":"}
+END_CJK = {".": "。", "…": "…", "?": "？?", "!": "！!", ":": "：:"}
+CLASS_OF = {"。": ".", ".": ".", "…": "…", "？": "?", "?": "?", "！": "!", "!": "!", "：": ":", ":": ":"}
 
 
 class Entry:
@@ -187,10 +213,67 @@ def placeholders(text):
     return sorted(PLACEHOLDER.findall(text))
 
 
+def load_glossary():
+    """The terminology rules from scripts/glossary.json: [{"id", "pattern", "stems": {locale: [stem...]}}]."""
+    if not GLOSSARY.exists():
+        return []
+    return json.loads(GLOSSARY.read_text(encoding="utf-8"))["terms"]
+
+
+def same_is_fine(lang, src):
+    """A translation equal to its source is fine for technical tokens and for the cognates of a locale."""
+    if src in SAME_BY_LOCALE.get(lang, ()):
+        return True
+    words = re.findall(r"[^\W\d_]+", re.sub(r"#[0-9a-fA-F]+", "", PLACEHOLDER.sub("", src)))
+    return all(w.lower() in TECH_TOKENS for w in words)
+
+
+def has_letters(text):
+    return bool(re.search(r"[^\W\d_]", PLACEHOLDER.sub("", text)))
+
+
+def abbreviation_end(text):
+    """True when the text ends in a short abbreviation with its full stop (de "vor 3 Min.")."""
+    return bool(re.search(r"(?<![^\W\d_])[^\W\d_]{1,4}\.$", text.rstrip()))
+
+
+def style_problems(lang, source, form, glossary=()):
+    """House-style problems of one translated form against its source form (both escaped as in the po)."""
+    src, tr = unescape(source), unescape(form)
+    out = []
+    if re.search("[\u2013\u2014]", tr) and not re.search("[\u2013\u2014]", src):
+        out.append("uses a dash the source does not")
+    cjk = lang in ("ja", "zh-Hans")
+    if cjk and HALF_AFTER_CJK.search(tr):
+        out.append("has half-width ? ! : , after CJK text (use the full-width mark)")
+    src_end = src.rstrip()[-1:] if src.rstrip()[-1:] in END_CLASSES else None
+    tr_end = tr.rstrip()[-1:]
+    if src_end:
+        wanted = (END_CJK if cjk else END_CLASSES)[src_end]
+        if tr_end not in wanted and not (src_end == "…" and tr.rstrip().endswith("...")):
+            out.append(f"source ends in {src_end!r}, translation ends in {tr_end!r} (wants {wanted[0]!r})")
+    elif tr_end in CLASS_OF and not abbreviation_end(tr):
+        out.append(f"translation ends in {tr_end!r}, the source has no end punctuation")
+    if tr == src and has_letters(src) and not same_is_fine(lang, src):
+        out.append("is identical to its source")
+    for term in glossary:
+        flags = 0 if term.get("case_sensitive") else re.I
+        if not re.search(term["pattern"], src, flags):
+            continue
+        stems = term.get("stems", {}).get(lang)
+        if stems and not any(s.lower() in tr.lower() for s in stems):
+            out.append(f'term "{term["id"]}" should use one of {stems}')
+        for word in term.get("avoid", {}).get(lang, []):
+            if word.lower() in tr.lower():
+                out.append(f'term "{term["id"]}" should not use "{word}"')
+    return out
+
+
 def problems_of(lang, keys, plurals, have):
     """Structural problems of one locale's entries: the wrong number of plural forms, or a
     translation whose {} placeholders differ from its source's."""
     count = PLURAL_FORMS[lang][0]
+    glossary = load_glossary()
     out = []
     for key in keys:
         entry = have.get(key)
@@ -207,6 +290,8 @@ def problems_of(lang, keys, plurals, have):
             source = plural if (plural is not None and (i > 0 or count == 1)) else key[1]
             if placeholders(form) != placeholders(source):
                 out.append(f'{lang}: "{key[1]}" form {i} has placeholders {placeholders(form)}, source {placeholders(source)}')
+            for why in style_problems(lang, source, form, glossary):
+                out.append(f'{lang}: "{key[1]}" form {i} {why}')
     return out
 
 

@@ -295,7 +295,7 @@ mod imp {
                 match self.start() {
                     Ok(running) => self.running = Some(running),
                     Err(e) => {
-                        eprintln!("snipdeck: {e}");
+                        crate::warn!("{e}");
                         return false;
                     }
                 }

@@ -146,6 +146,7 @@ def main() -> int:
             save(h, OUT / f"hero-{theme}.png")
     if missing:
         print("missing renders:", ", ".join(missing))
+        return 1
     return 0
 
 

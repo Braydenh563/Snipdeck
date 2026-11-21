@@ -282,7 +282,16 @@ impl Rig {
 fn each_toggle_writes_settings_json_after_the_quiet_time() {
     on_ui_thread(|| {
         type Case = (&'static str, fn(&Rig), fn(&Settings) -> bool);
-        let cases: [Case; 20] = [
+        // Choosing a language applies it at once, and the translation is process-wide: put English
+        // back when this test ends so the tests that follow read the English sentences.
+        struct EnglishAgain;
+        impl Drop for EnglishAgain {
+            fn drop(&mut self) {
+                let _ = slint::select_bundled_translation("");
+            }
+        }
+        let _english = EnglishAgain;
+        let cases: [Case; 21] = [
             (
                 "theme",
                 |r| r.ui.invoke_theme_chosen(2),
@@ -337,6 +346,11 @@ fn each_toggle_writes_settings_json_after_the_quiet_time() {
                 "backups to keep",
                 |r| r.ui.invoke_backups_keep_chosen(12),
                 |s| s.backups_keep == 12,
+            ),
+            (
+                "days in the Trash",
+                |r| r.ui.invoke_trash_days_chosen(90),
+                |s| s.trash_days == 90,
             ),
             (
                 "panel width",
@@ -588,7 +602,7 @@ fn the_apps_left_out_of_recent_are_a_list_with_add_remove_and_words_for_a_refusa
         r.ui.invoke_no_history_app_added("C:\\x\\y.exe".into());
         assert_eq!(
             r.ui.get_no_history_error(),
-            "Use just the program's file name, like notepad.exe."
+            "Use just the program’s file name, like notepad.exe."
         );
         r.ui.invoke_no_history_app_removed(0);
         assert_eq!(r.ui.get_no_history_error(), "");
@@ -786,7 +800,7 @@ fn choosing_an_edge_docks_the_panel_there_and_floating_lets_it_go() {
             "queued for the Panel's window"
         );
 
-        // "Docked panel uses the full edge" stretches it, and off gives the height back.
+        // "Docked Panel uses the full edge" stretches it, and off gives the height back.
         r.ui.invoke_dock_full_edge_toggled(true);
         assert!(r.ui.get_dock_full_edge(), "the page follows");
         assert_eq!(
@@ -1077,7 +1091,7 @@ fn start_with_windows_that_cannot_be_changed_says_so_and_keeps_the_old_value() {
         assert!(!r.ui.get_autostart(), "the switch went back");
         assert_eq!(
             r.ui.get_toast_text(),
-            "Couldn't change the Windows start-up entry."
+            "Couldn’t change the Windows start-up entry."
         );
         assert_eq!(r.ui.get_toast_kind(), ToastKind::Danger);
         r.host.autostart_fails.set(false);
@@ -1128,6 +1142,21 @@ fn the_window_behaviour_toggles_start_at_their_defaults_and_reach_the_host() {
         r.ui.invoke_panel_hide_on_blur_toggled(false);
         assert!(!r.ctl.borrow().settings().panel_hide_on_blur);
         assert!(!r.ui.get_panel_hide_on_blur());
+    });
+}
+
+#[test]
+fn days_in_the_trash_is_held_between_one_and_365_and_shown() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert_eq!(r.ui.get_trash_days(), 30);
+        r.ui.invoke_trash_days_chosen(90);
+        assert_eq!(r.ctl.borrow().settings().trash_days, 90);
+        assert_eq!(r.ui.get_trash_days(), 90);
+        r.ui.invoke_trash_days_chosen(9999);
+        assert_eq!(r.ctl.borrow().settings().trash_days, 365);
+        r.ui.invoke_trash_days_chosen(0);
+        assert_eq!(r.ctl.borrow().settings().trash_days, 1);
     });
 }
 
@@ -1388,7 +1417,7 @@ fn export_saves_a_new_file_in_documents_each_time_and_opens_the_folder() {
         let first = files(&documents);
         assert_eq!(first.len(), 1);
         assert!(first[0].starts_with("Snipdeck-library-") && first[0].ends_with(".snipdeck"));
-        assert_eq!(r.ui.get_toast_text(), format!("Saved {}", first[0]));
+        assert_eq!(r.ui.get_toast_text(), format!("Saved {}.", first[0]));
         assert_eq!(*r.host.opened.borrow(), std::slice::from_ref(&documents));
         r.ui.invoke_export_requested();
         assert_eq!(
@@ -1678,7 +1707,7 @@ fn a_file_that_cannot_be_imported_shows_a_problem_and_nothing_to_confirm() {
         *r.host.import_pick.borrow_mut() = Some(junk);
         r.ui.invoke_import_source_chosen(1);
         assert!(r.ui.get_import_open());
-        assert_eq!(r.ui.get_import_problem(), "That isn't a Ditto database.");
+        assert_eq!(r.ui.get_import_problem(), "That isn’t a Ditto database.");
         // Confirming a problem writes nothing.
         r.ui.invoke_import_confirmed();
         assert!(!r.ui.get_import_open());
@@ -2102,7 +2131,7 @@ fn each_new_choice_previews_its_own_source_and_a_wrong_file_is_a_problem() {
         *r.host.import_pick.borrow_mut() = Some(junk.clone());
         r.ui.invoke_import_source_chosen(6);
         assert!(r.ui.get_import_open());
-        assert_eq!(r.ui.get_import_problem(), "That isn't a Beeftext export.");
+        assert_eq!(r.ui.get_import_problem(), "That isn’t a Beeftext export.");
         r.ui.invoke_import_confirmed();
         for choice in [7, 8] {
             *r.host.import_pick.borrow_mut() = Some(r.dir.path().join("missing.csv"));
@@ -2110,7 +2139,7 @@ fn each_new_choice_previews_its_own_source_and_a_wrong_file_is_a_problem() {
             assert!(r.ui.get_import_open(), "choice {choice}");
             assert_eq!(
                 r.ui.get_import_problem(),
-                "Snipdeck couldn't open that. Check that it still exists.",
+                "Snipdeck couldn’t open that. Check that it still exists.",
                 "choice {choice}"
             );
             r.ui.invoke_import_confirmed();
@@ -2295,7 +2324,7 @@ fn a_machine_without_key_protection_says_so_and_offers_nothing() {
         let note = master_row(&r)
             .accessible_description()
             .expect("a description");
-        assert!(note.contains("can't protect a key"), "{note}");
+        assert!(note.contains("can’t protect a key"), "{note}");
         assert_eq!(
             element(&r.ui, "Set password\u{2026}", AccessibleRole::Button).accessible_enabled(),
             Some(false)
@@ -2322,7 +2351,7 @@ fn a_key_record_that_cannot_be_read_offers_no_password_and_says_why() {
         let note = master_row(&r)
             .accessible_description()
             .expect("a description");
-        assert!(note.contains("couldn't read your encryption key"), "{note}");
+        assert!(note.contains("couldn’t read your encryption key"), "{note}");
         assert_eq!(
             element(&r.ui, "Set password\u{2026}", AccessibleRole::Button).accessible_enabled(),
             Some(false),
@@ -2872,7 +2901,7 @@ fn a_browser_that_will_not_open_says_so_in_a_toast() {
         let r = rig();
         r.host.url_fails.set(true);
         r.ui.invoke_support_requested();
-        assert_eq!(r.ui.get_toast_text(), "Couldn't open the link.");
+        assert_eq!(r.ui.get_toast_text(), "Couldn’t open the link.");
         assert_eq!(r.ui.get_toast_kind(), ToastKind::Danger);
     });
 }

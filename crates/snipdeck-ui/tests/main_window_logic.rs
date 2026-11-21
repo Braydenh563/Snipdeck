@@ -535,7 +535,7 @@ ui_tests! {
         let dialog = find(&ui, "Delete for good?", AccessibleRole::Groupbox);
         assert_eq!(
             dialog.accessible_description().as_deref(),
-            Some("The selected items are deleted for good. This can't be undone.")
+            Some("The selected items are deleted for good. This can’t be undone.")
         );
         press_key(&ui, Key::Return);
         assert!(ui.get_confirm_open(), "Enter is not the destructive default");
@@ -1424,7 +1424,7 @@ ui_tests! {
         fixture::set_rows(&ui, Vec::new());
         ui.set_section(MainSection::All);
         settle();
-        find(&ui, "No snippets yet", AccessibleRole::Text);
+        find(&ui, "No items yet", AccessibleRole::Text);
         find(&ui, "Save what you paste often.", AccessibleRole::Text);
         take(&log);
         find(&ui, "Save from clipboard", AccessibleRole::Button).invoke_accessible_default_action();
@@ -1832,7 +1832,7 @@ ui_tests! {
         chord(ui.window(), &[Key::Control], "f");
         type_text(ui.window(), "inv");
         settle();
-        let field = find(&ui, "Search snippets", AccessibleRole::TextInput);
+        let field = find(&ui, "Search items", AccessibleRole::TextInput);
         let clear = find(&ui, "Clear search", AccessibleRole::Button);
         let (fp, fz) = (field.absolute_position(), field.size());
         let (cp, cz) = (clear.absolute_position(), clear.size());
@@ -1855,7 +1855,7 @@ ui_tests! {
         settle();
         assert_eq!(ui.get_query(), "inv");
         assert_eq!(take(&log), ["query:i", "query:in", "query:inv"]);
-        let field = find(&ui, "Search snippets", AccessibleRole::TextInput);
+        let field = find(&ui, "Search items", AccessibleRole::TextInput);
         assert_eq!(field.accessible_value().as_deref(), Some("inv"));
         find(&ui, "Clear search", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(ui.get_query(), "");
@@ -2143,7 +2143,7 @@ ui_tests! {
         assert!(ui.get_rail() && !ui.get_drawer_open());
         assert!(missing(&ui, "Close sidebar (Ctrl+B)", AccessibleRole::Button));
         let rail_row = find(&ui, "All items", AccessibleRole::ListItem).size().width;
-        let list_x = |ui: &MainWindow| find(ui, "Snippets", AccessibleRole::List).absolute_position().x;
+        let list_x = |ui: &MainWindow| find(ui, "Items", AccessibleRole::List).absolute_position().x;
         let list_before = list_x(&ui);
         // Opening it: the full sidebar, wider than the rail, over the list (the list does not move), focus inside.
         find(&ui, "Expand sidebar (Ctrl+B)", AccessibleRole::Button).invoke_accessible_default_action();
@@ -2380,7 +2380,7 @@ ui_tests! {
     fn escape_during_a_search_composition_goes_to_the_composition_not_the_tooltip() {
         let (ui, log) = start();
         let tips = |ui: &MainWindow| ElementQuery::from_root(ui).match_inherits("Tooltip").find_all().len();
-        find(&ui, "Search snippets", AccessibleRole::TextInput).mock_single_click(slint::platform::PointerEventButton::Left);
+        find(&ui, "Search items", AccessibleRole::TextInput).mock_single_click(slint::platform::PointerEventButton::Left);
         settle();
         let button = find(&ui, "Compact view", AccessibleRole::Button);
         ui.window().dispatch_event(WindowEvent::PointerMoved { position: centre_of(&button) });
@@ -2498,7 +2498,7 @@ ui_tests! {
             .collect();
         assert!(labels.iter().any(|l| l.starts_with("Thanks, received")), "{labels:?}");
         assert!(labels.iter().all(|l| !l.contains("hunter2")), "{labels:?}");
-        let _ = find(&ui, "Snippets", AccessibleRole::List);
+        let _ = find(&ui, "Items", AccessibleRole::List);
     }
 
     fn ctrl_v_and_ctrl_c_on_the_item_list_ask_for_a_paste_and_a_copy_of_the_cursor_row() {

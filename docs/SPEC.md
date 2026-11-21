@@ -1,7 +1,7 @@
 # Snipdeck — Product Specification (v1)
 
 > Status: **Agreed** (grill rounds 1–2, 2026-10-17), amended with M0 spike outcomes (see [`docs/spikes/README.md`](spikes/README.md)). Anything marked **(unverified)** depends on a Windows test that has not been run yet. Design language: [`DESIGN.md`](../DESIGN.md).
-> Working name: **Snipdeck** — kept in one constant (`APP_NAME`); trademark/domain check before release.
+> Working name: **Snipdeck** — the name is the package name and the `*Texts` strings; trademark/domain check before release.
 
 ## 1. Problem
 

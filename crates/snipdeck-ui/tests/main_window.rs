@@ -185,16 +185,6 @@ fn main_window_empty_states() {
 }
 
 #[test]
-fn main_window_loading_in_rows_and_tiles() {
-    let h = window(SIZE, false);
-    fixture::set_rows(&h.component, Vec::new());
-    h.component.set_loading(true);
-    assert_golden("main-loading-light", &render(&h));
-    h.component.set_view(MainView::Tile);
-    assert_golden("main-loading-tile-light", &render(&h));
-}
-
-#[test]
 fn main_window_long_titles_in_every_view() {
     for (view, name) in [
         (MainView::Compact, "main-awkward-compact-light"),
@@ -891,7 +881,7 @@ fn the_toolbar_fits_at_every_width_with_a_gap_between_controls() {
         let boxes = toolbar_boxes(&h);
         let search = boxes
             .iter()
-            .find(|b| b.0 == "Search snippets")
+            .find(|b| b.0 == "Search items")
             .expect("search");
         assert!(
             search.2 >= 32.0 * scale - 0.5,
@@ -899,7 +889,7 @@ fn the_toolbar_fits_at_every_width_with_a_gap_between_controls() {
             search.2
         );
         let names: Vec<&str> = boxes.iter().map(|b| b.0.as_str()).collect();
-        for want in ["Search snippets", "Undo", "Redo", "New item"] {
+        for want in ["Search items", "Undo", "Redo", "New item"] {
             assert!(
                 names.iter().any(|n| n.starts_with(want)),
                 "{want} is in the toolbar at {width} (scale {scale}): {names:?}"

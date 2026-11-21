@@ -1,0 +1,41 @@
+// The words of the Troubleshoot list in Help. The checks run in Rust (`snipdeck_app::doctor`), which
+// hands over a code and the values; the sentence is built here so it follows the UI language. The
+// pasted diagnostic report stays English for whoever reads it.
+export global DoctorTexts {
+    pure public function label(index: int) -> string {
+        if index == 0 { return @tr("Data folder"); }
+        if index == 1 { return @tr("Database"); }
+        if index == 2 { return @tr("Backups"); }
+        if index == 3 { return @tr("Encryption key"); }
+        if index == 4 { return @tr("Shortcuts"); }
+        if index == 5 { return @tr("Tray icon"); }
+        if index == 6 { return @tr("Crash reports"); }
+        return "";
+    }
+
+    pure public function detail(code: int, a: string, b: string, c: string) -> string {
+        if code == 0 { return @tr("Snipdeck cannot write to its data folder: {}", a); }
+        if code == 1 { return @tr("Writable, but only {} MB are free on its drive.", a); }
+        if code == 2 { return @tr("Writable, with room to spare."); }
+        if code == 3 { return @tr("The integrity check could not run: {}", a); }
+        if code == 4 { return @tr("The integrity check found no problems."); }
+        if code == 5 { return @tr("The integrity check found {} problem(s); the first: {}", a, b); }
+        if code == 6 { return @tr("The backups cannot be read: {}", a); }
+        if code == 7 { return @tr("No backup has been made yet."); }
+        if code == 8 { return @tr("The newest backup is from {}, {} days ago ({} kept).", a, b, c); }
+        if code == 9 { return @tr("Newest backup {}, {} kept.", a, b); }
+        if code == 10 { return @tr("The items cannot be read: {}", a); }
+        if code == 11 { return @tr("No item is marked sensitive."); }
+        if code == 12 { return @tr("{} sensitive item(s), the key is present.", a); }
+        if code == 13 { return @tr("{} sensitive item(s) are stored as plain text (no encryption key yet): masked and readable, but not encrypted.", a); }
+        if code == 14 { return @tr("The key cannot be checked: {}", a); }
+        if code == 15 { return @tr("All global shortcuts are set."); }
+        if code == 16 { return @tr("No global shortcut is set."); }
+        if code == 17 { return @tr("Not set: {}.", a); }
+        if code == 18 { return @tr("The icon is in the notification area."); }
+        if code == 19 { return @tr("No icon in the notification area; closing the Panel quits Snipdeck."); }
+        if code == 20 { return @tr("No crash report."); }
+        if code == 21 { return @tr("The newest crash report is {}.", a); }
+        return "";
+    }
+}

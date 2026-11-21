@@ -299,10 +299,10 @@ pub struct Controller<S, C, K, T> {
     panel_revealed: Option<snipdeck_core::ItemId>,
     /// What Windows says about light / dark and high contrast.
     os_look: SystemLook,
-    /// The words a new list's and a new board's editor name starts from, in the language shown
-    /// (the Main window's binding sets them; see [`Controller::set_new_name_bases`]).
-    new_list_base: String,
-    new_board_base: String,
+    /// The words a new library starts with and a new list's and board's editor name starts from,
+    /// in the language shown (the windows' bindings set them; see
+    /// [`Controller::set_starter_words`]).
+    starter: crate::starter::StarterWords,
     /// The Colours tab: the colour looked at, the second contrast colour, and the home list's
     /// name in the language shown.
     colour: snipdeck_colour::Rgba8,
@@ -556,8 +556,7 @@ where
             revealed: None,
             panel_revealed: None,
             os_look: SystemLook::default(),
-            new_list_base: crate::starter::NEW_LIST.to_owned(),
-            new_board_base: crate::starter::NEW_BOARD.to_owned(),
+            starter: crate::starter::StarterWords::english(),
             colour,
             colour_other,
             colour_previous: None,
@@ -1167,7 +1166,7 @@ where
 
     /// The foreground window changed: the Target follows it (see
     /// [`on_target_changed`](Self::on_target_changed)), and an unpinned Panel hides when
-    /// "Hide the panel when it loses focus" is on. Only the Panel does this: the Main window,
+    /// "Hide the Panel when it loses focus" is on. Only the Panel does this: the Main window,
     /// Settings and the editors are ordinary windows that stay until closed.
     pub fn on_foreground_changed(&mut self) -> Vec<Effect> {
         // The eyedropper's overlay, then whatever was under the pick point, takes the foreground
