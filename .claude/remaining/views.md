@@ -13,34 +13,31 @@
   (format 1.3), one undo step (`Change::Rename`), carried by "Move group to list", header dot + "Group colour..." menu row +
   dialog in the Main window (ColourPicker moved to `components/colour-picker.slint`), strings in .pot + 6 .po, SPEC/user-guide/format.md.
 
+## Built since (all committed on claude/fix-audit-library-views)
+- editor_window failures: stale expectations updated (LIBRARY-31 link scheme, LIBRARY-44 trigger wording); 36 pass.
+- Tab order at 2.25 / 640-1040: a collapsed Search input made Slint skip every later stop; Search has a minimum width and the
+  toolbar sheds Undo/Redo at `room < 340` (`toolbar-history`). Walk test covers 7 size/scale combinations.
+- Nested tags, end to end: core `Tag.parent` + `TagTree` (`walk`, `ancestors`, `can_nest`, `search_paths`); store V14 + `Error::TagParent`
+  + delete reparents children; portable `parent` (ancestors of used tags exported, loops and unknown ids refused, existing tags keep
+  their place); app tree-ordered tags, counts incl. descendants, hierarchical Section/filter/search (`tag:a`, `tag:a/b`, `tag:b`),
+  `main_nest_tag`, rename keeps parent, merge lifts children to the target, delete lifts them to the grandparent, one undo step each;
+  UI indented sidebar, Tag manager nest button + dialog, strings in .pot + 6 .po, measured walk tests + goldens.
+- `Command::ColourGroup` (palette "Group colour…"), opens the dialog over the header under the cursor.
+
 ## NOT built (needs a fresh agent)
-1. Tag nesting (`Tag.parent: Option<TagId>`; schema V14 `tags.parent BLOB REFERENCES tags(id) ON DELETE SET NULL` plus a cycle
-   check in the repo). Decide first:
-   (a) filtering by a parent matches its descendants (`ViewFilter` takes the expansion from a `TagTree` passed in, not stored on items);
-   (b) search grammar `tag:a/b` (path of names; `tag:a` also matches descendants);
-   (c) rename keeps the parent, merge reparents the loser's children to the winner, delete reparents children to the deleted tag's parent;
-   (d) portable: optional `parent` on TagDto (format 1.3), a missing id is malformed, cycles refused;
-   (e) UI: sidebar Tags section as an indented tree (fold state in settings), tag manager "Nest under..." row + chooser dialog;
-   (f) undo: `Change::Rewrite` with `Record::Tag` already carries before/after, so add `parent` to the Tag record only.
-   Tests first: core (`view_filter`), store (`tags`, cycle refusal, SCHEMA_VERSION), portable (round trip, cycle refused), app
-   (`main_views`: nest, filter by parent shows children, merge/delete rules, undo), UI walk (tree rows indent, hit >= 28, 2.25 scale).
-2. Group nesting (`Group.parent: Option<GroupId>`; V15 if tags take V14). Decide first: a child group's members are a contiguous
-   sub-run of the parent's run; a child header is drawn indented one level inside the parent's run; a folded parent hides child
-   headers; `move_run`, `join_group`, `gather` and `prune` in `crates/snipdeck-store/src/groups.rs` all assume one level
-   (`items.group_id` is the innermost group, ancestors come from `item_groups.parent`). Ungroup of a parent moves children to the
+1. Group nesting (`Group.parent: Option<GroupId>`). Store V15 already adds `item_groups.parent BLOB` (no REFERENCES: SQLite cannot
+   DROP COLUMN with one, so the repository must enforce validity) but nothing reads or writes it. Decide first: a child group's
+   members are a contiguous sub-run of the parent's run; a child header is drawn indented one level inside the parent's run; a folded
+   parent hides child headers; `move_run`, `join_group`, `gather` and `prune` in `crates/snipdeck-store/src/groups.rs` all assume one
+   level (`items.group_id` is the innermost group, ancestors come from `item_groups.parent`). Ungroup of a parent moves children to the
    grandparent; delete takes them along. Keyboard: Alt+Arrows on a header moves the subtree; Ctrl+G on a header with marked rows
-   inside makes a child. Undo: `Change::Group`/`Ungroup`/`Rename` carry `Group`, so `parent` rides along.
-3. The Panel's group headers carry the colour in `GroupHeader.colour`, but `panel.slint` does not draw it (PANEL-* is another
+   inside makes a child. Undo: `Change::Group`/`Ungroup`/`Rename` carry `Group`, so `parent` rides along. Portable: `parent` on GroupDto
+   (format 1.3). UI: `SidebarItem.indent`-style step on the header and its cards. Tests first (store, app, portable, walk).
+2. The Panel's group headers carry the colour in `GroupHeader.colour`, but `panel.slint` does not draw it (PANEL-* is another
    agent's area). To finish: pass `has-dot`/`dot` to the Panel's `GroupHeader` and add `group-colour` to `PanelRow`.
-4. No palette or shortcut command for "Group colour..." (header menu only); add `Command::ColourGroup` if wanted.
+3. Editor tag chips and the filter's tag chooser still show the bare tag name, not the path (two tags can share a leaf under
+   different parents only if names differ: names are unique, so this is cosmetic).
 
 ## Known not mine
-- Pre-existing at text scale 2.25 with a Main window 640 to 1040 px wide: Tab visits only Board, Navigation, Settings, Help
-  (Search, toolbar, Filter, rows never reached; hypothesis: Search collapses). The top toolbar also overflows 480 px at 2.25.
-  Documented in the walk test; not fixed.
-- `snipdeck-app --test editor_window`: 5 tests fail on the base commit b44c9ca too: a_link_without_a_scheme_is_refused_inline_and_a_good_one_saves,
-  a_one_character_trigger_gets_a_warning_under_the_field, a_save_refused_while_previewing_goes_back_to_the_form_and_shows_why,
-  new_snippet_in_the_kebab_opens_an_empty_editor_that_saves_text_from_the_keyboard,
-  with_both_a_text_and_a_title_refused_the_text_gets_the_keyboard_first.
 - Windows-only behaviour is unverified. The tag manager dialogs' and group colour dialog's own focus order is not covered by the
   Tab walk. cargo deny and the Windows cargo check were not run.

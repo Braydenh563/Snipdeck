@@ -45,7 +45,8 @@ where
             // Not the controller's: `MainBinding::run_command` handles both before it gets here
             // (Search moves the window's focus, Tour opens the tour window). The arm stays only so
             // the match is exhaustive.
-            Command::Search | Command::Tour => {}
+            // The window's own: the focus move, the tour window and the colour dialog (`main_binding`).
+            Command::Search | Command::Tour | Command::ColourGroup => {}
             Command::ShowPanel => self.main_toggle_panel(),
             Command::Symbols => {
                 if self.settings.show_symbols_tab {
@@ -82,8 +83,6 @@ where
             Command::DeleteGroup => self.main_group_delete(cursor),
             Command::MoveGroupUp => self.main_move_group(cursor, -1),
             Command::MoveGroupDown => self.main_move_group(cursor, 1),
-            // The colour dialog is the window's own state: the window opens it (`main_binding`).
-            Command::ColourGroup => {}
             Command::SelectAll => self.main_select_all(),
             Command::TakeScreenshot => {
                 let effects = self.take_screenshot();

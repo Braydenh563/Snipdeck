@@ -114,7 +114,7 @@ pub enum Command {
 
 impl Command {
     /// Every command, in the order of `CommandTexts.all`.
-    pub const ALL: [Self; 47] = [
+    pub const ALL: [Self; 48] = [
         Self::NewItem,
         Self::NewList,
         Self::Search,

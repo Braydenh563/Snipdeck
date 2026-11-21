@@ -34,8 +34,10 @@ Features that exist now (user-facing list in `README.md` and `docs/user-guide.md
   Pinned and each tag's in `Settings::section_sorts`), a toolbar Filter (several tags any/all, untagged, kind, has trigger,
   sensitive; chips under the toolbar) that the Picker's Pinned scope also uses, group headers kept under any sort,
   group delete confirmation and "Move group to list", tag colours with Merge on a rename clash, board accent and icon,
-  and Trash search. Store schema V12 and V13 (group colour) and archive format 1.3 carry them (`docs/format.md`). Group colour is built (Main window dot,
-  menu row and dialog); nested groups and nested tags are NOT built yet (design in `.claude/remaining/views.md`, SPEC post-1.0 list).
+  and Trash search. Store schema V12 to V15 and archive format 1.3 carry them (`docs/format.md`). Group colour is built (Main window dot,
+  menu row, dialog and the palette's "Group colour…"). Nested tags are built (`Tag.parent`, `TagTree` in core, V14, portable `parent`,
+  sidebar tree, Tag manager "Nest under" dialog, undoable nest/merge/delete). V15 (`item_groups.parent`) exists in the schema but
+  nested GROUPS are NOT built: nothing reads or writes the column yet (design in `.claude/remaining/views.md`, SPEC post-1.0 list).
 - Recent copies, with a first-run question; nothing is kept until the owner of the PC says yes.
 - Master password with optional Windows Hello unlock; Sensitive items encrypted on disk.
 - Import from `.snipdeck`, Ditto, CopyQ, Espanso, Beeftext, TextExpander, PhraseExpress, Windows clipboard

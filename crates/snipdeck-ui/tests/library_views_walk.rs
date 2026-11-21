@@ -922,13 +922,15 @@ fn the_palettes_group_colour_opens_the_dialog_over_a_header_and_over_nothing_els
             .filter(|b| b.role == Role::RadioButton)
             .count()
     };
-    h.component.invoke_open_group_colour(item as i32);
+    h.component
+        .invoke_open_group_colour(i32::try_from(item).unwrap());
     let _ = settle_quietly(&h);
     assert_eq!(radios(&h), 0, "an item row opens nothing");
     h.component.invoke_open_group_colour(-1);
     let _ = settle_quietly(&h);
     assert_eq!(radios(&h), 0, "no row opens nothing");
-    h.component.invoke_open_group_colour(header as i32);
+    h.component
+        .invoke_open_group_colour(i32::try_from(header).unwrap());
     let _ = settle_quietly(&h);
     assert_eq!(radios(&h), 10, "a header opens the ten colour choices");
 }

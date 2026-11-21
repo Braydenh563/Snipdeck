@@ -360,14 +360,9 @@ pub(crate) fn apply<L: Library>(
     }
 }
 
-fn write(
-    lib: &mut Batch<'_>,
-    plan: &mut Plan,
-    fetch: &mut dyn FnMut(&AssetRef) -> Result<Vec<u8>>,
-    report: &mut ImportReport,
-) -> Result<()> {
-    // Only tags that a kept item uses, and the tags above them, are created; existing tags are
-    // reused by name and keep their place.
+/// The tags a write creates or finds: those a kept item uses and the tags above them, with each
+/// parent before its children (fewer ancestors first).
+fn tags_in_use(plan: &Plan) -> Vec<usize> {
     let mut used: HashSet<usize> = plan
         .boards
         .iter()
@@ -385,14 +380,7 @@ fn write(
             at = parent_of(index);
         }
     }
-    let mut by_key: HashMap<String, TagId> = lib
-        .tags()?
-        .into_iter()
-        .map(|t| (name_key(t.name.as_str()), t.id))
-        .collect();
-    let mut tag_ids: HashMap<usize, TagId> = HashMap::new();
     let mut order: Vec<usize> = used.iter().copied().collect();
-    // A parent is created before its children: fewer ancestors first.
     let depth = |index: usize| {
         let mut n = 0;
         let mut at = parent_of(index);
@@ -406,6 +394,24 @@ fn write(
         n
     };
     order.sort_by_key(|i| (depth(*i), *i));
+    order
+}
+
+fn write(
+    lib: &mut Batch<'_>,
+    plan: &mut Plan,
+    fetch: &mut dyn FnMut(&AssetRef) -> Result<Vec<u8>>,
+    report: &mut ImportReport,
+) -> Result<()> {
+    // Existing tags are reused by name and keep their place; the rest are created parent first.
+    let parent_of = |index: usize| plan.tag_parents.get(index).copied().flatten();
+    let order = tags_in_use(plan);
+    let mut by_key: HashMap<String, TagId> = lib
+        .tags()?
+        .into_iter()
+        .map(|t| (name_key(t.name.as_str()), t.id))
+        .collect();
+    let mut tag_ids: HashMap<usize, TagId> = HashMap::new();
     for index in order {
         let name = &plan.tags[index];
         let key = name_key(name.as_str());

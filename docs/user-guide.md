@@ -249,6 +249,12 @@ the right of the sidebar header (or `Ctrl+B`) folds the sidebar to a narrow rail
   stay. New tags are made in the item editor. In **Manage tags** each tag has a colour button (one of the eight
   item colours, shown as a dot in the sidebar and here). Renaming a tag to a name that exists offers **Merge**:
   every item gets the other tag and the renamed one is deleted; `Ctrl+Z` undoes it.
+  **Nest tags.** The arrow button on a tag in **Manage tags** opens "Nest tag under": pick another tag (or the
+  top level) and the tag, with the tags already under it, moves there. The sidebar shows nested tags indented
+  under their parent. A tag stands for the tags under it: opening **work** or filtering by it lists the items
+  tagged `work/invoices` too, and `tag:work` in the search box finds them while `tag:work/inv` follows the path.
+  A tag cannot go under itself or under one of its own nested tags. Deleting a tag moves the tags under it up
+  one level; merging one into another moves them under the other; `Ctrl+Z` undoes either.
 - **Pin.** Press `Ctrl+P` on a row, or choose **Pin** from its menu. Pinned items show in a strip under the
   Panel's tabs, and under **Pinned** in the sidebar.
 - **Rename.** The item's title is in the editor (`Ctrl+E` or `F2`). Lists and boards have their own rename

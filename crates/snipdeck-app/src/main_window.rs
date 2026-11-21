@@ -413,6 +413,47 @@ fn header_row(run: &GroupRun) -> Row {
     }
 }
 
+/// `tags` in sidebar order (each tag followed by the tags nested under it) with their nesting.
+fn in_walk_order(mut tags: Vec<Tag>) -> (Vec<Tag>, TagTree) {
+    let tree = TagTree::new(&tags);
+    let order: HashMap<TagId, usize> = tree
+        .walk()
+        .into_iter()
+        .enumerate()
+        .map(|(i, t)| (t, i))
+        .collect();
+    tags.sort_by_key(|t| order.get(&t.id).copied().unwrap_or(usize::MAX));
+    (tags, tree)
+}
+
+/// How many items are in each list, carry each tag or any tag under it (each item once), and
+/// carry each tag itself.
+fn counts(
+    items: &[Item],
+    tree: &TagTree,
+) -> (
+    HashMap<ListId, usize>,
+    HashMap<TagId, usize>,
+    HashMap<TagId, usize>,
+) {
+    let mut list_counts: HashMap<ListId, usize> = HashMap::new();
+    let mut tag_counts: HashMap<TagId, usize> = HashMap::new();
+    let mut own_counts: HashMap<TagId, usize> = HashMap::new();
+    for item in items {
+        *list_counts.entry(item.list_id).or_default() += 1;
+        let mut counted: HashSet<TagId> = HashSet::new();
+        for tag in &item.tags {
+            *own_counts.entry(*tag).or_default() += 1;
+            counted.insert(*tag);
+            counted.extend(tree.ancestors(*tag));
+        }
+        for tag in counted {
+            *tag_counts.entry(tag).or_default() += 1;
+        }
+    }
+    (list_counts, tag_counts, own_counts)
+}
+
 impl MainModel {
     /// An empty model that loads on the first [`reload`](Self::reload).
     #[must_use]
@@ -500,15 +541,7 @@ impl MainModel {
             .iter()
             .map(|l| Ok((l.id, store.groups_of(l.id)?)))
             .collect::<snipdeck_store::Result<HashMap<_, _>>>()?;
-        let mut tags = store.tags()?;
-        let tree = TagTree::new(&tags);
-        let order: HashMap<TagId, usize> = tree
-            .walk()
-            .into_iter()
-            .enumerate()
-            .map(|(i, t)| (t, i))
-            .collect();
-        tags.sort_by_key(|t| order.get(&t.id).copied().unwrap_or(usize::MAX));
+        let (tags, tree) = in_walk_order(store.tags()?);
         let triggered = store
             .triggers()?
             .into_iter()
@@ -536,22 +569,7 @@ impl MainModel {
         } else {
             Vec::new()
         };
-        let mut list_counts: HashMap<ListId, usize> = HashMap::new();
-        let mut tag_counts: HashMap<TagId, usize> = HashMap::new();
-        let mut own_counts: HashMap<TagId, usize> = HashMap::new();
-        for item in &items {
-            *list_counts.entry(item.list_id).or_default() += 1;
-            // A tag counts the items under it too, each item once.
-            let mut counted: HashSet<TagId> = HashSet::new();
-            for tag in &item.tags {
-                *own_counts.entry(*tag).or_default() += 1;
-                counted.insert(*tag);
-                counted.extend(tree.ancestors(*tag));
-            }
-            for tag in counted {
-                *tag_counts.entry(tag).or_default() += 1;
-            }
-        }
+        let (list_counts, tag_counts, own_counts) = counts(&items, &tree);
         self.boards = boards;
         self.board = board;
         self.lists = lists;

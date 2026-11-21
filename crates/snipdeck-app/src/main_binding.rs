@@ -1920,6 +1920,32 @@ fn read_run<S, C, K, T>(
     );
 }
 
+/// Where tag `at` of `tags` (in sidebar order) can go, as `(label, row)`: the top level (row -1)
+/// when it is nested now, then every tag it is not already under, other than itself and the tags
+/// nested under it (which follow it in the order, deeper than it).
+#[must_use]
+pub(crate) fn nest_places(tags: &[crate::main_window::SideTag], at: usize) -> Vec<(String, i32)> {
+    let Some(own) = tags.get(at) else {
+        return Vec::new();
+    };
+    let mut places = Vec::new();
+    if own.depth > 0 {
+        places.push((String::new(), -1));
+    }
+    let mut below_end = at + 1;
+    while tags.get(below_end).is_some_and(|t| t.depth > own.depth) {
+        below_end += 1;
+    }
+    let parent = tags[..at].iter().rposition(|t| t.depth + 1 == own.depth);
+    for (i, t) in tags.iter().enumerate() {
+        if i == at || (at < i && i < below_end) || Some(i) == parent {
+            continue;
+        }
+        places.push((t.path.clone(), to_i32(i)));
+    }
+    places
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2105,30 +2131,4 @@ mod tests {
             crate::binding::MASKED_PREVIEW
         );
     }
-}
-
-/// Where tag `at` of `tags` (in sidebar order) can go, as `(label, row)`: the top level (row -1)
-/// when it is nested now, then every tag it is not already under, other than itself and the tags
-/// nested under it (which follow it in the order, deeper than it).
-#[must_use]
-pub(crate) fn nest_places(tags: &[crate::main_window::SideTag], at: usize) -> Vec<(String, i32)> {
-    let Some(own) = tags.get(at) else {
-        return Vec::new();
-    };
-    let mut places = Vec::new();
-    if own.depth > 0 {
-        places.push((String::new(), -1));
-    }
-    let mut below_end = at + 1;
-    while tags.get(below_end).is_some_and(|t| t.depth > own.depth) {
-        below_end += 1;
-    }
-    let parent = tags[..at].iter().rposition(|t| t.depth + 1 == own.depth);
-    for (i, t) in tags.iter().enumerate() {
-        if i == at || (at < i && i < below_end) || Some(i) == parent {
-            continue;
-        }
-        places.push((t.path.clone(), to_i32(i)));
-    }
-    places
 }
