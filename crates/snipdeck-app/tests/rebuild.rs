@@ -141,7 +141,11 @@ fn rebuilding_restores_the_backup_recovers_newer_items_and_keeps_the_damaged_fol
     else {
         panic!("a rebuilt toast");
     };
-    assert_eq!(restored, backed_up, "every backed-up item came back");
+    assert_eq!(
+        restored + missing_sensitive,
+        backed_up,
+        "every item but the plain-text sensitive one came back"
+    );
     assert_eq!(
         recovered, 1,
         "only the newer item came from the damaged file"
@@ -408,8 +412,8 @@ fn a_library_that_cannot_be_opened_is_set_aside_and_rebuild_finds_the_backups() 
     assert!(ctl.rebuild_from_backup(dir.path(), &newest_backup(dir.path())));
     assert_eq!(
         titles(&ctl).len(),
-        backed_up,
-        "the backup was restored, all of it"
+        backed_up - 1,
+        "the backup was restored, all of it (the demo's one plain-text sensitive item is in no backup)"
     );
     assert_eq!(
         damaged_files(dir.path()).len(),
