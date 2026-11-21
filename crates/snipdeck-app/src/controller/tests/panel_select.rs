@@ -1168,7 +1168,7 @@ fn clear_list_on_an_empty_list_does_nothing() {
     w.ctl.bulk_delete();
     w.ctl.panel_delete_mode(true);
     w.ctl.panel_clear_list();
-    assert!(w.ctl.view().rows.is_empty());
+    assert_eq!(w.ctl.view().rows.len(), 0);
 }
 
 #[test]
