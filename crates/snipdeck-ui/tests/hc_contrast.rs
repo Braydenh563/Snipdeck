@@ -1,6 +1,6 @@
 //! UX-34: in high contrast every text/background pair of the theme is a pair of system colours
-//! that Windows guarantees to contrast (WindowText on Window, HighlightText on Highlight, GrayText
-//! on Window). The first test reads the pairs from `ui/theme.slint`; the second measures their
+//! that Windows guarantees to contrast (`WindowText` on `Window`, `HighlightText` on `Highlight`, `GrayText`
+//! on `Window`). The first test reads the pairs from `ui/theme.slint`; the second measures their
 //! contrast for the stock colour sets.
 //!
 //! Not verified here: that Windows hands the app these exact colours on a real desktop (the
@@ -85,10 +85,10 @@ fn every_high_contrast_pair_uses_the_system_colours_made_to_go_together() {
     let source = std::fs::read_to_string(path).expect("theme.slint");
     let mut wrong = Vec::new();
     for (fg, bg, want_fg, want_bg) in PAIRS {
-        let (got_fg, got_bg) = (hc_branch(&source, fg), hc_branch(&source, bg));
-        if got_fg != *want_fg || got_bg != *want_bg {
+        let (fg_found, bg_found) = (hc_branch(&source, fg), hc_branch(&source, bg));
+        if fg_found != *want_fg || bg_found != *want_bg {
             wrong.push(format!(
-                "{fg} on {bg}: {got_fg} on {got_bg}, want {want_fg} on {want_bg}"
+                "{fg} on {bg}: {fg_found} on {bg_found}, want {want_fg} on {want_bg}"
             ));
         }
     }
@@ -110,8 +110,8 @@ fn contrast(a: [u8; 3], b: [u8; 3]) -> f64 {
     (x.max(y) + 0.05) / (x.min(y) + 0.05)
 }
 
-/// The stock "High Contrast Black" and "High Contrast White" colour sets (Window, WindowText,
-/// Highlight, HighlightText, GrayText), as Windows ships them.
+/// The stock "High Contrast Black" and "High Contrast White" colour sets (`Window`, `WindowText`,
+/// `Highlight`, `HighlightText`, `GrayText`), as Windows ships them.
 const STOCK: &[(&str, [[u8; 3]; 5])] = &[
     (
         "High Contrast Black",

@@ -586,6 +586,8 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Item editor | `Ctrl+Enter`, `Ctrl+S` | Save |
 | Item editor | `Alt+P` | Preview on or off |
 | Item editor | `Esc`, `Ctrl+W` | Close |
+| Item editor | `Del` | Remove the focused tag |
+| Item editor | `Ctrl+Shift+Enter` | In quick add: open the full editor with the text so far |
 | Fill form | `Ctrl+Enter`, `Esc` | Insert, cancel |
 
 ## Colours

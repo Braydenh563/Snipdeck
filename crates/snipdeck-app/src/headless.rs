@@ -240,7 +240,7 @@ mod tests {
             out.text
         );
         assert!(out.text.contains("System: TestOS 1"));
-        assert!(out.text.contains("[OK] Database"));
+        assert!(out.text.contains("[OK] Library"));
         assert!(out.text.contains("[OK] Tray icon: Not checked"));
         assert!(!out.text.contains(&dir.path().display().to_string()));
         // No backup yet: a warning, so exit 1.

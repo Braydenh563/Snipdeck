@@ -307,6 +307,76 @@ fn list_and_board_editors_hold_every_element_at_minimum_and_preferred_size() {
     });
 }
 
+/// The first two rows of the form (the name, then the next control) must be whole inside the form's visible area at
+/// the window's minimum size, scrolled to the top, in every language: the minimum height is promised to show them.
+fn first_rows_are_whole<C: ComponentHandle + ElementRoot>(
+    ui: &C,
+    s: f32,
+    lang: &str,
+    name: &str,
+    (mw, mh): (f32, f32),
+) -> Vec<String>
+where
+    for<'a> SystemLook<'a>: slint::Global<'a, C>,
+{
+    settle(ui, s, mw, mh);
+    let views = viewports(ui);
+    let Some(v) = views.first() else {
+        return vec![format!("{name} {lang:?} {s}x: no form area")];
+    };
+    let mut rows: Vec<(f32, f32)> = elements(ui)
+        .iter()
+        .filter(|e| e.y >= v.1 - 0.5 && e.y < v.3 && e.x >= v.0 - 0.5 && e.x < v.2)
+        .map(|e| (e.y, e.y + e.h))
+        .collect();
+    rows.sort_by(|a, b| a.0.total_cmp(&b.0));
+    let mut bands: Vec<(f32, f32)> = Vec::new();
+    for (top, bottom) in rows {
+        match bands.last_mut() {
+            Some(b) if top < b.1 - 0.5 => b.1 = b.1.max(bottom),
+            _ => bands.push((top, bottom)),
+        }
+    }
+    bands
+        .iter()
+        .take(2)
+        .filter(|b| b.1 > v.3 + 0.5)
+        .map(|b| {
+            format!(
+                "{name} {lang:?} {s}x at {mw}x{mh}: a control at y {:.0}..{:.0} is cut by the form's edge at {:.0}",
+                b.0, b.1, v.3
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn the_list_and_board_editors_show_their_first_two_rows_whole_at_minimum_size() {
+    with_locales(|lang, s| {
+        let mut out = Vec::new();
+        let ui = ListEditor::new().unwrap();
+        ui.global::<SystemLook<'_>>().set_text_scale(s);
+        editor::list_editor_existing(&ui);
+        ui.set_show_colour(true);
+        ui.set_show_sort(true);
+        ui.set_can_delete(true);
+        ui.set_icon_names(editor::strings(&["Briefcase"; 24]));
+        settle(&ui, s, 460.0, 440.0);
+        let min = (ui.get_min_window_width(), ui.get_min_window_height());
+        out.extend(first_rows_are_whole(&ui, s, lang, "list editor", min));
+        let ui = BoardEditor::new().unwrap();
+        ui.global::<SystemLook<'_>>().set_text_scale(s);
+        ui.set_is_new(false);
+        ui.set_show_colour(true);
+        ui.set_show_sort(true);
+        ui.set_can_delete(true);
+        settle(&ui, s, 460.0, 440.0);
+        let min = (ui.get_min_window_width(), ui.get_min_window_height());
+        out.extend(first_rows_are_whole(&ui, s, lang, "board editor", min));
+        out
+    });
+}
+
 #[test]
 fn list_editor_grids_show_every_cell_inside_the_window_at_every_width() {
     on_ui_thread(|| {

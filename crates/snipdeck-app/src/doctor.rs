@@ -784,7 +784,7 @@ mod tests {
         let text = report(&info, &checks);
         assert!(text.contains("Version: 0.1.0") && text.contains("Display scale: 150%"));
         assert!(text.contains("close to tray: on"));
-        assert!(text.contains("[Problem] Database"));
+        assert!(text.contains("[Problem] Library"));
         assert!(text.contains("<data folder>\\library.db"));
         // "ann" alone also matches the "cannot" of the error text.
         assert!(

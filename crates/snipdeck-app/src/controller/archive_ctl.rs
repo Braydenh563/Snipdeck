@@ -144,7 +144,7 @@ where
     }
 
     /// Which job runs now, as the windows number it so the button that started it can show it is working:
-    /// 0 none, 1 a backup, 2 an export, 3 a rebuild or an import reading its source (see [`busy_op_of`]).
+    /// 0 none, 1 a backup, 2 an export, 3 a rebuild or an import reading its source (see `busy_op_of`).
     #[must_use]
     pub fn archive_busy_op(&self) -> i32 {
         self.archive

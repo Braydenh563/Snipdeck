@@ -964,7 +964,9 @@ ui_tests! {
                     .abs()
                     < 1.0
             })
-            .count() as i32
+            .count()
+            .try_into()
+            .unwrap_or(i32::MAX)
             + 1; // the "No icon" cell leads the first row
         press_key(&ui, Key::DownArrow);
         assert_eq!(ui.get_icon_index(), columns, "Down moves a row");

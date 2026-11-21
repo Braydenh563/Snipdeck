@@ -206,7 +206,7 @@ fn every_window_is_named_sized_and_keyboard_visible_in_every_look() {
     run(
         "board editor",
         BoardEditor::new,
-        |c, d| c.set_dark(d),
+        BoardEditor::set_dark,
         |c| (c.get_min_window_width(), c.get_min_window_height()),
         &mut all,
         &mut checked,
