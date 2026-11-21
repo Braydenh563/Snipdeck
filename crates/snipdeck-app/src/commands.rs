@@ -128,11 +128,19 @@ pub enum Command {
     RestoreItem,
     /// Delete the item under the cursor from the Trash for good.
     DeleteForever,
+    /// Open Settings and ask which library to import.
+    ImportLibrary,
+    /// Open Settings and export the library to a folder.
+    ExportLibrary,
+    /// Open Settings and make a backup now.
+    BackUpNow,
+    /// Open the Trash and ask to empty it (offered while the Trash holds something).
+    EmptyTrash,
 }
 
 impl Command {
     /// Every command, in the order of `CommandTexts.all`.
-    pub const ALL: [Self; 57] = [
+    pub const ALL: [Self; 61] = [
         Self::NewItem,
         Self::NewList,
         Self::Search,
@@ -190,6 +198,10 @@ impl Command {
         Self::UsePlain,
         Self::RestoreItem,
         Self::DeleteForever,
+        Self::ImportLibrary,
+        Self::ExportLibrary,
+        Self::BackUpNow,
+        Self::EmptyTrash,
     ];
 
     /// The command with palette id `id`.
@@ -251,7 +263,12 @@ impl Command {
     pub const fn destructive(self) -> bool {
         matches!(
             self,
-            Self::TrashItem | Self::DeleteGroup | Self::DeleteForever | Self::Quit | Self::Lock
+            Self::TrashItem
+                | Self::DeleteGroup
+                | Self::DeleteForever
+                | Self::EmptyTrash
+                | Self::Quit
+                | Self::Lock
         )
     }
 
@@ -369,6 +386,8 @@ pub struct Context<'a> {
     pub can_redo: bool,
     /// The library has a master password to lock with.
     pub lock_set: bool,
+    /// The Trash holds something to empty.
+    pub trash_full: bool,
 }
 
 /// Why a command the user may look for is listed but cannot run now. The palette shows the
@@ -440,6 +459,7 @@ pub fn available(command: Command, ctx: &Context<'_>) -> bool {
         Command::Undo => ctx.can_undo,
         Command::Redo => ctx.can_redo,
         Command::Lock => ctx.lock_set,
+        Command::EmptyTrash => ctx.trash_full,
         Command::RestoreItem | Command::DeleteForever => ctx.has_item && ctx.in_trash,
         Command::Symbols => ctx.symbols,
         Command::Colours => ctx.colours,
@@ -617,6 +637,7 @@ mod tests {
             can_undo: true,
             can_redo: true,
             lock_set: true,
+            trash_full: true,
         }
     }
 
@@ -647,6 +668,14 @@ mod tests {
                 "Delete selected item for good",
                 "remove",
             ),
+            (
+                Command::ImportLibrary,
+                "Import snippets",
+                "ditto copyq espanso restore",
+            ),
+            (Command::ExportLibrary, "Export library", "save file"),
+            (Command::BackUpNow, "Back up now", "backup copy"),
+            (Command::EmptyTrash, "Empty Trash", "delete everything bin"),
         ];
         for (command, label, words) in newest {
             if let Some(slot) = all.get_mut(usize::try_from(command.id()).unwrap_or(0)) {
@@ -1068,6 +1097,13 @@ mod tests {
         c.can_redo = false;
         c.lock_set = false;
         assert!(!has(&c, Command::Undo) && !has(&c, Command::Redo) && !has(&c, Command::Lock));
+        assert!(has(&c, Command::EmptyTrash) && Command::EmptyTrash.destructive());
+        c.trash_full = false;
+        assert!(
+            !has(&c, Command::EmptyTrash),
+            "an empty Trash has nothing to empty"
+        );
+        c.trash_full = true;
         c.in_trash = true;
         assert!(has(&c, Command::RestoreItem) && has(&c, Command::DeleteForever));
         assert!(!has(&c, Command::UsePlain));

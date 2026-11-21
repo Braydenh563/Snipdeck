@@ -63,6 +63,19 @@ pub enum Effect {
     OpenUnlock,
     /// Open the optional Support Snipdeck page in the browser.
     OpenSupport,
+    /// Open Settings and start one of its backup actions (the palette's Import, Export, Back up).
+    SettingsAction(SettingsAction),
+}
+
+/// What the palette asks Settings to start.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SettingsAction {
+    /// Show the import sources.
+    Import,
+    /// Export the library to a folder.
+    Export,
+    /// Make a backup now.
+    BackUp,
 }
 
 /// How far a toast is through its life (the Slint `ToastPhase`).

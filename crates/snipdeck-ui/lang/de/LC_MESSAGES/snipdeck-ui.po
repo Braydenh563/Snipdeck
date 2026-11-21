@@ -1326,6 +1326,9 @@ msgstr "Importieren aus: {}"
 msgid "Import into your library, see a preview first"
 msgstr "In deine Bibliothek importieren, vorher Vorschau ansehen"
 
+msgid "Import snippets"
+msgstr "Snippets importieren"
+
 msgid "Imported {} item"
 msgid_plural "Imported {} items"
 msgstr[0] "{} Textbaustein importiert"
@@ -3613,6 +3616,9 @@ msgstr "Aussehen Farbe Nacht"
 msgid "back revert step history"
 msgstr "zurück rückgängig schritt verlauf"
 
+msgid "backup copy save safe"
+msgstr "Sicherung Backup Kopie speichern"
+
 msgid "bring back undelete trash recover"
 msgstr "wiederherstellen zurückholen papierkorb"
 
@@ -3658,6 +3664,9 @@ msgstr "Standard"
 msgid "delete"
 msgstr "Löschen"
 
+msgid "delete everything bin permanently"
+msgstr "alles löschen Papierkorb endgültig"
+
 msgid "delete remove discard"
 msgstr "löschen entfernen verwerfen"
 
@@ -3669,6 +3678,9 @@ msgstr "diagnostizieren Diagnose Probleme beheben"
 
 msgid "dissolve split remove group keep items section"
 msgstr "auflösen trennen entfernen Gruppe behalten Elemente Abschnitt"
+
+msgid "ditto copyq espanso restore bring in file"
+msgstr "Ditto CopyQ Espanso wiederherstellen Datei einlesen"
 
 msgid "donate donation coffee tip"
 msgstr "spenden spende kaffee trinkgeld"
@@ -3836,6 +3848,9 @@ msgstr "umsortieren später absenken Abschnitt"
 
 msgid "s"
 msgstr "s"
+
+msgid "save file download copy out"
+msgstr "speichern Datei herunterladen ausgeben"
 
 msgid "slug-like-this"
 msgstr "slug-wie-dieser"

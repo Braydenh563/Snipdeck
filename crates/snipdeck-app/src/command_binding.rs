@@ -76,6 +76,7 @@ pub fn context<'a>(
         can_undo: offers.can_undo,
         can_redo: offers.can_redo,
         lock_set: offers.lock_set,
+        trash_full: screen.is_some_and(|s| s.counts.trash > 0),
     }
 }
 

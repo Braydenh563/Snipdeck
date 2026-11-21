@@ -1326,6 +1326,9 @@ msgstr "Importer depuis : {}"
 msgid "Import into your library, see a preview first"
 msgstr "Importer dans votre bibliothèque, après un aperçu"
 
+msgid "Import snippets"
+msgstr "Importer des extraits"
+
 msgid "Imported {} item"
 msgid_plural "Imported {} items"
 msgstr[0] "{} extrait importé"
@@ -3613,6 +3616,9 @@ msgstr "apparence couleur nuit"
 msgid "back revert step history"
 msgstr "retour annuler étape historique"
 
+msgid "backup copy save safe"
+msgstr "sauvegarde copie enregistrer"
+
 msgid "bring back undelete trash recover"
 msgstr "récupérer restaurer corbeille"
 
@@ -3658,6 +3664,9 @@ msgstr "par défaut"
 msgid "delete"
 msgstr "suppression"
 
+msgid "delete everything bin permanently"
+msgstr "tout supprimer corbeille définitivement"
+
 msgid "delete remove discard"
 msgstr "supprimer retirer jeter"
 
@@ -3669,6 +3678,9 @@ msgstr "diagnostiquer problèmes réparer"
 
 msgid "dissolve split remove group keep items section"
 msgstr "dissoudre séparer retirer groupe garder éléments section"
+
+msgid "ditto copyq espanso restore bring in file"
+msgstr "ditto copyq espanso restaurer fichier"
 
 msgid "donate donation coffee tip"
 msgstr "don donner café pourboire"
@@ -3836,6 +3848,9 @@ msgstr "réordonner plus tard descendre section"
 
 msgid "s"
 msgstr "s"
+
+msgid "save file download copy out"
+msgstr "enregistrer fichier télécharger sortir"
 
 msgid "slug-like-this"
 msgstr "slug-comme-ceci"

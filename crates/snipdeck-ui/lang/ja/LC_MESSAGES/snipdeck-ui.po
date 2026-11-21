@@ -1325,6 +1325,9 @@ msgstr "取り込み元: {}"
 msgid "Import into your library, see a preview first"
 msgstr "ライブラリに取り込む前に、プレビューを確認"
 
+msgid "Import snippets"
+msgstr "スニペットをインポート"
+
 msgid "Imported {} item"
 msgid_plural "Imported {} items"
 msgstr[0] "{} 件のスニペットを取り込みました"
@@ -3604,6 +3607,9 @@ msgstr "外観 色 夜"
 msgid "back revert step history"
 msgstr "戻す 元に戻す 手順 履歴"
 
+msgid "backup copy save safe"
+msgstr "バックアップ コピー 保存 安全"
+
 msgid "bring back undelete trash recover"
 msgstr "復元 戻す ごみ箱 復旧"
 
@@ -3649,6 +3655,9 @@ msgstr "既定"
 msgid "delete"
 msgstr "削除"
 
+msgid "delete everything bin permanently"
+msgstr "すべて削除 ゴミ箱 完全に"
+
 msgid "delete remove discard"
 msgstr "削除 除去 破棄"
 
@@ -3660,6 +3669,9 @@ msgstr "診断 問題 修正"
 
 msgid "dissolve split remove group keep items section"
 msgstr "解除 分割 削除 グループ 項目を残す セクション"
+
+msgid "ditto copyq espanso restore bring in file"
+msgstr "ditto copyq espanso 復元 ファイル 取り込み"
 
 msgid "donate donation coffee tip"
 msgstr "寄付 支援 コーヒー 投げ銭"
@@ -3826,6 +3838,9 @@ msgstr "並べ替え 後ろへ 下げる セクション"
 
 msgid "s"
 msgstr "秒"
+
+msgid "save file download copy out"
+msgstr "保存 ファイル ダウンロード 書き出し"
 
 msgid "slug-like-this"
 msgstr "スラッグ（slug-like-this）"

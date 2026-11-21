@@ -538,6 +538,10 @@ export component MainWindow inherits Window {
         root.used-index = index;
         used-timer.running = true;
     }
+    // The palette's Empty Trash: the same confirmation as the Trash's button.
+    public function ask-empty-trash() {
+        root.ask(3, 0);
+    }
     public function focus-search() {
         search.focus();
         search.select-all();

@@ -59,7 +59,8 @@ pub use symbol_ctl::{IconExport, IconSave, SaveOutcome, SymbolChoice, SymbolMenu
 pub use trigger_ctl::{HintOutcome, TypedOutcome};
 pub use views::{
     BoardDeleteView, ChooseEntry, ChooseLabel, ChooseMenu, ClearListView, Effect, FillSubmission,
-    FillView, ListDeleteView, PickerView, StackView, ToastPhase, ToastView, UseResult, View,
+    FillView, ListDeleteView, PickerView, SettingsAction, StackView, ToastPhase, ToastView,
+    UseResult, View,
 };
 
 use crate::{

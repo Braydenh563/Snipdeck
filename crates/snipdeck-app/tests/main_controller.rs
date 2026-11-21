@@ -1945,11 +1945,23 @@ fn the_panel_button_and_palette_hide_a_panel_that_is_showing() {
 fn palette_commands_that_belong_to_other_windows_queue_the_menus_effects() {
     use snipdeck_app::{
         commands::Command,
-        controller::{Effect, HelpTopic},
+        controller::{Effect, HelpTopic, SettingsAction},
     };
     let mut ctl = seeded();
     for (command, effects) in [
         (Command::Settings, vec![Effect::OpenSettings]),
+        (
+            Command::ImportLibrary,
+            vec![Effect::SettingsAction(SettingsAction::Import)],
+        ),
+        (
+            Command::ExportLibrary,
+            vec![Effect::SettingsAction(SettingsAction::Export)],
+        ),
+        (
+            Command::BackUpNow,
+            vec![Effect::SettingsAction(SettingsAction::BackUp)],
+        ),
         (
             Command::Symbols,
             vec![Effect::ShowPanel, Effect::ShowSymbols],
@@ -2331,4 +2343,11 @@ fn the_panel_list_menu_sorts_and_a_panel_drag_in_a_sorted_list_offers_manual() {
     ctl.toast_action();
     assert!(ctl.view().rows_reorderable);
     assert_eq!(ctl.store().list(list).unwrap().sort, ListSort::Manual);
+}
+
+#[test]
+fn the_palettes_empty_trash_opens_the_trash_section() {
+    let mut ctl = seeded();
+    ctl.run_command(snipdeck_app::commands::Command::EmptyTrash, 0);
+    assert_eq!(ctl.main_screen().section, Section::Trash);
 }

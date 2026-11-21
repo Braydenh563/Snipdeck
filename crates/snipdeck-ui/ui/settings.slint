@@ -506,6 +506,17 @@ export component SettingsPage inherits Window {
 
     // The host calls this when the page closes or opens, so a half-asked "Clear recent history"
     // (Cancel / Clear history showing) is never still there on the next look.
+    // The palette's Import / Export / Back up commands: 0 shows the import sources, 1 exports, 2 backs up.
+    public function run-action(action: int) {
+        if (action == 0) {
+            root.import-choosing = true;
+        } else if (action == 1) {
+            root.export-requested();
+        } else {
+            root.backup-now-requested();
+        }
+    }
+
     public function reset-asks() {
         root.clear-recent-ask = false;
     }

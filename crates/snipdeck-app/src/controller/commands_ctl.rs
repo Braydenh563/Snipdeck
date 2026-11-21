@@ -5,7 +5,7 @@
 
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 
-use super::{Controller, Effect, HelpTopic, Library, MainAction};
+use super::{Controller, Effect, HelpTopic, Library, MainAction, SettingsAction};
 use crate::{
     commands::Command,
     host::ClipboardText,
@@ -78,6 +78,16 @@ where
             | Command::UsePlain
             | Command::RestoreItem
             | Command::DeleteForever => {}
+            Command::ImportLibrary => self
+                .pending
+                .push(Effect::SettingsAction(SettingsAction::Import)),
+            Command::ExportLibrary => self
+                .pending
+                .push(Effect::SettingsAction(SettingsAction::Export)),
+            Command::BackUpNow => self
+                .pending
+                .push(Effect::SettingsAction(SettingsAction::BackUp)),
+            Command::EmptyTrash => self.main_open(Section::Trash),
             Command::ShowPanel | Command::HidePanel => self.main_toggle_panel(),
             Command::Undo => self.undo(),
             Command::Redo => self.redo(),

@@ -244,6 +244,14 @@ where
                 crate::onboarding_binding::request_open();
                 return;
             }
+            // The Trash opens first, then the same confirmation as its button asks.
+            crate::commands::Command::EmptyTrash => {
+                self.act(|ctl| ctl.run_command(command, 0));
+                if let Some(window) = self.window.upgrade() {
+                    window.invoke_ask_empty_trash();
+                }
+                return;
+            }
             _ => {}
         }
         let cursor = self.shown.borrow().as_ref().map_or(0, |s| s.cursor);

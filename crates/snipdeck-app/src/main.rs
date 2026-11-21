@@ -690,6 +690,18 @@ fn effect_handler(
                 window_failed(snipdeck_app::toast::ToastMessage::WindowNotShown);
             }
         }
+        Effect::SettingsAction(action) => {
+            if let Err(e) = settings_ui.open() {
+                eprintln!("snipdeck: cannot open the settings: {e}");
+                window_failed(snipdeck_app::toast::ToastMessage::WindowNotShown);
+            } else if let Some(page) = settings_ui.window() {
+                page.invoke_run_action(match action {
+                    snipdeck_app::controller::SettingsAction::Import => 0,
+                    snipdeck_app::controller::SettingsAction::Export => 1,
+                    snipdeck_app::controller::SettingsAction::BackUp => 2,
+                });
+            }
+        }
         // The optional support page, in the browser: the same opener as Help's links.
         Effect::OpenSupport => {
             use snipdeck_app::help_binding::{HelpHost, SUPPORT_URL, SystemHelpHost};
