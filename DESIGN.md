@@ -381,7 +381,7 @@ Decided 2026-11-16 (UX-20):
 - **Reversible** (the act goes to the Trash, or the old value can be restored): act at once and show **Undo** (`Ctrl+Z`) in a toast. No dialog. This covers items, groups and their items, bulk delete, lists and boards (they go to the Trash with their items).
 - **Irreversible** (the data is gone and no Trash entry holds it): ask first in a dialog that names the thing and the count, with Cancel as the default. This covers Empty Trash, deleting a tag (no Trash entry) and erasing all data.
 - A list, board or group is not asked about because it is empty or large; the size only goes into the toast ("Moved “x” and 200 items to the Trash").
-- One function per kind enforces it (`confirm::Rule` in the app crate); a destructive act that does neither is a bug.
+- This is a convention, held by tests, not by one function: Undo is covered by `clear_list_acts_at_once_and_undoes_whole`, `delete_removes_the_selection_with_an_undo_toast_and_no_confirmation`, `delete_mode_row_undo_restores_it`, `delete_group_trashes_the_header_and_its_items_in_one_undo` and `deleting_a_row_trashes_it_with_an_undo_toast_that_brings_it_back` (app crate, `controller/tests`), and for lists and boards `deleting_a_list_trashes_it_with_its_items_and_undo_restores_it` and `deleting_a_board_trashes_it_at_once_and_undo_restores_it` (`main_controller.rs`); the dialogs by the Empty Trash and tag-delete cases in `main_window_logic.rs`, `main_window.rs` (app) and `the_erase_button_stays_off_until_the_word_is_typed` (`settings_window.rs`). A destructive act that does neither is a bug; add its test next to these.
 
 ## 6. Depth
 
