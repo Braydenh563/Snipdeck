@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::{
-    index_cache::IndexCache,
+    index_cache::{IndexCache, Snapshot},
     search_mark::{self, Marks},
 };
 use snipdeck_core::{BoardId, Item, ItemId, ItemKind, ListAccent, ListId, search::SearchIndex};
@@ -54,19 +54,25 @@ pub struct Entry {
     pub marks: Marks,
 }
 
+/// Where an item lives: positions into the cache's snapshot, so opening the Picker copies no item.
 struct Place {
-    item: Item,
-    board: BoardId,
-    list: ListId,
-    board_name: String,
-    list_name: String,
-    accent: Option<ListAccent>,
+    /// Index of the item in [`Snapshot::all`](crate::index_cache::Snapshot::all).
+    item: usize,
+    /// Index of its board in [`Snapshot::boards`](crate::index_cache::Snapshot::boards), and of its list in that board's lists.
+    board_at: usize,
+    list_at: usize,
 }
 
 /// The Picker's state.
 pub struct PickerModel {
     /// Every live item, in library order (board, list, manual order).
     places: Vec<Place>,
+    /// The library as the cache read it (the items and the names the rows show).
+    snapshot: Rc<Snapshot>,
+    /// Position in `places` of each item: built once when the Picker opens, not on every key.
+    positions: HashMap<ItemId, usize>,
+    /// Positions in `places` with nothing typed (used last first, then most used): sorted once.
+    recent_order: Vec<usize>,
     index: Rc<SearchIndex>,
     suggest: Rc<crate::search_suggest::Index>,
     /// The board the Panel showed when the Picker opened (the "This board" scope).
@@ -110,30 +116,44 @@ impl PickerModel {
         S: BoardRepo + ListRepo + ItemRepo + TagRepo,
     {
         let snapshot = cache.snapshot(store)?;
-        let mut by_list: HashMap<ListId, Vec<&Item>> = HashMap::new();
-        for item in &snapshot.all {
-            by_list.entry(item.list_id).or_default().push(item);
+        let mut by_list: HashMap<ListId, Vec<usize>> = HashMap::new();
+        for (n, item) in snapshot.all.iter().enumerate() {
+            by_list.entry(item.list_id).or_default().push(n);
         }
-        let mut places = Vec::new();
-        for (b, lists) in &snapshot.boards {
-            for l in lists {
+        let mut places = Vec::with_capacity(snapshot.all.len());
+        for (board_at, (_, lists)) in snapshot.boards.iter().enumerate() {
+            for (list_at, l) in lists.iter().enumerate() {
                 for item in by_list.remove(&l.id).unwrap_or_default() {
                     places.push(Place {
-                        item: item.clone(),
-                        board: b.id,
-                        list: l.id,
-                        board_name: b.name.as_str().to_owned(),
-                        list_name: l.name.as_str().to_owned(),
-                        accent: l.accent,
+                        item,
+                        board_at,
+                        list_at,
                     });
                 }
             }
         }
+        let positions = places
+            .iter()
+            .enumerate()
+            .map(|(n, p)| (snapshot.all[p.item].id, n))
+            .collect();
+        // Nothing typed: what was used most recently first, then most used, then library order.
+        let mut recent_order: Vec<usize> = (0..places.len()).collect();
+        recent_order.sort_by_key(|n| {
+            let item = &snapshot.all[places[*n].item];
+            (
+                std::cmp::Reverse(item.last_used_at),
+                std::cmp::Reverse(item.use_count),
+            )
+        });
         let index = Rc::clone(&snapshot.index);
         let mut model = Self {
             places,
-            index,
+            positions,
+            recent_order,
             suggest: Rc::clone(&snapshot.suggest),
+            snapshot,
+            index,
             board,
             list: None,
             more: false,
@@ -147,41 +167,38 @@ impl PickerModel {
         Ok(model)
     }
 
+    fn item(&self, place: &Place) -> &Item {
+        &self.snapshot.all[place.item]
+    }
+
+    fn board_of(&self, place: &Place) -> &snipdeck_core::Board {
+        &self.snapshot.boards[place.board_at].0
+    }
+
+    fn list_of(&self, place: &Place) -> &snipdeck_core::List {
+        &self.snapshot.boards[place.board_at].1[place.list_at]
+    }
+
     fn in_scope(&self, place: &Place) -> bool {
         match self.scope {
             Scope::All => true,
-            Scope::Board => Some(place.board) == self.board,
-            Scope::List => Some(place.list) == self.list,
-            Scope::Pinned => place.item.pinned,
+            Scope::Board => Some(self.board_of(place).id) == self.board,
+            Scope::List => Some(self.list_of(place).id) == self.list,
+            Scope::Pinned => self.item(place).pinned,
         }
     }
 
     fn search(&mut self) {
-        let positions: HashMap<ItemId, usize> = self
-            .places
-            .iter()
-            .enumerate()
-            .map(|(n, p)| (p.item.id, n))
-            .collect();
         let in_scope = |n: &usize| self.in_scope(&self.places[*n]);
         let mut tag_hits = HashMap::new();
         self.results = if self.query.trim().is_empty() {
-            // Nothing typed: what was used most recently first, then most used, then library order.
-            let mut all: Vec<usize> = (0..self.places.len()).filter(in_scope).collect();
-            all.sort_by_key(|n| {
-                let item = &self.places[*n].item;
-                (
-                    std::cmp::Reverse(item.last_used_at),
-                    std::cmp::Reverse(item.use_count),
-                )
-            });
-            all
+            self.recent_order.iter().copied().filter(in_scope).collect()
         } else {
             self.index
                 .query(&self.query, self.places.len())
                 .iter()
                 .filter_map(|hit| {
-                    let n = positions.get(&hit.id).copied()?;
+                    let n = self.positions.get(&hit.id).copied()?;
                     if let Some(tag) = &hit.tag {
                         tag_hits.insert(n, tag.clone());
                     }
@@ -208,6 +225,12 @@ impl PickerModel {
     #[must_use]
     pub const fn more(&self) -> bool {
         self.more
+    }
+
+    /// The list the "This list" scope covers.
+    #[must_use]
+    pub const fn list(&self) -> Option<ListId> {
+        self.list
     }
 
     /// Whether the "This list" scope has a list to cover.
@@ -253,27 +276,28 @@ impl PickerModel {
             .iter()
             .map(|n| {
                 let p = &self.places[*n];
-                let title = if p.item.title.trim().is_empty() {
-                    p.item.preview.lines().next().unwrap_or_default().to_owned()
+                let item = self.item(p);
+                let title = if item.title.trim().is_empty() {
+                    item.preview.lines().next().unwrap_or_default().to_owned()
                 } else {
-                    p.item.title.clone()
+                    item.title.clone()
                 };
                 Entry {
-                    id: p.item.id,
-                    kind: p.item.kind,
-                    sensitive: p.item.sensitive,
+                    id: item.id,
+                    kind: item.kind,
+                    sensitive: item.sensitive,
                     marks: search_mark::marks(
                         &title,
-                        &p.item.preview,
-                        p.item.sensitive,
+                        &item.preview,
+                        item.sensitive,
                         self.tag_hits.get(n).map(String::as_str),
                         &self.query,
                     ),
                     title,
-                    preview: p.item.preview.clone(),
-                    board: p.board_name.clone(),
-                    list: p.list_name.clone(),
-                    accent: p.accent,
+                    preview: item.preview.clone(),
+                    board: self.board_of(p).name.as_str().to_owned(),
+                    list: self.list_of(p).name.as_str().to_owned(),
+                    accent: self.list_of(p).accent,
                 }
             })
             .collect()
@@ -282,7 +306,9 @@ impl PickerModel {
     /// The item in result row `index`.
     #[must_use]
     pub fn item_at(&self, index: usize) -> Option<ItemId> {
-        self.results.get(index).map(|n| self.places[*n].item.id)
+        self.results
+            .get(index)
+            .map(|n| self.item(&self.places[*n]).id)
     }
 
     /// The item for quick-use number `n` (1 to 9).
