@@ -56,7 +56,7 @@ pub use panel::{APP_MENU, AppMenuEntry, HelpTopic, ItemMenuEntry, LIST_MENU, Lis
 pub use panel_select::LABELS;
 pub use settings_ctl::{ImportKind, ImportPreview, ImportProblem, ImportSource};
 pub use symbol_ctl::{IconExport, IconSave, SaveOutcome, SymbolChoice, SymbolMenuEntry};
-pub use trigger_ctl::{HintOutcome, TypedOutcome};
+pub use trigger_ctl::{HintOutcome, SkipReason, TypedOutcome};
 pub use views::{
     BoardDeleteView, ChooseEntry, ChooseLabel, ChooseMenu, ClearListView, Effect, FillSubmission,
     FillView, ListDeleteView, PickerView, SettingsAction, StackView, ToastPhase, ToastView,
@@ -373,6 +373,8 @@ pub struct Controller<S, C: Clipboard, K, T> {
     typing_sent: Vec<(snipdeck_core::Trigger, snipdeck_core::ItemId)>,
     /// Whether the candidate list handed over was built with suggestions on.
     typing_suggest: bool,
+    /// Why the last typed trigger did not expand (Troubleshoot).
+    last_skip: Option<trigger_ctl::SkipReason>,
     /// Whether the typing service was last told to run.
     typing_on: Option<bool>,
     /// Told whether clipboard history is on and whether it is paused, for the tray menu's
@@ -585,6 +587,7 @@ where
             typing: None,
             typing_sent: Vec::new(),
             typing_suggest: false,
+            last_skip: None,
             typing_on: None,
             tray_history: None,
             screen_clip: crate::screen_clip::ScreenClipFlow::new(),

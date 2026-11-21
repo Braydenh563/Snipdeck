@@ -13,7 +13,7 @@ use snipdeck_core::{Candidate, Matcher, UseMode};
 use snipdeck_platform::{
     keys::{Key, KeyEvent},
     pipeline::{Clipboard, Keyboard, Timing},
-    route::{Route, ScreenRect},
+    route::{CopyReason, Route, ScreenRect},
 };
 
 use super::{Controller, Library, Toast, ToastKind, ToastMessage, UseResult, use_ctl::Erasing};
@@ -30,6 +30,66 @@ pub enum TypedOutcome {
     Expanded(UseResult),
     /// Nothing happened and nothing was typed into the app.
     Skipped,
+}
+
+/// Why the last typed trigger did not expand (Troubleshoot names it, so a trigger that "sometimes does not
+/// work" has an answer). Nothing here is typed text: only the reason.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SkipReason {
+    /// The focused field is a password box, or Windows did not say it is not one in time.
+    PasswordField,
+    /// The focus moved to another window or field between the last key and the expansion.
+    FocusMoved,
+    /// A Snipdeck window is in front.
+    SnipdeckWindow,
+    /// The Picker or a fill form is open.
+    SnipdeckDialog,
+    /// The item became Sensitive or lost the trigger since the list was sent.
+    ItemChanged,
+    /// The program is on the no-paste list.
+    ExcludedApp,
+    /// The program runs as administrator, which Snipdeck may not type into.
+    ElevatedApp,
+    /// Nothing that takes text has the focus.
+    NothingFocused,
+    /// Another key was typed before the expansion went out.
+    KeyTyped,
+}
+
+impl SkipReason {
+    /// The sentence Troubleshoot shows (literal English, like the other checks).
+    #[must_use]
+    pub const fn sentence(self) -> &'static str {
+        match self {
+            Self::PasswordField => {
+                "The last trigger was not expanded: the field is a password box (or could not be checked in time)."
+            }
+            Self::FocusMoved => {
+                "The last trigger was not expanded: the focus moved to another window or field."
+            }
+            Self::SnipdeckWindow => {
+                "The last trigger was not expanded: a Snipdeck window was in front."
+            }
+            Self::SnipdeckDialog => {
+                "The last trigger was not expanded: the Picker or a fill form was open."
+            }
+            Self::ItemChanged => {
+                "The last trigger was not expanded: its item changed (now Sensitive, or the code was reassigned)."
+            }
+            Self::ExcludedApp => {
+                "The last trigger was not expanded: the program is on the \"never paste\" list."
+            }
+            Self::ElevatedApp => {
+                "The last trigger was not expanded: the program runs as administrator."
+            }
+            Self::NothingFocused => {
+                "The last trigger was not expanded: no text field had the focus."
+            }
+            Self::KeyTyped => {
+                "The last trigger was not expanded: another key was typed before it went out."
+            }
+        }
+    }
 }
 
 /// What the hint at the caret should do.
@@ -53,14 +113,35 @@ where
     K: Keyboard,
     T: Timing,
 {
-    /// A matcher over the triggers of the live items that may expand: a Sensitive item never does
-    /// (a short code must not release a secret without the reveal gesture).
+    /// The triggers of the live items that may expand, with each item's use count: a Sensitive item never
+    /// does (a short code must not release a secret without the reveal gesture). One read of the trigger
+    /// table and one pass over the cached library, not a query per trigger.
+    fn expandable_triggers(
+        &self,
+        all: Vec<(snipdeck_core::Trigger, snipdeck_core::ItemId)>,
+    ) -> Vec<(snipdeck_core::Trigger, snipdeck_core::ItemId, u64)> {
+        let Ok(snapshot) = self.index_cache.snapshot(&self.store) else {
+            return Vec::new();
+        };
+        let wanted: std::collections::HashSet<_> = all.iter().map(|(_, id)| *id).collect();
+        let items: std::collections::HashMap<_, _> = snapshot
+            .all
+            .iter()
+            .filter(|i| wanted.contains(&i.id) && !i.sensitive)
+            .map(|i| (i.id, u64::from(i.use_count)))
+            .collect();
+        all.into_iter()
+            .filter_map(|(trigger, id)| Some((trigger, id, *items.get(&id)?)))
+            .collect()
+    }
+
+    /// A matcher over the triggers of the live items that may expand (see [`Self::expandable_triggers`]).
     pub fn trigger_matcher(&self) -> Matcher {
-        let pairs = self.store.triggers().unwrap_or_default();
+        let all = self.store.triggers().unwrap_or_default();
         Matcher::new(
-            pairs
+            self.expandable_triggers(all)
                 .into_iter()
-                .filter(|(_, item)| self.store.item(*item).is_ok_and(|i| !i.sensitive)),
+                .map(|(trigger, id, _)| (trigger, id)),
         )
     }
 
@@ -78,22 +159,20 @@ where
 
     /// The triggers a typed prefix may be suggested for: live, not Sensitive, with their use
     /// counts. Empty while suggestions are off.
-    fn suggest_candidates(&self) -> Vec<Candidate> {
+    fn suggest_candidates(
+        &self,
+        expandable: &[(snipdeck_core::Trigger, snipdeck_core::ItemId, u64)],
+    ) -> Vec<Candidate> {
         if !self.settings.suggest_triggers {
             return Vec::new();
         }
-        self.store
-            .triggers()
-            .unwrap_or_default()
-            .into_iter()
-            .filter_map(|(trigger, id)| {
-                let item = self.store.item(id).ok().filter(|i| !i.sensitive)?;
-                Some(Candidate {
-                    trigger,
-                    item: id,
-                    uses: u64::from(item.use_count),
-                    sensitive: false,
-                })
+        expandable
+            .iter()
+            .map(|(trigger, item, uses)| Candidate {
+                trigger: trigger.clone(),
+                item: *item,
+                uses: *uses,
+                sensitive: false,
             })
             .collect()
     }
@@ -153,7 +232,11 @@ where
         };
         let suggest = self.settings.suggest_triggers;
         let list_changed = on && (all != self.typing_sent || suggest != self.typing_suggest);
-        let lists = list_changed.then(|| (self.trigger_matcher(), self.suggest_candidates()));
+        let lists = list_changed.then(|| {
+            let expandable = self.expandable_triggers(all.clone());
+            let matcher = Matcher::new(expandable.iter().map(|(t, id, _)| (t.clone(), *id)));
+            (matcher, self.suggest_candidates(&expandable))
+        });
         if list_changed {
             self.typing_sent = all;
             self.typing_suggest = suggest;
@@ -180,20 +263,38 @@ where
     /// The checks every typed trigger or accepted suggestion passes before anything is sent:
     /// the feature `enabled`, the focus is not a password box, no Snipdeck window is in front or
     /// in use, the typed code still belongs to the item and the item is not Sensitive.
-    fn typed_allowed(&self, enabled: bool, typed: &Typed) -> bool {
+    fn typed_allowed(&self, enabled: bool, typed: &Typed) -> Result<(), Option<SkipReason>> {
         let fired = &typed.fired;
-        if !enabled
-            || typed.password
-            || !typed.same_window()
-            || self.own_window_active
-            || self.picker.is_some()
-            || self.fill.is_some()
-        {
-            return false;
+        if !enabled {
+            // The feature is off: nothing was expected to happen, so there is nothing to explain.
+            return Err(None);
+        }
+        if typed.password {
+            return Err(Some(SkipReason::PasswordField));
+        }
+        if !typed.same_window() {
+            return Err(Some(SkipReason::FocusMoved));
+        }
+        if self.own_window_active {
+            return Err(Some(SkipReason::SnipdeckWindow));
+        }
+        if self.picker.is_some() || self.fill.is_some() {
+            return Err(Some(SkipReason::SnipdeckDialog));
         }
         // The matcher may be a moment old: the code must still be this item's, on a live item.
         let current = self.store.trigger_holder(&fired.trigger).ok().flatten() == Some(fired.item);
-        current && !self.store.item(fired.item).is_ok_and(|i| i.sensitive)
+        if current && !self.store.item(fired.item).is_ok_and(|i| i.sensitive) {
+            Ok(())
+        } else {
+            Err(Some(SkipReason::ItemChanged))
+        }
+    }
+
+    /// Why the last typed trigger that should have expanded did not, if one did not since the app
+    /// started (Troubleshoot shows it).
+    #[must_use]
+    pub const fn last_skipped_trigger(&self) -> Option<SkipReason> {
+        self.last_skip
     }
 
     /// The user typed a trigger. Expands only when the setting is on and `typed_allowed` holds, the
@@ -217,16 +318,28 @@ where
     }
 
     fn insert_typed(&mut self, enabled: bool, typed: &Typed) -> TypedOutcome {
-        if !self.typed_allowed(enabled, typed) {
+        if let Err(reason) = self.typed_allowed(enabled, typed) {
+            self.last_skip = reason.or(self.last_skip);
             return TypedOutcome::Skipped;
         }
         let fired = &typed.fired;
         // The Target is whatever has the focus now.
         self.on_target_changed();
-        if !matches!(self.model.route(), Route::Paste { .. })
-            || !typed.still_current()
-            || !typed.same_window()
-        {
+        let route = self.model.route();
+        let reason = match route {
+            Route::Paste { .. } if !typed.still_current() => Some(SkipReason::KeyTyped),
+            Route::Paste { .. } if !typed.same_window() => Some(SkipReason::FocusMoved),
+            Route::Paste { .. } => None,
+            Route::Copy(reason) => Some(match reason {
+                CopyReason::Excluded { .. } => SkipReason::ExcludedApp,
+                CopyReason::Elevated { .. } => SkipReason::ElevatedApp,
+                CopyReason::NothingFocused { .. } | CopyReason::NoTarget => {
+                    SkipReason::NothingFocused
+                }
+            }),
+        };
+        if let Some(reason) = reason {
+            self.last_skip = Some(reason);
             return TypedOutcome::Skipped;
         }
         // The Backspaces go out with the paste key, once the item can be pasted.
@@ -244,7 +357,10 @@ where
             None,
             Some(erase),
         ) {
-            UseResult::Cancelled => TypedOutcome::Skipped,
+            UseResult::Cancelled => {
+                self.last_skip = Some(SkipReason::KeyTyped);
+                TypedOutcome::Skipped
+            }
             result => TypedOutcome::Expanded(result),
         }
     }
@@ -253,7 +369,11 @@ where
     /// same gates as an expansion, and the Target must have a caret to hang the hint on (never
     /// the mouse). The hint is only a hint: nothing is typed or copied here.
     pub fn suggest_typed(&mut self, typed: &Typed) -> HintOutcome {
-        if !self.typed_allowed(self.settings.suggest_triggers, typed) || !typed.still_current() {
+        if self
+            .typed_allowed(self.settings.suggest_triggers, typed)
+            .is_err()
+            || !typed.still_current()
+        {
             return HintOutcome::Hide;
         }
         self.on_target_changed();

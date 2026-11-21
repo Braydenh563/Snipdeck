@@ -21,7 +21,7 @@ pub const LOW_SPACE_BYTES: u64 = 200 * 1024 * 1024;
 pub const STALE_BACKUP_DAYS: i64 = 3;
 
 /// The labels of the checks, in the order they are shown.
-pub const LABELS: [&str; 7] = [
+pub const LABELS: [&str; 8] = [
     "Data folder",
     "Database",
     "Backups",
@@ -29,6 +29,7 @@ pub const LABELS: [&str; 7] = [
     "Shortcuts",
     "Tray icon",
     "Crash reports",
+    "Typed triggers",
 ];
 
 /// How a check came out.
@@ -153,6 +154,8 @@ pub trait DoctorHost {
     fn tray_present(&self) -> bool;
     /// The file name of the newest crash report, if any.
     fn newest_crash(&self) -> Option<String>;
+    /// Why the last typed trigger that should have expanded did not (a sentence), if one did not.
+    fn last_skipped_trigger(&self) -> Option<&'static str>;
 }
 
 fn check(
@@ -180,6 +183,7 @@ pub fn run(host: &dyn DoctorHost) -> Vec<Check> {
         shortcuts(host),
         tray(host),
         crashes(host),
+        typed_triggers(host),
     ]
 }
 
@@ -391,6 +395,18 @@ fn crashes(host: &dyn DoctorHost) -> Check {
     }
 }
 
+fn typed_triggers(host: &dyn DoctorHost) -> Check {
+    match host.last_skipped_trigger() {
+        None => check(
+            LABELS[7],
+            Status::Ok,
+            "No typed trigger was skipped since Snipdeck started.",
+            None,
+        ),
+        Some(sentence) => check(LABELS[7], Status::Ok, sentence, None),
+    }
+}
+
 /// What the report says about this machine and this build.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ReportInfo {
@@ -446,6 +462,7 @@ mod tests {
         unset: Vec<String>,
         tray: bool,
         crash: Option<String>,
+        skipped: Option<&'static str>,
     }
 
     impl Default for Fake {
@@ -463,6 +480,7 @@ mod tests {
                 unset: Vec::new(),
                 tray: true,
                 crash: None,
+                skipped: None,
             }
         }
     }
@@ -500,6 +518,9 @@ mod tests {
         }
         fn newest_crash(&self) -> Option<String> {
             self.crash.clone()
+        }
+        fn last_skipped_trigger(&self) -> Option<&'static str> {
+            self.skipped
         }
     }
 
@@ -722,6 +743,24 @@ mod tests {
             .status,
             Status::Warn
         );
+    }
+
+    #[test]
+    fn the_typed_trigger_row_says_what_was_skipped_or_that_nothing_was() {
+        let none = only(&Fake::default(), "Typed triggers");
+        assert_eq!(
+            (none.status, none.detail.as_str()),
+            (
+                Status::Ok,
+                "No typed trigger was skipped since Snipdeck started."
+            )
+        );
+        let host = Fake {
+            skipped: Some("The last trigger was not expanded: the field is a password box."),
+            ..Fake::default()
+        };
+        let row = only(&host, "Typed triggers");
+        assert!(row.detail.contains("password box"), "{}", row.detail);
     }
 
     #[test]

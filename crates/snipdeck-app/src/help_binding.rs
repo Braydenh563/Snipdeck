@@ -258,6 +258,12 @@ where
     fn newest_crash(&self) -> Option<String> {
         crash::newest(self.data_dir)
     }
+
+    fn last_skipped_trigger(&self) -> Option<&'static str> {
+        self.controller
+            .last_skipped_trigger()
+            .map(crate::controller::SkipReason::sentence)
+    }
 }
 
 // ---- Logic -------------------------------------------------------------------------------------

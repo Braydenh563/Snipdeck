@@ -1662,3 +1662,41 @@ fn the_next_use_finishes_an_earlier_tail_first() {
     assert_eq!(uses(&w, w.ids[1]), 1);
     assert!(!w.ctl.paste_pending());
 }
+
+#[test]
+fn a_skipped_trigger_records_its_reason_for_troubleshoot() {
+    use crate::controller::SkipReason;
+    let mut w = typing_world(1, ";two");
+    assert_eq!(w.ctl.last_skipped_trigger(), None, "nothing skipped yet");
+    let fired = typed(&w, ";two");
+    w.ctl
+        .expand_typed(&Typed::new(fired.clone(), true, || true));
+    assert_eq!(
+        w.ctl.last_skipped_trigger(),
+        Some(SkipReason::PasswordField)
+    );
+    w.ctl.set_own_window_active(true);
+    w.ctl
+        .expand_typed(&Typed::new(fired.clone(), false, || true));
+    assert_eq!(
+        w.ctl.last_skipped_trigger(),
+        Some(SkipReason::SnipdeckWindow)
+    );
+    w.ctl.set_own_window_active(false);
+    w.ctl
+        .expand_typed(&Typed::new(fired.clone(), false, || false));
+    assert_eq!(w.ctl.last_skipped_trigger(), Some(SkipReason::KeyTyped));
+    let id = w.ids[1];
+    make_sensitive(&mut w, id);
+    w.ctl.expand_typed(&Typed::new(fired, false, || true));
+    assert_eq!(w.ctl.last_skipped_trigger(), Some(SkipReason::ItemChanged));
+}
+
+#[test]
+fn a_feature_that_is_off_explains_nothing() {
+    let mut w = typing_world(1, ";two");
+    w.ctl.update_settings(|s| s.expand_triggers = false);
+    let fired = typed(&w, ";two");
+    w.ctl.expand_typed(&Typed::new(fired, false, || true));
+    assert_eq!(w.ctl.last_skipped_trigger(), None);
+}
