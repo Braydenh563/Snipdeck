@@ -29,10 +29,22 @@ pub enum HelpTopic {
     Tips,
 }
 
+/// A group of rows in the kebab menu that folds away under its head (the Panel's `Menu` has no
+/// sub-menus, so the group opens in place).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AppGroup {
+    /// Dock, Keep on top, Reset size and position.
+    Window,
+    /// Shortcuts, Troubleshoot, the guide and About.
+    Help,
+}
+
 /// One row of the Panel's kebab menu, in the order it is drawn. The menu is flat: a row's
-/// index in [`APP_MENU`] is the index the window reports.
+/// index in [`APP_MENU`] is the index the window reports, whether the row is folded away or not.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppMenuEntry {
+    /// The head of a group: choosing it opens or folds the group's rows, and the menu stays open.
+    Group(AppGroup),
     /// Take back the latest step of the history (Ctrl+Z); disabled while there is none.
     Undo,
     /// Redo the step taken back (Ctrl+Y); disabled while there is none.
@@ -183,13 +195,11 @@ pub const LIST_MENU: [ListMenuEntry; 8] = [
 
 /// The kebab menu's rows. Help is a group of three rows under a line, because the Panel's
 /// `Menu` has no sub-menus.
-pub const APP_MENU: [AppMenuEntry; 21] = [
+pub const APP_MENU: [AppMenuEntry; 24] = [
     AppMenuEntry::Undo,
     AppMenuEntry::Redo,
     AppMenuEntry::Separator,
     AppMenuEntry::PasteStack,
-    AppMenuEntry::Dock,
-    AppMenuEntry::Shortcuts,
     AppMenuEntry::Commands,
     AppMenuEntry::Settings,
     AppMenuEntry::Separator,
@@ -197,15 +207,34 @@ pub const APP_MENU: [AppMenuEntry; 21] = [
     AppMenuEntry::NewSnippet,
     AppMenuEntry::Screenshot,
     AppMenuEntry::PauseHotkeys,
-    AppMenuEntry::KeepOnTop,
     AppMenuEntry::SelectOrDelete,
-    AppMenuEntry::ResetGeometry,
     AppMenuEntry::Separator,
+    AppMenuEntry::Group(AppGroup::Window),
+    AppMenuEntry::Dock,
+    AppMenuEntry::KeepOnTop,
+    AppMenuEntry::ResetGeometry,
+    AppMenuEntry::Group(AppGroup::Help),
+    AppMenuEntry::Shortcuts,
     AppMenuEntry::Troubleshoot,
     AppMenuEntry::UserGuide,
     AppMenuEntry::About,
+    AppMenuEntry::Separator,
     AppMenuEntry::Quit,
 ];
+
+impl AppMenuEntry {
+    /// The group this row sits in: it shows only while the group is open.
+    #[must_use]
+    pub const fn group(self) -> Option<AppGroup> {
+        match self {
+            Self::Dock | Self::KeepOnTop | Self::ResetGeometry => Some(AppGroup::Window),
+            Self::Shortcuts | Self::Troubleshoot | Self::UserGuide | Self::About => {
+                Some(AppGroup::Help)
+            }
+            _ => None,
+        }
+    }
+}
 
 impl<S, C, K, T> Controller<S, C, K, T>
 where
@@ -219,6 +248,7 @@ where
     /// The kebab button (or the Menu key on it): opens the Panel menu.
     pub fn open_app_menu(&mut self) {
         self.menu = PanelMenu::App;
+        self.app_group = None;
     }
 
     /// Esc, or a click outside the menu: closes it without a choice.
@@ -243,6 +273,11 @@ where
         if entry == AppMenuEntry::Separator {
             return Vec::new();
         }
+        if let AppMenuEntry::Group(group) = entry {
+            // The head opens its rows in place (and folds the other group); the menu stays open.
+            self.app_group = (self.app_group != Some(group)).then_some(group);
+            return Vec::new();
+        }
         self.menu = PanelMenu::None;
         match entry {
             AppMenuEntry::Undo => {
@@ -262,7 +297,7 @@ where
                 Vec::new()
             }
             AppMenuEntry::Open => vec![Effect::OpenMainWindow],
-            AppMenuEntry::Commands => vec![Effect::OpenCommands],
+            AppMenuEntry::Commands => self.ask_commands(),
             AppMenuEntry::NewSnippet => vec![Effect::NewItem],
             AppMenuEntry::Screenshot => self.take_screenshot(),
             AppMenuEntry::Settings => vec![Effect::OpenSettings],
@@ -288,7 +323,7 @@ where
             AppMenuEntry::Shortcuts => vec![Effect::OpenHelp(HelpTopic::Shortcuts)],
             AppMenuEntry::About => vec![Effect::OpenHelp(HelpTopic::About)],
             AppMenuEntry::Quit => vec![Effect::Quit],
-            AppMenuEntry::Separator => Vec::new(),
+            AppMenuEntry::Separator | AppMenuEntry::Group(_) => Vec::new(),
         }
     }
 

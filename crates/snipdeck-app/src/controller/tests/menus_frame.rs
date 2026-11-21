@@ -421,8 +421,8 @@ fn a_remembered_frame_is_written_after_the_quiet_time() {
 
 #[test]
 fn the_panel_menu_opens_with_the_spec_group_in_the_spec_order() {
-    // Panel v2 spec 2.1: Undo, Redo, Paste stack, Dock to edge, Keyboard shortcuts, All commands, Settings.
-    // The other rows follow under their own lines.
+    // Panel v2 spec 2.1: Undo, Redo, Paste stack, All commands, Settings; Dock to edge and Keyboard
+    // shortcuts moved into the Window group (audit item 31). The other rows follow under their own lines.
     assert_eq!(
         APP_MENU[..8],
         [
@@ -430,11 +430,52 @@ fn the_panel_menu_opens_with_the_spec_group_in_the_spec_order() {
             AppMenuEntry::Redo,
             AppMenuEntry::Separator,
             AppMenuEntry::PasteStack,
-            AppMenuEntry::Dock,
-            AppMenuEntry::Shortcuts,
             AppMenuEntry::Commands,
             AppMenuEntry::Settings,
+            AppMenuEntry::Separator,
+            AppMenuEntry::Open,
         ]
     );
-    assert_eq!(APP_MENU[8], AppMenuEntry::Separator);
+    assert_eq!(APP_MENU[8], AppMenuEntry::NewSnippet);
+}
+
+#[test]
+fn a_group_head_opens_its_rows_in_place_folds_the_other_and_keeps_the_menu_open() {
+    let mut w = world();
+    w.ctl.open_app_menu();
+    assert_eq!(
+        w.ctl.view().app_menu_group,
+        None,
+        "every group starts folded"
+    );
+    let window = app_menu_index(AppMenuEntry::Group(AppGroup::Window));
+    let help = app_menu_index(AppMenuEntry::Group(AppGroup::Help));
+    assert_eq!(w.ctl.choose_app_menu(window), Vec::new());
+    assert!(w.ctl.view().app_menu.is_some(), "the menu stays open");
+    assert_eq!(w.ctl.view().app_menu_group, Some(AppGroup::Window));
+    w.ctl.choose_app_menu(help);
+    assert_eq!(w.ctl.view().app_menu_group, Some(AppGroup::Help));
+    w.ctl.choose_app_menu(help);
+    assert_eq!(
+        w.ctl.view().app_menu_group,
+        None,
+        "a second choice folds it"
+    );
+    // Reopening starts folded again.
+    w.ctl.choose_app_menu(window);
+    w.ctl.close_app_menu();
+    w.ctl.open_app_menu();
+    assert_eq!(w.ctl.view().app_menu_group, None);
+}
+
+#[test]
+fn the_rows_of_a_group_know_their_group_and_the_rest_have_none() {
+    let grouped: Vec<_> = APP_MENU.iter().filter_map(|e| e.group()).collect();
+    assert_eq!(grouped.len(), 7, "Dock, Keep on top, Reset; four Help rows");
+    assert!(
+        APP_MENU
+            .iter()
+            .filter(|e| **e == AppMenuEntry::Quit)
+            .all(|e| e.group().is_none())
+    );
 }

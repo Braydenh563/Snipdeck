@@ -52,7 +52,9 @@ pub use history_ctl::HistoryView;
 pub use library::Library;
 pub use lock_ctl::{MasterProblem, MasterState};
 pub use main_ctl::{BoardMenuEntry, MainAction, MainScreen, TagChoice, TagRenameError};
-pub use panel::{APP_MENU, AppMenuEntry, HelpTopic, ItemMenuEntry, LIST_MENU, ListMenuEntry};
+pub use panel::{
+    APP_MENU, AppGroup, AppMenuEntry, HelpTopic, ItemMenuEntry, LIST_MENU, ListMenuEntry,
+};
 pub use panel_select::LABELS;
 pub use settings_ctl::{ImportKind, ImportPreview, ImportProblem, ImportSource};
 pub use symbol_ctl::{IconExport, IconSave, SaveOutcome, SymbolChoice, SymbolMenuEntry};
@@ -375,6 +377,12 @@ pub struct Controller<S, C: Clipboard, K, T> {
     typing_suggest: bool,
     /// Why the last typed trigger did not expand (Troubleshoot).
     last_skip: Option<trigger_ctl::SkipReason>,
+    /// The group of the kebab menu that is open (the menu's other groups show only their head).
+    app_group: Option<AppGroup>,
+    /// The Panel row the user had selected when it asked for the palette, until the Main window opens it.
+    palette_armed: Option<ItemId>,
+    /// The Panel row the open palette acts on (the item commands run on it, not on Main's cursor).
+    palette_item: Option<ItemId>,
     /// Whether the typing service was last told to run.
     typing_on: Option<bool>,
     /// Told whether clipboard history is on and whether it is paused, for the tray menu's
@@ -588,6 +596,9 @@ where
             typing_sent: Vec::new(),
             typing_suggest: false,
             last_skip: None,
+            app_group: None,
+            palette_armed: None,
+            palette_item: None,
             typing_on: None,
             tray_history: None,
             screen_clip: crate::screen_clip::ScreenClipFlow::new(),
@@ -704,6 +715,7 @@ where
             history: self.history_view(),
             board_menu: (self.menu == PanelMenu::Board).then(|| self.panel_board_menu_entries()),
             app_menu: (self.menu == PanelMenu::App).then(|| APP_MENU.to_vec()),
+            app_menu_group: self.app_group,
             item_menu: match self.menu {
                 PanelMenu::Item(id) => Some(self.item_menu_entries(id)),
                 _ => None,

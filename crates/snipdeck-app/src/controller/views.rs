@@ -260,6 +260,8 @@ pub struct View {
     pub board_menu: Option<Vec<super::BoardMenuEntry>>,
     /// The kebab menu's rows while it is open ([`APP_MENU`](crate::controller::APP_MENU)).
     pub app_menu: Option<Vec<AppMenuEntry>>,
+    /// The group of the kebab menu that is open (the other groups show only their head).
+    pub app_menu_group: Option<super::AppGroup>,
     /// The context menu of a card or pinned chip while it is open.
     pub item_menu: Option<Vec<ItemMenuEntry>>,
     /// The context menu of a Symbols cell while it is open.

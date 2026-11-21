@@ -1249,12 +1249,12 @@ fn click_at(window: &slint::Window, position: slint::LogicalPosition) {
     slint::platform::update_timers_and_animations();
 }
 
-const MENU_ROWS: [&str; 17] = [
+/// The rows that show while both groups are folded (audit item 31: Dock, Keep on top and Reset sit
+/// under "Window"; Shortcuts, Troubleshoot, the guide and About under "Help").
+const MENU_ROWS: [&str; 13] = [
     "Nothing to undo",
     "Nothing to redo",
     "Paste stack (mark items)",
-    "Dock to the nearest edge",
-    "Keyboard shortcuts",
     "Commands\u{2026}",
     "Settings\u{2026}",
     "Open Snipdeck",
@@ -1262,10 +1262,8 @@ const MENU_ROWS: [&str; 17] = [
     "Take screenshot",
     "Pause hotkeys",
     "Select or delete\u{2026}",
-    "Reset size and position",
-    "Troubleshoot\u{2026}",
-    "User guide",
-    "About Snipdeck",
+    "Window",
+    "Help",
     "Quit",
 ];
 
@@ -1276,8 +1274,23 @@ fn open_menu(r: &Rig) {
     assert!(r.ui.get_app_menu_open(), "the kebab click opened the menu");
 }
 
+/// A row of the open menu. A row inside a folded group is not drawn: its group's head is clicked
+/// first, as a user would.
 fn menu_row(r: &Rig, label: &str) -> ElementHandle {
-    element(&r.ui, label, AccessibleRole::ListItem)
+    let find = || {
+        ElementHandle::find_by_accessible_label(&r.ui, label)
+            .find(|e| e.accessible_role() == Some(AccessibleRole::ListItem))
+    };
+    if let Some(row) = find() {
+        return row;
+    }
+    for head in ["Window", "Help"] {
+        click(r.window(), &element(&r.ui, head, AccessibleRole::ListItem));
+        if let Some(row) = find() {
+            return row;
+        }
+    }
+    panic!("no ListItem labelled {label:?}, in a folded group either");
 }
 
 fn open_menu_at(r: &Rig, height: f32) {
@@ -1309,7 +1322,13 @@ fn the_app_menu_in_a_560px_panel_leaves_a_clickable_strip_and_scrolls_to_quit() 
             "a strip is left below the menu: menu bottom {}",
             m.y + menu.size().height
         );
-        assert!(cue_visible(&r), "the menu scrolls, so the cue is drawn");
+        // With both groups folded (audit item 31) the 13 rows fit, so there is nothing to scroll to
+        // and no cue; the cue is covered at the minimum height, and with a group open below.
+        assert!(!cue_visible(&r), "everything fits, so no cue is drawn");
+        click(
+            r.window(),
+            &element(&r.ui, "Window", AccessibleRole::ListItem),
+        );
         press(r.window(), &key(Key::End));
         slint::platform::update_timers_and_animations();
         let quit = menu_row(&r, "Quit");
@@ -1381,6 +1400,42 @@ fn the_kebab_menu_is_a_list_of_the_expected_rows_with_a_name_and_positions() {
                 "{label}: Undo and Redo are really disabled while there is nothing to take back, \
                  Paste stack while nothing is marked"
             );
+        }
+    });
+}
+
+#[test]
+fn a_group_head_opens_its_rows_in_the_menu_and_the_other_group_folds() {
+    on_ui_thread(|| {
+        let r = rig();
+        open_menu(&r);
+        let find = |label: &str| {
+            ElementHandle::find_by_accessible_label(&r.ui, label)
+                .find(|e| e.accessible_role() == Some(AccessibleRole::ListItem))
+        };
+        assert!(find("Reset size and position").is_none(), "folded at first");
+        click(
+            r.window(),
+            &element(&r.ui, "Window", AccessibleRole::ListItem),
+        );
+        assert!(r.ui.get_app_menu_open(), "a group head keeps the menu open");
+        // "Keep panel on top" stays out of the menu below 150 % text: the header has the pin.
+        for label in ["Dock to the nearest edge", "Reset size and position"] {
+            assert!(find(label).is_some(), "{label} shows under Window");
+        }
+        assert!(find("User guide").is_none());
+        click(
+            r.window(),
+            &element(&r.ui, "Help", AccessibleRole::ListItem),
+        );
+        assert!(find("Reset size and position").is_none(), "Window folded");
+        for label in [
+            "Keyboard shortcuts",
+            "Troubleshoot\u{2026}",
+            "User guide",
+            "About Snipdeck",
+        ] {
+            assert!(find(label).is_some(), "{label} shows under Help");
         }
     });
 }

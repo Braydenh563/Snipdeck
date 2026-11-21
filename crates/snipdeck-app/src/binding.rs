@@ -1180,7 +1180,7 @@ where
         wire_effects!(on_help_requested, |ctl| ctl.open_help(HelpTopic::Guide));
         wire_effects!(on_shortcuts_requested, |ctl| ctl
             .open_help(HelpTopic::Shortcuts));
-        wire_effects!(on_commands_requested, |_ctl| vec![Effect::OpenCommands]);
+        wire_effects!(on_commands_requested, |ctl| ctl.ask_commands());
         wire!(on_app_menu_dismissed, |ctl| ctl.close_app_menu());
         wire_effects!(on_edit_requested, |ctl, i| ctl.edit_row(index(i)));
         wire_effects!(on_rename_requested, |ctl, i| ctl.rename_row(index(i)));
@@ -1832,6 +1832,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     }
     if differs(&|p| {
         p.app_menu == view.app_menu
+            && p.app_menu_group == view.app_menu_group
             && p.hotkeys_paused == view.hotkeys_paused
             && p.stack == view.stack
             && p.history == view.history
@@ -2008,8 +2009,14 @@ fn render_app_menu(window: &ui::PanelWindow, view: &View) {
             || (entry == AppMenuEntry::KeepOnTop && view.on_top),
         shortcut: wording::app_menu_shortcut(entry).into(),
         separator: entry == AppMenuEntry::Separator,
-        // The header's pin is there below 150 % text: the row would only repeat it.
-        hidden: entry == AppMenuEntry::KeepOnTop && !pin_in_menu,
+        // The header's pin is there below 150 % text: the row would only repeat it. The rows of a group
+        // that is not open are folded away (their indexes stay).
+        hidden: (entry == AppMenuEntry::KeepOnTop && !pin_in_menu)
+            || entry
+                .group()
+                .is_some_and(|group| view.app_menu_group != Some(group)),
+        expandable: matches!(entry, AppMenuEntry::Group(_)),
+        expanded: matches!(entry, AppMenuEntry::Group(group) if view.app_menu_group == Some(group)),
         ..Default::default()
     });
     window.set_app_menu_entries(model(entries));

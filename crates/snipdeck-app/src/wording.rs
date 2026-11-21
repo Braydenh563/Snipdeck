@@ -516,7 +516,7 @@ pub fn app_menu_text(
     docked: bool,
     dock_target: Option<DockEdge>,
 ) -> String {
-    use crate::controller::AppMenuEntry;
+    use crate::controller::{AppGroup, AppMenuEntry};
     let t = MenuTexts::get(window);
     match entry {
         AppMenuEntry::PasteStack => t.invoke_app_paste_stack(),
@@ -543,6 +543,8 @@ pub fn app_menu_text(
         AppMenuEntry::Shortcuts => t.invoke_app_shortcuts(),
         AppMenuEntry::About => t.invoke_app_about(),
         AppMenuEntry::Quit => t.invoke_app_quit(),
+        AppMenuEntry::Group(AppGroup::Window) => t.invoke_app_group_window(),
+        AppMenuEntry::Group(AppGroup::Help) => t.invoke_app_group_help(),
     }
     .into()
 }
