@@ -353,6 +353,7 @@ where
                     id: entry.id,
                     name,
                     colour: None,
+                    parent: None,
                 });
             }
         }

@@ -32,7 +32,9 @@ use snipdeck_store::{
 /// so a query finds the same items in the Panel, the Picker and Main.
 #[derive(Debug, Default)]
 pub(crate) struct SearchNames {
-    tags: HashMap<TagId, String>,
+    /// Each tag's own path (`work/invoices`) and its ancestors' paths, so `tag:work` finds an
+    /// item carrying a tag nested under `work`.
+    tags: HashMap<TagId, Vec<String>>,
     lists: HashMap<ListId, String>,
     triggers: HashMap<ItemId, String>,
 }
@@ -43,11 +45,12 @@ impl SearchNames {
         store: &S,
         lists: impl IntoIterator<Item = &'a List>,
     ) -> snipdeck_store::Result<Self> {
+        let tags = store.tags()?;
+        let tree = snipdeck_core::TagTree::new(&tags);
         Ok(Self {
-            tags: store
-                .tags()?
-                .into_iter()
-                .map(|t| (t.id, t.name.as_str().to_owned()))
+            tags: tags
+                .iter()
+                .map(|t| (t.id, tree.search_paths(t.id)))
                 .collect(),
             lists: lists
                 .into_iter()
@@ -66,7 +69,9 @@ impl SearchNames {
         let tags: Vec<&str> = item
             .tags
             .iter()
-            .filter_map(|t| self.tags.get(t).map(String::as_str))
+            .filter_map(|t| self.tags.get(t))
+            .flatten()
+            .map(String::as_str)
             .collect();
         index.upsert(
             item,

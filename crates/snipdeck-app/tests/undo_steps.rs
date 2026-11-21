@@ -31,13 +31,16 @@ fn now() -> Timestamp {
 }
 
 fn rig() -> Ctl {
+    rig_with_tags(&["invoices", "billing"])
+}
+
+fn rig_with_tags(names: &[&str]) -> Ctl {
     let mut store = demo::store(now()).expect("demo store");
-    store
-        .insert_tag(&Tag::new(Name::new("invoices").unwrap()))
-        .unwrap();
-    store
-        .insert_tag(&Tag::new(Name::new("billing").unwrap()))
-        .unwrap();
+    for name in names {
+        store
+            .insert_tag(&Tag::new(Name::new(name).unwrap()))
+            .unwrap();
+    }
     Controller::new(
         store,
         Services {
@@ -144,6 +147,100 @@ fn renaming_a_tag_round_trips() {
     assert_eq!(tag_names(&mut ctl), before);
     ctl.redo();
     assert!(tag_names(&mut ctl).contains(&"Receipts".to_owned()));
+}
+
+// ---- Nested tags ---------------------------------------------------------------------------
+
+/// "(depth) path" of every tag in the sidebar's order.
+fn shape(ctl: &mut Ctl) -> Vec<String> {
+    ctl.main_screen()
+        .tags
+        .iter()
+        .map(|t| format!("{} {}", t.depth, t.path))
+        .collect()
+}
+
+#[test]
+fn nesting_a_tag_is_a_step_that_round_trips_and_a_loop_is_refused() {
+    let mut ctl = rig();
+    assert_eq!(shape(&mut ctl), ["0 billing", "0 invoices"]);
+    ctl.main_nest_tag(1, Some(0));
+    assert_eq!(shape(&mut ctl), ["0 billing", "1 billing/invoices"]);
+    assert_eq!(ctl.history_view().undo, Some(Action::Tag));
+    ctl.main_nest_tag(0, Some(1));
+    assert_eq!(
+        shape(&mut ctl),
+        ["0 billing", "1 billing/invoices"],
+        "billing cannot go under its own nested tag"
+    );
+    ctl.undo();
+    assert_eq!(shape(&mut ctl), ["0 billing", "0 invoices"]);
+    ctl.redo();
+    assert_eq!(shape(&mut ctl), ["0 billing", "1 billing/invoices"]);
+    ctl.main_nest_tag(1, None);
+    assert_eq!(shape(&mut ctl), ["0 billing", "0 invoices"]);
+}
+
+#[test]
+fn renaming_a_nested_tag_keeps_its_place() {
+    let mut ctl = rig();
+    ctl.main_nest_tag(1, Some(0));
+    assert_eq!(ctl.main_rename_tag(1, "bills"), Ok(()));
+    assert_eq!(shape(&mut ctl), ["0 billing", "1 billing/bills"]);
+}
+
+#[test]
+fn deleting_a_tag_lifts_the_tags_under_it_and_undo_puts_them_back() {
+    let mut ctl = rig_with_tags(&["invoices", "billing", "archive"]);
+    // archive, billing, invoices: billing under archive, invoices under billing.
+    ctl.main_nest_tag(1, Some(0));
+    ctl.main_nest_tag(2, Some(1));
+    assert_eq!(
+        shape(&mut ctl),
+        [
+            "0 archive",
+            "1 archive/billing",
+            "2 archive/billing/invoices"
+        ]
+    );
+    ctl.main_delete_tag(1);
+    assert_eq!(shape(&mut ctl), ["0 archive", "1 archive/invoices"]);
+    ctl.undo();
+    assert_eq!(
+        shape(&mut ctl),
+        [
+            "0 archive",
+            "1 archive/billing",
+            "2 archive/billing/invoices"
+        ]
+    );
+    ctl.redo();
+    assert_eq!(shape(&mut ctl), ["0 archive", "1 archive/invoices"]);
+}
+
+#[test]
+fn merging_a_tag_moves_the_tags_under_it_to_the_target_and_undo_restores_them() {
+    let mut ctl = rig_with_tags(&["invoices", "billing", "archive"]);
+    ctl.main_nest_tag(2, Some(1)); // invoices under billing
+    ctl.main_merge_tag(1, "archive").expect("merged");
+    assert_eq!(shape(&mut ctl), ["0 archive", "1 archive/invoices"]);
+    ctl.undo();
+    assert_eq!(
+        shape(&mut ctl),
+        ["0 archive", "0 billing", "1 billing/invoices"]
+    );
+    ctl.redo();
+    assert_eq!(shape(&mut ctl), ["0 archive", "1 archive/invoices"]);
+}
+
+#[test]
+fn merging_a_tag_into_one_nested_under_it_keeps_the_target_out_of_a_loop() {
+    let mut ctl = rig();
+    ctl.main_nest_tag(1, Some(0)); // invoices under billing
+    ctl.main_merge_tag(0, "invoices").expect("merged");
+    assert_eq!(shape(&mut ctl), ["0 invoices"]);
+    ctl.undo();
+    assert_eq!(shape(&mut ctl), ["0 billing", "1 billing/invoices"]);
 }
 
 // ---- LIBRARY-38: lists, boards, restore ----------------------------------------------------

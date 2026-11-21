@@ -122,6 +122,46 @@ impl TagTree {
         out.into_iter().map(|(_, k)| k).collect()
     }
 
+    /// Every tag in sidebar order: each top-level tag by name, with the tags nested under it
+    /// right after it (and theirs after them), by name at every level.
+    #[must_use]
+    pub fn walk(&self) -> Vec<TagId> {
+        let mut roots: Vec<(&str, TagId)> = self
+            .tags
+            .iter()
+            .filter(|(_, t)| t.1.is_none())
+            .map(|(k, t)| (t.0.as_str(), *k))
+            .collect();
+        roots.sort_by(|a, b| {
+            a.0.to_lowercase()
+                .cmp(&b.0.to_lowercase())
+                .then(a.1.cmp(&b.1))
+        });
+        let mut out = Vec::with_capacity(self.tags.len());
+        let mut stack: Vec<TagId> = roots.into_iter().rev().map(|(_, k)| k).collect();
+        while let Some(id) = stack.pop() {
+            if out.contains(&id) {
+                continue;
+            }
+            out.push(id);
+            stack.extend(self.children(id).into_iter().rev());
+        }
+        // A stored loop has no top-level tag to start from: show it flat rather than lose it.
+        let mut rest: Vec<(&str, TagId)> = self
+            .tags
+            .iter()
+            .filter(|(k, _)| !out.contains(k))
+            .map(|(k, t)| (t.0.as_str(), *k))
+            .collect();
+        rest.sort_by(|a, b| {
+            a.0.to_lowercase()
+                .cmp(&b.0.to_lowercase())
+                .then(a.1.cmp(&b.1))
+        });
+        out.extend(rest.into_iter().map(|(_, k)| k));
+        out
+    }
+
     /// `id`'s name with the names above it: `work/invoices`.
     #[must_use]
     pub fn path(&self, id: TagId) -> String {
@@ -179,6 +219,21 @@ mod tests {
             vec!["work/invoices/paid", "work/invoices", "work"]
         );
         assert_eq!(tree.children(work.id), vec![invoices.id]);
+    }
+
+    #[test]
+    fn the_walk_lists_each_tag_once_under_its_parent_and_keeps_a_loop() {
+        let work = named("Work", None);
+        let paid = named("paid", Some(&work));
+        let invoices = named("invoices", Some(&work));
+        let alpha = named("alpha", None);
+        let tree = TagTree::new([&work, &paid, &invoices, &alpha]);
+        assert_eq!(tree.walk(), vec![alpha.id, work.id, invoices.id, paid.id]);
+        let mut a = named("a", None);
+        let mut b = named("b", Some(&a));
+        a.parent = Some(b.id);
+        b.parent = Some(a.id);
+        assert_eq!(TagTree::new([&a, &b]).walk(), vec![a.id, b.id]);
     }
 
     #[test]

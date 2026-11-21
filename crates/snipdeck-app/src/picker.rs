@@ -145,7 +145,11 @@ impl PickerModel {
         match self.scope {
             Scope::All => true,
             Scope::Board => Some(place.board) == self.board,
-            Scope::Pinned => snipdeck_core::ViewFilter::pinned_only().matches(&place.item, false),
+            Scope::Pinned => snipdeck_core::ViewFilter::pinned_only().matches(
+                &place.item,
+                false,
+                &snipdeck_core::TagTree::default(),
+            ),
         }
     }
 

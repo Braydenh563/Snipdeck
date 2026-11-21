@@ -448,6 +448,7 @@ where
             id: tag,
             name,
             colour: before.as_ref().and_then(|b| b.colour),
+            parent: before.as_ref().and_then(|b| b.parent),
         };
         match self.store.update_tag(&after) {
             Ok(()) => {
@@ -503,6 +504,52 @@ where
         }
     }
 
+    /// Nests tag `index` under tag `under` (both in the order of
+    /// [`MainScreen::tags`](crate::controller::MainScreen::tags)), or takes it back to the top
+    /// level with `None`. Its own nested tags go with it. One history step. A tag cannot go
+    /// under itself or under one of its own nested tags; that is left alone.
+    pub fn main_nest_tag(&mut self, index: usize, under: Option<usize>) {
+        self.main_fresh();
+        let Some(tag) = self.main.tags().get(index).map(|t| t.id) else {
+            return;
+        };
+        let parent = match under {
+            None => None,
+            Some(i) => {
+                let Some(parent) = self.main.tags().get(i).map(|t| t.id) else {
+                    return;
+                };
+                if !self.main.tag_tree().can_nest(tag, parent) {
+                    return;
+                }
+                Some(parent)
+            }
+        };
+        let Some(before) = self.stored_tag(tag) else {
+            return;
+        };
+        let after = Tag {
+            parent,
+            ..before.clone()
+        };
+        if after == before {
+            return;
+        }
+        match self.store.update_tag(&after) {
+            Ok(()) => {
+                self.record_step(
+                    Action::Tag,
+                    vec![Change::Rewrite {
+                        before: Record::Tag(before),
+                        after: Record::Tag(after),
+                    }],
+                );
+                self.library_changed();
+            }
+            Err(_) => self.show_toast(failed()),
+        }
+    }
+
     /// Merges tag `index` into the tag named `into` (the clash a rename met): every item that
     /// carried the first carries the second, and the first is deleted. One history step, so Undo
     /// brings the tag back on exactly the items it was on.
@@ -532,6 +579,7 @@ where
         let from = stored.name.as_str().to_owned();
         let now = self.clock.now();
         let carriers = self.store.tag_items(source).unwrap_or_default();
+        let tree = self.main.tag_tree().clone();
         let mut changes = Vec::new();
         let done = self.store.atomically(|b| {
             changes.clear();
@@ -550,6 +598,15 @@ where
                     Err(e) => return Err(e),
                 }
             }
+            // The tags nested under it follow the merge: they go under the target, except the
+            // target itself and the tags above it, which go where the merged tag was.
+            lift_children(b, &stored, &mut changes, |child| {
+                if child == target.0 || tree.is_under(target.0, child) {
+                    stored.parent
+                } else {
+                    Some(target.0)
+                }
+            })?;
             b.delete_tag(source)?;
             changes.push(Change::DropTag {
                 tag: stored.clone(),
@@ -583,11 +640,22 @@ where
             return;
         };
         let items = self.store.tag_items(tag).unwrap_or_default();
-        match self.store.delete_tag(tag) {
+        // The tags nested under it move up to where it was; Undo puts them back under it.
+        let mut changes = Vec::new();
+        let done = self.store.atomically(|b| {
+            changes.clear();
+            lift_children(b, &stored, &mut changes, |_| stored.parent)?;
+            b.delete_tag(tag)?;
+            changes.push(Change::DropTag {
+                tag: stored.clone(),
+                items: items.clone(),
+            });
+            Ok(())
+        });
+        match done {
             Ok(()) => {
                 let name = stored.name.as_str().to_owned();
-                let step =
-                    self.record_step(Action::Tag, vec![Change::DropTag { tag: stored, items }]);
+                let step = self.record_step(Action::Tag, changes);
                 self.show_undo_toast(neutral_toast(ToastMessage::TagDeleted { name }), step);
                 self.library_changed();
             }
@@ -694,4 +762,30 @@ where
         let now = self.clock.now().as_second();
         snipdeck_core::Timestamp::from_second(now.checked_sub(days.checked_mul(86_400)?)?).ok()
     }
+}
+
+/// Moves the tags nested directly under `source` to the parent `to` names for each, recording
+/// every move as a step change so Undo can put it back.
+fn lift_children(
+    b: &mut snipdeck_store::Batch<'_>,
+    source: &Tag,
+    changes: &mut Vec<Change>,
+    to: impl Fn(snipdeck_core::TagId) -> Option<snipdeck_core::TagId>,
+) -> snipdeck_store::Result<()> {
+    for before in b
+        .tags()?
+        .into_iter()
+        .filter(|t| t.parent == Some(source.id))
+    {
+        let after = Tag {
+            parent: to(before.id),
+            ..before.clone()
+        };
+        b.update_tag(&after)?;
+        changes.push(Change::Rewrite {
+            before: Record::Tag(before),
+            after: Record::Tag(after),
+        });
+    }
+    Ok(())
 }

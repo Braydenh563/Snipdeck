@@ -12,7 +12,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use snipdeck_core::search::{Hit, Query, SearchIndex};
 use snipdeck_core::{
     Board, BoardId, GroupId, Item, ItemId, ItemKind, ItemLabel, List, ListAccent, ListIcon, ListId,
-    Placement, Sort, Tag, TagId, ViewFilter,
+    Placement, Sort, Tag, TagId, TagTree, ViewFilter,
 };
 use snipdeck_store::{
     BoardRepo, GroupRepo, GroupRun, ItemRepo, ListRepo, TagRepo, TrashEntry, TrashRepo, Trashable,
@@ -239,6 +239,10 @@ pub struct SideTag {
     pub count: usize,
     /// Its colour (one of the eight item colours), if it has one.
     pub colour: Option<ItemLabel>,
+    /// How many tags it is nested under (0 at the top).
+    pub depth: usize,
+    /// Its path with the names above it (`work/invoices`).
+    pub path: String,
 }
 
 /// The numbers next to the system views.
@@ -335,7 +339,9 @@ pub struct MainModel {
     board: Option<BoardId>,
     lists: Vec<List>,
     list_counts: HashMap<ListId, usize>,
+    /// The tags in sidebar order (each with the tags nested under it right after it).
     tags: Vec<Tag>,
+    tree: TagTree,
     tag_counts: HashMap<TagId, usize>,
     items: Vec<Item>,
     /// The groups of each list of the open board.
@@ -416,6 +422,7 @@ impl MainModel {
             lists: Vec::new(),
             list_counts: HashMap::new(),
             tags: Vec::new(),
+            tree: TagTree::default(),
             tag_counts: HashMap::new(),
             items: Vec::new(),
             groups: HashMap::new(),
@@ -489,7 +496,15 @@ impl MainModel {
             .iter()
             .map(|l| Ok((l.id, store.groups_of(l.id)?)))
             .collect::<snipdeck_store::Result<HashMap<_, _>>>()?;
-        let tags = store.tags()?;
+        let mut tags = store.tags()?;
+        let tree = TagTree::new(&tags);
+        let order: HashMap<TagId, usize> = tree
+            .walk()
+            .into_iter()
+            .enumerate()
+            .map(|(i, t)| (t, i))
+            .collect();
+        tags.sort_by_key(|t| order.get(&t.id).copied().unwrap_or(usize::MAX));
         let triggered = store
             .triggers()?
             .into_iter()
@@ -521,8 +536,14 @@ impl MainModel {
         let mut tag_counts: HashMap<TagId, usize> = HashMap::new();
         for item in &items {
             *list_counts.entry(item.list_id).or_default() += 1;
+            // A tag counts the items under it too, each item once.
+            let mut counted: HashSet<TagId> = HashSet::new();
             for tag in &item.tags {
-                *tag_counts.entry(*tag).or_default() += 1;
+                counted.insert(*tag);
+                counted.extend(tree.ancestors(*tag));
+            }
+            for tag in counted {
+                *tag_counts.entry(tag).or_default() += 1;
             }
         }
         self.boards = boards;
@@ -530,6 +551,7 @@ impl MainModel {
         self.lists = lists;
         self.list_counts = list_counts;
         self.tags = tags;
+        self.tree = tree;
         self.tag_counts = tag_counts;
         self.items = items;
         self.groups = groups;
@@ -637,8 +659,16 @@ impl MainModel {
                 name: t.name.as_str().to_owned(),
                 count: self.tag_counts.get(&t.id).copied().unwrap_or(0),
                 colour: t.colour,
+                depth: self.tree.depth(t.id),
+                path: self.tree.path(t.id),
             })
             .collect()
+    }
+
+    /// The nesting of the tags.
+    #[must_use]
+    pub fn tag_tree(&self) -> &TagTree {
+        &self.tree
     }
 
     /// The tags.
@@ -753,10 +783,10 @@ impl MainModel {
                 .map(Entry::Trashed)
                 .collect();
         }
-        let items = self
-            .unfiltered_items()
-            .into_iter()
-            .filter(|i| self.filter.matches(i, self.triggered.contains(&i.id)));
+        let items = self.unfiltered_items().into_iter().filter(|i| {
+            self.filter
+                .matches(i, self.triggered.contains(&i.id), &self.tree)
+        });
         if !self.shows_groups() {
             return items.map(Entry::Item).collect();
         }
@@ -839,7 +869,13 @@ impl MainModel {
             Section::Pinned => self.items.iter().filter(|i| i.pinned).collect(),
             Section::Recent | Section::Trash => return Vec::new(),
             Section::List(id) => return self.list_items(id),
-            Section::Tag(id) => self.items.iter().filter(|i| i.tags.contains(&id)).collect(),
+            Section::Tag(id) => self
+                .items
+                .iter()
+                .filter(|i| {
+                    i.tags.contains(&id) || i.tags.iter().any(|own| self.tree.is_under(*own, id))
+                })
+                .collect(),
         };
         self.sort().apply(&mut items);
         items

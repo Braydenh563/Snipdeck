@@ -181,6 +181,15 @@ fn apply(b: &mut Batch<'_>, change: &Change, now: Timestamp) -> snipdeck_store::
 /// Brings `tag` back on `items` (the ones still stored). A tag another one took the name of in the
 /// meantime is not made twice: the items take that one.
 fn make_tag(b: &mut Batch<'_>, tag: &Tag, items: &[ItemId]) -> snipdeck_store::Result<()> {
+    let mut tag = tag.clone();
+    // The tag it was nested under may be gone since: it comes back at the top.
+    if tag
+        .parent
+        .is_some_and(|p| !b.tags().is_ok_and(|all| all.iter().any(|t| t.id == p)))
+    {
+        tag.parent = None;
+    }
+    let tag = &tag;
     let id = match b.insert_tag(tag) {
         Ok(()) | Err(snipdeck_store::Error::AlreadyExists { .. }) => tag.id,
         Err(snipdeck_store::Error::TagExists(_)) => b
@@ -204,6 +213,7 @@ fn permanent(error: &snipdeck_store::Error) -> bool {
         E::NotFound { .. }
             | E::AlreadyExists { .. }
             | E::TagExists(_)
+            | E::TagParent
             | E::Invalid(_)
             | E::Core(_)
             | E::BlobCorrupt { .. }
