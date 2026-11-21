@@ -46,7 +46,7 @@ pub use list::{List, ListAccent, ListIcon, ListView};
 pub use name::Name;
 pub use placement::Placement;
 pub use sort::{Sort, SortKey};
-pub use tag::Tag;
+pub use tag::{Tag, TagTree};
 pub use trigger::{
     BUFFER_CHARS, Candidate, CaseMode, CaseShape, Fired, MIN_PLAIN_CHARS, Matcher,
     SUGGEST_MIN_CHARS, Suggestion, Trigger, TriggerEnd, TriggerOptions, prefix_of,

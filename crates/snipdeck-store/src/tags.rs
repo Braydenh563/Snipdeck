@@ -67,20 +67,22 @@ fn hex(bytes: &[u8]) -> String {
 
 pub(crate) fn tags(conn: &Connection) -> Result<Vec<Tag>> {
     let mut stmt =
-        conn.prepare_cached("SELECT id, name, colour FROM tags ORDER BY name_key, id")?;
+        conn.prepare_cached("SELECT id, name, colour, parent FROM tags ORDER BY name_key, id")?;
     let rows = stmt.query_map([], |r| {
         Ok((
             r.get::<_, Vec<u8>>(0)?,
             r.get::<_, String>(1)?,
             r.get::<_, Option<String>>(2)?,
+            r.get::<_, Option<Vec<u8>>>(3)?,
         ))
     })?;
     rows.map(|row| {
-        let (id, name, colour) = row?;
+        let (id, name, colour, parent) = row?;
         Ok(Tag {
             id: id_from(&id)?,
             name: stored_name(&name)?,
             colour: colour.as_deref().map(str::parse).transpose()?,
+            parent: parent.as_deref().map(id_from).transpose()?,
         })
     })
     .collect()
@@ -90,13 +92,15 @@ pub(crate) fn insert_tag(cx: &mut Ctx<'_>, tag: &Tag) -> Result<()> {
     let conn = cx.conn;
     require_new(conn, "tags", tag.id)?;
     clash_check(conn, tag)?;
+    parent_check(conn, tag)?;
     conn.execute(
-        "INSERT INTO tags (id, name, name_key, colour) VALUES (?1, ?2, ?3, ?4)",
+        "INSERT INTO tags (id, name, name_key, colour, parent) VALUES (?1, ?2, ?3, ?4, ?5)",
         params![
             id_bytes(tag.id),
             tag.name.as_str(),
             key(&tag.name),
-            tag.colour.map(ItemLabel::key)
+            tag.colour.map(ItemLabel::key),
+            tag.parent.map(id_bytes)
         ],
     )?;
     Ok(())
@@ -108,19 +112,26 @@ pub(crate) fn update_tag(cx: &mut Ctx<'_>, tag: &Tag) -> Result<()> {
         return Err(not_found(tag.id));
     }
     clash_check(conn, tag)?;
+    parent_check(conn, tag)?;
     conn.execute(
-        "UPDATE tags SET name = ?2, name_key = ?3, colour = ?4 WHERE id = ?1",
+        "UPDATE tags SET name = ?2, name_key = ?3, colour = ?4, parent = ?5 WHERE id = ?1",
         params![
             id_bytes(tag.id),
             tag.name.as_str(),
             key(&tag.name),
-            tag.colour.map(ItemLabel::key)
+            tag.colour.map(ItemLabel::key),
+            tag.parent.map(id_bytes)
         ],
     )?;
     Ok(())
 }
 
+/// Deletes a tag; the tags nested under it move up to its own parent (or become top-level).
 pub(crate) fn delete_tag(cx: &mut Ctx<'_>, id: TagId) -> Result<()> {
+    cx.conn.execute(
+        "UPDATE tags SET parent = (SELECT p.parent FROM tags p WHERE p.id = ?1) WHERE parent = ?1",
+        [id_bytes(id)],
+    )?;
     let deleted = cx
         .conn
         .execute("DELETE FROM tags WHERE id = ?1", [id_bytes(id)])?;
@@ -151,6 +162,37 @@ pub(crate) fn link_tag(cx: &mut Ctx<'_>, id: TagId, items: &[ItemId]) -> Result<
         )?;
     }
     Ok(())
+}
+
+/// Fails with [`Error::TagParent`] if `tag.parent` is not a stored tag, is `tag` itself or is
+/// nested under `tag`.
+fn parent_check(conn: &rusqlite::Connection, tag: &Tag) -> Result<()> {
+    let Some(parent) = tag.parent else {
+        return Ok(());
+    };
+    // Walk up from the new parent: meeting `tag` would close a loop. The bound stops a loop
+    // that is already stored.
+    let mut at = Some(parent);
+    for _ in 0..64 {
+        let Some(current) = at else {
+            return Ok(());
+        };
+        if current == tag.id {
+            return Err(Error::TagParent);
+        }
+        let row: Option<Option<Vec<u8>>> = conn
+            .query_row(
+                "SELECT parent FROM tags WHERE id = ?1",
+                [id_bytes(current)],
+                |r| r.get(0),
+            )
+            .optional()?;
+        match row {
+            None => return Err(Error::TagParent),
+            Some(next) => at = next.as_deref().map(id_from).transpose()?,
+        }
+    }
+    Err(Error::TagParent)
 }
 
 /// Fails with [`Error::TagExists`] if another tag has the same name ignoring case.

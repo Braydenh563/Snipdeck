@@ -8,7 +8,7 @@
 
 use std::collections::BTreeSet;
 
-use crate::{Item, ItemKind, ItemLabel, TagId};
+use crate::{Item, ItemKind, ItemLabel, TagId, TagTree};
 
 /// How a set of chosen tags is read.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -106,16 +106,20 @@ impl ViewFilter {
     }
 
     /// Whether `item` passes. `has_trigger` says whether the item has a typed trigger (the
-    /// item does not carry that itself).
+    /// item does not carry that itself). A chosen tag is carried by an item that has it or any
+    /// tag nested under it in `tree`.
     #[must_use]
-    pub fn matches(&self, item: &Item, has_trigger: bool) -> bool {
+    pub fn matches(&self, item: &Item, has_trigger: bool, tree: &TagTree) -> bool {
         if self.untagged && !item.tags.is_empty() {
             return false;
         }
         if !self.tags.is_empty() {
+            let carries = |t: &TagId| {
+                item.tags.contains(t) || item.tags.iter().any(|own| tree.is_under(*own, *t))
+            };
             let ok = match self.tag_match {
-                TagMatch::Any => self.tags.iter().any(|t| item.tags.contains(t)),
-                TagMatch::All => self.tags.iter().all(|t| item.tags.contains(t)),
+                TagMatch::Any => self.tags.iter().any(carries),
+                TagMatch::All => self.tags.iter().all(carries),
             };
             if !ok {
                 return false;
@@ -155,7 +159,7 @@ mod tests {
         let f = ViewFilter::none();
         assert!(f.is_none());
         assert_eq!(f.active(), 0);
-        assert!(f.matches(&item(ItemKind::Image, &[]), false));
+        assert!(f.matches(&item(ItemKind::Image, &[]), false, &TagTree::default()));
     }
 
     #[test]
@@ -168,12 +172,18 @@ mod tests {
         f.toggle_tag(a);
         f.toggle_tag(b);
         assert_eq!(f.active(), 2);
-        assert!(f.matches(&only_a, false), "any: one tag is enough");
-        assert!(f.matches(&both, false));
-        assert!(!f.matches(&none, false));
+        assert!(
+            f.matches(&only_a, false, &TagTree::default()),
+            "any: one tag is enough"
+        );
+        assert!(f.matches(&both, false, &TagTree::default()));
+        assert!(!f.matches(&none, false, &TagTree::default()));
         f.tag_match = TagMatch::All;
-        assert!(!f.matches(&only_a, false), "all: needs both");
-        assert!(f.matches(&both, false));
+        assert!(
+            !f.matches(&only_a, false, &TagTree::default()),
+            "all: needs both"
+        );
+        assert!(f.matches(&both, false, &TagTree::default()));
     }
 
     #[test]
@@ -184,8 +194,8 @@ mod tests {
         f.toggle_untagged();
         assert!(f.untagged);
         assert_eq!(f.tags.len(), 0);
-        assert!(f.matches(&item(ItemKind::Text, &[]), false));
-        assert!(!f.matches(&item(ItemKind::Text, &[a]), false));
+        assert!(f.matches(&item(ItemKind::Text, &[]), false, &TagTree::default()));
+        assert!(!f.matches(&item(ItemKind::Text, &[a]), false, &TagTree::default()));
         f.toggle_tag(a);
         assert!(!f.untagged, "choosing a tag ends the untagged filter");
         f.toggle_tag(a);
@@ -198,17 +208,17 @@ mod tests {
         let mut f = ViewFilter::none();
         f.toggle_kind(ItemKind::Link);
         f.toggle_kind(ItemKind::Image);
-        assert!(f.matches(&item(ItemKind::Link, &[]), false));
-        assert!(f.matches(&item(ItemKind::Image, &[]), false));
-        assert!(!f.matches(&item(ItemKind::Text, &[]), false));
+        assert!(f.matches(&item(ItemKind::Link, &[]), false, &TagTree::default()));
+        assert!(f.matches(&item(ItemKind::Image, &[]), false, &TagTree::default()));
+        assert!(!f.matches(&item(ItemKind::Text, &[]), false, &TagTree::default()));
         f.toggle_tag(a);
         assert!(
-            !f.matches(&item(ItemKind::Link, &[]), false),
+            !f.matches(&item(ItemKind::Link, &[]), false, &TagTree::default()),
             "tag and kind"
         );
-        assert!(f.matches(&item(ItemKind::Link, &[a]), false));
+        assert!(f.matches(&item(ItemKind::Link, &[a]), false, &TagTree::default()));
         f.toggle_kind(ItemKind::Link);
-        assert!(!f.matches(&item(ItemKind::Link, &[a]), false));
+        assert!(!f.matches(&item(ItemKind::Link, &[a]), false, &TagTree::default()));
     }
 
     #[test]
@@ -218,25 +228,54 @@ mod tests {
             has_trigger: true,
             ..ViewFilter::none()
         };
-        assert!(!f.matches(&plain, false));
-        assert!(f.matches(&plain, true));
+        assert!(!f.matches(&plain, false, &TagTree::default()));
+        assert!(f.matches(&plain, true, &TagTree::default()));
         f = ViewFilter {
             sensitive: true,
             ..ViewFilter::none()
         };
-        assert!(!f.matches(&plain, false));
+        assert!(!f.matches(&plain, false, &TagTree::default()));
         plain.sensitive = true;
-        assert!(f.matches(&plain, false));
+        assert!(f.matches(&plain, false, &TagTree::default()));
         f = ViewFilter::pinned_only();
-        assert!(!f.matches(&plain, false));
+        assert!(!f.matches(&plain, false, &TagTree::default()));
         plain.pinned = true;
-        assert!(f.matches(&plain, false));
+        assert!(f.matches(&plain, false, &TagTree::default()));
         f = ViewFilter {
             label: Some(ItemLabel::Red),
             ..ViewFilter::none()
         };
-        assert!(!f.matches(&plain, false));
+        assert!(!f.matches(&plain, false, &TagTree::default()));
         plain.label = Some(ItemLabel::Red);
-        assert!(f.matches(&plain, false));
+        assert!(f.matches(&plain, false, &TagTree::default()));
+    }
+
+    #[test]
+    fn a_chosen_tag_also_finds_items_tagged_with_a_tag_nested_under_it() {
+        use crate::{Name, Tag};
+        let work = Tag::new(Name::new("work").unwrap());
+        let invoices = Tag {
+            parent: Some(work.id),
+            ..Tag::new(Name::new("invoices").unwrap())
+        };
+        let other = Tag::new(Name::new("other").unwrap());
+        let tree = TagTree::new([&work, &invoices, &other]);
+        let under = item(ItemKind::Text, &[invoices.id]);
+        let mut f = ViewFilter::none();
+        f.toggle_tag(work.id);
+        assert!(f.matches(&under, false, &tree), "work finds work/invoices");
+        assert!(
+            !f.matches(&under, false, &TagTree::default()),
+            "flat: it does not"
+        );
+        let mut f = ViewFilter::none();
+        f.toggle_tag(invoices.id);
+        assert!(
+            !f.matches(&item(ItemKind::Text, &[work.id]), false, &tree),
+            "not upwards"
+        );
+        f.toggle_tag(other.id);
+        f.tag_match = TagMatch::All;
+        assert!(!f.matches(&under, false, &tree), "all: other is missing");
     }
 }

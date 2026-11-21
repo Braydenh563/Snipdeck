@@ -404,6 +404,8 @@ mod at_rest {
              ALTER TABLE items DROP COLUMN group_id;
              DROP TABLE item_groups;
              ALTER TABLE key_ring DROP COLUMN previous;
+             DROP INDEX tags_by_parent;
+             ALTER TABLE tags DROP COLUMN parent;
              ALTER TABLE tags DROP COLUMN colour;
              ALTER TABLE boards DROP COLUMN accent;
              ALTER TABLE boards DROP COLUMN icon;
@@ -546,6 +548,8 @@ mod at_rest {
                  ALTER TABLE recent_entries DROP COLUMN rich;
                  ALTER TABLE recent_entries DROP COLUMN blob;
                  ALTER TABLE recent_entries DROP COLUMN blob_len;
+                 DROP INDEX tags_by_parent;
+                 ALTER TABLE tags DROP COLUMN parent;
                  ALTER TABLE tags DROP COLUMN colour;
                  ALTER TABLE boards DROP COLUMN accent;
                  ALTER TABLE boards DROP COLUMN icon;

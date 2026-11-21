@@ -94,6 +94,7 @@ fn missing_tags_are_not_found() {
         id: TagId::generate(),
         name: name("ghost"),
         colour: None,
+        parent: None,
     };
     assert!(matches!(
         s.update_tag(&ghost),
@@ -223,4 +224,72 @@ fn a_board_keeps_its_accent_and_icon() {
             assert_eq!(s.lists(b.id).unwrap()[0].sort, l.sort, "{}", l.sort.key());
         }
     }
+}
+
+fn nested(s: &mut impl TagRepo, label: &str, parent: Option<&Tag>) -> Tag {
+    let tag = Tag {
+        parent: parent.map(|p| p.id),
+        ..Tag::new(name(label))
+    };
+    s.insert_tag(&tag).unwrap();
+    tag
+}
+
+#[test]
+fn a_tag_keeps_its_parent_across_a_rename_and_a_reload() {
+    let mut s = store();
+    let work = nested(&mut s, "work", None);
+    let mut invoices = nested(&mut s, "invoices", Some(&work));
+    invoices.name = name("bills");
+    s.update_tag(&invoices).unwrap();
+    let stored = s.tags().unwrap();
+    let bills = stored.iter().find(|t| t.id == invoices.id).unwrap();
+    assert_eq!(bills.parent, Some(work.id));
+    assert_eq!(
+        stored.iter().find(|t| t.id == work.id).unwrap().parent,
+        None
+    );
+}
+
+#[test]
+fn a_tag_cannot_be_nested_under_itself_a_descendant_or_a_stranger() {
+    let mut s = store();
+    let a = nested(&mut s, "a", None);
+    let b = nested(&mut s, "b", Some(&a));
+    let c = nested(&mut s, "c", Some(&b));
+    let mut under_itself = a.clone();
+    under_itself.parent = Some(a.id);
+    assert!(matches!(s.update_tag(&under_itself), Err(Error::TagParent)));
+    let mut loop_ = a.clone();
+    loop_.parent = Some(c.id);
+    assert!(
+        matches!(s.update_tag(&loop_), Err(Error::TagParent)),
+        "c is below a"
+    );
+    let ghost = Tag {
+        parent: Some(TagId::generate()),
+        ..Tag::new(name("orphan"))
+    };
+    assert!(matches!(s.insert_tag(&ghost), Err(Error::TagParent)));
+    let mut moved = c.clone();
+    moved.parent = Some(a.id);
+    s.update_tag(&moved).unwrap();
+    assert_eq!(names(&s).len(), 3, "nothing was lost");
+}
+
+#[test]
+fn deleting_a_tag_moves_its_children_up_to_its_own_parent() {
+    let mut s = store();
+    let a = nested(&mut s, "a", None);
+    let b = nested(&mut s, "b", Some(&a));
+    let c = nested(&mut s, "c", Some(&b));
+    s.delete_tag(b.id).unwrap();
+    let stored = s.tags().unwrap();
+    assert_eq!(
+        stored.iter().find(|t| t.id == c.id).unwrap().parent,
+        Some(a.id)
+    );
+    s.delete_tag(a.id).unwrap();
+    let stored = s.tags().unwrap();
+    assert_eq!(stored.iter().find(|t| t.id == c.id).unwrap().parent, None);
 }

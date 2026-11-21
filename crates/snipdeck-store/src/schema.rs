@@ -279,6 +279,22 @@ ALTER TABLE item_groups ADD COLUMN colour TEXT
         ('blue', 'teal', 'green', 'amber', 'orange', 'red', 'rose', 'violet', 'slate'));
 ";
 
+/// Version 14: a tag can be nested under another (`tags.parent`). The repository code keeps the
+/// parent a stored tag and the tree free of loops, and takes the children of a deleted tag to
+/// its own parent; the column has no foreign key so that an older build's table can be rebuilt.
+pub(crate) const V14: &str = r"
+ALTER TABLE tags ADD COLUMN parent BLOB CHECK (parent IS NULL OR parent <> id);
+CREATE INDEX tags_by_parent ON tags(parent);
+";
+
+/// Version 15: a group can be nested inside another group of the same list
+/// (`item_groups.parent`). The repository code keeps the nesting to the list and the depth
+/// within `MAX_GROUP_DEPTH`; deleting a group takes its children to its own parent.
+pub(crate) const V15: &str = r"
+ALTER TABLE item_groups ADD COLUMN parent BLOB CHECK (parent IS NULL OR parent <> id);
+CREATE INDEX item_groups_by_parent ON item_groups(parent);
+";
+
 #[cfg(test)]
 mod tests {
     use rusqlite::{Connection, params};
