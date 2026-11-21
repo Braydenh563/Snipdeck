@@ -1276,7 +1276,7 @@ msgstr ""
 msgid "Done"
 msgstr ""
 
-#: ui/settings.slint:890 ui/settings.slint:893
+#: ui/settings.slint:491 ui/settings.slint:890 ui/settings.slint:893
 msgid "Double-click opens the Main window"
 msgstr ""
 
