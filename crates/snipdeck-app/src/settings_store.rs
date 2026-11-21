@@ -142,22 +142,39 @@ impl SettingsSink for FileSink {
 
 /// A [`SettingsSink`] that writes every setting but keeps the theme the file already has. For a
 /// run with `--dark`: the one-run theme must not reach the user's file, and no other change of
-/// the run should be lost either.
+/// the run should be lost either. A theme the person picks in Settings during the run is theirs,
+/// not the override: from that save on nothing is pinned.
 pub struct ThemePinned<S: SettingsSink> {
     inner: S,
+    /// The theme the file holds.
     theme: Theme,
+    /// The theme this run was started with; a save that differs holds the person's own choice.
+    run_theme: Theme,
+    pinned: bool,
 }
 
 impl<S: SettingsSink> ThemePinned<S> {
-    /// Wraps `inner`; `theme` is the theme the file holds now.
+    /// Wraps `inner`; `theme` is the theme the file holds now and `run_theme` the one this run
+    /// started with.
     #[must_use]
-    pub fn new(inner: S, theme: Theme) -> Self {
-        Self { inner, theme }
+    pub fn new(inner: S, theme: Theme, run_theme: Theme) -> Self {
+        Self {
+            inner,
+            theme,
+            run_theme,
+            pinned: true,
+        }
     }
 }
 
 impl<S: SettingsSink> SettingsSink for ThemePinned<S> {
     fn save(&mut self, settings: &Settings) -> io::Result<()> {
+        if settings.theme != self.run_theme {
+            self.pinned = false;
+        }
+        if !self.pinned {
+            return self.inner.save(settings);
+        }
         let mut pinned = settings.clone();
         pinned.theme = self.theme;
         self.inner.save(&pinned)
@@ -444,7 +461,7 @@ mod tests {
         };
         // The baseline is what this run starts from: the file, with the one-run theme.
         let mut saver = SettingsSaver::new(
-            Box::new(ThemePinned::new(rec.clone(), Theme::Light)),
+            Box::new(ThemePinned::new(rec.clone(), Theme::Light, Theme::Dark)),
             in_use.clone(),
         );
         saver.changed(&in_use, at("2026-10-19T10:00:00Z"));
@@ -459,6 +476,40 @@ mod tests {
         assert_eq!(writes.len(), 1);
         assert_eq!(writes[0].panel_width, 411, "the other change is saved");
         assert_eq!(writes[0].theme, Theme::Light, "the dark override is not");
+    }
+
+    #[test]
+    fn a_theme_chosen_during_a_dark_run_is_saved() {
+        let rec = Recorder::default();
+        let in_use = Settings {
+            theme: Theme::Dark,
+            ..Settings::default()
+        };
+        let mut saver = SettingsSaver::new(
+            Box::new(ThemePinned::new(rec.clone(), Theme::Light, Theme::Dark)),
+            in_use.clone(),
+        );
+        let chosen = Settings {
+            theme: Theme::System,
+            panel_width: 411,
+            ..in_use
+        };
+        saver.changed(&chosen, at("2026-10-19T10:00:01Z"));
+        saver.flush().expect("flush");
+        let again = Settings {
+            panel_width: 420,
+            ..chosen
+        };
+        saver.changed(&again, at("2026-10-19T10:00:02Z"));
+        saver.flush().expect("flush");
+        let writes = rec.writes.borrow();
+        assert_eq!(writes.len(), 2);
+        assert_eq!(
+            writes[0].theme,
+            Theme::System,
+            "the person's choice is saved"
+        );
+        assert_eq!(writes[1].theme, Theme::System, "and stays saved");
     }
 
     fn saver(rec: &Recorder) -> SettingsSaver {

@@ -361,7 +361,11 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
             // `--dark` is a one-run override: the saver keeps the file's theme and saves the rest.
             let sink: Box<dyn snipdeck_app::settings_store::SettingsSink> = if args.dark {
                 let on_disk = std::mem::replace(&mut baseline.theme, settings.theme);
-                Box::new(ThemePinned::new(FileSink::new(folder), on_disk))
+                Box::new(ThemePinned::new(
+                    FileSink::new(folder),
+                    on_disk,
+                    settings.theme,
+                ))
             } else {
                 Box::new(FileSink::new(folder))
             };
