@@ -1,32 +1,15 @@
 # fix-audit-panel remaining
 
-## Done (pushed 93c81c3)
-PANEL-1,5(fuzzy/fold),6,7,8,9,11,14,30(name only; 6px is DESIGN §5),32,33,34,35,37,38,39,42; translations; goldens.
-
-## PANEL-13: code and tests done (paste tail polled by arm_paste/paste_tick); gating now
-App crate not cross-checkable for Windows here (no mingw gcc): platform.rs one-line change unverified.
+## Done and pushed (head f676441, gate green)
+1, 2 (static + Import/Export/Back up now/Empty Trash), 4-11, 13, 14, 15 (table), 18, 21, 22, 23 (List scope + cut notice), 27, 28, 30, 32-39, 41-44; F2 on Recent (opens Save-to menu).
+SPEC post-1.0 notes removed except the eyedropper hotkey, per-swatch Ctrl+S and OLE drop (not mine).
 
 ## Next (order)
-2,3,4 palette commands/state names/disabled reasons; 5 Page/Home/End;
-10,12,15-29,31,36,40,41,43,44,45; 10k probe; SPEC post-1.0 notes.
+31 (More menu groups), 2 (dynamic board/list/tag rows), 3, 12, 16, 17, 19, 20, 24, 25, 26, 29, 40, 45, 10k timing probe, 23 (Recent/tag Picker scopes), 15 (version-resource name), 22 (paste-next order).
 
 ## Blocked
 none
 
-## Batch: palette (PANEL-2/4/44/43)
-- done: ten new commands (Hide Panel, Close Panel when I click away, Undo, Redo, New board, Lock, Quit, Paste as plain text, Restore, Delete for good), state-named toggles, unavailable Symbols/Colours rows with a reason (Hint), i18n, tests.
-- done: PANEL-44 chip accessible description; PANEL-43 recorded post-1.0 in SPEC.
-- next: dynamic board/list/tag rows (PANEL-2), PANEL-3, PANEL-5 Page/Home/End, then 10, 12, 15-29, 31, 36, 40, 41, 45.
-
-## Batch (Windows, unverified)
-- Done: 18 (own SendInput tagged `OWN_INPUT_TAG`; hook skips only those), 28 (`wScan` via MapVirtualKeyW). Cross-checked only.
-- Post-1.0 in SPEC: 27, 21, F2 on Recent.
-- Next: 15, 22, 23, 31, then 2, 3, 12, 16, 17, 19, 20, 24, 25, 26, 29, 40, 45, 10k probe.
-- Done: 15 (names table + CamelCase), 22 (toasts for ignored stack mark and closed form; paste-next order kept, noted in SPEC).
-
-## PAUSED (owner usage limit)
-- Done and gated, pushed at d58fff5: 1,4-11,13,14,18,28,30,32-39,41-44, 2 (static commands).
-- Committed local before the WIP commit, not gated: 15 (friendly names), 22 (toasts + i18n).
-- WIP, compiles (`cargo check` clean) but no tests or gate: PANEL-23 Picker "This list" scope, "Showing the first 50" line, remembered scope. Still needs: picker_logic/controller tests, i18n for "This list" and "Showing the first {}", golden updates for the picker, SPEC note that Recent and Tag scopes are post-1.0 (Recent is a different data source; tags are searched by name).
-- Next: 31, 2 (dynamic rows), 3, 12, 16, 17, 19, 20, 24, 25, 26, 29, 40, 45, 10k probe.
-- Note: my earlier progress report went to the wrong session id; resent.
+## Notes
+- Windows-only changes (18, 21, 27, 28) cross-checked only; unverified.
+- 27: clipboard stays on "copied instead" by design (the toast promises the copy).
