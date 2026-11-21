@@ -47,6 +47,11 @@ where
         self.run_command(action.command(), 0);
     }
 
+    /// Opens Settings and starts `action` there.
+    fn settings_action(&mut self, action: SettingsAction) {
+        self.pending.push(Effect::SettingsAction(action));
+    }
+
     /// Runs `command`. `cursor` is the row under the keyboard cursor: the item commands act on it
     /// (the selection, when several rows are selected, as the menus do). Commands that only
     /// move focus inside the Main window (Search) are the window's and do nothing here.
@@ -78,20 +83,15 @@ where
             | Command::UsePlain
             | Command::RestoreItem
             | Command::DeleteForever => {}
-            Command::ImportLibrary | Command::ExportLibrary | Command::BackUpNow => {
-                self.pending.push(Effect::SettingsAction(match command {
-                    Command::ImportLibrary => SettingsAction::Import,
-                    Command::ExportLibrary => SettingsAction::Export,
-                    _ => SettingsAction::BackUp,
-                }));
-            }
+            Command::ImportLibrary => self.settings_action(SettingsAction::Import),
+            Command::ExportLibrary => self.settings_action(SettingsAction::Export),
+            Command::BackUpNow => self.settings_action(SettingsAction::BackUp),
             Command::ShowPanel | Command::HidePanel => self.main_toggle_panel(),
             Command::Undo => self.undo(),
             Command::Redo => self.redo(),
             Command::NewBoard => self.main_new_board(),
             Command::Lock => self.lock_now(),
             Command::Quit => self.pending.push(Effect::Quit),
-
             Command::Symbols => {
                 if self.settings.show_symbols_tab {
                     let mut effects = self.show();
