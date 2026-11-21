@@ -97,6 +97,7 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - 2026-11-10 v1.1 spec (docs/reviews/v11-spec.md) decisions taken as proposed, owner asleep: Hello = one extra Hello prompt after a password unlock (in-memory sealed key; nothing persisted); password every 7 days, no setting; suggest-as-you-type matches triggers only, one suggestion, Tab inserts; tips pictures are English golden crops; importers drop the "Name (abbr)" title once triggers exist; date units d w mo y h min. Reason: safest defaults, reversible later.
 
 - 2026-11-12: Colour tool UI and the editor preview toggle are built by cloud worker sessions (branches claude/colour-tool, claude/editor-preview), merged into PR #5 by the coordinator. Reason: this machine fits one snipdeck_ui compile at a time, so local parallel builds OOM; the local colour workflow wf_8676d216-bbf is superseded and not resumed.
+- 2026-11-21: Data merge: "Back up now" keeps the data branch's manual backup (a file of its own) and drops PR #5's `replace` (overwrite today's). A separate file never destroys an earlier copy. Both folder features stay (the user-chosen backup folder and the Store copy-out).
 
 ## Inbox
 - 2026-11-21 (owner, verbatim): "dont stop and make sure no work is missed, I want absolutely everything done so that all I will have to do is test it myself"
