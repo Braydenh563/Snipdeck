@@ -3222,45 +3222,46 @@ a_damaged_file_that_cannot_be_set_aside_is_left_alone_and_not_to_be_overwritten 
 
 RESULT_LIMIT | crates/snipdeck-app/src/picker.rs:18
 Scope | crates/snipdeck-app/src/picker.rs:22
-Entry | crates/snipdeck-app/src/picker.rs:36
-Place | crates/snipdeck-app/src/picker.rs:58
-PickerModel | crates/snipdeck-app/src/picker.rs:67
-impl std::fmt::Debug for PickerModel | crates/snipdeck-app/src/picker.rs:93
-fmt | crates/snipdeck-app/src/picker.rs:94
-impl PickerModel | crates/snipdeck-app/src/picker.rs:102
-load_cached | crates/snipdeck-app/src/picker.rs:110
-item | crates/snipdeck-app/src/picker.rs:170
-board_of | crates/snipdeck-app/src/picker.rs:174
-list_of | crates/snipdeck-app/src/picker.rs:178
-in_scope | crates/snipdeck-app/src/picker.rs:182
-search | crates/snipdeck-app/src/picker.rs:191
-with_list | crates/snipdeck-app/src/picker.rs:218
-more | crates/snipdeck-app/src/picker.rs:226
-list | crates/snipdeck-app/src/picker.rs:232
-has_list | crates/snipdeck-app/src/picker.rs:238
-suggest_index | crates/snipdeck-app/src/picker.rs:244
-set_query | crates/snipdeck-app/src/picker.rs:249
-set_scope | crates/snipdeck-app/src/picker.rs:255
-query | crates/snipdeck-app/src/picker.rs:262
-scope | crates/snipdeck-app/src/picker.rs:268
-rows | crates/snipdeck-app/src/picker.rs:274
-item_at | crates/snipdeck-app/src/picker.rs:308
-quick_use | crates/snipdeck-app/src/picker.rs:316
-selected | crates/snipdeck-app/src/picker.rs:325
-move_selection | crates/snipdeck-app/src/picker.rs:330
-tests | crates/snipdeck-app/src/picker.rs:337
-now | crates/snipdeck-app/src/picker.rs:343
-model | crates/snipdeck-app/src/picker.rs:347
-titles | crates/snipdeck-app/src/picker.rs:355
-it_opens_on_every_item_of_every_board_with_where_each_lives | crates/snipdeck-app/src/picker.rs:360
-with_no_query_what_was_used_most_recently_comes_first | crates/snipdeck-app/src/picker.rs:382
-a_search_marks_the_match_and_no_query_marks_nothing | crates/snipdeck-app/src/picker.rs:409
-typing_searches_all_boards_and_resets_the_selection | crates/snipdeck-app/src/picker.rs:424
-scopes_narrow_the_search_to_the_board_or_the_pinned_items | crates/snipdeck-app/src/picker.rs:439
-the_board_scope_without_a_board_is_empty | crates/snipdeck-app/src/picker.rs:461
-the_selection_stops_at_both_ends_and_quick_use_counts_rows | crates/snipdeck-app/src/picker.rs:469
-a_big_library_shows_the_best_fifty | crates/snipdeck-app/src/picker.rs:488
-the_list_scope_covers_the_panels_list_and_is_empty_without_one | crates/snipdeck-app/src/picker.rs:519
+Entry | crates/snipdeck-app/src/picker.rs:38
+Place | crates/snipdeck-app/src/picker.rs:60
+PickerModel | crates/snipdeck-app/src/picker.rs:69
+impl std::fmt::Debug for PickerModel | crates/snipdeck-app/src/picker.rs:95
+fmt | crates/snipdeck-app/src/picker.rs:96
+impl PickerModel | crates/snipdeck-app/src/picker.rs:104
+load_cached | crates/snipdeck-app/src/picker.rs:112
+item | crates/snipdeck-app/src/picker.rs:172
+board_of | crates/snipdeck-app/src/picker.rs:176
+list_of | crates/snipdeck-app/src/picker.rs:180
+in_scope | crates/snipdeck-app/src/picker.rs:184
+search | crates/snipdeck-app/src/picker.rs:194
+with_list | crates/snipdeck-app/src/picker.rs:221
+more | crates/snipdeck-app/src/picker.rs:229
+list | crates/snipdeck-app/src/picker.rs:235
+has_list | crates/snipdeck-app/src/picker.rs:241
+suggest_index | crates/snipdeck-app/src/picker.rs:247
+set_query | crates/snipdeck-app/src/picker.rs:252
+set_scope | crates/snipdeck-app/src/picker.rs:258
+query | crates/snipdeck-app/src/picker.rs:265
+scope | crates/snipdeck-app/src/picker.rs:271
+rows | crates/snipdeck-app/src/picker.rs:277
+item_at | crates/snipdeck-app/src/picker.rs:311
+quick_use | crates/snipdeck-app/src/picker.rs:319
+selected | crates/snipdeck-app/src/picker.rs:328
+move_selection | crates/snipdeck-app/src/picker.rs:333
+tests | crates/snipdeck-app/src/picker.rs:340
+now | crates/snipdeck-app/src/picker.rs:346
+model | crates/snipdeck-app/src/picker.rs:350
+titles | crates/snipdeck-app/src/picker.rs:358
+it_opens_on_every_item_of_every_board_with_where_each_lives | crates/snipdeck-app/src/picker.rs:363
+with_no_query_what_was_used_most_recently_comes_first | crates/snipdeck-app/src/picker.rs:385
+a_search_marks_the_match_and_no_query_marks_nothing | crates/snipdeck-app/src/picker.rs:412
+typing_searches_all_boards_and_resets_the_selection | crates/snipdeck-app/src/picker.rs:427
+scopes_narrow_the_search_to_the_board_or_the_pinned_items | crates/snipdeck-app/src/picker.rs:442
+the_recent_scope_holds_only_items_that_were_used_latest_first | crates/snipdeck-app/src/picker.rs:464
+the_board_scope_without_a_board_is_empty | crates/snipdeck-app/src/picker.rs:493
+the_selection_stops_at_both_ends_and_quick_use_counts_rows | crates/snipdeck-app/src/picker.rs:501
+a_big_library_shows_the_best_fifty | crates/snipdeck-app/src/picker.rs:520
+the_list_scope_covers_the_panels_list_and_is_empty_without_one | crates/snipdeck-app/src/picker.rs:551
 
 ### crates/snipdeck-app/src/picker_binding.rs
 
@@ -3286,16 +3287,16 @@ new | crates/snipdeck-app/src/picker_binding.rs:286
 window | crates/snipdeck-app/src/picker_binding.rs:327
 placed | crates/snipdeck-app/src/picker_binding.rs:334
 scope_of | crates/snipdeck-app/src/picker_binding.rs:339
-scope_in | crates/snipdeck-app/src/picker_binding.rs:348
-picker_place | crates/snipdeck-app/src/picker_binding.rs:360
-picker_row | crates/snipdeck-app/src/picker_binding.rs:370
-render | crates/snipdeck-app/src/picker_binding.rs:408
-tests | crates/snipdeck-app/src/picker_binding.rs:462
-entry | crates/snipdeck-app/src/picker_binding.rs:466
-picker_mask_has_no_tail | crates/snipdeck-app/src/picker_binding.rs:481
-picker_row_carries_the_marks | crates/snipdeck-app/src/picker_binding.rs:489
-a_colour_result_has_a_swatch_and_a_secret_or_other_text_does_not | crates/snipdeck-app/src/picker_binding.rs:504
-picker_place_uses_middle_dot | crates/snipdeck-app/src/picker_binding.rs:519
+scope_in | crates/snipdeck-app/src/picker_binding.rs:349
+picker_place | crates/snipdeck-app/src/picker_binding.rs:362
+picker_row | crates/snipdeck-app/src/picker_binding.rs:372
+render | crates/snipdeck-app/src/picker_binding.rs:410
+tests | crates/snipdeck-app/src/picker_binding.rs:464
+entry | crates/snipdeck-app/src/picker_binding.rs:468
+picker_mask_has_no_tail | crates/snipdeck-app/src/picker_binding.rs:483
+picker_row_carries_the_marks | crates/snipdeck-app/src/picker_binding.rs:491
+a_colour_result_has_a_swatch_and_a_secret_or_other_text_does_not | crates/snipdeck-app/src/picker_binding.rs:506
+picker_place_uses_middle_dot | crates/snipdeck-app/src/picker_binding.rs:521
 
 ### crates/snipdeck-app/src/placement.rs
 
@@ -8849,7 +8850,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/src/paste_create.rs` (inline) | 4 |
 | `crates/snipdeck-app/src/paste_next.rs` (inline) | 5 |
 | `crates/snipdeck-app/src/paths.rs` (inline) | 17 |
-| `crates/snipdeck-app/src/picker.rs` (inline) | 9 |
+| `crates/snipdeck-app/src/picker.rs` (inline) | 10 |
 | `crates/snipdeck-app/src/picker_binding.rs` (inline) | 4 |
 | `crates/snipdeck-app/src/placement.rs` (inline) | 23 |
 | `crates/snipdeck-app/src/platform.rs` (inline) | 1 |
