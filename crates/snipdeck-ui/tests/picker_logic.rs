@@ -473,16 +473,21 @@ ui_tests! {
 
     // ---- Scopes --------------------------------------------------------------------------------
 
-    fn tab_cycles_the_scope_all_board_pinned_and_back() {
+    fn tab_cycles_the_scope_all_board_list_pinned_and_back() {
         let (ui, log) = start();
         assert_eq!(ui.get_scope(), PickerScope::All);
         press(ui.window(), &key(Key::Tab));
         assert_eq!(ui.get_scope(), PickerScope::Board);
         press(ui.window(), &key(Key::Tab));
+        assert_eq!(ui.get_scope(), PickerScope::List);
+        press(ui.window(), &key(Key::Tab));
         assert_eq!(ui.get_scope(), PickerScope::Pinned);
         press(ui.window(), &key(Key::Tab));
         assert_eq!(ui.get_scope(), PickerScope::All, "wraps around");
-        assert_eq!(take(&log), ["scope:Board", "scope:Pinned", "scope:All"]);
+        assert_eq!(
+            take(&log),
+            ["scope:Board", "scope:List", "scope:Pinned", "scope:All"]
+        );
         assert!(ui.get_search_focused(), "focus never leaves the search");
     }
 
@@ -491,8 +496,8 @@ ui_tests! {
         chord(ui.window(), &[Key::Shift], &key(Key::Backtab));
         assert_eq!(ui.get_scope(), PickerScope::Pinned);
         chord(ui.window(), &[Key::Shift], &key(Key::Tab));
-        assert_eq!(ui.get_scope(), PickerScope::Board);
-        assert_eq!(take(&log), ["scope:Pinned", "scope:Board"]);
+        assert_eq!(ui.get_scope(), PickerScope::List);
+        assert_eq!(take(&log), ["scope:Pinned", "scope:List"]);
     }
 
     fn changing_the_scope_returns_the_selection_to_the_first_row_and_keeps_the_query() {
@@ -519,6 +524,20 @@ ui_tests! {
         // Choosing the scope already chosen is not a change.
         find(&ui, "This board", AccessibleRole::Button).invoke_accessible_default_action();
         assert!(take(&log).is_empty(), "no callback fired");
+    }
+
+    fn the_list_chip_exists_and_a_cut_list_says_how_many_are_shown() {
+        let (ui, log) = start();
+        find(&ui, "This list", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert_eq!(take(&log), ["scope:List"]);
+        assert!(
+            missing(&ui, "Showing the first 50", AccessibleRole::Text),
+            "nothing was cut"
+        );
+        ui.set_result_limit(50);
+        settle();
+        find(&ui, "Showing the first 50", AccessibleRole::Text);
     }
 
     // ---- States --------------------------------------------------------------------------------

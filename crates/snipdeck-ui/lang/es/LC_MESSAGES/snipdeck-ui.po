@@ -2696,6 +2696,9 @@ msgstr "Mostrar de nuevo el recorrido de bienvenida"
 msgid "Show title, colour, tags, trigger and privacy"
 msgstr "Mostrar título, color, etiquetas, atajo y privacidad"
 
+msgid "Showing the first {}"
+msgstr "Se muestran los primeros {}"
+
 msgid "Shrug"
 msgstr "Encogerse de hombros"
 
@@ -3133,6 +3136,9 @@ msgstr "Este elemento se eliminó, así que no se guardó nada."
 
 msgid "This item was deleted. Nothing was saved."
 msgstr "Este elemento se eliminó. No se guardó nada."
+
+msgid "This list"
+msgstr "Esta lista"
 
 msgid "This list is empty"
 msgstr "Esta lista está vacía"

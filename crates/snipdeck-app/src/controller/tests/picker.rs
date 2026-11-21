@@ -308,3 +308,17 @@ fn the_pickers_empty_state_opens_the_panel_and_closes_the_picker() {
     assert!(w.ctl.picker().is_none());
     assert!(w.ctl.visible());
 }
+
+#[test]
+fn the_picker_starts_on_the_scope_it_was_left_on_and_falls_back_without_a_list() {
+    let mut w = world();
+    w.ctl.on_hotkey(HotkeyAction::Picker);
+    w.ctl.picker_scope(Scope::List);
+    w.ctl.close_picker();
+    w.ctl.on_hotkey(HotkeyAction::Picker);
+    assert_eq!(w.ctl.view().picker.expect("open").scope, Scope::List);
+    w.ctl.picker_scope(Scope::Pinned);
+    w.ctl.close_picker();
+    w.ctl.on_hotkey(HotkeyAction::Picker);
+    assert_eq!(w.ctl.view().picker.expect("open").scope, Scope::Pinned);
+}

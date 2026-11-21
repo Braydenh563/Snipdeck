@@ -473,10 +473,35 @@ mod tests {
                 .insert_item(&item, &formats, Placement::Last)
                 .expect("item");
         }
-        let mut m =
-            PickerModel::load_cached(&store, Some(board.id), &IndexCache::new()).expect("model");
+        let mut m = PickerModel::load_cached(&store, Some(board.id), &IndexCache::new())
+            .expect("model")
+            .with_list(Some(list.id));
         assert_eq!(m.rows().len(), RESULT_LIMIT);
+        assert!(m.more(), "ten items were cut, and the Picker says so");
         m.set_query("snippet");
         assert_eq!(m.rows().len(), RESULT_LIMIT);
+        assert!(m.more());
+        m.set_query("snippet 7");
+        assert!(!m.more(), "a narrower search fits");
+        // PANEL-23: the list scope covers the list the Panel showed.
+        m.set_query("");
+        m.set_scope(Scope::List);
+        assert_eq!(m.rows().len(), RESULT_LIMIT);
+    }
+
+    #[test]
+    fn the_list_scope_covers_the_panels_list_and_is_empty_without_one() {
+        let (store, m) = model();
+        let board = store.boards().expect("boards")[0].id;
+        let lists = store.lists(board).expect("lists");
+        let mut m = m.with_list(Some(lists[0].id));
+        m.set_scope(Scope::List);
+        let in_first = m.rows().len();
+        assert!(in_first > 0 && in_first < 10, "one list of the Work board");
+        assert!(m.rows().iter().all(|r| r.list == lists[0].name.as_str()));
+        let mut none = m.with_list(None);
+        none.set_scope(Scope::List);
+        assert_eq!(none.rows(), Vec::new());
+        assert!(!none.has_list());
     }
 }

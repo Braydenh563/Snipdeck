@@ -2688,6 +2688,9 @@ msgstr "再次显示欢迎导览"
 msgid "Show title, colour, tags, trigger and privacy"
 msgstr "显示标题、颜色、标签、触发词和隐私"
 
+msgid "Showing the first {}"
+msgstr "显示前 {} 项"
+
 msgid "Shrug"
 msgstr "耸肩"
 
@@ -3125,6 +3128,9 @@ msgstr "此片段已被删除，因此未保存任何内容。"
 
 msgid "This item was deleted. Nothing was saved."
 msgstr "此片段已删除。未保存任何内容。"
+
+msgid "This list"
+msgstr "此列表"
 
 msgid "This list is empty"
 msgstr "此列表为空"

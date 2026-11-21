@@ -2688,6 +2688,9 @@ msgstr "ウェルカムツアーをもう一度表示"
 msgid "Show title, colour, tags, trigger and privacy"
 msgstr "タイトル、色、タグ、トリガー、プライバシーを表示"
 
+msgid "Showing the first {}"
+msgstr "先頭の {} 件を表示"
+
 msgid "Shrug"
 msgstr "肩をすくめる"
 
@@ -3125,6 +3128,9 @@ msgstr "このスニペットは削除されたため、何も保存されませ
 
 msgid "This item was deleted. Nothing was saved."
 msgstr "このスニペットは削除されました。何も保存されていません。"
+
+msgid "This list"
+msgstr "このリスト"
 
 msgid "This list is empty"
 msgstr "このリストは空です"

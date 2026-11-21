@@ -3218,6 +3218,7 @@ scopes_narrow_the_search_to_the_board_or_the_pinned_items | crates/snipdeck-app/
 the_board_scope_without_a_board_is_empty | crates/snipdeck-app/src/picker.rs:435
 the_selection_stops_at_both_ends_and_quick_use_counts_rows | crates/snipdeck-app/src/picker.rs:443
 a_big_library_shows_the_best_fifty | crates/snipdeck-app/src/picker.rs:462
+the_list_scope_covers_the_panels_list_and_is_empty_without_one | crates/snipdeck-app/src/picker.rs:493
 
 ### crates/snipdeck-app/src/picker_binding.rs
 
@@ -8760,7 +8761,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/src/controller/tests/menus_frame.rs` | 21 |
 | `crates/snipdeck-app/src/controller/tests/onboarding.rs` | 7 |
 | `crates/snipdeck-app/src/controller/tests/panel_select.rs` | 98 |
-| `crates/snipdeck-app/src/controller/tests/picker.rs` | 15 |
+| `crates/snipdeck-app/src/controller/tests/picker.rs` | 16 |
 | `crates/snipdeck-app/src/controller/tests/predictable.rs` | 8 |
 | `crates/snipdeck-app/src/controller/tests/recent.rs` | 35 |
 | `crates/snipdeck-app/src/controller/tests/screen_clip.rs` | 10 |
@@ -8803,7 +8804,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/src/paste_create.rs` (inline) | 4 |
 | `crates/snipdeck-app/src/paste_next.rs` (inline) | 5 |
 | `crates/snipdeck-app/src/paths.rs` (inline) | 17 |
-| `crates/snipdeck-app/src/picker.rs` (inline) | 8 |
+| `crates/snipdeck-app/src/picker.rs` (inline) | 9 |
 | `crates/snipdeck-app/src/picker_binding.rs` (inline) | 4 |
 | `crates/snipdeck-app/src/placement.rs` (inline) | 23 |
 | `crates/snipdeck-app/src/platform.rs` (inline) | 1 |

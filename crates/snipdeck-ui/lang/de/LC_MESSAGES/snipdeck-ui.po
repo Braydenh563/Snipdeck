@@ -2696,6 +2696,9 @@ msgstr "Willkommenstour erneut anzeigen"
 msgid "Show title, colour, tags, trigger and privacy"
 msgstr "Titel, Farbe, Tags, Kürzel und Datenschutz einblenden"
 
+msgid "Showing the first {}"
+msgstr "Die ersten {} werden angezeigt"
+
 msgid "Shrug"
 msgstr "Schulterzucken"
 
@@ -3133,6 +3136,9 @@ msgstr "Dieser Textbaustein wurde gelöscht, daher wurde nichts gespeichert."
 
 msgid "This item was deleted. Nothing was saved."
 msgstr "Dieser Textbaustein wurde gelöscht. Nichts wurde gespeichert."
+
+msgid "This list"
+msgstr "Diese Liste"
 
 msgid "This list is empty"
 msgstr "Diese Liste ist leer"

@@ -2696,6 +2696,9 @@ msgstr "Mostrar o tour de boas-vindas novamente"
 msgid "Show title, colour, tags, trigger and privacy"
 msgstr "Mostrar título, cor, tags, gatilho e privacidade"
 
+msgid "Showing the first {}"
+msgstr "Mostrando os primeiros {}"
+
 msgid "Shrug"
 msgstr "Dar de ombros"
 
@@ -3133,6 +3136,9 @@ msgstr "Este item foi excluído, então nada foi salvo."
 
 msgid "This item was deleted. Nothing was saved."
 msgstr "Este item foi excluído. Nada foi salvo."
+
+msgid "This list"
+msgstr "Esta lista"
 
 msgid "This list is empty"
 msgstr "Esta lista está vazia"
