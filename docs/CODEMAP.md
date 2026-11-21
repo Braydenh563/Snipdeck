@@ -6722,8 +6722,8 @@ clear_approval | crates/snipdeck-platform/src/windows/autostart.rs:152
 disable | crates/snipdeck-platform/src/windows/autostart.rs:164
 read_value | crates/snipdeck-platform/src/windows/autostart.rs:178
 stored_command | crates/snipdeck-platform/src/windows/autostart.rs:218
-status | crates/snipdeck-platform/src/windows/autostart.rs:234
-rewrite_if_stale | crates/snipdeck-platform/src/windows/autostart.rs:246
+status | crates/snipdeck-platform/src/windows/autostart.rs:236
+rewrite_if_stale | crates/snipdeck-platform/src/windows/autostart.rs:248
 
 ### crates/snipdeck-platform/src/windows/clipboard.rs
 
