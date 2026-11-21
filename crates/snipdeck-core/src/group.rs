@@ -1,4 +1,4 @@
-use crate::{GroupId, ListId, Name};
+use crate::{GroupId, ListAccent, ListId, Name};
 
 /// A named, collapsible run of items inside one list.
 ///
@@ -15,6 +15,9 @@ pub struct Group {
     pub name: Name,
     /// Whether the members are hidden under the header.
     pub collapsed: bool,
+    /// An optional colour, one of the nine list accents: a dot beside the header's name, never
+    /// alone (the name is always there).
+    pub colour: Option<ListAccent>,
 }
 
 impl Group {
@@ -25,6 +28,7 @@ impl Group {
             list_id,
             name,
             collapsed: false,
+            colour: None,
         }
     }
 }

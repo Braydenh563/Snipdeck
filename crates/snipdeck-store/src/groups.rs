@@ -10,7 +10,7 @@
 //!   not listed, and comes back when a trashed member is restored.
 
 use rusqlite::{Connection, OptionalExtension, params};
-use snipdeck_core::{Group, GroupId, ItemId, ListId, Placement, Timestamp};
+use snipdeck_core::{Group, GroupId, ItemId, ListAccent, ListId, Placement, Timestamp};
 use uuid::Uuid;
 
 use crate::batch::Ctx;
@@ -132,7 +132,7 @@ fn group_list(conn: &Connection, id: GroupId) -> Result<[u8; 16]> {
 pub(crate) fn groups_of(conn: &Connection, list: ListId) -> Result<Vec<GroupRun>> {
     require_list(conn, list)?;
     let mut stmt = conn.prepare_cached(
-        "SELECT g.id, g.name, g.collapsed, i.id FROM items i
+        "SELECT g.id, g.name, g.collapsed, i.id, g.colour FROM items i
            JOIN item_groups g ON g.id = i.group_id
           WHERE i.list_id = ?1 AND i.deleted_at IS NULL ORDER BY i.rank",
     )?;
@@ -142,11 +142,12 @@ pub(crate) fn groups_of(conn: &Connection, list: ListId) -> Result<Vec<GroupRun>
             r.get::<_, String>(1)?,
             r.get::<_, bool>(2)?,
             r.get::<_, Vec<u8>>(3)?,
+            r.get::<_, Option<String>>(4)?,
         ))
     })?;
     let mut runs: Vec<GroupRun> = Vec::new();
     for row in rows {
-        let (group, name, collapsed, item) = row?;
+        let (group, name, collapsed, item, colour) = row?;
         let group: GroupId = id_from(&group)?;
         let item: ItemId = id_from(&item)?;
         match runs.iter_mut().find(|run| run.group.id == group) {
@@ -157,6 +158,7 @@ pub(crate) fn groups_of(conn: &Connection, list: ListId) -> Result<Vec<GroupRun>
                     list_id: list,
                     name: stored_name(&name)?,
                     collapsed,
+                    colour: colour.as_deref().map(str::parse).transpose()?,
                 },
                 items: vec![item],
             }),
@@ -194,12 +196,13 @@ pub(crate) fn create_group(cx: &mut Ctx<'_>, group: &Group, members: &[ItemId]) 
         }
     }
     conn.execute(
-        "INSERT INTO item_groups (id, list_id, name, collapsed) VALUES (?1, ?2, ?3, ?4)",
+        "INSERT INTO item_groups (id, list_id, name, collapsed, colour) VALUES (?1, ?2, ?3, ?4, ?5)",
         params![
             id_bytes(group.id),
             list,
             group.name.as_str(),
-            group.collapsed
+            group.collapsed,
+            group.colour.map(ListAccent::key)
         ],
     )?;
     gather(conn, list, id_bytes(group.id), &ordered)?;
@@ -233,8 +236,13 @@ pub(crate) fn update_group(cx: &mut Ctx<'_>, group: &Group) -> Result<()> {
         return Err(not_found(group.id));
     }
     cx.conn.execute(
-        "UPDATE item_groups SET name = ?2, collapsed = ?3 WHERE id = ?1",
-        params![id_bytes(group.id), group.name.as_str(), group.collapsed],
+        "UPDATE item_groups SET name = ?2, collapsed = ?3, colour = ?4 WHERE id = ?1",
+        params![
+            id_bytes(group.id),
+            group.name.as_str(),
+            group.collapsed,
+            group.colour.map(ListAccent::key)
+        ],
     )?;
     Ok(())
 }

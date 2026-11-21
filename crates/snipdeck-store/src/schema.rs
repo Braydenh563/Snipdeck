@@ -272,6 +272,13 @@ ALTER TABLE boards ADD COLUMN icon TEXT
         ('folder', 'star', 'heart', 'briefcase', 'house', 'user', 'envelope-simple', 'chat-circle', 'phone', 'calendar-blank', 'shopping-cart', 'credit-card', 'code', 'terminal-window', 'book-open', 'lightbulb', 'flag', 'bookmark-simple', 'globe', 'map-pin', 'camera', 'music-note', 'wrench', 'rocket-launch'));
 ";
 
+/// Version 13: a group's colour, one of the nine list accents (the header shows it as a dot).
+pub(crate) const V13: &str = r"
+ALTER TABLE item_groups ADD COLUMN colour TEXT
+    CHECK (colour IS NULL OR colour IN
+        ('blue', 'teal', 'green', 'amber', 'orange', 'red', 'rose', 'violet', 'slate'));
+";
+
 #[cfg(test)]
 mod tests {
     use rusqlite::{Connection, params};

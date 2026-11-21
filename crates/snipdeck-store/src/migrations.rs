@@ -19,7 +19,7 @@ pub(crate) const APPLICATION_ID: i32 = 0x534E_444B;
 /// One forward step of the schema.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Migration {
-    /// The version the database is at after this step; versions are 1 to 12 without gaps.
+    /// The version the database is at after this step; versions are 1 to 13 without gaps.
     pub version: u32,
     /// Short description, for error messages.
     pub name: &'static str,
@@ -103,9 +103,18 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         sql: schema::V12,
         post: None,
     },
+    Migration {
+        version: 13,
+        name: "group colour",
+        sql: schema::V13,
+        post: None,
+    },
 ];
 
 /// The newest schema version this build writes.
+pub const SCHEMA_VERSION: u32 = MIGRATIONS[MIGRATIONS.len() - 1].version;
+
+/// The newest schema version of `migrations`.
 pub(crate) fn latest(migrations: &[Migration]) -> u32 {
     migrations.last().map_or(0, |m| m.version)
 }
@@ -323,14 +332,14 @@ mod tests {
     use rusqlite::params;
 
     const NEXT_ADD_COLUMN: Migration = Migration {
-        version: 13,
+        version: 14,
         name: "add boards.colour",
         sql: "ALTER TABLE boards ADD COLUMN colour TEXT;",
         post: None,
     };
 
     const NEXT_BROKEN: Migration = Migration {
-        version: 13,
+        version: 14,
         name: "broken",
         sql: "ALTER TABLE boards ADD COLUMN colour TEXT; THIS IS NOT SQL;",
         post: None,
@@ -401,8 +410,8 @@ mod tests {
 
         let all = with_next(NEXT_ADD_COLUMN);
         let outcome = migrate(&mut conn, &all, Path::new(":memory:"), false).unwrap();
-        assert_eq!(outcome, Outcome { from: 12, to: 13 });
-        assert_eq!(version(&conn), 13);
+        assert_eq!(outcome, Outcome { from: 13, to: 14 });
+        assert_eq!(version(&conn), 14);
         let (name, colour): (String, Option<String>) = conn
             .query_row("SELECT name, colour FROM boards", [], |r| {
                 Ok((r.get(0)?, r.get(1)?))
@@ -468,7 +477,7 @@ mod tests {
             matches!(
                 err,
                 Error::Migration {
-                    version: 13,
+                    version: 14,
                     name: "broken",
                     source: Some(_),
                     ..
@@ -480,7 +489,7 @@ mod tests {
             std::error::Error::source(&err).is_some(),
             "the cause is kept"
         );
-        assert_eq!(version(&conn), 12);
+        assert_eq!(version(&conn), 13);
         // The half-applied ALTER TABLE was undone, and the data is intact.
         assert!(conn.prepare("SELECT colour FROM boards").is_err());
         let boards: i64 = conn
@@ -498,7 +507,7 @@ mod tests {
         let mut conn = fresh();
         migrate(&mut conn, MIGRATIONS, Path::new(":memory:"), false).unwrap();
         let dangling = Migration {
-            version: 13,
+            version: 14,
             name: "orphan a list",
             sql: "INSERT INTO lists (id, board_id, name, list_view, list_sort, rank, created_at, updated_at)
                   VALUES (zeroblob(16), zeroblob(16), 'L', 'compact', 'manual', 1, 0, 0);",
@@ -512,10 +521,10 @@ mod tests {
         )
         .unwrap_err();
         assert!(
-            matches!(err, Error::Migration { version: 13, .. }),
+            matches!(err, Error::Migration { version: 14, .. }),
             "{err:?}"
         );
-        assert_eq!(version(&conn), 12);
+        assert_eq!(version(&conn), 13);
     }
 
     #[test]
@@ -531,8 +540,8 @@ mod tests {
             matches!(
                 err,
                 Error::SchemaTooNew {
-                    found: 13,
-                    supported: 12
+                    found: 14,
+                    supported: 13
                 }
             ),
             "{err:?}"
@@ -542,28 +551,28 @@ mod tests {
             message.contains("newer Snipdeck") && message.contains("update"),
             "{message}"
         );
-        assert_eq!(version(&conn), 13);
+        assert_eq!(version(&conn), 14);
     }
 
     #[test]
-    fn an_older_binary_refuses_v12() {
+    fn an_older_binary_refuses_v13() {
         let mut conn = fresh();
         let path = std::path::Path::new("x.db");
         migrate(&mut conn, MIGRATIONS, path, false).unwrap();
-        assert_eq!(version(&conn), 12);
-        // A build that stops at version 11 meets a version-12 file.
-        let err = migrate(&mut conn, &MIGRATIONS[..11], path, false).unwrap_err();
+        assert_eq!(version(&conn), 13);
+        // A build that stops at version 12 meets a version-13 file.
+        let err = migrate(&mut conn, &MIGRATIONS[..12], path, false).unwrap_err();
         assert!(
             matches!(
                 err,
                 Error::SchemaTooNew {
-                    found: 12,
-                    supported: 11
+                    found: 13,
+                    supported: 12
                 }
             ),
             "{err:?}"
         );
-        assert_eq!(version(&conn), 12, "left alone");
+        assert_eq!(version(&conn), 13, "left alone");
     }
 
     /// Version 12 on a version-11 library: every list keeps its words (old sorts included) and
@@ -596,7 +605,7 @@ mod tests {
         );
 
         let outcome = migrate(&mut conn, MIGRATIONS, Path::new(":memory:"), false).unwrap();
-        assert_eq!(outcome, Outcome { from: 11, to: 12 });
+        assert_eq!(outcome, Outcome { from: 11, to: 13 });
         let sorts: Vec<(String, String, String, i64)> = conn
             .prepare("SELECT name, list_sort, icon, rank FROM lists ORDER BY rank")
             .unwrap()
@@ -631,6 +640,40 @@ mod tests {
         assert_eq!(trashed_index, 1);
     }
 
+    /// Version 13 on a version-12 library: a group keeps its row and starts with no colour; the
+    /// column takes the nine list accents and nothing else.
+    #[test]
+    fn v13_adds_a_group_colour_that_starts_empty() {
+        let mut conn = fresh();
+        migrate(&mut conn, &MIGRATIONS[..12], Path::new(":memory:"), false).unwrap();
+        insert_board(&conn);
+        conn.execute(
+            "INSERT INTO lists (id, board_id, name, accent, list_view, list_sort, rank, created_at, updated_at)
+             VALUES (?1, ?2, 'L', NULL, 'compact', 'manual', 1, 0, 0)",
+            params![vec![2u8; 16], vec![1u8; 16]],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO item_groups (id, list_id, name, collapsed) VALUES (?1, ?2, 'Greetings', 1)",
+            params![vec![3u8; 16], vec![2u8; 16]],
+        )
+        .unwrap();
+        assert!(conn.prepare("SELECT colour FROM item_groups").is_err());
+
+        let outcome = migrate(&mut conn, MIGRATIONS, Path::new(":memory:"), false).unwrap();
+        assert_eq!(outcome, Outcome { from: 12, to: 13 });
+        let row: (String, bool, Option<String>) = conn
+            .query_row("SELECT name, collapsed, colour FROM item_groups", [], |r| {
+                Ok((r.get(0)?, r.get(1)?, r.get(2)?))
+            })
+            .unwrap();
+        assert_eq!(row, ("Greetings".to_owned(), true, None));
+        conn.execute("UPDATE item_groups SET colour = 'rose'", [])
+            .unwrap();
+        conn.execute("UPDATE item_groups SET colour = 'pink'", [])
+            .unwrap_err();
+    }
+
     #[test]
     fn someone_elses_sqlite_file_is_refused() {
         let mut conn = fresh();
@@ -662,10 +705,10 @@ mod tests {
                 outcome,
                 Outcome {
                     from: u32::try_from(start).unwrap(),
-                    to: 12
+                    to: 13
                 }
             );
-            assert_eq!(version(&conn), 12);
+            assert_eq!(version(&conn), 13);
             for sql in [
                 "SELECT label FROM items",
                 "SELECT icon FROM lists",
@@ -693,8 +736,8 @@ mod tests {
         insert_board(&conn);
 
         migrate(&mut conn, &with_next(NEXT_ADD_COLUMN), &path, true).unwrap();
-        let backup = Connection::open(dir.path().join("snipdeck.db.pre-v12.bak")).unwrap();
-        assert_eq!(version(&backup), 12);
+        let backup = Connection::open(dir.path().join("snipdeck.db.pre-v13.bak")).unwrap();
+        assert_eq!(version(&backup), 13);
         let boards: i64 = backup
             .query_row("SELECT count(*) FROM boards", [], |r| r.get(0))
             .unwrap();
@@ -736,7 +779,7 @@ mod tests {
         migrate(&mut conn, MIGRATIONS, &path, true).unwrap();
         assert_eq!(entries(&v3), 0, "scrubbed");
         assert!(!v4.exists(), "a copy that cannot be scrubbed is deleted");
-        assert_eq!(version(&conn), 12, "and the open went on");
+        assert_eq!(version(&conn), 13, "and the open went on");
     }
 
     #[test]
@@ -798,7 +841,7 @@ mod tests {
         // A table rebuild, the migration shape that needs foreign keys off: widen the
         // `list_view` check by copying `lists` into a new table.
         let rebuild = Migration {
-            version: 13,
+            version: 14,
             name: "rebuild lists",
             sql: "CREATE TABLE lists_new (
                       id BLOB NOT NULL PRIMARY KEY CHECK (length(id) = 16),
@@ -832,7 +875,7 @@ mod tests {
         let before = counts(&conn);
         assert_eq!(before, [1, 1, 3, 4, 1, 1]);
         let outcome = migrate(&mut conn, &with_next(rebuild), &path, true).unwrap();
-        assert_eq!(outcome, Outcome { from: 1, to: 13 });
+        assert_eq!(outcome, Outcome { from: 1, to: 14 });
         assert_eq!(counts(&conn), before);
         let items_still_reference_the_list: i64 = conn
             .query_row(

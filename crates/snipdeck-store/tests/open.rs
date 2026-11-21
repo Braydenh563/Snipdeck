@@ -23,7 +23,10 @@ fn opening_a_new_folder_creates_the_database_and_lock() {
     let store = Store::open(&folder).unwrap();
     assert!(folder.join("snipdeck.db").is_file());
     assert!(folder.join("snipdeck.lock").is_file());
-    assert_eq!(store.schema_version().unwrap(), 11);
+    assert_eq!(
+        store.schema_version().unwrap(),
+        snipdeck_store::SCHEMA_VERSION
+    );
 }
 
 #[test]
@@ -83,7 +86,7 @@ fn in_memory_stores_are_independent() {
     let b = store();
     board(&mut a, "only in a");
     assert_eq!(board_names(&b).len(), 0);
-    assert_eq!(a.schema_version().unwrap(), 11);
+    assert_eq!(a.schema_version().unwrap(), snipdeck_store::SCHEMA_VERSION);
 }
 
 #[test]
@@ -101,7 +104,7 @@ fn a_database_from_a_newer_snipdeck_is_refused_and_left_alone() {
             err,
             Error::SchemaTooNew {
                 found: 99,
-                supported: 11
+                supported: snipdeck_store::SCHEMA_VERSION
             }
         ),
         "{err:?}"

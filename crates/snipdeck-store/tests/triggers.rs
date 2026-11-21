@@ -37,7 +37,7 @@ fn v9_keeps_items_and_adds_no_triggers() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(dir.path().join("snipdeck.db"), FIXTURE_V8).unwrap();
     let mut s = Store::open(dir.path()).unwrap();
-    assert_eq!(s.schema_version().unwrap(), 11);
+    assert_eq!(s.schema_version().unwrap(), snipdeck_store::SCHEMA_VERSION);
     assert!(dir.path().join("snipdeck.db.pre-v8.bak").exists());
     let board = s.boards().unwrap().remove(0);
     let list = s.lists(board.id).unwrap().remove(0);
