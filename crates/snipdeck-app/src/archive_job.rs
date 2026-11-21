@@ -33,13 +33,14 @@ use crate::{controller::ImportSource, failure::Cause, maintenance::JobError};
 /// What a job writes.
 #[derive(Debug, Clone)]
 pub(crate) enum Work {
-    /// Today's backup in `data_dir`, pruned to `keep`. `replace` writes a fresh copy even when
-    /// today's exists ("Back up now").
+    /// Today's backup in `folder`, pruned to `keep` daily files (and the weekly and monthly
+    /// copies); or, when `manual`, a backup file of its own.
     Backup {
-        data_dir: PathBuf,
+        folder: PathBuf,
         now: Zoned,
         keep: usize,
-        replace: bool,
+        /// "Back up now": a file of its own instead of today's.
+        manual: bool,
         /// Also copy the file written into this folder, pruned to `keep` (the Store build's
         /// `Documents\Snipdeck backups`, `store_data`).
         copy_to: Option<PathBuf>,
@@ -78,12 +79,16 @@ pub enum ArchiveOp {
 }
 
 /// What a finished job made.
+#[allow(
+    clippy::large_enum_variant,
+    reason = "one value per finished job; boxing would only add a hop"
+)]
 #[derive(Debug)]
 pub enum Made {
     /// A backup: what [`backup::run_if_due`] did.
     Backup(BackupOutcome),
-    /// A file at the job's path.
-    File,
+    /// A file at the job's path, and what went into it (items left out are named in it).
+    File(Box<snipdeck_portable::ExportReport>),
     /// What a rebuild will apply: the backup and the salvage, read.
     Rebuilt(Box<Prepared>),
     /// A decoded source, or why it could not be read.
@@ -206,6 +211,8 @@ impl ArchiveJob {
             sensitive: lib
                 .data_key()
                 .map_or(SensitivePolicy::Skip, SensitivePolicy::Encrypt),
+            // The whole library: its unused tags come back with a restore too.
+            every_tag: true,
             ..ExportOptions::default()
         };
         match &self.work {
@@ -245,36 +252,34 @@ impl ArchiveJob {
         }
         match &self.work {
             Work::Backup {
-                data_dir,
+                folder,
                 now,
                 keep,
-                replace,
+                manual,
                 copy_to,
             } => {
-                let outcome = backup::run_if_due(lib, data_dir, now, *keep, lib.data_key())
-                    .map_err(|e| failure(&e))?;
+                let outcome = if *manual {
+                    backup::run_manual(lib, folder, now, lib.data_key())
+                } else {
+                    backup::run_if_due(lib, folder, now, *keep, lib.data_key())
+                }
+                .map_err(|e| failure(&e))?;
                 // The file to copy out of the package: only one that this run wrote. A failed
                 // backup returned above and copies nothing.
                 let written = match &outcome {
                     BackupOutcome::Created { path, .. } => Some(path.clone()),
-                    BackupOutcome::NotDue { existing } if *replace => {
-                        // The user asked for a fresh copy: write over today's.
-                        export_to_path(lib, now.timestamp(), &options, existing)
-                            .map_err(|e| failure(&e))?;
-                        Some(existing.clone())
-                    }
                     BackupOutcome::NotDue { .. } => None,
                 };
-                if let (Some(file), Some(folder)) = (written, copy_to) {
+                if let (Some(file), Some(out)) = (written, copy_to) {
                     // The backup is made; a copy that fails is logged, not a failed backup.
                     if let Err(e) = crate::store_data::copy_out(
                         &crate::store_data::RealFs,
                         &file,
-                        folder,
+                        out,
                         *keep,
                         now.date(),
                     ) {
-                        crate::trace!("backup copy to {}: {e}", folder.display());
+                        crate::trace!("backup copy to {}: {e}", out.display());
                     }
                 }
                 Ok(Made::Backup(outcome))
@@ -289,8 +294,8 @@ impl ArchiveJob {
                         detail: e.to_string(),
                     })?;
                 }
-                export_to_path(lib, *now, &options, path).map_err(|e| failure(&e))?;
-                Ok(Made::File)
+                let report = export_to_path(lib, *now, &options, path).map_err(|e| failure(&e))?;
+                Ok(Made::File(Box::new(report)))
             }
         }
     }
@@ -410,7 +415,7 @@ mod tests {
         }
         let fine = guard(ArchiveOp::BackupNow, || ArchiveDone {
             op: ArchiveOp::BackupNow,
-            made: Ok(Made::File),
+            made: Ok(Made::File(Box::default())),
         });
         assert!(fine.made.is_ok(), "no panic, no change");
     }

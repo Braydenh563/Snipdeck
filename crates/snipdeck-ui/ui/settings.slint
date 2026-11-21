@@ -323,6 +323,19 @@ export component SettingsPage inherits Window {
     in property <int> backups-keep: 7;
     in property <int> backups-keep-min: 1;
     in property <int> backups-keep-max: 60;
+    // Where backups go: the folder in words, whether it is the default one, and what is risky about it
+    // (a network share, a sync service's folder).
+    in property <string> backup-folder;
+    in property <bool> backup-folder-default: true;
+    in property <bool> backup-folder-network: false;
+    in property <string> backup-folder-sync;
+    // The newest readable backup's size in words and how many items it holds (-1: not known).
+    in property <string> last-backup-size;
+    in property <int> last-backup-items: -1;
+    // How many older backups the last change of "Backups to keep" deleted (0: none, nothing shown).
+    in property <int> backups-removed: 0;
+    callback backup-folder-choose-requested();
+    callback backup-folder-reset-requested();
     // Seconds before a copied sensitive item is cleared from the clipboard (5 to 600).
     in property <int> clipboard-clear-secs: 30;
     in property <int> clipboard-clear-secs-max: 600;
@@ -364,6 +377,11 @@ export component SettingsPage inherits Window {
     in property <int> import-lists: 0;
     in property <int> import-items: 0;
     in property <int> import-duplicates: 0;
+    // The triggers the file would install: how many, the first few as one line, and the user's choice.
+    in property <int> import-triggers: 0;
+    in property <string> import-trigger-list;
+    in-out property <bool> import-install-triggers: false;
+    callback import-triggers-toggled(on: bool);
     // What will not be imported, already worded, and how many more there were.
     in property <[string]> import-warnings;
     in property <int> import-warnings-more: 0;
@@ -506,7 +524,7 @@ export component SettingsPage inherits Window {
     // Titles of section 6 (Typing), for the search. A test checks that every row title is in here.
     property <string> keys-6: @tr("Typing") + " " + @tr("Expand abbreviations as I type") + " " + @tr("Suggest snippets as I type") + " " + @tr("trigger triggers text expansion autocomplete shortcode");
     // Titles of section 7 (Backups and your data), for the search. A test checks that every row title is in here.
-    property <string> keys-7: @tr("Backups and your data") + " " + @tr("Backups to keep") + " " + @tr("Export library") + " " + @tr("Import") + " " + @tr("Erase library") + " " + @tr("Also forget the encryption key");
+    property <string> keys-7: @tr("Backups and your data") + " " + @tr("Backups to keep") + " " + @tr("Backup folder") + " " + @tr("Export library") + " " + @tr("Import") + " " + @tr("Erase library") + " " + @tr("Also forget the encryption key");
     // Titles of section 8 (Support), for the search. A test checks that every row title is in here.
     property <string> keys-8: @tr("Support") + " " + @tr("Support Snipdeck") + " " + @tr("donate donation coffee tip");
     property <string> keys-all: root.keys-0 + " " + root.keys-1 + " " + root.keys-2 + " " + root.keys-3 + " " + root.keys-4 + " " + root.keys-5 + " " + root.keys-6 + " " + root.keys-7 + " " + root.keys-8;
@@ -1498,7 +1516,7 @@ export component SettingsPage inherits Window {
                     search-text: root.keys-7;
                     located(y) => { page.scroll-to(y - body.absolute-position.y); }
                     Text {
-                        text: @tr("Snipdeck saves a copy of your library once a day and keeps the newest {}. Restoring adds back what is missing and never removes anything.", root.backups-keep);
+                        text: @tr("Snipdeck saves a copy of your library once a day and keeps the newest {}, plus the last copy of each of the past four weeks and six months. A backup holds every board, list, item and tag; the Trash is not in it. Restoring adds back what is missing and never removes anything.", root.backups-keep);
                         color: Theme.text-secondary;
                         font-family: Fonts.sans;
                         font-size: Type.sm;
@@ -1515,7 +1533,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Backups to keep");
-                        description: @tr("The oldest ones are deleted once there are more than this.");
+                        description: @tr("Daily copies kept; older ones are deleted when you lower this.");
                         NumberStepper {
                             label: @tr("Backups to keep");
                             decrease-label: @tr("Keep fewer backups");
@@ -1538,8 +1556,56 @@ export component SettingsPage inherits Window {
                         wrap: word-wrap;
                         accessible-role: none;
                     }
+                    SettingRow {
+                        title: @tr("Backup folder");
+                        description: root.backup-folder;
+                        Button {
+                            text: @tr("Choose folder…");
+                            icon: Icons.folder;
+                            enabled: root.has-data-folder && !root.backup-busy;
+                            clicked => { root.backup-folder-choose-requested(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                        if !root.backup-folder-default: Button {
+                            text: @tr("Use the default");
+                            enabled: root.has-data-folder && !root.backup-busy;
+                            clicked => { root.backup-folder-reset-requested(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    if root.backup-folder-network: Text {
+                        text: @tr("This folder is on a network share. A backup can fail while the share is offline, and a half-written copy there is hard to spot. Keep a second copy somewhere local.");
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        wrap: word-wrap;
+                        accessible-role: AccessibleRole.text;
+                    }
+                    if root.backup-folder-sync != "": Text {
+                        text: @tr("This folder is synced by {}. Every backup is uploaded, and the service can bring an old copy back over a new one. Sensitive items stay encrypted, but a synced copy is still a copy.", root.backup-folder-sync);
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        wrap: word-wrap;
+                        accessible-role: AccessibleRole.text;
+                    }
+                    if root.backups-removed > 0: Text {
+                        text: @tr("{} older backup was deleted." | "{} older backups were deleted." % root.backups-removed, root.backups-removed);
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        wrap: word-wrap;
+                        accessible-role: AccessibleRole.text;
+                    }
                     if root.has-data-folder: Text {
-                        text: root.last-backup != "" ? @tr("Last backup: {}", root.last-backup) : @tr("No backup yet");
+                        text: root.last-backup == "" ? @tr("No backup yet")
+                            : root.last-backup-items < 0 ? @tr("Last backup: {}", root.last-backup)
+                            : @tr("Last backup: {}, {}, {} item" | "Last backup: {}, {}, {} items" % root.last-backup-items, root.last-backup, root.last-backup-size, root.last-backup-items);
+                        wrap: word-wrap;
                         color: Theme.text-secondary;
                         font-family: Fonts.sans;
                         font-size: Type.base;
@@ -1752,6 +1818,35 @@ export component SettingsPage inherits Window {
                             accessible-role: text;
                             accessible-label: self.text;
                         }
+                        if root.import-problem == "" && root.import-triggers > 0: Text {
+                            text: root.import-restore
+                                ? @tr("{} trigger will be restored: {}" | "{} triggers will be restored: {}" % root.import-triggers, root.import-triggers, root.import-trigger-list)
+                                : @tr("This file has {} trigger, which types text into other programs: {}" | "This file has {} triggers, which type text into other programs: {}" % root.import-triggers, root.import-triggers, root.import-trigger-list);
+                            color: Theme.text-secondary;
+                            font-family: Fonts.sans;
+                            font-size: Type.sm;
+                            wrap: word-wrap;
+                            accessible-role: text;
+                            accessible-label: self.text;
+                        }
+                        if root.import-problem == "" && root.import-triggers > 0 && !root.import-restore: HorizontalLayout {
+                            spacing: Space.s2;
+                            Text {
+                                text: @tr("Install these triggers");
+                                color: Theme.text-primary;
+                                font-family: Fonts.sans;
+                                font-size: Type.base;
+                                vertical-alignment: center;
+                            }
+                            Toggle {
+                                a11y-label: @tr("Install these triggers");
+                                checked <=> root.import-install-triggers;
+                                toggled(on) => { root.import-triggers-toggled(on); }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                        }
                         if root.import-problem == "" && root.import-items == 0 && root.import-boards == 0: Text {
                             text: @tr("Nothing new to import.");
                             color: Theme.text-secondary;
@@ -1830,7 +1925,7 @@ export component SettingsPage inherits Window {
                         accessible-role: groupbox;
                         accessible-label: @tr("Erase library");
                         Text {
-                            text: @tr("Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings stay.");
+                            text: @tr("Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings stay. Deleted files may still be recoverable with disk tools unless your disk is encrypted.");
                             color: Theme.text-primary;
                             font-family: Fonts.sans;
                             font-size: Type.base;

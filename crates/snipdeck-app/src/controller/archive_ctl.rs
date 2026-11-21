@@ -111,6 +111,9 @@ pub(super) struct ImportRun {
 #[derive(Default)]
 pub(super) struct ArchiveState {
     running: Option<(ArchiveOp, Context)>,
+    /// Whether an import (not a restore) installs the triggers its file carries. Off unless the
+    /// user turned it on in the preview: a trigger types text into other programs.
+    pub(super) install_triggers: bool,
 }
 
 impl ArchiveState {
@@ -190,8 +193,8 @@ where
         Begun::Finished(self.finish_archive(done))
     }
 
-    /// "Back up now": today's backup in `data_dir`, replacing the one already made today (the
-    /// daily run writes only when there is none, and the user asked for a fresh copy).
+    /// "Back up now": a backup file of its own in the backups folder; it never replaces the
+    /// daily one (the usual moment to press it is after something went wrong).
     pub fn begin_backup_now(&mut self, data_dir: &Path) -> Begun {
         // A copy of a locked library would lack its sensitive items and replace today's whole one.
         if self.refuse_archive() {
@@ -200,10 +203,10 @@ where
         let job = self.archive_job(
             ArchiveOp::BackupNow,
             Work::Backup {
-                data_dir: data_dir.to_path_buf(),
+                folder: self.settings.backup_folder(data_dir),
                 now: self.clock.now().to_zoned(TimeZone::system()),
                 keep: self.backup_keep(),
-                replace: true,
+                manual: true,
                 copy_to: self.backup_copy_to.clone(),
             },
         );
@@ -233,10 +236,10 @@ where
         let job = self.archive_job(
             ArchiveOp::DailyBackup,
             Work::Backup {
-                data_dir: data_dir.to_path_buf(),
+                folder: self.settings.backup_folder(data_dir),
                 now: now.clone(),
                 keep: self.backup_keep(),
-                replace: false,
+                manual: false,
                 copy_to: self.backup_copy_to.clone(),
             },
         );
@@ -287,13 +290,34 @@ where
         match (op, done.made, context) {
             (ArchiveOp::DailyBackup, made, _) => ArchiveEnd::Daily(made.map(|made| match made {
                 Made::Backup(outcome) => outcome,
-                Made::File | Made::Decoded(_) | Made::Rebuilt(_) => BackupOutcome::NotDue {
+                Made::File(_) | Made::Decoded(_) | Made::Rebuilt(_) => BackupOutcome::NotDue {
                     existing: PathBuf::new(),
                 },
             })),
             (ArchiveOp::BackupNow, made, _) => {
                 let worked = made.is_ok();
                 self.show_toast(match made {
+                    Ok(Made::Backup(BackupOutcome::Created {
+                        suspect: Some(shrunk),
+                        ..
+                    })) => Toast {
+                        kind: ToastKind::Danger,
+                        message: ToastMessage::BackupShrunk {
+                            was: shrunk.was,
+                            now: shrunk.now,
+                        },
+                    },
+                    Ok(Made::Backup(BackupOutcome::Created { report, .. }))
+                        if !report.skipped.is_empty() =>
+                    {
+                        Toast {
+                            kind: ToastKind::Danger,
+                            message: ToastMessage::BackupMadeSkipping {
+                                count: report.skipped.len(),
+                                first: first_title(&report.skipped),
+                            },
+                        }
+                    }
                     Ok(_) => Toast {
                         kind: ToastKind::Success,
                         message: ToastMessage::BackupMade,
@@ -307,14 +331,24 @@ where
                 ArchiveEnd::BackupNow(worked)
             }
             (ArchiveOp::Export, made, Context::Export(path)) => match made {
-                Ok(_) => {
+                Ok(made) => {
                     let file = path
                         .file_name()
                         .map(|n| n.to_string_lossy().into_owned())
                         .unwrap_or_default();
-                    self.show_toast(Toast {
-                        kind: ToastKind::Success,
-                        message: ToastMessage::Exported { file },
+                    self.show_toast(match made {
+                        Made::File(report) if !report.skipped.is_empty() => Toast {
+                            kind: ToastKind::Danger,
+                            message: ToastMessage::ExportedSkipping {
+                                file,
+                                count: report.skipped.len(),
+                                first: first_title(&report.skipped),
+                            },
+                        },
+                        _ => Toast {
+                            kind: ToastKind::Success,
+                            message: ToastMessage::Exported { file },
+                        },
                     });
                     ArchiveEnd::Exported(Some(path))
                 }
@@ -331,6 +365,17 @@ where
             (_, _, _) => ArchiveEnd::Ignored,
         }
     }
+}
+
+/// The title of the first item an export left out, cut to fit a toast.
+fn first_title(skipped: &[snipdeck_portable::SkippedItem]) -> String {
+    const MAX: usize = 40;
+    let title = skipped.first().map_or("", |s| s.title.as_str());
+    let mut cut: String = title.chars().take(MAX).collect();
+    if title.chars().count() > MAX {
+        cut.push('…');
+    }
+    cut
 }
 
 /// Runs what a `begin_*` call came to: a job goes to the archive offload and, when it is done on

@@ -204,6 +204,14 @@ pub enum ToastMessage {
     /// "Couldn't read your settings file, so Snipdeck started with the defaults. Changes to
     /// settings won't be saved until you fix or remove the file."
     SettingsUnreadable,
+    /// "Your library couldn't be opened, so it was moved aside to {folder}." With a backup in
+    /// the folder it adds that Settings > Rebuild from backup restores the newest one.
+    LibrarySetAside {
+        /// The folder the library was moved into (a name inside the data folder).
+        folder: String,
+        /// Whether the data folder holds a backup to rebuild from.
+        has_backup: bool,
+    },
     /// "Snipdeck can't watch the clipboard, so Recent stays empty. Restart Snipdeck to try again."
     ClipboardWatchFailed,
     /// "Moved 3 items to the Trash" (with Undo).
@@ -264,6 +272,21 @@ pub enum ToastMessage {
     CrashedLastTime,
     /// "Backed up".
     BackupMade,
+    /// "Backed up, but {count} items could not be included, such as {first}." (an attachment
+    /// could not be read; the rest of the backup is whole)
+    BackupMadeSkipping {
+        /// How many items were left out.
+        count: usize,
+        /// The title of the first one.
+        first: String,
+    },
+    /// "This backup holds {now} items, the one before held {was}. The older backups were kept."
+    BackupShrunk {
+        /// Items in the previous backup.
+        was: usize,
+        /// Items in this one.
+        now: usize,
+    },
     /// "Another backup or export is still running. Try again when it has finished."
     ArchiveBusy,
     /// "The Store version keeps your library inside the app, so uninstalling removes it. Back up
@@ -271,8 +294,8 @@ pub enum ToastMessage {
     StoreDataReminder,
     /// "Couldn't make a backup: the disk is full. ..." (a backup the user asked for)
     BackupFailed(Cause),
-    /// "Couldn't make today's backup. Check the disk has room, then use Back up now in
-    /// Settings." (the daily run)
+    /// "Couldn't make today's backup. Use Back up now in Settings to try again; ..." (the daily
+    /// run)
     DailyBackupFailed(Cause),
     /// "Couldn't clear old items out of the Trash. ..." (the daily run)
     TrashPurgeFailed,
@@ -314,6 +337,15 @@ pub enum ToastMessage {
     Exported {
         /// The file's name.
         file: String,
+    },
+    /// "Saved {file}, but {count} items could not be included, such as {first}."
+    ExportedSkipping {
+        /// The file's name.
+        file: String,
+        /// How many items were left out.
+        count: usize,
+        /// The title of the first one.
+        first: String,
     },
     /// "Couldn't export your library: ..."
     ExportFailed(Cause),
@@ -658,7 +690,7 @@ mod tests {
             store(snipdeck_store::Error::Io(Io::from(
                 ErrorKind::PermissionDenied
             ))),
-            ToastMessage::UseFailed(Cause::InUse)
+            ToastMessage::UseFailed(Cause::NotAllowed)
         );
         assert_eq!(
             store(snipdeck_store::Error::Corrupt("x".into())),

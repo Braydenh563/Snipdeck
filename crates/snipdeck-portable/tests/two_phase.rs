@@ -89,11 +89,22 @@ fn a_preview_reports_exactly_what_the_apply_then_adds() {
     let code = snipdeck_core::Trigger::new(";hi").unwrap();
     s.set_trigger(held.id, Some(&code)).unwrap();
 
-    let decoded = decode_beeftext(&path, at(9), &skip()).unwrap();
+    // Installing the triggers, so the apply and the preview talk about the same codes (when
+    // they are left, the preview still lists them for the person to choose).
+    let options = ImportOptions {
+        triggers: snipdeck_portable::Triggers::Install,
+        ..skip()
+    };
+    let decoded = decode_beeftext(&path, at(9), &options).unwrap();
     let before = snapshot(&s);
     let previewed = decoded.preview(&s, None).unwrap();
     assert_eq!(snapshot(&s), before, "a preview writes nothing");
     let applied = decoded.apply(&mut s, None).unwrap();
+    // Only a preview lists the triggers (to ask before installing them); the rest agrees.
+    assert_eq!(previewed.triggers, [";hix", ";ok"]);
+    let mut previewed = previewed;
+    previewed.triggers.clear();
+    previewed.triggers_total = 0;
     assert_eq!(previewed, without_ids(applied));
     assert!(
         previewed.has_warnings(),
@@ -159,4 +170,70 @@ fn a_corrupt_source_fails_to_decode_and_the_library_is_never_involved() {
     std::fs::write(&path, b"{ not json").unwrap();
     assert!(import_beeftext(&mut s, &path, at(9), &skip()).is_err());
     assert_eq!(snapshot(&s), before);
+}
+
+fn files_under(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
+    let mut found = Vec::new();
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(d) = stack.pop() {
+        for e in std::fs::read_dir(d).into_iter().flatten().flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                stack.push(p);
+            } else {
+                found.push(p);
+            }
+        }
+    }
+    found.sort();
+    found
+}
+
+#[test]
+fn a_preview_of_an_archive_with_pictures_writes_no_file_and_no_row() {
+    // DATA-11: the preview reads the plan; it must not store a blob and scrub it again.
+    let src_dir = tempfile::tempdir().unwrap();
+    let mut src = Store::open(src_dir.path()).unwrap();
+    let b = board(&mut src, "Src");
+    let l = list(&mut src, b.id, "L");
+    let pic = snipdeck_core::Item::new(
+        l.id,
+        "Shot".to_owned(),
+        snipdeck_core::ItemKind::Image,
+        at(3),
+    );
+    let png = snipdeck_store::BlobStore::put(&mut src, noise(80_000, 3)).unwrap();
+    src.insert_item(
+        &pic,
+        &snipdeck_core::Formats::new(vec![snipdeck_core::Format::Png(png)]).unwrap(),
+        snipdeck_core::Placement::Last,
+    )
+    .unwrap();
+    let mut bytes = Vec::new();
+    export_to_writer(
+        &src,
+        at(5),
+        &ExportOptions::default(),
+        Cursor::new(&mut bytes),
+    )
+    .unwrap();
+
+    let target_dir = tempfile::tempdir().unwrap();
+    let mut target = Store::open(target_dir.path()).unwrap();
+    let decoded = decode_archive(Cursor::new(bytes), "x", at(7), &skip()).unwrap();
+    let files_before = files_under(target_dir.path());
+    let rows_before = snapshot(&target);
+    let report = decoded.preview(&target, None).unwrap();
+    assert_eq!(report.items_added, 1);
+    assert_eq!(
+        files_under(target_dir.path()),
+        files_before,
+        "no file written"
+    );
+    assert_eq!(snapshot(&target), rows_before);
+    decoded.apply(&mut target, None).unwrap();
+    assert!(
+        files_under(&target_dir.path().join("blobs")).len() == 1,
+        "the apply stores the picture once"
+    );
 }

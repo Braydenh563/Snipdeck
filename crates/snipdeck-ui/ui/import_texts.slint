@@ -25,6 +25,9 @@ export global ImportTexts {
     pure public function sensitive-omitted-by-export(count: int) -> string {
         return @tr("{} sensitive item was left out when this file was made." | "{} sensitive items were left out when this file was made." % count, count);
     }
+    pure public function skipped-by-export(count: int) -> string {
+        return @tr("{} item with an attachment that could not be read was left out when this file was made." | "{} items with an attachment that could not be read were left out when this file was made." % count, count);
+    }
     pure public function lossy-text(name: string) -> string {
         return @tr("{} is not valid UTF-8, so characters that could not be read were replaced.", name);
     }
@@ -42,6 +45,9 @@ export global ImportTexts {
     }
     pure public function non-text-skipped(count: int) -> string {
         return @tr("{} item that is not text (a picture or file) was skipped." | "{} items that are not text (pictures or files) were skipped." % count, count);
+    }
+    pure public function deeper-folders-skipped(count: int) -> string {
+        return @tr("{} folder inside a subfolder was not read; Snipdeck reads one level of subfolders." | "{} folders inside subfolders were not read; Snipdeck reads one level of subfolders." % count, count);
     }
     pure public function truncated() -> string {
         return @tr("The import stopped early because the source is bigger than Snipdeck reads in one go.");
@@ -97,6 +103,9 @@ export global ImportTexts {
     }
     pure public function note-columns-cut(file: string) -> string {
         return @tr("{}: some rows have more than 256 columns, and the extra columns were ignored.", file);
+    }
+    pure public function note-trigger-too-short(title: string, trigger: string) -> string {
+        return @tr("{}: the trigger {} is too short (a trigger needs at least two characters), so it was imported without it.", title, trigger);
     }
     pure public function note-trigger-taken(title: string, trigger: string) -> string {
         return @tr("{}: the trigger {} is already used by another snippet, so it was imported without it.", title, trigger);

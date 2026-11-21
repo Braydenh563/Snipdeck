@@ -366,7 +366,7 @@ fn rebuild_shows_the_busy_state_while_the_backup_is_read_and_then_the_confirmati
         snipdeck_app::demo::seed(&mut store, now()).expect("seed");
         snipdeck_portable::backup::run_if_due(
             &store,
-            dir.path(),
+            &snipdeck_portable::backup::backups_dir(dir.path()),
             &now().to_zoned(jiff::tz::TimeZone::UTC),
             7,
             None,

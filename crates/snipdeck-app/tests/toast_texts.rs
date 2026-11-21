@@ -151,10 +151,14 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::StoreDataReminder => 121,
         ToastMessage::HotkeyOwnAction { .. } => 122,
         ToastMessage::HotkeyRefused { .. } => 123,
+        ToastMessage::BackupMadeSkipping { .. } => 124,
+        ToastMessage::BackupShrunk { .. } => 125,
+        ToastMessage::ExportedSkipping { .. } => 126,
+        ToastMessage::LibrarySetAside { .. } => 127,
     }
 }
 
-const VARIANTS: usize = 124;
+const VARIANTS: usize = 128;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -241,6 +245,16 @@ fn samples() -> Vec<ToastMessage> {
         M::Exported {
             file: s("snipdeck.zip"),
         },
+        M::ExportedSkipping {
+            file: s("snipdeck.zip"),
+            count: 2,
+            first: s("Screenshot"),
+        },
+        M::BackupMadeSkipping {
+            count: 1,
+            first: s("Screenshot"),
+        },
+        M::BackupShrunk { was: 120, now: 3 },
         M::ExportFailed(Cause::Locked),
         M::LibraryErased,
         M::EraseFailed,
@@ -339,6 +353,14 @@ fn samples() -> Vec<ToastMessage> {
         M::HelloEnrolFailed,
         M::SettingsDamaged,
         M::SettingsUnreadable,
+        M::LibrarySetAside {
+            folder: s("snipdeck.damaged-20261116-1000"),
+            has_backup: true,
+        },
+        M::LibrarySetAside {
+            folder: s("snipdeck.damaged-20261116-1000"),
+            has_backup: false,
+        },
         M::ClipboardWatchFailed,
         M::AlreadySaved { list: s("Colours") },
         M::NoColourOnClipboard,
@@ -559,8 +581,17 @@ fn a_failure_toast_names_its_cause_and_ends_with_what_to_do() {
         let said = |m: ToastMessage| toast_text(&ui, &m);
         assert_eq!(
             said(ToastMessage::DailyBackupFailed(Cause::Other)),
-            "Couldn't make today's backup. Check the disk has room, then use Back up now in Settings."
+            "Couldn't make today's backup. Use Back up now in Settings to try again; if it keeps failing, open the data folder from Settings and check that it can be written to."
         );
+        // DATA-35: an unknown cause never blames the disk.
+        for m in [
+            ToastMessage::DailyBackupFailed(Cause::Other),
+            ToastMessage::BackupFailed(Cause::Other),
+            ToastMessage::ExportFailed(Cause::Other),
+            ToastMessage::TrashPurgeFailed,
+        ] {
+            assert!(!said(m).contains("disk has room"));
+        }
         assert_eq!(
             said(ToastMessage::UseFailed(Cause::DiskFull)),
             "Couldn't use this item: the disk is full. Free up some space, then try again."
@@ -572,6 +603,7 @@ fn a_failure_toast_names_its_cause_and_ends_with_what_to_do() {
             Cause::Locked,
             Cause::NotArchive,
             Cause::TooNew,
+            Cause::NotAllowed,
         ];
         let failures: [fn(Cause) -> ToastMessage; 7] = [
             ToastMessage::UseFailed,
@@ -597,6 +629,14 @@ fn a_failure_toast_names_its_cause_and_ends_with_what_to_do() {
             // never reworded as the unknown one.
             assert_ne!(texts[1], texts[0], "{texts:?}");
             assert_ne!(texts[2], texts[0], "{texts:?}");
+            assert_ne!(
+                texts[6], texts[0],
+                "a permission is not the unknown cause: {texts:?}"
+            );
+            assert_ne!(
+                texts[6], texts[2],
+                "a permission is not a file in use: {texts:?}"
+            );
         }
         assert!(
             said(ToastMessage::ImportFailed(Cause::NotArchive)).contains("isn't a file Snipdeck")

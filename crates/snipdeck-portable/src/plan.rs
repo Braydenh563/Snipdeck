@@ -189,6 +189,8 @@ pub(crate) struct PlanBoard {
 pub(crate) struct Plan {
     pub tags: Vec<Name>,
     pub boards: Vec<PlanBoard>,
+    /// A restore: boards and lists the library already has (by name) are reused, not added.
+    pub reuse_existing: bool,
 }
 
 impl Plan {
@@ -254,12 +256,12 @@ fn content_parts(content: &Content) -> ([u8; 32], u64) {
 /// Items stored in plain text are hashed from one pass over the tables
 /// ([`ItemRepo::plain_formats`]); only encrypted items are read one by one, as they need the
 /// data key.
-pub(crate) fn existing_hashes<L: ItemRepo>(lib: &L) -> Result<HashSet<[u8; 32]>> {
-    let mut known = HashSet::new();
+pub(crate) fn existing_hashes<L: ItemRepo>(lib: &L) -> Result<HashMap<ItemId, [u8; 32]>> {
+    let mut known = HashMap::new();
     let mut seen = HashSet::new();
     for (id, formats) in lib.plain_formats()? {
         seen.insert(id);
-        known.insert(hash_formats(&formats));
+        known.insert(id, hash_formats(&formats));
     }
     for item in lib.all_items()? {
         if seen.contains(&item.id) {
@@ -267,7 +269,7 @@ pub(crate) fn existing_hashes<L: ItemRepo>(lib: &L) -> Result<HashSet<[u8; 32]>>
         }
         match lib.formats(item.id) {
             Ok(formats) => {
-                known.insert(hash_formats(&formats));
+                known.insert(item.id, hash_formats(&formats));
             }
             // An encrypted item cannot be read while the library is locked. Skipping it only
             // means a duplicate of it is not recognised; refusing would stop a restore of the
@@ -327,13 +329,15 @@ pub(crate) fn apply<L: Library>(
     Ok(report)
 }
 
-fn write(
+/// Creates the tags the plan needs (existing ones are reused by name); the plan's tag index
+/// to the library's id.
+fn write_tags(
     lib: &mut Batch<'_>,
-    plan: &mut Plan,
-    fetch: &mut dyn FnMut(&AssetRef) -> Result<Vec<u8>>,
+    plan: &Plan,
     report: &mut ImportReport,
-) -> Result<()> {
+) -> Result<HashMap<usize, TagId>> {
     // Only tags that a kept item uses are created; existing tags are reused by name.
+    let every = plan.reuse_existing;
     let used: HashSet<usize> = plan
         .boards
         .iter()
@@ -351,7 +355,7 @@ fn write(
         .tags
         .iter()
         .enumerate()
-        .filter(|(i, _)| used.contains(i))
+        .filter(|(i, _)| every || used.contains(i))
     {
         let key = name_key(name.as_str());
         let id = if let Some(id) = by_key.get(&key) {
@@ -365,23 +369,59 @@ fn write(
         };
         tag_ids.insert(index, id);
     }
+    Ok(tag_ids)
+}
+
+fn write(
+    lib: &mut Batch<'_>,
+    plan: &mut Plan,
+    fetch: &mut dyn FnMut(&AssetRef) -> Result<Vec<u8>>,
+    report: &mut ImportReport,
+) -> Result<()> {
+    let tag_ids = write_tags(lib, plan, report)?;
 
     for plan_board in &mut plan.boards {
-        let mut board = Board::new(plan_board.name.clone(), plan_board.created_at);
-        board.updated_at = plan_board.updated_at;
-        lib.insert_board(&board, Placement::Last)?;
-        report.boards_added += 1;
-        report.boards.push(board.id);
+        let existing_board = if plan.reuse_existing {
+            let key = name_key(plan_board.name.as_str());
+            lib.boards()?
+                .into_iter()
+                .find(|b| name_key(b.name.as_str()) == key)
+        } else {
+            None
+        };
+        let board = if let Some(board) = existing_board {
+            board
+        } else {
+            let mut board = Board::new(plan_board.name.clone(), plan_board.created_at);
+            board.updated_at = plan_board.updated_at;
+            lib.insert_board(&board, Placement::Last)?;
+            report.boards_added += 1;
+            report.boards.push(board.id);
+            board
+        };
 
         for plan_list in &mut plan_board.lists {
-            let mut list = List::new(board.id, plan_list.name.clone(), plan_list.created_at);
-            list.updated_at = plan_list.updated_at;
-            list.accent = plan_list.accent;
-            list.icon = plan_list.icon;
-            list.view = plan_list.view;
-            list.sort = plan_list.sort;
-            lib.insert_list(&list, Placement::Last)?;
-            report.lists_added += 1;
+            let existing_list = if plan.reuse_existing {
+                let key = name_key(plan_list.name.as_str());
+                lib.lists(board.id)?
+                    .into_iter()
+                    .find(|l| name_key(l.name.as_str()) == key)
+            } else {
+                None
+            };
+            let list = if let Some(list) = existing_list {
+                list
+            } else {
+                let mut list = List::new(board.id, plan_list.name.clone(), plan_list.created_at);
+                list.updated_at = plan_list.updated_at;
+                list.accent = plan_list.accent;
+                list.icon = plan_list.icon;
+                list.view = plan_list.view;
+                list.sort = plan_list.sort;
+                lib.insert_list(&list, Placement::Last)?;
+                report.lists_added += 1;
+                list
+            };
 
             let mut members: Vec<Vec<ItemId>> = vec![Vec::new(); plan_list.groups.len()];
             for plan_item in &mut plan_list.items {
@@ -448,7 +488,21 @@ fn build_item(
         .filter_map(|index| tag_ids.get(index).copied())
         .collect();
 
-    if let Some(preview) = &plan.preview {
+    // The excerpt is derived from the item's own text whenever it has one: an archive's claimed
+    // preview is only a fallback for items with no text (DATA-8). An image shows its picture,
+    // never an excerpt of its alt text, as the app itself makes it.
+    let is_image = plan.kind == ItemKind::Image;
+    let has_text = is_image
+        || plan.formats.iter().any(|f| {
+            matches!(
+                f,
+                PlanFormat::Single {
+                    kind: FormatKind::Text,
+                    ..
+                }
+            )
+        });
+    if let (Some(preview), false) = (&plan.preview, has_text) {
         item.preview = Item::preview_of(preview, plan.sensitive);
     }
     let mut formats = Vec::with_capacity(plan.formats.len());
@@ -456,7 +510,7 @@ fn build_item(
         match format {
             PlanFormat::Single { kind, source } => {
                 let bytes = resolve(source, fetch)?;
-                if *kind == FormatKind::Text && plan.preview.is_none() {
+                if *kind == FormatKind::Text && !is_image {
                     item.preview = Item::preview_of(preview_text(&bytes), plan.sensitive);
                 }
                 let content = put(lib, bytes, plan.sensitive)?;
@@ -559,6 +613,7 @@ mod tests {
         Plan {
             tags: vec![name("existing"), name("fresh")],
             boards: vec![board("First", vec![list_a]), board("Second", vec![list_b])],
+            reuse_existing: false,
         }
     }
 
@@ -679,6 +734,7 @@ mod tests {
                 updated_at: at(1),
                 lists: vec![list],
             }],
+            reuse_existing: false,
         };
         let mut fetch = |_: &AssetRef| Ok(Vec::new());
         let report = apply(&mut s, &mut plan, &mut fetch, ImportReport::default()).unwrap();
@@ -783,7 +839,11 @@ mod tests {
         let known = existing_hashes(&s).unwrap();
         for body in ["small", big.as_str()] {
             let plan = PlanItem::text("other title".to_owned(), body.to_owned(), at(1));
-            assert!(known.contains(&plan.content_hash), "{} bytes", body.len());
+            assert!(
+                known.values().any(|h| *h == plan.content_hash),
+                "{} bytes",
+                body.len()
+            );
         }
     }
 
@@ -864,7 +924,7 @@ mod tests {
         assert_eq!(known.len(), bodies.len());
         for body in &bodies {
             let plan = PlanItem::text("x".to_owned(), body.clone(), at(1));
-            assert!(known.contains(&plan.content_hash));
+            assert!(known.values().any(|h| *h == plan.content_hash));
         }
     }
 }

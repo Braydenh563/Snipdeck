@@ -25,12 +25,21 @@ fn keep_boards() -> ImportOptions<'static> {
     }
 }
 
+/// A restore: what a backup's own import does, so use counts and times carry over.
+fn restore_boards() -> ImportOptions<'static> {
+    ImportOptions {
+        layout: BoardLayout::KeepBoards,
+        merge: MergeStrategy::Restore,
+        ..ImportOptions::default()
+    }
+}
+
 fn import(
     store: &mut snipdeck_store::Store,
     bytes: &[u8],
     opts: &ImportOptions<'_>,
 ) -> snipdeck_portable::ImportReport {
-    import_archive(store, Cursor::new(bytes), "backup", at(200), opts).unwrap()
+    import_archive(store, Cursor::new(bytes), "backup", at(10_000), opts).unwrap()
 }
 
 #[test]
@@ -39,7 +48,7 @@ fn round_trip_into_a_fresh_store_is_equal() {
     let bytes = export_bytes(&original, &ExportOptions::default());
 
     let mut fresh = store();
-    let report = import(&mut fresh, &bytes, &keep_boards());
+    let report = import(&mut fresh, &bytes, &restore_boards());
 
     assert_same(&snapshot(&fresh), &snapshot(&original));
     assert_eq!(report.boards_added, 2);
@@ -335,7 +344,8 @@ fn export_to_path_is_atomic_and_replaces_the_file() {
     let s = sample_store();
     snipdeck_portable::export_to_path(&s, at(5), &ExportOptions::default(), &path).unwrap();
     let mut fresh = store();
-    snipdeck_portable::import_archive_path(&mut fresh, &path, at(6), &keep_boards()).unwrap();
+    snipdeck_portable::import_archive_path(&mut fresh, &path, at(10_000), &restore_boards())
+        .unwrap();
     assert_same(&snapshot(&fresh), &snapshot(&s));
     let leftovers: Vec<_> = std::fs::read_dir(dir.path())
         .unwrap()

@@ -33,6 +33,10 @@ pub struct Limits {
     pub max_json_bytes: u64,
     /// Most items in the archive. Default 100 000.
     pub max_items: usize,
+    /// Most bytes of sensitive content a reader will decrypt into memory at once. Default
+    /// 256 MiB ([`MEMORY_BUDGET`](crate::MEMORY_BUDGET)). Export holds to the same table, so a
+    /// backup it writes can always be read back: what would not fit is left out and named.
+    pub max_sensitive_bytes: u64,
 }
 
 /// The default [`Limits::max_total_bytes`]: 8 GiB.
@@ -100,6 +104,7 @@ impl Default for Limits {
             max_ratio: 500,
             max_json_bytes: DEFAULT_MAX_JSON_BYTES,
             max_items: 100_000,
+            max_sensitive_bytes: crate::MEMORY_BUDGET,
         }
     }
 }

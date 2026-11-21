@@ -126,3 +126,110 @@ fn a_foreign_sqlite_file_is_not_adopted() {
     let err = Store::open(dir.path()).err().unwrap();
     assert!(matches!(err, Error::ForeignDatabase { .. }), "{err:?}");
 }
+
+#[test]
+fn an_empty_database_file_beside_other_library_files_is_refused_not_replaced() {
+    let dir = tempfile::tempdir().unwrap();
+    {
+        let store = Store::open(dir.path()).unwrap();
+        drop(store.close());
+    }
+    // A crashed sync client or a full disk leaves the file at zero bytes.
+    std::fs::write(dir.path().join("snipdeck.db"), b"").unwrap();
+    for stale in ["snipdeck.db-wal", "snipdeck.db-shm"] {
+        let _ = std::fs::remove_file(dir.path().join(stale));
+    }
+    // Other library files exist: a backup folder with a file in it.
+    std::fs::create_dir_all(dir.path().join("backups")).unwrap();
+    std::fs::write(
+        dir.path()
+            .join("backups")
+            .join("snipdeck-2026-01-01.snipdeck"),
+        b"x",
+    )
+    .unwrap();
+    let err = Store::open(dir.path()).err().unwrap();
+    assert!(matches!(err, Error::EmptyDatabase { .. }), "{err:?}");
+    assert_eq!(
+        std::fs::metadata(dir.path().join("snipdeck.db"))
+            .unwrap()
+            .len(),
+        0
+    );
+}
+
+#[test]
+fn an_empty_database_file_in_a_folder_with_nothing_else_opens_as_new() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("snipdeck.db"), b"").unwrap();
+    Store::open(dir.path()).unwrap();
+}
+
+#[test]
+fn a_damaged_database_is_set_aside_and_a_fresh_library_opens() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("snipdeck.db"), vec![0x42u8; 4096]).unwrap();
+    std::fs::create_dir_all(dir.path().join("blobs")).unwrap();
+    std::fs::write(dir.path().join("blobs").join("keepme"), b"x").unwrap();
+    assert!(Store::open(dir.path()).is_err());
+
+    let (store, kept) =
+        Store::open_or_set_aside(dir.path(), "snipdeck.damaged-20261116-1000").unwrap();
+    assert_eq!(kept.as_deref(), Some("snipdeck.damaged-20261116-1000"));
+    assert_eq!(store.schema_version().unwrap(), 10);
+    let aside = dir.path().join("snipdeck.damaged-20261116-1000");
+    assert_eq!(
+        std::fs::read(aside.join("snipdeck.db")).unwrap(),
+        vec![0x42u8; 4096]
+    );
+    assert!(aside.join("blobs").join("keepme").is_file());
+    assert!(!dir.path().join("blobs").join("keepme").exists());
+    assert!(!dir.path().join("snipdeck.rebuild").exists());
+}
+
+#[test]
+fn an_empty_database_beside_backups_is_set_aside_too() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("snipdeck.db"), b"").unwrap();
+    std::fs::create_dir_all(dir.path().join("backups")).unwrap();
+    std::fs::write(dir.path().join("backups").join("a.snipdeck"), b"x").unwrap();
+    let (_store, kept) = Store::open_or_set_aside(dir.path(), "snipdeck.damaged-1").unwrap();
+    assert!(kept.is_some());
+    // The backups stay where Rebuild looks for them.
+    assert!(dir.path().join("backups").join("a.snipdeck").is_file());
+}
+
+#[test]
+fn a_healthy_library_opens_with_nothing_set_aside() {
+    let dir = tempfile::tempdir().unwrap();
+    drop(Store::open(dir.path()).unwrap());
+    let (_store, kept) = Store::open_or_set_aside(dir.path(), "snipdeck.damaged-2").unwrap();
+    assert!(kept.is_none());
+    assert!(!dir.path().join("snipdeck.damaged-2").exists());
+}
+
+#[test]
+fn a_locked_folder_is_never_set_aside() {
+    let dir = tempfile::tempdir().unwrap();
+    let _first = Store::open(dir.path()).unwrap();
+    let err = Store::open_or_set_aside(dir.path(), "snipdeck.damaged-3")
+        .err()
+        .unwrap();
+    assert!(matches!(err, Error::Locked { .. }), "{err:?}");
+    assert!(!dir.path().join("snipdeck.damaged-3").exists());
+}
+
+#[test]
+fn a_newer_database_is_never_set_aside() {
+    let dir = tempfile::tempdir().unwrap();
+    drop(Store::open(dir.path()).unwrap());
+    let raw = Connection::open(dir.path().join("snipdeck.db")).unwrap();
+    raw.pragma_update(None, "user_version", 999).unwrap();
+    drop(raw);
+    let err = Store::open_or_set_aside(dir.path(), "snipdeck.damaged-4")
+        .err()
+        .unwrap();
+    assert!(matches!(err, Error::SchemaTooNew { .. }), "{err:?}");
+    assert!(dir.path().join("snipdeck.db").is_file());
+    assert!(!dir.path().join("snipdeck.damaged-4").exists());
+}

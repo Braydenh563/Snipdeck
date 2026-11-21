@@ -226,6 +226,8 @@ pub struct Controller<S, C, K, T> {
     blur_hide: bool,
     toast: Option<ActiveToast>,
     toast_seq: u64,
+    /// Toasts waiting for the one on screen to go (`queue_toast`), in the order they came.
+    toast_queue: std::collections::VecDeque<Toast>,
     /// The Picker, while it is open.
     picker: Option<PickerModel>,
     /// The template fill form, while it is open.
@@ -518,6 +520,7 @@ where
             blur_hide: false,
             toast: None,
             toast_seq: 0,
+            toast_queue: std::collections::VecDeque::new(),
             picker: None,
             fill: None,
             fill_erase: None,

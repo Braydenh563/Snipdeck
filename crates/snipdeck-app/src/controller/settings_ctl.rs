@@ -13,9 +13,9 @@ use std::{
 use jiff::tz::TimeZone;
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_portable::{
-    BoardLayout, Decoded, HistoryEntry, ImportOptions, decode_archive_path, decode_beeftext,
-    decode_copyq_json, decode_ditto, decode_entries, decode_espanso, decode_folder,
-    decode_phraseexpress_csv, decode_textexpander_csv,
+    BoardLayout, Decoded, HistoryEntry, ImportOptions, backup, decode_archive_path,
+    decode_beeftext, decode_copyq_json, decode_ditto, decode_entries, decode_espanso,
+    decode_folder, decode_phraseexpress_csv, decode_textexpander_csv,
 };
 use snipdeck_store::{
     ItemRepo, Store,
@@ -129,6 +129,10 @@ pub struct ImportPreview {
     pub warnings: Vec<snipdeck_portable::Warning>,
     /// Warnings left out of `warnings` because there were too many.
     pub warnings_dropped: usize,
+    /// The triggers the file would install (the first few), so the user sees what it types.
+    pub triggers: Vec<String>,
+    /// How many triggers in all.
+    pub triggers_total: usize,
 }
 
 impl ImportPreview {
@@ -233,19 +237,41 @@ fn problem_of(source: &ImportSource, error: &snipdeck_portable::Error) -> Import
     }
 }
 
-/// Files and folders of the data folder that "Erase library" leaves: the settings (and the copies
-/// of a damaged file set aside), the crash logs and the lock the running app
-/// holds. Everything else is the library.
-fn kept_by_erase(name: &str) -> bool {
-    name.starts_with("settings") || name == "logs" || name == "snipdeck.lock"
+/// The names in the data folder that are the library, which "Erase library" deletes. A list of
+/// what is ours, not of what is kept: `--data-dir` may point at a folder that holds other
+/// things (Documents, a synced folder, a stick), and those are not Snipdeck's to delete. The
+/// settings, the logs and the lock are not in it.
+fn is_library_file(name: &str) -> bool {
+    const EXACT: [&str; 11] = [
+        "snipdeck.db",
+        "snipdeck.db-wal",
+        "snipdeck.db-shm",
+        "snipdeck.db-journal",
+        "snipdeck.salvage.snipdeck",
+        "snipdeck.salvage.snipdeck.part",
+        "blobs",
+        "backups",
+        "drafts",
+        "maintenance.json",
+        // A licence file an old version left behind.
+        "licence.key",
+    ];
+    EXACT.contains(&name)
+        || name.starts_with("maintenance.json.")
+        || (name.starts_with("snipdeck.db.pre-v")
+            && std::path::Path::new(name)
+                .extension()
+                .is_some_and(|e| e.eq_ignore_ascii_case("bak")))
+        || name.starts_with("snipdeck.damaged-")
 }
 
-/// Deletes everything in `folder` that is the library. Goes on past a file it cannot delete and
-/// reports the first failure at the end.
+/// Deletes the library from `folder`: the files and folders [`is_library_file`] names. Anything
+/// else in the folder stays. Goes on past a file it cannot delete and reports the first failure
+/// at the end.
 fn wipe_library(folder: &Path) -> io::Result<()> {
     let mut first_error = None;
     for entry in fs::read_dir(folder)?.flatten() {
-        if entry.file_name().to_str().is_some_and(kept_by_erase) {
+        if !entry.file_name().to_str().is_some_and(is_library_file) {
             continue;
         }
         let path = entry.path();
@@ -297,6 +323,24 @@ where
     #[must_use]
     pub fn today(&self) -> jiff::civil::Date {
         self.clock.now().to_zoned(TimeZone::system()).date()
+    }
+
+    /// Keeps backups in `folder` (blank: the default folder inside the data folder).
+    pub fn set_backup_folder(&mut self, folder: &str) {
+        let folder = folder.trim().to_owned();
+        self.update_settings(|s| s.backup_folder = folder);
+    }
+
+    /// Sets "Backups to keep" and applies it now: copies outside the new rule are deleted in the
+    /// backups folder at once, not at the next backup (DATA-17). Returns what was deleted.
+    pub fn set_backups_keep(
+        &mut self,
+        keep: u32,
+        data_dir: &std::path::Path,
+    ) -> snipdeck_portable::backup::Retained {
+        self.update_settings(|s| s.backups_keep = keep);
+        let keep = usize::try_from(self.settings.backups_keep).unwrap_or(backup::DEFAULT_KEEP);
+        backup::apply_retention(&self.settings.backup_folder(data_dir), keep, self.today())
     }
 
     /// Whether a tray icon is in the notification area now, for the Help window's checks.
@@ -720,6 +764,11 @@ where
         )
     }
 
+    /// Whether the next import installs the triggers in its file (the preview lists them).
+    pub fn set_install_triggers(&mut self, install: bool) {
+        self.archive.install_triggers = install;
+    }
+
     /// Imports `source` for real, as previewed. The outcome is [`ArchiveEnd::Imported`].
     pub fn begin_apply_import(&mut self, source: &ImportSource) -> Begun {
         self.begin_import(
@@ -769,13 +818,19 @@ where
                         tags: report.tags_added,
                         warnings: report.warnings,
                         warnings_dropped: report.warnings_dropped,
+                        triggers: report.triggers,
+                        triggers_total: report.triggers_total,
                     })
                     .map_err(|e| e.map_or(ImportProblem::Failed, |e| problem_of(&run.source, &e)));
                 ArchiveEnd::ImportPreview(preview)
             }
             ImportPurpose::Apply | ImportPurpose::Restore => {
                 let restoring = run.purpose == ImportPurpose::Restore;
-                let applied = ready.and_then(|(decoded, known)| {
+                let install = restoring || self.archive.install_triggers;
+                let applied = ready.and_then(|(mut decoded, known)| {
+                    if !install {
+                        decoded.leave_triggers();
+                    }
                     decoded.apply(&mut self.store, known.as_ref()).map_err(Some)
                 });
                 let worked = applied.is_ok();
@@ -901,4 +956,61 @@ enum Swap {
     Stuck,
     /// The rebuilt library is open and holds the backup, but the marker could not be removed.
     Unfinished,
+}
+
+#[cfg(test)]
+mod erase_tests {
+    use super::*;
+
+    #[test]
+    fn erase_deletes_the_library_and_leaves_what_is_not_ours() {
+        let dir = tempfile::tempdir().unwrap();
+        let d = dir.path();
+        for ours in [
+            "snipdeck.db",
+            "snipdeck.db-wal",
+            "snipdeck.db.pre-v8.bak",
+            "maintenance.json",
+            "maintenance.json.123-1.tmp",
+        ] {
+            fs::write(d.join(ours), b"x").unwrap();
+        }
+        for ours in [
+            "blobs",
+            "backups",
+            "drafts",
+            "snipdeck.damaged-20261107-1030",
+        ] {
+            fs::create_dir_all(d.join(ours)).unwrap();
+            fs::write(d.join(ours).join("inner"), b"x").unwrap();
+        }
+        // Not ours: a user's file and folder, the settings, the logs, the lock.
+        fs::write(d.join("report.docx"), b"mine").unwrap();
+        fs::create_dir_all(d.join("Photos")).unwrap();
+        fs::write(d.join("Photos").join("a.jpg"), b"mine").unwrap();
+        fs::write(d.join("snipdeck.db-notes.txt"), b"mine").unwrap();
+        fs::write(d.join("settings.json"), b"{}").unwrap();
+        fs::create_dir_all(d.join("logs")).unwrap();
+        fs::write(d.join("snipdeck.lock"), b"").unwrap();
+
+        wipe_library(d).unwrap();
+
+        let mut left: Vec<String> = fs::read_dir(d)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().into_string().unwrap())
+            .collect();
+        left.sort();
+        assert_eq!(
+            left,
+            [
+                "Photos",
+                "logs",
+                "report.docx",
+                "settings.json",
+                "snipdeck.db-notes.txt",
+                "snipdeck.lock"
+            ]
+        );
+        assert!(d.join("Photos").join("a.jpg").exists());
+    }
 }
