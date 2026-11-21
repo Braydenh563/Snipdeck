@@ -273,6 +273,15 @@ fn every_window_is_named_sized_and_keyboard_visible_in_every_look() {
     );
     // The surfaces with their own fixtures: the Main window (with a toast on screen, which is on top of the
     // list), the Panel, the Picker and the unlock window. Their size is the one they open at.
+    assert!(checked > 100, "only {checked} elements were checked");
+    assert_eq!(all.len(), 0, "{all:#?}");
+}
+
+/// The four windows that are not forms: Main and Panel (each with a toast on screen), the Picker and the unlock window.
+#[test]
+fn the_main_panel_picker_and_unlock_windows_are_named_sized_and_keyboard_visible_in_every_look() {
+    let mut all = Vec::new();
+    let mut checked = 0;
     run(
         "main window",
         MainWindow::new,
@@ -331,6 +340,6 @@ fn every_window_is_named_sized_and_keyboard_visible_in_every_look() {
         &mut all,
         &mut checked,
     );
-    assert!(checked > 150, "only {checked} elements were checked");
+    assert!(checked > 50, "only {checked} elements were checked");
     assert_eq!(all.len(), 0, "{all:#?}");
 }

@@ -99,3 +99,39 @@ export component BusyButtonGallery inherits Window {
         clicked => { root.clicks += 1; }
     }
 }
+
+// A menu and a chooser whose rows the host sets: a list longer than any fixed scan (type-ahead has no row limit).
+export component LongMenuGallery inherits Window {
+    in-out property <int> current: 0;
+    in property <[MenuEntry]> entries;
+    width: 320px;
+    height: 320px;
+    background: Theme.bg-app;
+    init => { menu.focus-menu(); }
+
+    menu := Menu {
+        x: Space.s4;
+        y: Space.s4;
+        width: 228px;
+        label: "Rows";
+        current <=> root.current;
+        entries: root.entries;
+    }
+}
+
+export component LongChooserGallery inherits Window {
+    in-out property <int> current: 0;
+    in property <[ChoiceEntry]> entries;
+    width: 320px;
+    height: 320px;
+    background: Theme.bg-app;
+    init => { chooser.focus-chooser(); }
+
+    chooser := Chooser {
+        x: Space.s4;
+        y: Space.s4;
+        label: "Rows";
+        current <=> root.current;
+        entries: root.entries;
+    }
+}

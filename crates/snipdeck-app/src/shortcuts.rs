@@ -749,4 +749,56 @@ mod tests {
             "the guide's keyboard table lists keys the shortcuts list lacks: {missing:#?}"
         );
     }
+
+    /// The other direction: every row of the list is in the guide's keyboard table, so the guide and the Help list are
+    /// two views of the one catalogue and neither can gain a key alone.
+    #[test]
+    fn every_shortcut_in_the_list_is_in_the_guides_keyboard_table() {
+        let guide = include_str!("../../../docs/user-guide.md");
+        let table: Vec<(Vec<Scope>, Vec<Vec<String>>, String)> = guide
+            .lines()
+            .skip_while(|l| !l.starts_with("## Keyboard reference"))
+            .skip(1)
+            .take_while(|l| !l.starts_with("## "))
+            .filter(|l| l.starts_with('|'))
+            .skip(2)
+            .map(|line| {
+                let cells: Vec<&str> = line.trim_matches('|').split('|').map(str::trim).collect();
+                let spans: Vec<Vec<String>> =
+                    cells[1].split('`').skip(1).step_by(2).map(atoms).collect();
+                let text = if spans.is_empty() {
+                    vec![atoms(cells[1])]
+                } else {
+                    spans
+                };
+                (guide_scopes(cells[0]), text, line.to_owned())
+            })
+            .collect();
+        let hotkeys = Hotkeys::new_install();
+        let mut missing = Vec::new();
+        for s in CATALOGUE {
+            let (caps, _) = s.keys.resolve(&hotkeys);
+            if caps.is_empty() {
+                continue;
+            }
+            // Each alternative ("Up" or "Down") is looked for on its own, among the keys of one guide row.
+            for alt in caps.split(|c| c == ALT) {
+                let want = atoms(&alt.join(" "));
+                let found = table.iter().any(|(scopes, rows, _)| {
+                    scopes.contains(&s.scope) && {
+                        let have: Vec<&String> = rows.iter().flatten().collect();
+                        want.iter().all(|a| have.contains(&a))
+                    }
+                });
+                if !found {
+                    missing.push(format!("{:?}: {}", s.scope, want.join(" ")));
+                }
+            }
+        }
+        assert_eq!(
+            missing.len(),
+            0,
+            "the list has keys the guide's table lacks: {missing:#?}"
+        );
+    }
 }

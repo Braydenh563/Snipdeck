@@ -1,10 +1,10 @@
 # fix-audit-ux remaining work
 Branch claude/fix-audit-ux. Decisions are in DESIGN.md (chords, names, confirm/undo, "Not done" list at the end).
 
-## Review of e9999e6 (coordinator): in progress
+## Review of e9999e6 (coordinator): done, awaiting gate and push
 1. DESIGN "Confirm and undo": reworded to a convention backed by named tests (done)
-2. Main root-scope Tab stop; Tab-order coverage of Main, Panel, toast, Picker, unlock in ux_matrix
-3. UX-5 single shortcut table; UX-6 type-ahead uncapped and in palette and Picker
+2. Main root scope and the unlock scopes no longer Tab stops; ux_matrix walks Main (toast), Panel (toast), Picker, unlock; Panel header at 2.0+ text keeps its close button inside 320px (goldens regenerated after inspection) (done)
+3. UX-5: CATALOGUE is the one table, guide checked both ways, 12 guide rows added; UX-6: Menu and Chooser type-ahead scan by ladder (no 40-row cap); palette and Picker filter as you type (done)
 4. Undo/confirm tests confirmed present (named in DESIGN)
 5. Doctor label: nothing parses "[Problem] Database"; no stale msgid in the six .po files (checked)
 6. This file

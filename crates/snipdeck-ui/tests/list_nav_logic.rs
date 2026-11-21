@@ -10,7 +10,11 @@
 
 use i_slint_backend_testing::mock_elapsed_time;
 use slint::{ComponentHandle, platform::Key};
-use snipdeck_ui::{BusyButtonGallery, ChooserNavGallery, MenuNavGallery, PaletteNavGallery};
+use slint::{ModelRc, VecModel};
+use snipdeck_ui::{
+    BusyButtonGallery, ChoiceEntry, ChooserNavGallery, LongChooserGallery, LongMenuGallery,
+    MenuEntry, MenuNavGallery, PaletteNavGallery,
+};
 
 #[path = "support/mod.rs"]
 mod support;
@@ -97,6 +101,33 @@ ui_tests! {
             pause();
         }
         assert_eq!(seen, [19, 20, 21, 22, 19], "Papaya, Peach, Pear, Plum then back round");
+    }
+
+    fn type_ahead_reaches_a_row_however_far_down_the_menu_it_is() {
+        let ui = LongMenuGallery::new().expect("gallery");
+        let rows: Vec<MenuEntry> = (0..3000)
+            .map(|i| MenuEntry { text: format!("r{i:04}").into(), ..Default::default() })
+            .collect();
+        ui.set_entries(ModelRc::new(VecModel::from(rows)));
+        ui.show().expect("show");
+        settle();
+        type_str(&ui, "r2750");
+        assert_eq!(ui.get_current(), 2750, "a row 2750 down is found by its name");
+        pause();
+        type_str(&ui, "r0003");
+        assert_eq!(ui.get_current(), 3, "and the scan wraps round the end to a row above");
+    }
+
+    fn type_ahead_reaches_a_row_however_far_down_the_chooser_it_is() {
+        let ui = LongChooserGallery::new().expect("gallery");
+        let rows: Vec<ChoiceEntry> = (0..3000)
+            .map(|i| ChoiceEntry { label: format!("r{i:04}").into(), ..Default::default() })
+            .collect();
+        ui.set_entries(ModelRc::new(VecModel::from(rows)));
+        ui.show().expect("show");
+        settle();
+        type_str(&ui, "r1500");
+        assert_eq!(ui.get_current(), 1500, "a row 1500 down is found by its name");
     }
 
     fn chooser_pages_and_types_ahead() {

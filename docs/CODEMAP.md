@@ -4031,6 +4031,7 @@ atoms | crates/snipdeck-app/src/shortcuts.rs:659
 guide_scopes | crates/snipdeck-app/src/shortcuts.rs:673
 listed | crates/snipdeck-app/src/shortcuts.rs:695
 every_shortcut_in_the_guides_keyboard_table_is_in_the_list | crates/snipdeck-app/src/shortcuts.rs:708
+every_shortcut_in_the_list_is_in_the_guides_keyboard_table | crates/snipdeck-app/src/shortcuts.rs:756
 
 ### crates/snipdeck-app/src/starter.rs
 
@@ -8909,7 +8910,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/src/settings.rs` (inline) | 63 |
 | `crates/snipdeck-app/src/settings_binding.rs` (inline) | 16 |
 | `crates/snipdeck-app/src/settings_store.rs` (inline) | 15 |
-| `crates/snipdeck-app/src/shortcuts.rs` (inline) | 14 |
+| `crates/snipdeck-app/src/shortcuts.rs` (inline) | 15 |
 | `crates/snipdeck-app/src/starter.rs` (inline) | 8 |
 | `crates/snipdeck-app/src/symbols_panel.rs` (inline) | 9 |
 | `crates/snipdeck-app/src/text_scale.rs` (inline) | 1 |
@@ -9104,7 +9105,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-ui/tests/ux_fit.rs` | 7 |
 | `crates/snipdeck-ui/tests/ux_fit_c.rs` | 8 |
 | `crates/snipdeck-ui/tests/ux_keys.rs` | 4 |
-| `crates/snipdeck-ui/tests/ux_matrix.rs` | 1 |
+| `crates/snipdeck-ui/tests/ux_matrix.rs` | 2 |
 | `crates/snipdeck-ui/tests/wording_lint.rs` | 2 |
 | `scripts/test_bump_version.py` | 6 |
 | `scripts/test_i18n.py` | 17 |

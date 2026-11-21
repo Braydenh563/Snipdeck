@@ -198,51 +198,116 @@ export component Menu inherits Rectangle {
     pure function name-hit(i: int, p: string) -> bool {
         return root.selectable(i) && ListNav.starts(root.entries[i].text, p);
     }
-    // The first row from `from` on (wrapping round once) whose label starts with `p`, or -1. Unrolled to 40 rows:
-    // a function cannot loop in Slint; longer menus are still reached by the other keys.
-    pure function first-hit(from: int, p: string) -> int {
-        if (root.entries.length == 0) { return -1; }
-        if (root.name-hit(mod(from + 0, root.entries.length), p)) { return mod(from + 0, root.entries.length); }
-        if (root.name-hit(mod(from + 1, root.entries.length), p)) { return mod(from + 1, root.entries.length); }
-        if (root.name-hit(mod(from + 2, root.entries.length), p)) { return mod(from + 2, root.entries.length); }
-        if (root.name-hit(mod(from + 3, root.entries.length), p)) { return mod(from + 3, root.entries.length); }
-        if (root.name-hit(mod(from + 4, root.entries.length), p)) { return mod(from + 4, root.entries.length); }
-        if (root.name-hit(mod(from + 5, root.entries.length), p)) { return mod(from + 5, root.entries.length); }
-        if (root.name-hit(mod(from + 6, root.entries.length), p)) { return mod(from + 6, root.entries.length); }
-        if (root.name-hit(mod(from + 7, root.entries.length), p)) { return mod(from + 7, root.entries.length); }
-        if (root.name-hit(mod(from + 8, root.entries.length), p)) { return mod(from + 8, root.entries.length); }
-        if (root.name-hit(mod(from + 9, root.entries.length), p)) { return mod(from + 9, root.entries.length); }
-        if (root.name-hit(mod(from + 10, root.entries.length), p)) { return mod(from + 10, root.entries.length); }
-        if (root.name-hit(mod(from + 11, root.entries.length), p)) { return mod(from + 11, root.entries.length); }
-        if (root.name-hit(mod(from + 12, root.entries.length), p)) { return mod(from + 12, root.entries.length); }
-        if (root.name-hit(mod(from + 13, root.entries.length), p)) { return mod(from + 13, root.entries.length); }
-        if (root.name-hit(mod(from + 14, root.entries.length), p)) { return mod(from + 14, root.entries.length); }
-        if (root.name-hit(mod(from + 15, root.entries.length), p)) { return mod(from + 15, root.entries.length); }
-        if (root.name-hit(mod(from + 16, root.entries.length), p)) { return mod(from + 16, root.entries.length); }
-        if (root.name-hit(mod(from + 17, root.entries.length), p)) { return mod(from + 17, root.entries.length); }
-        if (root.name-hit(mod(from + 18, root.entries.length), p)) { return mod(from + 18, root.entries.length); }
-        if (root.name-hit(mod(from + 19, root.entries.length), p)) { return mod(from + 19, root.entries.length); }
-        if (root.name-hit(mod(from + 20, root.entries.length), p)) { return mod(from + 20, root.entries.length); }
-        if (root.name-hit(mod(from + 21, root.entries.length), p)) { return mod(from + 21, root.entries.length); }
-        if (root.name-hit(mod(from + 22, root.entries.length), p)) { return mod(from + 22, root.entries.length); }
-        if (root.name-hit(mod(from + 23, root.entries.length), p)) { return mod(from + 23, root.entries.length); }
-        if (root.name-hit(mod(from + 24, root.entries.length), p)) { return mod(from + 24, root.entries.length); }
-        if (root.name-hit(mod(from + 25, root.entries.length), p)) { return mod(from + 25, root.entries.length); }
-        if (root.name-hit(mod(from + 26, root.entries.length), p)) { return mod(from + 26, root.entries.length); }
-        if (root.name-hit(mod(from + 27, root.entries.length), p)) { return mod(from + 27, root.entries.length); }
-        if (root.name-hit(mod(from + 28, root.entries.length), p)) { return mod(from + 28, root.entries.length); }
-        if (root.name-hit(mod(from + 29, root.entries.length), p)) { return mod(from + 29, root.entries.length); }
-        if (root.name-hit(mod(from + 30, root.entries.length), p)) { return mod(from + 30, root.entries.length); }
-        if (root.name-hit(mod(from + 31, root.entries.length), p)) { return mod(from + 31, root.entries.length); }
-        if (root.name-hit(mod(from + 32, root.entries.length), p)) { return mod(from + 32, root.entries.length); }
-        if (root.name-hit(mod(from + 33, root.entries.length), p)) { return mod(from + 33, root.entries.length); }
-        if (root.name-hit(mod(from + 34, root.entries.length), p)) { return mod(from + 34, root.entries.length); }
-        if (root.name-hit(mod(from + 35, root.entries.length), p)) { return mod(from + 35, root.entries.length); }
-        if (root.name-hit(mod(from + 36, root.entries.length), p)) { return mod(from + 36, root.entries.length); }
-        if (root.name-hit(mod(from + 37, root.entries.length), p)) { return mod(from + 37, root.entries.length); }
-        if (root.name-hit(mod(from + 38, root.entries.length), p)) { return mod(from + 38, root.entries.length); }
-        if (root.name-hit(mod(from + 39, root.entries.length), p)) { return mod(from + 39, root.entries.length); }
+    // The first row from `from` on (wrapping round once) whose label starts with `p`, or -1. Slint has no loops and no
+    // recursion, so the scan is a ladder: `row-at` tests one row, each `scanN` asks the one below eight times (8, 64, 512, 4096,
+    // 32768 rows). `off` stops it at the last row, so a short list costs a short scan.
+    pure function row-at(from: int, off: int, p: string) -> int {
+        if (off >= root.entries.length) { return -1; }
+        let i = mod(from + off, root.entries.length);
+        return root.name-hit(i, p) ? i : -1;
+    }
+    pure function scan8(from: int, off: int, p: string) -> int {
+        if (off >= root.entries.length) { return -1; }
+        let a = root.row-at(from, off + 0, p);
+        if (a >= 0) { return a; }
+        let b = root.row-at(from, off + 1, p);
+        if (b >= 0) { return b; }
+        let c = root.row-at(from, off + 2, p);
+        if (c >= 0) { return c; }
+        let d = root.row-at(from, off + 3, p);
+        if (d >= 0) { return d; }
+        let e = root.row-at(from, off + 4, p);
+        if (e >= 0) { return e; }
+        let f = root.row-at(from, off + 5, p);
+        if (f >= 0) { return f; }
+        let g = root.row-at(from, off + 6, p);
+        if (g >= 0) { return g; }
+        let h = root.row-at(from, off + 7, p);
+        if (h >= 0) { return h; }
         return -1;
+    }
+    pure function scan64(from: int, off: int, p: string) -> int {
+        if (off >= root.entries.length) { return -1; }
+        let a = root.scan8(from, off + 0, p);
+        if (a >= 0) { return a; }
+        let b = root.scan8(from, off + 8, p);
+        if (b >= 0) { return b; }
+        let c = root.scan8(from, off + 16, p);
+        if (c >= 0) { return c; }
+        let d = root.scan8(from, off + 24, p);
+        if (d >= 0) { return d; }
+        let e = root.scan8(from, off + 32, p);
+        if (e >= 0) { return e; }
+        let f = root.scan8(from, off + 40, p);
+        if (f >= 0) { return f; }
+        let g = root.scan8(from, off + 48, p);
+        if (g >= 0) { return g; }
+        let h = root.scan8(from, off + 56, p);
+        if (h >= 0) { return h; }
+        return -1;
+    }
+    pure function scan512(from: int, off: int, p: string) -> int {
+        if (off >= root.entries.length) { return -1; }
+        let a = root.scan64(from, off + 0, p);
+        if (a >= 0) { return a; }
+        let b = root.scan64(from, off + 64, p);
+        if (b >= 0) { return b; }
+        let c = root.scan64(from, off + 128, p);
+        if (c >= 0) { return c; }
+        let d = root.scan64(from, off + 192, p);
+        if (d >= 0) { return d; }
+        let e = root.scan64(from, off + 256, p);
+        if (e >= 0) { return e; }
+        let f = root.scan64(from, off + 320, p);
+        if (f >= 0) { return f; }
+        let g = root.scan64(from, off + 384, p);
+        if (g >= 0) { return g; }
+        let h = root.scan64(from, off + 448, p);
+        if (h >= 0) { return h; }
+        return -1;
+    }
+    pure function scan4k(from: int, off: int, p: string) -> int {
+        if (off >= root.entries.length) { return -1; }
+        let a = root.scan512(from, off + 0, p);
+        if (a >= 0) { return a; }
+        let b = root.scan512(from, off + 512, p);
+        if (b >= 0) { return b; }
+        let c = root.scan512(from, off + 1024, p);
+        if (c >= 0) { return c; }
+        let d = root.scan512(from, off + 1536, p);
+        if (d >= 0) { return d; }
+        let e = root.scan512(from, off + 2048, p);
+        if (e >= 0) { return e; }
+        let f = root.scan512(from, off + 2560, p);
+        if (f >= 0) { return f; }
+        let g = root.scan512(from, off + 3072, p);
+        if (g >= 0) { return g; }
+        let h = root.scan512(from, off + 3584, p);
+        if (h >= 0) { return h; }
+        return -1;
+    }
+    pure function scan32k(from: int, off: int, p: string) -> int {
+        if (off >= root.entries.length) { return -1; }
+        let a = root.scan4k(from, off + 0, p);
+        if (a >= 0) { return a; }
+        let b = root.scan4k(from, off + 4096, p);
+        if (b >= 0) { return b; }
+        let c = root.scan4k(from, off + 8192, p);
+        if (c >= 0) { return c; }
+        let d = root.scan4k(from, off + 12288, p);
+        if (d >= 0) { return d; }
+        let e = root.scan4k(from, off + 16384, p);
+        if (e >= 0) { return e; }
+        let f = root.scan4k(from, off + 20480, p);
+        if (f >= 0) { return f; }
+        let g = root.scan4k(from, off + 24576, p);
+        if (g >= 0) { return g; }
+        let h = root.scan4k(from, off + 28672, p);
+        if (h >= 0) { return h; }
+        return -1;
+    }
+    pure function first-hit(from: int, p: string) -> int {
+        return root.scan32k(from, 0, p);
     }
     function type-ahead(ch: string) {
         root.typed = root.typed + ch;

@@ -348,8 +348,8 @@ A key the recorder ignores says why under the prompt: a bare function key, a key
 
 ## Not done (UX audit batch B)
 
-- UX-5, one table for the catalogue and the handlers: not done. Slint handlers cannot be generated from Rust. A test (`shortcut_coverage.rs`) scans the `.slint` sources for Ctrl-letter handlers and fails when one is missing from the list; special keys are checked by name.
-- UX-6, type-ahead beyond 40 rows: Slint has no loops, so the prefix scan is unrolled for 40 rows. A longer menu still takes paging and Home/End. Not done: no menu is that long today.
+- UX-5, one table: `shortcuts.rs` CATALOGUE is the one table of every key. The Help list reads it, and the user guide's Keyboard reference is held to it in both directions (`every_shortcut_in_the_guides_keyboard_table_is_in_the_list` and `every_shortcut_in_the_list_is_in_the_guides_keyboard_table`), so neither gains a key alone. Slint handlers cannot be generated from Rust: `shortcut_coverage.rs` scans the `.slint` sources for Ctrl-letter handlers and fails when one is missing from the table; special keys are checked by name.
+- UX-6, type-ahead has no row limit: Slint has no loops or recursion, so Menu and Chooser scan with a ladder of pure functions (one row, then 8, 64, 512, 4096, 32768 rows; it stops at the last row, so a short list costs a short scan). `list_nav_logic.rs` types to row 2750 of 3000 in a Menu and row 1500 in a Chooser.
 - UX-6, plain `Home`/`End` and type-ahead in the palette and Picker: the search field owns those keys there, which is the type-ahead. `Ctrl+Home`/`Ctrl+End` jump instead.
 
 ### Names (one name per concept)

@@ -550,9 +550,18 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Panel | `Menu`, `Shift+F10` (on a group header) | Open its menu: Rename group, Ungroup, Delete group |
 | Panel | `F2`, or `Ctrl+G` with nothing selected (on a group header) | Rename the group |
 | Panel | `Delete` | Move the selected item to the Trash (not while searching) |
-| Panel | `Menu`, `Shift+F10` | Open the item menu |
+| Panel, Main window | `Menu`, `Shift+F10` | Open the item menu |
 | Panel | `Esc` | Clear the search; with nothing to clear, hide the Panel |
+| Panel | `A` to `Z` | Type to filter the list |
+| Panel | `Ctrl+A` | Select every item |
+| Panel | `Shift+Up`, `Shift+Down` | Extend the selection |
+| Panel, Main window | `Ctrl+C`, `Ctrl+V` | Copy the item; paste the clipboard as a new item |
+| Panel, Main window | `Ctrl+Y`, `Ctrl+Shift+Z` | Redo what `Ctrl+Z` undid |
+| Panel, Main window | `F6` | Reach the notification's buttons |
+| Panel | `Ctrl+S`, `Ctrl+Shift+S`, `Ctrl+I` | Colours and Symbols tabs: save the symbol or colour, save the colour to a list, pick a colour from the screen |
+| Picker | `Up`, `Down` | Move through the results |
 | Picker | `Tab`, `Shift+Tab` | Change scope |
+| Picker | `Ctrl+O` | Open the colour in the Colours tab |
 | Picker | `Alt+Enter` | Paste as plain text |
 | Picker | `Alt+1` to `Alt+9` | Use that row |
 | Picker | `Ctrl+E`, `Esc` | Edit, close |
@@ -579,7 +588,7 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Main window | `Delete` (on a group header) | Move the group and its items to the Trash |
 | Panel | `Alt+Up`, `Alt+Down` | Move the selected item |
 | Panel, Main window | `Space` (hold) | Reveal a sensitive item |
-| Main window | `F1` | Open the Help window |
+| Main window, Panel | `F1` | Open the Help window |
 | Any program (Typing on) | the item's trigger | Replace the trigger with the item |
 | Any program (Suggest on) | `Tab` while the hint shows | Insert the suggested item |
 | Unlock window | **Unlock with Windows Hello** | Unlock with face, fingerprint or PIN |
