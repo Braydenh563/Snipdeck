@@ -1929,7 +1929,12 @@ fn maintenance_reports_a_damaged_library_and_a_crash_as_toasts() {
     );
     assert_eq!(message(&screen), ToastMessage::LibraryProblem);
 
+    // The plain crash notice waits behind the fresh error and takes over when its guard ends.
     ctl.report_maintenance(MaintenanceOutcome::CrashedLastTime);
+    assert_eq!(message(&ctl.main_screen()), ToastMessage::LibraryProblem);
+    let error = ctl.main_screen().toast.expect("the error").seq;
+    ctl.toast_tick(error);
+    ctl.toast_tick(error);
     assert_eq!(message(&ctl.main_screen()), ToastMessage::CrashedLastTime);
 }
 

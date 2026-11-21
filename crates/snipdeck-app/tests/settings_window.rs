@@ -1079,7 +1079,8 @@ fn start_with_windows_shows_the_real_state_when_the_entry_was_removed_outside() 
         assert!(r.ui.get_autostart());
         // The user switches Snipdeck off in Task Manager's Startup tab (or the entry is gone).
         r.host.autostart.set(Some(false));
-        r.ui.invoke_panel_in_taskbar_toggled(true);
+        // The entry is read when the page opens (SET-1: not on every action).
+        r.binding.opened();
         assert!(
             !r.ui.get_autostart(),
             "the page reads the entry, not the stored setting"
@@ -3159,6 +3160,8 @@ fn closing_the_page_drops_open_forms_and_old_refusals() {
         assert!(!r.ui.get_erase_open());
         assert_eq!(r.ui.get_erase_text(), "");
         assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Closed);
+        // The page is shown again before it is drawn again, as the real reopen does.
+        r.ui.show().expect("show again");
         r.binding.opened();
         assert_eq!(r.ui.get_paste_rule_error(), "", "the refusal is gone");
         assert!(!r.ui.get_import_open());

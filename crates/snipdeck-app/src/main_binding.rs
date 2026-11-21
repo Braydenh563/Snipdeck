@@ -368,6 +368,7 @@ where
             crate::trace!("callback tags merge_confirmed ({from}, {into})");
             core.act(|ctl| ctl.main_merge_tag(index(from), index(into)));
             if let Some(w) = weak.upgrade() {
+                w.set_merge_from(-1);
                 w.set_rename_error(SharedString::new());
                 w.invoke_finish_rename();
             }

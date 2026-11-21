@@ -213,6 +213,8 @@ impl Store {
             rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
         )?;
         conn.busy_timeout(Duration::from_secs(5))?;
+        // A per-connection setting: the integrity check reads it back, so it must match the owner's.
+        secure_delete(&conn)?;
         Ok(Self {
             conn,
             blobs: Blobs::on_disk(folder.join(BLOB_DIR)),
@@ -391,7 +393,15 @@ impl Store {
             "INSERT INTO item_fts (item_fts) VALUES ('integrity-check')",
             [],
         ) {
-            problems.push(format!("full-text index is damaged: {e}"));
+            // FTS5 runs its check as an INSERT, which a read-only handle (the Help window's) cannot
+            // do: that is no damage, the check just cannot look at the index there.
+            let read_only = matches!(
+                &e,
+                rusqlite::Error::SqliteFailure(f, _) if f.code == rusqlite::ErrorCode::ReadOnly
+            );
+            if !read_only {
+                problems.push(format!("full-text index is damaged: {e}"));
+            }
         }
 
         let counts: [(&str, &str); 7] = [

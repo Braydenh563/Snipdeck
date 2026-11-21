@@ -1623,9 +1623,15 @@ fn a_trigger_that_hides_another_is_saved_with_a_warning() {
         snipdeck_app::toast::ToastKind::Danger,
         "a warning, with the icon"
     );
+    // The hold is the guard and the rest: 10 s together, longer than a neutral toast.
     assert_eq!(
         r.ctl.toast_tick(t.seq),
-        Some(snipdeck_app::controller::TOAST_ERROR_HOLD),
+        Some(snipdeck_app::controller::TOAST_ERROR_GUARD)
+    );
+    assert_eq!(
+        r.ctl.toast_tick(t.seq),
+        snipdeck_app::controller::TOAST_ERROR_HOLD
+            .checked_sub(snipdeck_app::controller::TOAST_ERROR_GUARD),
         "held longer than a neutral toast"
     );
 }
