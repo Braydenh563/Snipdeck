@@ -92,13 +92,16 @@ pub enum BackupOutcome {
     },
 }
 
+/// A manual backup's local time in its file name: (hour, minute, second).
+pub type TimeOfDay = (i8, i8, i8);
+
 /// A backup file found by [`list_backups`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BackupFile {
     /// The local date in the file name.
     pub date: Date,
     /// The local time (hour, minute, second) of a manual backup; `None` for a daily one.
-    pub time: Option<(i8, i8, i8)>,
+    pub time: Option<TimeOfDay>,
     /// Whether it was made by "Back up now".
     pub manual: bool,
     /// The file.
@@ -154,12 +157,12 @@ pub fn parse_file_name(name: &str) -> Option<Date> {
 
 /// The date, and for a manual backup its time (hour, minute, second), in a backup file name: `None` if
 /// `name` is neither a daily nor a manual backup's name.
-pub fn parse_backup_name(name: &str) -> Option<(Date, Option<(i8, i8, i8)>)> {
+pub fn parse_backup_name(name: &str) -> Option<(Date, Option<TimeOfDay>)> {
     parse_any(name)
 }
 
 /// The date, and for a manual backup the time, in a backup file name.
-fn parse_any(name: &str) -> Option<(Date, Option<(i8, i8, i8)>)> {
+fn parse_any(name: &str) -> Option<(Date, Option<TimeOfDay>)> {
     let stem = name.strip_prefix(PREFIX)?.strip_suffix(EXTENSION)?;
     let (digits, time) = match stem.split_once('-') {
         Some((d, t)) => (d, Some(t)),

@@ -196,7 +196,7 @@ where
     /// "Back up now": a backup file of its own in the backups folder; it never replaces the
     /// daily one (the usual moment to press it is after something went wrong).
     pub fn begin_backup_now(&mut self, data_dir: &Path) -> Begun {
-        // A copy of a locked library would lack its sensitive items and replace today's whole one.
+        // A copy of a locked library would lack its sensitive items, so it is not made.
         if self.refuse_archive() {
             return Begun::Refused;
         }

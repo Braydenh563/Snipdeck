@@ -127,7 +127,7 @@ pub enum CopyError {
 }
 
 /// The day and the (hour, minute) of a manual backup.
-type When = (Date, (i8, i8, i8));
+type When = (Date, backup::TimeOfDay);
 
 /// Copies the backup `file` (just written, so it exists) into `folder` under the same name, then
 /// keeps only the newest `keep` copies there (at least 1). `today` is the day the backup was made:
