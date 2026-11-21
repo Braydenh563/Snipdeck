@@ -169,3 +169,23 @@ fn a_damaged_search_index_is_not_reported_healthy_by_a_read_only_handle() {
         "{problems:?}"
     );
 }
+
+#[test]
+fn a_busy_database_is_not_reported_as_a_damaged_search_index() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut owner = Store::open(dir.path()).unwrap();
+    let b = board(&mut owner, "B");
+    let l = list(&mut owner, b.id, "L");
+    item(&mut owner, l.id, "alpha", "some searchable body text");
+    let reader = Store::open_reader(dir.path(), None).unwrap();
+    // Another writer holds the write lock, so the check's writable connection times out.
+    let raw = Connection::open(dir.path().join("snipdeck.db")).unwrap();
+    raw.execute_batch("BEGIN IMMEDIATE").unwrap();
+    let problems = reader.check_integrity().unwrap();
+    raw.execute_batch("ROLLBACK").unwrap();
+    assert_eq!(
+        problems.iter().filter(|p| p.contains("damaged")).count(),
+        0,
+        "{problems:?}"
+    );
+}

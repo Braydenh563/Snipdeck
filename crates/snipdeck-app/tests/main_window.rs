@@ -790,13 +790,27 @@ fn cancelling_the_merge_question_changes_nothing() {
         let before = tag_labels(&r);
         r.ui.invoke_manage_tags_requested();
         let manager = r.binding.tag_manager().unwrap();
-        manager.set_editing(0);
-        manager.invoke_rename_requested(0, before[1].to_uppercase().into());
-        assert_eq!(manager.get_merge_from(), 0, "the question is open");
-        // The dialog's Cancel (and Esc) only close it.
-        manager.set_merge_from(-1);
-        assert_eq!(tag_labels(&r), before);
-        assert_eq!(manager.get_tags().row_count(), before.len());
+        let ask = |manager: &snipdeck_ui::TagManager| {
+            manager.set_editing(0);
+            manager.invoke_rename_requested(0, before[1].to_uppercase().into());
+            assert_eq!(manager.get_merge_from(), 0, "the question is open");
+        };
+        // The dialog's Cancel button, clicked through hit testing.
+        ask(&manager);
+        let cancel = element(&manager, "Cancel", AccessibleRole::Button);
+        click(manager.window(), &cancel);
+        assert_eq!(manager.get_merge_from(), -1, "the question closed");
+        assert_eq!(tag_labels(&r), before, "Cancel merged nothing");
+        // Esc closes it the same way.
+        ask(&manager);
+        press(manager.window(), &key(Key::Escape));
+        assert_eq!(manager.get_merge_from(), -1);
+        assert_eq!(tag_labels(&r), before, "Esc merged nothing");
+        // The other button does merge, so the two are not the same wiring.
+        ask(&manager);
+        let merge = element(&manager, "Merge tags", AccessibleRole::Button);
+        click(manager.window(), &merge);
+        assert_eq!(tag_labels(&r), [before[1].clone()]);
     });
 }
 

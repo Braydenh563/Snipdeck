@@ -829,7 +829,9 @@ export component ItemEditor inherits Window {
     in property <bool> formatted: false;
     in property <string> saved-content;
     // Whether the text was typed in since it opened: the notice's test for a long text, whose
-    // saved text is not kept (it is a part at a time).
+    // saved text is not kept (it is a part at a time). It stays on when the typing is taken back:
+    // telling "same as saved" would need the whole text compared on every key press, and the
+    // notice only warns.
     in-out property <bool> content-changed: false;
     // Anything changed since the window opened (the host clears it after a save with `mark-clean()`).
     out property <bool> dirty: false;

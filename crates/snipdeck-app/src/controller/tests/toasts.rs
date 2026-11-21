@@ -850,12 +850,19 @@ fn a_message_that_waited_is_shown_when_the_hovered_error_ends() {
     w.ctl.show_toast(plain(ToastMessage::Copied));
     w.ctl.toast_hover(true);
     // Tick until the error leaves (bounded: the hover extension is finite).
+    let mut reached_exit = false;
     for _ in 0..200 {
-        if w.ctl.view().toast.is_none_or(|t| t.seq != error) {
+        let Some(shown) = w.ctl.view().toast.filter(|t| t.seq == error) else {
             break;
+        };
+        if shown.phase == ToastPhase::Exit {
+            // The next tick is the exit itself: the message must still be waiting for it.
+            assert!(w.ctl.pending_toast.is_some(), "queued until the exit");
+            reached_exit = true;
         }
         w.ctl.toast_tick(error);
     }
+    assert!(reached_exit, "the error went through its exit phase");
     assert_eq!(
         w.ctl.view().toast.expect("the message that waited").message,
         ToastMessage::Copied

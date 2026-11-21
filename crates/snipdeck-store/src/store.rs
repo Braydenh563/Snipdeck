@@ -446,29 +446,35 @@ impl Store {
             problems.push(format!("dangling reference from table `{}`", row?));
         }
         drop(stmt);
-        if let Err(e) = conn.execute(FTS_CHECK, []) {
-            // FTS5 runs its check as an INSERT, which a read-only handle (the Help window's)
-            // cannot do. The check changes nothing, so run it on a short-lived writable
-            // connection instead, rather than call a damaged index healthy.
-            let read_only = matches!(
-                &e,
-                rusqlite::Error::SqliteFailure(f, _) if f.code == rusqlite::ErrorCode::ReadOnly
-            );
-            let result = match (read_only, conn.path()) {
-                (true, Some(path)) => Connection::open_with_flags(
-                    path,
-                    rusqlite::OpenFlags::SQLITE_OPEN_READ_WRITE
-                        | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
-                )
-                .and_then(|c| {
-                    c.busy_timeout(Duration::from_secs(5))?;
-                    c.execute(FTS_CHECK, []).map(|_| ())
-                }),
-                _ => Err(e),
-            };
-            if let Err(e) = result {
-                problems.push(format!("full-text index is damaged: {e}"));
+        // FTS5 runs its check as an INSERT, which a read-only handle (the Help window's) cannot
+        // do. The check changes nothing, so run it on a short-lived writable connection instead,
+        // rather than call a damaged index healthy. Only a corruption error means damage: a busy
+        // database or a connection that will not open means the index was not checked.
+        let result = match conn.execute(FTS_CHECK, []) {
+            Err(rusqlite::Error::SqliteFailure(f, _))
+                if f.code == rusqlite::ErrorCode::ReadOnly =>
+            {
+                conn.path().map(|path| {
+                    Connection::open_with_flags(
+                        path,
+                        rusqlite::OpenFlags::SQLITE_OPEN_READ_WRITE
+                            | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
+                    )
+                    .and_then(|c| {
+                        c.busy_timeout(Duration::from_secs(1))?;
+                        c.execute(FTS_CHECK, []).map(|_| ())
+                    })
+                })
             }
+            other => Some(other.map(|_| ())),
+        };
+        if let Some(Err(e)) = result
+            && matches!(
+                &e,
+                rusqlite::Error::SqliteFailure(f, _) if f.code == rusqlite::ErrorCode::DatabaseCorrupt
+            )
+        {
+            problems.push(format!("full-text index is damaged: {e}"));
         }
 
         let counts: [(&str, &str); 7] = [

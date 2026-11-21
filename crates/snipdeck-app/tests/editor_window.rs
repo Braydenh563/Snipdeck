@@ -825,9 +825,20 @@ fn the_formatting_notice_on_a_long_text_waits_for_a_change() {
             missing(&ed, notice, AccessibleRole::Text),
             "no notice for text nobody typed in"
         );
-        ed.set_content_changed(true);
-        r.editor.redraw();
+        // Typing in the field, through the real `edited` wiring, brings the notice up.
+        click(
+            ed.window(),
+            &find(&ed, "Content", AccessibleRole::TextInput),
+        );
+        type_text(ed.window(), "x");
+        settle();
+        assert!(ed.get_content_changed());
         let _ = find(&ed, notice, AccessibleRole::Text);
+        // It stays when the typing is taken back: a long text is not kept whole beside the field,
+        // so "same as saved" cannot be told cheaply, and the notice only warns.
+        press(ed.window(), &key(Key::Backspace));
+        settle();
+        assert!(ed.get_content_changed());
     });
 }
 
