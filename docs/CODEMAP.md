@@ -8960,22 +8960,22 @@ gc_blobs | crates/snipdeck-store/src/store.rs:318
 hold_blob_release | crates/snipdeck-store/src/store.rs:372
 release_blobs | crates/snipdeck-store/src/store.rs:390
 check_integrity | crates/snipdeck-store/src/store.rs:431
-security_problems | crates/snipdeck-store/src/store.rs:537
-pragma_text | crates/snipdeck-store/src/store.rs:622
-name_problems | crates/snipdeck-store/src/store.rs:639
-begin | crates/snipdeck-store/src/store.rs:658
-secure_delete | crates/snipdeck-store/src/store.rs:667
-checkpoint | crates/snipdeck-store/src/store.rs:680
-configure | crates/snipdeck-store/src/store.rs:685
-acquire_lock | crates/snipdeck-store/src/store.rs:699
-tests | crates/snipdeck-store/src/store.rs:720
-temp_store_is_memory_on_every_open_path | crates/snipdeck-store/src/store.rs:731
-a_reader_sees_the_open_database_beside_its_writer_and_cannot_write | crates/snipdeck-store/src/store.rs:743
-the_integrity_check_reports_secure_delete_being_off | crates/snipdeck-store/src/store.rs:770
-gc_counts_failed_deletes_and_carries_on | crates/snipdeck-store/src/store.rs:783
-released_blobs_that_cannot_be_deleted_are_left_for_gc | crates/snipdeck-store/src/store.rs:800
-a_hold_keeps_orphaned_blobs_until_it_ends | crates/snipdeck-store/src/store.rs:815
-debug_output_names_no_key_or_content | crates/snipdeck-store/src/store.rs:831
+security_problems | crates/snipdeck-store/src/store.rs:543
+pragma_text | crates/snipdeck-store/src/store.rs:628
+name_problems | crates/snipdeck-store/src/store.rs:645
+begin | crates/snipdeck-store/src/store.rs:664
+secure_delete | crates/snipdeck-store/src/store.rs:673
+checkpoint | crates/snipdeck-store/src/store.rs:686
+configure | crates/snipdeck-store/src/store.rs:691
+acquire_lock | crates/snipdeck-store/src/store.rs:705
+tests | crates/snipdeck-store/src/store.rs:726
+temp_store_is_memory_on_every_open_path | crates/snipdeck-store/src/store.rs:737
+a_reader_sees_the_open_database_beside_its_writer_and_cannot_write | crates/snipdeck-store/src/store.rs:749
+the_integrity_check_reports_secure_delete_being_off | crates/snipdeck-store/src/store.rs:776
+gc_counts_failed_deletes_and_carries_on | crates/snipdeck-store/src/store.rs:789
+released_blobs_that_cannot_be_deleted_are_left_for_gc | crates/snipdeck-store/src/store.rs:806
+a_hold_keeps_orphaned_blobs_until_it_ends | crates/snipdeck-store/src/store.rs:821
+debug_output_names_no_key_or_content | crates/snipdeck-store/src/store.rs:837
 
 ### crates/snipdeck-store/src/tags.rs
 
@@ -10027,7 +10027,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-store/tests/fixture.rs` | 4 |
 | `crates/snipdeck-store/tests/groups.rs` | 14 |
 | `crates/snipdeck-store/tests/items.rs` | 27 |
-| `crates/snipdeck-store/tests/open.rs` | 10 |
+| `crates/snipdeck-store/tests/open.rs` | 11 |
 | `crates/snipdeck-store/tests/ordering.rs` | 19 |
 | `crates/snipdeck-store/tests/properties.rs` | 2 |
 | `crates/snipdeck-store/tests/recent.rs` | 28 |
