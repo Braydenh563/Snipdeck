@@ -819,6 +819,8 @@ where
             .main_group_collapse(index(i), Some(c)));
         wire!(on_group_renamed, |ctl, i, name| ctl
             .main_group_rename(index(i), name.as_str()));
+        wire!(on_group_colour_chosen, |ctl, i, accent| ctl
+            .main_group_colour(index(i), accent_of(accent)));
         wire!(on_group_rename_requested, |ctl, i| ctl
             .main_group_rename_start(index(i)));
         wire!(on_group_rename_ended, |ctl| ctl.main_group_rename_ended());
@@ -1630,6 +1632,7 @@ fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
             .as_ref()
             .map_or(0, |h| i32::try_from(h.count).unwrap_or(i32::MAX)),
         group_collapsed: row.header.as_ref().is_some_and(|h| h.collapsed),
+        group_colour: accent_index(row.header.as_ref().and_then(|h| h.colour)),
         grouped: row.grouped,
     }
 }
@@ -1986,6 +1989,7 @@ mod tests {
                 name: "G".into(),
                 count,
                 collapsed,
+                colour: None,
             })
         };
         let rows = [

@@ -352,10 +352,11 @@ where
             for id in &items {
                 move_recorded(b, *id, list, Placement::Last, &mut changes)?;
             }
-            // A moved group stays a group: made again in the new list with the same name and fold.
+            // A moved group stays a group: made again in the new list with the same name, fold and colour.
             if let Some(old) = &carried {
                 let mut group = snipdeck_core::Group::new(list, old.name.clone());
                 group.collapsed = old.collapsed;
+                group.colour = old.colour;
                 b.create_group(&group, &items)?;
                 changes.push(Change::Group {
                     group,

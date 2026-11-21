@@ -90,6 +90,8 @@ pub struct GroupHeader {
     pub count: usize,
     /// The items are hidden under the header.
     pub collapsed: bool,
+    /// The group's colour, if it has one (the Main window shows it as a dot).
+    pub colour: Option<snipdeck_core::ListAccent>,
 }
 
 /// A list's name and accent, shown on rows in mixed views.
@@ -551,6 +553,7 @@ impl PanelModel {
                 name: run.group.name.as_str().to_owned(),
                 count: run.items.len(),
                 collapsed: run.group.collapsed,
+                colour: run.group.colour,
             }),
             grouped: false,
         }

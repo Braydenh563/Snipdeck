@@ -542,6 +542,9 @@ msgstr "色"
 msgid "Colour label"
 msgstr "カラーラベル"
 
+msgid "Colour of group “{}”"
+msgstr "グループ「{}」の色"
+
 msgid "Colour of tag {}"
 msgstr "タグ {} の色"
 
@@ -1267,6 +1270,12 @@ msgstr "あいさつ"
 
 msgid "Group"
 msgstr "グループ"
+
+msgid "Group colour"
+msgstr "グループの色"
+
+msgid "Group colour…"
+msgstr "グループの色…"
 
 msgid "Group name"
 msgstr "グループ名"
@@ -2256,6 +2265,9 @@ msgstr "画面から色を選ぶ"
 
 msgid "Pick a colour from the screen (Ctrl+I)"
 msgstr "画面から色を選ぶ (Ctrl+I)"
+
+msgid "Pick a colour: it shows as a dot beside the group name. Esc closes."
+msgstr "色を選ぶとグループ名の横に点で表示されます。Esc で閉じます。"
 
 msgid "Pick a colour: it shows as a dot beside the tag. Esc closes."
 msgstr "色を選ぶとタグの横に点で表示されます。Esc で閉じます。"
@@ -3919,6 +3931,10 @@ msgstr "グループの変更"
 msgid "group {}, {} item"
 msgid_plural "group {}, {} items"
 msgstr[0] "グループ {}、{} 件"
+
+msgid "group {}, {}, {} item"
+msgid_plural "group {}, {}, {} items"
+msgstr[0] "グループ {}、{}、{} 件"
 
 msgid "help docs manual how"
 msgstr "ヘルプ ドキュメント マニュアル 使い方"

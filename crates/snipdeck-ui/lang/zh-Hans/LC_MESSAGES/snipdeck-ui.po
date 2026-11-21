@@ -542,6 +542,9 @@ msgstr "颜色"
 msgid "Colour label"
 msgstr "颜色标签"
 
+msgid "Colour of group “{}”"
+msgstr "分组“{}”的颜色"
+
 msgid "Colour of tag {}"
 msgstr "标签 {} 的颜色"
 
@@ -1267,6 +1270,12 @@ msgstr "问候"
 
 msgid "Group"
 msgstr "分组"
+
+msgid "Group colour"
+msgstr "分组颜色"
+
+msgid "Group colour…"
+msgstr "分组颜色…"
 
 msgid "Group name"
 msgstr "分组名称"
@@ -2256,6 +2265,9 @@ msgstr "从屏幕上取色"
 
 msgid "Pick a colour from the screen (Ctrl+I)"
 msgstr "从屏幕上取色（Ctrl+I）"
+
+msgid "Pick a colour: it shows as a dot beside the group name. Esc closes."
+msgstr "选择颜色:它会作为圆点显示在分组名称旁。按 Esc 关闭。"
 
 msgid "Pick a colour: it shows as a dot beside the tag. Esc closes."
 msgstr "选择颜色:它会作为圆点显示在标签旁。按 Esc 关闭。"
@@ -3919,6 +3931,10 @@ msgstr "分组更改"
 msgid "group {}, {} item"
 msgid_plural "group {}, {} items"
 msgstr[0] "分组 {}，{} 项"
+
+msgid "group {}, {}, {} item"
+msgid_plural "group {}, {}, {} items"
+msgstr[0] "分组 {}，{}，{} 项"
 
 msgid "help docs manual how"
 msgstr "帮助 文档 手册 操作方法"

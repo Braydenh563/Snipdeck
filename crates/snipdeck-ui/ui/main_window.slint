@@ -19,7 +19,7 @@
 //             Ctrl+/ the keyboard shortcuts, F1 the user guide
 import { TipHost, TipLayer, TipSource } from "components/tip-host.slint";
 import { ListView } from "std-widgets.slint";
-import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook, Palette, ListHue } from "theme.slint";
+import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook, Palette, ListHue, ListAccent } from "theme.slint";
 import { Icons } from "icons.slint";
 import { Icon } from "components/icon.slint";
 import { KeyCombo } from "components/keycap.slint";
@@ -36,6 +36,7 @@ import { Toast, ToastKind, ToastPhase, Skeleton, SkeletonKind } from "components
 import { Menu, MenuEntry } from "components/menu.slint";
 import { SuggestDropdown, SuggestRow } from "components/suggest-dropdown.slint";
 import { Dialog, DialogVariant } from "components/dialog.slint";
+import { ColourPicker } from "components/colour-picker.slint";
 import { Chooser, ChoiceEntry } from "components/chooser.slint";
 import { ColourBlock, ColourFormatCell } from "components/colour_block.slint";
 import { MenuTexts } from "menu_texts.slint";
@@ -80,6 +81,8 @@ export struct MainRow {
     is-header: bool,
     group-count: int,
     group-collapsed: bool,
+    // The group's colour: -1 none, else 0 to 8 in the order of `ListHue` (the host's `ListAccent`).
+    group-colour: int,
     grouped: bool,
 }
 
@@ -494,6 +497,15 @@ export component MainWindow inherits Window {
     in property <int> group-delete-count;
     callback group-delete-confirmed();
     callback group-delete-dismissed();
+    // A header's menu row "Group colour…" opens a small dialog with the nine hues; the choice goes to the host
+    // (`group-colour-chosen(row, hue)`, hue -1 for none) and the dialog closes.
+    callback group-colour-chosen(int, int);
+    property <int> group-colour-row: -1;
+    property <[ListHue]> group-hues: [ListHue.blue, ListHue.teal, ListHue.green, ListHue.amber, ListHue.orange, ListHue.red, ListHue.rose, ListHue.violet, ListHue.slate];
+    property <[string]> group-colour-names: [
+        @tr("Blue"), @tr("Teal"), @tr("Green"), @tr("Amber"), @tr("Orange"),
+        @tr("Red"), @tr("Rose"), @tr("Violet"), @tr("Slate"),
+    ];
     callback board-delete-confirmed();
     callback board-delete-dismissed();
     callback toast-undo();
@@ -538,7 +550,10 @@ export component MainWindow inherits Window {
     in property <bool> has-groups: false;
     // The items the list holds, folded group members included (headers are not items); -1: count the rows.
     in property <int> list-total: -1;
-    public pure function group-announcement(name: string, count: int) -> string {
+    public pure function group-announcement(name: string, count: int, colour: int) -> string {
+        if (colour >= 0 && colour < root.group-colour-names.length) {
+            return @tr("group {}, {}, {} item" | "group {}, {}, {} items" % count, name, root.group-colour-names[colour], count);
+        }
         return @tr("group {}, {} item" | "group {}, {} items" % count, name, count);
     }
     // Alt+Up / Alt+Down in the sidebar on a list: its index in `lists`, then -1 or +1.
@@ -685,7 +700,7 @@ export component MainWindow inherits Window {
     property <int> confirm-kind: 0;
     property <int> confirm-target: 0;
     property <bool> confirm-shown: false;
-    property <bool> overlay-open: root.recent-menu-open || root.recent-save-open || root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.view-menu-open || root.sort-menu-open || root.filter-menu-open || root.chooser-open || root.board-menu-open || root.confirm-shown || root.board-delete-open || root.group-delete-open || root.palette-open;
+    property <bool> overlay-open: root.recent-menu-open || root.recent-save-open || root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.view-menu-open || root.sort-menu-open || root.filter-menu-open || root.chooser-open || root.board-menu-open || root.confirm-shown || root.board-delete-open || root.group-delete-open || root.group-colour-row >= 0 || root.palette-open;
 
     init => {
         Palette.dark = root.dark;
@@ -996,6 +1011,7 @@ export component MainWindow inherits Window {
 
     property <[MenuEntry]> group-entries: [
         { text: MenuTexts.group-rename(), icon: Icons.pencil-simple, shortcut: "F2" },
+        { text: MenuTexts.group-colour(), icon: Icons.palette },
         { text: MenuTexts.group-ungroup(), icon: Icons.files },
         { text: MenuTexts.group-move(), icon: Icons.folder },
         { separator: true },
@@ -1041,15 +1057,17 @@ export component MainWindow inherits Window {
             if (i == 0) {
                 root.group-rename-requested(index);
             } else if (i == 1) {
-                root.group-ungroup-requested(index);
+                root.group-colour-row = index;
             } else if (i == 2) {
+                root.group-ungroup-requested(index);
+            } else if (i == 3) {
                 // Every item of the group goes to the chosen list: the host fills the chooser, the window opens it.
                 root.group-move-requested(index);
                 root.open-chooser(false, false, index);
-            } else if (i == 4) {
+            } else if (i == 5) {
                 root.group-delete-requested(index);
             }
-            if (i != 0 && i != 2) {
+            if (i != 0 && i != 1 && i != 3) {
                 items-scope.focus();
             }
             return;
@@ -2195,7 +2213,9 @@ export component MainWindow inherits Window {
                                             name: row.title;
                                             collapsed: row.group-collapsed;
                                             count-text: @tr("{} item" | "{} items" % row.group-count, row.group-count);
-                                            a11y-label: root.group-announcement(row.title, row.group-count);
+                                            a11y-label: root.group-announcement(row.title, row.group-count, row.group-colour);
+                                            dot: row.group-colour >= 0 && row.group-colour < root.group-hues.length ? ListAccent.color(root.group-hues[row.group-colour]) : transparent;
+                                            has-dot: row.group-colour >= 0;
                                             rename-label: @tr("Group name");
                                             selected: i == root.cur && items-scope.has-focus && root.kbd-focus;
                                             rename-request: root.rename-row == i ? root.rename-seq : 0;
@@ -3241,6 +3261,29 @@ export component MainWindow inherits Window {
             variant: ButtonVariant.danger;
             text: @tr("Delete group");
             clicked => { root.group-delete-confirmed(); }
+        }
+    }
+
+    // The colour of one group: the nine list hues, applied as they are picked.
+    Dialog {
+        open: root.group-colour-row >= 0;
+        title: @tr("Colour of group “{}”", root.group-colour-row >= 0 && root.group-colour-row < root.rows.length ? root.rows[root.group-colour-row].title : "");
+        body: @tr("Pick a colour: it shows as a dot beside the group name. Esc closes.");
+        fill: true;
+        dismissed => { root.group-colour-row = -1; }
+        closed => { root.restore-focus(); }
+        ColourPicker {
+            horizontal-stretch: 1;
+            hues: root.group-hues;
+            label: @tr("Group colour");
+            none-label: @tr("No colour");
+            names: root.group-colour-names;
+            accent: root.group-colour-row >= 0 && root.group-colour-row < root.rows.length ? root.rows[root.group-colour-row].group-colour : -1;
+            chosen(a) => {
+                let i = root.group-colour-row;
+                root.group-colour-row = -1;
+                root.group-colour-chosen(i, a);
+            }
         }
     }
 

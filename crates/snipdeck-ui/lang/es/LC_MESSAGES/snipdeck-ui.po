@@ -543,6 +543,9 @@ msgstr "Color"
 msgid "Colour label"
 msgstr "Etiqueta de color"
 
+msgid "Colour of group “{}”"
+msgstr "Color del grupo “{}”"
+
 msgid "Colour of tag {}"
 msgstr "Color de la etiqueta {}"
 
@@ -1268,6 +1271,12 @@ msgstr "Saludo"
 
 msgid "Group"
 msgstr "Grupo"
+
+msgid "Group colour"
+msgstr "Color del grupo"
+
+msgid "Group colour…"
+msgstr "Color del grupo…"
 
 msgid "Group name"
 msgstr "Nombre del grupo"
@@ -2262,6 +2271,9 @@ msgstr "Elegir un color de la pantalla"
 
 msgid "Pick a colour from the screen (Ctrl+I)"
 msgstr "Elegir un color de la pantalla (Ctrl+I)"
+
+msgid "Pick a colour: it shows as a dot beside the group name. Esc closes."
+msgstr "Elige un color: se muestra como un punto junto al nombre del grupo. Esc cierra."
 
 msgid "Pick a colour: it shows as a dot beside the tag. Esc closes."
 msgstr "Elige un color: se muestra como un punto junto a la etiqueta. Esc cierra."
@@ -3929,6 +3941,11 @@ msgid "group {}, {} item"
 msgid_plural "group {}, {} items"
 msgstr[0] "grupo {}, {} elemento"
 msgstr[1] "grupo {}, {} elementos"
+
+msgid "group {}, {}, {} item"
+msgid_plural "group {}, {}, {} items"
+msgstr[0] "grupo {}, {}, {} elemento"
+msgstr[1] "grupo {}, {}, {} elementos"
 
 msgid "help docs manual how"
 msgstr "ayuda documentación manual cómo"

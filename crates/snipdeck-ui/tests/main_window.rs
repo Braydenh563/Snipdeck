@@ -567,6 +567,7 @@ fn main_window_with_a_group_light_and_dark() {
             is_header: true,
             group_count: count,
             group_collapsed: collapsed,
+            group_colour: -1,
             ..Default::default()
         };
         let mut rows = fixture::sample_rows();
@@ -598,6 +599,7 @@ fn a_main_group_header_grows_with_the_text_size() {
                 title: "Replies".into(),
                 is_header: true,
                 group_count: 2,
+                group_colour: -1,
                 ..Default::default()
             },
         );

@@ -247,6 +247,54 @@ fn a_group_moves_to_another_list_whole_and_one_undo_brings_it_back() {
     assert_eq!(ctl.main_screen().rows[0].title, "Pair");
 }
 
+fn header_colour(ctl: &mut Ctl) -> Option<snipdeck_core::ListAccent> {
+    ctl.main_screen()
+        .rows
+        .iter()
+        .find_map(|r| r.header.as_ref())
+        .and_then(|h| h.colour)
+}
+
+#[test]
+fn a_group_colour_is_one_undo_step_and_goes_with_the_group_to_another_list() {
+    use snipdeck_core::ListAccent;
+    let mut ctl = tagged();
+    let (from, to) = (ctl.main_screen().lists[0].id, 1);
+    ctl.main_open(Section::List(from));
+    ctl.main_select(0, SelectMode::Replace);
+    ctl.main_select(1, SelectMode::Toggle);
+    ctl.main_group_marked(0);
+    ctl.main_group_rename(0, "Pair");
+    assert_eq!(header_colour(&mut ctl), None, "a new group has no colour");
+
+    ctl.main_group_colour(0, Some(ListAccent::Teal));
+    assert_eq!(header_colour(&mut ctl), Some(ListAccent::Teal));
+    // The same colour again changes nothing and adds no step.
+    ctl.main_group_colour(0, Some(ListAccent::Teal));
+    ctl.main_group_colour(0, Some(ListAccent::Rose));
+    ctl.main_group_colour(0, None);
+    assert_eq!(header_colour(&mut ctl), None);
+    ctl.undo();
+    assert_eq!(header_colour(&mut ctl), Some(ListAccent::Rose));
+    ctl.undo();
+    assert_eq!(header_colour(&mut ctl), Some(ListAccent::Teal));
+    ctl.redo();
+    assert_eq!(header_colour(&mut ctl), Some(ListAccent::Rose));
+
+    // The colour survives an ungroup and its undo, and the move to another list.
+    ctl.main_group_ungroup(0);
+    ctl.undo();
+    assert_eq!(header_colour(&mut ctl), Some(ListAccent::Rose));
+    ctl.main_group_move_start(0);
+    ctl.main_move_to(to);
+    let target = ctl.main_screen().lists[to].id;
+    ctl.main_open(Section::List(target));
+    assert_eq!(header_colour(&mut ctl), Some(ListAccent::Rose));
+    ctl.undo();
+    ctl.main_open(Section::List(from));
+    assert_eq!(header_colour(&mut ctl), Some(ListAccent::Rose));
+}
+
 #[test]
 fn a_tag_takes_one_of_the_item_colours_and_undo_takes_it_off() {
     let mut ctl = tagged();

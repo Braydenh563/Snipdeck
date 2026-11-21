@@ -398,6 +398,7 @@ fn header_row(run: &GroupRun) -> Row {
             name: run.group.name.as_str().to_owned(),
             count: run.items.len(),
             collapsed: run.group.collapsed,
+            colour: run.group.colour,
         }),
         grouped: false,
     }

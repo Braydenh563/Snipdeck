@@ -18,7 +18,8 @@
 use i_slint_backend_testing::{AccessibleRole as Role, ElementHandle, ElementQuery};
 use slint::{ComponentHandle, ModelRc, VecModel};
 use snipdeck_ui::{
-    BoardEditor, FilterChipEntry, ListEditor, MainSection, MainWindow, SystemLook, TagManager,
+    BoardEditor, FilterChipEntry, ListEditor, MainRow, MainSection, MainWindow, SystemLook,
+    TagManager,
     testing::{Harness, assert_golden},
 };
 
@@ -468,6 +469,209 @@ fn the_tag_dot_is_drawn_only_for_a_coloured_tag() {
     );
     assert_ne!(dots[0], dots[1], "blue and amber differ");
     assert_ne!(dots[1], dots[3], "amber and slate differ");
+}
+
+// ---- Group colour ---------------------------------------------------------------------------------------------
+
+/// A list with a teal "Replies" group of two items, then an uncoloured "Plain" group of one item.
+fn main_with_groups(width: u32, scale: f32, dark: bool, hc: bool) -> Harness<MainWindow> {
+    let h = Harness::new(MainWindow::new, width, 640);
+    h.component.set_dark(dark);
+    look!(h.component, scale, hc);
+    let _ = fixture::populate(&h.component);
+    h.component.set_section(MainSection::List);
+    h.component.set_section_index(0);
+    let header = |title: &str, colour: i32| MainRow {
+        title: title.into(),
+        is_header: true,
+        group_count: 2,
+        group_colour: colour,
+        ..Default::default()
+    };
+    let mut rows = fixture::sample_rows();
+    rows.truncate(4);
+    rows.insert(0, header("Replies", 1));
+    rows.insert(3, header("Plain", -1));
+    for i in [1, 2, 4] {
+        rows[i].grouped = true;
+    }
+    fixture::set_rows(&h.component, rows);
+    h.component.set_has_groups(true);
+    h
+}
+
+/// Lets the window settle; a frame that has nothing new to draw is not a failure here.
+fn settle_quietly(h: &Harness<impl ComponentHandle>) -> Option<snipdeck_ui::testing::Frame> {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| h.render_settled())).ok()
+}
+
+/// Pixels of a strong hue (a coloured dot) inside a box; the caret and the text are grey.
+fn saturated_in(frame: &snipdeck_ui::testing::Frame, b: &Boxed) -> usize {
+    let mut n = 0;
+    for y in (b.y as u32)..((b.y + b.h) as u32) {
+        for x in (b.x as u32)..((b.x + b.w) as u32) {
+            let p = frame.pixel(x, y);
+            let (hi, lo) = (
+                p.iter().max().copied().unwrap(),
+                p.iter().min().copied().unwrap(),
+            );
+            if hi - lo >= 60 {
+                n += 1;
+            }
+        }
+    }
+    n
+}
+
+#[test]
+fn a_coloured_group_shows_a_dot_and_says_its_colour_and_a_plain_one_shows_none() {
+    let mut problems: Vec<String> = Vec::new();
+    for scale in [1.0_f32, 1.5, 2.25] {
+        for (name, dark, hc) in LOOKS {
+            let h = main_with_groups(1040, scale, dark, hc);
+            let frame = h.render_settled();
+            let at = format!("scale {scale}, {name}");
+            let headers: Vec<Boxed> = all(&h)
+                .into_iter()
+                .filter(|b| b.role == Role::Button && b.label.starts_with("group "))
+                .collect();
+            let find = |l: &str| headers.iter().find(|b| b.label == l);
+            let (Some(teal), Some(plain)) = (
+                find("group Replies, Teal, 2 items"),
+                find("group Plain, 2 items"),
+            ) else {
+                problems.push(format!(
+                    "{at}: headers {:?}",
+                    headers.iter().map(|b| &b.label).collect::<Vec<_>>()
+                ));
+                continue;
+            };
+            let (with, without) = (saturated_in(&frame, teal), saturated_in(&frame, plain));
+            // The dot is at least 8 logical px across, so well over 40 pixels; the plain header has none.
+            if with < 40 || without != 0 {
+                problems.push(format!(
+                    "{at}: {with} hued pixels on the teal header, {without} on the plain one"
+                ));
+            }
+        }
+    }
+    assert_eq!(problems.len(), 0, "{}", problems.join("\n"));
+}
+
+#[test]
+fn the_group_menu_opens_a_colour_dialog_that_offers_ten_choices_inside_its_card_and_reports_the_pick()
+ {
+    use slint::platform::{PointerEventButton, WindowEvent};
+    let mut problems: Vec<String> = Vec::new();
+    for (width, scale) in [(480_u32, 1.0_f32), (1040, 1.0), (480, 2.25), (1040, 2.25)] {
+        let h = main_with_groups(width, scale, false, false);
+        let picked = std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
+        let p = picked.clone();
+        h.component
+            .on_group_colour_chosen(move |row, hue| p.borrow_mut().push((row, hue)));
+        let _ = settle_quietly(&h);
+        let at = format!("{width}px, scale {scale}");
+        let Some(header) = all(&h)
+            .into_iter()
+            .find(|b| b.role == Role::Button && b.label == "group Replies, Teal, 2 items")
+        else {
+            problems.push(format!("{at}: no header"));
+            continue;
+        };
+        let position =
+            slint::LogicalPosition::new(header.x + header.w / 2.0, header.y + header.h / 2.0);
+        h.component
+            .window()
+            .dispatch_event(WindowEvent::PointerPressed {
+                position,
+                button: PointerEventButton::Right,
+            });
+        h.component
+            .window()
+            .dispatch_event(WindowEvent::PointerReleased {
+                position,
+                button: PointerEventButton::Right,
+            });
+        let _ = settle_quietly(&h);
+        let entry = ElementQuery::from_root(&h.component)
+            .match_descendants()
+            .match_predicate(|e| {
+                e.accessible_label()
+                    .is_some_and(|l| l.as_str() == "Group colour…")
+            })
+            .find_first();
+        let Some(entry) = entry else {
+            problems.push(format!("{at}: the header menu has no Group colour… row"));
+            continue;
+        };
+        entry.invoke_accessible_default_action();
+        let dialog_frame = settle_quietly(&h);
+        let radios: Vec<Boxed> = all(&h)
+            .into_iter()
+            .filter(|b| b.role == Role::RadioButton)
+            .collect();
+        if radios.len() != 10 {
+            problems.push(format!(
+                "{at}: {} choices instead of 10: {:?}",
+                radios.len(),
+                radios.iter().map(|b| &b.label).collect::<Vec<_>>()
+            ));
+            continue;
+        }
+        let card = f32::min(384.0, width as f32 - 32.0);
+        let (left, right) = (
+            (width as f32 - card) / 2.0,
+            f32::midpoint(width as f32, card),
+        );
+        for r in &radios {
+            if r.x < left + 8.0 || r.x + r.w > right - 8.0 || r.w < 27.5 || r.h < 27.5 {
+                problems.push(format!(
+                    "{at}: {:?} at x {:.0}..{:.0} ({:.0}x{:.0}) is outside the card {left:.0}..{right:.0} or under 28",
+                    r.label, r.x, r.x + r.w, r.w, r.h
+                ));
+            }
+        }
+        if width == 1040 && scale < 1.1 {
+            assert_golden(
+                "main-group-colour-dialog-light",
+                &dialog_frame.expect("the open dialog drew"),
+            );
+        }
+        let rose = ElementQuery::from_root(&h.component)
+            .match_descendants()
+            .match_predicate(|e| {
+                e.accessible_role() == Some(Role::RadioButton)
+                    && e.accessible_label()
+                        .is_some_and(|l| l.as_str().contains("Rose"))
+            })
+            .find_first()
+            .expect("rose");
+        rose.invoke_accessible_default_action();
+        let _ = settle_quietly(&h);
+        if *picked.borrow() != [(0, 6)] {
+            problems.push(format!(
+                "{at}: reported {:?}, wanted [(0, 6)]",
+                picked.borrow()
+            ));
+        }
+        let still: usize = all(&h)
+            .iter()
+            .filter(|b| b.role == Role::RadioButton)
+            .count();
+        if still != 0 {
+            problems.push(format!("{at}: the dialog stayed open after a pick"));
+        }
+    }
+    assert_eq!(problems.len(), 0, "{}", problems.join("\n"));
+}
+
+#[test]
+fn the_group_header_dot_golden_light_and_dark() {
+    let h = main_with_groups(1040, 1.0, false, false);
+    assert_golden("main-group-colour-light", &h.render_settled());
+    drop(h);
+    let h = main_with_groups(1040, 1.0, true, false);
+    assert_golden("main-group-colour-dark", &h.render_settled());
 }
 
 // ---- Board editor --------------------------------------------------------------------------------------------

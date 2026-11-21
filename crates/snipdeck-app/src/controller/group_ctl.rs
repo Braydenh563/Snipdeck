@@ -527,6 +527,27 @@ where
         self.group_refresh(s);
     }
 
+    /// The Main window's colour choice for header `index`: one of the nine accents, or none.
+    /// The same colour again does nothing. A history step, like the rename.
+    pub fn main_group_colour(&mut self, index: usize, colour: Option<snipdeck_core::ListAccent>) {
+        self.main_fresh();
+        let Some(run) = self.group_row(Surface::Main, index) else {
+            return;
+        };
+        if colour == run.group.colour {
+            return;
+        }
+        let before = run.group;
+        let mut after = before.clone();
+        after.colour = colour;
+        if self.store.update_group(&after).is_err() {
+            self.show_toast(failed());
+            return;
+        }
+        self.record_step(Action::Group, vec![Change::Rename { before, after }]);
+        self.group_refresh(Surface::Main);
+    }
+
     /// Ungroup: the header goes, the items stay. One Undo step.
     pub fn group_ungroup(&mut self, index: usize) {
         self.group_ungroup_on(Surface::Panel, index);

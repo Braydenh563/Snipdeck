@@ -318,6 +318,7 @@ ui_tests! {
                 title: "Group".into(),
                 is_header: true,
                 group_count: 2,
+                group_colour: -1,
                 ..Default::default()
             },
         );
@@ -336,6 +337,7 @@ ui_tests! {
             is_header: true,
             group_count: count,
             group_collapsed: collapsed,
+            group_colour: -1,
             ..Default::default()
         };
         let mut rows = fixture::sample_rows();
@@ -1068,6 +1070,7 @@ ui_tests! {
                 title: "Replies".into(),
                 is_header: true,
                 group_count: 2,
+                group_colour: -1,
                 ..Default::default()
             },
         );
