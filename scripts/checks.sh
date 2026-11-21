@@ -15,6 +15,7 @@ run i18n python3 scripts/i18n.py check --strict
 run i18n-tests python3 scripts/test_i18n.py
 run symbols python3 -I scripts/symbols.py --check
 run symbols-tests python3 -I scripts/test_symbols.py
+run ui-icons-tests python3 -I scripts/test_ui_icons.py
 run installer python3 -I scripts/installer_check.py
 run installer-tests python3 -I scripts/test_installer_check.py
 run msix-tests python3 -I scripts/test_msix_manifest.py

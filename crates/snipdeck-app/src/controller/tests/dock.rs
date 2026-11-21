@@ -1835,10 +1835,12 @@ fn a_hidden_start_of_a_docked_panel_shows_its_tab() {
     assert_eq!(w.ctl.dock_tick(), place(open_rect(DockEdge::Right)));
 
     // A floating Panel and a dock that does not tuck start hidden, as asked.
-    for before in [
-        floating(DockTrigger::Both),
-        docked(DockTrigger::Off, DockEdge::Right),
-    ] {
+    for docked_off in [false, true] {
+        let before = if docked_off {
+            docked(DockTrigger::Off, DockEdge::Right)
+        } else {
+            floating(DockTrigger::Both)
+        };
         let mut w = world_with(Some(outlook()), before.ctl.settings().clone());
         w.targets.add_monitor(display());
         assert_eq!(w.ctl.start_hidden(), [Effect::HidePanel]);
