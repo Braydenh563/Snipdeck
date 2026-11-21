@@ -4,7 +4,7 @@
 //!
 //! [`run`] is pure: it asks a [`DoctorHost`] for facts and turns them into [`Check`]s, so tests
 //! run every check passing and failing against a fake. The app's host is
-//! [`crate::help_binding::ControllerDoctor`]. A check carries its facts ([`Detail`]); the window
+//! `help_binding::WorkerDoctor`. A check carries its facts ([`Detail`]); the window
 //! words them through `DoctorTexts` in the language shown, and only the report is English.
 //!
 //! [`report`] renders the diagnostic report the user can copy: versions, system, setting flags and
@@ -168,7 +168,7 @@ fn check(label: &'static str, status: Status, detail: Detail, fix: Option<Fix>) 
 }
 
 /// What one check found: a kind and its facts, so the window can word it in any language
-/// (`DoctorTexts` in Slint) and the report keeps one English sentence ([`Display`]).
+/// (`DoctorTexts` in Slint) and the report keeps one English sentence (`Display`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Detail {
     /// The data folder cannot be written (why).
