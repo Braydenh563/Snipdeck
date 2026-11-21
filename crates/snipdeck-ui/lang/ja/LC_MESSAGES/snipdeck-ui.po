@@ -1184,6 +1184,15 @@ msgstr "最近へ移動"
 msgid "Go to Trash"
 msgstr "ゴミ箱へ移動"
 
+msgid "Go to board “{}”"
+msgstr "ボード「{}」へ移動"
+
+msgid "Go to list “{}” on {}"
+msgstr "リスト「{}」（{}）へ移動"
+
+msgid "Go to tag “{}”"
+msgstr "タグ「{}」へ移動"
+
 msgid "Grab text as you go"
 msgstr "作業中のテキストをすぐ保存"
 
@@ -3443,6 +3452,9 @@ msgstr "テキストカーソルのどちら側にピッカーを開くかを選
 
 msgid "Will not be imported"
 msgstr "取り込まれません"
+
+msgid "Window"
+msgstr "ウィンドウ"
 
 msgid "Window behaviour"
 msgstr "ウィンドウの動作"

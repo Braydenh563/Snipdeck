@@ -1184,6 +1184,15 @@ msgstr "前往“最近”"
 msgid "Go to Trash"
 msgstr "前往“回收站”"
 
+msgid "Go to board “{}”"
+msgstr "转到看板“{}”"
+
+msgid "Go to list “{}” on {}"
+msgstr "转到列表“{}”（{}）"
+
+msgid "Go to tag “{}”"
+msgstr "转到标签“{}”"
+
 msgid "Grab text as you go"
 msgstr "随手保存文本"
 
@@ -3443,6 +3452,9 @@ msgstr "选择器在文本光标的哪一侧打开。没有空间时会移到另
 
 msgid "Will not be imported"
 msgstr "将不会导入"
+
+msgid "Window"
+msgstr "窗口"
 
 msgid "Window behaviour"
 msgstr "窗口行为"

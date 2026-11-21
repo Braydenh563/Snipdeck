@@ -221,7 +221,9 @@ where
                 can_undo: ctl.history_view().undo.is_some(),
                 can_redo: ctl.history_view().redo.is_some(),
                 lock_set: ctl.master_password_set(),
+                panel_item: ctl.palette_item_pinned(),
             },
+            &ctl.palette_places(),
             query,
         );
     }
@@ -229,6 +231,14 @@ where
     /// The palette ran command `id`: Search moves the window's own focus, Tour opens the tour
     /// window, every other command is the controller's.
     fn run_command(self: &Rc<Self>, id: i32) {
+        // A board, list or tag row: the places are read again in the order the rows were made.
+        if let Some(i) = crate::commands::place_index(id) {
+            let place = self.controller.borrow().palette_places().into_iter().nth(i);
+            if let Some(place) = place {
+                self.act(|ctl| ctl.main_go(&place));
+            }
+            return;
+        }
         let Some(command) = crate::command_binding::command_of(id) else {
             return;
         };
@@ -743,7 +753,10 @@ where
         ));
         {
             let core = Rc::clone(&core);
-            window.on_palette_opened(move || core.fill_palette(""));
+            window.on_palette_opened(move || {
+                core.controller.borrow_mut().palette_opened();
+                core.fill_palette("");
+            });
         }
         {
             let core = Rc::clone(&core);

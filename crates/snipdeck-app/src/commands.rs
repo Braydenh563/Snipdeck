@@ -516,6 +516,76 @@ fn rank(label: &str, synonyms: &str, word: &str) -> Option<usize> {
     }
 }
 
+/// Somewhere the palette can go by name: a board, a list or a tag. Rows for these come from the library,
+/// not from [`Command::ALL`], and appear once the user has typed something.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Place {
+    /// A board.
+    Board {
+        /// Which.
+        id: snipdeck_core::BoardId,
+        /// Its name.
+        name: String,
+    },
+    /// A list, on its board.
+    List {
+        /// The board it is on.
+        board: snipdeck_core::BoardId,
+        /// Which.
+        id: snipdeck_core::ListId,
+        /// Its name.
+        name: String,
+        /// The name of its board.
+        board_name: String,
+    },
+    /// A tag.
+    Tag {
+        /// Which.
+        id: snipdeck_core::TagId,
+        /// Its name.
+        name: String,
+    },
+}
+
+/// The palette id of the first [`Place`] row; the ids below it are [`Command::ALL`] indexes.
+pub const PLACE_BASE: i32 = 1000;
+
+/// The most place rows the palette shows at once.
+pub const PLACE_LIMIT: usize = 8;
+
+/// The place a palette id names, as an index into the places the palette was filled from.
+#[must_use]
+pub fn place_index(id: i32) -> Option<usize> {
+    id.checked_sub(PLACE_BASE)
+        .and_then(|i| usize::try_from(i).ok())
+}
+
+/// The places that match `query`, best first, as indexes into `labels` (the translated row text of each
+/// place). Nothing matches an empty query: the places would drown the commands.
+#[must_use]
+pub fn matching_places(labels: &[String], query: &str) -> Vec<usize> {
+    let words: Vec<String> = query
+        .split_whitespace()
+        .map(snipdeck_symbols::fold)
+        .collect();
+    if words.is_empty() {
+        return Vec::new();
+    }
+    let mut hits: Vec<(usize, usize)> = labels
+        .iter()
+        .enumerate()
+        .filter_map(|(i, label)| {
+            // The quotes around a name are not part of it: “Work” starts with a w.
+            let label = snipdeck_symbols::fold(label).replace(['“', '”'], " ");
+            let ranks: Option<Vec<usize>> =
+                words.iter().map(|word| rank(&label, "", word)).collect();
+            ranks.map(|r| (r.iter().sum::<usize>(), i))
+        })
+        .collect();
+    hits.sort_unstable();
+    hits.into_iter().take(PLACE_LIMIT).map(|(_, i)| i).collect()
+}
+
 /// The entries for `query`, best match first. `texts` holds `(label, synonyms)` per command in the order
 /// of [`Command::ALL`]. Each whitespace-separated word of the query must appear (ignoring case) in the
 /// label or the synonyms; a word at the start of the label ranks above one inside it, above one in the
@@ -573,6 +643,37 @@ pub fn entries(texts: &[(String, String)], ctx: &Context<'_>, query: &str) -> Ve
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn places_show_only_for_a_query_and_the_best_match_comes_first() {
+        let labels: Vec<String> = [
+            "Go to board “Work”",
+            "Go to list “Links” on Work",
+            "Go to list “Work notes” on Home",
+            "Go to tag “urgent”",
+        ]
+        .iter()
+        .map(|s| (*s).to_owned())
+        .collect();
+        assert!(
+            matching_places(&labels, "").is_empty(),
+            "nothing without a query"
+        );
+        assert!(matching_places(&labels, "   ").is_empty());
+        assert_eq!(matching_places(&labels, "tag urg"), [3]);
+        assert_eq!(matching_places(&labels, "go work"), [0, 1, 2]);
+        assert_eq!(matching_places(&labels, "wörk"), [0, 1, 2], "accents fold");
+        assert_eq!(matching_places(&labels, "zzz"), Vec::<usize>::new());
+    }
+
+    #[test]
+    fn at_most_eight_places_are_shown_and_ids_map_back_to_an_index() {
+        let labels: Vec<String> = (0..20).map(|i| format!("Go to tag “t{i}”")).collect();
+        assert_eq!(matching_places(&labels, "tag").len(), PLACE_LIMIT);
+        assert_eq!(place_index(PLACE_BASE + 3), Some(3));
+        assert_eq!(place_index(5), None, "a command id is not a place");
+        assert_eq!(place_index(-1), None);
+    }
 
     fn texts() -> Vec<(String, String)> {
         let labels = [

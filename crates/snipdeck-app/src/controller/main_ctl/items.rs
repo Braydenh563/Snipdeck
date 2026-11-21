@@ -99,7 +99,7 @@ where
         self.copy_items(&ids)
     }
 
-    pub(super) fn pin(&mut self, items: &[ItemId]) {
+    pub(in crate::controller) fn pin(&mut self, items: &[ItemId]) {
         let now = self.clock.now();
         let pin = !items
             .iter()

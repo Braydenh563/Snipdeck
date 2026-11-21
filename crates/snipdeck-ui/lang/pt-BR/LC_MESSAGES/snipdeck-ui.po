@@ -1185,6 +1185,15 @@ msgstr "Ir para Recentes"
 msgid "Go to Trash"
 msgstr "Ir para a Lixeira"
 
+msgid "Go to board “{}”"
+msgstr "Ir para o quadro “{}”"
+
+msgid "Go to list “{}” on {}"
+msgstr "Ir para a lista “{}” em {}"
+
+msgid "Go to tag “{}”"
+msgstr "Ir para a etiqueta “{}”"
+
 msgid "Grab text as you go"
 msgstr "Capture texto na hora"
 
@@ -3451,6 +3460,9 @@ msgstr "Em que lado do cursor de texto o seletor abre. Ele vai para o lado opost
 
 msgid "Will not be imported"
 msgstr "Não será importado"
+
+msgid "Window"
+msgstr "Janela"
 
 msgid "Window behaviour"
 msgstr "Comportamento da janela"

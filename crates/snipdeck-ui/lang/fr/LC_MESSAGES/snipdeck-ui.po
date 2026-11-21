@@ -1185,6 +1185,15 @@ msgstr "Aller à Récents"
 msgid "Go to Trash"
 msgstr "Aller à la corbeille"
 
+msgid "Go to board “{}”"
+msgstr "Aller au tableau « {} »"
+
+msgid "Go to list “{}” on {}"
+msgstr "Aller à la liste « {} » dans {}"
+
+msgid "Go to tag “{}”"
+msgstr "Aller à l’étiquette « {} »"
+
 msgid "Grab text as you go"
 msgstr "Saisir du texte au fil de l'eau"
 
@@ -3451,6 +3460,9 @@ msgstr "Le côté du curseur de texte où s'ouvre le sélecteur. Il passe du cô
 
 msgid "Will not be imported"
 msgstr "Ne sera pas importé"
+
+msgid "Window"
+msgstr "Fenêtre"
 
 msgid "Window behaviour"
 msgstr "Comportement de la fenêtre"

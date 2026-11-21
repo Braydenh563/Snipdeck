@@ -1185,6 +1185,15 @@ msgstr "Zu Zuletzt wechseln"
 msgid "Go to Trash"
 msgstr "Zum Papierkorb wechseln"
 
+msgid "Go to board “{}”"
+msgstr "Zum Board „{}“"
+
+msgid "Go to list “{}” on {}"
+msgstr "Zur Liste „{}“ in {}"
+
+msgid "Go to tag “{}”"
+msgstr "Zum Schlagwort „{}“"
+
 msgid "Grab text as you go"
 msgstr "Text unterwegs festhalten"
 
@@ -3451,6 +3460,9 @@ msgstr "Auf welcher Seite des Textcursors sich die Auswahl öffnet. Ist dort kei
 
 msgid "Will not be imported"
 msgstr "Wird nicht importiert"
+
+msgid "Window"
+msgstr "Fenster"
 
 msgid "Window behaviour"
 msgstr "Fensterverhalten"

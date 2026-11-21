@@ -228,11 +228,11 @@ fn measure_picker_and_palette_budgets() {
     let mut worst_key: f64 = 0.0;
     let query = "reply template 9999";
     for end in (1..=query.len()).filter(|e| query.is_char_boundary(*e)) {
-        let (_, ms) = watch.measure(|| picker.set_query(&query[..end]));
+        let ((), ms) = watch.measure(|| picker.set_query(&query[..end]));
         worst_key = worst_key.max(ms);
     }
-    let (_, clear_ms) = watch.measure(|| picker.set_query(""));
-    let (_, scope_ms) = watch.measure(|| picker.set_scope(Scope::Board));
+    let ((), clear_ms) = watch.measure(|| picker.set_query(""));
+    let ((), scope_ms) = watch.measure(|| picker.set_scope(Scope::Board));
     println!(
         "picker per key: worst {worst_key:.2} ms, clearing {clear_ms:.2} ms, scope change {scope_ms:.2} ms (budget {SEARCH_BUDGET_MS} ms)"
     );
@@ -266,7 +266,8 @@ fn measure_picker_and_palette_budgets() {
         .collect();
     let mut worst_palette: f64 = 0.0;
     for q in ["", "p", "pa", "paste", "paste it", "stg"] {
-        let (_, ms) = watch.measure(|| commands::entries(&texts, &ctx, q));
+        let (entries, ms) = watch.measure(|| commands::entries(&texts, &ctx, q));
+        drop(entries);
         worst_palette = worst_palette.max(ms);
     }
     println!("palette filter: worst {worst_palette:.2} ms (budget {PALETTE_BUDGET_MS} ms)");

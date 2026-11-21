@@ -47,17 +47,128 @@ where
         self.run_command(action.command(), 0);
     }
 
+    /// The Panel's Ctrl+K and "Commands…": the palette opens in the Main window, and its item
+    /// commands act on the row the Panel had selected.
+    pub fn ask_commands(&mut self) -> Vec<Effect> {
+        self.menu = super::PanelMenu::None;
+        self.palette_armed = self.model.selected();
+        vec![Effect::OpenCommands]
+    }
+
+    /// The Main window's palette opened: it acts on the Panel's row when the Panel asked for it,
+    /// on Main's own cursor otherwise.
+    pub fn palette_opened(&mut self) {
+        self.palette_item = self.palette_armed.take();
+    }
+
+    /// Whether the open palette acts on a Panel row, and whether that item is pinned.
+    #[must_use]
+    pub fn palette_item_pinned(&self) -> Option<bool> {
+        let id = self.palette_item?;
+        self.store.item(id).ok().map(|i| i.pinned)
+    }
+
+    /// `action` on the one item `id` (the Panel's row), by the paths the menus use.
+    fn item_action_on(&mut self, id: snipdeck_core::ItemId, action: MainAction) {
+        match action {
+            MainAction::Use => {
+                self.use_item(id, snipdeck_core::UseMode::Paste);
+            }
+            MainAction::UsePlain => {
+                self.use_item(id, snipdeck_core::UseMode::PastePlain);
+            }
+            MainAction::Copy => {
+                self.copy_items(&[id]);
+            }
+            MainAction::Edit => self.open_item_editor(id),
+            MainAction::Pin => self.pin(&[id]),
+            MainAction::Duplicate => self.duplicate(&[id]),
+            MainAction::Delete => self.trash_items(&[id]),
+            // The Panel has no Trash and no choosers.
+            MainAction::Restore
+            | MainAction::DeleteForever
+            | MainAction::Move
+            | MainAction::Tag
+            | MainAction::PasteAs => {}
+        }
+    }
+
+    /// Every board, list and tag by name, in library order: what the palette can go to.
+    #[must_use]
+    pub fn palette_places(&self) -> Vec<crate::commands::Place> {
+        use crate::commands::Place;
+        let mut places = Vec::new();
+        let boards = self.store.boards().unwrap_or_default();
+        for board in &boards {
+            places.push(Place::Board {
+                id: board.id,
+                name: board.name.to_string(),
+            });
+        }
+        for board in &boards {
+            for list in self.store.lists(board.id).unwrap_or_default() {
+                places.push(Place::List {
+                    board: board.id,
+                    id: list.id,
+                    name: list.name.to_string(),
+                    board_name: board.name.to_string(),
+                });
+            }
+        }
+        for tag in self.store.tags().unwrap_or_default() {
+            places.push(Place::Tag {
+                id: tag.id,
+                name: tag.name.to_string(),
+            });
+        }
+        places
+    }
+
+    /// The palette chose `place`: the Main window shows that board, list or tag.
+    pub fn main_go(&mut self, place: &crate::commands::Place) {
+        use crate::commands::Place;
+        self.main_fresh();
+        match place {
+            Place::Board { id, .. } => {
+                self.open_board(*id);
+                self.revealed = None;
+            }
+            Place::List { board, id, .. } => {
+                if self.main.board() != Some(*board) {
+                    self.open_board(*board);
+                }
+                self.main_open(Section::List(*id));
+            }
+            Place::Tag { id, .. } => self.main_open(Section::Tag(*id)),
+        }
+    }
+
     /// Opens Settings and starts `action` there.
     fn settings_action(&mut self, action: SettingsAction) {
         self.pending.push(Effect::SettingsAction(action));
+    }
+
+    /// An item command acts on the Panel's row when the palette was asked for by the Panel (for one
+    /// command), else on the Main window's selection. False when `command` is no item command.
+    fn run_item_command(&mut self, command: Command, cursor: usize) -> bool {
+        let panel_item = self.palette_item.take();
+        let Some(action) = item_action(command) else {
+            return false;
+        };
+        match panel_item {
+            Some(id) => self.item_action_on(id, action),
+            None => {
+                self.main_action(action, cursor);
+            }
+        }
+        true
     }
 
     /// Runs `command`. `cursor` is the row under the keyboard cursor: the item commands act on it
     /// (the selection, when several rows are selected, as the menus do). Commands that only
     /// move focus inside the Main window (Search) are the window's and do nothing here.
     pub fn run_command(&mut self, command: Command, cursor: usize) {
-        if let Some(action) = item_action(command) {
-            self.main_action(action, cursor);
+        if self.run_item_command(command, cursor) {
             return;
         }
         match command {

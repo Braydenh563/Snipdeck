@@ -364,3 +364,28 @@ fn delete_in_the_picker_trashes_the_row_with_an_undo_toast() {
     assert_eq!(picker_titles(&w).len(), before - 1);
     assert!(w.ctl.view().toast.is_some(), "the Undo toast");
 }
+
+#[test]
+fn a_palette_the_panel_asked_for_acts_on_the_panel_row_not_on_mains_cursor() {
+    let mut w = world();
+    w.ctl.move_selection(2);
+    let id = w.ctl.view().rows[2].id;
+    assert_eq!(w.ctl.ask_commands(), [Effect::OpenCommands]);
+    assert_eq!(
+        w.ctl.palette_item_pinned(),
+        None,
+        "not until the palette opens"
+    );
+    w.ctl.palette_opened();
+    assert_eq!(w.ctl.palette_item_pinned(), Some(false));
+    w.ctl.run_command(crate::commands::Command::PinItem, 0);
+    assert!(w.ctl.store().item(id).expect("item").pinned);
+    assert_eq!(
+        w.ctl.palette_item_pinned(),
+        None,
+        "the Panel's row serves one command"
+    );
+    // A palette opened in Main alone has no Panel row.
+    w.ctl.palette_opened();
+    assert_eq!(w.ctl.palette_item_pinned(), None);
+}
