@@ -462,18 +462,29 @@ mod tests {
 
     #[test]
     fn the_recent_scope_holds_only_items_that_were_used_latest_first() {
-        let (_, mut m) = model();
+        let mut store = demo::store(now()).expect("demo store");
+        let work = store.boards().expect("boards")[0].id;
+        let load = |s: &Store| PickerModel::load_cached(s, Some(work), &IndexCache::new());
+        let mut m = load(&store).expect("model");
         m.set_scope(Scope::Recent);
-        let used = m.rows().len();
-        assert!(used > 0, "the demo library has used items");
-        assert!(used < 30, "not every item has been used");
-        let all = {
-            m.set_scope(Scope::All);
-            m.rows().len()
-        };
-        assert!(used < all);
+        assert!(
+            m.rows().is_empty(),
+            "nothing has been used in a fresh library"
+        );
+
+        // Two uses, the later one second: it comes first.
+        m.set_scope(Scope::All);
+        let ids: Vec<_> = m.rows().iter().take(2).map(|r| r.id).collect();
+        let earlier = now();
+        let later: Timestamp = "2026-10-18T10:00:00Z".parse().expect("timestamp");
+        store.record_use(ids[0], earlier).expect("use");
+        store.record_use(ids[1], later).expect("use");
+        let mut m = load(&store).expect("model");
+        m.set_scope(Scope::Recent);
+        let rows: Vec<_> = m.rows().iter().map(|r| r.id).collect();
+        assert_eq!(rows, [ids[1], ids[0]]);
+
         // A query narrows inside the scope.
-        m.set_scope(Scope::Recent);
         m.set_query("zzzz-nothing");
         assert!(m.rows().is_empty(), "no match, no rows");
     }
