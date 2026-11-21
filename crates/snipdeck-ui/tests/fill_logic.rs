@@ -363,16 +363,16 @@ ui_tests! {
             ui.on_date_picked(move |i, y, m, d| picked.borrow_mut().push((i, y, m, d)));
         }
         settle();
-        assert!(all(&ui, "October 2026", AccessibleRole::Text).is_empty(), "closed at first");
+        assert_eq!(all(&ui, "October 2026", AccessibleRole::Text).len(), 0, "closed at first")
         find(&ui, "Pick a date", AccessibleRole::Button).invoke_accessible_default_action();
         settle();
-        assert!(!all(&ui, "October 2026", AccessibleRole::Text).is_empty(), "the grid is open on today's month");
+        assert_ne!(all(&ui, "October 2026", AccessibleRole::Text).len(), 0, "the grid is open on today's month")
         // The grid has the keyboard: the cursor starts on today (the 17th); Right then Enter picks the 18th.
         press(ui.window(), &key(Key::RightArrow));
         press(ui.window(), &key(Key::Return));
         settle();
         assert_eq!(*picked.borrow(), [(3, 2026, 10, 18)]);
-        assert!(all(&ui, "October 2026", AccessibleRole::Text).is_empty(), "picking closes the grid");
+        assert_eq!(all(&ui, "October 2026", AccessibleRole::Text).len(), 0, "picking closes the grid")
     }
 
     fn escape_closes_the_month_grid_and_not_the_form() {
@@ -383,7 +383,7 @@ ui_tests! {
         take(&log);
         press(ui.window(), &key(Key::Escape));
         settle();
-        assert!(all(&ui, "October 2026", AccessibleRole::Text).is_empty());
+        assert_eq!(all(&ui, "October 2026", AccessibleRole::Text).len(), 0)
         assert_eq!(take(&log), Vec::<String>::new(), "the form stays open");
     }
 

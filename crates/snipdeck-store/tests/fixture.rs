@@ -136,7 +136,7 @@ fn the_fixtures_search_index_and_trash_work() {
     // Version 10 rebuilt the index with trigrams over folded text: mid-word and any case.
     assert_eq!(found(&s, "ELL"), [id::<ItemId>(ITEM_RICH)]);
     assert_eq!(found(&s, "hunter2").len(), 0);
-    assert!(found(&s, "obsolete").is_empty(), "trashed");
+    assert_eq!(found(&s, "obsolete").len(), 0, "trashed")
     let trashed = s.trashed().unwrap();
     assert_eq!(trashed.len(), 1);
     s.restore(trashed[0].target).unwrap();

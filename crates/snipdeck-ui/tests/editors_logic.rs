@@ -498,7 +498,7 @@ ui_tests! {
                 .match_id("TextField::gutter-text")
                 .find_all()
         };
-        assert!(gutter().is_empty(), "off: no column");
+        assert_eq!(gutter().len(), 0, "off: no column")
         let switch = find(&ui, "Line numbers", AccessibleRole::Switch);
         click(&switch);
         assert!(ui.get_line_numbers());
@@ -506,7 +506,7 @@ ui_tests! {
         assert!(gutter()[0].size().width > 0.0);
         click(&find(&ui, "Line numbers", AccessibleRole::Switch));
         assert!(!ui.get_line_numbers());
-        assert!(gutter().is_empty());
+        assert_eq!(gutter().len(), 0)
     }
 
     fn the_monospace_switch_starts_on_for_code_and_off_for_text_and_flips_either() {

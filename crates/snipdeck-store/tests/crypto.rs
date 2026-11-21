@@ -168,7 +168,7 @@ fn sensitive_items_are_stored_encrypted_and_read_back_in_plain_text() {
         dir.path(),
         &[b"ZQ9inlineSECRET", b"ZQ9fileSECRET", &big[..64]],
     );
-    assert!(found(&s, "4711").is_empty(), "content is not indexed");
+    assert_eq!(found(&s, "4711").len(), 0, "content is not indexed")
     assert_eq!(found(&s, "bank"), [it.id], "the title is");
     assert_healthy(&s);
 }

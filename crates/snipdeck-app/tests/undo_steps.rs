@@ -110,13 +110,13 @@ fn deleting_a_tag_is_a_step_that_undo_brings_back_with_its_items() {
     let id = tag_invoice_reminder(&mut ctl);
     let tag = ctl.main_screen().tags[0].id;
     ctl.main_delete_tag(0);
-    assert!(ctl.store().item(id).unwrap().tags.is_empty());
+    assert_eq!(ctl.store().item(id).unwrap().tags.len(), 0)
     assert_eq!(ctl.history_view().undo, Some(Action::Tag));
     ctl.undo();
     assert!(ctl.store().item(id).unwrap().tags.contains(&tag));
     assert_eq!(tag_names(&mut ctl).len(), 2);
     ctl.redo();
-    assert!(ctl.store().item(id).unwrap().tags.is_empty());
+    assert_eq!(ctl.store().item(id).unwrap().tags.len(), 0)
     assert_eq!(tag_names(&mut ctl).len(), 1);
 }
 
@@ -133,7 +133,7 @@ fn the_steps_before_a_tag_delete_still_undo_after_it_is_taken_back() {
     assert_eq!(ctl.store().item(id).unwrap().pinned, was);
     let toast = ctl.view().toast.expect("a toast");
     assert_ne!(toast.kind, ToastKind::Danger, "{toast:?}");
-    assert!(!ctl.store().item(id).unwrap().tags.is_empty());
+    assert_ne!(ctl.store().item(id).unwrap().tags.len(), 0)
 }
 
 #[test]

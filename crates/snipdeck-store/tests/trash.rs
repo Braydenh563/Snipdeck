@@ -355,7 +355,7 @@ fn purge_entry_deletes_one_trashed_item_and_leaves_the_rest() {
     s.purge_entry(Trashable::Item(it[0].id)).unwrap();
     let left: Vec<_> = s.trashed().unwrap().into_iter().map(|e| e.label).collect();
     assert_eq!(left, ["two"], "the other trash entry stays");
-    assert!(found(&s, "one").is_empty(), "its search row is gone");
+    assert_eq!(found(&s, "one").len(), 0, "its search row is gone")
     assert_eq!(titles(&s, l.id), ["three"]);
     assert!(matches!(
         s.restore(Trashable::Item(it[0].id)),

@@ -162,14 +162,14 @@ mod tests {
         let mut w = World::new();
         w.clipboard.fail_snapshot = true;
         assert_eq!(w.capture(), None);
-        assert!(w.keyboard.sent.is_empty());
-        assert!(w.clipboard.written.is_empty());
+        assert_eq!(w.keyboard.sent.len(), 0)
+        assert_eq!(w.clipboard.written.len(), 0)
 
         let mut partial = World::new();
         partial.clipboard.incomplete_snapshot = true;
         assert_eq!(partial.capture(), None);
-        assert!(partial.keyboard.sent.is_empty());
-        assert!(partial.clipboard.written.is_empty());
+        assert_eq!(partial.keyboard.sent.len(), 0)
+        assert_eq!(partial.clipboard.written.len(), 0)
 
         let mut lost = World::new();
         lost.clipboard.copy_arrives = Some((0, "x".into()));

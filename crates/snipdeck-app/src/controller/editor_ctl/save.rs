@@ -635,7 +635,7 @@ mod tests {
         let mut now = base.clone();
         now.sensitive = true;
         edit.merge_onto(&opened, &mut now);
-        assert!(now.tags.is_empty());
+        assert_eq!(now.tags.len(), 0)
         assert!(now.sensitive, "an untouched field keeps its current value");
     }
 

@@ -551,7 +551,7 @@ mod tests {
         // The quoted value parses back to the whole name.
         let (applied, _) = apply("tag:rep", &suggest("tag:rep", 7, &index)[0]);
         let query = snipdeck_core::search::Query::parse(&applied);
-        assert!(query.terms.is_empty(), "{query:?}");
+        assert_eq!(query.terms.len(), 0, "{query:?}")
         assert_eq!(
             query.filters[0].filter,
             snipdeck_core::search::Filter::Tag("email replies".into())
