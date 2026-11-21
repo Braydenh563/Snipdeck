@@ -102,6 +102,7 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - 2026-11-21: Data merge: "Back up now" keeps the data branch's manual backup (a file of its own) and drops PR #5's `replace` (overwrite today's). A separate file never destroys an earlier copy. Both folder features stay (the user-chosen backup folder and the Store copy-out).
 
 ## Inbox
+- 2026-11-21 (merge-main agent): a draft of control characters near DRAFT_TEXT_MAX_BYTES (128 KB) escapes to ~768 KB of JSON, over the 256 KB drafts file cap, so Drafts::save fails. Fix: cap on the encoded size (or size the file cap from the escape worst case), with a test.
 - 2026-11-21 (owner, verbatim): "dont stop and make sure no work is missed, I want absolutely everything done so that all I will have to do is test it myself"
 - 2026-11-16 owner: "I removed the key from github and Ive just made a developers account on the partner centre" -> SNIPDECK_LICENCE_PUBLIC_KEY secret removed (done); next owner steps: reserve name, set MSIX_* repo variables.
 - 2026-11-16 owner: name reserved (Store ID 9N358S63JBHH), MSIX_IDENTITY_NAME/PUBLISHER/PUBLISHER_DISPLAY_NAME repo variables set (verified from screenshot). Done.
