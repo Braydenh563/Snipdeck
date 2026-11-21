@@ -148,3 +148,24 @@ fn a_read_only_handle_checks_and_counts_beside_the_owner() {
     assert!(reader.key_ring_exists().is_ok());
     assert!(reader.check_integrity().is_ok());
 }
+
+#[test]
+fn a_damaged_search_index_is_not_reported_healthy_by_a_read_only_handle() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut owner = Store::open(dir.path()).unwrap();
+    let b = board(&mut owner, "B");
+    let l = list(&mut owner, b.id, "L");
+    item(&mut owner, l.id, "alpha", "some searchable body text");
+    item(&mut owner, l.id, "beta", "more searchable body text");
+    {
+        let raw = Connection::open(dir.path().join("snipdeck.db")).unwrap();
+        raw.execute("UPDATE item_fts_data SET block = x'0000' WHERE id > 10", [])
+            .unwrap();
+    }
+    let reader = Store::open_reader(dir.path(), None).unwrap();
+    let problems = reader.check_integrity().unwrap();
+    assert!(
+        problems.iter().any(|p| p.contains("full-text index")),
+        "{problems:?}"
+    );
+}
