@@ -50,3 +50,9 @@ EXTRAS-4 (Rust-side English into *Texts globals), 12 (portable marker, trash ret
 ## Update (final batch)
 - Spoken shortcut phrases and the Trigger/Hello words are translated (`commands::PHRASES`, `NameTexts.phrase`, 6 locales); test `every_phrase_the_list_speaks_is_one_that_gets_translated`. Still English by design: the technical reasons in main.rs start-up failures ("creating the Panel: {e}"), framed by `wording::startup_failure_text`.
 - main.rs 260-870 audited: only the stale "30 days" comment (fixed). No other findings.
+
+## Merge of compassionate-pascal-pod8ux (done)
+- Merged; conflicts resolved (settings, maintenance, catalogues re-extracted, goldens regenerated).
+- Main window `min-window-width` now scales with text size (480 + (s-1)*552 px); the 2.25x "Main window" skip in locale_fit.rs is gone, English has 0 elements past the edge at 2.25x.
+- Merge fixes: Store blob `hold` in the read-only open; dead `set_new_list_base` removed; clippy large-array in a dock test; `test_ui_icons.py` wired into scripts/checks.sh.
+- Gate --changed (GATE_BASE=a07a4a1) green; clippy +1.99.1 clean. Not run: gate --full, Windows checks.
