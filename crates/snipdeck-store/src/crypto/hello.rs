@@ -1,6 +1,7 @@
 //! The Windows Hello copy of the data key (`docs/crypto.md` "Windows Hello").
 //!
-//! Hello signs a fixed [`HELLO_CHALLENGE`]; `KEK = SHA-256("snipdeck-hello-kek-v1" || signature)`
+//! Hello signs a random per-seal challenge (kept with the sealed copy, so a new seal has a new
+//! secret); `KEK = SHA-256("snipdeck-hello-kek-v1" || signature)`
 //! seals the data key with the same AEAD as items. The result, a [`SealedKey`], lives in memory
 //! only and remembers when the password last unlocked the library. The signer is a closure so this
 //! crate needs nothing from the platform crate: the app passes
@@ -14,11 +15,12 @@ use std::time::Duration;
 use sha2::{Digest as _, Sha256};
 use zeroize::Zeroizing;
 
+use super::CryptoError;
 use super::aead;
 use super::key::{DataKey, KEY_LEN};
 
-/// The fixed challenge Hello signs.
-pub const HELLO_CHALLENGE: &[u8] = b"snipdeck-hello-unlock-challenge-v1";
+/// Length of the random challenge drawn for each seal.
+const CHALLENGE_LEN: usize = 32;
 /// The copy is unusable this long after the last password unlock (7 days).
 pub const HELLO_MAX_AGE: Duration = Duration::from_hours(7 * 24);
 
@@ -43,6 +45,10 @@ pub enum HelloSealError<E> {
     Sign(E),
 }
 
+fn new_challenge() -> Result<[u8; CHALLENGE_LEN], CryptoError> {
+    Ok(*super::key::random::<CHALLENGE_LEN>()?)
+}
+
 /// `SHA-256(domain || signature)`, zeroized on drop.
 fn kek(signature: &[u8]) -> Zeroizing<[u8; KEY_LEN]> {
     let mut hasher = Sha256::new();
@@ -62,6 +68,8 @@ fn same(a: &[u8], b: &[u8]) -> bool {
 #[derive(Clone)]
 pub struct SealedKey {
     blob: Vec<u8>,
+    /// Random per seal: the value Hello signed to make the wrapping key.
+    challenge: [u8; CHALLENGE_LEN],
     password_unlock_at: Duration,
 }
 
@@ -74,7 +82,7 @@ impl core::fmt::Debug for SealedKey {
 }
 
 impl SealedKey {
-    /// Seals `key`. `sign` is asked for the signature of [`HELLO_CHALLENGE`] twice. `now` (since
+    /// Seals `key`. `sign` is asked for the signature of a fresh random challenge twice. `now` (since
     /// the Unix epoch) is the time of the password unlock that produced `key`.
     ///
     /// # Errors
@@ -86,8 +94,9 @@ impl SealedKey {
         now: Duration,
         mut sign: impl FnMut(&[u8]) -> Result<Zeroizing<Vec<u8>>, E>,
     ) -> Result<Self, HelloSealError<E>> {
-        let first = sign(HELLO_CHALLENGE).map_err(HelloSealError::Sign)?;
-        let second = sign(HELLO_CHALLENGE).map_err(HelloSealError::Sign)?;
+        let challenge = new_challenge().map_err(|_| HelloSealError::Failed)?;
+        let first = sign(&challenge).map_err(HelloSealError::Sign)?;
+        let second = sign(&challenge).map_err(HelloSealError::Sign)?;
         if !same(&first, &second) {
             return Err(HelloSealError::NotRepeatable);
         }
@@ -96,11 +105,12 @@ impl SealedKey {
             aead::seal(&kek, AAD, key.expose().as_slice()).map_err(|_| HelloSealError::Failed)?;
         Ok(Self {
             blob,
+            challenge,
             password_unlock_at: now,
         })
     }
 
-    /// Seals `key` with one signature of [`HELLO_CHALLENGE`]: one Hello prompt. Only for a Hello
+    /// Seals `key` with one signature of a fresh random challenge: one Hello prompt. Only for a Hello
     /// whose signatures [`seal`](Self::seal) already found repeatable (checked when the user turned
     /// Hello on); a signer that later changes simply fails to open the copy and the password is
     /// asked.
@@ -113,12 +123,14 @@ impl SealedKey {
         now: Duration,
         sign: impl FnOnce(&[u8]) -> Result<Zeroizing<Vec<u8>>, E>,
     ) -> Result<Self, HelloSealError<E>> {
-        let signature = sign(HELLO_CHALLENGE).map_err(HelloSealError::Sign)?;
+        let challenge = new_challenge().map_err(|_| HelloSealError::Failed)?;
+        let signature = sign(&challenge).map_err(HelloSealError::Sign)?;
         let kek = kek(&signature);
         let blob =
             aead::seal(&kek, AAD, key.expose().as_slice()).map_err(|_| HelloSealError::Failed)?;
         Ok(Self {
             blob,
+            challenge,
             password_unlock_at: now,
         })
     }
@@ -138,7 +150,7 @@ impl SealedKey {
         if self.is_expired(now) {
             return Err(HelloSealError::Expired);
         }
-        let signature = sign(HELLO_CHALLENGE).map_err(HelloSealError::Sign)?;
+        let signature = sign(&self.challenge).map_err(HelloSealError::Sign)?;
         let kek = kek(&signature);
         let plain = aead::open(&kek, AAD, &self.blob).map_err(|_| HelloSealError::Failed)?;
         DataKey::from_slice(&plain).ok_or(HelloSealError::Failed)
@@ -187,6 +199,29 @@ mod tests {
         let sealed = SealedKey::seal(&key(), T0, signer(b"a")).unwrap();
         let opened = sealed.open(T0, signer(b"a")).unwrap();
         assert!(opened.same_as(&key()));
+    }
+
+    #[test]
+    fn every_seal_signs_its_own_random_challenge_and_open_replays_it() {
+        let seen = std::cell::RefCell::new(Vec::<Vec<u8>>::new());
+        let rec = |c: &[u8]| {
+            seen.borrow_mut().push(c.to_vec());
+            signer(b"a")(c)
+        };
+        let a = SealedKey::seal_once(&key(), T0, rec).unwrap();
+        let b = SealedKey::seal_once(&key(), T0, rec).unwrap();
+        a.open(T0, rec).unwrap();
+        let seen = seen.borrow();
+        assert_ne!(seen[0], seen[1], "two seals shared a challenge");
+        assert_eq!(seen[0], seen[2], "open must sign the stored challenge");
+        assert!(seen[0].len() >= 32);
+        // A copy opened with another copy's challenge does not open.
+        let mut swapped = b.clone();
+        swapped.challenge = a.challenge;
+        assert_eq!(
+            swapped.open(T0, signer(b"a")).unwrap_err(),
+            HelloSealError::Failed
+        );
     }
 
     #[test]

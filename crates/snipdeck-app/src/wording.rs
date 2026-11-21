@@ -34,6 +34,15 @@ pub fn startup_failure_text(window: &PanelWindow, details: &str) -> String {
         .into()
 }
 
+/// The text of the message box a second launch shows when the running Snipdeck does not answer,
+/// in the language selected now.
+#[must_use]
+pub fn not_answering_text(window: &PanelWindow) -> String {
+    ToastTexts::get(window)
+        .invoke_already_running_not_answering()
+        .into()
+}
+
 /// The tray menu's words in the language selected for the UI now (English until a bundled
 /// translation is selected). `window` is any window of the UI: Slint globals are reached
 /// through a component.
@@ -248,9 +257,15 @@ where
         ToastMessage::HelloEnrolFailed => t.invoke_hello_enrol_failed(),
         ToastMessage::MasterPasswordRemovedNotOpen => t.invoke_master_password_removed_not_open(),
         ToastMessage::LockedEditorClosed => t.invoke_locked_editor_closed(),
+        ToastMessage::LockedEditorKept => t.invoke_locked_editor_kept(),
         ToastMessage::LockedFillClosed => t.invoke_locked_fill_closed(),
         ToastMessage::UnlockFirst => t.invoke_unlock_first(),
         ToastMessage::Saved { list } => t.invoke_saved(list.into()),
+        ToastMessage::NoColourOnClipboard => t.invoke_no_colour_on_clipboard(),
+        ToastMessage::AlreadySaved { list } => t.invoke_already_saved(list.into()),
+        ToastMessage::NameNotExact { name, hex } => {
+            t.invoke_name_not_exact(name.into(), hex.into())
+        }
         ToastMessage::AddedTo { list, .. } => t.invoke_added_to(list.into()),
         ToastMessage::AddedSomeFiles { list } => t.invoke_added_some_files(list.into()),
         ToastMessage::FilesNotAdded => t.invoke_files_not_added(),
@@ -268,6 +283,10 @@ where
         ToastMessage::PasteNextFinished => t.invoke_paste_next_finished(),
         ToastMessage::HotkeyInUse { chord } => t.invoke_hotkey_in_use(chord.into()),
         ToastMessage::HotkeyInvalid { chord } => t.invoke_hotkey_invalid(chord.into()),
+        ToastMessage::HotkeyOwnAction { chord } => t.invoke_hotkey_own_action(chord.into()),
+        ToastMessage::HotkeyRefused { chord, code } => {
+            t.invoke_hotkey_refused(chord.into(), i32::try_from(*code).unwrap_or(i32::MAX))
+        }
         ToastMessage::HotkeyUnavailable { chord } => t.invoke_hotkey_unavailable(chord.into()),
         ToastMessage::HotkeysFailed { chords } => t.invoke_hotkeys_failed(chords.into()),
         ToastMessage::PanelHidden { chord } => {
@@ -295,6 +314,7 @@ where
         ToastMessage::LibraryProblem => t.invoke_library_problem(),
         ToastMessage::CrashedLastTime => t.invoke_crashed_last_time(),
         ToastMessage::BackupMade => t.invoke_backup_made(),
+        ToastMessage::ArchiveBusy => t.invoke_archive_busy(),
         ToastMessage::BackupFailed(cause) => t.invoke_backup_failed(cause.code()),
         ToastMessage::DailyBackupFailed(cause) => t.invoke_daily_backup_failed(cause.code()),
         ToastMessage::TrashPurgeFailed => t.invoke_trash_purge_failed(),
@@ -325,6 +345,7 @@ where
         ToastMessage::FolderNotOpened => t.invoke_folder_not_opened(),
         ToastMessage::LinkNotOpened => t.invoke_link_not_opened(),
         ToastMessage::AutostartFailed => t.invoke_autostart_failed(),
+        ToastMessage::StoreDataReminder => t.invoke_store_data_reminder(),
         ToastMessage::AutostartSwitchedOff => t.invoke_autostart_switched_off(),
         ToastMessage::AutostartPolicy => t.invoke_autostart_policy(),
         ToastMessage::CannotOpenLog => t.invoke_cannot_open_log(),
@@ -373,6 +394,10 @@ where
         ToastMessage::IconSaved { name } => t.invoke_icon_saved(name.into()),
         ToastMessage::EyedropFailed => t.invoke_eyedrop_failed(),
         ToastMessage::EyedropHdr { hex } => t.invoke_eyedrop_hdr(hex.into()),
+        ToastMessage::EyedropHdrCopied { hex } => t.invoke_eyedrop_hdr_copied(hex.into()),
+        ToastMessage::EyedropRefused => t.invoke_eyedrop_refused(),
+        ToastMessage::EyedropEnded { timed_out } => t.invoke_eyedrop_ended(*timed_out),
+        ToastMessage::EyedropKeysBusy { keys } => t.invoke_eyedrop_keys_busy(keys.into()),
     };
     text.into()
 }
@@ -665,6 +690,13 @@ pub fn symbol_menu_entry(
         SymbolMenuEntry::CopyPng => (t.invoke_symbol_copy_png(), "", false),
         SymbolMenuEntry::SaveAsSvg => (t.invoke_symbol_save_svg(), "", false),
         SymbolMenuEntry::SaveAsPng => (t.invoke_symbol_save_png(), "", false),
+        SymbolMenuEntry::PngSize(px) => (
+            t.invoke_symbol_png_size(i32::try_from(*px).unwrap_or(0)),
+            "",
+            false,
+        ),
+        SymbolMenuEntry::PngInk { dark } => (t.invoke_symbol_png_ink(*dark), "", false),
+        SymbolMenuEntry::Tone(n) => (t.invoke_symbol_tone(i32::from(*n)), "", false),
         SymbolMenuEntry::Separator => {
             return snipdeck_ui::MenuEntry {
                 separator: true,

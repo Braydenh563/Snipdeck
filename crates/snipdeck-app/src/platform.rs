@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 use snipdeck_platform::{
     clipboard_watch::{ClipboardChange, WatchGate},
+    handover::Request,
     system_look::SystemLookSource,
     tray::{Tray, TrayEvent},
 };
@@ -32,7 +33,7 @@ mod imp {
             hotkey::{HotkeyError, HotkeyService},
             keyboard::WinKeyboard,
             screen,
-            single_instance::{Acquired, SingleInstance},
+            single_instance::{Acquired, Delivery, SingleInstance},
             system_look::{SystemLookWatcher, WinSystemLook},
             target::{PasswordProbe, TargetTracker},
             tray::WinTray,
@@ -43,7 +44,7 @@ mod imp {
 
     use std::sync::Arc;
 
-    use super::{Callbacks, Host, Start, WatchGate};
+    use super::{Callbacks, Host, Instance, Start, WatchGate};
     use crate::typing_worker::{Env, Out, TypingList, Update};
     use crate::{
         controller::Services,
@@ -160,6 +161,16 @@ mod imp {
 
     struct Hotkeys(HotkeyService);
 
+    fn failure_of(e: HotkeyError) -> HotkeyFailure {
+        match e {
+            HotkeyError::InUse => HotkeyFailure::InUse,
+            HotkeyError::Invalid => HotkeyFailure::Invalid,
+            HotkeyError::OwnAction(_) => HotkeyFailure::OwnAction,
+            HotkeyError::Os(code) => HotkeyFailure::Refused(code),
+            HotkeyError::Stopped => HotkeyFailure::Unavailable,
+        }
+    }
+
     impl HotkeyBackend for Hotkeys {
         fn register(&mut self, id: u32, chord: Chord) -> Result<(), HotkeyFailure> {
             let result = self.0.register(id, chord);
@@ -169,11 +180,13 @@ mod imp {
                 "hotkey register id={id} ({:?}) chord={chord}: {result:?}",
                 crate::host::action_of(id)
             );
-            result.map_err(|e| match e {
-                HotkeyError::InUse => HotkeyFailure::InUse,
-                HotkeyError::Invalid => HotkeyFailure::Invalid,
-                HotkeyError::Os(_) | HotkeyError::Stopped => HotkeyFailure::Unavailable,
-            })
+            result.map_err(failure_of)
+        }
+
+        fn probe(&mut self, chord: Chord) -> Result<(), HotkeyFailure> {
+            let result = self.0.probe(chord);
+            crate::trace!("hotkey probe chord={chord}: {result:?}");
+            result.map_err(failure_of)
         }
 
         fn unregister(&mut self, id: u32) -> Result<(), HotkeyFailure> {
@@ -349,26 +362,42 @@ mod imp {
         }
     }
 
-    pub(super) fn connect(callbacks: Callbacks, single_instance: bool) -> Result<Start, String> {
+    pub(super) fn connect(
+        callbacks: Callbacks,
+        instance: Option<&Instance<'_>>,
+    ) -> Result<Start, String> {
         let Callbacks {
             on_hotkey,
-            on_second,
+            on_request,
             on_quit,
             on_target_changed,
             on_tray,
             on_look_changed,
             on_session_lock,
+            on_session_resume,
             on_clipboard_change,
             on_typed,
         } = callbacks;
+        // Shortcut labels follow the keyboard layout (unverified on Windows).
+        snipdeck_platform::windows::hotkey::show_layout_labels();
         // Before any window exists: the tray's window, menu and icon are made ahead of the UI
         // toolkit, which would otherwise be too late to make the process DPI aware.
         let _ = snipdeck_platform::windows::dpi::enable_per_monitor_awareness();
         let mut keep_alive: Vec<Box<dyn std::any::Any>> = Vec::new();
-        if single_instance {
-            match SingleInstance::acquire(super::APP_ID, on_second, on_quit) {
-                Ok(Acquired::First(guard)) => keep_alive.push(Box::new(guard)),
-                Ok(Acquired::Second) => return Ok(Start::AlreadyRunning),
+        if let Some(instance) = instance {
+            let on_request =
+                move |request, ack: snipdeck_platform::windows::single_instance::Ack| {
+                    on_request(request, Box::new(move || ack.send()));
+                };
+            match SingleInstance::acquire(instance.id, instance.request, on_request, on_quit) {
+                Ok(Acquired::First(guard)) => {
+                    if let Some(why) = guard.marker_error() {
+                        crate::trace!("installer marker mutex: {why}");
+                    }
+                    keep_alive.push(Box::new(guard));
+                }
+                Ok(Acquired::Second(Delivery::Delivered)) => return Ok(Start::AlreadyRunning),
+                Ok(Acquired::Second(Delivery::Unresponsive)) => return Ok(Start::NotAnswering),
                 Err(e) => return Err(format!("single-instance guard: {e}")),
             }
         }
@@ -403,7 +432,7 @@ mod imp {
                 None
             }
         };
-        match SystemLookWatcher::start(on_look_changed, on_session_lock) {
+        match SystemLookWatcher::start(on_look_changed, on_session_lock, on_session_resume) {
             Ok(watcher) => keep_alive.push(Box::new(watcher)),
             Err(e) => warnings.push(format!("not following the Windows colour mode: {e}")),
         }
@@ -440,7 +469,7 @@ mod imp {
         testing::{FakeClipboard, FakeKeyboard, FakeSystemLook, FakeTiming},
     };
 
-    use super::{Callbacks, Host, Start, WatchGate};
+    use super::{Callbacks, Host, Instance, Start, WatchGate};
     use crate::{
         controller::Services,
         host::{FakeHotkeys, FakeTargets},
@@ -461,15 +490,19 @@ mod imp {
         clippy::unnecessary_wraps,
         reason = "same signature as the Windows backend, whose services can fail to start"
     )]
-    pub(super) fn connect(callbacks: Callbacks, _single_instance: bool) -> Result<Start, String> {
+    pub(super) fn connect(
+        callbacks: Callbacks,
+        _instance: Option<&Instance<'_>>,
+    ) -> Result<Start, String> {
         let _ = (
             callbacks.on_hotkey,
-            callbacks.on_second,
+            callbacks.on_request,
             callbacks.on_quit,
             callbacks.on_target_changed,
             callbacks.on_tray,
             callbacks.on_look_changed,
             callbacks.on_session_lock,
+            callbacks.on_session_resume,
             callbacks.on_clipboard_change,
             callbacks.on_typed,
         );
@@ -536,14 +569,53 @@ pub fn show_startup_failure(title: &str, text: &str) {
     let _ = (title, text);
 }
 
-/// `--quit`: asks the Snipdeck running in this Windows session to quit, as the tray's Quit does,
-/// and returns at once. Nothing is opened or created but the existing quit event; whether or not
-/// one is running (or can be asked: an elevated one cannot be signalled from a normal process),
-/// this prints nothing and the caller exits 0. Does nothing off Windows.
-/// Unverified on Windows.
-pub fn ask_to_quit() {
+/// `--quit`: asks the Snipdeck running for `id` (see [`instance_id`]) to quit, as the tray's Quit
+/// does, and returns at once. Nothing is opened or created but the existing quit event; whether or
+/// not one is running (or can be asked), this prints nothing and the caller exits 0. Does nothing
+/// off Windows. Unverified on Windows.
+pub fn ask_to_quit(id: &str) {
     #[cfg(windows)]
-    let _ = snipdeck_platform::windows::single_instance::ask_to_quit(APP_ID);
+    let _ = snipdeck_platform::windows::single_instance::ask_to_quit(id);
+    #[cfg(not(windows))]
+    let _ = id;
+}
+
+/// The id of the instance that uses `data_folder`: what every kernel object name is built from
+/// (`snipdeck_platform::instance_names`). The same user and folder always give the same id, so
+/// launches meet; another folder (`--data-dir`) or another Windows user gives another one.
+///
+/// # Errors
+///
+/// A readable message when the user's SID cannot be read (Windows only).
+pub fn instance_id(data_folder: &std::path::Path) -> Result<String, String> {
+    #[cfg(windows)]
+    let sid = snipdeck_platform::windows::single_instance::user_sid()
+        .map_err(|e| format!("reading the user account: {e}"))?;
+    #[cfg(not(windows))]
+    let sid = "dev".to_owned();
+    let key = snipdeck_platform::instance_names::normalize_dir_key(&canonical_for_key(data_folder));
+    Ok(snipdeck_platform::instance_names::instance_id(&sid, &key))
+}
+
+/// `folder` spelled the one way the file system knows it: symlinks and `..` resolved. A folder that
+/// does not exist yet (first run) is resolved through its nearest existing parent.
+fn canonical_for_key(folder: &std::path::Path) -> String {
+    let absolute = std::path::absolute(folder).unwrap_or_else(|_| folder.to_path_buf());
+    let mut tail = Vec::new();
+    let mut probe = absolute.as_path();
+    loop {
+        if let Ok(mut canonical) = std::fs::canonicalize(probe) {
+            canonical.extend(tail.iter().rev());
+            return canonical.to_string_lossy().into_owned();
+        }
+        match (probe.parent(), probe.file_name()) {
+            (Some(parent), Some(name)) => {
+                tail.push(name.to_owned());
+                probe = parent;
+            }
+            _ => return absolute.to_string_lossy().into_owned(),
+        }
+    }
 }
 
 /// Whether the app runs from an installed MSIX / Store package; never off Windows.
@@ -571,6 +643,34 @@ pub fn launched_by_startup_task() -> bool {
     #[cfg(not(windows))]
     {
         false
+    }
+}
+
+/// At start-up with "Start with Windows" on: points a `Run` entry left by a moved or older
+/// install at this executable (a portable folder that was moved), with the arguments the saved
+/// "When Windows starts" choice calls for. An entry the user removed stays removed; the packaged
+/// build has no such entry. Failures are only logged. Unverified on Windows.
+pub fn sync_autostart(setting_on: bool, starts_visible: bool) {
+    #[cfg(windows)]
+    {
+        if !setting_on || snipdeck_platform::windows::package::is_packaged() {
+            return;
+        }
+        match std::env::current_exe() {
+            Ok(exe) => {
+                let args = if starts_visible { "" } else { "--hidden" };
+                match snipdeck_platform::windows::autostart::rewrite_if_stale(&exe, args, true) {
+                    Ok(true) => crate::trace!("autostart: rewrote a stale Run entry"),
+                    Ok(false) => {}
+                    Err(error) => crate::trace!("autostart rewrite: {error}"),
+                }
+            }
+            Err(error) => crate::trace!("autostart rewrite: {error}"),
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (setting_on, starts_visible);
     }
 }
 
@@ -605,16 +705,26 @@ pub fn file_picker() -> Option<Box<dyn snipdeck_platform::file_dialog::FilePicke
     }
 }
 
-/// The single-instance name (`Local\Snipdeck-<id>`, see `snipdeck_platform::instance_names`).
-pub const APP_ID: &str = "main";
+/// What a launch is, for the single-instance check.
+#[derive(Debug, Clone, Copy)]
+pub struct Instance<'a> {
+    /// The instance id ([`instance_id`]).
+    pub id: &'a str,
+    /// What this launch asks for; handed to the running instance if there is one.
+    pub request: &'a Request,
+}
+
+/// Tells a waiting second launch that its request has been acted on (call once, on the UI thread).
+pub type Ack = Box<dyn FnOnce() + Send>;
 
 /// What the platform layer calls back into. The two `Send` ones run on service threads: hand the
 /// event to the UI thread (`slint::invoke_from_event_loop`).
 pub struct Callbacks {
     /// A global hotkey fired (service thread).
     pub on_hotkey: Box<dyn Fn(HotkeyAction) + Send>,
-    /// A second launch asked this instance to show itself (service thread).
-    pub on_second: Box<dyn Fn() + Send>,
+    /// A later launch handed this instance a request (service thread). Act on it on the UI thread,
+    /// then call the [`Ack`]: the launch waits for it, and tells the user if it never comes.
+    pub on_request: Box<dyn Fn(Request, Ack) + Send>,
     /// `snipdeck.exe --quit` asked this instance to quit (service thread); do what the tray's
     /// Quit does.
     pub on_quit: Box<dyn Fn() + Send>,
@@ -628,6 +738,9 @@ pub struct Callbacks {
     /// Windows locked the session (Win+L) or is going to sleep (watcher thread): a library with a
     /// master password locks.
     pub on_session_lock: Box<dyn Fn() + Send>,
+    /// The computer woke up, the session was unlocked or a console / remote connection came back
+    /// (watcher thread): failed global hotkeys are tried again.
+    pub on_session_resume: Box<dyn Fn() + Send>,
     /// The clipboard changed and the Recent inbox is listening (clipboard thread).
     pub on_clipboard_change: Box<dyn Fn(ClipboardChange) + Send>,
     /// A typed trigger completed, and whether the focused element is a password box (typing
@@ -677,8 +790,11 @@ impl std::fmt::Debug for Host {
 pub enum Start {
     /// Run the app on these services.
     Run(Box<Host>),
-    /// Another instance is running and has been asked to show itself: exit.
+    /// Another instance is running and has taken this launch's request: exit.
     AlreadyRunning,
+    /// Another instance is running but did not answer (hung, or run as administrator): tell the
+    /// user, then exit.
+    NotAnswering,
 }
 
 /// Connects to the machine.
@@ -686,8 +802,8 @@ pub enum Start {
 /// # Errors
 ///
 /// A readable message when a platform service cannot start.
-pub fn connect(callbacks: Callbacks, single_instance: bool) -> Result<Start, String> {
-    imp::connect(callbacks, single_instance)
+pub fn connect(callbacks: Callbacks, instance: Option<&Instance<'_>>) -> Result<Start, String> {
+    imp::connect(callbacks, instance)
 }
 
 #[cfg(all(test, not(windows)))]
@@ -695,19 +811,39 @@ mod tests {
     use super::*;
 
     #[test]
+    fn the_instance_follows_the_data_folder_however_it_is_spelled() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let folder = dir.path().join("Library");
+        std::fs::create_dir(&folder).expect("folder");
+        let plain = instance_id(&folder).expect("id");
+        // `..` and a not-yet-created tail resolve to the same folder as the plain spelling.
+        let roundabout = folder.join("..").join("Library");
+        assert_eq!(instance_id(&roundabout).expect("id"), plain);
+        // Another folder (`--data-dir`) is another instance.
+        let other = dir.path().join("Other");
+        assert_ne!(instance_id(&other).expect("id"), plain);
+        // A folder not made yet (first run) has a stable id of its own.
+        assert_eq!(
+            instance_id(&other).expect("id"),
+            instance_id(&other).expect("id")
+        );
+    }
+
+    #[test]
     fn off_windows_the_dev_host_pastes_into_the_demo_target() {
         let callbacks = Callbacks {
             on_hotkey: Box::new(|_| {}),
-            on_second: Box::new(|| {}),
+            on_request: Box::new(|_, _| {}),
             on_quit: Box::new(|| {}),
             on_target_changed: Box::new(|| {}),
             on_tray: Box::new(|_| {}),
             on_look_changed: Box::new(|| {}),
             on_session_lock: Box::new(|| {}),
+            on_session_resume: Box::new(|| {}),
             on_clipboard_change: Box::new(|_| {}),
             on_typed: Box::new(|_| {}),
         };
-        let Ok(Start::Run(host)) = connect(callbacks, true) else {
+        let Ok(Start::Run(host)) = connect(callbacks, None) else {
             panic!("the dev host always starts")
         };
         assert_eq!(host.target.current(), Some(crate::demo::target()));

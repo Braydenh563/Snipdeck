@@ -175,6 +175,12 @@ pub enum TrayEvent {
     /// away by Explorer restarting, or added again after it. The app closes the Panel to the
     /// tray only while this is `true`. Sent once per change, not per attempt.
     IconPresent(bool),
+    /// Windows is ending the session (sign-out, shutdown, restart, an installer's Restart Manager):
+    /// `WM_ENDSESSION` with the end confirmed. Unlike every other event this one is delivered
+    /// **synchronously, on the tray thread, and the process may be killed as soon as the handler
+    /// returns**: the handler must finish saving first (it hands the flush to the UI thread and
+    /// waits, see `snipdeck_app::session_end`). Never sent for a click.
+    SessionEnding,
 }
 
 /// One line of the popup menu.
@@ -196,8 +202,11 @@ pub enum MenuLine {
 /// A raw gesture on the icon, after the callback code is decoded (see [`classify`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Gesture {
-    /// Left click, or Enter / Space on the focused icon.
+    /// Left click, or Space on the focused icon.
     Select,
+    /// Enter on the focused icon (`NIN_KEYSELECT`): acts at once (there is no double click to
+    /// wait for) and can arrive twice for one press (see `KeySelectDebounce`).
+    KeySelect,
     /// Double click with the left button.
     DoubleSelect,
     /// Right click, or the menu key / Shift+F10 on the focused icon.
@@ -233,7 +242,8 @@ pub const WM_CONTEXTMENU: u32 = 0x007B;
 #[must_use]
 pub const fn classify(code: u32) -> Option<Gesture> {
     match code {
-        NIN_SELECT | NIN_KEYSELECT => Some(Gesture::Select),
+        NIN_SELECT => Some(Gesture::Select),
+        NIN_KEYSELECT => Some(Gesture::KeySelect),
         WM_LBUTTONDBLCLK => Some(Gesture::DoubleSelect),
         WM_CONTEXTMENU => Some(Gesture::ContextMenu),
         _ => None,
@@ -360,6 +370,14 @@ pub trait Tray {
     ///
     /// The backend is not running.
     fn set_labels(&mut self, labels: TrayLabels) -> Result<(), Error>;
+
+    /// Whether a double click opens the Main window (the default). Turned off, a single click
+    /// acts at once instead of waiting out the double-click time.
+    ///
+    /// # Errors
+    ///
+    /// The backend is not running.
+    fn set_double_click_opens(&mut self, opens: bool) -> Result<(), Error>;
 }
 
 /// The state behind a tray icon and the decisions about it. Pure; see the module docs.
@@ -370,6 +388,7 @@ pub struct TrayModel {
     hotkeys_paused: bool,
     history: History,
     labels: TrayLabels,
+    double_click_opens: bool,
 }
 
 /// "Pause history" in the menu: not offered (clipboard history is off), offered, or offered and
@@ -391,7 +410,21 @@ impl TrayModel {
             hotkeys_paused: false,
             history: History::Off,
             labels: TrayLabels::default(),
+            double_click_opens: true,
         }
+    }
+
+    /// Whether a double click opens the Main window (the default). When it does not, a single
+    /// click acts at once instead of waiting out the double-click time, and a double click does
+    /// nothing of its own.
+    pub fn set_double_click_opens(&mut self, opens: bool) {
+        self.double_click_opens = opens;
+    }
+
+    /// Whether a left click must wait out the double-click time before it acts.
+    #[must_use]
+    pub const fn defers_select(&self) -> bool {
+        self.double_click_opens
     }
 
     /// The icon should be in the notification area.
@@ -509,7 +542,8 @@ impl TrayModel {
             return None;
         }
         Some(match gesture {
-            Gesture::Select => Reaction::Event(TrayEvent::TogglePanel),
+            Gesture::Select | Gesture::KeySelect => Reaction::Event(TrayEvent::TogglePanel),
+            Gesture::DoubleSelect if !self.double_click_opens => return None,
             Gesture::DoubleSelect => Reaction::Event(TrayEvent::OpenSnipdeck),
             Gesture::ContextMenu => Reaction::PopupMenu(self.menu()),
         })
@@ -557,7 +591,7 @@ mod tests {
     #[test]
     fn only_select_and_context_menu_codes_are_gestures() {
         assert_eq!(classify(NIN_SELECT), Some(Gesture::Select));
-        assert_eq!(classify(NIN_KEYSELECT), Some(Gesture::Select));
+        assert_eq!(classify(NIN_KEYSELECT), Some(Gesture::KeySelect));
         assert_eq!(classify(WM_CONTEXTMENU), Some(Gesture::ContextMenu));
         assert_eq!(classify(WM_LBUTTONDBLCLK), Some(Gesture::DoubleSelect));
         // WM_LBUTTONUP, WM_RBUTTONUP, WM_MOUSEMOVE, NIN_POPUPOPEN: not acted on.
@@ -581,6 +615,33 @@ mod tests {
         assert_eq!(
             m.gesture(Gesture::Select),
             Some(Reaction::Event(TrayEvent::TogglePanel))
+        );
+    }
+
+    #[test]
+    fn enter_on_the_icon_toggles_the_panel_like_a_click() {
+        let mut m = model();
+        assert_eq!(
+            m.gesture(Gesture::KeySelect),
+            Some(Reaction::Event(TrayEvent::TogglePanel))
+        );
+    }
+
+    #[test]
+    fn without_a_double_click_action_a_click_acts_at_once() {
+        let mut m = model();
+        assert!(m.defers_select(), "the default waits for a second click");
+        m.set_double_click_opens(false);
+        assert!(!m.defers_select());
+        assert_eq!(m.gesture(Gesture::DoubleSelect), None);
+        assert_eq!(
+            m.gesture(Gesture::Select),
+            Some(Reaction::Event(TrayEvent::TogglePanel))
+        );
+        m.set_double_click_opens(true);
+        assert_eq!(
+            m.gesture(Gesture::DoubleSelect),
+            Some(Reaction::Event(TrayEvent::OpenSnipdeck))
         );
     }
 

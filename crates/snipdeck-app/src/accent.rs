@@ -98,19 +98,42 @@ pub fn resolve(choice: AccentChoice, system: Option<Rgb>) -> Option<Accent> {
     }
     let hue = choice.hue()?;
     let step = |n: u16| primitive(&format!("{hue}-{n}"));
+    // The fill carries `text.on-accent` at 4.5:1 and must show against the surface (3:1): take the
+    // first step of the ramp that does both, and hover and pressed one and two steps darker.
+    let fill = |surface: Rgb| -> Option<u16> {
+        [600u16, 700, 800].into_iter().find(|n| {
+            step(*n).is_some_and(|c| contrast(ON_ACCENT, c) >= 4.5 && contrast(c, surface) >= 3.0)
+        })
+    };
+    let l = fill(LIGHT_SURFACE)?;
+    // Dark: the ink is the light one too, so the fill sits in a narrow band between "light enough
+    // to show on the dark surface" and "dark enough to carry the ink". No whole step may land in
+    // it, so walk away from step 600 in fine tints and shades until one does.
+    let base = step(600)?;
+    let dark_fill = (0..=2000)
+        .map(|i| {
+            let t = f64::from(i / 2) / 1000.0;
+            if i % 2 == 0 {
+                mix(base, WHITE, t)
+            } else {
+                mix(base, BLACK, t)
+            }
+        })
+        .find(|c| contrast(*c, DARK_SURFACE) >= 3.0 && contrast(ON_ACCENT, *c) >= 4.5)?;
+    let d = dark_fill;
     Some(Accent {
         light: Steps {
-            default: step(600)?,
-            hover: step(700)?,
-            pressed: step(800)?,
+            default: step(l)?,
+            hover: step(l + 100)?,
+            pressed: step(l + 200)?,
             text: step(700)?,
             subtle: step(100)?,
-            focus: step(600)?,
+            focus: step(l)?,
         },
         dark: Steps {
-            default: step(600)?,
-            hover: step(700)?,
-            pressed: step(800)?,
+            default: d,
+            hover: mix(d, BLACK, 0.18),
+            pressed: mix(d, BLACK, 0.36),
             text: step(300)?,
             subtle: step(900)?,
             focus: step(400)?,
@@ -174,8 +197,13 @@ fn from_system(system: Rgb) -> Accent {
     let light_subtle = mix(LIGHT_SURFACE, default, 0.10);
     let light_text = nudge(hover, BLACK, &[LIGHT_SURFACE, light_subtle], 4.5);
     // Dark: text and ring lighten until they read on the dark surface and the tinted fill.
-    // The dark fill must still show against the dark surface (3:1) and carry `text.on-accent` (3:1).
-    let dark_default = nudge(default, WHITE, &[DARK_SURFACE], 3.0);
+    // The dark fill must still show against the dark surface (3:1) and carry `text.on-accent` at
+    // 4.5:1 (body-size labels). Both hold for a narrow band of lightness: walk toward white in fine
+    // steps and take the first colour inside it.
+    let dark_default = (0..=1000)
+        .map(|i| mix(default, WHITE, f64::from(i) / 1000.0))
+        .find(|c| contrast(*c, DARK_SURFACE) >= 3.0 && contrast(ON_ACCENT, *c) >= 4.5)
+        .unwrap_or_else(|| nudge(default, WHITE, &[DARK_SURFACE], 3.0));
     let dark_subtle = mix(DARK_SURFACE, dark_default, 0.35);
     let dark_hover = mix(dark_default, BLACK, 0.18);
     let dark_pressed = mix(dark_default, BLACK, 0.36);
@@ -215,8 +243,8 @@ mod tests {
             "{label}: focus ring vs surface"
         );
         assert!(
-            contrast(ON_ACCENT, steps.default) >= 3.0,
-            "{label}: text on accent"
+            contrast(ON_ACCENT, steps.default) >= 4.5,
+            "{label}: body-size text on accent needs 4.5:1 (WCAG 1.4.3)"
         );
         assert!(
             contrast(steps.text, surface) >= 4.5,
@@ -248,7 +276,8 @@ mod tests {
     #[test]
     fn presets_use_the_palette_steps() {
         let teal = resolve(AccentChoice::Teal, None).expect("teal");
-        assert_eq!(teal.light.default, primitive("teal-600").expect("teal-600"));
+        // teal-600 is 4.4:1 against the ink, so the light fill is the next step of the ramp.
+        assert_eq!(teal.light.default, primitive("teal-700").expect("teal-700"));
         assert_eq!(teal.dark.subtle, primitive("teal-900").expect("teal-900"));
         assert_eq!(teal.dark.focus, primitive("teal-400").expect("teal-400"));
     }

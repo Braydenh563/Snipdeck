@@ -16,7 +16,7 @@ fn hex(h: &str) -> Rgba8 {
 }
 
 #[test]
-fn saved_hsb_and_cmyk_are_hex_so_the_card_rule_sees_a_colour() {
+fn saved_hsb_and_cmyk_keep_their_format_and_the_card_rule_sees_a_colour() {
     for h in ["#ff0000", "#ffffff", "#000000", "#3a7bd5"] {
         for f in [Format::Hsb, Format::Cmyk] {
             let c = hex(h);
@@ -34,17 +34,20 @@ fn saved_text_never_rounds() {
     let c = hex("#3a7bd5");
     assert_eq!(saved_text(c, Format::Hex), "#3a7bd5");
     assert_eq!(saved_text(c, Format::Rgb), "rgb(58, 123, 213)");
-    assert_eq!(saved_text(c, Format::Hsl), "#3a7bd5");
-    assert_eq!(saved_text(c, Format::Hsb), "#3a7bd5");
-    assert_eq!(saved_text(c, Format::Cmyk), "#3a7bd5");
+    for f in [Format::Hsl, Format::Hsb, Format::Cmyk, Format::Oklch] {
+        assert_eq!(parse(&saved_text(c, f)), Ok(c), "{f:?}");
+    }
     assert_eq!(saved_text(c, Format::Name), "#3a7bd5");
     assert_eq!(saved_text(hex("#4169e1"), Format::Name), "royalblue");
-    // 0.5 alpha is exact (128), 0.51 would not be (129 prints 0.51 and parses to 130).
+    // 0.5 alpha is exact (128); 129 needs a third decimal (0.506) and still reads back as 129.
     assert_eq!(
         saved_text(hex("#3a7bd580"), Format::Rgb),
         "rgba(58, 123, 213, 0.5)"
     );
-    assert_eq!(saved_text(hex("#3a7bd581"), Format::Rgb), "#3a7bd581");
+    assert_eq!(
+        saved_text(hex("#3a7bd581"), Format::Rgb),
+        "rgba(58, 123, 213, 0.506)"
+    );
     for f in Format::ALL {
         assert_eq!(parse(&saved_text(c, f)), Ok(c), "{f:?}");
     }
@@ -72,8 +75,10 @@ fn saved_text_is_always_exact() {
 fn titles() {
     assert_eq!(title_for(hex("#ff0000")), "red");
     assert_eq!(title_for(hex("#4169e1")), "royalblue");
-    assert_eq!(title_for(hex("#3a7bd5")), "");
-    assert_eq!(title_for(hex("#ff000080")), "");
+    // Not a keyword: the hex and the nearest name, so search finds it by either.
+    let near = snipdeck_colour::nearest_name(hex("#3a7bd5")).name;
+    assert_eq!(title_for(hex("#3a7bd5")), format!("#3a7bd5 ≈ {near}"));
+    assert_eq!(title_for(hex("#ff000080")), "#ff000080 ≈ red");
     assert_eq!(title_for(hex("#808080")), "gray");
 }
 

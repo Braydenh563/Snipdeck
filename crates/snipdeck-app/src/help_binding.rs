@@ -24,7 +24,7 @@ use snipdeck_ui as ui;
 
 use crate::{
     binding::{arm_toast, model, redraw_all, register_redraw},
-    controller::{Controller, HelpTopic, ToastPhase, ToastView},
+    controller::{ArchiveEnd, Controller, HelpTopic, ToastPhase, ToastView, spawn_archive},
     crash,
     doctor::{self, Check, DoctorHost, Fix, ReportInfo, Status},
     host::ClipboardText,
@@ -175,7 +175,7 @@ struct WorkerDoctor {
 
 impl WorkerDoctor {
     fn new(data_dir: PathBuf, today: Date, hotkeys: &Hotkeys, tray_present: bool) -> Self {
-        let store = Store::open_read_only(&data_dir).map_err(|e| e.to_string());
+        let store = Store::open_reader(&data_dir, None).map_err(|e| e.to_string());
         Self {
             data_dir,
             store,
@@ -503,6 +503,7 @@ where
         }
         let (look, accent, toast): (_, _, Option<ToastView>) = {
             let controller = self.controller.borrow();
+            window.set_archive_busy(controller.archive_busy());
             self.sync_shortcuts(&window, &controller.settings().hotkeys);
             (
                 controller.settings_look(),
@@ -604,8 +605,12 @@ where
         match Fix::from_code(code) {
             Some(Fix::BackUpNow) => {
                 if let Some(dir) = self.data_dir.clone() {
-                    self.controller.borrow_mut().backup_now(&dir);
-                    self.run_checks();
+                    let begun = self.controller.borrow_mut().begin_backup_now(&dir);
+                    let this = Rc::clone(self);
+                    spawn_archive(&self.controller, begun, move |_| {
+                        this.run_checks();
+                        redraw_all();
+                    });
                 }
             }
             Some(Fix::OpenSettings) => crate::settings_binding::request_open(),
@@ -623,28 +628,36 @@ where
 
     /// Opens the rebuild confirmation, naming the newest backup (date, items, boards).
     fn ask_rebuild(self: &Rc<Self>) {
-        let (Some(dir), Some(window)) = (self.data_dir.clone(), self.window.upgrade()) else {
+        let (Some(dir), Some(_)) = (self.data_dir.clone(), self.window.upgrade()) else {
             return;
         };
         let newest = backup::list_backups(&dir)
             .ok()
             .and_then(|found| found.into_iter().next());
-        let preview = newest.as_ref().and_then(|file| {
-            self.controller
-                .borrow_mut()
-                .preview_restore(&file.path)
-                .ok()
-                .map(|p| (file.date.to_string(), p))
-        });
-        let Some((date, preview)) = preview else {
+        let Some(file) = newest else {
             self.danger_toast(ToastMessage::RestoreFailed(crate::failure::Cause::Other));
             return;
         };
-        *self.rebuild_target.borrow_mut() = newest.map(|file| file.path);
-        window.set_rebuild_date(date.into());
-        window.set_rebuild_items(i32::try_from(preview.items).unwrap_or(i32::MAX));
-        window.set_rebuild_boards(i32::try_from(preview.boards).unwrap_or(i32::MAX));
-        window.set_rebuild_open(true);
+        let begun = self
+            .controller
+            .borrow_mut()
+            .begin_restore_preview(&file.path);
+        let this = Rc::clone(self);
+        spawn_archive(&self.controller, begun, move |end| {
+            let ArchiveEnd::ImportPreview(outcome) = end else {
+                return;
+            };
+            let (Ok(preview), Some(window)) = (outcome, this.window.upgrade()) else {
+                this.danger_toast(ToastMessage::RestoreFailed(crate::failure::Cause::Other));
+                return;
+            };
+            // The rebuild restores exactly the backup this confirmation names.
+            *this.rebuild_target.borrow_mut() = Some(file.path);
+            window.set_rebuild_date(file.date.to_string().into());
+            window.set_rebuild_items(i32::try_from(preview.items).unwrap_or(i32::MAX));
+            window.set_rebuild_boards(i32::try_from(preview.boards).unwrap_or(i32::MAX));
+            window.set_rebuild_open(true);
+        });
     }
 
     fn rebuild(self: &Rc<Self>) {
@@ -664,11 +677,16 @@ where
             self.danger_toast(ToastMessage::RestoreFailed(crate::failure::Cause::Other));
             return;
         };
-        self.controller
+        let begun = self
+            .controller
             .borrow_mut()
-            .rebuild_from_backup(&dir, &file);
-        self.run_checks();
+            .begin_rebuild_from_backup(&dir, &file);
         redraw_all();
+        let this = Rc::clone(self);
+        spawn_archive(&self.controller, begun, move |_| {
+            this.run_checks();
+            redraw_all();
+        });
     }
 
     fn copy_report(self: &Rc<Self>) {

@@ -770,6 +770,9 @@ export component ItemEditor inherits Window {
     // The text (kinds 0 to 3). Image and file items have no text to edit.
     in-out property <string> content;
     in-out property <bool> sensitive: false;
+    // Copy and cut in the content of a sensitive item go to the host, which writes them with the privacy markers.
+    callback private-copied(text: string, start: int, end: int);
+    callback private-cut(text: string, start: int, end: int) -> [string];
     // "Always paste as plain text": a paste of this item drops its formatting (SPEC 5.1a); a copy keeps it.
     in-out property <bool> always-plain: false;
     // "More options" (Title, Colour, Tags, Privacy) is open; the host remembers it in the settings.
@@ -1158,6 +1161,9 @@ export component ItemEditor inherits Window {
                                 monospace: root.kind-index == 1;
                                 error: root.content-shown-error;
                                 text <=> root.content;
+                                private-copy: root.sensitive;
+                                private-copied(t, a, b) => { root.private-copied(t, a, b); }
+                                private-cut(t, a, b) => { return root.private-cut(t, a, b); }
                                 edited(t) => { root.touch(); root.content-edited(); }
                                 changed has-focus => {
                                     if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }

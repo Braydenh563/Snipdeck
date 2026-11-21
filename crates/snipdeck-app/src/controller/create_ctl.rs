@@ -303,7 +303,7 @@ where
             &destination,
             Some(text),
             (html, rtf),
-            kind,
+            capture::Shape::plain(kind),
             Placement::First,
             self.clock.now(),
         );

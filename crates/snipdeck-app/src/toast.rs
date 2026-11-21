@@ -82,6 +82,9 @@ pub enum ToastMessage {
     UnlockFirst,
     /// "Your library locked. The sensitive item you were editing was closed without saving."
     LockedEditorClosed,
+    /// "Your library locked. What you were typing in the sensitive item is kept, and comes back
+    /// when you unlock."
+    LockedEditorKept,
     /// "Your library locked after a while. The form for the sensitive template you were filling in
     /// was closed."
     LockedFillClosed,
@@ -89,6 +92,21 @@ pub enum ToastMessage {
     Saved {
         /// The list's name.
         list: String,
+    },
+    /// "No colour in the clipboard" (Ctrl+V on the Colours tab found none).
+    NoColourOnClipboard,
+    /// "Already saved in {list}" (a colour saved twice selects the first).
+    AlreadySaved {
+        /// The list's name.
+        list: String,
+    },
+    /// "≈ royalblue, not exactly a colour name. Nothing copied" (a copy as Name of a colour that no
+    /// CSS keyword is exactly).
+    NameNotExact {
+        /// The nearest keyword.
+        name: String,
+        /// That keyword's colour, as hex.
+        hex: String,
     },
     /// "Added to {list}" / "Added {count} items to {list}" (Ctrl+V on a list), with Undo and Edit.
     AddedTo {
@@ -140,6 +158,18 @@ pub enum ToastMessage {
     HotkeyInvalid {
         /// The chord as typed in Settings.
         chord: String,
+    },
+    /// "{chord} is already used by another Snipdeck shortcut. Choose another in Settings."
+    HotkeyOwnAction {
+        /// The chord two Snipdeck shortcuts were given.
+        chord: String,
+    },
+    /// "Windows refused {chord} (Windows error {code}). Choose another in Settings."
+    HotkeyRefused {
+        /// The chord Windows refused.
+        chord: String,
+        /// The Windows error code.
+        code: u32,
     },
     /// "Shortcuts are unavailable, so {chord} is not active. Restart Snipdeck to try again."
     HotkeyUnavailable {
@@ -234,6 +264,11 @@ pub enum ToastMessage {
     CrashedLastTime,
     /// "Backed up".
     BackupMade,
+    /// "Another backup or export is still running. Try again when it has finished."
+    ArchiveBusy,
+    /// "The Store version keeps your library inside the app, so uninstalling removes it. Back up
+    /// now also saves a copy in Documents > Snipdeck backups." Shown once (`store_data`).
+    StoreDataReminder,
     /// "Couldn't make a backup: the disk is full. ..." (a backup the user asked for)
     BackupFailed(Cause),
     /// "Couldn't make today's backup. Check the disk has room, then use Back up now in
@@ -395,6 +430,24 @@ pub enum ToastMessage {
     EyedropHdr {
         /// The picked colour, `#rrggbb`.
         hex: String,
+    },
+    /// "Copied {hex}. HDR is on for this screen, so it is approximate." (one toast for the copy
+    /// and the HDR note)
+    EyedropHdrCopied {
+        /// The picked colour, `#rrggbb`.
+        hex: String,
+    },
+    /// "Windows won't let Snipdeck read this screen." (the capture was refused)
+    EyedropRefused,
+    /// "The screen changed, so the pick ended." / "The pick timed out." (not the user's doing)
+    EyedropEnded {
+        /// Whether it was the time limit (else the display changed).
+        timed_out: bool,
+    },
+    /// "Another app keeps {keys}: use the mouse for those." (fallback hotkeys refused)
+    EyedropKeysBusy {
+        /// The keys, as written for the user.
+        keys: String,
     },
 }
 

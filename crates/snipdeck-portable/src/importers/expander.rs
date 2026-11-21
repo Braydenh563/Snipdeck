@@ -31,10 +31,11 @@ use snipdeck_core::Trigger;
 use snipdeck_core::template::{Template, escape};
 use snipdeck_store::name_key;
 
+use crate::decoded::Decoded;
 use crate::error::{Error, Result};
 use crate::import::{ImportOptions, board_name, finish};
 use crate::limits::TEXT_LIMIT;
-use crate::plan::{Library, Plan, PlanBoard, PlanItem, PlanList};
+use crate::plan::{Plan, PlanBoard, PlanItem, PlanList};
 use crate::report::{ImportReport, Note, Warning};
 
 use super::{MEMORY_BUDGET, clean_label, title_from, truncate_chars};
@@ -221,14 +222,13 @@ fn title(snip: &Snip, trigger: Option<&Trigger>) -> String {
 
 /// Turns `snips` into one new board and writes it. `report` carries what the caller already
 /// noted.
-pub(crate) fn import_snips<L: Library>(
-    lib: &mut L,
+pub(crate) fn decode_snips(
     snips: Vec<Snip>,
     defaults: (&str, &str),
     now: Timestamp,
     options: &ImportOptions<'_>,
     mut report: ImportReport,
-) -> Result<ImportReport> {
+) -> Result<Decoded<'static>> {
     let (default_board, default_list) = defaults;
     let mut budget = MEMORY_BUDGET;
     let mut lists: Vec<PlanList> = Vec::new();
@@ -304,7 +304,7 @@ pub(crate) fn import_snips<L: Library>(
             lists,
         });
     }
-    finish(lib, plan, options, report)
+    Ok(finish(plan, options, report))
 }
 
 #[cfg(test)]

@@ -251,6 +251,7 @@ where
             no_draft: false,
             draft_failed_told: false,
             live_sensitive: false,
+            latest: None,
         };
         slot.baseline = slot.draft_of(&fields);
         Ok(slot)
@@ -337,6 +338,7 @@ where
             no_draft: false,
             draft_failed_told: false,
             live_sensitive: false,
+            latest: None,
         };
         slot.baseline = slot.draft_of(&fields);
         Ok(slot)

@@ -11,6 +11,7 @@ pub const MIN_LEN: usize = 8;
 
 /// After this long without using a sensitive item, the library locks and asks again
 /// (SPEC 5.7 "idle timeout").
+/// (The default; the time is a setting, `Settings::idle_lock_minutes`.)
 pub const IDLE_LOCK: std::time::Duration = std::time::Duration::from_mins(15);
 
 /// What is wrong with a new password.

@@ -461,8 +461,15 @@ where
                     .window
                     .upgrade()
                     .and_then(|w| crate::native_window::handle_of(w.window()));
-                let answer = prepared.ask(owner);
-                self.act(|ctl| ctl.finish_icon_save(&prepared, answer));
+                let prepared = Rc::new(prepared);
+                let prepared_for_finish = Rc::clone(&prepared);
+                let this = Rc::clone(self);
+                let back = crate::ui_thread::back_on_ui(
+                    move |answer: snipdeck_platform::file_dialog::Answer| {
+                        this.act(|ctl| ctl.finish_icon_save(&prepared_for_finish, answer));
+                    },
+                );
+                prepared.ask(owner, Box::new(back));
             }
         }
     }
@@ -932,6 +939,8 @@ where
             .recent_delete(i64::from(id)));
         wire!(on_recent_saved, |ctl, id, target| ctl
             .recent_promote_to(i64::from(id), index(target)));
+        wire!(on_recent_saved_sensitive, |ctl, id, target| ctl
+            .recent_promote_sensitive_to(i64::from(id), index(target)));
 
         // ---- The Symbols tab: its state lives in `symbols_binding`; uses go through the controller ----
         let symbols = Rc::new(crate::symbols_binding::Glue::default());
@@ -1535,11 +1544,15 @@ fn render_recent(window: &ui::PanelWindow, previous: Option<&View>, view: &View)
     if window.get_recent_question_open() != view.recent_question {
         window.set_recent_question_open(view.recent_question);
     }
-    if window.get_recent_max_entries() != crate::recent::max_entries_count() {
-        window.set_recent_max_entries(crate::recent::max_entries_count());
+    let (max_entries, days) = (
+        i32::try_from(view.recent_max_entries).unwrap_or(i32::MAX),
+        i32::try_from(view.recent_days).unwrap_or(i32::MAX),
+    );
+    if window.get_recent_max_entries() != max_entries {
+        window.set_recent_max_entries(max_entries);
     }
-    if window.get_recent_days() != crate::recent::max_age_days() {
-        window.set_recent_days(crate::recent::max_age_days());
+    if window.get_recent_days() != days {
+        window.set_recent_days(days);
     }
     let paused = view.recent.as_ref().is_some_and(|r| r.paused);
     if window.get_recent_paused() != paused {
@@ -1618,6 +1631,9 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     crate::text_scale::apply(&window.global::<ui::SystemLook<'_>>());
     if differs(&|p| (p.dark, p.high_contrast) == (view.dark, view.high_contrast)) {
         crate::native_window::set_erase_colour(window.window(), window_colour(window, view));
+        // The title bars of the regular windows follow Snipdeck's theme, not the Windows app
+        // mode (high contrast keeps the system's own frame colours).
+        crate::native_window::set_title_theme(window.window(), view.dark);
     }
     if differs(&|p| {
         (p.high_contrast, p.accent, p.reduced_motion)

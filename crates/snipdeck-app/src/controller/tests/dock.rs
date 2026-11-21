@@ -1835,9 +1835,10 @@ fn a_hidden_start_of_a_docked_panel_shows_its_tab() {
     assert_eq!(w.ctl.dock_tick(), place(open_rect(DockEdge::Right)));
 
     // A floating Panel and a dock that does not tuck start hidden, as asked.
+    // Boxed: two worlds side by side are too big for the stack.
     for before in [
-        floating(DockTrigger::Both),
-        docked(DockTrigger::Off, DockEdge::Right),
+        Box::new(floating(DockTrigger::Both)),
+        Box::new(docked(DockTrigger::Off, DockEdge::Right)),
     ] {
         let mut w = world_with(Some(outlook()), before.ctl.settings().clone());
         w.targets.add_monitor(display());
@@ -2482,6 +2483,7 @@ mod eyedropper {
     const PICK: EyedropOutcome = EyedropOutcome::Picked {
         rgb: [4, 132, 132],
         hdr: false,
+        also: Vec::new(),
     };
 
     #[test]
@@ -2491,7 +2493,10 @@ mod eyedropper {
         w.ctl.set_on_top(false);
         w.ctl.set_panel_focused(true);
         let fake = give(&mut w);
-        assert_eq!(w.ctl.start_eyedropper(), vec![Effect::HidePanel]);
+        assert_eq!(
+            w.ctl.start_eyedropper(),
+            vec![Effect::HidePanel, Effect::HideMainForEyedropper]
+        );
         w.ctl.set_panel_focused(false);
         // Picking far from the Panel, long past the leave delay; the overlay takes the foreground.
         w.targets.set_cursor(Some((100, 100)));
@@ -2508,7 +2513,11 @@ mod eyedropper {
         assert!(fake.complete(PICK));
         assert_eq!(
             w.ctl.poll_eyedropper(),
-            vec![Effect::ShowPanel, Effect::ShowColours]
+            vec![
+                Effect::ShowPanel,
+                Effect::ShowColours,
+                Effect::RestoreMainAfterEyedropper
+            ]
         );
         assert!(w.ctl.visible());
         assert!(!w.ctl.view().dock_collapsed);
@@ -2529,7 +2538,11 @@ mod eyedropper {
         assert!(fake.complete(EyedropOutcome::Cancelled));
         assert_eq!(
             w.ctl.poll_eyedropper(),
-            vec![Effect::ShowPanel, Effect::ShowColours]
+            vec![
+                Effect::ShowPanel,
+                Effect::ShowColours,
+                Effect::RestoreMainAfterEyedropper
+            ]
         );
         assert!(!w.ctl.view().dock_collapsed);
     }
@@ -2567,7 +2580,11 @@ mod eyedropper {
         assert!(fake.complete(PICK));
         assert_eq!(
             w.ctl.poll_eyedropper(),
-            vec![Effect::ShowPanel, Effect::ShowColours]
+            vec![
+                Effect::ShowPanel,
+                Effect::ShowColours,
+                Effect::RestoreMainAfterEyedropper
+            ]
         );
         assert!(w.ctl.visible());
         // Afterwards a real blur hides it as before.

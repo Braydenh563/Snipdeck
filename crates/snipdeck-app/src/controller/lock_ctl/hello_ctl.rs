@@ -98,6 +98,14 @@ impl HelloState {
         self.busy = false;
     }
 
+    /// Deletes the OS credential (no prompt, quick). A failure is ignored: the copy is already
+    /// gone and nothing can be done about a credential Windows will not delete.
+    fn delete_credential(&self) {
+        if let Some(hello) = &self.hello {
+            let _ = hello.delete_credential();
+        }
+    }
+
     /// Forgets the copy and gives up on a step under way.
     pub(super) fn drop_copy(&mut self) {
         self.sealed = None;
@@ -186,6 +194,7 @@ where
         if !on || !self.hello_offered() {
             self.update_settings(|s| s.hello_unlock = false);
             self.lock.hello.drop_copy();
+            self.lock.hello.delete_credential();
             self.lock.hello.enrol = false;
             self.lock.hello.recheck = false;
             return None;
@@ -207,6 +216,7 @@ where
     /// key it was sealed for goes (the library was erased, the password removed or set anew).
     pub(in crate::controller) fn forget_hello(&mut self) {
         self.lock.hello.drop_copy();
+        self.lock.hello.delete_credential();
         self.lock.hello.enrol = false;
         self.lock.hello.recheck = false;
         self.update_settings(|s| s.hello_unlock = false);
@@ -417,6 +427,7 @@ where
         state.seal_failures = 0;
         state.sealed = None;
         state.bound = None;
+        state.delete_credential();
         state.note = Note::TurnedOff;
         self.show_toast(Toast {
             kind: ToastKind::Danger,

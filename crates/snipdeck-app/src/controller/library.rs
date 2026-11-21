@@ -3,7 +3,7 @@
 use snipdeck_store::{
     Batch, BlobStore, BoardRepo, GroupRepo, ItemRepo, ListRepo, RecentRepo, Store, TagRepo,
     TrashRepo, TriggerRepo,
-    crypto::{DataKey, KeyRecord, KeyRing},
+    crypto::{DataKey, KeyRecord, KeyRing, Rotation},
 };
 
 /// What the controller needs from the library: every repository trait in one bound, and a way
@@ -107,12 +107,14 @@ pub trait Library:
     /// The store failed.
     fn open_with_key(&mut self, key: DataKey) -> snipdeck_store::Result<()>;
 
-    /// Stores a key record re-wrapped elsewhere (a changed or removed master password).
+    /// Re-seals everything under the new data key of a rotation made elsewhere (a set, changed
+    /// or removed master password) and leaves the library open.
     ///
     /// # Errors
     ///
-    /// There is no key ring, or the store failed. Nothing changes on error.
-    fn replace_key_record(&mut self, record: &KeyRecord) -> snipdeck_store::Result<()>;
+    /// There is no key ring, the old key is not this library's, or the store failed. Nothing
+    /// changes on error.
+    fn rotate_key_ring(&mut self, rotation: Rotation) -> snipdeck_store::Result<()>;
 
     /// Forgets the key and every decrypted payload held in memory (the idle lock).
     fn lock_key_ring(&mut self);
@@ -176,8 +178,8 @@ impl Library for Store {
         Store::open_with_key(self, key)
     }
 
-    fn replace_key_record(&mut self, record: &KeyRecord) -> snipdeck_store::Result<()> {
-        Store::replace_key_record(self, record)
+    fn rotate_key_ring(&mut self, rotation: Rotation) -> snipdeck_store::Result<()> {
+        Store::rotate_key_ring(self, rotation)
     }
 
     fn lock_key_ring(&mut self) {

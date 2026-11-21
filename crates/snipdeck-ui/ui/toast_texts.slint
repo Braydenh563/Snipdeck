@@ -68,11 +68,23 @@ export global ToastTexts {
     pure public function locked-editor-closed() -> string {
         return @tr("Your library locked after a while. The sensitive item you were editing was closed without saving.");
     }
+    pure public function locked-editor-kept() -> string {
+        return @tr("Your library locked. What you were typing in the sensitive item is kept, and comes back when you unlock.");
+    }
     pure public function locked-fill-closed() -> string {
         return @tr("Your library locked after a while. The form for the sensitive template you were filling in was closed.");
     }
     pure public function unlock-first() -> string {
         return @tr("Unlock your library first, so your sensitive items are included. Nothing was done.");
+    }
+    pure public function no-colour-on-clipboard() -> string {
+        return @tr("No colour in the clipboard");
+    }
+    pure public function name-not-exact(name: string, hex: string) -> string {
+        return @tr("≈ {}, not an exact colour name. Nothing copied. Click the Name row to switch to {}.", name, hex);
+    }
+    pure public function already-saved(list: string) -> string {
+        return @tr("Already saved in {}", list);
     }
     pure public function saved(list: string) -> string {
         return @tr("Saved to {}", list);
@@ -143,6 +155,12 @@ export global ToastTexts {
     pure public function hotkey-unavailable(chord: string) -> string {
         return @tr("Shortcuts are unavailable, so {} is not active. Restart Snipdeck to try again.", chord);
     }
+    pure public function hotkey-own-action(chord: string) -> string {
+        return @tr("{} is already used by another Snipdeck shortcut. Choose another in Settings.", chord);
+    }
+    pure public function hotkey-refused(chord: string, code: int) -> string {
+        return @tr("Windows refused {} (Windows error {}). Choose another in Settings.", chord, code);
+    }
     // `chords`: two or more shortcuts joined with ", ".
     pure public function hotkeys-failed(chords: string) -> string {
         return @tr("These shortcuts are not working: {}. Settings > Shortcuts says why.", chords);
@@ -172,6 +190,10 @@ export global ToastTexts {
     // reason, with the data folder in it.
     pure public function startup-failed(details: string) -> string {
         return @tr("Snipdeck couldn't start.\n\n{}\n\nNothing was deleted. Close any program that may be using your Snipdeck folder, make sure the folder is not read-only, then start Snipdeck again. If you went back to an older version, install the newer one. Your backups are in the backups folder inside your Snipdeck folder.", details);
+    }
+    // The message box a second launch shows when the running Snipdeck does not answer.
+    pure public function already-running-not-answering() -> string {
+        return @tr("Snipdeck is already running, but it did not answer.\n\nIf it is stuck, end Snipdeck in Task Manager and start it again. If it runs as administrator, close it from its tray icon and start it again.");
     }
     pure public function window-not-shown() -> string {
         return @tr("Couldn't open that window.");
@@ -255,6 +277,9 @@ export global ToastTexts {
     }
     pure public function crashed-last-time() -> string {
         return @tr("Snipdeck closed unexpectedly last time. Open the log?");
+    }
+    pure public function archive-busy() -> string {
+        return @tr("Another backup or export is still running. Try again when it has finished.");
     }
     pure public function backup-made() -> string {
         return @tr("Backed up");
@@ -392,6 +417,9 @@ export global ToastTexts {
     pure public function autostart-switched-off() -> string {
         return @tr("Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there.");
     }
+    pure public function store-data-reminder() -> string {
+        return @tr("The Store version keeps your library inside the app, so uninstalling removes it. Back up now also saves a copy in Documents > Snipdeck backups.");
+    }
     pure public function autostart-policy() -> string {
         return @tr("Your organisation's policy keeps Snipdeck from starting with Windows.");
     }
@@ -494,6 +522,18 @@ export global ToastTexts {
     }
     pure public function eyedrop-hdr(hex: string) -> string {
         return @tr("HDR is on for this screen: {} is approximate.", hex);
+    }
+    pure public function eyedrop-hdr-copied(hex: string) -> string {
+        return @tr("Copied {}. HDR is on for this screen, so it is approximate.", hex);
+    }
+    pure public function eyedrop-refused() -> string {
+        return @tr("Windows won't let Snipdeck read this screen.");
+    }
+    pure public function eyedrop-ended(timed-out: bool) -> string {
+        return timed-out ? @tr("The colour pick timed out.") : @tr("The screen changed, so the colour pick ended.");
+    }
+    pure public function eyedrop-keys-busy(keys: string) -> string {
+        return @tr("Another app has {}: use the mouse for those.", keys);
     }
     pure public function icon-not-addable() -> string {
         return @tr("Icons can't be added to a list yet.");

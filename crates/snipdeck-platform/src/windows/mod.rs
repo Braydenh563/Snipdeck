@@ -21,6 +21,7 @@
 //! | [`message_box`] | A native message box for a start-up failure with no window |
 //! | [`shell_open`] | `ShellExecuteW` "open" with its result checked |
 //! | [`dpi`] | Per-monitor DPI awareness for windows created before the UI toolkit's |
+//! | [`dwm`] | Title bar theme and corner preference (DWM attributes), Windows build number |
 //! | [`dpapi`] | `CryptProtectData` wrappers for the sensitive-items key |
 //! | [`tray`] | `WinTray`: [`crate::tray::Tray`] via `Shell_NotifyIconW` (v4), menu, `TaskbarCreated` |
 //! | [`system_look`] | Light / dark and high contrast, and a watcher for changes |
@@ -33,9 +34,11 @@ pub mod autostart;
 pub mod clipboard;
 pub mod clipboard_history;
 pub mod console;
+pub mod data_record;
 pub mod dll_search;
 pub mod dpapi;
 pub mod dpi;
+pub mod dwm;
 pub mod erase;
 pub mod eyedrop;
 pub mod file_dialog;

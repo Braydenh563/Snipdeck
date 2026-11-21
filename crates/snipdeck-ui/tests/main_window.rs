@@ -86,6 +86,22 @@ fn main_window_collapses_to_an_icon_rail_below_720px() {
     assert!(!h.component.get_rail(), "full sidebar at 760");
 }
 
+#[test]
+fn main_window_rail_drawer_shows_the_full_sidebar_over_the_list() {
+    let h = window((640, 520), false);
+    i_slint_backend_testing::ElementHandle::find_by_accessible_label(
+        &h.component,
+        "Expand sidebar (Ctrl+B)",
+    )
+    .next()
+    .expect("the rail's toggle")
+    .invoke_accessible_default_action();
+    slint::platform::update_timers_and_animations();
+    let f = render(&h);
+    assert!(h.component.get_drawer_open(), "the drawer is open");
+    assert_golden("main-rail-drawer-light", &f);
+}
+
 /// The ink of the glyph inside an element's box, resampled to a 12x12 mask (so a 16 px and a 20 px copy of the
 /// same icon give the same mask). Ink is any pixel that differs from the box's fill, sampled at its left edge (the corners are rounded).
 #[allow(

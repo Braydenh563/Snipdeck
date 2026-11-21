@@ -34,13 +34,14 @@ pub(super) fn snap(item: &Item) -> Snap {
     }
 }
 
-/// Whether the bytes of every text, HTML, RTF and picture format in `formats` can still be read
-/// (blob files go when nothing refers to them for long enough).
+/// Whether the bytes of every text, HTML, RTF and picture format in `formats` are still stored
+/// (blob files go when nothing refers to them for long enough). Checks the files' lengths only:
+/// reading and hashing every blob would stall the UI thread at an undo.
 fn readable(b: &impl snipdeck_store::BlobStore, formats: &snipdeck_core::Formats) -> bool {
     use snipdeck_core::Format;
     formats.iter().all(|format| match format {
-        Format::Text(c) | Format::Html(c) | Format::Rtf(c) | Format::Png(c) => b.read(c).is_ok(),
-        Format::Files(files) => files.iter().all(|f| b.read(f.content()).is_ok()),
+        Format::Text(c) | Format::Html(c) | Format::Rtf(c) | Format::Png(c) => b.is_stored(c),
+        Format::Files(files) => files.iter().all(|f| b.is_stored(f.content())),
     })
 }
 

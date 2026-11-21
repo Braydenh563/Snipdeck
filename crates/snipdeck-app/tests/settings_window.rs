@@ -43,6 +43,7 @@ use snipdeck_app::{
 use snipdeck_core::Timestamp;
 use snipdeck_platform::{
     clipboard_history::{ClipboardHistoryEntry, HistoryRead},
+    command_line::AutostartStatus,
     testing::{FakeClipboard, FakeKeyboard, FakeTiming},
     tray::TrayEvent,
 };
@@ -54,7 +55,7 @@ use snipdeck_ui::{SettingsPage, ToastKind};
 
 #[path = "support/mod.rs"]
 mod support;
-use support::{MasterSteps as _, SharedProvider, key, on_ui_thread, press};
+use support::{ArchiveSteps as _, MasterSteps as _, SharedProvider, key, on_ui_thread, press};
 
 type Ctl = Controller<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
 type Bound = SettingsBinding<FakeClipboard, FakeKeyboard, FakeTiming>;
@@ -85,6 +86,8 @@ struct FakeHost {
     /// Opening a link fails (no browser).
     url_fails: Cell<bool>,
     documents: RefCell<Option<PathBuf>>,
+    /// Pretends to be the Store build.
+    packaged: Cell<bool>,
     /// What the import dialog answers, once.
     import_pick: RefCell<Option<PathBuf>>,
     /// Every `pick_import` call: the kind and whether one file was asked for.
@@ -102,18 +105,23 @@ impl SettingsHost for FakeHost {
         settings_binding::apply_hotkeys(&mut *self.hotkeys.borrow_mut(), hotkeys)
     }
 
-    fn set_autostart(&self, on: bool, hidden: bool) -> Result<(), AutostartError> {
+    fn set_autostart(&self, on: bool, hidden: bool, done: settings_binding::AutostartDone) {
         if self.autostart_fails.get() {
-            return Err(AutostartError::Other("the registry said no".into()));
+            done(Err(AutostartError::Other("the registry said no".into())));
+            return;
         }
         self.autostart.set(Some(on));
         self.autostart_hidden.set(Some(hidden));
-        Ok(())
+        done(Ok(()));
     }
 
-    fn autostart_registered(&self) -> bool {
+    fn autostart_status(&self) -> AutostartStatus {
         self.autostart_reads.set(self.autostart_reads.get() + 1);
-        self.autostart.get() == Some(true)
+        if self.autostart.get() == Some(true) {
+            AutostartStatus::On
+        } else {
+            AutostartStatus::Off
+        }
     }
 
     fn set_panel_in_taskbar(&self, on: bool) {
@@ -137,12 +145,18 @@ impl SettingsHost for FakeHost {
         self.documents.borrow().clone()
     }
 
-    fn pick_export_folder(&self, _owner: Option<isize>) -> ExportFolder {
+    fn packaged(&self) -> bool {
+        self.packaged.get()
+    }
+
+    fn pick_export_folder(&self, _owner: Option<isize>, done: Box<dyn FnOnce(ExportFolder)>) {
         self.export_asked.set(self.export_asked.get() + 1);
-        self.export_pick
-            .borrow()
-            .clone()
-            .unwrap_or(ExportFolder::NoDialog)
+        done(
+            self.export_pick
+                .borrow()
+                .clone()
+                .unwrap_or(ExportFolder::NoDialog),
+        );
     }
 
     fn pick_import(
@@ -150,9 +164,11 @@ impl SettingsHost for FakeHost {
         kind: snipdeck_app::controller::ImportKind,
         single_file: bool,
         _owner: Option<isize>,
-    ) -> Option<PathBuf> {
+        done: Box<dyn FnOnce(Option<PathBuf>)>,
+    ) {
         self.import_asked.borrow_mut().push((kind, single_file));
-        self.import_pick.borrow_mut().take()
+        let answer = self.import_pick.borrow_mut().take();
+        done(answer);
     }
 
     fn clipboard_history_supported(&self) -> bool {
@@ -530,14 +546,14 @@ fn an_app_added_in_settings_is_no_longer_captured_end_to_end() {
                     ..Default::default()
                 });
         };
-        copy_from("KeePass.exe");
+        copy_from("Scratchpad.exe");
         assert_eq!(
             r.ctl.borrow().recent_entries().len(),
             1,
             "captured before it is excluded"
         );
-        r.ui.invoke_no_history_app_added("keepass.exe".into());
-        copy_from("KeePass.exe");
+        r.ui.invoke_no_history_app_added("scratchpad.exe".into());
+        copy_from("Scratchpad.exe");
         copy_from("notepad.exe");
         let texts: Vec<_> = r
             .ctl
@@ -548,7 +564,7 @@ fn an_app_added_in_settings_is_no_longer_captured_end_to_end() {
             .collect();
         assert_eq!(
             texts,
-            ["from notepad.exe", "from KeePass.exe"],
+            ["from notepad.exe", "from Scratchpad.exe"],
             "the excluded app is not captured again"
         );
     });
@@ -596,8 +612,8 @@ fn the_accent_applies_at_once_and_blue_keeps_the_built_in_palette() {
         assert!(look.get_accent_custom());
         assert_eq!(
             look.get_accent_light().default,
-            slint::Color::from_rgb_u8(0x04, 0x84, 0x84),
-            "teal-600"
+            slint::Color::from_rgb_u8(0x03, 0x6c, 0x6c),
+            "teal-700: teal-600 is 4.4:1 against the ink"
         );
         r.ui.invoke_accent_chosen(0);
         assert!(!look.get_accent_custom());
@@ -1156,13 +1172,13 @@ fn the_reduce_motion_switch_turns_animation_off_in_the_page_itself() {
 }
 
 #[test]
-fn the_clipboard_clear_time_is_held_between_zero_and_ten_minutes() {
+fn the_clipboard_clear_time_is_held_between_five_seconds_and_ten_minutes() {
     on_ui_thread(|| {
         let r = rig();
         assert_eq!(r.ui.get_clipboard_clear_secs(), 30);
-        r.ui.invoke_clipboard_clear_secs_chosen(0);
-        assert_eq!(r.ctl.borrow().settings().clipboard_clear_secs, 0);
-        assert_eq!(r.ui.get_clipboard_clear_secs(), 0);
+        r.ui.invoke_clipboard_clear_secs_chosen(1);
+        assert_eq!(r.ctl.borrow().settings().clipboard_clear_secs, 5);
+        assert_eq!(r.ui.get_clipboard_clear_secs(), 5);
         r.ui.invoke_clipboard_clear_secs_chosen(99_999);
         assert_eq!(r.ctl.borrow().settings().clipboard_clear_secs, 600);
     });
@@ -1316,6 +1332,33 @@ fn back_up_now_replaces_todays_backup_instead_of_refusing() {
         assert_eq!(after.len(), 1, "still one file for today");
         assert!(after[0].bytes > 100, "{} bytes", after[0].bytes);
         assert_eq!(r.ui.get_backups().row_count(), 1);
+    });
+}
+
+#[test]
+fn back_up_now_makes_no_second_export_the_copy_is_the_backup_jobs_own() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.host.packaged.set(true);
+        r.ui.invoke_backup_now_requested();
+        // The Store build's copy is made by the backup job (`archive_jobs` tests it), so this
+        // binding writes no export of its own and raises no second toast.
+        assert!(!r.dir.path().join("Documents").exists());
+        assert_eq!(
+            snipdeck_portable::backup::list_backups(r.dir.path())
+                .unwrap()
+                .len(),
+            1
+        );
+    });
+}
+
+#[test]
+fn other_builds_keep_the_backup_in_the_data_folder_only() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_backup_now_requested();
+        assert!(!r.dir.path().join("Documents").exists());
     });
 }
 
@@ -2106,6 +2149,7 @@ fn the_recent_inbox_is_off_for_a_new_install_can_be_switched_on_and_its_clear_bu
             .borrow_mut()
             .on_clipboard_change(&snipdeck_app::recent::ClipboardObservation {
                 text: Some("copied".into()),
+                source_app: Some("notepad.exe".into()),
                 ..Default::default()
             });
         assert_eq!(r.ctl.borrow().recent_entries().len(), 1);
@@ -3056,6 +3100,24 @@ fn the_hello_row_appears_with_a_password_and_a_ready_hello_and_the_switch_seals(
 }
 
 #[test]
+fn the_recent_unknown_source_toggle_is_off_by_default_and_changes_the_setting() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert!(!r.ui.get_recent_keep_unknown_source());
+        assert!(!r.ctl.borrow().settings().recent_keep_unknown_source);
+        element(
+            &r.ui,
+            "Keep copies from unknown sources",
+            AccessibleRole::Switch,
+        );
+        r.ui.invoke_recent_keep_unknown_source_toggled(true);
+        assert!(r.ctl.borrow().settings().recent_keep_unknown_source);
+        r.binding.redraw();
+        assert!(r.ui.get_recent_keep_unknown_source());
+    });
+}
+
+#[test]
 fn the_typing_toggles_are_off_by_default_and_change_the_settings() {
     on_ui_thread(|| {
         let r = rig();
@@ -3165,5 +3227,57 @@ fn closing_the_page_drops_open_forms_and_old_refusals() {
         r.binding.opened();
         assert_eq!(r.ui.get_paste_rule_error(), "", "the refusal is gone");
         assert!(!r.ui.get_import_open());
+    });
+}
+
+#[test]
+fn restoring_shows_the_busy_state_while_the_backup_is_read_and_then_the_preview() {
+    on_ui_thread(|| {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = Store::open(dir.path()).unwrap();
+        snipdeck_app::demo::seed(&mut store, now()).unwrap();
+        snipdeck_portable::backup::run_if_due(
+            &store,
+            dir.path(),
+            &now().to_zoned(jiff::tz::TimeZone::UTC),
+            7,
+            None,
+        )
+        .unwrap();
+        let r = rig_on(store, dir, true);
+        assert_eq!(r.ui.get_backups().row_count(), 1);
+        assert!(!r.ui.get_backup_busy());
+
+        let held = support::HeldArchive::default();
+        let _inline_again = held.install();
+        r.ui.invoke_backup_restore_requested(0);
+        assert_eq!(held.held(), 1, "the backup is read off this thread");
+        assert!(r.ui.get_backup_busy(), "the page shows the busy state");
+        assert!(!r.ui.get_import_open(), "no preview until the read is done");
+        assert!(r.ctl.borrow().archive_busy());
+        // A second start is refused while the first runs.
+        r.ui.invoke_backup_restore_requested(0);
+        assert_eq!(held.held(), 1);
+
+        held.release();
+        assert!(!r.ui.get_backup_busy());
+        assert!(
+            r.ui.get_import_open(),
+            "the preview opens when the read is done"
+        );
+        assert!(!r.ctl.borrow().archive_busy());
+    });
+}
+
+#[test]
+fn the_tray_double_click_choice_starts_on_and_is_stored() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert!(r.ui.get_tray_double_click_opens(), "on by default");
+        r.ui.invoke_tray_double_click_opens_toggled(false);
+        assert!(!r.ctl.borrow().settings().tray_double_click_opens);
+        assert!(!r.ui.get_tray_double_click_opens());
+        r.ui.invoke_tray_double_click_opens_toggled(true);
+        assert!(r.ctl.borrow().settings().tray_double_click_opens);
     });
 }

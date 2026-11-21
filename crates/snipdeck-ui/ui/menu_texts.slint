@@ -132,6 +132,21 @@ export global MenuTexts {
     pure public function symbol-save-png() -> string {
         return @tr("Save as PNG…");
     }
+    pure public function symbol-png-size(px: int) -> string {
+        return @tr("PNG size: {} px (click for the next)", px);
+    }
+    pure public function symbol-png-ink(dark: bool) -> string {
+        return dark ? @tr("PNG ink: dark (click for theme colour)") : @tr("PNG ink: theme colour (click for dark)");
+    }
+    // Skin tone rows of an emoji's menu: 0 is the default yellow, 1 to 5 light to dark.
+    pure public function symbol-tone(tone: int) -> string {
+        return tone == 0 ? @tr("Paste, default tone")
+            : tone == 1 ? @tr("Paste, light skin tone")
+            : tone == 2 ? @tr("Paste, medium-light skin tone")
+            : tone == 3 ? @tr("Paste, medium skin tone")
+            : tone == 4 ? @tr("Paste, medium-dark skin tone")
+            : @tr("Paste, dark skin tone");
+    }
     pure public function item-copy() -> string {
         return @tr("Copy");
     }

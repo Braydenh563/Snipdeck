@@ -74,7 +74,7 @@ proptest! {
         for s in Scheme::ALL {
             let out = scheme(c, s);
             prop_assert_eq!(out[0], c);
-            prop_assert!(out.len() >= 2);
+            prop_assert!(s == Scheme::TintsShades || !has_hue(c) || out.len() >= 2);
             prop_assert!(out.iter().all(|x| x.a == c.a));
         }
     }

@@ -200,24 +200,6 @@ impl Plan {
             .map(|l| l.items.len())
             .sum()
     }
-
-    /// Removes items whose content hash is in `known`, and adds the hashes of the rest, so an
-    /// item repeated within the import is dropped too. Lists keep their place, but a board left
-    /// without any item is dropped, so an import with nothing new creates nothing. Returns how
-    /// many items were dropped.
-    pub(crate) fn drop_duplicates(&mut self, known: &mut HashSet<[u8; 32]>) -> usize {
-        let mut dropped = 0;
-        for item_list in self.boards.iter_mut().flat_map(|b| &mut b.lists) {
-            let before = item_list.items.len();
-            item_list
-                .items
-                .retain(|item| known.insert(item.content_hash));
-            dropped += before - item_list.items.len();
-        }
-        self.boards
-            .retain(|b| b.lists.iter().any(|l| !l.items.is_empty()));
-        dropped
-    }
 }
 
 /// A hash of an item's content (not its title or flags), used to recognise duplicates.
@@ -340,18 +322,9 @@ pub(crate) fn apply<L: Library>(
     plan: &mut Plan,
     fetch: &mut dyn FnMut(&AssetRef) -> Result<Vec<u8>>,
     mut report: ImportReport,
-    dry_run: bool,
 ) -> Result<ImportReport> {
-    let written = lib.atomically(|batch| {
-        write(batch, plan, fetch, &mut report)?;
-        // A dry run does the real writes so its counts are exact, then fails the transaction
-        // so none of it (blob files included) remains.
-        if dry_run { Err(Error::DryRun) } else { Ok(()) }
-    });
-    match written {
-        Ok(()) | Err(Error::DryRun) => Ok(report),
-        Err(e) => Err(e),
-    }
+    lib.atomically(|batch| write(batch, plan, fetch, &mut report))?;
+    Ok(report)
 }
 
 fn write(
@@ -643,7 +616,6 @@ mod tests {
             &mut two_boards(),
             &mut fetch,
             ImportReport::default(),
-            false,
         )
         .unwrap();
         assert_eq!(
@@ -682,7 +654,6 @@ mod tests {
                 &mut two_boards(),
                 &mut fetch,
                 ImportReport::default(),
-                false,
             )
             .unwrap_err();
             assert!(matches!(err, Error::Malformed { .. }), "{err}");
@@ -710,14 +681,7 @@ mod tests {
             }],
         };
         let mut fetch = |_: &AssetRef| Ok(Vec::new());
-        let report = apply(
-            &mut s,
-            &mut plan,
-            &mut fetch,
-            ImportReport::default(),
-            false,
-        )
-        .unwrap();
+        let report = apply(&mut s, &mut plan, &mut fetch, ImportReport::default()).unwrap();
         assert_eq!(report.tags_added, 1);
         assert_eq!(s.tags().unwrap().len(), 3);
         assert_eq!(s.check_integrity().unwrap(), Vec::<String>::new());
@@ -734,7 +698,6 @@ mod tests {
             &mut two_boards(),
             &mut fetch,
             ImportReport::default(),
-            false,
         )
         .unwrap_err();
         assert_eq!(state(&s).4, before.4);
@@ -742,25 +705,42 @@ mod tests {
 
     #[test]
     fn duplicates_are_dropped_by_content_and_empty_boards_vanish() {
+        use crate::decoded::{Decoded, Known};
+        use crate::import::{ImportOptions, MergeStrategy};
+        let options = ImportOptions {
+            merge: MergeStrategy::SkipDuplicates,
+            ..ImportOptions::default()
+        };
         let mut plan = two_boards();
         let hash = plan.boards[0].lists[0].items[0].content_hash;
         plan.boards[1].lists[0].items[0].content_hash = hash;
-        let mut known = HashSet::new();
-        assert_eq!(plan.drop_duplicates(&mut known), 1, "b1 repeats a1");
+        let items = plan.item_count();
+        let mut s = library();
+        let report = Decoded::new(plan, ImportReport::default(), &options)
+            .preview(&s, Some(&Known::default()))
+            .unwrap();
+        assert_eq!(report.duplicates_skipped, 1, "b1 repeats a1");
+        assert_eq!(report.items_added, items - 1);
 
-        let mut again = two_boards();
-        let mut everything: HashSet<[u8; 32]> = again
+        // Everything already there: nothing is created, not even a board.
+        let again = two_boards();
+        let mut all = HashSet::new();
+        for i in again
             .boards
             .iter()
             .flat_map(|b| &b.lists)
             .flat_map(|l| &l.items)
-            .map(|i| i.content_hash)
-            .collect();
-        let items = again.item_count();
-        assert!(items > 0);
-        let dropped = again.drop_duplicates(&mut everything);
-        assert_eq!(dropped, items);
-        assert_eq!(again.boards.len(), 0);
+        {
+            all.insert(i.content_hash);
+        }
+        let known = Known::from_hashes(all);
+        let before = state(&s);
+        let report = Decoded::new(again, ImportReport::default(), &options)
+            .apply(&mut s, Some(&known))
+            .unwrap();
+        assert_eq!((report.boards_added, report.items_added), (0, 0));
+        assert_eq!(report.duplicates_skipped, items);
+        assert_eq!(state(&s), before);
     }
 
     #[test]

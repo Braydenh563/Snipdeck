@@ -48,6 +48,13 @@ fn alpha_percent(c: Rgba8) -> f64 {
     f64::from(c.a) / 255.0 * 100.0
 }
 
+/// The alpha field's text: percent with at most one decimal (0.1 % is finer than one byte, so every
+/// alpha byte reads back as itself).
+fn alpha_text(c: Rgba8) -> String {
+    let t = format!("{:.1}", alpha_percent(c));
+    t.strip_suffix(".0").map_or(t.clone(), str::to_owned)
+}
+
 /// The typed values of the HSL or CMYK row as the user left them (percent, hue in degrees): the 8-bit
 /// colour cannot give them back (L=0 is black whatever S was). Kept next to the colour they made.
 pub type Memo = Vec<f64>;
@@ -104,10 +111,11 @@ pub fn channels(c: Rgba8, model: InputModel, st: Hsb, memo: Option<&[f64]>) -> V
             })
             .collect()
     };
-    if c.a != 255 && model != InputModel::Hex {
+    // Always there, so stepping alpha back to 100 does not remove the field being used.
+    if model != InputModel::Hex {
         out.push(Channel {
             label: "A",
-            text: whole(alpha_percent(c)),
+            text: alpha_text(c),
         });
     }
     out
@@ -443,19 +451,35 @@ mod tests {
     }
 
     #[test]
-    fn each_model_lists_its_channels_and_adds_alpha_only_when_not_opaque() {
+    fn each_model_lists_its_channels_and_always_ends_with_alpha() {
         assert_eq!(texts(BLUE, InputModel::Hex), ["#3a7bd5"]);
-        assert_eq!(texts(BLUE, InputModel::Rgb), ["58", "123", "213"]);
-        assert_eq!(texts(BLUE, InputModel::Hsl), ["215", "65", "53"]);
-        assert_eq!(texts(BLUE, InputModel::Hsb), ["215", "73", "84"]);
-        assert_eq!(texts(BLUE, InputModel::Cmyk), ["73", "42", "0", "16"]);
+        assert_eq!(texts(BLUE, InputModel::Rgb), ["58", "123", "213", "100"]);
+        assert_eq!(texts(BLUE, InputModel::Hsl), ["215", "65", "53", "100"]);
+        assert_eq!(texts(BLUE, InputModel::Hsb), ["215", "73", "84", "100"]);
+        assert_eq!(
+            texts(BLUE, InputModel::Cmyk),
+            ["73", "42", "0", "16", "100"]
+        );
         let half = Rgba8 { a: 128, ..BLUE };
         let rgb = channels(half, InputModel::Rgb, st(half), None);
         assert_eq!(
             rgb.last().map(|c| (c.label, c.text.as_str())),
-            Some(("A", "50"))
+            Some(("A", "50.2"))
         );
         assert_eq!(channels(half, InputModel::Hex, st(half), None).len(), 1);
+    }
+
+    #[test]
+    fn every_alpha_byte_can_be_typed_and_read_back() {
+        for a in 0..=255u8 {
+            let c = Rgba8 { a, ..BLUE };
+            let shown = channels(c, InputModel::Rgb, st(c), None);
+            let field = shown.len() - 1;
+            let text = &shown[field].text;
+            let (back, _, _) =
+                commit(BLUE, InputModel::Rgb, field, text, st(BLUE), None).expect("commit");
+            assert_eq!(back.a, a, "{text}");
+        }
     }
 
     #[test]
@@ -542,7 +566,7 @@ mod tests {
     fn alpha_is_a_percentage() {
         let half = Rgba8 { a: 255, ..BLUE };
         let translucent = commit(half, InputModel::Rgb, 3, "50", st(half), None).map(|r| r.0);
-        assert_eq!(translucent, Err(Reject::NoSuchChannel));
+        assert_eq!(translucent, Ok(Rgba8 { a: 128, ..BLUE }));
         let half = Rgba8 { a: 128, ..BLUE };
         let c = commit(half, InputModel::Rgb, 3, "100", st(half), None)
             .map(|r| r.0)

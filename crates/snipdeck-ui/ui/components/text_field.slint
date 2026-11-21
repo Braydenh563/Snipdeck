@@ -50,6 +50,10 @@ export component TextField inherits VerticalLayout {
     in property <int> min-lines: 3;
     in property <int> max-lines: 8;
     in property <InputType> input-type: InputType.text;
+    // The field holds a secret (the text of a sensitive item, an answer in its fill form): copy and cut, by key or
+    // by menu, go to the host through `private-copied` and `private-cut` instead of the system clipboard, so the host
+    // writes them with the privacy markers and clears them later.
+    in property <bool> private-copy: false;
     in property <image> leading-icon;
     // Shows a clear button while `text` is not empty; Esc then clears too (SearchField turns this on).
     in property <bool> clearable: false;
@@ -89,6 +93,10 @@ export component TextField inherits VerticalLayout {
 
     // User edit (typing, paste, IME commit, clear button, accessibility set-value).
     callback edited(text: string);
+    // Copy of the selected bytes `start` to `end` (either order) of `text`; only with `private-copy`.
+    callback private-copied(text: string, start: int, end: int);
+    // Cut of the same: the host copies and answers the text left, or nothing when nothing was cut.
+    callback private-cut(text: string, start: int, end: int) -> [string];
     // Enter pressed (single line).
     callback accepted(text: string);
     // The clear button or Esc emptied the field.
@@ -96,6 +104,26 @@ export component TextField inherits VerticalLayout {
 
     // `focus()` comes from `forward-focus`.
     public function select-all() { input.select-all(); }
+    function copy-selection() {
+        if (root.private-copy) {
+            root.private-copied(input.text, input.anchor-position-byte-offset, input.cursor-position-byte-offset);
+        } else {
+            input.copy();
+        }
+    }
+    function cut-selection() {
+        if (root.private-copy) {
+            let rest = root.private-cut(input.text, input.anchor-position-byte-offset, input.cursor-position-byte-offset);
+            if (rest.length > 0) {
+                let at = min(input.anchor-position-byte-offset, input.cursor-position-byte-offset);
+                input.text = rest[0];
+                input.set-selection-offsets(at, at);
+                root.edited(rest[0]);
+            }
+        } else {
+            input.cut();
+        }
+    }
     // Puts the caret at a UTF-8 byte offset (also scrolls it into view).
     public function set-cursor(offset: int) { input.set-selection-offsets(offset, offset); }
 
@@ -218,17 +246,16 @@ export component TextField inherits VerticalLayout {
                     ContextMenuArea {
                         enabled: root.enabled;
                         Menu {
-                            if !root.read-only: MenuItem {
+                            // A password is never copied or cut: not from this menu, and not by the keys below.
+                            if !root.read-only && root.input-type != InputType.password: MenuItem {
                                 title: @tr("Cut");
                                 enabled: input.anchor-position-byte-offset != input.cursor-position-byte-offset;
-                                activated => {
-                                    input.cut();
-                                }
+                                activated => { root.cut-selection(); }
                             }
-                            MenuItem {
+                            if root.input-type != InputType.password: MenuItem {
                                 title: @tr("Copy");
                                 enabled: input.anchor-position-byte-offset != input.cursor-position-byte-offset;
-                                activated => { input.copy(); }
+                                activated => { root.copy-selection(); }
                             }
                             if !root.read-only: MenuItem {
                                 title: @tr("Paste");
@@ -289,6 +316,31 @@ export component TextField inherits VerticalLayout {
                                 edited => { root.edited(self.text); }
                                 accepted => { root.accepted(self.text); }
                                 key-pressed(event) => {
+                                    // Copy and cut are swallowed in a password field, whichever way they are typed
+                                    // (Ctrl+C, Ctrl+X, Ctrl+Insert, Shift+Delete; Cmd on a Mac). The control characters
+                                    // are what some platforms report for Ctrl+C and Ctrl+X.
+                                    if (root.input-type == InputType.password
+                                        && (((event.modifiers.control || event.modifiers.meta)
+                                            && (event.text == "c" || event.text == "C" || event.text == "x" || event.text == "X"
+                                                || event.text == "\u{3}" || event.text == "\u{18}" || event.text == Key.Insert))
+                                            || (event.modifiers.shift && event.text == Key.Delete))) {
+                                        return accept;
+                                    }
+                                    // The same chords in a field that holds a secret go to the host (see `private-copy`).
+                                    if (root.private-copy) {
+                                        if ((event.modifiers.control || event.modifiers.meta)
+                                            && (event.text == "c" || event.text == "C" || event.text == "\u{3}" || event.text == Key.Insert)) {
+                                            root.copy-selection();
+                                            return accept;
+                                        }
+                                        if (!root.read-only
+                                            && (((event.modifiers.control || event.modifiers.meta)
+                                                && (event.text == "x" || event.text == "X" || event.text == "\u{18}"))
+                                                || (event.modifiers.shift && event.text == Key.Delete))) {
+                                            root.cut-selection();
+                                            return accept;
+                                        }
+                                    }
                                     // Key press only: the matching release of an IME-consumed key still arrives (S2 F4).
                                     if (event.text == Key.Escape && root.clear-visible && self.preedit-text == "") {
                                         root.clear();

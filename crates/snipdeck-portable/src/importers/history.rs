@@ -6,10 +6,11 @@
 
 use snipdeck_core::Timestamp;
 
+use crate::decoded::Decoded;
 use crate::error::Result;
 use crate::import::{ImportOptions, board_name, finish};
 use crate::limits::TEXT_LIMIT;
-use crate::plan::{Library, Plan, PlanBoard, PlanList};
+use crate::plan::{Plan, PlanBoard, PlanList};
 use crate::report::{ImportReport, Warning};
 
 use super::{MEMORY_BUDGET, title_from};
@@ -36,13 +37,12 @@ pub struct HistoryEntry {
 /// # Errors
 ///
 /// Storage errors, and a board name that cannot be used.
-pub fn import_entries<L: Library>(
-    lib: &mut L,
+pub fn decode_entries(
     entries: &[HistoryEntry],
     default_board_name: &str,
     now: Timestamp,
     options: &ImportOptions<'_>,
-) -> Result<ImportReport> {
+) -> Result<Decoded<'static>> {
     let mut report = ImportReport::default();
     let board = board_name(
         options.board_name.as_deref().unwrap_or(default_board_name),
@@ -95,5 +95,5 @@ pub fn import_entries<L: Library>(
             lists: vec![list],
         });
     }
-    finish(lib, plan, options, report)
+    Ok(finish(plan, options, report))
 }

@@ -19,7 +19,7 @@ pub(crate) const APPLICATION_ID: i32 = 0x534E_444B;
 /// One forward step of the schema.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Migration {
-    /// The version the database is at after this step; versions are 1 to 9 without gaps.
+    /// The version the database is at after this step; versions are 1 to 10 without gaps.
     pub version: u32,
     /// Short description, for error messages.
     pub name: &'static str,
@@ -83,6 +83,12 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         version: 9,
         name: "typed triggers",
         sql: schema::V9,
+        post: None,
+    },
+    Migration {
+        version: 10,
+        name: "previous key record dropped",
+        sql: schema::V10,
         post: None,
     },
 ];
@@ -236,6 +242,9 @@ fn write_backup(conn: &Connection, path: &Path, from: u32) -> Result<()> {
     if from < 5 {
         scrub_or_delete(&temp);
     }
+    if from < 10 && temp.exists() {
+        scrub_previous_key_or_delete(&temp);
+    }
     if !temp.exists() {
         // Deleted because it could not be scrubbed: the old copy is just as plain, so it goes too.
         return match std::fs::remove_file(&target) {
@@ -265,6 +274,29 @@ fn scrub_older_backups(path: &Path, current: u32) {
             scrub_or_delete(&copy);
         }
     }
+}
+
+/// Clears the previous key record from a pre-v10 copy (version 10 drops it from the live file),
+/// or deletes the copy if that fails.
+fn scrub_previous_key_or_delete(backup: &Path) {
+    if scrub_previous_key(&backup.to_string_lossy()).is_err() {
+        let _ = std::fs::remove_file(backup);
+    }
+}
+
+fn scrub_previous_key(backup: &str) -> Result<()> {
+    let copy = Connection::open(backup)?;
+    copy.pragma_update(None, "journal_mode", "MEMORY")?;
+    copy.pragma_update(None, "secure_delete", "ON")?;
+    let has_column: bool = copy.query_row(
+        "SELECT EXISTS (SELECT 1 FROM pragma_table_info('key_ring') WHERE name = 'previous')",
+        [],
+        |r| r.get(0),
+    )?;
+    if has_column {
+        copy.execute_batch("UPDATE key_ring SET previous = NULL; VACUUM;")?;
+    }
+    Ok(())
 }
 
 /// Scrubs the Recent inbox of a backup; if that fails (a file held by antivirus, a damaged copy)
@@ -305,14 +337,14 @@ mod tests {
     use rusqlite::params;
 
     const NEXT_ADD_COLUMN: Migration = Migration {
-        version: 10,
+        version: 11,
         name: "add boards.colour",
         sql: "ALTER TABLE boards ADD COLUMN colour TEXT;",
         post: None,
     };
 
     const NEXT_BROKEN: Migration = Migration {
-        version: 10,
+        version: 11,
         name: "broken",
         sql: "ALTER TABLE boards ADD COLUMN colour TEXT; THIS IS NOT SQL;",
         post: None,
@@ -383,8 +415,8 @@ mod tests {
 
         let all = with_next(NEXT_ADD_COLUMN);
         let outcome = migrate(&mut conn, &all, Path::new(":memory:"), false).unwrap();
-        assert_eq!(outcome, Outcome { from: 9, to: 10 });
-        assert_eq!(version(&conn), 10);
+        assert_eq!(outcome, Outcome { from: 10, to: 11 });
+        assert_eq!(version(&conn), 11);
         let (name, colour): (String, Option<String>) = conn
             .query_row("SELECT name, colour FROM boards", [], |r| {
                 Ok((r.get(0)?, r.get(1)?))
@@ -410,7 +442,7 @@ mod tests {
             matches!(
                 err,
                 Error::Migration {
-                    version: 10,
+                    version: 11,
                     name: "broken",
                     source: Some(_),
                     ..
@@ -422,7 +454,7 @@ mod tests {
             std::error::Error::source(&err).is_some(),
             "the cause is kept"
         );
-        assert_eq!(version(&conn), 9);
+        assert_eq!(version(&conn), 10);
         // The half-applied ALTER TABLE was undone, and the data is intact.
         assert!(conn.prepare("SELECT colour FROM boards").is_err());
         let boards: i64 = conn
@@ -440,7 +472,7 @@ mod tests {
         let mut conn = fresh();
         migrate(&mut conn, MIGRATIONS, Path::new(":memory:"), false).unwrap();
         let dangling = Migration {
-            version: 10,
+            version: 11,
             name: "orphan a list",
             sql: "INSERT INTO lists (id, board_id, name, list_view, list_sort, rank, created_at, updated_at)
                   VALUES (zeroblob(16), zeroblob(16), 'L', 'compact', 'manual', 1, 0, 0);",
@@ -454,10 +486,10 @@ mod tests {
         )
         .unwrap_err();
         assert!(
-            matches!(err, Error::Migration { version: 10, .. }),
+            matches!(err, Error::Migration { version: 11, .. }),
             "{err:?}"
         );
-        assert_eq!(version(&conn), 9);
+        assert_eq!(version(&conn), 10);
     }
 
     #[test]
@@ -473,8 +505,8 @@ mod tests {
             matches!(
                 err,
                 Error::SchemaTooNew {
-                    found: 10,
-                    supported: 9
+                    found: 11,
+                    supported: 10
                 }
             ),
             "{err:?}"
@@ -484,28 +516,28 @@ mod tests {
             message.contains("newer Snipdeck") && message.contains("update"),
             "{message}"
         );
-        assert_eq!(version(&conn), 10);
+        assert_eq!(version(&conn), 11);
     }
 
     #[test]
-    fn an_older_binary_refuses_v9() {
+    fn an_older_binary_refuses_v10() {
         let mut conn = fresh();
         let path = std::path::Path::new("x.db");
         migrate(&mut conn, MIGRATIONS, path, false).unwrap();
-        assert_eq!(version(&conn), 9);
+        assert_eq!(version(&conn), 10);
         // A build that stops at version 8 meets a version-9 file.
-        let err = migrate(&mut conn, &MIGRATIONS[..8], path, false).unwrap_err();
+        let err = migrate(&mut conn, &MIGRATIONS[..9], path, false).unwrap_err();
         assert!(
             matches!(
                 err,
                 Error::SchemaTooNew {
-                    found: 9,
-                    supported: 8
+                    found: 10,
+                    supported: 9
                 }
             ),
             "{err:?}"
         );
-        assert_eq!(version(&conn), 9, "left alone");
+        assert_eq!(version(&conn), 10, "left alone");
     }
 
     #[test]
@@ -539,10 +571,10 @@ mod tests {
                 outcome,
                 Outcome {
                     from: u32::try_from(start).unwrap(),
-                    to: 9
+                    to: 10
                 }
             );
-            assert_eq!(version(&conn), 9);
+            assert_eq!(version(&conn), 10);
             for sql in [
                 "SELECT label FROM items",
                 "SELECT icon FROM lists",
@@ -564,14 +596,14 @@ mod tests {
         let mut conn = Connection::open(&path).unwrap();
         migrate(&mut conn, MIGRATIONS, &path, true).unwrap();
         assert!(
-            !dir.path().join("snipdeck.db.pre-v8.bak").exists(),
+            !dir.path().join("snipdeck.db.pre-v9.bak").exists(),
             "nothing to back up on creation"
         );
         insert_board(&conn);
 
         migrate(&mut conn, &with_next(NEXT_ADD_COLUMN), &path, true).unwrap();
-        let backup = Connection::open(dir.path().join("snipdeck.db.pre-v9.bak")).unwrap();
-        assert_eq!(version(&backup), 9);
+        let backup = Connection::open(dir.path().join("snipdeck.db.pre-v10.bak")).unwrap();
+        assert_eq!(version(&backup), 10);
         let boards: i64 = backup
             .query_row("SELECT count(*) FROM boards", [], |r| r.get(0))
             .unwrap();
@@ -580,6 +612,46 @@ mod tests {
             backup.prepare("SELECT colour FROM boards").is_err(),
             "the copy predates the change"
         );
+    }
+
+    #[test]
+    fn the_pre_v10_backup_keeps_no_previous_key_record() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("snipdeck.db");
+        let mut conn = Connection::open(&path).unwrap();
+        migrate(&mut conn, &MIGRATIONS[..9], &path, true).unwrap();
+        let old_record = [b"SNKEY1".as_slice(), b"old-record-bytes"].concat();
+        let new_record = [b"SNKEY1".as_slice(), b"new-record-bytes"].concat();
+        conn.execute(
+            "INSERT INTO key_ring (id, record, previous) VALUES (1, ?1, ?2)",
+            params![new_record, old_record],
+        )
+        .unwrap();
+
+        migrate(&mut conn, MIGRATIONS, &path, true).unwrap();
+
+        let bak = dir.path().join("snipdeck.db.pre-v9.bak");
+        let backup = Connection::open(&bak).unwrap();
+        let (record, previous): (Vec<u8>, Option<Vec<u8>>) = backup
+            .query_row("SELECT record, previous FROM key_ring", [], |r| {
+                Ok((r.get(0)?, r.get(1)?))
+            })
+            .unwrap();
+        assert_eq!(record, new_record, "the current record stays");
+        assert!(previous.is_none(), "the old record is gone from the copy");
+        drop(backup);
+        let raw = std::fs::read(&bak).unwrap();
+        assert!(
+            !raw.windows(16).any(|w| w == b"old-record-bytes"),
+            "and its bytes are not left in free pages"
+        );
+        let live: Option<Vec<u8>> = conn
+            .query_row("SELECT previous FROM key_ring", [], |r| r.get(0))
+            .unwrap();
+        assert!(live.is_none());
+        assert_eq!(version(&conn), 10);
+        drop(conn);
+        assert!(Connection::open(&path).is_ok());
     }
 
     fn plain_copy_with_one_entry(path: &Path) {
@@ -613,7 +685,7 @@ mod tests {
         migrate(&mut conn, MIGRATIONS, &path, true).unwrap();
         assert_eq!(entries(&v3), 0, "scrubbed");
         assert!(!v4.exists(), "a copy that cannot be scrubbed is deleted");
-        assert_eq!(version(&conn), 9, "and the open went on");
+        assert_eq!(version(&conn), 10, "and the open went on");
     }
 
     #[test]
@@ -675,7 +747,7 @@ mod tests {
         // A table rebuild, the migration shape that needs foreign keys off: widen the
         // `list_view` check by copying `lists` into a new table.
         let rebuild = Migration {
-            version: 10,
+            version: 11,
             name: "rebuild lists",
             sql: "CREATE TABLE lists_new (
                       id BLOB NOT NULL PRIMARY KEY CHECK (length(id) = 16),
@@ -709,7 +781,7 @@ mod tests {
         let before = counts(&conn);
         assert_eq!(before, [1, 1, 3, 4, 1, 1]);
         let outcome = migrate(&mut conn, &with_next(rebuild), &path, true).unwrap();
-        assert_eq!(outcome, Outcome { from: 1, to: 10 });
+        assert_eq!(outcome, Outcome { from: 1, to: 11 });
         assert_eq!(counts(&conn), before);
         let items_still_reference_the_list: i64 = conn
             .query_row(
@@ -734,7 +806,7 @@ mod tests {
         )
         .unwrap();
         let mut conn = Connection::open(&path).unwrap();
-        let outcome = migrate(&mut conn, &MIGRATIONS[..8], &path, false).unwrap();
+        let outcome = migrate(&mut conn, &MIGRATIONS[..9], &path, false).unwrap();
         assert_eq!(outcome, Outcome { from: 7, to: 8 });
         // Fold the write-ahead log into one self-contained file.
         conn.pragma_update(None, "journal_mode", "DELETE").unwrap();

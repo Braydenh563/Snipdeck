@@ -5,8 +5,11 @@
 //! Windows is the product. Off Windows the same binary runs on the platform fakes, which is how
 //! `cargo run -p snipdeck-app -- --demo` shows the Panel on a development machine.
 
-// unverified on Windows (Fable v1 sweep A1): no console window for the release GUI build.
-#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
+// unverified on Windows (Fable v1 sweep A1, PLATFORM-35): the exe is a GUI-subsystem program in
+// every profile, so the dev build the owner tests behaves like the release (no console window
+// at start-up or autostart, and closing none kills the app). The `console` cargo feature builds
+// a console-subsystem exe for debugging: `cargo run -p snipdeck-app --features console`.
+#![cfg_attr(all(windows, not(feature = "console")), windows_subsystem = "windows")]
 #![forbid(unsafe_code)]
 #![allow(
     clippy::print_stdout,
@@ -26,7 +29,9 @@ use slint::{
     ComponentHandle,
     winit_030::{WinitWindowAccessor, winit},
 };
+use snipdeck_app::session_end::JobResult;
 use snipdeck_app::{
+    archive_job,
     binding::Binding,
     cli::{self, Args},
     controller::{Controller, Effect},
@@ -41,10 +46,10 @@ use snipdeck_app::{
     master_job,
     onboarding_binding::OnboardingUi,
     picker_binding::{AnchorMemory, PickerUi},
-    platform::{self, Callbacks, Host, Start},
+    platform::{self, Callbacks, Host, Instance, Start},
     screenshot,
     settings::{Settings, Theme},
-    settings_binding::{PanelTaskbar, SettingsUi, SystemHost},
+    settings_binding::{self, PanelTaskbar, SettingsUi, SystemHost},
     settings_store::{FileSink, SettingsSaver},
     toast::Toast,
     toast_binding::ToastUi,
@@ -52,12 +57,33 @@ use snipdeck_app::{
     window_kind,
 };
 use snipdeck_core::Timestamp;
+use snipdeck_platform::handover::{Request, UrlAction};
+use snipdeck_platform::tray::TrayEvent;
 use snipdeck_store::Store;
 use snipdeck_ui::PanelWindow;
 
+/// What retrying failed global hotkeys needs (PLATFORM-3, -4). Held on the UI thread.
+struct HotkeyRetry {
+    backend: Rc<RefCell<Box<dyn host::HotkeyBackend>>>,
+    chords_now: Rc<dyn Fn() -> snipdeck_app::settings::Hotkeys>,
+    /// The hotkeys that failed and have not yet registered.
+    problems: Vec<host::HotkeyProblem>,
+    gate: host::RetryGate,
+    started: std::time::Instant,
+}
+
+/// How often failed hotkeys are tried again when nothing else prompts it.
+const HOTKEY_RETRY_EVERY: std::time::Duration = std::time::Duration::from_mins(1);
+
 thread_local! {
+    /// The failed hotkeys and what retries them.
+    static HOTKEY_RETRY: RefCell<Option<HotkeyRetry>> = const { RefCell::new(None) };
     /// The binding, for events that arrive from other threads and are handed to this one.
     static BINDING: RefCell<Option<Binding>> = const { RefCell::new(None) };
+    /// Requests handed over before the binding existed.
+    static EARLY: RefCell<Vec<EarlyRequest>> = const { RefCell::new(Vec::new()) };
+    /// Saves everything that waits for a quiet moment (see [`flush_now`]).
+    static FLUSH: RefCell<Option<Box<dyn Fn() -> JobResult>>> = const { RefCell::new(None) };
 }
 
 /// Applies the newest "Pause history" state to the tray; if the tray is borrowed right now, tries
@@ -103,8 +129,14 @@ fn main() -> ExitCode {
         return ExitCode::SUCCESS;
     }
     if args.quit {
-        // Nothing else first: no library, data folder, log or window, and no mutex.
-        platform::ask_to_quit();
+        // Nothing else first: no library, data folder, log or window, and no mutex. The instance
+        // is found by the same id a launch makes (same user, same data folder).
+        if let Some(id) = data_folder(&args)
+            .ok()
+            .and_then(|folder| platform::instance_id(&folder).ok())
+        {
+            platform::ask_to_quit(&id);
+        }
         return ExitCode::SUCCESS;
     }
     // Windows says once how a packaged build was started; ask before anything else could.
@@ -189,16 +221,31 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     let look = platform::system_look();
     let callbacks = Callbacks {
         on_hotkey: Box::new(|action| on_ui_thread(move |b| b.hotkey(action))),
-        on_second: Box::new(|| on_ui_thread(Binding::show)),
+        // A later launch's request: acted on here, then acknowledged (the launch waits for that).
+        on_request: Box::new(|request, ack| {
+            if slint::invoke_from_event_loop(move || deliver_request(request, ack)).is_err() {
+                snipdeck_app::trace!("request for the UI thread dropped");
+            }
+        }),
         // The same path as the tray's Quit, so pending saves flush after the event loop ends.
         on_quit: Box::new(|| {
             on_ui_thread(|b| b.tray(snipdeck_platform::tray::TrayEvent::Quit));
         }),
         on_target_changed: Box::new(|| with_binding(Binding::target_changed)),
-        on_tray: Box::new(|event| on_ui_thread(move |b| b.tray(event))),
+        on_tray: Box::new(|event| {
+            if event == TrayEvent::SessionEnding {
+                // Windows ends the session: save on the UI thread now, and return only when that
+                // is done (or the limit passes), because the process ends right after.
+                flush_for_session_end();
+            } else {
+                on_ui_thread(move |b| b.tray(event));
+            }
+        }),
         on_clipboard_change: Box::new(|change| on_ui_thread(move |b| b.clipboard_changed(change))),
         on_typed: Box::new(|typed| on_ui_thread(move |b| b.typed_trigger(typed))),
         on_session_lock: Box::new(|| on_ui_thread(Binding::session_locked)),
+        // A wake, unlock or remote connect: failed hotkeys are tried again at once (PLATFORM-4).
+        on_session_resume: Box::new(|| on_ui_thread(|_| retry_hotkeys(true))),
         on_look_changed: {
             let look = Arc::clone(&look);
             // Read on the UI thread: the value is fresher than the one the watcher saw.
@@ -219,9 +266,23 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     select_backend()?;
     // `SNIPDECK_DIAG=render`: the paint hooks go on this (the UI) thread before any window.
     snipdeck_app::diag::start();
-    let host = match platform::connect(callbacks, !args.demo)? {
+    let instance_id = if args.demo {
+        None
+    } else {
+        Some(platform::instance_id(&data_folder(args)?)?)
+    };
+    let request = args.request.clone().unwrap_or(Request::Show);
+    let instance = instance_id.as_deref().map(|id| Instance {
+        id,
+        request: &request,
+    });
+    let host = match platform::connect(callbacks, instance.as_ref())? {
         Start::Run(host) => *host,
         Start::AlreadyRunning => return Ok(()),
+        Start::NotAnswering => {
+            report_not_answering();
+            return Ok(());
+        }
     };
     // Only now: reading the settings may move a damaged file aside, and opening the library may
     // migrate it. A second launch (which stops just above) must not touch the running copy's files.
@@ -260,6 +321,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
             by_startup_task,
             settings.starts_visible(),
         );
+    platform::sync_autostart(settings.autostart, settings.panel_start_visible);
     // The text size, before any window draws: the setting over Windows' own.
     snipdeck_app::text_scale::configure(settings.text_size);
     snipdeck_app::text_scale::set_system(look.text_scale());
@@ -287,6 +349,11 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         controller.set_system_look(look.read());
         controller.set_recent_gate(recent_gate);
         controller.set_typing(typing);
+        // The Store build also copies each backup into Documents, outside the package.
+        controller.set_backup_copy_folder(snipdeck_app::store_data::copy_folder(
+            snipdeck_app::platform::is_packaged(),
+            snipdeck_app::paths::documents_folder().as_deref(),
+        ));
         controller.prune_recent();
         if let Some(toast) = settings_toast {
             controller.show_toast(toast);
@@ -316,6 +383,8 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         snipdeck_app::help_binding::set_check_offload(Rc::new(
             snipdeck_app::help_binding::CheckThreads,
         ));
+        // Export, backup and restore read the database on a worker as well.
+        archive_job::set_offload(Rc::new(archive_job::Threads));
         snipdeck_app::drop_read::use_threads();
         // Windows Hello prompts wait for a person, so they run on a worker too.
         hello_job::use_worker_threads();
@@ -337,6 +406,9 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     // (off Windows, or it failed to start) or while no icon is there, closing the Panel quits.
     let tray = Rc::new(RefCell::new(tray));
     show_tray(&mut tray.borrow_mut(), &window);
+    if let Some(tray) = tray.borrow_mut().as_mut() {
+        let _ = tray.set_double_click_opens(controller.borrow().settings().tray_double_click_opens);
+    }
     // "Pause history" is in the tray menu while clipboard history is on, checked while paused.
     // The sink can run while the tray is borrowed by an effect: the newest state is then kept
     // and applied on the next turn of the event loop, so an update is never dropped.
@@ -378,6 +450,23 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
             )
         }
     };
+    let chords_now: Rc<dyn Fn() -> snipdeck_app::settings::Hotkeys> = Rc::new(chords_now);
+    HOTKEY_RETRY.with(|slot| {
+        *slot.borrow_mut() = Some(HotkeyRetry {
+            backend: Rc::clone(&hotkeys),
+            chords_now: Rc::clone(&chords_now),
+            problems: Vec::new(),
+            gate: host::RetryGate::new(HOTKEY_RETRY_EVERY),
+            started: std::time::Instant::now(),
+        });
+    });
+    // The slow retry: the gate lets one through every `HOTKEY_RETRY_EVERY`.
+    let hotkey_retry_timer = slint::Timer::default();
+    hotkey_retry_timer.start(
+        slint::TimerMode::Repeated,
+        std::time::Duration::from_secs(15),
+        || retry_hotkeys(false),
+    );
     let main_ui = Rc::new(MainUi::new(&controller));
     let panel_taskbar: PanelTaskbar = {
         let window = window.as_weak();
@@ -390,10 +479,10 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     let settings_ui = Rc::new(SettingsUi::new(
         &controller,
         settings_folder.clone(),
-        Rc::new(SystemHost::new(
-            Rc::clone(&hotkeys),
-            Rc::clone(&panel_taskbar),
-        )),
+        Rc::new(
+            SystemHost::new(Rc::clone(&hotkeys), Rc::clone(&panel_taskbar))
+                .with_tray(Rc::clone(&tray)),
+        ),
     ));
     // The master password prompt, made when a locked sensitive item is first needed.
     let unlock_ui = Rc::new(UnlockUi::new(&controller));
@@ -405,10 +494,10 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     // The welcome tour window, made when it is first opened (the first run, or Help).
     let onboarding_ui = OnboardingUi::new(
         &controller,
-        Rc::new(SystemHost::new(
-            Rc::clone(&hotkeys),
-            Rc::clone(&panel_taskbar),
-        )),
+        Rc::new(
+            SystemHost::new(Rc::clone(&hotkeys), Rc::clone(&panel_taskbar))
+                .with_tray(Rc::clone(&tray)),
+        ),
     );
     // The Panel's native window exists once it has been shown. Attached on the first show, which
     // a `--hidden` start reaches later, from the tray or the hotkey.
@@ -462,7 +551,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     };
     let on_effect: Rc<dyn Fn(&Effect)> = Rc::new(effect_handler(
         Rc::clone(&hotkeys),
-        chords_now,
+        move || chords_now(),
         window.as_weak(),
         Rc::clone(&main_ui),
         Rc::clone(&tray),
@@ -495,12 +584,47 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         move |effect| on_effect(effect)
     });
     BINDING.with(|b| *b.borrow_mut() = Some(binding.clone()));
+    // Requests that came in before the Panel was bound, and this launch's own file or address.
+    let own_request = args.request.clone();
+    if slint::invoke_from_event_loop(move || {
+        if let Some(request) = own_request {
+            with_binding(|b| apply_request(b, request));
+        }
+        for (request, ack) in take_early_requests() {
+            deliver_request(request, ack);
+        }
+    })
+    .is_err()
+    {
+        snipdeck_app::trace!("start-up requests dropped");
+    }
     // The Panel steps down from topmost while one of the app's regular windows has the focus.
     snipdeck_app::native_window::on_own_window_active(|active| {
         with_binding(|b| b.own_window_active(active));
     });
     // The item editor opens from the Panel, the Main window and the Picker; one binding draws it.
-    let item_editor = Controller::bind_item_editor(&controller);
+    let item_editor = Rc::new(Controller::bind_item_editor(&controller));
+    // What a clean end saves, run after the event loop and when Windows ends the session.
+    FLUSH.with(|f| {
+        let (item_editor, controller) = (Rc::clone(&item_editor), Rc::clone(&controller));
+        *f.borrow_mut() = Some(Box::new(move || {
+            // An editor left open keeps what was typed since the last draft.
+            item_editor.flush_draft();
+            // A sensitive copy still waiting for its clear timer would outlive the app.
+            let Ok(mut ctl) = controller.try_borrow_mut() else {
+                // Borrowed by the code that was running when this came up: say so, and let the
+                // caller post the job again (the session end does, until its limit).
+                snipdeck_app::trace!("flush: the controller is busy, skipped");
+                return JobResult::Skipped;
+            };
+            ctl.clear_pending_clipboard_now();
+            // Settings changed in the last moments are still waiting for their quiet time.
+            if let Err(e) = ctl.flush_settings() {
+                eprintln!("snipdeck: could not save the settings: {e}");
+            }
+            JobResult::Saved
+        }));
+    });
     // Frame changes are remembered only once the stored place has been restored.
     let frames_armed = Rc::new(Cell::new(false));
     watch_window_events(&window, binding.clone(), Rc::clone(&frames_armed));
@@ -544,6 +668,12 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         if tour_due && let Err(e) = onboarding_ui.open() {
             eprintln!("snipdeck: cannot open the welcome tour: {e}");
         }
+        // The Store build says once that uninstalling removes the library; the tour comes first.
+        if !tour_due {
+            controller
+                .borrow_mut()
+                .remind_store_data(snipdeck_app::platform::is_packaged());
+        }
     }
     // The backup, the Trash purge (30 days, SPEC 5.7a) and the weekly check start 2 s after the
     // first show and repeat every 6 h. Not in the demo, which has no data folder.
@@ -559,15 +689,86 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     if let Err(e) = &ran {
         eprintln!("snipdeck: event loop: {e}");
     }
-    // An editor left open keeps what was typed since the last draft.
-    item_editor.flush_draft();
-    // A sensitive copy still waiting for its clear timer would outlive the app.
-    controller.borrow_mut().clear_pending_clipboard_now();
-    // Settings changed in the last moments are still waiting for their quiet time.
-    if let Err(e) = controller.borrow_mut().flush_settings() {
-        eprintln!("snipdeck: could not save the settings: {e}");
+    if flush_now() == JobResult::Skipped {
+        eprintln!("snipdeck: the final save was skipped: the controller was busy");
     }
+    // The saver's handles go as before: with this function, not with the thread.
+    FLUSH.with(|f| drop(f.borrow_mut().take()));
+    controller.borrow_mut().abandon_unfinished_archive();
     Ok(())
+}
+
+/// Saves what is still waiting: the one list of what a clean end keeps. Runs after the event loop
+/// ends and, from the tray thread's `WM_ENDSESSION`, on the UI thread while Windows ends the
+/// session (the event loop never returns then). Safe to run twice.
+fn flush_now() -> JobResult {
+    FLUSH.with(|f| {
+        f.borrow()
+            .as_ref()
+            .map_or(JobResult::Saved, |flush| flush())
+    })
+}
+
+/// What a session end waits for on the UI thread, at most.
+const SESSION_FLUSH_WAIT: std::time::Duration =
+    std::time::Duration::from_millis(snipdeck_platform::win_logic::SESSION_FLUSH_WAIT_MS);
+
+/// Windows is ending the session (called on the tray thread): saves everything on the UI thread
+/// and waits for it, up to [`SESSION_FLUSH_WAIT`].
+fn flush_for_session_end() {
+    let outcome = snipdeck_app::session_end::flush_until_saved(
+        |job| slint::invoke_from_event_loop(job).is_ok(),
+        flush_now,
+        SESSION_FLUSH_WAIT,
+        &snipdeck_app::session_end::SystemClock::start(),
+    );
+    snipdeck_app::trace!("session end flush: {outcome:?}");
+}
+
+/// A request that came in before the Panel was bound, kept with its acknowledgement.
+type EarlyRequest = (Request, platform::Ack);
+
+/// Acts on `request` on the UI thread and acknowledges it; before the Panel is bound, keeps it
+/// until it is.
+fn deliver_request(request: Request, ack: platform::Ack) {
+    let bound = BINDING.with(|b| b.borrow().is_some());
+    if bound {
+        with_binding(|b| apply_request(b, request));
+        ack();
+    } else {
+        EARLY.with(|e| e.borrow_mut().push((request, ack)));
+    }
+}
+
+fn take_early_requests() -> Vec<EarlyRequest> {
+    EARLY.with(|e| std::mem::take(&mut *e.borrow_mut()))
+}
+
+/// What a launch asked for. UI thread only. A file is only previewed (Import asks before it writes
+/// anything); an address can only open one of three windows.
+fn apply_request(binding: &Binding, request: Request) {
+    match request {
+        Request::Show => binding.show(),
+        Request::OpenFile(path) => {
+            if !settings_binding::request_import_file(path) {
+                snipdeck_app::trace!("file request: no Settings page to open it on");
+            }
+        }
+        Request::Url(UrlAction::Open) => binding.tray(TrayEvent::OpenSnipdeck),
+        Request::Url(UrlAction::Panel) => binding.tray(TrayEvent::OpenPanel),
+        Request::Url(UrlAction::Settings) => settings_binding::request_open(),
+    }
+}
+
+/// The running Snipdeck did not answer this launch: say so (no window exists; the language is the
+/// system's, as for a start-up failure).
+fn report_not_answering() {
+    let _ = slint::select_bundled_translation("");
+    let text = PanelWindow::new().map_or_else(
+        |_| "Snipdeck is already running, but it did not answer.".to_owned(),
+        |window| snipdeck_app::wording::not_answering_text(&window),
+    );
+    platform::show_startup_failure("Snipdeck", &text);
 }
 
 type SharedTray = Rc<RefCell<Option<Box<dyn snipdeck_platform::tray::Tray>>>>;
@@ -589,10 +790,14 @@ where
         let Some(controller) = controller.upgrade() else {
             return;
         };
-        let reported =
-            maintenance::run(&mut maintenance.borrow_mut(), &mut controller.borrow_mut());
-        // A toast the run set is drawn (and its timer started) by a redraw; the borrow is released.
-        if reported > 0 {
+        let ran = maintenance::run(&mut maintenance.borrow_mut(), &mut controller.borrow_mut());
+        // The borrows are released: a daily backup goes to a worker now, and its toast is drawn
+        // when it comes back.
+        if let Some(job) = ran.backup {
+            maintenance::spawn_backup(job, &maintenance, &controller);
+        }
+        // A toast the run set is drawn (and its timer started) by a redraw.
+        if ran.outcomes > 0 {
             with_binding(Binding::redraw);
         }
     });
@@ -650,6 +855,10 @@ fn effect_handler(
             let _ = slint::quit_event_loop();
         }
         Effect::SetHotkeysPaused(paused) => {
+            if *paused {
+                // Nothing is registered while paused: nothing to retry.
+                report_hotkey_problems(&[]);
+            }
             // The chords are read before the backend is borrowed: both are on this thread.
             let chords = chords_now();
             let report = host::set_paused(&mut **hotkeys.borrow_mut(), *paused, &chords);
@@ -689,6 +898,7 @@ fn effect_handler(
             }
         },
         Effect::OpenSettings => {
+            retry_hotkeys(true);
             if let Err(e) = settings_ui.open() {
                 eprintln!("snipdeck: cannot open the settings: {e}");
                 window_failed(snipdeck_app::toast::ToastMessage::WindowNotShown);
@@ -742,6 +952,8 @@ fn effect_handler(
             }
         }
         // The binding has already acted: placed the window, or opened the item editor.
+        Effect::HideMainForEyedropper => hide_main_for_eyedropper(&main_ui),
+        Effect::RestoreMainAfterEyedropper => restore_main_after_eyedropper(&main_ui),
         Effect::HidePanel
         | Effect::ShowSymbols
         | Effect::ShowColours
@@ -751,6 +963,31 @@ fn effect_handler(
         | Effect::NewItem
         | Effect::EditItem(_) => {}
     }
+}
+
+/// The eyedropper's overlay must not catch the Main window: hide it and remember it was there.
+fn hide_main_for_eyedropper(main_ui: &MainUi) {
+    use slint::ComponentHandle;
+    if let Some(w) = main_ui.window()
+        && w.window().is_visible()
+    {
+        MAIN_HIDDEN_FOR_EYEDROPPER.with(|c| c.set(true));
+        let _ = w.hide();
+    }
+}
+
+/// Brings the Main window back when the eyedropper run ends, if the run hid it.
+fn restore_main_after_eyedropper(main_ui: &MainUi) {
+    if MAIN_HIDDEN_FOR_EYEDROPPER.with(|c| c.replace(false))
+        && let Err(e) = main_ui.open()
+    {
+        eprintln!("snipdeck: cannot bring the main window back: {e}");
+    }
+}
+
+thread_local! {
+    /// Whether the Main window was on screen when the eyedropper started.
+    static MAIN_HIDDEN_FOR_EYEDROPPER: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
 fn resize_direction(edge: snipdeck_app::frame::Edge) -> winit::window::ResizeDirection {
@@ -869,8 +1106,39 @@ fn watch_window_events(window: &PanelWindow, binding: Binding, armed: Rc<Cell<bo
         });
 }
 
+/// Tries the failed hotkeys again if a retry is due; `prompted` (a wake, unlock, remote connect,
+/// or Settings opening) makes it due at once. A hotkey that registers clears its warning.
+fn retry_hotkeys(prompted: bool) {
+    let remaining = HOTKEY_RETRY.with(|slot| {
+        let mut slot = slot.borrow_mut();
+        let retry = slot.as_mut()?;
+        if retry.problems.is_empty() {
+            return None;
+        }
+        if prompted {
+            retry.gate.now();
+        }
+        if !retry.gate.due(retry.started.elapsed()) {
+            return None;
+        }
+        let chords = (retry.chords_now)();
+        let remaining =
+            host::retry_failed(&mut **retry.backend.borrow_mut(), &chords, &retry.problems);
+        (remaining != retry.problems).then_some(remaining)
+    });
+    if let Some(remaining) = remaining {
+        snipdeck_app::trace!("hotkey retry: {} still failing", remaining.len());
+        report_hotkey_problems(&remaining);
+    }
+}
+
 /// Prints the hotkeys that could not be registered and tells the user in the Panel.
 fn report_hotkey_problems(problems: &[host::HotkeyProblem]) {
+    HOTKEY_RETRY.with(|slot| {
+        if let Some(retry) = slot.borrow_mut().as_mut() {
+            retry.problems = problems.to_vec();
+        }
+    });
     for problem in problems {
         eprintln!(
             "snipdeck: cannot register {} for {:?}: {}",
@@ -892,6 +1160,15 @@ type Library = (
     Option<Toast>,
 );
 
+/// Where the library lives: `--data-dir`, or the default folder.
+fn data_folder(args: &Args) -> Result<PathBuf, String> {
+    match &args.data_dir {
+        Some(dir) => Ok(dir.clone()),
+        None => snipdeck_app::paths::data_dir(&|name| std::env::var(name).ok(), cfg!(windows))
+            .ok_or_else(|| "cannot find a data folder; pass --data-dir <folder>".to_owned()),
+    }
+}
+
 /// The library and the settings.
 fn open_library(args: &Args) -> Result<Library, String> {
     let now = Timestamp::now();
@@ -906,13 +1183,21 @@ fn open_library(args: &Args) -> Result<Library, String> {
         snipdeck_app::trace!("demo library");
         return Ok((store, settings, None, None, None));
     }
-    let folder = match &args.data_dir {
-        Some(dir) => dir.clone(),
-        None => snipdeck_app::paths::data_dir(&|name| std::env::var(name).ok(), cfg!(windows))
-            .ok_or("cannot find a data folder; pass --data-dir <folder>")?,
-    };
+    let folder = data_folder(args)?;
     // Where a crash report goes (set for any real library, also when the settings stay unsaved).
     crash::set_data_dir(&folder);
+    // Setup's "erase my data" cleans only a folder that carries this marker.
+    if let Err(e) = snipdeck_platform::data_record::write_marker(&folder) {
+        snipdeck_app::trace!("data-folder marker: {e}");
+    }
+    // ... and it must find a folder chosen with --data-dir (unverified on Windows).
+    #[cfg(windows)]
+    {
+        let default = snipdeck_app::paths::data_dir(&|name| std::env::var(name).ok(), true);
+        if let Err(e) = snipdeck_platform::windows::data_record::sync(&folder, default.as_deref()) {
+            snipdeck_app::trace!("data-folder record: {e}");
+        }
+    }
     let loaded = snipdeck_app::paths::read_settings(&folder);
     let may_save = loaded.may_save();
     let loaded_outcome = loaded.outcome;

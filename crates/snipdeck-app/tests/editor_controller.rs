@@ -1454,7 +1454,15 @@ fn browse_hands_the_chosen_path_to_the_field_and_reports_a_dialog_that_failed() 
     assert!(view(&r.ctl).can_browse);
     let ask = |r: &mut Rig| {
         let p = r.ctl.file_picker().expect("picker");
-        let answer = p.pick(PickKind::Image, Some(42));
+        let (tx, rx) = std::sync::mpsc::channel();
+        p.pick(
+            PickKind::Image,
+            Some(42),
+            Box::new(move |answer| {
+                let _ = tx.send(answer);
+            }),
+        );
+        let answer = rx.recv().expect("the fake answers at once");
         r.ctl.item_editor_picked(answer)
     };
     assert_eq!(ask(&mut r).as_deref(), Some(r"C:\files\a.png"));

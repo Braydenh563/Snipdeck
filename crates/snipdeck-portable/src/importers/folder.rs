@@ -6,10 +6,11 @@ use std::path::{Path, PathBuf};
 
 use snipdeck_core::Timestamp;
 
+use crate::decoded::Decoded;
 use crate::error::{Error, Result};
 use crate::import::{ImportOptions, board_name, finish};
 use crate::limits::TEXT_LIMIT;
-use crate::plan::{Library, Plan, PlanBoard, PlanItem, PlanList};
+use crate::plan::{Plan, PlanBoard, PlanItem, PlanList};
 use crate::report::{ImportReport, Warning};
 
 use super::{MEMORY_BUDGET, clean_label, decode_text, note_lossy, title_from};
@@ -31,12 +32,11 @@ use super::{MEMORY_BUDGET, clean_label, decode_text, note_lossy, title_from};
 ///
 /// [`Error::File`] if `folder` cannot be listed, and storage errors. Individual unreadable files
 /// are warnings.
-pub fn import_folder<L: Library>(
-    lib: &mut L,
+pub fn decode_folder(
     folder: &Path,
     now: Timestamp,
     options: &ImportOptions<'_>,
-) -> Result<ImportReport> {
+) -> Result<Decoded<'static>> {
     let mut report = ImportReport::default();
     let mut state = Reader {
         budget: MEMORY_BUDGET,
@@ -96,7 +96,7 @@ pub fn import_folder<L: Library>(
             lists,
         });
     }
-    finish(lib, plan, options, report)
+    Ok(finish(plan, options, report))
 }
 
 struct Reader {

@@ -40,6 +40,10 @@ export component TemplateField inherits FocusScope {
 
     // text / date: the user edited the value.
     callback edited(value: string);
+    // The answer is a secret: copy and cut go to the host (see `TextField.private-copy`).
+    in property <bool> private-copy: false;
+    callback private-copied(text: string, start: int, end: int);
+    callback private-cut(text: string, start: int, end: int) -> [string];
     // Enter was pressed: in a single-line text or date field, or on the choice list (with the chosen option).
     callback accepted(value: string);
     // choice: the user picked option `index`.
@@ -110,8 +114,11 @@ export component TemplateField inherits FocusScope {
             show-focus: root.show-focus;
             single-line: root.kind != TemplateFieldKind.multiline;
             focus-request: root.focus-request;
+            private-copy: root.private-copy;
             edited(v) => { root.edited(v); }
             accepted(v) => { root.accepted(v); }
+            private-copied(t, a, b) => { root.private-copied(t, a, b); }
+            private-cut(t, a, b) => { return root.private-cut(t, a, b); }
         }
 
         if root.kind == TemplateFieldKind.choice: Rectangle {

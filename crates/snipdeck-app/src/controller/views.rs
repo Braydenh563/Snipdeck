@@ -29,6 +29,11 @@ pub enum Effect {
     ShowColours,
     /// The Colours tab steps aside so the list under it shows.
     HideColours,
+    /// The eyedropper starts: the Main window, when it is on screen, steps aside too (it would
+    /// be in the screenshot) and is remembered.
+    HideMainForEyedropper,
+    /// The eyedropper ended: the Main window comes back if it was hidden for the pick.
+    RestoreMainAfterEyedropper,
     /// Hide the Panel.
     HidePanel,
     /// Move the Panel's window so that its top-left is here (physical pixels); its size
@@ -303,6 +308,10 @@ pub struct View {
     /// The first-run question "Keep a Recent list of what you copy?" is due: unanswered, and
     /// the welcome tour is not running. Nothing is kept until the answer is Yes.
     pub recent_question: bool,
+    /// The Recent limits in the settings, for the question's wording.
+    pub recent_max_entries: u32,
+    /// How many days Recent keeps an entry.
+    pub recent_days: u32,
 }
 
 /// What a row of the Move or Colour choice says, before wording.

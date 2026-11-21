@@ -187,6 +187,13 @@ ALTER TABLE key_ring ADD COLUMN previous BLOB
     CHECK (previous IS NULL OR (length(previous) > 6 AND substr(previous, 1, 6) = CAST('SNKEY1' AS BLOB)));
 ";
 
+/// Version 10: the previous key record is no longer kept. It let an old record, which opens
+/// with no password or the old one, outlive a password change. Existing ones are cleared (the
+/// column stays, always NULL).
+pub(crate) const V10: &str = r"
+UPDATE key_ring SET previous = NULL;
+";
+
 /// Version 8: groups inside a list. A group has no rank; its members (`items.group_id`) are
 /// contiguous in the list's own order and the header sits above the first.
 pub(crate) const V8: &str = r"

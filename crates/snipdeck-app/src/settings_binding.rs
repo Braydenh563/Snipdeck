@@ -18,8 +18,9 @@ use std::{
 
 use slint::{ComponentHandle, Global, SharedString};
 use snipdeck_platform::{
-    chord::Chord,
+    chord::{Chord, ChordError, Reserved},
     clipboard_history::{self, ClipboardHistoryEntry, HistoryRead},
+    command_line::AutostartStatus,
     pipeline::{Clipboard, Keyboard, Timing},
 };
 use snipdeck_portable::{
@@ -33,8 +34,8 @@ use crate::{
     accent::AccentChoice,
     binding::{Loggable, Shown, arm_toast, model, redraw_all, register_redraw, to_i32},
     controller::{
-        Controller, HelpTopic, ImportKind, ImportPreview, ImportProblem, ImportSource, MasterState,
-        ToastPhase, ToastView,
+        ArchiveEnd, Begun, Controller, HelpTopic, ImportKind, ImportPreview, ImportProblem,
+        ImportSource, MasterState, ToastPhase, ToastView, spawn_archive,
     },
     host::{self, ClipboardText, HotkeyBackend, HotkeyFailure, HotkeyProblem},
     hotkey_health::{self, HotkeyHealth},
@@ -66,6 +67,9 @@ pub enum AutostartError {
     Other(String),
 }
 
+/// What happens when [`SettingsHost::set_autostart`] is done.
+pub type AutostartDone = Box<dyn FnOnce(Result<(), AutostartError>)>;
+
 impl AutostartError {
     /// The toast that tells the user, in their language.
     #[must_use]
@@ -84,19 +88,38 @@ pub trait SettingsHost {
     /// registered. Returns the ones that could not be.
     fn apply_hotkeys(&self, hotkeys: &Hotkeys) -> Vec<HotkeyProblem>;
 
-    /// Adds or removes the "Start with Windows" entry.
-    ///
-    /// # Errors
-    ///
-    /// Why it could not be changed.
-    fn set_autostart(&self, on: bool, hidden: bool) -> Result<(), AutostartError>;
+    /// The one-click alternatives for a failing shortcut: pool chords nothing holds, Snipdeck's
+    /// own and other programs' alike. The real machine asks Windows; the default accepts every
+    /// chord Snipdeck itself does not hold.
+    fn free_alternatives(&self, hotkeys: &Hotkeys) -> Vec<String> {
+        hotkey_health::alternatives(hotkeys, &mut |_| true)
+    }
 
-    /// Whether the "Start with Windows" entry exists now (the user may have deleted it outside
-    /// Snipdeck). Where there is no such entry the setting is only remembered, so it reads `true`.
-    fn autostart_registered(&self) -> bool;
+    /// Adds or removes the "Start with Windows" entry, then calls `done` with the outcome (or
+    /// why it could not be changed) **on the UI thread**. It may call it at once, or later: the
+    /// packaged build asks Windows, which can wait for the user's consent, and must not freeze
+    /// the window meanwhile.
+    fn set_autostart(&self, on: bool, hidden: bool, done: AutostartDone);
+
+    /// What "Start with Windows" is now: the entry may be gone (removed outside Snipdeck) or
+    /// switched off in Windows. Where there is no such entry the setting is only remembered, so
+    /// it reads `On`. Never waits for Windows.
+    fn autostart_status(&self) -> AutostartStatus;
 
     /// Gives the Panel a taskbar button, or takes it away, while the app runs.
     fn set_panel_in_taskbar(&self, on: bool);
+
+    /// Tells the tray icon whether a double click opens the Main window (off: a single click
+    /// acts at once). Where there is no tray this does nothing.
+    fn set_tray_double_click_opens(&self, on: bool) {
+        let _ = on;
+    }
+
+    /// Whether this is the Store (MSIX) build, whose library is deleted with the package
+    /// ([`crate::store_data`]). The default is no.
+    fn packaged(&self) -> bool {
+        false
+    }
 
     /// Shows `folder` in the file manager.
     ///
@@ -118,22 +141,25 @@ pub trait SettingsHost {
 
     /// Asks the user for the folder an export is saved in (the file gets its dated name there).
     /// `owner` is the Settings window's native handle. The default is a machine without a
-    /// dialog, which exports to [`documents_folder`](Self::documents_folder).
-    fn pick_export_folder(&self, owner: Option<isize>) -> ExportFolder {
+    /// dialog, which exports to [`documents_folder`](Self::documents_folder). The dialog does not
+    /// block the UI: `done` gets the answer on the UI thread, later.
+    fn pick_export_folder(&self, owner: Option<isize>, done: Box<dyn FnOnce(ExportFolder)>) {
         let _ = owner;
-        ExportFolder::NoDialog
+        done(ExportFolder::NoDialog);
     }
 
     /// Asks the user for the file (or, for [`ImportKind::Folder`], the folder) to import.
     /// `owner` is the Settings window's native handle: it is disabled while the dialog is open.
     /// `single_file` asks for one file where the source is usually a folder (an Espanso `.yml`
-    /// file). `None` when they cancelled or the machine has no dialog.
+    /// file). `done` gets `None` when they cancelled or the machine has no dialog, on the UI
+    /// thread, possibly later.
     fn pick_import(
         &self,
         kind: ImportKind,
         single_file: bool,
         owner: Option<isize>,
-    ) -> Option<PathBuf>;
+        done: Box<dyn FnOnce(Option<PathBuf>)>,
+    );
 
     /// Whether this PC has a Windows clipboard history to offer as an import source (only
     /// Windows does). The source is left out of the "Import..." choices when it does not.
@@ -167,12 +193,12 @@ pub fn apply_hotkeys(
     backend: &mut (impl HotkeyBackend + ?Sized),
     hotkeys: &Hotkeys,
 ) -> Vec<HotkeyProblem> {
+    // Every id is freed first (PLATFORM-6): the service refuses a chord another id still holds,
+    // so swapping two shortcuts registers one after the other only once both are free. Removing
+    // one that is not there succeeds; a service that is down is reported by the registrations
+    // that follow.
     for action in HotkeyAction::ALL {
-        if hotkeys.chord(action).is_none() {
-            // Removing one that is not there succeeds; a service that is down is reported by
-            // the registrations that follow.
-            let _ = backend.unregister(host::id_of(action));
-        }
+        let _ = backend.unregister(host::id_of(action));
     }
     host::register_all(backend, hotkeys)
 }
@@ -186,72 +212,133 @@ pub type PanelTaskbar = Rc<dyn Fn(bool)>;
 pub struct SystemHost {
     hotkeys: Rc<RefCell<Box<dyn HotkeyBackend>>>,
     panel_taskbar: PanelTaskbar,
+    tray: Option<SharedTray>,
+    /// The alternatives found for one set of held chords: probing asks Windows, and the page is
+    /// drawn often. Forgotten when the hotkeys are applied.
+    alternatives: RefCell<Option<(Hotkeys, Vec<String>)>>,
 }
+
+/// The tray the host shares (none off Windows or when it failed to start).
+pub type SharedTray = Rc<RefCell<Option<Box<dyn snipdeck_platform::tray::Tray>>>>;
 
 impl SystemHost {
     /// A host that registers shortcuts with `hotkeys` and changes the Panel's taskbar button
     /// with `panel_taskbar`.
     #[must_use]
     pub fn new(hotkeys: Rc<RefCell<Box<dyn HotkeyBackend>>>, panel_taskbar: PanelTaskbar) -> Self {
+        #[cfg(windows)]
+        if snipdeck_platform::windows::package::is_packaged() {
+            // Read the startup task's state in the background, so the first look at Settings
+            // knows it without waiting.
+            snipdeck_platform::windows::package::refresh_startup_task();
+        }
         Self {
             hotkeys,
             panel_taskbar,
+            tray: None,
+            alternatives: RefCell::new(None),
         }
+    }
+
+    /// The same host that also tells `tray` about the double-click choice.
+    #[must_use]
+    pub fn with_tray(mut self, tray: SharedTray) -> Self {
+        self.tray = Some(tray);
+        self
     }
 }
 
 impl SettingsHost for SystemHost {
     fn apply_hotkeys(&self, hotkeys: &Hotkeys) -> Vec<HotkeyProblem> {
+        *self.alternatives.borrow_mut() = None;
         apply_hotkeys(&mut **self.hotkeys.borrow_mut(), hotkeys)
     }
 
-    fn set_autostart(&self, on: bool, hidden: bool) -> Result<(), AutostartError> {
+    fn free_alternatives(&self, hotkeys: &Hotkeys) -> Vec<String> {
+        if let Some((for_hotkeys, found)) = &*self.alternatives.borrow()
+            && for_hotkeys == hotkeys
+        {
+            return found.clone();
+        }
+        let found = hotkey_health::alternatives(hotkeys, &mut |text| {
+            text.parse::<Chord>()
+                .is_ok_and(|chord| self.hotkeys.borrow_mut().probe(chord).is_ok())
+        });
+        *self.alternatives.borrow_mut() = Some((hotkeys.clone(), found.clone()));
+        found
+    }
+
+    fn set_autostart(&self, on: bool, hidden: bool, done: AutostartDone) {
         #[cfg(windows)]
         {
             use snipdeck_platform::{startup_task::Blocked, windows::package};
             if package::is_packaged() {
                 // The package's startup task cannot carry `--hidden`: `main` reads the saved
-                // "When Windows starts" choice instead.
+                // "When Windows starts" choice instead. Windows answers on its own thread,
+                // possibly after a consent prompt: the answer is picked up on the UI thread.
                 let _ = hidden;
-                return package::set_startup_task(on).map_err(|e| match e {
-                    package::TaskError::Blocked(Blocked::ByUser) => AutostartError::SwitchedOff,
-                    package::TaskError::Blocked(Blocked::ByPolicy) => AutostartError::Policy,
-                    package::TaskError::Os(e) => AutostartError::Other(e.to_string()),
+                let back = crate::ui_thread::back_on_ui(done);
+                package::request_startup_task(on, move |result| {
+                    back(result.map_err(|e| match e {
+                        package::TaskError::Blocked(Blocked::ByUser) => AutostartError::SwitchedOff,
+                        package::TaskError::Blocked(Blocked::ByPolicy) => AutostartError::Policy,
+                        package::TaskError::Os(e) => AutostartError::Other(e.to_string()),
+                    }));
                 });
+                return;
             }
-            let exe = std::env::current_exe().map_err(|e| AutostartError::Other(e.to_string()))?;
-            snipdeck_platform::windows::autostart::set_enabled(
-                &exe,
-                if hidden { "--hidden" } else { "" },
-                on,
-            )
-            .map_err(|e| AutostartError::Other(e.to_string()))
+            let result = std::env::current_exe()
+                .map_err(|e| AutostartError::Other(e.to_string()))
+                .and_then(|exe| {
+                    snipdeck_platform::windows::autostart::set_enabled(
+                        &exe,
+                        if hidden { "--hidden" } else { "" },
+                        on,
+                    )
+                    .map_err(|e| AutostartError::Other(e.to_string()))
+                });
+            done(result);
         }
         #[cfg(not(windows))]
         {
             // Only Windows has the entry; elsewhere the setting is just remembered.
             let _ = (on, hidden);
-            Ok(())
+            done(Ok(()));
         }
     }
 
-    fn autostart_registered(&self) -> bool {
+    fn autostart_status(&self) -> AutostartStatus {
         #[cfg(windows)]
         {
-            if snipdeck_platform::windows::package::is_packaged() {
-                snipdeck_platform::windows::package::startup_task_enabled()
+            use snipdeck_platform::windows::package;
+            if package::is_packaged() {
+                // Whatever was read last; a fresh read (throttled) lands for the next look.
+                package::refresh_startup_task();
+                package::startup_task_status()
             } else {
-                snipdeck_platform::windows::autostart::is_enabled()
+                snipdeck_platform::windows::autostart::status()
             }
         }
         #[cfg(not(windows))]
         {
-            true
+            AutostartStatus::On
         }
     }
 
     fn set_panel_in_taskbar(&self, on: bool) {
         (self.panel_taskbar)(on);
+    }
+
+    fn set_tray_double_click_opens(&self, on: bool) {
+        let Some(tray) = &self.tray else {
+            return;
+        };
+        if let Ok(mut guard) = tray.try_borrow_mut()
+            && let Some(tray) = guard.as_mut()
+            && let Err(e) = tray.set_double_click_opens(on)
+        {
+            crate::trace!("tray double click: {e}");
+        }
     }
 
     fn open_folder(&self, folder: &Path) -> Result<(), String> {
@@ -266,22 +353,36 @@ impl SettingsHost for SystemHost {
         crate::paths::documents_folder()
     }
 
-    fn pick_export_folder(&self, owner: Option<isize>) -> ExportFolder {
+    fn packaged(&self) -> bool {
+        crate::platform::is_packaged()
+    }
+
+    fn pick_export_folder(&self, owner: Option<isize>, done: Box<dyn FnOnce(ExportFolder)>) {
         #[cfg(windows)]
         {
             use snipdeck_platform::file_dialog::PickKind;
-            match crate::platform::file_picker().map(|picker| picker.pick(PickKind::Folder, owner))
-            {
-                Some(Ok(Some(folder))) => ExportFolder::Chosen(folder),
-                Some(Ok(None)) => ExportFolder::Cancelled,
-                Some(Err(_)) | None => ExportFolder::NoDialog,
-            }
+            let Some(picker) = crate::platform::file_picker() else {
+                done(ExportFolder::NoDialog);
+                return;
+            };
+            let back = crate::ui_thread::back_on_ui(done);
+            picker.pick(
+                PickKind::Folder,
+                owner,
+                Box::new(move |answer| {
+                    back(match answer {
+                        Ok(Some(folder)) => ExportFolder::Chosen(folder),
+                        Ok(None) => ExportFolder::Cancelled,
+                        Err(_) => ExportFolder::NoDialog,
+                    });
+                }),
+            );
         }
         #[cfg(not(windows))]
         {
             // Only Windows has a file dialog.
             let _ = owner;
-            ExportFolder::NoDialog
+            done(ExportFolder::NoDialog);
         }
     }
 
@@ -290,19 +391,26 @@ impl SettingsHost for SystemHost {
         kind: ImportKind,
         single_file: bool,
         owner: Option<isize>,
-    ) -> Option<PathBuf> {
+        done: Box<dyn FnOnce(Option<PathBuf>)>,
+    ) {
         #[cfg(windows)]
         {
-            crate::platform::file_picker()?
-                .pick(pick_kind(kind, single_file), owner)
-                .ok()
-                .flatten()
+            let Some(picker) = crate::platform::file_picker() else {
+                done(None);
+                return;
+            };
+            let back = crate::ui_thread::back_on_ui(done);
+            picker.pick(
+                pick_kind(kind, single_file),
+                owner,
+                Box::new(move |answer| back(answer.ok().flatten())),
+            );
         }
         #[cfg(not(windows))]
         {
             // Only Windows has a file dialog.
             let _ = (kind, single_file, owner);
-            None
+            done(None);
         }
     }
 
@@ -368,6 +476,8 @@ pub enum HotkeyRefusal {
     UsedBy(HotkeyAction),
     /// Windows or another program refused it.
     Refused(HotkeyFailure),
+    /// A chord every program or Windows itself relies on (copy, paste, `Alt+Tab`).
+    Reserved(Reserved),
 }
 
 /// `current` with `action` set to `combo` ("Ctrl+Alt+V").
@@ -381,7 +491,10 @@ pub fn with_hotkey(
     action: HotkeyAction,
     combo: &str,
 ) -> Result<Hotkeys, HotkeyRefusal> {
-    let chord: Chord = combo.parse().map_err(|_| HotkeyRefusal::NotAShortcut)?;
+    let chord: Chord = combo.parse().map_err(|e| match e {
+        ChordError::Reserved(why) => HotkeyRefusal::Reserved(why),
+        _ => HotkeyRefusal::NotAShortcut,
+    })?;
     if let Some(other) = HotkeyAction::ALL
         .into_iter()
         .find(|a| *a != action && current.chord(*a) == Some(chord))
@@ -469,6 +582,11 @@ pub fn key_chips(value: &str) -> Vec<String> {
     if value.is_empty() {
         return Vec::new();
     }
+    // As the user's keyboard prints it (a German layout shows `Ü` for the `;` key).
+    let label = value
+        .parse::<Chord>()
+        .map_or_else(|_| value.to_owned(), |chord| chord.label());
+    let value = label.as_str();
     let (rest, plus) = value
         .strip_suffix("++")
         .map_or((value, false), |rest| (rest, true));
@@ -571,8 +689,22 @@ where
             t.invoke_hotkey_used_by(combo.into(), action_text(window, other).into())
         }
         HotkeyRefusal::Refused(HotkeyFailure::InUse) => t.invoke_hotkey_in_use(combo.into()),
+        HotkeyRefusal::Refused(HotkeyFailure::OwnAction) => {
+            t.invoke_hotkey_own_action(combo.into())
+        }
         HotkeyRefusal::Refused(HotkeyFailure::Invalid) => t.invoke_hotkey_invalid(combo.into()),
+        HotkeyRefusal::Refused(HotkeyFailure::Refused(code)) => {
+            t.invoke_hotkey_refused(combo.into(), i32::try_from(code).unwrap_or(i32::MAX))
+        }
         HotkeyRefusal::Refused(HotkeyFailure::Unavailable) => t.invoke_hotkey_unavailable(),
+        HotkeyRefusal::Reserved(Reserved::Clipboard) => {
+            t.invoke_hotkey_reserved_clipboard(combo.into())
+        }
+        HotkeyRefusal::Reserved(Reserved::BareFunctionKey) => {
+            t.invoke_hotkey_reserved_bare_function_key(combo.into())
+        }
+        HotkeyRefusal::Reserved(Reserved::Menu) => t.invoke_hotkey_reserved_menu(combo.into()),
+        HotkeyRefusal::Reserved(Reserved::System) => t.invoke_hotkey_reserved_system(combo.into()),
     }
     .into()
 }
@@ -719,18 +851,22 @@ struct PageView {
     show_colours_tab: bool,
     colour_copy_on_pick: bool,
     tray_click_index: i32,
+    tray_double_click_opens: bool,
     panel_open_at_index: i32,
     panel_open_at_enabled: bool,
     panel_hide_after_use_index: i32,
     panel_start_visible_index: i32,
     language_index: i32,
     autostart: bool,
+    /// Registered, but switched off in Windows (Task Manager, Settings > Apps > Startup).
+    autostart_off_in_windows: bool,
     close_to_tray: bool,
     panel_in_taskbar: bool,
     panel_hide_on_blur: bool,
     screenshot_keep_panel: bool,
     dock_full_edge: bool,
     recent_history: bool,
+    recent_keep_unknown_source: bool,
     expand_triggers: bool,
     suggest_triggers: bool,
     reduce_motion: bool,
@@ -741,6 +877,11 @@ struct PageView {
     dock_leave_delay: i32,
     backups_keep: i32,
     clipboard_clear_secs: i32,
+    recent_max_entries: i32,
+    recent_max_days: i32,
+    /// How many entries Recent holds now (what a switch-off would offer to clear).
+    recent_count: i32,
+    idle_lock_minutes: i32,
     paste_rules: Vec<(String, i32)>,
     paste_rule_error: String,
     no_history_apps: Vec<String>,
@@ -890,6 +1031,7 @@ pub(crate) fn health_state(health: Option<HotkeyHealth>, testing: bool) -> i32 {
 fn hotkey_rows<C, K, T>(
     controller: &Controller<Store, C, K, T>,
     state: &PageState,
+    host: &dyn SettingsHost,
 ) -> Vec<HotkeyRow>
 where
     C: Clipboard + ClipboardText,
@@ -919,7 +1061,7 @@ where
             let alternatives = if !value.is_empty()
                 && (!conflict.is_empty() || matches!(health, Some(HotkeyHealth::Failed(_))))
             {
-                hotkey_health::alternatives(&settings.hotkeys)
+                host.free_alternatives(&settings.hotkeys)
             } else {
                 Vec::new()
             };
@@ -939,6 +1081,7 @@ fn page_view<C, K, T>(
     controller: &Controller<Store, C, K, T>,
     state: &PageState,
     has_data_folder: bool,
+    host: &dyn SettingsHost,
 ) -> PageView
 where
     C: Clipboard + ClipboardText,
@@ -946,7 +1089,7 @@ where
     T: Timing,
 {
     let settings: &Settings = controller.settings();
-    let hotkeys = hotkey_rows(controller, state);
+    let hotkeys = hotkey_rows(controller, state, host);
     PageView {
         look: controller.settings_look(),
         accent: controller.accent(),
@@ -973,6 +1116,7 @@ where
         show_colours_tab: settings.show_colours_tab,
         colour_copy_on_pick: settings.colour_copy_on_pick,
         tray_click_index: i32::from(settings.tray_click == TrayClick::Main),
+        tray_double_click_opens: settings.tray_double_click_opens,
         panel_open_at_index: match settings.panel_open_at {
             PanelOpenAt::Last => 0,
             PanelOpenAt::Mouse => 1,
@@ -984,12 +1128,14 @@ where
         panel_start_visible_index: i32::from(settings.panel_start_visible),
         language_index: language_index(&settings.language),
         autostart: settings.autostart,
+        autostart_off_in_windows: false,
         close_to_tray: settings.close_to_tray,
         panel_in_taskbar: settings.panel_in_taskbar,
         panel_hide_on_blur: settings.panel_hide_on_blur,
         screenshot_keep_panel: settings.screenshot_keep_panel,
         dock_full_edge: settings.dock.full_edge,
         recent_history: settings.recent_history,
+        recent_keep_unknown_source: settings.recent_keep_unknown_source,
         expand_triggers: settings.expand_triggers,
         suggest_triggers: settings.suggest_triggers,
         reduce_motion: settings.reduce_motion,
@@ -1000,6 +1146,10 @@ where
         dock_leave_delay: i32::try_from(settings.dock.leave_delay_ms).unwrap_or(400),
         backups_keep: i32::try_from(settings.backups_keep).unwrap_or(7),
         clipboard_clear_secs: i32::try_from(settings.clipboard_clear_secs).unwrap_or(30),
+        recent_max_entries: i32::try_from(settings.recent_max_entries).unwrap_or(200),
+        recent_max_days: i32::try_from(settings.recent_max_days).unwrap_or(7),
+        recent_count: i32::try_from(controller.recent_entries().len()).unwrap_or(i32::MAX),
+        idle_lock_minutes: i32::try_from(settings.idle_lock_minutes).unwrap_or(15),
         paste_rules: settings
             .programs
             .iter()
@@ -1053,7 +1203,10 @@ struct SettingsCore<C, K, T> {
     save_timer: Rc<Cell<bool>>,
     /// Whether Windows holds the start-up entry, read when the page opens and after the toggle
     /// changes it (the read can be a blocking call), not on each redraw.
-    autostart_registered: Cell<bool>,
+    autostart_status: Cell<AutostartStatus>,
+    /// A change to "Start with Windows" is waiting for Windows' answer (the packaged build can
+    /// wait for the user's consent): a second flip is ignored until it is answered.
+    autostart_pending: Cell<bool>,
 }
 
 /// A bound Settings page. Dropping it does not unbind the window; the window's callbacks keep the
@@ -1086,6 +1239,14 @@ where
         self.core.refresh_autostart();
         self.core.clear_stale_messages();
         self.redraw();
+    }
+
+    /// A `.snipdeck` file was opened from the shell: shows its Import preview, as if it had been
+    /// picked under "Import...". Nothing is written until the user confirms there.
+    pub fn import_file(&self, path: PathBuf) {
+        let source = ImportSource::of(ImportKind::Snipdeck, path);
+        let name = source.file_name();
+        self.core.preview(source, false, name);
     }
 }
 
@@ -1138,8 +1299,7 @@ where
     }
 
     fn refresh_autostart(&self) {
-        self.autostart_registered
-            .set(self.host.autostart_registered());
+        self.autostart_status.set(self.host.autostart_status());
     }
 
     fn refresh_backups(&self) {
@@ -1165,10 +1325,14 @@ where
             &self.controller.borrow(),
             &self.state.borrow(),
             self.data_dir.is_some(),
+            self.host.as_ref(),
         );
         // The switch shows what Windows will do, not only what was chosen here: an entry removed
-        // outside Snipdeck (Task Manager, a moved install) reads as off.
-        view.autostart = view.autostart && self.autostart_registered.get();
+        // outside Snipdeck reads as off, and one Windows switched off (Task Manager, Settings >
+        // Apps > Startup) reads as off with its own explanation.
+        let status = self.autostart_status.get();
+        view.autostart = view.autostart && status == AutostartStatus::On;
+        view.autostart_off_in_windows = status == AutostartStatus::SwitchedOffInWindows;
         render(&window, self.shown.borrow().as_ref(), &view);
         if let Some(toast) = &view.toast
             && self.controller.borrow_mut().claim_toast_timer(
@@ -1386,30 +1550,62 @@ where
     fn panel_start_visible_chosen(self: &Rc<Self>, index: i32) {
         let visible = index == 1;
         self.refresh_autostart();
-        let rewrite =
-            self.controller.borrow().settings().autostart && self.autostart_registered.get();
-        if rewrite && let Err(error) = self.host.set_autostart(true, !visible) {
-            crate::trace!("autostart rewrite: {error}");
-            self.toast(ToastKind::Danger, error.toast());
+        let rewrite = self.controller.borrow().settings().autostart
+            && self.autostart_status.get() == AutostartStatus::On;
+        if !rewrite {
+            self.act(|ctl| ctl.update_settings(|s| s.panel_start_visible = visible));
+            return;
+        }
+        if self.autostart_pending.replace(true) {
             self.force_redraw();
             return;
         }
-        self.act(|ctl| ctl.update_settings(|s| s.panel_start_visible = visible));
+        let core = Rc::clone(self);
+        self.host.set_autostart(
+            true,
+            !visible,
+            Box::new(move |result| {
+                core.autostart_pending.set(false);
+                match result {
+                    Ok(()) => {
+                        core.act(|ctl| ctl.update_settings(|s| s.panel_start_visible = visible));
+                    }
+                    Err(error) => {
+                        crate::trace!("autostart rewrite: {error}");
+                        core.toast(ToastKind::Danger, error.toast());
+                        core.force_redraw();
+                    }
+                }
+            }),
+        );
     }
 
     fn autostart_toggled(self: &Rc<Self>, on: bool) {
-        let hidden = !self.controller.borrow().settings().panel_start_visible;
-        match self.host.set_autostart(on, hidden) {
-            Ok(()) => {
-                self.refresh_autostart();
-                self.act(|ctl| ctl.update_settings(|s| s.autostart = on));
-            }
-            Err(error) => {
-                crate::trace!("autostart {on}: {error}");
-                self.toast(ToastKind::Danger, error.toast());
-                self.force_redraw();
-            }
+        if self.autostart_pending.replace(true) {
+            self.force_redraw();
+            return;
         }
+        let hidden = !self.controller.borrow().settings().panel_start_visible;
+        let core = Rc::clone(self);
+        self.host.set_autostart(
+            on,
+            hidden,
+            Box::new(move |result| {
+                core.autostart_pending.set(false);
+                match result {
+                    Ok(()) => {
+                        core.refresh_autostart();
+                        core.act(|ctl| ctl.update_settings(|s| s.autostart = on));
+                    }
+                    Err(error) => {
+                        crate::trace!("autostart {on}: {error}");
+                        core.refresh_autostart();
+                        core.toast(ToastKind::Danger, error.toast());
+                        core.force_redraw();
+                    }
+                }
+            }),
+        );
     }
 
     // ---- Backups, data ----------------------------------------------------------------------
@@ -1491,9 +1687,22 @@ where
         let Some(dir) = self.data_dir.clone() else {
             return;
         };
-        self.act(|ctl| ctl.backup_now(&dir));
-        self.refresh_backups();
-        redraw_all();
+        let begun = self.act(|ctl| ctl.begin_backup_now(&dir));
+        self.show_busy();
+        let this = Rc::clone(self);
+        spawn_archive(&self.controller, begun, move |_| {
+            this.show_busy();
+            this.refresh_backups();
+            redraw_all();
+        });
+    }
+
+    /// Greys out "Back up now" and "Export library" while an archive job runs.
+    fn show_busy(&self) {
+        let busy = self.controller.borrow().archive_busy();
+        if let Some(window) = self.window.upgrade() {
+            window.set_backup_busy(busy);
+        }
     }
 
     /// "Restore" on a backup row: shows what the backup would add, the same preview as an import.
@@ -1527,12 +1736,20 @@ where
             .window
             .upgrade()
             .and_then(|w| crate::native_window::handle_of(w.window()));
-        let Some(path) = self.host.pick_import(kind, single_file, owner) else {
-            return;
-        };
-        let source = ImportSource::of(kind, path);
-        let name = source.file_name();
-        self.preview(source, false, name);
+        let this = Rc::clone(self);
+        self.host.pick_import(
+            kind,
+            single_file,
+            owner,
+            Box::new(move |path| {
+                let Some(path) = path else {
+                    return;
+                };
+                let source = ImportSource::of(kind, path);
+                let name = source.file_name();
+                this.preview(source, false, name);
+            }),
+        );
     }
 
     /// The "Windows clipboard history" choice: reads the history, then shows the preview, or says
@@ -1575,22 +1792,26 @@ where
 
     /// Works out what `source` would do (nothing is written) and opens the preview on it.
     fn preview(self: &Rc<Self>, source: ImportSource, restore: bool, name: String) {
-        let outcome = self.act(|ctl| {
-            if restore {
-                source
-                    .path()
-                    .map_or(Err(ImportProblem::Failed), |p| ctl.preview_restore(p))
-            } else {
-                ctl.preview_import(&source)
+        let begun = self.act(|ctl| match source.path() {
+            Some(path) if restore => ctl.begin_restore_preview(path),
+            _ if restore => Begun::Refused,
+            _ => ctl.begin_import_preview(&source),
+        });
+        self.show_busy();
+        let this = Rc::clone(self);
+        spawn_archive(&self.controller, begun, move |end| {
+            this.show_busy();
+            // Refused (busy, or locked): the toast has said so; no preview opens.
+            if let ArchiveEnd::ImportPreview(outcome) = end {
+                this.state.borrow_mut().import = Some(PendingImport {
+                    source,
+                    restore,
+                    name,
+                    outcome,
+                });
             }
+            redraw_all();
         });
-        self.state.borrow_mut().import = Some(PendingImport {
-            source,
-            restore,
-            name,
-            outcome,
-        });
-        redraw_all();
     }
 
     /// "Import" / "Restore" in the preview: does what was previewed.
@@ -1599,12 +1820,18 @@ where
             return;
         };
         if pending.outcome.is_ok() {
-            if pending.restore {
-                self.act(|ctl| pending.source.path().is_some_and(|p| ctl.restore_backup(p)));
-            } else {
-                self.act(|ctl| ctl.apply_import(&pending.source));
-            }
-            self.refresh_backups();
+            let begun = self.act(|ctl| match pending.source.path() {
+                Some(path) if pending.restore => ctl.begin_restore_backup(path),
+                _ if pending.restore => Begun::Refused,
+                _ => ctl.begin_apply_import(&pending.source),
+            });
+            self.show_busy();
+            let this = Rc::clone(self);
+            spawn_archive(&self.controller, begun, move |_| {
+                this.show_busy();
+                this.refresh_backups();
+                redraw_all();
+            });
         }
         redraw_all();
     }
@@ -1656,20 +1883,37 @@ where
             .window
             .upgrade()
             .and_then(|w| crate::native_window::handle_of(w.window()));
-        let folder = match self.host.pick_export_folder(owner) {
-            ExportFolder::Chosen(folder) => folder,
-            ExportFolder::Cancelled => return,
-            ExportFolder::NoDialog => self
-                .host
-                .documents_folder()
-                .unwrap_or_else(|| dir.join("exports")),
-        };
-        let saved = self.act(|ctl| ctl.export_library(&folder));
-        if let Some(file) = saved
-            && let Some(parent) = file.parent()
-        {
-            self.open_folder(parent);
-        }
+        let this = Rc::clone(self);
+        self.host.pick_export_folder(
+            owner,
+            Box::new(move |folder| {
+                let folder = match folder {
+                    ExportFolder::Chosen(folder) => folder,
+                    ExportFolder::Cancelled => return,
+                    ExportFolder::NoDialog => this
+                        .host
+                        .documents_folder()
+                        .unwrap_or_else(|| dir.join("exports")),
+                };
+                this.export_to(&folder);
+            }),
+        );
+    }
+
+    /// Exports into `folder` and, when it is done, shows the file in the file manager.
+    fn export_to(self: &Rc<Self>, folder: &Path) {
+        let begun = self.act(|ctl| ctl.begin_export(folder));
+        self.show_busy();
+        let this = Rc::clone(self);
+        spawn_archive(&self.controller, begun, move |end| {
+            this.show_busy();
+            if let ArchiveEnd::Exported(Some(file)) = end
+                && let Some(parent) = file.parent()
+            {
+                this.open_folder(parent);
+            }
+            redraw_all();
+        });
     }
 
     fn erase(self: &Rc<Self>, typed: &str, forget_key: bool) {
@@ -1715,11 +1959,13 @@ where
                 shown: RefCell::new(None),
                 redraw: Rc::new(move || {
                     if let Some(core) = weak.upgrade() {
+                        core.show_busy();
                         core.sync();
                     }
                 }),
                 save_timer: Rc::default(),
-                autostart_registered: Cell::new(false),
+                autostart_status: Cell::new(AutostartStatus::On),
+                autostart_pending: Cell::new(false),
             }
         });
         register_redraw(&core.redraw);
@@ -1813,6 +2059,10 @@ where
                     TrayClick::Panel
                 };
             })));
+        wire!(on_tray_double_click_opens_toggled, |core, on| {
+            core.host.set_tray_double_click_opens(on);
+            core.act(|ctl| ctl.update_settings(|s| s.tray_double_click_opens = on));
+        });
         wire!(on_panel_open_at_chosen, |core, i| core.act(|ctl| ctl
             .update_settings(|s| {
                 s.panel_open_at = match i {
@@ -1860,6 +2110,9 @@ where
         ));
         wire!(on_recent_history_toggled, |core, on| core
             .act(|ctl| ctl.set_recent_history(on)));
+        wire!(on_recent_keep_unknown_source_toggled, |core, on| core.act(
+            |ctl| ctl.update_settings(|s| s.recent_keep_unknown_source = on)
+        ));
         wire!(on_expand_triggers_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.expand_triggers = on)));
         wire!(on_suggest_triggers_toggled, |core, on| core
@@ -1894,8 +2147,19 @@ where
                 |s| s.backups_keep = u32::try_from(n).unwrap_or(0)
             )));
         wire!(on_clipboard_clear_secs_chosen, |core, n| core.act(|ctl| {
-            ctl.update_settings(|s| s.clipboard_clear_secs = u32::try_from(n).unwrap_or(0));
+            ctl.update_settings(|s| s.clipboard_clear_secs = u32::try_from(n).unwrap_or(0).max(1));
         }));
+        wire!(on_recent_max_entries_chosen, |core, n| core.act(|ctl| {
+            ctl.update_settings(|s| s.recent_max_entries = u32::try_from(n).unwrap_or(0));
+        }));
+        wire!(on_recent_max_days_chosen, |core, n| core.act(|ctl| {
+            ctl.update_settings(|s| s.recent_max_days = u32::try_from(n).unwrap_or(0));
+        }));
+        wire!(on_idle_lock_minutes_chosen, |core, n| core.act(|ctl| {
+            ctl.update_settings(|s| s.idle_lock_minutes = u32::try_from(n).unwrap_or(0));
+        }));
+        wire!(on_recent_history_off_kept, |core| core
+            .act(Controller::set_recent_history_off_keeping_entries));
         wire!(on_paste_rule_added, |core, name| core
             .paste_rule_added(&name));
         wire!(on_paste_rule_chosen, |core, i, choice| core
@@ -1922,9 +2186,6 @@ where
         wire!(on_master_unlock_requested, |core| core
             .act(Controller::request_unlock));
         window.on_master_strength(|password| crate::master_password::strength(&password).level());
-        window.set_master_idle_minutes(
-            i32::try_from(crate::master_password::IDLE_LOCK.as_secs() / 60).unwrap_or(15),
-        );
         window.set_master_min_length(to_i32(crate::master_password::MIN_LEN));
         wire!(on_support_requested, |core| core.open_support());
         wire!(on_backup_now_requested, |core| core.backup_now());
@@ -2061,6 +2322,9 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     if differs(&|p| p.tray_click_index == view.tray_click_index) {
         window.set_tray_click_index(view.tray_click_index);
     }
+    if differs(&|p| p.tray_double_click_opens == view.tray_double_click_opens) {
+        window.set_tray_double_click_opens(view.tray_double_click_opens);
+    }
     if differs(&|p| p.panel_open_at_index == view.panel_open_at_index) {
         window.set_panel_open_at_index(view.panel_open_at_index);
     }
@@ -2081,6 +2345,7 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     if differs(&|p| p.language_index == view.language_index) {
         window.set_language_index(view.language_index);
     }
+    window.set_autostart_off_in_windows(view.autostart_off_in_windows);
     if differs(&|p| p.autostart == view.autostart) {
         window.set_autostart(view.autostart);
     }
@@ -2099,6 +2364,9 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     if differs(&|p| p.screenshot_keep_panel == view.screenshot_keep_panel) {
         window.set_screenshot_keep_panel(view.screenshot_keep_panel);
     }
+    if differs(&|p| p.recent_keep_unknown_source == view.recent_keep_unknown_source) {
+        window.set_recent_keep_unknown_source(view.recent_keep_unknown_source);
+    }
     if differs(&|p| p.expand_triggers == view.expand_triggers) {
         window.set_expand_triggers(view.expand_triggers);
     }
@@ -2107,8 +2375,18 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     }
     if differs(&|p| p.recent_history == view.recent_history) {
         window.set_recent_history(view.recent_history);
-        window.set_recent_max_entries(crate::recent::max_entries_count());
-        window.set_recent_max_days(crate::recent::max_age_days());
+    }
+    if differs(&|p| p.recent_max_entries == view.recent_max_entries) {
+        window.set_recent_max_entries(view.recent_max_entries);
+    }
+    if differs(&|p| p.recent_max_days == view.recent_max_days) {
+        window.set_recent_max_days(view.recent_max_days);
+    }
+    if differs(&|p| p.recent_count == view.recent_count) {
+        window.set_recent_count(view.recent_count);
+    }
+    if differs(&|p| p.idle_lock_minutes == view.idle_lock_minutes) {
+        window.set_master_idle_minutes(view.idle_lock_minutes);
     }
     if differs(&|p| p.backups_keep == view.backups_keep) {
         window.set_backups_keep(view.backups_keep);
@@ -2214,6 +2492,21 @@ thread_local! {
     static OPENER: RefCell<Option<Rc<dyn Fn()>>> = const { RefCell::new(None) };
 }
 
+/// Opens the Settings page on the Import preview of a file.
+type ImportOpener = Rc<dyn Fn(PathBuf)>;
+
+thread_local! {
+    /// Set by [`SettingsUi::new`].
+    static IMPORT_OPENER: RefCell<Option<ImportOpener>> = const { RefCell::new(None) };
+}
+
+/// Opens the Settings page with the Import preview of the `.snipdeck` file `path` (a file
+/// opened from the shell). Returns whether a host is there to do it. UI thread only.
+pub fn request_import_file(path: PathBuf) -> bool {
+    let opener = IMPORT_OPENER.with(|o| o.borrow().clone());
+    opener.map(|opener| opener(path)).is_some()
+}
+
 /// Opens the Settings page (creating it the first time), if the host made one with
 /// [`SettingsUi::new`]. UI thread only.
 pub fn request_open() {
@@ -2309,6 +2602,18 @@ impl SettingsUi {
             })
         };
         let open: Rc<dyn Fn() -> Result<(), slint::PlatformError>> = Rc::new(open);
+        IMPORT_OPENER.with(|o| {
+            let (open, slot) = (Rc::clone(&open), Rc::clone(&slot));
+            *o.borrow_mut() = Some(Rc::new(move |path| {
+                if let Err(e) = open() {
+                    crate::trace!("cannot open the settings: {e}");
+                    return;
+                }
+                if let Some((_, binding)) = slot.borrow().as_ref() {
+                    binding.import_file(path);
+                }
+            }));
+        });
         OPENER.with(|o| {
             let open = Rc::clone(&open);
             *o.borrow_mut() = Some(Rc::new(move || {
@@ -2450,6 +2755,67 @@ mod tests {
         let ids: Vec<u32> = backend.registered.iter().map(|(id, _)| *id).collect();
         assert!(!ids.contains(&host::id_of(HotkeyAction::Capture)));
         assert_eq!(ids.len(), 3);
+    }
+
+    #[test]
+    fn a_reserved_chord_is_refused_with_its_reason_not_as_nonsense() {
+        let now = Hotkeys::new_install();
+        let refused = |combo| with_hotkey(&now, HotkeyAction::Capture, combo).unwrap_err();
+        assert_eq!(
+            refused("Ctrl+V"),
+            HotkeyRefusal::Reserved(Reserved::Clipboard)
+        );
+        assert_eq!(
+            refused("F5"),
+            HotkeyRefusal::Reserved(Reserved::BareFunctionKey)
+        );
+        assert_eq!(refused("Alt+F"), HotkeyRefusal::Reserved(Reserved::Menu));
+        assert_eq!(refused("Win+L"), HotkeyRefusal::Reserved(Reserved::System));
+        assert_eq!(refused("banana"), HotkeyRefusal::NotAShortcut);
+    }
+
+    #[test]
+    fn a_failed_hotkey_with_a_windows_code_or_an_own_conflict_is_kept_for_its_row() {
+        let mut backend = FakeHotkeys::default();
+        let clash = Hotkeys {
+            toggle_panel: "Ctrl+Shift+Y".into(),
+            picker: "Ctrl+Shift+Y".into(),
+            capture: String::new(),
+            paste_next: String::new(),
+        };
+        let problems = apply_hotkeys(&mut backend, &clash);
+        assert_eq!(problems.len(), 1);
+        assert_eq!(problems[0].failure, HotkeyFailure::OwnAction);
+    }
+
+    #[test]
+    fn two_shortcuts_can_swap_chords_in_one_apply() {
+        let mut backend = FakeHotkeys::default();
+        let before = Hotkeys {
+            toggle_panel: "Ctrl+Shift+Y".into(),
+            picker: "Ctrl+Shift+U".into(),
+            capture: String::new(),
+            paste_next: String::new(),
+        };
+        assert_eq!(apply_hotkeys(&mut backend, &before), Vec::new());
+        let swapped = Hotkeys {
+            toggle_panel: "Ctrl+Shift+U".into(),
+            picker: "Ctrl+Shift+Y".into(),
+            ..before.clone()
+        };
+        assert_eq!(apply_hotkeys(&mut backend, &swapped), Vec::new());
+        let of = |action| {
+            backend
+                .registered
+                .iter()
+                .find(|(id, _)| *id == host::id_of(action))
+                .map(|(_, c)| c.to_string())
+        };
+        assert_eq!(
+            of(HotkeyAction::TogglePanel).as_deref(),
+            Some("Ctrl+Shift+U")
+        );
+        assert_eq!(of(HotkeyAction::Picker).as_deref(), Some("Ctrl+Shift+Y"));
     }
 
     #[test]
