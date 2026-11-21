@@ -74,9 +74,12 @@ mod tests {
 
     #[test]
     fn a_plain_local_folder_is_fine() {
-        assert!(risks("C:\\Users\\me\\AppData\\Local\\Snipdeck\\backups").is_empty());
-        assert!(risks("/home/me/backups").is_empty());
-        assert!(risks("D:\\Backups\\Snipdeck").is_empty());
+        assert_eq!(
+            risks("C:\\Users\\me\\AppData\\Local\\Snipdeck\\backups"),
+            []
+        );
+        assert_eq!(risks("/home/me/backups"), []);
+        assert_eq!(risks("D:\\Backups\\Snipdeck"), []);
     }
 
     #[test]
@@ -87,7 +90,7 @@ mod tests {
 
     #[test]
     fn a_long_local_path_is_not_a_network_share() {
-        assert!(risks("\\\\?\\C:\\Users\\me\\backups").is_empty());
+        assert_eq!(risks("\\\\?\\C:\\Users\\me\\backups"), []);
     }
 
     #[test]
@@ -113,7 +116,7 @@ mod tests {
 
     #[test]
     fn a_name_that_only_contains_a_service_is_not_one() {
-        assert!(risks("C:\\Users\\me\\Dropbox backups old").is_empty());
-        assert!(risks("C:\\Users\\me\\my onedrive notes").is_empty());
+        assert_eq!(risks("C:\\Users\\me\\Dropbox backups old"), []);
+        assert_eq!(risks("C:\\Users\\me\\my onedrive notes"), []);
     }
 }

@@ -220,5 +220,5 @@ fn an_ordinary_export_still_leaves_unused_tags_out() {
     let bytes = backup_of(&s);
     let mut fresh = store();
     restore(&mut fresh, &bytes);
-    assert!(fresh.tags().unwrap().is_empty());
+    assert_eq!(fresh.tags().unwrap(), []);
 }

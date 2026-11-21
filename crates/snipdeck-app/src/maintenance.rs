@@ -918,7 +918,7 @@ mod tests {
         let mut jobs = FakeJobs::default();
         let out = m.tick(&mut jobs);
         assert!(out.contains(&MaintenanceOutcome::TrashPurgeHeld));
-        assert!(jobs.purges.is_empty());
+        assert_eq!(jobs.purges, []);
     }
 
     #[test]

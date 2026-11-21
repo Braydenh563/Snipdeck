@@ -72,7 +72,7 @@ fn a_restore_keeps_use_counts_but_not_the_future() {
 #[test]
 fn a_one_character_trigger_is_dropped_with_a_note() {
     let (s, report) = import(&archive("a"), &ImportOptions::default());
-    assert!(s.triggers().unwrap().is_empty());
+    assert_eq!(s.triggers().unwrap(), []);
     assert!(
         warnings(&report).iter().any(|w| w.contains("too short")),
         "{:?}",
@@ -95,6 +95,6 @@ fn triggers_can_be_left_out_and_the_preview_lists_them() {
         ..ImportOptions::default()
     };
     let (s, _) = import(&bytes, &leave);
-    assert!(s.triggers().unwrap().is_empty());
+    assert_eq!(s.triggers().unwrap(), []);
     assert_eq!(first_item(&s).title.as_str(), "One");
 }

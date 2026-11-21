@@ -10,7 +10,7 @@
 mod common;
 
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use common::*;
 use jiff::Zoned;
@@ -172,7 +172,7 @@ fn daily_weekly_and_monthly_copies_are_kept() {
     fs::write(dir.path().join("notes.txt"), b"mine").unwrap();
 
     let removed = apply_retention(dir.path(), 7, date(2026, 11, 16));
-    assert!(removed.failed.is_empty());
+    assert_eq!(removed.failed, Vec::<PathBuf>::new());
     let kept: Vec<String> = names(dir.path())
         .into_iter()
         .filter_map(|n| {
@@ -240,6 +240,6 @@ fn a_backup_that_lost_most_of_the_library_does_not_push_a_good_one_out() {
     let shrunk = suspect.expect("the loss is noticed");
     assert_eq!(shrunk.now, 0);
     assert_eq!(shrunk.was, report.items);
-    assert!(pruned.is_empty());
+    assert_eq!(pruned, Vec::<PathBuf>::new());
     assert!(good.exists(), "the good copy stays");
 }
