@@ -13,7 +13,7 @@ use super::super::{
 use super::{MainAction, TagRenameError, neutral_toast};
 use crate::{
     host::ClipboardText,
-    main_window::{Key, NameError},
+    main_window::{Key, NameError, Section},
 };
 
 impl<S, C, K, T> Controller<S, C, K, T>
@@ -260,10 +260,10 @@ where
     /// The *Move to list* chooser picked list `index`: the rows it was opened for go to its end.
     pub fn main_move_to(&mut self, index: usize) {
         self.main_fresh();
-        let Some(list) = self.main.lists().get(index) else {
+        let Some(target) = self.main.move_targets().into_iter().nth(index) else {
             return;
         };
-        let (list, name) = (list.id, list.name.as_str().to_owned());
+        let (list, name) = (target.list, target.label);
         let items: Vec<ItemId> = self
             .main
             .chooser()
@@ -304,7 +304,6 @@ where
         let Some(tag) = self.main.tags().get(index).map(|t| t.id) else {
             return;
         };
-        let now = self.clock.now();
         let items: Vec<ItemId> = self
             .main
             .chooser()
@@ -314,10 +313,49 @@ where
                 _ => None,
             })
             .collect();
+        self.tag_items(&items, tag, on, false);
+    }
+
+    /// A drag of row `row` (with the rest of the selection, when it is one of several) ended on
+    /// the sidebar's Trash: the items go to the Trash, with its Undo toast. Dropping in the Trash
+    /// itself does nothing.
+    pub fn main_drop_on_trash(&mut self, row: usize) {
+        self.main_fresh();
+        if self.main.section() == Section::Trash {
+            return;
+        }
+        let items = self.main.dragged_items(row);
+        self.trash_items(&items);
+    }
+
+    /// A drag of row `row` (with the rest of the selection) ended on sidebar tag `tag` (an index
+    /// of the tags): the items get the tag, and a toast says how many were reached.
+    pub fn main_drop_on_tag(&mut self, row: usize, tag: usize) {
+        self.main_fresh();
+        if self.main.section() == Section::Trash {
+            return;
+        }
+        let Some(id) = self.main.tags().get(tag).map(|t| t.id) else {
+            return;
+        };
+        let items = self.main.dragged_items(row);
+        self.tag_items(&items, id, true, true);
+    }
+
+    /// Adds (`on`) or removes `tag` on `items` as one Undo step. `always_say` shows the toast for a
+    /// single item too (a drop has no tick to show it).
+    fn tag_items(
+        &mut self,
+        items: &[ItemId],
+        tag: snipdeck_core::TagId,
+        on: bool,
+        always_say: bool,
+    ) {
+        let now = self.clock.now();
         let mut changes = Vec::new();
         let done = self.store.atomically(|b| {
             changes.clear();
-            for id in &items {
+            for id in items {
                 let before = b.item(*id)?;
                 let mut item = before.clone();
                 let touched = if on {
@@ -332,10 +370,17 @@ where
             }
             Ok(())
         });
+        // A change to several items says how many it reached (MAIN-24); one item shows its tick.
+        let confirmation = (changes.len() > 1 || (always_say && !changes.is_empty())).then(|| {
+            neutral_toast(ToastMessage::ItemsTagged {
+                count: changes.len(),
+                added: on,
+            })
+        });
         if done.is_ok() {
             self.record_step(Action::Tag, changes);
         }
-        self.finish(&done, None);
+        self.finish(&done, confirmation);
     }
 
     /// The Main window's close button. Returns whether Snipdeck should quit with it: when
@@ -347,8 +392,9 @@ where
     }
 
     /// Renames tag `index` (in the order of [`MainScreen::tags`](crate::controller::MainScreen::tags)) to `name`. A name another tag
-    /// has is refused with [`TagRenameError::Exists`] and no toast: the Tag manager shows the
-    /// reason beside the field. A tag that is no longer there is left alone.
+    /// has is not applied: [`TagRenameError::Merge`] says which tag it is and how many items would move,
+    /// and the Tag manager asks before [`Self::main_merge_tag`]. A tag that is no longer there is
+    /// left alone.
     ///
     /// # Errors
     ///
@@ -367,6 +413,59 @@ where
                 self.library_changed();
                 Ok(())
             }
+            Err(snipdeck_store::Error::TagExists(name)) => {
+                let target = Name::new(&name)
+                    .ok()
+                    .and_then(|n| self.store.find_tag(&n).ok().flatten())
+                    .and_then(|t| self.main.tags().iter().position(|m| m.id == t.id));
+                let count = self.main.side_tags().get(index).map_or(0, |s| s.count);
+                target.map_or(Err(TagRenameError::Exists), |into| {
+                    Err(TagRenameError::Merge { into, count })
+                })
+            }
+            Err(_) => {
+                self.show_toast(failed());
+                Err(TagRenameError::Failed)
+            }
+        }
+    }
+
+    /// Merges tag `from` into tag `into` (indices of [`MainScreen::tags`](crate::controller::MainScreen::tags)): its items
+    /// carry `into` instead and `from` is removed. Two stale or equal indices do nothing.
+    pub fn main_merge_tag(&mut self, from: usize, into: usize) {
+        self.main_fresh();
+        let tags = self.main.tags();
+        let (Some(from), Some(into)) = (tags.get(from), tags.get(into)) else {
+            return;
+        };
+        if from.id == into.id {
+            return;
+        }
+        let said = ToastMessage::TagMerged {
+            from: from.name.as_str().to_owned(),
+            into: into.name.as_str().to_owned(),
+        };
+        let done = self.store.merge_tag(from.id, into.id).map(drop);
+        // No Undo: the history holds item edits only, and a deleted tag cannot come back through
+        // it (deleting a tag has none either); the window asks before it merges.
+        self.finish(&done, Some(neutral_toast(said)));
+    }
+
+    /// Adds a tag no item carries yet, from the Tag manager's "New tag" field.
+    ///
+    /// # Errors
+    ///
+    /// [`TagRenameError::Name`] for a bad name, [`TagRenameError::Exists`] when a tag has the name
+    /// (ignoring case), [`TagRenameError::Failed`] when the library could not be written.
+    pub fn main_new_tag(&mut self, name: &str) -> Result<(), TagRenameError> {
+        let name = Name::new(name).map_err(|error| {
+            NameError::of(&error).map_or(TagRenameError::Failed, TagRenameError::Name)
+        })?;
+        match self.store.insert_tag(&Tag::new(name)) {
+            Ok(()) => {
+                self.library_changed();
+                Ok(())
+            }
             Err(snipdeck_store::Error::TagExists(_)) => Err(TagRenameError::Exists),
             Err(_) => {
                 self.show_toast(failed());
@@ -378,11 +477,19 @@ where
     /// Deletes tag `index` after the window's confirmation (its items stay).
     pub fn main_delete_tag(&mut self, index: usize) {
         self.main_fresh();
-        let Some(tag) = self.main.tags().get(index).map(|t| t.id) else {
+        let Some((tag, name)) = self
+            .main
+            .tags()
+            .get(index)
+            .map(|t| (t.id, t.name.as_str().to_owned()))
+        else {
             return;
         };
         let done = self.store.delete_tag(tag);
-        self.finish(&done, None);
+        self.finish(
+            &done,
+            Some(neutral_toast(ToastMessage::TagDeleted { name })),
+        );
     }
 
     // ---- The Trash and Undo --------------------------------------------------------------------

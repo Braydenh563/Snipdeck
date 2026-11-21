@@ -4,8 +4,8 @@
 //!
 //! [`run`] is pure: it asks a [`DoctorHost`] for facts and turns them into [`Check`]s, so tests
 //! run every check passing and failing against a fake. The app's host is
-//! [`crate::help_binding::ControllerDoctor`]. The words are literal English, like the toasts
-//! (see [`crate::wording`]); the window's own labels are `@tr`.
+//! `help_binding::WorkerDoctor`. A check carries its facts ([`Detail`]); the window
+//! words them through `DoctorTexts` in the language shown, and only the report is English.
 //!
 //! [`report`] renders the diagnostic report the user can copy: versions, system, setting flags and
 //! the check results. It never holds item content, and a path inside the data folder is replaced
@@ -14,6 +14,8 @@
 use std::fmt::Write as _;
 
 use jiff::civil::Date;
+
+use crate::{settings::HotkeyAction, settings_binding::action_name};
 
 /// Less free space than this on the data folder's drive is a warning.
 pub const LOW_SPACE_BYTES: u64 = 200 * 1024 * 1024;
@@ -103,8 +105,9 @@ pub struct Check {
     pub label: &'static str,
     /// How it came out.
     pub status: Status,
-    /// One sentence on what was found.
-    pub detail: String,
+    /// What was found. [`Detail`]'s `Display` is the English sentence (for the report); the
+    /// window words it in the language shown.
+    pub detail: Detail,
     /// What can be done about it, if anything.
     pub fix: Option<Fix>,
 }
@@ -146,7 +149,7 @@ pub trait DoctorHost {
     /// The library could not be read.
     fn key_ring_exists(&self) -> Result<bool, String>;
     /// The names of the global shortcuts that are not set.
-    fn shortcuts_unset(&self) -> Vec<String>;
+    fn shortcuts_unset(&self) -> Vec<HotkeyAction>;
     /// How many global shortcuts there are in all.
     fn shortcuts_total(&self) -> usize;
     /// Whether the tray icon is in the notification area.
@@ -155,17 +158,177 @@ pub trait DoctorHost {
     fn newest_crash(&self) -> Option<String>;
 }
 
-fn check(
-    label: &'static str,
-    status: Status,
-    detail: impl Into<String>,
-    fix: Option<Fix>,
-) -> Check {
+fn check(label: &'static str, status: Status, detail: Detail, fix: Option<Fix>) -> Check {
     Check {
         label,
         status,
-        detail: detail.into(),
+        detail,
         fix,
+    }
+}
+
+/// What one check found: a kind and its facts, so the window can word it in any language
+/// (`DoctorTexts` in Slint) and the report keeps one English sentence (`Display`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Detail {
+    /// The data folder cannot be written (why).
+    DataNotWritable(String),
+    /// Writable, but few megabytes are free.
+    LowSpace(u64),
+    /// Writable with room to spare.
+    Writable,
+    /// The integrity check could not run (why).
+    IntegrityFailed(String),
+    /// No problem found.
+    IntegrityOk,
+    /// This many problems, the first one worded.
+    IntegrityProblems(usize, String),
+    /// The backups folder cannot be read (why).
+    BackupsUnreadable(String),
+    /// No backup yet.
+    NoBackup,
+    /// The newest backup is old: its date, its age in days, how many are kept.
+    BackupStale(String, i64, usize),
+    /// The newest backup's date and how many are kept.
+    BackupFresh(String, usize),
+    /// The items cannot be read (why).
+    ItemsUnreadable(String),
+    /// No item is sensitive.
+    NoSensitive,
+    /// This many sensitive items, the key is there.
+    KeyPresent(usize),
+    /// This many sensitive items are plain text (no key ring yet).
+    PlainSensitive(usize),
+    /// The key ring cannot be checked (why).
+    KeyUnchecked(String),
+    /// Every global shortcut is set.
+    ShortcutsAllSet,
+    /// None is set.
+    ShortcutsNoneSet,
+    /// These are not set.
+    ShortcutsUnset(Vec<HotkeyAction>),
+    /// The tray icon is there.
+    TrayPresent,
+    /// The tray icon is missing.
+    TrayMissing,
+    /// No crash report.
+    NoCrash,
+    /// The newest crash report's file name.
+    NewestCrash(String),
+    /// Not asked (the command line has no tray).
+    NotChecked,
+}
+
+impl Detail {
+    /// The number of the kind across the Slint boundary (`DoctorTexts.detail`).
+    #[must_use]
+    pub const fn code(&self) -> i32 {
+        match self {
+            Self::DataNotWritable(_) => 0,
+            Self::LowSpace(_) => 1,
+            Self::Writable => 2,
+            Self::IntegrityFailed(_) => 3,
+            Self::IntegrityOk => 4,
+            Self::IntegrityProblems(..) => 5,
+            Self::BackupsUnreadable(_) => 6,
+            Self::NoBackup => 7,
+            Self::BackupStale(..) => 8,
+            Self::BackupFresh(..) => 9,
+            Self::ItemsUnreadable(_) => 10,
+            Self::NoSensitive => 11,
+            Self::KeyPresent(_) => 12,
+            Self::PlainSensitive(_) => 13,
+            Self::KeyUnchecked(_) => 14,
+            Self::ShortcutsAllSet => 15,
+            Self::ShortcutsNoneSet => 16,
+            Self::ShortcutsUnset(_) => 17,
+            Self::TrayPresent => 18,
+            Self::TrayMissing => 19,
+            Self::NoCrash => 20,
+            Self::NewestCrash(_) => 21,
+            Self::NotChecked => 22,
+        }
+    }
+
+    /// The facts as up to three strings (`a`, `b`, `c` of `DoctorTexts.detail`); `names` words
+    /// the unset shortcuts (the window's language, or English for the report).
+    #[must_use]
+    pub fn args(&self, names: impl Fn(HotkeyAction) -> String) -> [String; 3] {
+        let none = String::new;
+        match self {
+            Self::DataNotWritable(a)
+            | Self::IntegrityFailed(a)
+            | Self::BackupsUnreadable(a)
+            | Self::ItemsUnreadable(a)
+            | Self::KeyUnchecked(a)
+            | Self::NewestCrash(a) => [a.clone(), none(), none()],
+            Self::LowSpace(n) => [n.to_string(), none(), none()],
+            Self::KeyPresent(n) | Self::PlainSensitive(n) => [n.to_string(), none(), none()],
+            Self::IntegrityProblems(n, first) => [n.to_string(), first.clone(), none()],
+            Self::BackupStale(date, age, kept) => [date.clone(), age.to_string(), kept.to_string()],
+            Self::BackupFresh(date, kept) => [date.clone(), kept.to_string(), none()],
+            Self::ShortcutsUnset(unset) => [
+                unset
+                    .iter()
+                    .map(|a| names(*a))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                none(),
+                none(),
+            ],
+            _ => [none(), none(), none()],
+        }
+    }
+}
+
+impl std::fmt::Display for Detail {
+    /// The English sentence, as the report prints it.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::DataNotWritable(e) => write!(f, "Snipdeck cannot write to its data folder: {e}"),
+            Self::LowSpace(mb) => {
+                write!(f, "Writable, but only {mb} MB are free on its drive.")
+            }
+            Self::Writable => f.write_str("Writable, with room to spare."),
+            Self::IntegrityFailed(e) => write!(f, "The integrity check could not run: {e}"),
+            Self::IntegrityOk => f.write_str("The integrity check found no problems."),
+            Self::IntegrityProblems(n, first) => write!(
+                f,
+                "The integrity check found {n} problem(s); the first: {first}"
+            ),
+            Self::BackupsUnreadable(e) => write!(f, "The backups cannot be read: {e}"),
+            Self::NoBackup => f.write_str("No backup has been made yet."),
+            Self::BackupStale(date, age, kept) => write!(
+                f,
+                "The newest backup is from {date}, {age} days ago ({kept} kept)."
+            ),
+            Self::BackupFresh(date, kept) => write!(f, "Newest backup {date}, {kept} kept."),
+            Self::ItemsUnreadable(e) => write!(f, "The items cannot be read: {e}"),
+            Self::NoSensitive => f.write_str("No item is marked sensitive."),
+            Self::KeyPresent(n) => write!(f, "{n} sensitive item(s), the key is present."),
+            Self::PlainSensitive(n) => write!(
+                f,
+                "{n} sensitive item(s) are stored as plain text (no encryption key yet): \
+                 masked and readable, but not encrypted."
+            ),
+            Self::KeyUnchecked(e) => write!(f, "The key cannot be checked: {e}"),
+            Self::ShortcutsAllSet => f.write_str("All global shortcuts are set."),
+            Self::ShortcutsNoneSet => f.write_str("No global shortcut is set."),
+            Self::ShortcutsUnset(_) => {
+                write!(
+                    f,
+                    "Not set: {}.",
+                    self.args(|a| action_name(a).to_owned())[0]
+                )
+            }
+            Self::TrayPresent => f.write_str("The icon is in the notification area."),
+            Self::TrayMissing => {
+                f.write_str("No icon in the notification area; closing the panel quits Snipdeck.")
+            }
+            Self::NoCrash => f.write_str("No crash report."),
+            Self::NewestCrash(name) => write!(f, "The newest crash report is {name}."),
+            Self::NotChecked => f.write_str("Not checked from the command line."),
+        }
     }
 }
 
@@ -201,7 +364,7 @@ fn data_folder(host: &dyn DoctorHost) -> Check {
         return check(
             label,
             Status::Fail,
-            format!("Snipdeck cannot write to its data folder: {e}"),
+            Detail::DataNotWritable(e),
             Some(Fix::OpenDataFolder),
         );
     }
@@ -209,13 +372,10 @@ fn data_folder(host: &dyn DoctorHost) -> Check {
         Some(free) if free < LOW_SPACE_BYTES => check(
             label,
             Status::Warn,
-            format!(
-                "Writable, but only {} MB are free on its drive.",
-                free / (1024 * 1024)
-            ),
+            Detail::LowSpace(free / (1024 * 1024)),
             Some(Fix::OpenDataFolder),
         ),
-        _ => check(label, Status::Ok, "Writable, with room to spare.", None),
+        _ => check(label, Status::Ok, Detail::Writable, None),
     }
 }
 
@@ -228,26 +388,12 @@ fn database(host: &dyn DoctorHost) -> Check {
         Fix::OpenDataFolder
     };
     match host.integrity() {
-        Err(e) => check(
-            label,
-            Status::Fail,
-            format!("The integrity check could not run: {e}"),
-            Some(fix),
-        ),
-        Ok(problems) if problems.is_empty() => check(
-            label,
-            Status::Ok,
-            "The integrity check found no problems.",
-            None,
-        ),
+        Err(e) => check(label, Status::Fail, Detail::IntegrityFailed(e), Some(fix)),
+        Ok(problems) if problems.is_empty() => check(label, Status::Ok, Detail::IntegrityOk, None),
         Ok(problems) => check(
             label,
             Status::Fail,
-            format!(
-                "The integrity check found {} problem(s); the first: {}",
-                problems.len(),
-                problems[0]
-            ),
+            Detail::IntegrityProblems(problems.len(), problems[0].clone()),
             Some(fix),
         ),
     }
@@ -261,18 +407,13 @@ fn backups(host: &dyn DoctorHost) -> Check {
             return check(
                 label,
                 Status::Warn,
-                format!("The backups cannot be read: {e}"),
+                Detail::BackupsUnreadable(e),
                 Some(Fix::BackUpNow),
             );
         }
     };
     let Some(newest) = dates.iter().max().copied() else {
-        return check(
-            label,
-            Status::Warn,
-            "No backup has been made yet.",
-            Some(Fix::BackUpNow),
-        );
+        return check(label, Status::Warn, Detail::NoBackup, Some(Fix::BackUpNow));
     };
     let age = host
         .today()
@@ -282,17 +423,14 @@ fn backups(host: &dyn DoctorHost) -> Check {
         check(
             label,
             Status::Warn,
-            format!(
-                "The newest backup is from {newest}, {age} days ago ({} kept).",
-                dates.len()
-            ),
+            Detail::BackupStale(newest.to_string(), age, dates.len()),
             Some(Fix::BackUpNow),
         )
     } else {
         check(
             label,
             Status::Ok,
-            format!("Newest backup {newest}, {} kept.", dates.len()),
+            Detail::BackupFresh(newest.to_string(), dates.len()),
             None,
         )
     }
@@ -302,40 +440,15 @@ fn encryption(host: &dyn DoctorHost) -> Check {
     let label = LABELS[3];
     let sensitive = match host.sensitive_items() {
         Ok(n) => n,
-        Err(e) => {
-            return check(
-                label,
-                Status::Warn,
-                format!("The items cannot be read: {e}"),
-                None,
-            );
-        }
+        Err(e) => return check(label, Status::Warn, Detail::ItemsUnreadable(e), None),
     };
     if sensitive == 0 {
-        return check(label, Status::Ok, "No item is marked sensitive.", None);
+        return check(label, Status::Ok, Detail::NoSensitive, None);
     }
     match host.key_ring_exists() {
-        Ok(true) => check(
-            label,
-            Status::Ok,
-            format!("{sensitive} sensitive item(s), the key is present."),
-            None,
-        ),
-        Ok(false) => check(
-            label,
-            Status::Warn,
-            format!(
-                "{sensitive} sensitive item(s) are stored as plain text (no encryption key yet): \
-                 masked and readable, but not encrypted."
-            ),
-            None,
-        ),
-        Err(e) => check(
-            label,
-            Status::Warn,
-            format!("The key cannot be checked: {e}"),
-            None,
-        ),
+        Ok(true) => check(label, Status::Ok, Detail::KeyPresent(sensitive), None),
+        Ok(false) => check(label, Status::Warn, Detail::PlainSensitive(sensitive), None),
+        Err(e) => check(label, Status::Warn, Detail::KeyUnchecked(e), None),
     }
 }
 
@@ -343,19 +456,19 @@ fn shortcuts(host: &dyn DoctorHost) -> Check {
     let label = LABELS[4];
     let unset = host.shortcuts_unset();
     if unset.is_empty() {
-        check(label, Status::Ok, "All global shortcuts are set.", None)
+        check(label, Status::Ok, Detail::ShortcutsAllSet, None)
     } else if unset.len() >= host.shortcuts_total() {
         check(
             label,
             Status::Warn,
-            "No global shortcut is set.",
+            Detail::ShortcutsNoneSet,
             Some(Fix::OpenSettings),
         )
     } else {
         check(
             label,
             Status::Warn,
-            format!("Not set: {}.", unset.join(", ")),
+            Detail::ShortcutsUnset(unset),
             Some(Fix::OpenSettings),
         )
     }
@@ -363,29 +476,19 @@ fn shortcuts(host: &dyn DoctorHost) -> Check {
 
 fn tray(host: &dyn DoctorHost) -> Check {
     if host.tray_present() {
-        check(
-            LABELS[5],
-            Status::Ok,
-            "The icon is in the notification area.",
-            None,
-        )
+        check(LABELS[5], Status::Ok, Detail::TrayPresent, None)
     } else {
-        check(
-            LABELS[5],
-            Status::Warn,
-            "No icon in the notification area; closing the panel quits Snipdeck.",
-            None,
-        )
+        check(LABELS[5], Status::Warn, Detail::TrayMissing, None)
     }
 }
 
 fn crashes(host: &dyn DoctorHost) -> Check {
     match host.newest_crash() {
-        None => check(LABELS[6], Status::Ok, "No crash report.", None),
+        None => check(LABELS[6], Status::Ok, Detail::NoCrash, None),
         Some(name) => check(
             LABELS[6],
             Status::Warn,
-            format!("The newest crash report is {name}."),
+            Detail::NewestCrash(name),
             Some(Fix::OpenLogsFolder),
         ),
     }
@@ -443,7 +546,7 @@ mod tests {
         backups: Result<Vec<Date>, String>,
         sensitive: Result<usize, String>,
         key: Result<bool, String>,
-        unset: Vec<String>,
+        unset: Vec<HotkeyAction>,
         tray: bool,
         crash: Option<String>,
     }
@@ -489,7 +592,7 @@ mod tests {
         fn key_ring_exists(&self) -> Result<bool, String> {
             self.key.clone()
         }
-        fn shortcuts_unset(&self) -> Vec<String> {
+        fn shortcuts_unset(&self) -> Vec<HotkeyAction> {
             self.unset.clone()
         }
         fn shortcuts_total(&self) -> usize {
@@ -531,7 +634,7 @@ mod tests {
             "Data folder",
         );
         assert_eq!(fail.status, Status::Fail);
-        assert!(fail.detail.contains("read-only"));
+        assert!(fail.detail.to_string().contains("read-only"));
         let warn = only(
             &Fake {
                 free: Some(50 * 1024 * 1024),
@@ -540,7 +643,7 @@ mod tests {
             "Data folder",
         );
         assert_eq!(warn.status, Status::Warn);
-        assert!(warn.detail.contains("50 MB"));
+        assert!(warn.detail.to_string().contains("50 MB"));
         let unknown = only(
             &Fake {
                 free: None,
@@ -561,7 +664,10 @@ mod tests {
             "Database",
         );
         assert_eq!(found.status, Status::Fail);
-        assert!(found.detail.contains("2 problem") && found.detail.contains("row 3 missing"));
+        assert!(
+            found.detail.to_string().contains("2 problem")
+                && found.detail.to_string().contains("row 3 missing")
+        );
         let broken = only(
             &Fake {
                 integrity: Err("locked".into()),
@@ -637,10 +743,16 @@ mod tests {
             (stale.status, stale.fix),
             (Status::Warn, Some(Fix::BackUpNow))
         );
-        assert!(stale.detail.contains("2026-10-10") && stale.detail.contains("9 days"));
+        assert!(
+            stale.detail.to_string().contains("2026-10-10")
+                && stale.detail.to_string().contains("9 days")
+        );
         let fresh = only(&Fake::default(), "Backups");
         assert_eq!((fresh.status, fresh.fix), (Status::Ok, None));
-        assert!(fresh.detail.contains("2026-10-18") && fresh.detail.contains("2 kept"));
+        assert!(
+            fresh.detail.to_string().contains("2026-10-18")
+                && fresh.detail.to_string().contains("2 kept")
+        );
         let unreadable = only(
             &Fake {
                 backups: Err("denied".into()),
@@ -672,8 +784,8 @@ mod tests {
         );
         // Not a failure: without a key the items are plain text, readable but not encrypted.
         assert_eq!(missing.status, Status::Warn);
-        assert!(missing.detail.contains("plain text"), "{}", missing.detail);
-        assert!(!missing.detail.contains("cannot be read"));
+        assert!(missing.detail.to_string().contains("plain text"));
+        assert!(!missing.detail.to_string().contains("cannot be read"));
         let present = only(
             &Fake {
                 sensitive: Ok(3),
@@ -689,7 +801,7 @@ mod tests {
     fn unset_shortcuts_warn_and_open_settings() {
         let some = only(
             &Fake {
-                unset: vec!["Open the picker".into()],
+                unset: vec![HotkeyAction::Picker],
                 ..Fake::default()
             },
             "Shortcuts",
@@ -698,15 +810,15 @@ mod tests {
             (some.status, some.fix),
             (Status::Warn, Some(Fix::OpenSettings))
         );
-        assert!(some.detail.contains("Open the picker"));
+        assert!(some.detail.to_string().contains("Open the Picker"));
         let all = only(
             &Fake {
-                unset: vec!["a".into(), "b".into(), "c".into(), "d".into()],
+                unset: HotkeyAction::ALL.to_vec(),
                 ..Fake::default()
             },
             "Shortcuts",
         );
-        assert_eq!(all.detail, "No global shortcut is set.");
+        assert_eq!(all.detail, Detail::ShortcutsNoneSet);
     }
 
     #[test]
@@ -734,7 +846,7 @@ mod tests {
             "Crash reports",
         );
         assert_eq!((c.status, c.fix), (Status::Warn, Some(Fix::OpenLogsFolder)));
-        assert!(c.detail.contains("crash-2026-10-18.txt"));
+        assert!(c.detail.to_string().contains("crash-2026-10-18.txt"));
     }
 
     #[test]

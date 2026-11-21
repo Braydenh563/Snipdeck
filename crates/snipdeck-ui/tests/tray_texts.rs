@@ -20,7 +20,7 @@ fn the_tray_words_follow_the_selected_translation() {
     let ui = I18nProbe::new().expect("probe");
     assert_eq!(
         words(&ui),
-        ["Open Panel", "Open Snipdeck", "Pause hotkeys", "Quit"]
+        ["Open Panel", "Open Snipdeck", "Pause shortcuts", "Quit"]
     );
     // The history entry's word (it joins the menu only while clipboard history is on).
     assert_eq!(

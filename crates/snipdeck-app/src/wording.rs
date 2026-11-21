@@ -394,6 +394,14 @@ where
         ToastMessage::BoardSaved => t.invoke_board_saved(),
         ToastMessage::RecentDeleted => t.invoke_recent_deleted(),
         ToastMessage::RecentCleared => t.invoke_recent_cleared(),
+        ToastMessage::ExportedSome {
+            file,
+            written,
+            total,
+        } => t.invoke_exported_some(file.into(), count(*written), count(*total)),
+        ToastMessage::ItemsTagged { count: n, added } => t.invoke_items_tagged(count(*n), *added),
+        ToastMessage::TagDeleted { name } => t.invoke_tag_deleted(name.into()),
+        ToastMessage::TagMerged { from, into } => t.invoke_tag_merged(from.into(), into.into()),
         ToastMessage::PickerRecentsCleared => t.invoke_picker_recents_cleared(),
         ToastMessage::DockSet(edge) => t.invoke_dock_set(match edge {
             None => 0,
@@ -458,9 +466,6 @@ where
     t.invoke_redo_tip(word).into()
 }
 
-/// The label of a toast's undo button.
-pub const UNDO_LABEL: &str = "Undo";
-
 /// The label of a toast's Edit button, in the language shown. `window` is any window of the UI.
 #[must_use]
 pub fn toast_edit_label<C>(window: &C) -> String
@@ -469,12 +474,6 @@ where
 {
     ToastTexts::get(window).invoke_edit_button().into()
 }
-
-/// The label of the crash toast's button.
-pub const OPEN_LOG_LABEL: &str = "Open log";
-
-/// The label of the "Switch this list to Manual order?" toast's button.
-pub const SWITCH_LABEL: &str = "Switch";
 
 /// Why an import could not be previewed, in words for the page, in the language selected for the
 /// UI (the sentences are in the `ImportTexts` global; `window` is the Settings page).
@@ -514,17 +513,22 @@ pub fn history_source_name(window: &SettingsPage) -> String {
     ImportTexts::get(window).invoke_history_name().into()
 }
 
-/// The label of `toast`'s button; empty when it has none.
+/// The label of `toast`'s button in the language shown ("Undo", "Open log", "Switch"); empty when
+/// it has none. `window` is any window of the UI.
 #[must_use]
-pub const fn toast_button_text(toast: &crate::controller::ToastView) -> &'static str {
+pub fn toast_button_text<C>(window: &C, toast: &crate::controller::ToastView) -> String
+where
+    for<'a> ToastTexts<'a>: Global<'a, C>,
+{
+    let t = ToastTexts::get(window);
     if toast.undo {
-        UNDO_LABEL
+        t.invoke_undo_button().into()
     } else if toast.open_log {
-        OPEN_LOG_LABEL
+        t.invoke_open_log_button().into()
     } else if matches!(toast.message, ToastMessage::SwitchToManual { .. }) {
-        SWITCH_LABEL
+        t.invoke_switch_button().into()
     } else {
-        ""
+        String::new()
     }
 }
 
@@ -781,6 +785,8 @@ where
     match error {
         TagRenameError::Name(name) => name_error_text(window, name),
         TagRenameError::Exists => t.invoke_tag_exists().into(),
+        // Not an error: the Tag manager asks to merge instead.
+        TagRenameError::Merge { .. } => String::new(),
         TagRenameError::Failed => t.invoke_tag_rename_failed().into(),
     }
 }

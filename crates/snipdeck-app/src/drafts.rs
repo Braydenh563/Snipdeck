@@ -384,19 +384,6 @@ mod tests {
     }
 
     #[test]
-    fn the_longest_text_the_editor_accepts_is_kept_even_when_every_byte_is_escaped() {
-        // DATA-28: the editor refuses text over `EDIT_LIMIT_BYTES`, so a draft can never hold
-        // more; the worst case for the file is control characters, six bytes each in JSON.
-        let dir = tempfile::tempdir().expect("dir");
-        let drafts = Drafts::in_data_dir(dir.path());
-        let mut worst = draft("");
-        worst.content = "\u{1}".repeat(crate::item_editor::EDIT_LIMIT_BYTES);
-        worst.title = "t".repeat(1024);
-        drafts.save(DraftKey::New, &worst).expect("fits the cap");
-        assert_eq!(drafts.load(DraftKey::New), Some(worst));
-    }
-
-    #[test]
     fn damaged_foreign_and_oversized_files_read_as_no_draft() {
         let dir = tempfile::tempdir().expect("dir");
         let drafts = Drafts::in_data_dir(dir.path());

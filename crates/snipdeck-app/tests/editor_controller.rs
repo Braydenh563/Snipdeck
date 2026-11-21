@@ -18,7 +18,8 @@ use snipdeck_app::{
     drafts::{Draft, DraftKey, Drafts},
     host::{FakeTargets, FixedClock},
     item_editor::{
-        EDIT_LIMIT_BYTES, EditorInput, EditorProblem, ItemEditorView, Origin, SaveFailure,
+        DRAFT_TEXT_MAX_BYTES, EditorInput, EditorProblem, ItemEditorView, MAX_TEXT_BYTES, Origin,
+        PART_BYTES, SaveFailure,
     },
     item_preview::PreviewWords,
     settings::Settings,
@@ -544,14 +545,8 @@ fn fields_that_fail_the_checks_stay_open_with_the_reason() {
         Some(EditorProblem::Template(_))
     ));
     assert_eq!(
-        save(
-            &mut r,
-            ItemKind::Text,
-            "",
-            &"a".repeat(EDIT_LIMIT_BYTES + 1)
-        )
-        .content_problem,
-        Some(EditorProblem::ContentTooLong { max_kb: 16 })
+        save(&mut r, ItemKind::Text, "", &"a".repeat(MAX_TEXT_BYTES + 1)).content_problem,
+        Some(EditorProblem::ContentTooLong { max_kb: 5120 })
     );
     let both = save(&mut r, ItemKind::Text, &"t".repeat(201), "");
     assert_eq!(
@@ -1074,10 +1069,10 @@ fn start_up_without_key_protection_keeps_plain_sensitive_items_and_stays_quiet()
 // ---- Large text --------------------------------------------------------------------------------
 
 #[test]
-fn text_over_16_kb_opens_read_only_and_saving_never_rewrites_it() {
+fn text_over_16_kb_opens_whole_and_a_title_only_save_keeps_it_as_it_is() {
     let r = rig();
     let big = format!("{}{}", "line of text\n".repeat(2000), "THE-END");
-    assert!(big.len() > EDIT_LIMIT_BYTES);
+    assert!(big.len() > PART_BYTES);
     let list = r.ctl.store().all_items().expect("items")[0].list_id;
     let mut item = Item::new(list, "Big".into(), ItemKind::Text, now());
     item.preview = Item::preview_of(&big, false);
@@ -1108,13 +1103,7 @@ fn text_over_16_kb_opens_read_only_and_saving_never_rewrites_it() {
     let (mut ctl, _) = controller(store, dir.path(), &provider, true);
     ctl.open_item_editor(item.id);
     let v = view(&ctl);
-    assert_eq!(v.large, Some(big.len() as u64), "read-only, with its size");
-    assert_eq!(
-        v.fields.content.len(),
-        EDIT_LIMIT_BYTES,
-        "the start is shown"
-    );
-    assert!(big.starts_with(&v.fields.content));
+    assert_eq!(v.fields.content, big, "the whole text, not its start");
     // Only the title changes; the text on disk stays whole.
     ctl.item_editor_save(&EditorInput {
         title: "Big, renamed".into(),
@@ -1130,7 +1119,13 @@ fn text_over_16_kb_opens_read_only_and_saving_never_rewrites_it() {
 }
 
 #[test]
-fn a_large_text_gets_no_draft() {
+fn a_large_text_is_edited_and_saved_whole() {
+    let r = rig();
+    let big = "line of text\n".repeat(20_000);
+    assert!(big.len() > 200 * 1024);
+    let list = r.ctl.store().all_items().expect("items")[0].list_id;
+    let mut item = Item::new(list, "Big".into(), ItemKind::Text, now());
+    item.preview = Item::preview_of(&big, false);
     let mut store = Store::open_in_memory().expect("store");
     let board = snipdeck_core::Board::new(snipdeck_core::Name::new("B").expect("name"), now());
     snipdeck_store::BoardRepo::insert_board(&mut store, &board, Placement::Last).expect("board");
@@ -1140,7 +1135,46 @@ fn a_large_text_gets_no_draft() {
         now(),
     );
     store.insert_list(&l, Placement::Last).expect("list");
-    let big = "x".repeat(EDIT_LIMIT_BYTES + 5);
+    item.list_id = l.id;
+    let content = store.put(big.clone().into_bytes()).expect("put");
+    store
+        .insert_item(
+            &item,
+            &Formats::new(vec![Format::Text(content)]).expect("formats"),
+            Placement::Last,
+        )
+        .expect("insert");
+    let dir = tempfile::tempdir().expect("dir");
+    let provider = SharedProvider::new();
+    let (mut ctl, _) = controller(store, dir.path(), &provider, true);
+    ctl.open_item_editor(item.id);
+    let v = view(&ctl);
+    let edited = format!("START\n{}END", v.fields.content);
+    ctl.item_editor_save(&EditorInput {
+        content: edited.clone(),
+        ..v.fields
+    });
+    assert!(
+        !ctl.item_editor_open(),
+        "saved: {:?}",
+        ctl.item_editor_view().map(|v| v.content_problem)
+    );
+    assert_eq!(text_of(&ctl, item.id), edited);
+    drop(r);
+}
+
+#[test]
+fn a_text_too_big_for_a_draft_gets_no_draft() {
+    let mut store = Store::open_in_memory().expect("store");
+    let board = snipdeck_core::Board::new(snipdeck_core::Name::new("B").expect("name"), now());
+    snipdeck_store::BoardRepo::insert_board(&mut store, &board, Placement::Last).expect("board");
+    let l = snipdeck_core::List::new(
+        board.id,
+        snipdeck_core::Name::new("L").expect("name"),
+        now(),
+    );
+    store.insert_list(&l, Placement::Last).expect("list");
+    let big = "x".repeat(DRAFT_TEXT_MAX_BYTES + 5);
     let item = Item::new(l.id, "Big".into(), ItemKind::Text, now());
     let content = store.put(big.into_bytes()).expect("put");
     store
@@ -1597,9 +1631,15 @@ fn a_trigger_that_hides_another_is_saved_with_a_warning() {
         snipdeck_app::toast::ToastKind::Danger,
         "a warning, with the icon"
     );
+    // The hold is the guard and the rest: 10 s together, longer than a neutral toast.
     assert_eq!(
         r.ctl.toast_tick(t.seq),
-        Some(snipdeck_app::controller::TOAST_ERROR_HOLD),
+        Some(snipdeck_app::controller::TOAST_ERROR_GUARD)
+    );
+    assert_eq!(
+        r.ctl.toast_tick(t.seq),
+        snipdeck_app::controller::TOAST_ERROR_HOLD
+            .checked_sub(snipdeck_app::controller::TOAST_ERROR_GUARD),
         "held longer than a neutral toast"
     );
 }

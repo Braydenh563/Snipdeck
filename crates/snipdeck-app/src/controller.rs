@@ -96,6 +96,18 @@ pub const TOAST_ERROR_HOLD: Duration = Duration::from_secs(10);
 /// An undoable toast (a delete) settles for this long, so that it is on screen for 5 s with its
 /// fade-in (SPEC §5.7a).
 pub const TOAST_UNDO_HOLD: Duration = Duration::from_millis(4880);
+/// A toast whose text is long stays at least this long plus [`TOAST_READ_PER_CHAR`] for each character of it
+/// (WCAG 2.2.1: about 17 characters a second, and a second to take it in), at most [`TOAST_READ_MAX`].
+pub const TOAST_READ_BASE: Duration = Duration::from_secs(1);
+/// The reading time of one character of a toast, see [`TOAST_READ_BASE`].
+pub const TOAST_READ_PER_CHAR: Duration = Duration::from_millis(60);
+/// The longest a toast is held for the length of its text.
+pub const TOAST_READ_MAX: Duration = Duration::from_secs(20);
+/// An error toast is not replaced by a plain message for this long (the message waits its turn; the error is
+/// kept in the history for good).
+pub const TOAST_ERROR_GUARD: Duration = Duration::from_secs(4);
+/// How many toasts the message history keeps.
+pub const TOAST_HISTORY: usize = 10;
 /// A hovered toast looks again after this long to see whether the pointer has left.
 pub const TOAST_HOVER_RECHECK: Duration = Duration::from_millis(500);
 /// A toast is held for at most this many rechecks (a minute), so a missed pointer-leave (its
@@ -184,6 +196,10 @@ struct ActiveToast {
     hovered: bool,
     /// How many times the hold has been extended for `hovered`, at most [`TOAST_HOVER_RECHECKS`].
     extended: u32,
+    /// The length of the words on screen, in characters; sets how long the toast is held.
+    chars: usize,
+    /// An error toast in its first seconds: a plain message that arrives waits (`pending_toast`).
+    guard: bool,
 }
 
 /// The Panel's brain. See the module documentation.
@@ -228,6 +244,10 @@ pub struct Controller<S, C, K, T> {
     toast_seq: u64,
     /// Toasts waiting for the one on screen to go (`queue_toast`), in the order they came.
     toast_queue: std::collections::VecDeque<Toast>,
+    /// A plain toast that arrived while a guarded error was on screen: it shows when the guard ends.
+    pending_toast: Option<Toast>,
+    /// The last toasts shown, oldest first (the Help menu's "Recent messages").
+    toast_history: std::collections::VecDeque<Toast>,
     /// The Picker, while it is open.
     picker: Option<PickerModel>,
     /// The template fill form, while it is open.
@@ -276,6 +296,10 @@ pub struct Controller<S, C, K, T> {
     /// List and board editors closed with the window that opened them: what was typed in each,
     /// for the next time it opens (this app session only).
     parked_editors: Vec<(main_ctl::EditorTarget, crate::main_window::EditorView)>,
+    /// Decoded thumbnails of the Main window's image rows (MAIN-21).
+    thumbs: crate::thumb_cache::ThumbCache,
+    /// What the Detail pane read for the item it shows last.
+    detail_body: Option<main_ctl::detail::DetailBody>,
     /// The item editor, while one is open.
     item_editor: Option<editor_ctl::ItemEditorSlot>,
     /// A sensitive editor the lock took off the screen, sealed, until the unlock.
@@ -521,6 +545,8 @@ where
             toast: None,
             toast_seq: 0,
             toast_queue: std::collections::VecDeque::new(),
+            pending_toast: None,
+            toast_history: std::collections::VecDeque::new(),
             picker: None,
             fill: None,
             fill_erase: None,
@@ -544,6 +570,8 @@ where
             editor_seq: 0,
             board_delete: None,
             parked_editors: Vec::new(),
+            thumbs: crate::thumb_cache::ThumbCache::new(crate::thumb_cache::ROW_CAPACITY),
+            detail_body: None,
             item_editor: None,
             parked_editor: None,
             item_editor_seq: 0,
@@ -1167,7 +1195,7 @@ where
 
     /// The foreground window changed: the Target follows it (see
     /// [`on_target_changed`](Self::on_target_changed)), and an unpinned Panel hides when
-    /// "Hide the panel when it loses focus" is on. Only the Panel does this: the Main window,
+    /// "Hide the Panel when it loses focus" is on. Only the Panel does this: the Main window,
     /// Settings and the editors are ordinary windows that stay until closed.
     pub fn on_foreground_changed(&mut self) -> Vec<Effect> {
         // The eyedropper's overlay, then whatever was under the pick point, takes the foreground

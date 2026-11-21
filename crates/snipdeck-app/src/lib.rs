@@ -73,6 +73,7 @@ pub mod suggest_hint;
 pub mod symbols_binding;
 pub mod symbols_panel;
 pub mod text_scale;
+pub mod thumb_cache;
 pub mod tips;
 pub mod toast;
 pub mod toast_binding;

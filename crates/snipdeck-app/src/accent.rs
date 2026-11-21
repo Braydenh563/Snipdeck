@@ -44,7 +44,8 @@ impl AccentChoice {
         Self::Windows,
     ];
 
-    fn hue(self) -> Option<&'static str> {
+    /// The key of the named hue this accent is (`None` for Blue, the built-in look, and Windows).
+    pub(crate) fn hue(self) -> Option<&'static str> {
         match self {
             Self::Teal => Some("teal"),
             Self::Green => Some("green"),

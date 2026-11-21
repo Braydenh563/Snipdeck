@@ -18,7 +18,7 @@ use std::{
 };
 
 use slint::{
-    CloseRequestResponse, ComponentHandle, SharedPixelBuffer, SharedString,
+    CloseRequestResponse, ComponentHandle, Model, SharedPixelBuffer, SharedString,
     winit_030::WinitWindowAccessor,
 };
 use snipdeck_platform::{
@@ -32,7 +32,7 @@ use crate::{
     controller::{Controller, HelpTopic, Library},
     drafts::AUTOSAVE_EVERY,
     host::ClipboardText,
-    item_editor::{EditorInput, EditorProblem, ItemEditorView, kind_at, kind_index},
+    item_editor::{self, EditorInput, EditorProblem, ItemEditorView, kind_at, kind_index},
     main_binding::{create_window, set_look},
     native_window, wording,
 };
@@ -320,6 +320,22 @@ where
             };
             core.show_preview(&w);
         });
+        let weak = w.as_weak();
+        w.on_part_requested(move |target| {
+            if let Some(w) = weak.upgrade() {
+                show_part(&w, index(target));
+            }
+        });
+        let weak = w.as_weak();
+        w.on_content_edited(move || {
+            // A paste made the field longer than a part: cut it, so the next key press is cheap.
+            let Some(w) = weak.upgrade() else {
+                return;
+            };
+            if w.get_content().len() > 2 * item_editor::PART_BYTES {
+                show_part(&w, index(w.get_part_index()));
+            }
+        });
         let core = Rc::downgrade(self);
         w.on_private_copied(move |text, start, end| {
             if let Some(core) = core.upgrade() {
@@ -519,13 +535,60 @@ fn read_input(w: &ui::ItemEditor) -> EditorInput {
     EditorInput {
         kind: kind_at(index(w.get_kind_index())),
         title: w.get_item_title().to_string(),
-        content: w.get_content().to_string(),
+        content: whole_text(w),
         sensitive: w.get_sensitive(),
         always_plain: w.get_always_plain(),
         list_index: index(w.get_list_index()),
         source_path: w.get_source_path().to_string(),
         label: crate::binding::label_of(w.get_label_index()),
     }
+}
+
+/// The whole text: the field is one part of it while the text spans several.
+fn whole_text(w: &ui::ItemEditor) -> String {
+    let parts = w.get_parts();
+    let shown = w.get_content();
+    if !w.get_content_large() || parts.row_count() <= 1 {
+        return shown.to_string();
+    }
+    let at = index(w.get_part_index());
+    let mut text =
+        String::with_capacity(parts.iter().map(|p| p.len()).sum::<usize>() + shown.len());
+    for (i, part) in parts.iter().enumerate() {
+        text.push_str(if i == at {
+            shown.as_str()
+        } else {
+            part.as_str()
+        });
+    }
+    text
+}
+
+/// Shows part `target` of the text (a part number of the parts as they are now). The field goes
+/// back into its place first, and is cut again if a paste made it longer than a part, which can
+/// move the later parts.
+fn show_part(w: &ui::ItemEditor, target: usize) {
+    let mut parts: Vec<String> = w.get_parts().iter().map(|p| p.to_string()).collect();
+    let at = index(w.get_part_index());
+    let shown = w.get_content().to_string();
+    let made = item_editor::replace_part(&mut parts, at, &shown);
+    let target = if target > at {
+        target + made - 1
+    } else {
+        target
+    };
+    set_parts(w, &parts, target);
+}
+
+/// Puts `parts` in the window with part `shown` in the field.
+fn set_parts(w: &ui::ItemEditor, parts: &[String], shown: usize) {
+    let shown = shown.min(parts.len().saturating_sub(1));
+    let bytes: usize = parts.iter().map(String::len).sum();
+    w.set_content_large(parts.len() > 1);
+    w.set_content_size(wording::size_text(w, u64::try_from(bytes).unwrap_or(u64::MAX)).into());
+    w.set_parts(model(parts.iter().map(|p| SharedString::from(p.as_str()))));
+    w.set_part_index(to_i32(shown));
+    w.set_content(parts.get(shown).map_or("", String::as_str).into());
 }
 
 /// The parts of the view that follow the controller on every redraw: problems, the tag chips,
@@ -596,7 +659,8 @@ fn fill(w: &ui::ItemEditor, view: &ItemEditorView) {
     w.set_more_open(view.more_open);
     w.set_kind_index(to_i32(kind_index(fields.kind)));
     w.set_item_title(fields.title.as_str().into());
-    w.set_content(fields.content.as_str().into());
+    set_parts(w, &item_editor::split_parts(&fields.content), 0);
+    w.set_content_changed(false);
     w.set_sensitive(fields.sensitive);
     w.set_always_plain(fields.always_plain);
     w.set_trigger(view.trigger.as_str().into());
@@ -608,13 +672,6 @@ fn fill(w: &ui::ItemEditor, view: &ItemEditorView) {
     ));
     w.set_list_index(to_i32(fields.list_index));
     w.set_label_index(crate::binding::label_index(fields.label));
-    w.set_content_large(view.large.is_some());
-    w.set_content_size(
-        view.large
-            .map(|bytes| wording::size_text(w, bytes))
-            .unwrap_or_default()
-            .into(),
-    );
     if let Some(a) = &view.attachment {
         w.set_attachment_name(wording::attachment_name_text(w, a).into());
         w.set_attachment_detail(wording::attachment_detail_text(w, a).into());

@@ -313,9 +313,10 @@ impl Store {
     }
 
     /// A second, read-only view of the open database in `folder`, for work that must not hold
-    /// the UI thread (an export, a backup): its own connection, no folder lock, no migration and
-    /// no write of any kind. `key` is a copy of the unlocked data key
-    /// ([`Store::duplicate_data_key`]), so encrypted items read as they do from the main store.
+    /// the UI thread (an export, a backup, the Help window's checks): its own connection, no
+    /// folder lock, no migration and no write of any kind. `key` is a copy of the unlocked data
+    /// key ([`Store::duplicate_data_key`]), so encrypted items read as they do from the main
+    /// store; a reader that decrypts nothing passes `None`.
     ///
     /// The database must already be open and migrated by a [`Store`] (WAL mode lets this reader
     /// run beside its writer); a write through the result fails. A caller that needs one
@@ -327,6 +328,8 @@ impl Store {
             rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
         )?;
         conn.busy_timeout(Duration::from_secs(5))?;
+        // A per-connection setting: the integrity check reads it back, so it must match the owner's.
+        secure_delete(&conn)?;
         conn.pragma_update(None, "foreign_keys", true)?;
         Ok(Self {
             conn,
@@ -336,6 +339,11 @@ impl Store {
             hold: BlobHold::default(),
             lock: None,
         })
+    }
+
+    /// How many live items are marked sensitive (one count query, nothing is decrypted).
+    pub fn count_sensitive(&self) -> Result<usize> {
+        crate::items::count_sensitive(&self.conn)
     }
 
     /// Starts a read transaction on a reader, so every read after the first sees the same
@@ -524,6 +532,7 @@ impl Store {
     /// secure delete being on (database and index), encrypted items holding only envelopes,
     /// valid board, list and tag names, and tag keys that do not clash.
     pub fn check_integrity(&self) -> Result<Vec<String>> {
+        const FTS_CHECK: &str = "INSERT INTO item_fts (item_fts) VALUES ('integrity-check')";
         let mut problems = Vec::new();
         let conn = &self.conn;
 
@@ -540,10 +549,34 @@ impl Store {
             problems.push(format!("dangling reference from table `{}`", row?));
         }
         drop(stmt);
-        if let Err(e) = conn.execute(
-            "INSERT INTO item_fts (item_fts) VALUES ('integrity-check')",
-            [],
-        ) {
+        // FTS5 runs its check as an INSERT, which a read-only handle (the Help window's) cannot
+        // do. The check changes nothing, so run it on a short-lived writable connection instead,
+        // rather than call a damaged index healthy. Only a corruption error means damage: a busy
+        // database or a connection that will not open means the index was not checked.
+        let result = match conn.execute(FTS_CHECK, []) {
+            Err(rusqlite::Error::SqliteFailure(f, _))
+                if f.code == rusqlite::ErrorCode::ReadOnly =>
+            {
+                conn.path().map(|path| {
+                    Connection::open_with_flags(
+                        path,
+                        rusqlite::OpenFlags::SQLITE_OPEN_READ_WRITE
+                            | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
+                    )
+                    .and_then(|c| {
+                        c.busy_timeout(Duration::from_secs(1))?;
+                        c.execute(FTS_CHECK, []).map(|_| ())
+                    })
+                })
+            }
+            other => Some(other.map(|_| ())),
+        };
+        if let Some(Err(e)) = result
+            && matches!(
+                &e,
+                rusqlite::Error::SqliteFailure(f, _) if f.code == rusqlite::ErrorCode::DatabaseCorrupt
+            )
+        {
             problems.push(format!("full-text index is damaged: {e}"));
         }
 

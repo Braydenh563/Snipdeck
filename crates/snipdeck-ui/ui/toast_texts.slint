@@ -116,6 +116,15 @@ export global ToastTexts {
     pure public function paste-not-added-editor-open() -> string {
         return @tr("An item is open in the editor, so the pasted text was not added. Close it, then paste again.");
     }
+    pure public function undo-button() -> string {
+        return @tr("Undo");
+    }
+    pure public function open-log-button() -> string {
+        return @tr("Open log");
+    }
+    pure public function switch-button() -> string {
+        return @tr("Switch");
+    }
     pure public function edit-button() -> string {
         return @tr("Edit");
     }
@@ -394,6 +403,19 @@ export global ToastTexts {
     }
     pure public function exported-skipping(file: string, count: int, first: string) -> string {
         return @tr("Saved {}, but {} item could not be included: \"{}\". Its attachment could not be read." | "Saved {}, but {} items could not be included, such as \"{}\". Their attachments could not be read." % count, file, count, first);
+    }
+    pure public function exported-some(file: string, written: int, total: int) -> string {
+        return @tr("Saved {}: {} of {} items. Sensitive items and items with no text are left out.", file, written, total);
+    }
+    pure public function items-tagged(count: int, added: bool) -> string {
+        return added ? @tr("Tag added to {} item" | "Tag added to {} items" % count, count)
+            : @tr("Tag removed from {} item" | "Tag removed from {} items" % count, count);
+    }
+    pure public function tag-deleted(name: string) -> string {
+        return @tr("Deleted the tag “{}”", name);
+    }
+    pure public function tag-merged(from: string, into: string) -> string {
+        return @tr("Merged the tag “{}” into “{}”", from, into);
     }
     pure public function export-failed(cause: int) -> string {
         if (cause == 1) {

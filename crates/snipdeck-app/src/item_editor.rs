@@ -16,10 +16,18 @@ use snipdeck_platform::system_look::HighContrast;
 
 use crate::main_window::NameError;
 
-/// The most text the editor edits in place (SPEC 5.4): longer text opens read-only, and text
-/// pasted past this is refused on Save. The store itself takes more (a blob over
-/// [`snipdeck_core::INLINE_LIMIT`]); this is the editor's cap.
-pub const EDIT_LIMIT_BYTES: usize = 16 * 1024;
+/// The size of one part of a long text (SPEC 5.4). The field holds one part at a time, so a
+/// keystroke re-shapes at most about this much text (M0 S3: 16 KB is the largest size at which
+/// typing still fits one frame); longer text is edited part by part and saved whole.
+pub const PART_BYTES: usize = 16 * 1024;
+
+/// The most text the editor holds (SPEC 5.4: the same 5 MB the capture accepts). Text pasted past
+/// this is refused on Save; a stored text already over it can still be kept or shortened.
+pub const MAX_TEXT_BYTES: usize = 5 * 1024 * 1024;
+
+/// The most text a draft file holds: longer text is saved or lost, not drafted (a draft is read
+/// back whole and must stay under [`crate::drafts`]' file cap).
+pub const DRAFT_TEXT_MAX_BYTES: usize = 128 * 1024;
 
 /// The longest title, in characters.
 pub const TITLE_MAX_CHARS: usize = 200;
@@ -115,7 +123,7 @@ pub enum EditorProblem {
     TitleHasControl,
     /// There is no text (or only blanks).
     ContentEmpty,
-    /// The text is over [`EDIT_LIMIT_BYTES`].
+    /// The text is over [`MAX_TEXT_BYTES`].
     ContentTooLong {
         /// The limit in KB.
         max_kb: usize,
@@ -272,12 +280,10 @@ pub struct ItemEditorView {
     pub trigger: String,
     /// A failure that belongs to no field.
     pub banner: Option<EditorProblem>,
-    /// The text is over the editing cap: shown read-only; this is its size in bytes.
-    pub large: Option<u64>,
     /// The item keeps HTML or RTF next to its text: the window says that saving changed text
     /// removes it and offers "Remove formatting".
     pub formatted: bool,
-    /// The saved text the notice measures against (empty when the text is over the editing cap).
+    /// The saved text the notice measures against (empty when the text spans several parts).
     pub saved_text: String,
     /// What an existing Image or File holds.
     pub attachment: Option<AttachmentView>,
@@ -367,21 +373,69 @@ pub fn check_template(text: &str) -> Result<(), EditorProblem> {
         .map_err(|e: TemplateError| EditorProblem::Template(TemplateProblem::Parse(e.kind)))
 }
 
-/// `text` for a text kind: not blank and within the editing cap.
+/// `text` for a text kind: not blank and within [`MAX_TEXT_BYTES`].
 ///
 /// # Errors
 ///
 /// [`EditorProblem::ContentEmpty`] or [`EditorProblem::ContentTooLong`].
 pub fn check_text(text: &str) -> Result<(), EditorProblem> {
+    check_text_within(text, MAX_TEXT_BYTES)
+}
+
+/// [`check_text`] with a cap of `max_bytes` (a stored text over the usual cap may be kept).
+///
+/// # Errors
+///
+/// [`EditorProblem::ContentEmpty`] or [`EditorProblem::ContentTooLong`].
+pub fn check_text_within(text: &str, max_bytes: usize) -> Result<(), EditorProblem> {
     if text.trim().is_empty() {
         return Err(EditorProblem::ContentEmpty);
     }
-    if text.len() > EDIT_LIMIT_BYTES {
+    if text.len() > max_bytes {
         return Err(EditorProblem::ContentTooLong {
-            max_kb: EDIT_LIMIT_BYTES / 1024,
+            max_kb: max_bytes / 1024,
         });
     }
     Ok(())
+}
+
+/// Cuts `text` into parts of at most [`PART_BYTES`] for the editor to show one at a time. A cut
+/// falls after a line break when one is in the second half of the part, else after a space, else
+/// on a character boundary, so nothing is lost: the parts joined are `text`. Always at least one
+/// part (empty for an empty text).
+#[must_use]
+pub fn split_parts(text: &str) -> Vec<String> {
+    let mut parts = Vec::new();
+    let mut rest = text;
+    while rest.len() > PART_BYTES {
+        let head = prefix_of(rest, PART_BYTES);
+        let half = head.len() / 2;
+        let cut = head
+            .rfind('\n')
+            .filter(|at| *at >= half)
+            .or_else(|| head.rfind(' ').filter(|at| *at >= half))
+            .map_or(head.len(), |at| at + 1);
+        let (part, tail) = rest.split_at(cut);
+        parts.push(part.to_owned());
+        rest = tail;
+    }
+    parts.push(rest.to_owned());
+    parts
+}
+
+/// Puts `content` in place of part `at` of `parts`. Content grown past [`PART_BYTES`] (a
+/// paste) is cut again, so the field never carries more than a part for long. Returns how many
+/// parts `content` became. A stale `at` is clamped.
+pub fn replace_part(parts: &mut Vec<String>, at: usize, content: &str) -> usize {
+    let at = at.min(parts.len().saturating_sub(1));
+    let pieces = split_parts(content);
+    let n = pieces.len();
+    if parts.is_empty() {
+        *parts = pieces;
+    } else {
+        parts.splice(at..=at, pieces);
+    }
+    n
 }
 
 /// A file read for a new Image or File item.
@@ -667,11 +721,57 @@ mod tests {
     #[test]
     fn text_must_not_be_blank_or_over_the_cap() {
         assert_eq!(check_text(" \n\t"), Err(EditorProblem::ContentEmpty));
-        assert!(check_text(&"a".repeat(EDIT_LIMIT_BYTES)).is_ok());
+        assert!(check_text(&"a".repeat(MAX_TEXT_BYTES)).is_ok());
         assert_eq!(
-            check_text(&"a".repeat(EDIT_LIMIT_BYTES + 1)),
-            Err(EditorProblem::ContentTooLong { max_kb: 16 })
+            check_text(&"a".repeat(MAX_TEXT_BYTES + 1)),
+            Err(EditorProblem::ContentTooLong { max_kb: 5120 })
         );
+        // A stored text over the cap may be kept as it is.
+        let kept = "a".repeat(MAX_TEXT_BYTES + 10);
+        assert!(check_text_within(&kept, kept.len()).is_ok());
+    }
+
+    #[test]
+    fn text_over_a_part_is_cut_on_lines_and_joins_back_whole() {
+        assert_eq!(split_parts(""), [""]);
+        assert_eq!(split_parts("short"), ["short"]);
+        let lines = "0123456789\n".repeat(5000);
+        let parts = split_parts(&lines);
+        assert!(parts.len() > 3, "{}", parts.len());
+        for p in &parts {
+            assert!(p.len() <= PART_BYTES);
+            assert!(p.ends_with('\n'), "a cut keeps a line whole");
+        }
+        assert_eq!(parts.concat(), lines);
+
+        // No line break and no space: a character boundary, never inside a character.
+        let wide = "日本語".repeat(20_000);
+        let parts = split_parts(&wide);
+        assert!(parts.iter().all(|p| p.len() <= PART_BYTES));
+        assert_eq!(parts.concat(), wide);
+        // A space is the next best place.
+        let words = "word ".repeat(10_000);
+        let parts = split_parts(&words);
+        assert!(parts.iter().all(|p| p.ends_with(' ')));
+        assert_eq!(parts.concat(), words);
+    }
+
+    #[test]
+    fn replacing_a_part_cuts_a_paste_again() {
+        let mut parts = vec!["a".to_owned(), "b".to_owned(), "c".to_owned()];
+        assert_eq!(replace_part(&mut parts, 1, "B"), 1);
+        assert_eq!(parts, ["a", "B", "c"]);
+        let big = "line\n".repeat(10_000);
+        let n = replace_part(&mut parts, 1, &big);
+        assert!(n > 1);
+        assert_eq!(parts.len(), 2 + n);
+        assert_eq!(parts.concat(), format!("a{big}c"));
+        assert_eq!(
+            replace_part(&mut parts, 99, "z"),
+            1,
+            "a stale index is clamped"
+        );
+        assert_eq!(parts.last().map(String::as_str), Some("z"));
     }
 
     #[test]

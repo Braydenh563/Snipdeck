@@ -673,7 +673,10 @@ where
         self.arm_screen_clip();
         self.sync_colours(&window);
         if let Some(toast) = &view.toast
-            && self.controller.borrow_mut().claim_toast_timer(toast.seq)
+            && self.controller.borrow_mut().claim_toast_timer(
+                toast.seq,
+                wording::toast_text(&window, &toast.message).chars().count(),
+            )
         {
             arm_toast(
                 Rc::downgrade(&self.controller),
@@ -1990,7 +1993,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     if differs(&|p| p.toast == view.toast) {
         if let Some(toast) = &view.toast {
             {
-                window.set_toast_undo_label(wording::toast_button_text(toast).into());
+                window.set_toast_undo_label(wording::toast_button_text(window, toast).into());
                 window.set_toast_edit_label(if toast.edit {
                     wording::toast_edit_label(window).into()
                 } else {
@@ -2265,6 +2268,18 @@ thread_local! {
 /// The most thumbnails kept: the inbox holds fewer entries than this, so only a long session
 /// of copies reaches it, and the cache then starts over.
 const THUMBS_KEPT: usize = 512;
+
+/// A thumbnail's pixels as an image; empty when there are none. For the views that cache the
+/// pixels themselves (the Main list and the detail pane), as opposed to [`recent_thumb`].
+pub(crate) fn thumb_image(thumb: Option<&snipdeck_store::RecentThumb>) -> slint::Image {
+    thumb.map_or_else(slint::Image::default, |t| {
+        slint::Image::from_rgba8(
+            slint::SharedPixelBuffer::<slint::Rgba8Pixel>::clone_from_slice(
+                &t.rgba, t.width, t.height,
+            ),
+        )
+    })
+}
 
 /// A Recent picture's thumbnail as an image; empty when it has none. Built once per entry `id`.
 pub(crate) fn recent_thumb(id: i64, thumb: Option<&snipdeck_store::RecentThumb>) -> slint::Image {

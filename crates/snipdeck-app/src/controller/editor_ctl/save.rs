@@ -96,14 +96,22 @@ where
         // The text to write, when it is new or changed; the file to keep, for a new Image or File.
         let mut text: Option<String> = None;
         let mut source: Option<Source> = None;
-        if is_text && slot.large.is_none() {
-            let checked = item_editor::check_text(&input.content).and_then(|()| match kind {
-                ItemKind::Link => item_editor::check_link(&input.content),
-                ItemKind::Template => {
-                    item_editor::check_template(&input.content).map(|()| input.content.clone())
-                }
-                _ => Ok(input.content.clone()),
-            });
+        if is_text {
+            // A stored text over the usual cap may be kept or shortened, not grown.
+            let cap = slot
+                .original_text
+                .as_ref()
+                .map_or(item_editor::MAX_TEXT_BYTES, |t| {
+                    t.len().max(item_editor::MAX_TEXT_BYTES)
+                });
+            let checked =
+                item_editor::check_text_within(&input.content, cap).and_then(|()| match kind {
+                    ItemKind::Link => item_editor::check_link(&input.content),
+                    ItemKind::Template => {
+                        item_editor::check_template(&input.content).map(|()| input.content.clone())
+                    }
+                    _ => Ok(input.content.clone()),
+                });
             match checked {
                 Ok(t) => {
                     if new || slot.original_text.as_deref() != Some(t.as_str()) {

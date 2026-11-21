@@ -20,3 +20,40 @@ fn the_selected_translation_applies_and_english_is_the_fallback() {
     slint::select_bundled_translation("").expect("back to the source language");
     assert!(shown(&ui, "Paste"));
 }
+
+/// Every locale calls an item an item: the noun the newer strings use, not the old snippet words.
+#[test]
+fn every_locale_uses_the_item_noun() {
+    let old = [
+        ("de", &["Textbaustein", "Baustein"][..]),
+        ("es", &["fragmento", "Fragmento"]),
+        ("fr", &["extrait", "Extrait"]),
+        ("pt-BR", &["trecho", "Trecho"]),
+        ("ja", &["スニペット"]),
+        ("zh-Hans", &["片段"]),
+    ];
+    for (locale, words) in old {
+        let path = format!(
+            "{}/lang/{locale}/LC_MESSAGES/snipdeck-ui.po",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        let po = std::fs::read_to_string(&path).expect("catalogue");
+        let mut in_msgstr = false;
+        for (n, line) in po.lines().enumerate() {
+            if line.starts_with("msgstr") {
+                in_msgstr = true;
+            } else if line.starts_with("msgid") || line.starts_with('#') || line.trim().is_empty() {
+                in_msgstr = false;
+            }
+            if in_msgstr {
+                for w in words {
+                    assert!(
+                        !line.contains(w),
+                        "{locale}:{}: still says {w}: {line}",
+                        n + 1
+                    );
+                }
+            }
+        }
+    }
+}

@@ -557,6 +557,10 @@ fn needing_a_locked_item_opens_the_prompt_and_the_right_password_unlocks() {
     assert!(!r.ctl.library_locked());
     assert!(!r.ctl.unlock_prompt_open());
     assert_eq!(r.secret().as_deref(), Some(SECRET));
+    // The refusal of the wrong tries is guarded; the success message takes over when the guard ends.
+    let error = r.ctl.view().toast.expect("the refusal").seq;
+    r.ctl.toast_tick(error);
+    r.ctl.toast_tick(error);
     assert_eq!(r.toast(), Some(ToastMessage::Unlocked));
 }
 
@@ -1778,7 +1782,12 @@ mod hello {
         assert_eq!(t.kind, snipdeck_app::toast::ToastKind::Danger, "a warning");
         assert_eq!(
             r.ctl.toast_tick(t.seq),
-            Some(snipdeck_app::controller::TOAST_ERROR_HOLD)
+            Some(snipdeck_app::controller::TOAST_ERROR_GUARD)
+        );
+        assert_eq!(
+            r.ctl.toast_tick(t.seq),
+            snipdeck_app::controller::TOAST_ERROR_HOLD
+                .checked_sub(snipdeck_app::controller::TOAST_ERROR_GUARD)
         );
         assert!(r.ctl.hello_turned_off_note());
         assert!(r.ctl.begin_hello_seal().is_none(), "no more prompts");

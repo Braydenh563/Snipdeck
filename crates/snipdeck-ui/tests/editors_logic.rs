@@ -572,18 +572,40 @@ ui_tests! {
         assert!(toggle.accessible_description().unwrap().starts_with("Only text, code, link"));
     }
 
-    fn large_text_is_read_only_with_a_notice() {
+    fn large_text_is_edited_a_part_at_a_time_with_a_pager() {
         let (ui, _log) = item_editor();
         assert_eq!(find(&ui, "Content", AccessibleRole::TextInput).accessible_read_only(), Some(false));
+        assert!(missing(&ui, "Next part", AccessibleRole::Button), "no pager for a short text");
+        let asked = std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
+        let seen = asked.clone();
+        ui.on_part_requested(move |target| seen.borrow_mut().push(target));
         ui.set_content_large(true);
         ui.set_content_size("2.4 MB".into());
+        ui.set_parts(slint::ModelRc::new(slint::VecModel::from(vec![
+            slint::SharedString::from("one"),
+            slint::SharedString::from("two"),
+            slint::SharedString::from("three"),
+        ])));
+        ui.set_part_index(0);
         settle();
-        assert_eq!(find(&ui, "Content", AccessibleRole::TextInput).accessible_read_only(), Some(true));
+        // Still editable; the notice and the pager say where the reader is.
+        assert_eq!(find(&ui, "Content", AccessibleRole::TextInput).accessible_read_only(), Some(false));
         let _ = find(
             &ui,
-            "This text is 2.4 MB. Anything over 16 KB opens read-only here, and the first 16 KB are shown.",
+            "This text is 2.4 MB. It opens a part at a time, so typing stays fast; all the parts are saved together.",
             AccessibleRole::Text,
         );
+        let _ = find(&ui, "Part 1 of 3", AccessibleRole::Text);
+        assert_eq!(find(&ui, "Previous part", AccessibleRole::Button).accessible_enabled(), Some(false));
+        find(&ui, "Next part", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(*asked.borrow(), [1]);
+        // On the last part Next is off and Previous asks for the one before.
+        ui.set_part_index(2);
+        settle();
+        let _ = find(&ui, "Part 3 of 3", AccessibleRole::Text);
+        assert_eq!(find(&ui, "Next part", AccessibleRole::Button).accessible_enabled(), Some(false));
+        find(&ui, "Previous part", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(*asked.borrow(), [1, 1]);
     }
 
     fn a_new_item_may_be_an_image_or_a_file_and_asks_for_its_path() {
@@ -1008,8 +1030,12 @@ ui_tests! {
             .accessible_description().unwrap().starts_with("1 item will move"));
         ui.set_item_count(24);
 
-        // Enter does nothing in a destructive dialog; Esc closes it and the editor stays.
+        // MAIN-44: focus starts on Cancel, so Enter answers no and the editor stays; Esc does the same.
         press_key(&ui, Key::Return);
+        assert!(!ui.get_delete_open());
+        assert_eq!(take(&log), Vec::<String>::new());
+        find(&ui, "Delete list", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
         assert!(ui.get_delete_open());
         press_key(&ui, Key::Escape);
         assert!(!ui.get_delete_open());
@@ -1169,6 +1195,20 @@ ui_tests! {
         assert_eq!(take(&log), ["delete:2"]);
     }
 
+    // MAIN-39: an unused tag says so instead of "removed from 0 items".
+    fn deleting_an_unused_tag_does_not_say_zero_items() {
+        let ui = TagManager::new().expect("tag manager");
+        fixture::tag_manager(&ui);
+        ui.show().expect("show");
+        settle();
+        find(&ui, "Delete tag unused", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert_eq!(
+            find(&ui, "Delete this tag?", AccessibleRole::Groupbox).accessible_description().as_deref(),
+            Some("No item uses this tag.")
+        );
+    }
+
     fn tag_rows_have_big_enough_targets() {
         let ui = TagManager::new().expect("tag manager");
         fixture::tag_manager(&ui);
@@ -1190,8 +1230,8 @@ ui_tests! {
     fn shortcut_rows_record_clear_and_show_a_conflict() {
         let (ui, log) = settings();
         let names = [
-            "Show or hide the panel",
-            "Open the picker",
+            "Show or hide the Panel",
+            "Open the Picker",
             "Save the clipboard as an item",
             "Paste the next item",
         ];
@@ -1215,7 +1255,7 @@ ui_tests! {
             Some("Another program already uses Ctrl+Alt+K.")
         );
 
-        find(&ui, "Clear the shortcut for Open the picker", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Clear the shortcut for Open the Picker", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["hk-clear:1"]);
         // A shortcut that is not set says so.
         assert_eq!(find(&ui, names[3], AccessibleRole::Button).accessible_value().as_deref(), Some(""));
@@ -1224,7 +1264,7 @@ ui_tests! {
     fn each_set_shortcut_has_a_test_button_and_a_failed_one_offers_its_alternatives() {
         let (ui, log) = settings();
         // Set shortcuts (three of four in the fixture) show "Test"; the empty one shows no health line.
-        find(&ui, "Test Open the picker", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Test Open the Picker", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["hk-test:1"]);
         assert!(missing(&ui, "Test Paste the next item", AccessibleRole::Button));
 
@@ -1237,7 +1277,7 @@ ui_tests! {
         hotkeys[2].alternatives = ModelRc::new(VecModel::from(vec!["Ctrl+Shift+G".into(), "Ctrl+Shift+H".into()]));
         ui.set_hotkeys(ModelRc::new(VecModel::from(hotkeys)));
         settle();
-        find(&ui, "Cancel the test of Open the picker", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Cancel the test of Open the Picker", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["hk-test:1"]);
         assert!(missing(&ui, "Test Save the clipboard as an item", AccessibleRole::Button));
         find(&ui, "Use Ctrl+Shift+H for Save the clipboard as an item", AccessibleRole::Button).invoke_accessible_default_action();
@@ -1333,7 +1373,7 @@ ui_tests! {
 
     fn escape_ends_a_recording_first_and_then_closes_the_page() {
         let (ui, log) = settings();
-        find(&ui, "Open the picker", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Open the Picker", AccessibleRole::Button).invoke_accessible_default_action();
         press_key(&ui, Key::Escape);
         assert!(take(&log).is_empty(), "Esc only cancelled the recording");
         press_key(&ui, Key::Escape);
@@ -1370,7 +1410,7 @@ ui_tests! {
         assert_eq!(taskbar.accessible_checked(), Some(false), "off by default");
         taskbar.invoke_accessible_default_action();
         assert_eq!(take(&log), ["taskbar:true"]);
-        let blur = find(&ui, "Hide the panel when it loses focus", AccessibleRole::Switch);
+        let blur = find(&ui, "Hide the Panel when it loses focus", AccessibleRole::Switch);
         assert_eq!(blur.accessible_checked(), Some(true), "on by default");
         blur.invoke_accessible_default_action();
         assert_eq!(take(&log), ["blur:false"]);
@@ -1391,17 +1431,17 @@ ui_tests! {
         spin.invoke_accessible_decrement_action();
         assert_eq!(take(&log), ["width:330", "width:310"]);
 
-        find(&ui, "Make the panel wider", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Make the Panel wider", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["width:330"]);
 
         ui.set_panel_width(480);
         settle();
         spin.invoke_accessible_increment_action();
         assert!(take(&log).is_empty(), "no step past the maximum");
-        assert_eq!(find(&ui, "Make the panel wider", AccessibleRole::Button).accessible_enabled(), Some(false));
+        assert_eq!(find(&ui, "Make the Panel wider", AccessibleRole::Button).accessible_enabled(), Some(false));
         ui.set_panel_width(260);
         settle();
-        assert_eq!(find(&ui, "Make the panel narrower", AccessibleRole::Button).accessible_enabled(), Some(false));
+        assert_eq!(find(&ui, "Make the Panel narrower", AccessibleRole::Button).accessible_enabled(), Some(false));
     }
 
     fn backups_to_keep_steps_by_one_between_one_and_sixty() {
@@ -1843,14 +1883,17 @@ ui_tests! {
 
     fn each_step_shows_its_own_content() {
         let (ui, _) = onboarding(0);
-        let _ = find(&ui, "The panel", AccessibleRole::Groupbox);
-        let _ = find(&ui, "The picker", AccessibleRole::Groupbox);
+        let _ = find(&ui, "The Panel", AccessibleRole::Groupbox);
+        let _ = find(&ui, "The Picker", AccessibleRole::Groupbox);
+        // MAIN-47: the tour says where to bring other tools' snippets in.
+        let import = find(&ui, "Bring your snippets", AccessibleRole::Groupbox);
+        assert!(import.accessible_description().is_some_and(|d| d.contains("TextExpander") && d.contains("CopyQ")));
         let _ = find(&ui, "Also keep what I copy?", AccessibleRole::Groupbox);
         assert!(missing(&ui, "Start with Windows", AccessibleRole::Switch));
         ui.set_step(1);
         settle();
-        assert!(missing(&ui, "The panel", AccessibleRole::Groupbox));
-        let _ = find(&ui, "Show or hide the panel", AccessibleRole::Button);
+        assert!(missing(&ui, "The Panel", AccessibleRole::Groupbox));
+        let _ = find(&ui, "Show or hide the Panel", AccessibleRole::Button);
         ui.set_step(2);
         settle();
         let _ = find(&ui, "Floating", AccessibleRole::RadioButton);
@@ -1863,7 +1906,7 @@ ui_tests! {
 
     fn the_shortcut_step_records_through_the_settings_recorder() {
         let (ui, log) = onboarding(1);
-        let first = find(&ui, "Show or hide the panel", AccessibleRole::Button);
+        let first = find(&ui, "Show or hide the Panel", AccessibleRole::Button);
         assert_eq!(first.accessible_value().as_deref(), Some("Ctrl+Alt+V"));
         first.invoke_accessible_default_action();
         chord(ui.window(), &[Key::Control, Key::Alt], "k");
