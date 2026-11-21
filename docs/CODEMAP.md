@@ -7668,26 +7668,27 @@ EXTENSION | crates/snipdeck-portable/src/backup.rs:53
 PART | crates/snipdeck-portable/src/backup.rs:54
 Shrunk | crates/snipdeck-portable/src/backup.rs:58
 BackupOutcome | crates/snipdeck-portable/src/backup.rs:71
-BackupFile | crates/snipdeck-portable/src/backup.rs:97
-Retained | crates/snipdeck-portable/src/backup.rs:112
-backups_dir | crates/snipdeck-portable/src/backup.rs:120
-file_name | crates/snipdeck-portable/src/backup.rs:125
-manual_file_name | crates/snipdeck-portable/src/backup.rs:135
-parse_file_name | crates/snipdeck-portable/src/backup.rs:148
-parse_backup_name | crates/snipdeck-portable/src/backup.rs:157
-parse_any | crates/snipdeck-portable/src/backup.rs:162
-run_if_due | crates/snipdeck-portable/src/backup.rs:206
-run_manual | crates/snipdeck-portable/src/backup.rs:244
-write_checked | crates/snipdeck-portable/src/backup.rs:265
-shrunk | crates/snipdeck-portable/src/backup.rs:292
-newest_summary | crates/snipdeck-portable/src/backup.rs:297
-newest_readable | crates/snipdeck-portable/src/backup.rs:311
-list_backups | crates/snipdeck-portable/src/backup.rs:325
-as_backup | crates/snipdeck-portable/src/backup.rs:348
-is_stale_part | crates/snipdeck-portable/src/backup.rs:365
-apply_retention | crates/snipdeck-portable/src/backup.rs:372
-apply_retention_except | crates/snipdeck-portable/src/backup.rs:379
-is_tier_pick | crates/snipdeck-portable/src/backup.rs:438
+TimeOfDay | crates/snipdeck-portable/src/backup.rs:96
+BackupFile | crates/snipdeck-portable/src/backup.rs:100
+Retained | crates/snipdeck-portable/src/backup.rs:115
+backups_dir | crates/snipdeck-portable/src/backup.rs:123
+file_name | crates/snipdeck-portable/src/backup.rs:128
+manual_file_name | crates/snipdeck-portable/src/backup.rs:138
+parse_file_name | crates/snipdeck-portable/src/backup.rs:151
+parse_backup_name | crates/snipdeck-portable/src/backup.rs:160
+parse_any | crates/snipdeck-portable/src/backup.rs:165
+run_if_due | crates/snipdeck-portable/src/backup.rs:209
+run_manual | crates/snipdeck-portable/src/backup.rs:247
+write_checked | crates/snipdeck-portable/src/backup.rs:268
+shrunk | crates/snipdeck-portable/src/backup.rs:295
+newest_summary | crates/snipdeck-portable/src/backup.rs:300
+newest_readable | crates/snipdeck-portable/src/backup.rs:314
+list_backups | crates/snipdeck-portable/src/backup.rs:328
+as_backup | crates/snipdeck-portable/src/backup.rs:351
+is_stale_part | crates/snipdeck-portable/src/backup.rs:368
+apply_retention | crates/snipdeck-portable/src/backup.rs:375
+apply_retention_except | crates/snipdeck-portable/src/backup.rs:382
+is_tier_pick | crates/snipdeck-portable/src/backup.rs:441
 
 ### crates/snipdeck-portable/src/check.rs
 
@@ -7784,10 +7785,10 @@ folder_risks | crates/snipdeck-portable/src/folder.rs:32
 tests | crates/snipdeck-portable/src/folder.rs:68
 risks | crates/snipdeck-portable/src/folder.rs:71
 a_plain_local_folder_is_fine | crates/snipdeck-portable/src/folder.rs:76
-a_network_share_is_named | crates/snipdeck-portable/src/folder.rs:83
-a_long_local_path_is_not_a_network_share | crates/snipdeck-portable/src/folder.rs:89
-sync_services_are_named_by_their_folder | crates/snipdeck-portable/src/folder.rs:94
-a_name_that_only_contains_a_service_is_not_one | crates/snipdeck-portable/src/folder.rs:115
+a_network_share_is_named | crates/snipdeck-portable/src/folder.rs:86
+a_long_local_path_is_not_a_network_share | crates/snipdeck-portable/src/folder.rs:92
+sync_services_are_named_by_their_folder | crates/snipdeck-portable/src/folder.rs:97
+a_name_that_only_contains_a_service_is_not_one | crates/snipdeck-portable/src/folder.rs:118
 
 ### crates/snipdeck-portable/src/import.rs
 
