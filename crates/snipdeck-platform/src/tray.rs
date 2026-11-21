@@ -437,6 +437,12 @@ impl TrayModel {
         self.wanted = false;
     }
 
+    /// Whether the icon should be in the notification area (the retry timer stops when not).
+    #[must_use]
+    pub fn is_wanted(&self) -> bool {
+        self.wanted
+    }
+
     /// Replaces the hover text.
     pub fn set_tooltip(&mut self, text: &str) {
         text.clone_into(&mut self.tooltip);
