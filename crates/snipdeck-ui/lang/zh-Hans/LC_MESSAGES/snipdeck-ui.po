@@ -3865,6 +3865,9 @@ msgstr "颜色 调色板 色板 列表 库 colors palette swatches"
 msgid "colour change"
 msgstr "颜色更改"
 
+msgid "colour color dot tint hue accent section"
+msgstr "颜色 色彩 圆点 色调 强调色 分组 区块"
+
 msgid "copy clone twice"
 msgstr "复制 克隆 两次"
 

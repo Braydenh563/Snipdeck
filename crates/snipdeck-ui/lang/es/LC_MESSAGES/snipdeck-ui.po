@@ -3874,6 +3874,9 @@ msgstr "colores paleta muestras lista biblioteca colors palette swatches"
 msgid "colour change"
 msgstr "cambio de color"
 
+msgid "colour color dot tint hue accent section"
+msgstr "color colour punto tono matiz acento sección"
+
 msgid "copy clone twice"
 msgstr "copiar clonar duplicar"
 

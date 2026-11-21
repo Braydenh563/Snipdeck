@@ -16,7 +16,7 @@
 )]
 
 use i_slint_backend_testing::{AccessibleRole as Role, ElementHandle, ElementQuery};
-use slint::{ComponentHandle, ModelRc, VecModel};
+use slint::{ComponentHandle, Model, ModelRc, VecModel};
 use snipdeck_ui::{
     BoardEditor, FilterChipEntry, ListEditor, MainRow, MainSection, MainWindow, SystemLook,
     TagManager,
@@ -903,6 +903,34 @@ fn the_group_menu_opens_a_colour_dialog_that_offers_ten_choices_inside_its_card_
         }
     }
     assert_eq!(problems.len(), 0, "{}", problems.join("\n"));
+}
+
+#[test]
+fn the_palettes_group_colour_opens_the_dialog_over_a_header_and_over_nothing_else() {
+    let h = main_with_groups(1040, 1.0, false, false);
+    let _ = h.render_settled();
+    let rows = h.component.get_rows();
+    let header = (0..rows.row_count())
+        .find(|i| rows.row_data(*i).is_some_and(|r| r.is_header))
+        .expect("the fixture has a group header");
+    let item = (0..rows.row_count())
+        .find(|i| rows.row_data(*i).is_some_and(|r| !r.is_header))
+        .expect("and a plain row");
+    let radios = |h: &Harness<MainWindow>| {
+        all(h)
+            .into_iter()
+            .filter(|b| b.role == Role::RadioButton)
+            .count()
+    };
+    h.component.invoke_open_group_colour(item as i32);
+    let _ = settle_quietly(&h);
+    assert_eq!(radios(&h), 0, "an item row opens nothing");
+    h.component.invoke_open_group_colour(-1);
+    let _ = settle_quietly(&h);
+    assert_eq!(radios(&h), 0, "no row opens nothing");
+    h.component.invoke_open_group_colour(header as i32);
+    let _ = settle_quietly(&h);
+    assert_eq!(radios(&h), 10, "a header opens the ten colour choices");
 }
 
 #[test]

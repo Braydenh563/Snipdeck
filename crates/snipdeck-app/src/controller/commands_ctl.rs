@@ -82,6 +82,8 @@ where
             Command::DeleteGroup => self.main_group_delete(cursor),
             Command::MoveGroupUp => self.main_move_group(cursor, -1),
             Command::MoveGroupDown => self.main_move_group(cursor, 1),
+            // The colour dialog is the window's own state: the window opens it (`main_binding`).
+            Command::ColourGroup => {}
             Command::SelectAll => self.main_select_all(),
             Command::TakeScreenshot => {
                 let effects = self.take_screenshot();

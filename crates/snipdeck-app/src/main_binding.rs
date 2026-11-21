@@ -240,6 +240,14 @@ where
                 crate::onboarding_binding::request_open();
                 return;
             }
+            // The colour dialog is the window's own: it opens over the header under the cursor.
+            crate::commands::Command::ColourGroup => {
+                let cursor = self.shown.borrow().as_ref().map_or(0, |s| s.cursor);
+                if let Some(window) = self.window.upgrade() {
+                    window.invoke_open_group_colour(to_i32(cursor));
+                }
+                return;
+            }
             _ => {}
         }
         let cursor = self.shown.borrow().as_ref().map_or(0, |s| s.cursor);

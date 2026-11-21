@@ -3865,6 +3865,9 @@ msgstr "カラー 色 パレット スウォッチ リスト ライブラリ col
 msgid "colour change"
 msgstr "色の変更"
 
+msgid "colour color dot tint hue accent section"
+msgstr "色 カラー ドット 色合い アクセント セクション グループ"
+
 msgid "copy clone twice"
 msgstr "コピー 複製"
 

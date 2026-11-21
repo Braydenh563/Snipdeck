@@ -3874,6 +3874,9 @@ msgstr "Farben Palette Farbfelder Liste Bibliothek colors palette swatches"
 msgid "colour change"
 msgstr "Farbänderung"
 
+msgid "colour color dot tint hue accent section"
+msgstr "farbe colour punkt ton akzent abschnitt gruppe"
+
 msgid "copy clone twice"
 msgstr "kopieren klonen zweimal"
 

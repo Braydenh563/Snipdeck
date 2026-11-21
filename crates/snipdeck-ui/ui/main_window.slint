@@ -503,6 +503,12 @@ export component MainWindow inherits Window {
     // (`group-colour-chosen(row, hue)`, hue -1 for none) and the dialog closes.
     callback group-colour-chosen(int, int);
     property <int> group-colour-row: -1;
+    // The command palette's "Group colour…": the dialog opens over the group header at `row` (nothing for any other row).
+    public function open-group-colour(row: int) {
+        if (row >= 0 && row < root.rows.length && root.rows[row].is-header) {
+            root.group-colour-row = row;
+        }
+    }
     property <[ListHue]> group-hues: [ListHue.blue, ListHue.teal, ListHue.green, ListHue.amber, ListHue.orange, ListHue.red, ListHue.rose, ListHue.violet, ListHue.slate];
     property <[string]> group-colour-names: [
         @tr("Blue"), @tr("Teal"), @tr("Green"), @tr("Amber"), @tr("Orange"),
