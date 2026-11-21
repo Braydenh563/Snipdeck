@@ -43,6 +43,9 @@ msgstr "ショートカットまたはトレイから表示したパネルは、
 msgid "A docked Panel opens at its edge. Set Dock to Floating to choose where it opens."
 msgstr "固定したパネルは端に開きます。開く場所を選ぶには、固定先を「フローティング」にします。"
 
+msgid "A double click on the tray icon opens the Main window. Turn this off and a single click acts at once, with no wait for a second click."
+msgstr "トレイアイコンをダブルクリックするとメインウィンドウが開きます。オフにすると、2回目のクリックを待たずに1回のクリックですぐ動作します。"
+
 msgid "A link can't contain spaces or line breaks."
 msgstr "リンクに空白や改行を含めることはできません。"
 
@@ -226,6 +229,9 @@ msgstr "類似色"
 
 msgid "Animals & Nature"
 msgstr "動物と自然"
+
+msgid "Another Snipdeck shortcut already uses {}."
+msgstr "{} はすでに別の Snipdeck のショートカットで使われています。"
 
 msgid "Another app has {}: use the mouse for those."
 msgstr "別のアプリが {} を使用しています。それらはマウスで操作してください。"
@@ -988,6 +994,9 @@ msgstr "右に固定"
 
 msgid "Done"
 msgstr "完了"
+
+msgid "Double-click opens the Main window"
+msgstr "ダブルクリックでメインウィンドウを開く"
 
 msgid "Drag along the edge to move. Pull away from the edge to float."
 msgstr "端に沿ってドラッグすると移動します。端から引き離すとフローティングになります。"
@@ -2865,6 +2874,9 @@ msgstr "Snipdeck のハンドル。開くにはパネルのショートカット
 msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
 msgstr "Snipdeckにはアカウントもサーバーもテレメトリもなく、ネットワークポートも開きません。保存した内容がこのPCの外に出ることはありません。"
 
+msgid "Snipdeck is already running, but it did not answer.\n\nIf it is stuck, end Snipdeck in Task Manager and start it again. If it runs as administrator, close it from its tray icon and start it again."
+msgstr "Snipdeck はすでに実行中ですが、応答しませんでした。\n\n応答がない場合は、タスク マネージャーで Snipdeck を終了してから、もう一度起動してください。管理者として実行している場合は、トレイのアイコンから閉じて、もう一度起動してください。"
+
 msgid "Snipdeck is still running. Click the tray icon to bring the panel back."
 msgstr "Snipdeck は実行中です。トレイアイコンをクリックするとパネルが戻ります。"
 
@@ -3104,6 +3116,9 @@ msgstr "そのテキストは大きすぎて保存できません。"
 
 msgid "That was the last one. Paste next starts again from the first."
 msgstr "これが最後の1件です。次の貼り付けは最初から始まります。"
+
+msgid "The Store version keeps your library inside the app, so uninstalling removes it. Back up now also saves a copy in Documents > Snipdeck backups."
+msgstr "Store 版ではライブラリがアプリ内に保存されるため、アンインストールすると削除されます。「今すぐバックアップ」を押すと、ドキュメント > Snipdeck backups にもコピーが保存されます。"
 
 msgid "The Trash is empty"
 msgstr "ゴミ箱は空です"
@@ -3600,6 +3615,15 @@ msgstr "Windows の文字サイズ（設定 > アクセシビリティ > 文字�
 msgid "Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there."
 msgstr "Windows の [設定] > [アプリ] > [スタートアップ] で Snipdeck がオフになっています。そこでオンにしてください。"
 
+msgid "Windows keeps {} for itself. Choose another."
+msgstr "{} は Windows が予約しています。別のものを選んでください。"
+
+msgid "Windows refused {} (Windows error {})."
+msgstr "Windows が {} を受け付けませんでした (Windows エラー {})。"
+
+msgid "Windows refused {} (Windows error {}). Choose another in Settings."
+msgstr "Windows が {} を受け付けませんでした (Windows エラー {})。設定で別のものを選んでください。"
+
 msgid "Windows won't let Snipdeck read this screen."
 msgstr "Windows が Snipdeck によるこの画面の読み取りを許可していません。"
 
@@ -4056,11 +4080,17 @@ msgstr "{} 件見つかりました"
 msgid "{} h ago"
 msgstr "{}時間前"
 
+msgid "{} is a copy or paste shortcut that every program uses. Choose another."
+msgstr "{} はすべてのプログラムが使うコピーまたは貼り付けのショートカットです。別のものを選んでください。"
+
 msgid "{} is a link to somewhere else and was not followed."
 msgstr "{} は別の場所へのリンクのため、たどりませんでした。"
 
 msgid "{} is already in the list."
 msgstr "{} は既にリストにあります。"
+
+msgid "{} is already used by another Snipdeck shortcut. Choose another in Settings."
+msgstr "{} はすでに別の Snipdeck のショートカットで使われています。設定で別のものを選んでください。"
 
 msgid "{} is already used for “{}”."
 msgstr "{} は既に「{}」に使われています。"
@@ -4127,6 +4157,12 @@ msgstr "{} 件の項目に確認が必要です。"
 
 msgid "{} of {} · next: {}"
 msgstr "{} / {} · 次: {}"
+
+msgid "{} on its own is used by every program. Add Ctrl, Alt or Win."
+msgstr "{} だけではすべてのプログラムが使っています。Ctrl、Alt、Win のいずれかを加えてください。"
+
+msgid "{} opens menus and moves windows in other programs. Choose another."
+msgstr "{} は他のプログラムでメニューを開いたりウィンドウを動かしたりします。別のものを選んでください。"
 
 msgid "{} percent"
 msgstr "{} パーセント"

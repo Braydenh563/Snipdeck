@@ -780,6 +780,9 @@ pub struct Settings {
     /// The one-time "Snipdeck is still running" toast has been shown (the first time the Panel
     /// hid itself by the close button or by losing focus).
     pub hide_hint_shown: bool,
+    /// The one-time Store-build reminder that uninstalling removes the library has been shown
+    /// (`store_data`, PLATFORM-33).
+    pub store_data_reminded: bool,
     /// Panel width in logical pixels.
     pub panel_width: u32,
     /// How many daily backups to keep (1 to 60).
@@ -868,6 +871,10 @@ pub struct Settings {
     pub panel_switcher: PanelSwitcher,
     /// What a left click on the tray icon opens.
     pub tray_click: TrayClick,
+    /// A double click on the tray icon opens the Main window. On by default. Off, a single click
+    /// acts at once instead of waiting out the double-click time, and a double click does nothing
+    /// of its own.
+    pub tray_double_click_opens: bool,
     /// Where a floating Panel opens (ignored while it is docked).
     pub panel_open_at: PanelOpenAt,
     /// A floating Panel that is not pinned hides after a paste or copy. On for a new install
@@ -928,6 +935,7 @@ impl Default for Settings {
             panel_pinned: true,
             screenshot_keep_panel: false,
             hide_hint_shown: false,
+            store_data_reminded: false,
             panel_width: PANEL_WIDTH_DEFAULT,
             backups_keep: BACKUPS_KEEP_DEFAULT,
             reduce_motion: false,
@@ -960,6 +968,7 @@ impl Default for Settings {
             panel_search: PanelSearch::OnType,
             panel_switcher: PanelSwitcher::Tabs,
             tray_click: TrayClick::Panel,
+            tray_double_click_opens: true,
             panel_open_at: PanelOpenAt::Last,
             panel_hide_after_use: false,
             panel_start_visible: false,
@@ -1072,6 +1081,7 @@ impl Settings {
         field!(panel_pinned);
         field!(screenshot_keep_panel);
         field!(hide_hint_shown);
+        field!(store_data_reminded);
         field!(panel_width);
         field!(backups_keep);
         field!(reduce_motion);
@@ -1117,6 +1127,7 @@ impl Settings {
         field!(panel_search);
         field!(panel_switcher);
         field!(tray_click);
+        field!(tray_double_click_opens);
         field!(panel_open_at);
         field!(symbols_recent);
         field!(symbol_tone);
@@ -2238,6 +2249,7 @@ mod tests {
             panel_pinned: false,
             screenshot_keep_panel: true,
             hide_hint_shown: true,
+            store_data_reminded: true,
             ..Settings::default()
         };
         assert_eq!(Settings::from_json(&settings.to_json()), settings);

@@ -24,8 +24,11 @@ BASE = (
     ("Square44x44Logo", 44),
     ("Square150x150Logo", 150),
 )
-# Taskbar copy of the 44 px tile, drawn without a backplate.
-UNPLATED = ("Square44x44Logo.targetsize-24_altform-unplated", 24)
+# The 44 px tile at the sizes Windows asks for by itself (title bar, taskbar, Start list, Alt+Tab, large icons).
+# Each is written twice: plain, and "_altform-unplated" (the taskbar shows it without a coloured backplate).
+# `resources.pri` (makepri, see packaging/msix/README.md) is what makes Windows pick these files.
+TARGET_SIZES = (16, 24, 32, 48, 256)
+TARGET_STEM = "Square44x44Logo"
 # Scale variants: Windows puts the percentage in the file name, for example StoreLogo.scale-200.png.
 SCALES = (125, 150, 200, 400)
 
@@ -61,7 +64,9 @@ def main():
         write(stem, px)
         for pct in SCALES:
             write(f"{stem}.scale-{pct}", scaled(px, pct))
-    write(*UNPLATED)
+    for size in TARGET_SIZES:
+        write(f"{TARGET_STEM}.targetsize-{size}", size)
+        write(f"{TARGET_STEM}.targetsize-{size}_altform-unplated", size)
     LISTING.write_bytes(cairosvg.svg2png(bytestring=svg, output_width=LISTING_PX, output_height=LISTING_PX))
     print(f"{LISTING.relative_to(ROOT)}  {LISTING_PX}x{LISTING_PX}")
 

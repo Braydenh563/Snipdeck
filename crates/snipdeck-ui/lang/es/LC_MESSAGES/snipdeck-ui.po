@@ -43,6 +43,9 @@ msgstr "Un panel que se mostró con un atajo o desde la bandeja se oculta tras p
 msgid "A docked Panel opens at its edge. Set Dock to Floating to choose where it opens."
 msgstr "Un panel acoplado se abre en su borde. Pon Acoplar a en Flotante para elegir dónde se abre."
 
+msgid "A double click on the tray icon opens the Main window. Turn this off and a single click acts at once, with no wait for a second click."
+msgstr "Un doble clic en el icono de la bandeja abre la ventana principal. Desactívalo y un solo clic actúa al instante, sin esperar un segundo clic."
+
 msgid "A link can't contain spaces or line breaks."
 msgstr "Un enlace no puede contener espacios ni saltos de línea."
 
@@ -227,6 +230,9 @@ msgstr "Análogos"
 
 msgid "Animals & Nature"
 msgstr "Animales y naturaleza"
+
+msgid "Another Snipdeck shortcut already uses {}."
+msgstr "Otro atajo de Snipdeck ya usa {}."
 
 msgid "Another app has {}: use the mouse for those."
 msgstr "Otra app usa {}: usa el ratón para esas."
@@ -989,6 +995,9 @@ msgstr "Acoplado a la derecha"
 
 msgid "Done"
 msgstr "Listo"
+
+msgid "Double-click opens the Main window"
+msgstr "El doble clic abre la ventana principal"
 
 msgid "Drag along the edge to move. Pull away from the edge to float."
 msgstr "Arrastra a lo largo del borde para mover. Aléjalo del borde para dejarlo flotante."
@@ -2873,6 +2882,9 @@ msgstr "Tirador de Snipdeck, pulsa el atajo del panel para abrir"
 msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
 msgstr "Snipdeck no tiene cuenta, ni servidor, ni telemetría, y no abre ningún puerto de red. Nada de lo que guardas sale de este PC."
 
+msgid "Snipdeck is already running, but it did not answer.\n\nIf it is stuck, end Snipdeck in Task Manager and start it again. If it runs as administrator, close it from its tray icon and start it again."
+msgstr "Snipdeck ya se está ejecutando, pero no respondió.\n\nSi está bloqueado, ciérralo desde el Administrador de tareas y vuelve a iniciar Snipdeck. Si se ejecuta como administrador, ciérralo desde el icono de la bandeja y vuelve a iniciarlo."
+
 msgid "Snipdeck is still running. Click the tray icon to bring the panel back."
 msgstr "Snipdeck sigue en ejecución. Haz clic en el icono de la bandeja para volver a mostrar el panel."
 
@@ -3112,6 +3124,9 @@ msgstr "Ese texto es demasiado grande para guardarlo."
 
 msgid "That was the last one. Paste next starts again from the first."
 msgstr "Ese era el último. Pegar siguiente vuelve a empezar desde el primero."
+
+msgid "The Store version keeps your library inside the app, so uninstalling removes it. Back up now also saves a copy in Documents > Snipdeck backups."
+msgstr "La versión de la Store guarda tu biblioteca dentro de la app, así que al desinstalar se elimina. «Copia de seguridad ahora» también guarda una copia en Documentos > Snipdeck backups."
 
 msgid "The Trash is empty"
 msgstr "La papelera está vacía"
@@ -3608,6 +3623,15 @@ msgstr "Windows sigue el tamaño de texto de Windows (Configuración > Accesibil
 msgid "Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there."
 msgstr "Windows tiene Snipdeck desactivado en Configuración > Aplicaciones > Inicio. Actívalo allí."
 
+msgid "Windows keeps {} for itself. Choose another."
+msgstr "Windows se reserva {} para sí mismo. Elige otro."
+
+msgid "Windows refused {} (Windows error {})."
+msgstr "Windows rechazó {} (error de Windows {})."
+
+msgid "Windows refused {} (Windows error {}). Choose another in Settings."
+msgstr "Windows rechazó {} (error de Windows {}). Elige otro en Ajustes."
+
 msgid "Windows won't let Snipdeck read this screen."
 msgstr "Windows no permite que Snipdeck lea esta pantalla."
 
@@ -4073,11 +4097,17 @@ msgstr "{} encontrados"
 msgid "{} h ago"
 msgstr "hace {} h"
 
+msgid "{} is a copy or paste shortcut that every program uses. Choose another."
+msgstr "{} es un atajo de copiar o pegar que usan todos los programas. Elige otro."
+
 msgid "{} is a link to somewhere else and was not followed."
 msgstr "{} es un enlace a otro lugar y no se siguió."
 
 msgid "{} is already in the list."
 msgstr "{} ya está en la lista."
+
+msgid "{} is already used by another Snipdeck shortcut. Choose another in Settings."
+msgstr "{} ya lo usa otro atajo de Snipdeck. Elige otro en Ajustes."
 
 msgid "{} is already used for “{}”."
 msgstr "{} ya se usa para “{}”."
@@ -4150,6 +4180,12 @@ msgstr "{} de las comprobaciones requieren atención."
 
 msgid "{} of {} · next: {}"
 msgstr "{} de {} · siguiente: {}"
+
+msgid "{} on its own is used by every program. Add Ctrl, Alt or Win."
+msgstr "{} sin otras teclas lo usan todos los programas. Añade Ctrl, Alt o Win."
+
+msgid "{} opens menus and moves windows in other programs. Choose another."
+msgstr "{} abre menús y mueve ventanas en otros programas. Elige otro."
 
 msgid "{} percent"
 msgstr "{} por ciento"

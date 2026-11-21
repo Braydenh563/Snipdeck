@@ -43,6 +43,9 @@ msgstr "通过快捷键或托盘显示的面板会在粘贴或复制后隐藏。
 msgid "A docked Panel opens at its edge. Set Dock to Floating to choose where it opens."
 msgstr "已停靠的面板会在其边缘打开。将“停靠到”设为“浮动”，即可选择它的打开位置。"
 
+msgid "A double click on the tray icon opens the Main window. Turn this off and a single click acts at once, with no wait for a second click."
+msgstr "双击托盘图标会打开主窗口。关闭后，单击会立即生效，无需等待第二次点击。"
+
 msgid "A link can't contain spaces or line breaks."
 msgstr "链接不能包含空格或换行。"
 
@@ -226,6 +229,9 @@ msgstr "邻近色"
 
 msgid "Animals & Nature"
 msgstr "动物与自然"
+
+msgid "Another Snipdeck shortcut already uses {}."
+msgstr "另一个 Snipdeck 快捷键已在使用 {}。"
 
 msgid "Another app has {}: use the mouse for those."
 msgstr "其他应用占用了 {}：请改用鼠标操作。"
@@ -988,6 +994,9 @@ msgstr "停靠在右侧"
 
 msgid "Done"
 msgstr "完成"
+
+msgid "Double-click opens the Main window"
+msgstr "双击打开主窗口"
 
 msgid "Drag along the edge to move. Pull away from the edge to float."
 msgstr "沿边缘拖动可移动。拖离边缘可变为浮动。"
@@ -2865,6 +2874,9 @@ msgstr "Snipdeck 拉手，按面板快捷键即可展开"
 msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
 msgstr "Snipdeck 没有账户、没有服务器、没有遥测，也不开放任何网络端口。你保存的内容不会离开这台电脑。"
 
+msgid "Snipdeck is already running, but it did not answer.\n\nIf it is stuck, end Snipdeck in Task Manager and start it again. If it runs as administrator, close it from its tray icon and start it again."
+msgstr "Snipdeck 已在运行，但没有响应。\n\n如果它卡住了，请在任务管理器中结束 Snipdeck，然后重新启动。如果它以管理员身份运行，请从托盘图标关闭它，然后重新启动。"
+
 msgid "Snipdeck is still running. Click the tray icon to bring the panel back."
 msgstr "Snipdeck 仍在运行。单击托盘图标即可重新显示面板。"
 
@@ -3104,6 +3116,9 @@ msgstr "该文本太大，无法保存。"
 
 msgid "That was the last one. Paste next starts again from the first."
 msgstr "这是最后一项。再次粘贴将从第一项重新开始。"
+
+msgid "The Store version keeps your library inside the app, so uninstalling removes it. Back up now also saves a copy in Documents > Snipdeck backups."
+msgstr "应用商店版将资源库保存在应用内，卸载时会一并删除。“立即备份”还会在 文档 > Snipdeck backups 中保存一份副本。"
 
 msgid "The Trash is empty"
 msgstr "回收站为空"
@@ -3600,6 +3615,15 @@ msgstr "Windows 跟随你的 Windows 文字大小（设置 > 辅助功能 > 文�
 msgid "Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there."
 msgstr "Windows 已在“设置”>“应用”>“启动”中关闭了 Snipdeck。请在那里重新打开。"
 
+msgid "Windows keeps {} for itself. Choose another."
+msgstr "Windows 为自身保留了 {}。请另选一个。"
+
+msgid "Windows refused {} (Windows error {})."
+msgstr "Windows 拒绝了 {}（Windows 错误 {}）。"
+
+msgid "Windows refused {} (Windows error {}). Choose another in Settings."
+msgstr "Windows 拒绝了 {}（Windows 错误 {}）。请在设置中另选一个。"
+
 msgid "Windows won't let Snipdeck read this screen."
 msgstr "Windows 不允许 Snipdeck 读取此屏幕。"
 
@@ -4056,11 +4080,17 @@ msgstr "找到 {} 个"
 msgid "{} h ago"
 msgstr "{} 小时前"
 
+msgid "{} is a copy or paste shortcut that every program uses. Choose another."
+msgstr "{} 是所有程序都在使用的复制或粘贴快捷键。请另选一个。"
+
 msgid "{} is a link to somewhere else and was not followed."
 msgstr "{} 是指向其他位置的链接，未被跟随。"
 
 msgid "{} is already in the list."
 msgstr "{} 已在列表中。"
+
+msgid "{} is already used by another Snipdeck shortcut. Choose another in Settings."
+msgstr "{} 已被另一个 Snipdeck 快捷键使用。请在设置中另选一个。"
 
 msgid "{} is already used for “{}”."
 msgstr "{} 已用于“{}”。"
@@ -4127,6 +4157,12 @@ msgstr "有 {} 项检查需要留意。"
 
 msgid "{} of {} · next: {}"
 msgstr "{} / {} · 下一项：{}"
+
+msgid "{} on its own is used by every program. Add Ctrl, Alt or Win."
+msgstr "单独的 {} 会被所有程序使用。请加上 Ctrl、Alt 或 Win。"
+
+msgid "{} opens menus and moves windows in other programs. Choose another."
+msgstr "{} 会在其他程序中打开菜单或移动窗口。请另选一个。"
 
 msgid "{} percent"
 msgstr "{}%"

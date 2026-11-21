@@ -148,10 +148,13 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::EyedropKeysBusy { .. } => 117,
         ToastMessage::NameNotExact { .. } => 118,
         ToastMessage::ArchiveBusy => 120,
+        ToastMessage::StoreDataReminder => 121,
+        ToastMessage::HotkeyOwnAction { .. } => 122,
+        ToastMessage::HotkeyRefused { .. } => 123,
     }
 }
 
-const VARIANTS: usize = 121;
+const VARIANTS: usize = 124;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -247,6 +250,7 @@ fn samples() -> Vec<ToastMessage> {
         M::AutostartSwitchedOff,
         M::AutostartPolicy,
         M::ArchiveBusy,
+        M::StoreDataReminder,
         M::CannotOpenLog,
         M::KeyUnavailable,
         M::ItemGone,
@@ -346,6 +350,13 @@ fn samples() -> Vec<ToastMessage> {
         M::NameNotExact {
             name: s("royalblue"),
             hex: s("#4169e1"),
+        },
+        M::HotkeyOwnAction {
+            chord: s("Ctrl+Alt+Space"),
+        },
+        M::HotkeyRefused {
+            chord: s("Ctrl+Alt+Space"),
+            code: 5,
         },
     ]
 }

@@ -489,17 +489,11 @@ pub struct IconSave {
 }
 
 impl IconSave {
-    /// Shows the Save dialog (the icon's name filled in) and waits. `owner` is the native window
-    /// handle the dialog belongs to. Call it with no borrow of the controller held.
-    ///
-    /// # Errors
-    ///
-    /// The dialog could not be shown.
-    pub fn ask(
-        &self,
-        owner: Option<isize>,
-    ) -> Result<Option<PathBuf>, snipdeck_platform::error::Error> {
-        self.picker.save(self.kind, &self.name, owner)
+    /// Shows the Save dialog (the icon's name filled in) without blocking and gives the answer
+    /// to `done`, from the dialog's thread (the caller hops back to the UI thread). `owner` is the
+    /// native window handle the dialog belongs to. Call it with no borrow of the controller held.
+    pub fn ask(&self, owner: Option<isize>, done: snipdeck_platform::file_dialog::Done) {
+        self.picker.save(self.kind, &self.name, owner, done);
     }
 }
 

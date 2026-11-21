@@ -159,6 +159,18 @@ pub enum ToastMessage {
         /// The chord as typed in Settings.
         chord: String,
     },
+    /// "{chord} is already used by another Snipdeck shortcut. Choose another in Settings."
+    HotkeyOwnAction {
+        /// The chord two Snipdeck shortcuts were given.
+        chord: String,
+    },
+    /// "Windows refused {chord} (Windows error {code}). Choose another in Settings."
+    HotkeyRefused {
+        /// The chord Windows refused.
+        chord: String,
+        /// The Windows error code.
+        code: u32,
+    },
     /// "Shortcuts are unavailable, so {chord} is not active. Restart Snipdeck to try again."
     HotkeyUnavailable {
         /// The chord that could not be registered.
@@ -254,6 +266,9 @@ pub enum ToastMessage {
     BackupMade,
     /// "Another backup or export is still running. Try again when it has finished."
     ArchiveBusy,
+    /// "The Store version keeps your library inside the app, so uninstalling removes it. Back up
+    /// now also saves a copy in Documents > Snipdeck backups." Shown once (`store_data`).
+    StoreDataReminder,
     /// "Couldn't make a backup: the disk is full. ..." (a backup the user asked for)
     BackupFailed(Cause),
     /// "Couldn't make today's backup. Check the disk has room, then use Back up now in

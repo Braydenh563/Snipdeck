@@ -461,8 +461,15 @@ where
                     .window
                     .upgrade()
                     .and_then(|w| crate::native_window::handle_of(w.window()));
-                let answer = prepared.ask(owner);
-                self.act(|ctl| ctl.finish_icon_save(&prepared, answer));
+                let prepared = Rc::new(prepared);
+                let prepared_for_finish = Rc::clone(&prepared);
+                let this = Rc::clone(self);
+                let back = crate::ui_thread::back_on_ui(
+                    move |answer: snipdeck_platform::file_dialog::Answer| {
+                        this.act(|ctl| ctl.finish_icon_save(&prepared_for_finish, answer));
+                    },
+                );
+                prepared.ask(owner, Box::new(back));
             }
         }
     }
@@ -1621,6 +1628,9 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     crate::text_scale::apply(&window.global::<ui::SystemLook<'_>>());
     if differs(&|p| (p.dark, p.high_contrast) == (view.dark, view.high_contrast)) {
         crate::native_window::set_erase_colour(window.window(), window_colour(window, view));
+        // The title bars of the regular windows follow Snipdeck's theme, not the Windows app
+        // mode (high contrast keeps the system's own frame colours).
+        crate::native_window::set_title_theme(window.window(), view.dark);
     }
     if differs(&|p| {
         (p.high_contrast, p.accent, p.reduced_motion)

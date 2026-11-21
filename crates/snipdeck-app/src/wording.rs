@@ -34,6 +34,15 @@ pub fn startup_failure_text(window: &PanelWindow, details: &str) -> String {
         .into()
 }
 
+/// The text of the message box a second launch shows when the running Snipdeck does not answer,
+/// in the language selected now.
+#[must_use]
+pub fn not_answering_text(window: &PanelWindow) -> String {
+    ToastTexts::get(window)
+        .invoke_already_running_not_answering()
+        .into()
+}
+
 /// The tray menu's words in the language selected for the UI now (English until a bundled
 /// translation is selected). `window` is any window of the UI: Slint globals are reached
 /// through a component.
@@ -274,6 +283,10 @@ where
         ToastMessage::PasteNextFinished => t.invoke_paste_next_finished(),
         ToastMessage::HotkeyInUse { chord } => t.invoke_hotkey_in_use(chord.into()),
         ToastMessage::HotkeyInvalid { chord } => t.invoke_hotkey_invalid(chord.into()),
+        ToastMessage::HotkeyOwnAction { chord } => t.invoke_hotkey_own_action(chord.into()),
+        ToastMessage::HotkeyRefused { chord, code } => {
+            t.invoke_hotkey_refused(chord.into(), i32::try_from(*code).unwrap_or(i32::MAX))
+        }
         ToastMessage::HotkeyUnavailable { chord } => t.invoke_hotkey_unavailable(chord.into()),
         ToastMessage::HotkeysFailed { chords } => t.invoke_hotkeys_failed(chords.into()),
         ToastMessage::PanelHidden { chord } => {
@@ -332,6 +345,7 @@ where
         ToastMessage::FolderNotOpened => t.invoke_folder_not_opened(),
         ToastMessage::LinkNotOpened => t.invoke_link_not_opened(),
         ToastMessage::AutostartFailed => t.invoke_autostart_failed(),
+        ToastMessage::StoreDataReminder => t.invoke_store_data_reminder(),
         ToastMessage::AutostartSwitchedOff => t.invoke_autostart_switched_off(),
         ToastMessage::AutostartPolicy => t.invoke_autostart_policy(),
         ToastMessage::CannotOpenLog => t.invoke_cannot_open_log(),

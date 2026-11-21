@@ -171,6 +171,24 @@ export global FormTexts {
     pure public function hotkey-unavailable() -> string {
         return @tr("Shortcuts are not available right now. Try again in a moment.");
     }
+    pure public function hotkey-own-action(combo: string) -> string {
+        return @tr("Another Snipdeck shortcut already uses {}.", combo);
+    }
+    pure public function hotkey-refused(combo: string, code: int) -> string {
+        return @tr("Windows refused {} (Windows error {}).", combo, code);
+    }
+    pure public function hotkey-reserved-clipboard(combo: string) -> string {
+        return @tr("{} is a copy or paste shortcut that every program uses. Choose another.", combo);
+    }
+    pure public function hotkey-reserved-bare-function-key(combo: string) -> string {
+        return @tr("{} on its own is used by every program. Add Ctrl, Alt or Win.", combo);
+    }
+    pure public function hotkey-reserved-menu(combo: string) -> string {
+        return @tr("{} opens menus and moves windows in other programs. Choose another.", combo);
+    }
+    pure public function hotkey-reserved-system(combo: string) -> string {
+        return @tr("Windows keeps {} for itself. Choose another.", combo);
+    }
 
     // The Settings page: programs lists.
     pure public function program-has-path() -> string {

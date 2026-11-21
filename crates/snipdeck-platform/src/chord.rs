@@ -13,7 +13,9 @@
 //! - at least one modifier, unless the key is `F1`..`F24`;
 //! - `Shift` alone is not enough for anything but an `F` key (it would take over typing a capital
 //!   letter, selecting text with the arrows, `Shift+Insert` paste and so on in every app);
-//! - the key payloads are in range (a hand-built `Letter(b'1')` is rejected).
+//! - the key payloads are in range (a hand-built `Letter(b'1')` is rejected);
+//! - the chord is not on the reserved list ([`Chord::reserved`]): clipboard chords, bare `F1`..`F12`,
+//!   `Alt` with a letter, and what Windows keeps for itself.
 //!
 //! Whether *Windows* lets Snipdeck have the chord is only known by registering it (another app, or
 //! the shell, may own it); that is `crate::windows::hotkey`'s job. [`conflicts`] finds the chords
@@ -21,6 +23,7 @@
 
 use std::fmt;
 use std::str::FromStr;
+use std::sync::RwLock;
 
 use crate::keys::Modifiers;
 
@@ -65,6 +68,29 @@ pub enum ChordError {
     /// A key payload is out of range (built by hand, not parsed).
     #[error("not a key this app can register")]
     InvalidKey,
+    /// A chord other programs or Windows itself own; see [`Chord::reserved`].
+    #[error("{0}")]
+    Reserved(Reserved),
+}
+
+/// Why a chord is on the reserved list ([`Chord::reserved`]): taking it as a global hotkey would
+/// break something every program (or Windows) relies on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+pub enum Reserved {
+    /// Copy, cut, paste, undo and select-all, and the paste keys Snipdeck itself sends: as a
+    /// global hotkey the chord would stop working in every program, and a paste Snipdeck injects
+    /// would trigger the hotkey again.
+    #[error("it is a copy, paste or edit shortcut that every program uses")]
+    Clipboard,
+    /// `F1`..`F12` with no modifier: each program uses them for its own commands.
+    #[error("a function key on its own is used by every program (add Ctrl, Alt or Win)")]
+    BareFunctionKey,
+    /// `Alt` with a letter, a digit or a window key: menus and window commands.
+    #[error("Alt with a letter, a digit or a window key opens menus and moves windows")]
+    Menu,
+    /// Chords Windows keeps for itself (`Win+L`, `Alt+Tab`, `Ctrl+Shift+Esc`).
+    #[error("Windows keeps it for itself")]
+    System,
 }
 
 /// Punctuation keys, named by the character on a US keyboard.
@@ -388,7 +414,8 @@ impl Chord {
     ///
     /// # Errors
     ///
-    /// [`ChordError::InvalidKey`], [`ChordError::NeedsModifier`] or [`ChordError::ShiftOnly`].
+    /// [`ChordError::InvalidKey`], [`ChordError::NeedsModifier`], [`ChordError::ShiftOnly`] or
+    /// [`ChordError::Reserved`].
     pub fn validate(&self) -> Result<(), ChordError> {
         if !self.key.is_valid() {
             return Err(ChordError::InvalidKey);
@@ -396,6 +423,9 @@ impl Chord {
         // RegisterHotKey docs: F12 is reserved for the debugger at all times.
         if self.key.vk() == 0x7B {
             return Err(ChordError::InvalidKey);
+        }
+        if let Some(reason) = self.reserved() {
+            return Err(ChordError::Reserved(reason));
         }
         let m = self.modifiers;
         if self.key.is_function() {
@@ -408,6 +438,75 @@ impl Chord {
             return Err(ChordError::ShiftOnly(self.key));
         }
         Ok(())
+    }
+
+    /// Why this chord must not be a global hotkey, if it is on the reserved list: one table for
+    /// every refusal. Checked by [`validate`](Self::validate), after the shape rules, so it also
+    /// stops a bare `F5` and a hand-edited settings file.
+    ///
+    /// The list: the clipboard and edit chords (`Ctrl+C/V/X/Z/Y/A`, `Ctrl+Insert`, and
+    /// `Ctrl+Shift+V`, which Snipdeck sends itself to terminals); `F1`..`F12` with no modifier
+    /// (`F13`..`F24` have no key on most keyboards, so no program binds them); `Alt` alone with a
+    /// letter, a digit, `F4`, `Tab`, `Esc`, `Space`, `Enter` or an arrow; and what Windows owns:
+    /// `Win` (with or without `Shift`) and a letter, digit or navigation key, `Alt+Shift+Tab`,
+    /// `Ctrl+Esc`, `Ctrl+Shift+Esc`, `Ctrl+Alt+Delete`, `Ctrl+Alt+Tab`.
+    #[must_use]
+    pub fn reserved(&self) -> Option<Reserved> {
+        let m = self.modifiers;
+        let key = self.key;
+        let navigation = matches!(
+            key,
+            ChordKey::Space
+                | ChordKey::Tab
+                | ChordKey::Left
+                | ChordKey::Right
+                | ChordKey::Up
+                | ChordKey::Down
+                | ChordKey::Home
+                | ChordKey::End
+                | ChordKey::PrintScreen
+        );
+        match (m.ctrl, m.shift, m.alt, m.win, key) {
+            (false, false, false, false, ChordKey::Function(n)) if n <= 12 => {
+                Some(Reserved::BareFunctionKey)
+            }
+            (
+                true,
+                false,
+                false,
+                false,
+                ChordKey::Letter(b'C' | b'V' | b'X' | b'Z' | b'Y' | b'A') | ChordKey::Insert,
+            )
+            | (true, true, false, false, ChordKey::Letter(b'V')) => Some(Reserved::Clipboard),
+            (false, false, true, false, ChordKey::Letter(_) | ChordKey::Digit(_)) => {
+                Some(Reserved::Menu)
+            }
+            (
+                false,
+                false,
+                true,
+                false,
+                ChordKey::Function(4)
+                | ChordKey::Tab
+                | ChordKey::Esc
+                | ChordKey::Space
+                | ChordKey::Enter
+                | ChordKey::Left
+                | ChordKey::Right
+                | ChordKey::Up,
+            ) => Some(Reserved::Menu),
+            (false, _, false, true, _)
+                if matches!(key, ChordKey::Letter(_) | ChordKey::Digit(_)) || navigation =>
+            {
+                Some(Reserved::System)
+            }
+            (false, true, true, false, ChordKey::Tab)
+            | (true, _, false, false, ChordKey::Esc)
+            | (true, false, true, false, ChordKey::Delete | ChordKey::Tab) => {
+                Some(Reserved::System)
+            }
+            _ => None,
+        }
     }
 
     /// The numbers for `RegisterHotKey(hwnd, id, fsModifiers, vk)`: the `MOD_*` flags **including
@@ -430,6 +529,67 @@ impl Chord {
             flags |= MOD_WIN;
         }
         (flags, self.key.vk())
+    }
+}
+
+/// What the keyboard layout prints on the key behind a virtual-key code, or `None` when it is
+/// not known or prints nothing. On Windows this is `MapVirtualKeyExW(vk, MAPVK_VK_TO_CHAR)` for
+/// the current layout; tests bring a fake.
+pub type LayoutLookup = fn(u32) -> Option<char>;
+
+static LAYOUT: RwLock<Option<LayoutLookup>> = RwLock::new(None);
+
+/// Sets the lookup [`Chord::label`] uses (the Windows host does this once at start-up; without
+/// it, labels name keys as a US keyboard does).
+pub fn set_layout_lookup(lookup: Option<LayoutLookup>) {
+    if let Ok(mut slot) = LAYOUT.write() {
+        *slot = lookup;
+    }
+}
+
+impl Punct {
+    /// The character on this key for `layout`: the layout's own character (upper-cased, as a key
+    /// cap shows it) if it is a visible one, else the US symbol the key is named by.
+    #[must_use]
+    pub fn label_with(self, layout: &dyn Fn(u32) -> Option<char>) -> String {
+        match layout(self.vk()) {
+            Some(c) if !c.is_control() && !c.is_whitespace() => {
+                let upper: String = c.to_uppercase().collect();
+                // "ß" upper-cases to "SS", which is not what the key cap shows.
+                if upper.chars().count() == 1 {
+                    upper
+                } else {
+                    c.to_string()
+                }
+            }
+            _ => self.symbol().to_string(),
+        }
+    }
+}
+
+impl Chord {
+    /// The chord as the user's keyboard prints it: the text of [`Display`](fmt::Display), except
+    /// that a punctuation key is shown with the character `layout` puts on it (`Ctrl+Alt+Ü` where
+    /// the US name is `Ctrl+Alt+;`). For display only: the stored text and the registered virtual
+    /// key stay the US ones.
+    #[must_use]
+    pub fn label_with(&self, layout: &dyn Fn(u32) -> Option<char>) -> String {
+        let text = self.to_string();
+        let ChordKey::Punct(p) = self.key else {
+            return text;
+        };
+        let keep = text.len().saturating_sub(p.symbol().len_utf8());
+        format!("{}{}", &text[..keep], p.label_with(layout))
+    }
+
+    /// [`label_with`](Self::label_with) for the layout set by [`set_layout_lookup`].
+    #[must_use]
+    pub fn label(&self) -> String {
+        let lookup = LAYOUT.read().ok().and_then(|slot| *slot);
+        match lookup {
+            Some(lookup) => self.label_with(&lookup),
+            None => self.to_string(),
+        }
     }
 }
 
@@ -557,7 +717,7 @@ mod tests {
     #[test]
     fn windows_key_aliases() {
         for s in ["Win", "Windows", "Super", "meta", "WIN"] {
-            assert_eq!(chord(&format!("{s}+V")), chord("Win+V"), "{s}");
+            assert_eq!(chord(&format!("{s}+Ctrl+V")), chord("Win+Ctrl+V"), "{s}");
         }
         assert_eq!(chord("Control+Option+V"), chord("Ctrl+Alt+V"));
     }
@@ -590,7 +750,7 @@ mod tests {
         keys.extend(Punct::ALL.map(ChordKey::Punct));
         assert_eq!(keys.len(), 17 + 26 + 10 + 23 + 11);
         for key in keys {
-            let c = Chord::new(mods(1 | 4), key).unwrap();
+            let c = Chord::new(mods(1 | 2 | 4), key).unwrap();
             let text = c.to_string();
             assert_eq!(chord(&text), c, "{text}");
             // Printing the parsed value again is stable.
@@ -601,7 +761,7 @@ mod tests {
     #[test]
     fn spelled_out_key_names() {
         assert_eq!(chord("Ctrl+Return").key, ChordKey::Enter);
-        assert_eq!(chord("Ctrl+escape").key, ChordKey::Esc);
+        assert_eq!(chord("Ctrl+Alt+escape").key, ChordKey::Esc);
         assert_eq!(chord("Ctrl+Del").key, ChordKey::Delete);
         assert_eq!(chord("Ctrl+PgUp").key, ChordKey::PageUp);
         assert_eq!(chord("Ctrl+ArrowLeft").key, ChordKey::Left);
@@ -615,7 +775,7 @@ mod tests {
 
     #[test]
     fn function_keys_need_no_modifier() {
-        assert_eq!(chord("F1").to_string(), "F1");
+        assert_eq!(chord("F13").to_string(), "F13");
         assert_eq!(chord("f24").to_string(), "F24");
         assert_eq!(chord("Shift+F5").to_string(), "Shift+F5");
     }
@@ -659,12 +819,12 @@ mod tests {
             );
         }
         assert!(
-            "Shift+Ctrl+V".parse::<Chord>().is_ok()
+            "Shift+Ctrl+K".parse::<Chord>().is_ok()
                 && "Shift+Alt+V".parse::<Chord>().is_ok()
-                && "Shift+Win+V".parse::<Chord>().is_ok()
+                && "Shift+Win+F9".parse::<Chord>().is_ok()
         );
-        assert!("Alt+V".parse::<Chord>().is_ok());
-        assert!("Win+V".parse::<Chord>().is_ok());
+        assert!("Alt+F9".parse::<Chord>().is_ok());
+        assert!("Win+F9".parse::<Chord>().is_ok());
     }
 
     #[test]
@@ -742,11 +902,11 @@ mod tests {
         assert_eq!(vk, 0x56);
 
         assert_eq!(chord("Ctrl+Shift+Alt+Win+Space").to_win32(), (0x400F, 0x20));
-        assert_eq!(chord("Win+Shift+1").to_win32(), (0x400C, 0x31));
+        assert_eq!(chord("Win+Ctrl+1").to_win32(), (0x400A, 0x31));
+        assert_eq!(chord("Ctrl+F1").to_win32(), (0x4002, 0x70));
         // No modifier: only MOD_NOREPEAT.
-        assert_eq!(chord("F1").to_win32(), (0x4000, 0x70));
         assert_eq!(chord("F24").to_win32(), (0x4000, 0x87));
-        assert_eq!(chord("Ctrl+Z").to_win32().1, 0x5A);
+        assert_eq!(chord("Ctrl+Alt+Z").to_win32().1, 0x5A);
         assert_eq!(chord("Ctrl+0").to_win32().1, 0x30);
         assert_eq!(chord("Ctrl+9").to_win32().1, 0x39);
     }
@@ -783,7 +943,11 @@ mod tests {
             ("'", 0xDE),
         ];
         for (name, vk) in cases {
-            assert_eq!(chord(&format!("Ctrl+{name}")).to_win32().1, vk, "{name}");
+            assert_eq!(
+                chord(&format!("Ctrl+Alt+Shift+{name}")).to_win32().1,
+                vk,
+                "{name}"
+            );
         }
     }
 
@@ -810,9 +974,9 @@ mod tests {
             ("panel", chord("Ctrl+Alt+V")),
             ("picker", chord("Ctrl+Alt+P")),
             ("capture", chord("ctrl+alt+v")),
-            ("main", chord("Win+Shift+M")),
+            ("main", chord("Win+Ctrl+M")),
             ("extra", chord("Alt+Ctrl+V")),
-            ("other", chord("Win+Shift+M")),
+            ("other", chord("Win+Ctrl+M")),
         ];
         assert_eq!(
             conflicts(&set),
@@ -822,7 +986,7 @@ mod tests {
                     ids: vec!["panel", "capture", "extra"],
                 },
                 Conflict {
-                    chord: chord("Win+Shift+M"),
+                    chord: chord("Win+Ctrl+M"),
                     ids: vec!["main", "other"],
                 },
             ]
@@ -861,6 +1025,166 @@ mod tests {
             "Ctrl+F12".parse::<Chord>(),
             Err(ChordError::InvalidKey)
         ));
-        assert!("F11".parse::<Chord>().is_ok());
+        assert!("Ctrl+F11".parse::<Chord>().is_ok());
+    }
+
+    /// The characters a German keyboard prints on the `VK_OEM_*` keys (unshifted).
+    fn german(vk: u32) -> Option<char> {
+        match vk {
+            0xBA => Some('ü'),
+            0xBB => Some('+'),
+            0xBC => Some(','),
+            0xBD => Some('-'),
+            0xBE => Some('.'),
+            0xBF => Some('#'),
+            0xC0 => Some('ö'),
+            0xDB => Some('ß'),
+            0xDC => Some('^'),
+            0xDD => Some('´'),
+            0xDE => Some('ä'),
+            _ => None,
+        }
+    }
+
+    #[test]
+    fn a_punctuation_key_is_labelled_with_what_the_layout_prints_on_it() {
+        let us = |_: u32| None;
+        assert_eq!(chord("Ctrl+Alt+;").label_with(&us), "Ctrl+Alt+;");
+        assert_eq!(chord("Ctrl+Alt+;").label_with(&german), "Ctrl+Alt+Ü");
+        assert_eq!(chord("Ctrl+Alt+`").label_with(&german), "Ctrl+Alt+Ö");
+        assert_eq!(chord("Ctrl+Alt+'").label_with(&german), "Ctrl+Alt+Ä");
+        assert_eq!(chord("Ctrl+Alt+/").label_with(&german), "Ctrl+Alt+#");
+        assert_eq!(chord("Ctrl+Alt+[").label_with(&german), "Ctrl+Alt+ß");
+        // Keys that are the same on every layout are untouched, and so is the stored text.
+        assert_eq!(chord("Ctrl+Alt+K").label_with(&german), "Ctrl+Alt+K");
+        assert_eq!(chord("Ctrl+Alt+F13").label_with(&german), "Ctrl+Alt+F13");
+        assert_eq!(chord("Ctrl+Alt+;").to_string(), "Ctrl+Alt+;");
+    }
+
+    #[test]
+    fn a_layout_that_prints_nothing_visible_falls_back_to_the_us_name() {
+        let blank = |_: u32| Some(' ');
+        let control = |_: u32| Some('\u{1}');
+        assert_eq!(chord("Ctrl+Alt+;").label_with(&blank), "Ctrl+Alt+;");
+        assert_eq!(chord("Ctrl+Alt+,").label_with(&control), "Ctrl+Alt+,");
+    }
+
+    #[test]
+    fn the_label_uses_the_installed_lookup_and_the_us_names_without_one() {
+        set_layout_lookup(None);
+        assert_eq!(chord("Ctrl+Alt+;").label(), "Ctrl+Alt+;");
+        set_layout_lookup(Some(german));
+        assert_eq!(chord("Ctrl+Alt+;").label(), "Ctrl+Alt+Ü");
+        set_layout_lookup(None);
+        assert_eq!(chord("Ctrl+Alt+;").label(), "Ctrl+Alt+;");
+    }
+
+    #[test]
+    fn clipboard_and_edit_chords_are_reserved_and_say_why() {
+        for text in [
+            "Ctrl+V",
+            "Ctrl+C",
+            "Ctrl+X",
+            "Ctrl+Z",
+            "Ctrl+Y",
+            "Ctrl+A",
+            "Ctrl+Insert",
+            // Snipdeck sends this one itself to terminals: a global hotkey would loop.
+            "Ctrl+Shift+V",
+        ] {
+            assert_eq!(
+                text.parse::<Chord>(),
+                Err(ChordError::Reserved(Reserved::Clipboard)),
+                "{text}"
+            );
+        }
+        // The same keys with a second modifier are free.
+        for text in ["Ctrl+Alt+V", "Ctrl+Shift+C", "Ctrl+Alt+X"] {
+            assert!(text.parse::<Chord>().is_ok(), "{text}");
+        }
+    }
+
+    #[test]
+    fn a_bare_function_key_is_reserved_except_the_ones_no_keyboard_has() {
+        for n in 1..=11 {
+            assert_eq!(
+                format!("F{n}").parse::<Chord>(),
+                Err(ChordError::Reserved(Reserved::BareFunctionKey)),
+                "F{n}"
+            );
+        }
+        for n in 13..=24 {
+            assert!(format!("F{n}").parse::<Chord>().is_ok(), "F{n}");
+        }
+        assert!("Ctrl+F5".parse::<Chord>().is_ok());
+        assert!("Shift+F5".parse::<Chord>().is_ok());
+    }
+
+    #[test]
+    fn alt_with_a_letter_or_a_window_key_is_reserved() {
+        for text in [
+            "Alt+V",
+            "Alt+1",
+            "Alt+F4",
+            "Alt+Tab",
+            "Alt+Esc",
+            "Alt+Space",
+            "Alt+Left",
+        ] {
+            assert_eq!(
+                text.parse::<Chord>(),
+                Err(ChordError::Reserved(Reserved::Menu)),
+                "{text}"
+            );
+        }
+        assert!("Alt+F9".parse::<Chord>().is_ok());
+        assert!("Ctrl+Alt+V".parse::<Chord>().is_ok());
+    }
+
+    #[test]
+    fn what_windows_keeps_for_itself_is_reserved() {
+        for text in [
+            "Win+L",
+            "Win+D",
+            "Win+Space",
+            "Win+Tab",
+            "Win+Left",
+            "Win+1",
+            "Win+Shift+S",
+            "Win+Shift+Left",
+            "Alt+Shift+Tab",
+            "Ctrl+Esc",
+            "Ctrl+Shift+Esc",
+            "Ctrl+Alt+Delete",
+            "Ctrl+Alt+Tab",
+        ] {
+            assert_eq!(
+                text.parse::<Chord>(),
+                Err(ChordError::Reserved(Reserved::System)),
+                "{text}"
+            );
+        }
+        for text in ["Win+Ctrl+K", "Win+Alt+K", "Ctrl+Alt+Space", "Win+F9"] {
+            assert!(text.parse::<Chord>().is_ok(), "{text}");
+        }
+    }
+
+    #[test]
+    fn a_hand_built_reserved_chord_fails_validate() {
+        let paste = Chord {
+            modifiers: mods(1),
+            key: ChordKey::Letter(b'V'),
+        };
+        assert_eq!(paste.reserved(), Some(Reserved::Clipboard));
+        assert_eq!(
+            paste.validate(),
+            Err(ChordError::Reserved(Reserved::Clipboard))
+        );
+        assert_eq!(chord("Ctrl+Alt+V").reserved(), None);
+        assert!(
+            ChordError::Reserved(Reserved::System)
+                .to_string()
+                .contains("Windows")
+        );
     }
 }

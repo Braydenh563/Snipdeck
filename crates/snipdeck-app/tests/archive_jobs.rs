@@ -89,6 +89,67 @@ fn an_open_library_hands_the_backup_to_a_worker_and_a_second_request_waits() {
     );
 }
 
+#[test]
+fn the_store_builds_copy_goes_to_documents_for_both_backups_and_is_pruned() {
+    let dir = tempfile::tempdir().expect("dir");
+    let docs = tempfile::tempdir().expect("docs");
+    let copies = docs.path().join("Snipdeck backups");
+    let mut ctl = start(dir.path());
+    ctl.set_backup_copy_folder(Some(copies.clone()));
+    let names = |folder: &std::path::Path| {
+        let mut names: Vec<String> = std::fs::read_dir(folder)
+            .map(|d| {
+                d.flatten()
+                    .map(|e| e.file_name().to_string_lossy().into_owned())
+                    .collect()
+            })
+            .unwrap_or_default();
+        names.sort();
+        names
+    };
+
+    // The scheduled one, at the fixed "now".
+    let zoned = now().to_zoned(jiff::tz::TimeZone::system());
+    let daily = job(ctl.begin_daily_backup(dir.path(), &zoned).expect("begun"));
+    ctl.finish_archive(daily.run());
+    let today = names(&copies);
+    assert_eq!(today.len(), 1, "the daily backup is copied too: {today:?}");
+    assert_eq!(
+        today,
+        names(&snipdeck_portable::backup::backups_dir(dir.path()))
+    );
+
+    // "Back up now" replaces today's copy: still one file.
+    let now_job = job(ctl.begin_backup_now(dir.path()));
+    assert!(matches!(
+        ctl.finish_archive(now_job.run()),
+        ArchiveEnd::BackupNow(true)
+    ));
+    assert_eq!(names(&copies), today);
+
+    // Old copies beyond the kept count go: keep is 7, so plant 8 older ones.
+    for day in 1..=8 {
+        std::fs::write(
+            copies.join(format!("snipdeck-backup-202610{day:02}.snipdeck")),
+            "old",
+        )
+        .expect("plant");
+    }
+    let again = job(ctl.begin_backup_now(dir.path()));
+    ctl.finish_archive(again.run());
+    assert_eq!(names(&copies).len(), 7, "pruned to the backups' retention");
+    assert!(names(&copies).contains(&today[0]), "today's copy stays");
+}
+
+#[test]
+fn nothing_is_copied_without_a_folder() {
+    let dir = tempfile::tempdir().expect("dir");
+    let mut ctl = start(dir.path());
+    let backup = job(ctl.begin_backup_now(dir.path()));
+    ctl.finish_archive(backup.run());
+    assert!(!dir.path().join("Snipdeck backups").exists());
+}
+
 fn add_item(ctl: &mut Ctl, title: &str) {
     ctl.open_new_item(Origin::Panel);
     let v = ctl.item_editor_view().expect("editor");

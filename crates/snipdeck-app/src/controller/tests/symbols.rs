@@ -28,13 +28,28 @@ fn written_text(w: &World, n: usize) -> String {
     }
 }
 
+/// `IconSave::ask` with the fake's inline answer collected.
+fn asked(
+    prepared: &crate::controller::IconSave,
+    owner: Option<isize>,
+) -> Result<Option<PathBuf>, snipdeck_platform::error::Error> {
+    let (tx, rx) = std::sync::mpsc::channel();
+    prepared.ask(
+        owner,
+        Box::new(move |answer| {
+            let _ = tx.send(answer);
+        }),
+    );
+    rx.recv().expect("the fake answers at once")
+}
+
 /// The host's three steps: prepare, ask with the controller released, finish.
 fn save(w: &mut World, id: &SymbolId, export: IconExport, owner: Option<isize>) -> SaveOutcome {
     let prepared = match w.ctl.prepare_icon_save(id, export) {
         Ok(prepared) => prepared,
         Err(outcome) => return outcome,
     };
-    let answer = prepared.ask(owner);
+    let answer = asked(&prepared, owner);
     w.ctl.finish_icon_save(&prepared, answer)
 }
 
@@ -383,7 +398,7 @@ fn save_as_asks_with_no_controller_borrow_and_finishes_with_the_answer() {
         .prepare_icon_save(&icon, IconExport::Svg)
         .expect("prepared");
     assert!(picker.asked_save().is_empty(), "preparing opens nothing");
-    let answer = prepared.ask(None);
+    let answer = asked(&prepared, None);
     assert_eq!(picker.asked_save().len(), 1);
     assert_eq!(
         w.ctl.finish_icon_save(&prepared, answer),

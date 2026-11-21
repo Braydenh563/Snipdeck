@@ -496,6 +496,12 @@ file or folder.
 Notes in the preview, such as which item they belong to ("entry 3", "Ditto clip 7" or a file name with the
 match number), are shown in your language like the rest of Snipdeck.
 
+**Open a .snipdeck file from Explorer.** Double-click a `.snipdeck` file (or choose **Open with Snipdeck**).
+Snipdeck comes to the front on **Settings** with the same preview as **Import…**, and changes nothing until you
+choose **Import**. The installer registers the file type; a copy that is only unzipped does not have it. The
+address `snipdeck://open`, `snipdeck://panel` or `snipdeck://settings` opens the Main window, the Panel or
+Settings; any other address, and any other kind of file, is refused.
+
 **Restore.** Restoring a backup in Settings shows the same preview. A restore puts each board back under its
 own name.
 
@@ -635,4 +641,20 @@ Command Prompt, with `app\snipdeck.exe` in the folder that holds `Snipdeck.bat`:
 - `--troubleshoot` prints the same report as **Troubleshoot** in the Help window.
 
 Add `--data-dir <folder>` to check a library somewhere else.
+
+Snipdeck is a Windows program without a console of its own, so a Command Prompt does not wait for it: the
+text can appear after the prompt is back, and `%ERRORLEVEL%` is not set. Start it with `start /wait` to wait
+and read the exit code: `start /wait app\snipdeck.exe --check-db`, then `echo %ERRORLEVEL%`. In PowerShell use
+`(Start-Process -Wait -PassThru -NoNewWindow app\snipdeck.exe --check-db).ExitCode`. With the output sent to a
+file (`app\snipdeck.exe --check-db > result.txt`) nothing special is needed. The same text is in `--help`.
+
+**Starting Snipdeck twice.** One Snipdeck runs per Windows user and library folder. Starting it again (from the
+Start menu, a shortcut or a file) brings the running one to the front and exits. If the running Snipdeck does
+not answer within a few seconds, you get a message saying so; end it in Task Manager and start it again. A
+Snipdeck started with `--data-dir <other folder>` is a separate instance, so you can run two libraries side
+by side. Snipdeck run as administrator cannot be reached from a normal one: close it from its tray icon first.
+
+**Signing out and shutting down.** When Windows ends your session, Snipdeck saves what it is holding (an open
+editor's draft, a pending setting, the clipboard clear for a sensitive item) in the second or so Windows allows.
+This needs the tray icon's window, so it applies while Snipdeck is running with the tray.
 

@@ -282,6 +282,37 @@ function Invoke-SelfTest {
             $n = @(Get-AppProcessNames)
             return (($n -contains 'snipdeck-app') -and ($n -contains 'snipdeck') -and ($n.Count -eq 2))
         }
+        Test-Case 'processes: matched by full exe path, never by name alone (P37)' {
+            $sep = [System.IO.Path]::DirectorySeparatorChar
+            $root = [System.IO.Path]::Combine($tmp, 'repo', 'app')
+            $own = $root + $sep + 'snipdeck.exe'
+            $other = [System.IO.Path]::Combine($tmp, 'elsewhere') + $sep + 'snipdeck.exe'
+            $sibling = $root + 'x' + $sep + 'snipdeck.exe'
+            if (-not (Test-OwnedExe $own @($root))) { return 'own exe not matched' }
+            if (Test-OwnedExe $other @($root)) { return 'same name elsewhere matched' }
+            if (Test-OwnedExe $sibling @($root)) { return 'sibling folder matched' }
+            if (Test-OwnedExe '' @($root)) { return 'empty path matched' }
+            if (Test-OwnedExe $own @()) { return 'no roots matched' }
+            return $true
+        }
+        Test-Case 'stopping: --quit first, kill only after the wait (P37; read from the source)' {
+            $src = [System.IO.File]::ReadAllText([System.IO.Path]::Combine($dir, 'core.ps1'))
+            $a = $src.IndexOf('function Stop-AppProcesses')
+            $b = $src.IndexOf('function Get-LockHolders')
+            $body = $src.Substring($a, $b - $a)
+            $q = $body.IndexOf('Request-AppQuit')
+            $k = $body.IndexOf('Stop-Process')
+            if ($body.Contains('CloseMainWindow')) { return 'still uses CloseMainWindow' }
+            return (($q -ge 0) -and ($k -gt $q))
+        }
+        Test-Case 'registry leftovers equal packaging/registration.json (P13)' {
+            $file = [System.IO.Path]::Combine($script:RepoRoot, 'packaging', 'registration.json')
+            if (-not (Test-Path -LiteralPath $file)) { return 'registration.json not found (run from a repo checkout)' }
+            $want = @((Get-Content -LiteralPath $file -Raw | ConvertFrom-Json).registry_leftovers | ForEach-Object { '{0}|{1}|{2}' -f $_.kind, $_.subkey, $_.name } | Sort-Object)
+            $have = @(Get-RegistryLeftovers | ForEach-Object { '{0}|{1}|{2}' -f $_.Kind, $_.SubKey, $_.Name } | Sort-Object)
+            if (($want -join ';') -ne ($have -join ';')) { return ('want ' + ($want -join ';') + ' have ' + ($have -join ';')) }
+            return $true
+        }
         Test-Case 'user name scrubbing: any case, either slash, 8.3 short form' {
             $prof = @('C:\Users\Alice Example')
             $in = 'a C:\USERS\alice example\x b c:/users/Alice Example/y c C:\Users\ALICEE~1\z d C:\Other\keep'

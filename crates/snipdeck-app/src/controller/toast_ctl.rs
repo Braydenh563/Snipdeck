@@ -175,7 +175,13 @@ where
                 let chord = problem.chord.clone();
                 match problem.failure {
                     crate::host::HotkeyFailure::InUse => ToastMessage::HotkeyInUse { chord },
+                    crate::host::HotkeyFailure::OwnAction => {
+                        ToastMessage::HotkeyOwnAction { chord }
+                    }
                     crate::host::HotkeyFailure::Invalid => ToastMessage::HotkeyInvalid { chord },
+                    crate::host::HotkeyFailure::Refused(code) => {
+                        ToastMessage::HotkeyRefused { chord, code }
+                    }
                     crate::host::HotkeyFailure::Unavailable => {
                         ToastMessage::HotkeyUnavailable { chord }
                     }

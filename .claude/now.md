@@ -2,6 +2,8 @@
 Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 
 ## Decisions
+- 2026-11-16: Inno MinVersion (10.0.18362) and the MSIX MinVersion stay; the tested minimum is documented in docs/packaging.md (only Windows 11 build 26300 run). Reason: DWM calls are gated by build number and fail soft (dwm_look.rs), and raising the floor changes 8+ user-facing files other workers are editing (PLATFORM-20).
+- 2026-11-16: no `snipdeck.com` console stub; the help text and docs say `start /wait`. Reason: it needs a second renamed binary in the installer, MSIX and release workflow, none buildable or testable off Windows (PLATFORM-22).
 - 2026-11-15: Recent consent question keeps focus on the card (Enter not wired, Esc = No) so a stray key cannot consent; overrides the earlier "Yes has focus" ask. Reason: consent safety, ux-auditor agreed.
 - 2026-11-15: Donation link stays in the Store build. Reason: Store Policy 10.8.2 (current) allows voluntary donations via a secure third-party purchase API when nothing is unlocked; Buy Me a Coffee in the browser is that. Owner: keep it if allowed.
 - 2026-11-15: Fable call refused by the plugin guard; audit runs on Opus instead (no workaround). Reason: guards are not bypassed.

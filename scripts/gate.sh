@@ -89,6 +89,9 @@ if [ "$MODE_CHANGED" = 1 ]; then
 fi
 [ "$MODE_FULL" = 1 ] && step full-suite bash -c "$(declare -f all_tests); all_tests"
 
+# No tracked path component may start with "-": such a name breaks rm, cat and git add without "--" (PLATFORM-38).
+no_dash_names() { local bad; bad="$(git ls-files | grep -E '(^|/)-')"; [ -z "$bad" ] || { echo "tracked names starting with '-':"; echo "$bad"; return 1; }; }
+step dash-names no_dash_names
 if [ -f scripts/codemap.py ]; then step codemap python3 scripts/codemap.py --check; fi
 if [ -f scripts/i18n.py ]; then step i18n python3 scripts/i18n.py check --strict; fi
 if [ -f scripts/test_i18n.py ]; then step i18n-tests python3 scripts/test_i18n.py; fi
@@ -97,6 +100,7 @@ if [ -f scripts/test_symbols.py ]; then step symbols-tests python3 -I scripts/te
 if [ -f scripts/installer_check.py ]; then step installer python3 -I scripts/installer_check.py; fi
 if [ -f scripts/test_installer_check.py ]; then step installer-tests python3 -I scripts/test_installer_check.py; fi
 if [ -f scripts/test_msix_manifest.py ]; then step msix-tests python3 -I scripts/test_msix_manifest.py; fi
+if [ -f scripts/test_check_release_pin.py ]; then step pin-tests python3 -I scripts/test_check_release_pin.py; fi
 if [ -f scripts/test_bump_version.py ]; then step bump-tests python3 -I scripts/test_bump_version.py; fi
 echo "ran: ${ran[*]:-none}"
 echo "failed: ${failed[*]:-none}"

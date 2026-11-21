@@ -43,6 +43,9 @@ msgstr "Ein Panel, das ein Tastenkürzel oder das Tray-Symbol angezeigt hat, wir
 msgid "A docked Panel opens at its edge. Set Dock to Floating to choose where it opens."
 msgstr "Ein angedocktes Panel öffnet sich an seinem Rand. Stelle „Andocken an“ auf Frei, um zu wählen, wo es sich öffnet."
 
+msgid "A double click on the tray icon opens the Main window. Turn this off and a single click acts at once, with no wait for a second click."
+msgstr "Ein Doppelklick auf das Tray-Symbol öffnet das Hauptfenster. Schalte das aus, dann reagiert ein einzelner Klick sofort, ohne auf einen zweiten Klick zu warten."
+
 msgid "A link can't contain spaces or line breaks."
 msgstr "Ein Link darf keine Leerzeichen oder Zeilenumbrüche enthalten."
 
@@ -227,6 +230,9 @@ msgstr "Analog"
 
 msgid "Animals & Nature"
 msgstr "Tiere & Natur"
+
+msgid "Another Snipdeck shortcut already uses {}."
+msgstr "Ein anderes Snipdeck-Kürzel verwendet {} bereits."
 
 msgid "Another app has {}: use the mouse for those."
 msgstr "Eine andere App belegt {}: Nutze dafür die Maus."
@@ -989,6 +995,9 @@ msgstr "Rechts angedockt"
 
 msgid "Done"
 msgstr "Fertig"
+
+msgid "Double-click opens the Main window"
+msgstr "Doppelklick öffnet das Hauptfenster"
 
 msgid "Drag along the edge to move. Pull away from the edge to float."
 msgstr "Am Rand entlang ziehen, um es zu verschieben. Vom Rand wegziehen, um es zu lösen."
@@ -2873,6 +2882,9 @@ msgstr "Snipdeck-Griff, zum Öffnen das Panel-Tastenkürzel drücken"
 msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
 msgstr "Snipdeck hat kein Konto, keinen Server und keine Telemetrie und öffnet keinen Netzwerkport. Nichts, was du speicherst, verlässt diesen PC."
 
+msgid "Snipdeck is already running, but it did not answer.\n\nIf it is stuck, end Snipdeck in Task Manager and start it again. If it runs as administrator, close it from its tray icon and start it again."
+msgstr "Snipdeck läuft bereits, hat aber nicht geantwortet.\n\nWenn es hängt, beenden Sie Snipdeck im Task-Manager und starten Sie es neu. Wenn es als Administrator läuft, schließen Sie es über das Symbol im Infobereich und starten Sie es neu."
+
 msgid "Snipdeck is still running. Click the tray icon to bring the panel back."
 msgstr "Snipdeck läuft noch. Klicke auf das Infobereich-Symbol, um das Panel wieder anzuzeigen."
 
@@ -3112,6 +3124,9 @@ msgstr "Dieser Text ist zu groß zum Speichern."
 
 msgid "That was the last one. Paste next starts again from the first."
 msgstr "Das war der letzte. Das nächste Einfügen beginnt wieder beim ersten."
+
+msgid "The Store version keeps your library inside the app, so uninstalling removes it. Back up now also saves a copy in Documents > Snipdeck backups."
+msgstr "Die Store-Version speichert deine Bibliothek in der App, deshalb löscht das Deinstallieren sie. „Jetzt sichern“ legt auch eine Kopie unter Dokumente > Snipdeck backups ab."
 
 msgid "The Trash is empty"
 msgstr "Der Papierkorb ist leer"
@@ -3608,6 +3623,15 @@ msgstr "Windows folgt deiner Windows-Textgröße (Einstellungen > Erleichterte B
 msgid "Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there."
 msgstr "Windows hat Snipdeck unter Einstellungen > Apps > Autostart ausgeschaltet. Schalte es dort wieder ein."
 
+msgid "Windows keeps {} for itself. Choose another."
+msgstr "Windows behält {} für sich. Wähle ein anderes."
+
+msgid "Windows refused {} (Windows error {})."
+msgstr "Windows hat {} abgelehnt (Windows-Fehler {})."
+
+msgid "Windows refused {} (Windows error {}). Choose another in Settings."
+msgstr "Windows hat {} abgelehnt (Windows-Fehler {}). Wähle in den Einstellungen ein anderes."
+
 msgid "Windows won't let Snipdeck read this screen."
 msgstr "Windows erlaubt Snipdeck nicht, diesen Bildschirm zu lesen."
 
@@ -4073,11 +4097,17 @@ msgstr "{} gefunden"
 msgid "{} h ago"
 msgstr "vor {} Std."
 
+msgid "{} is a copy or paste shortcut that every program uses. Choose another."
+msgstr "{} ist ein Kopier- oder Einfügekürzel, das jedes Programm nutzt. Wähle ein anderes."
+
 msgid "{} is a link to somewhere else and was not followed."
 msgstr "{} ist ein Link zu einer anderen Stelle und wurde nicht verfolgt."
 
 msgid "{} is already in the list."
 msgstr "{} ist bereits in der Liste."
+
+msgid "{} is already used by another Snipdeck shortcut. Choose another in Settings."
+msgstr "{} wird schon von einem anderen Snipdeck-Kürzel verwendet. Wähle in den Einstellungen ein anderes."
 
 msgid "{} is already used for “{}”."
 msgstr "{} wird bereits für „{}“ verwendet."
@@ -4150,6 +4180,12 @@ msgstr "{} der Prüfungen brauchen einen Blick."
 
 msgid "{} of {} · next: {}"
 msgstr "{} von {} · als Nächstes: {}"
+
+msgid "{} on its own is used by every program. Add Ctrl, Alt or Win."
+msgstr "{} allein wird von jedem Programm verwendet. Füge Strg, Alt oder Win hinzu."
+
+msgid "{} opens menus and moves windows in other programs. Choose another."
+msgstr "{} öffnet in anderen Programmen Menüs und verschiebt Fenster. Wähle ein anderes."
 
 msgid "{} percent"
 msgstr "{} Prozent"

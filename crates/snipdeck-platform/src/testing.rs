@@ -393,6 +393,13 @@ impl Tray for FakeTray {
         state.model.set_labels(labels);
         Ok(())
     }
+
+    fn set_double_click_opens(&mut self, opens: bool) -> Result<(), ServiceError> {
+        let mut state = lock(&self.state);
+        state.model.set_double_click_opens(opens);
+        state.log.push(format!("double-click-opens:{opens}"));
+        Ok(())
+    }
 }
 
 /// A [`SystemLookSource`] a test sets. Cloning shares the value.

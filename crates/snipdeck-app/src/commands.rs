@@ -231,7 +231,7 @@ impl Command {
 /// The configured chord of a global hotkey as text ("Ctrl+Alt+Space"); `None` while it is off.
 #[must_use]
 pub fn chord_text(hotkeys: &Hotkeys, action: HotkeyAction) -> Option<String> {
-    hotkeys.chord(action).map(|c| c.to_string())
+    hotkeys.chord(action).map(|c| c.label())
 }
 
 /// The caps and the spoken form of a global hotkey's configured chord; both empty while it is off.

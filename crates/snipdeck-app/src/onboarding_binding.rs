@@ -21,7 +21,7 @@ use crate::{
     binding::{Loggable, Shown, model, redraw_all, register_redraw, to_i32},
     controller::Controller,
     host::ClipboardText,
-    hotkey_health::{self, HotkeyHealth},
+    hotkey_health::HotkeyHealth,
     main_binding::{create_window, set_look},
     native_window::fit_when_settled,
     settings::{HotkeyAction, Hotkeys},
@@ -146,7 +146,7 @@ where
                     let alternatives = if !value.is_empty()
                         && (!conflict.is_empty() || matches!(health, HotkeyHealth::Failed(_)))
                     {
-                        hotkey_health::alternatives(&settings.hotkeys)
+                        self.host.free_alternatives(&settings.hotkeys)
                     } else {
                         Vec::new()
                     };
@@ -264,18 +264,23 @@ where
 
     fn autostart_toggled(self: &Rc<Self>, on: bool) {
         let hidden = !self.controller.borrow().settings().panel_start_visible;
-        match self.host.set_autostart(on, hidden) {
-            Ok(()) => {
-                *self.autostart_failed.borrow_mut() = None;
-                self.act(|ctl| ctl.update_settings(|s| s.autostart = on));
-            }
-            Err(error) => {
-                crate::trace!("autostart {on}: {error}");
-                *self.autostart_failed.borrow_mut() = Some(error.toast());
-                // The redraw puts the switch the user flipped back to the stored value.
-                redraw_all();
-            }
-        }
+        let core = Rc::clone(self);
+        self.host.set_autostart(
+            on,
+            hidden,
+            Box::new(move |result| match result {
+                Ok(()) => {
+                    *core.autostart_failed.borrow_mut() = None;
+                    core.act(|ctl| ctl.update_settings(|s| s.autostart = on));
+                }
+                Err(error) => {
+                    crate::trace!("autostart {on}: {error}");
+                    *core.autostart_failed.borrow_mut() = Some(error.toast());
+                    // The redraw puts the switch the user flipped back to the stored value.
+                    redraw_all();
+                }
+            }),
+        );
     }
 
     // ---- Back, Next, Skip ------------------------------------------------------------------

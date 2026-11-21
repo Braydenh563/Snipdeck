@@ -42,13 +42,29 @@ pub(super) fn aware_thread() -> bool {
 /// The size of a small icon (the notification-area size) at the system DPI, in pixels, as
 /// (width, height). Unlike `GetSystemMetrics` this does not depend on the caller's awareness.
 pub(super) fn small_icon_size() -> (i32, i32) {
-    // SAFETY: plain queries with no preconditions; `GetDpiForSystem` gives 96 on failure.
+    // SAFETY: a plain query with no preconditions; gives 96 on failure.
+    small_icon_size_at(unsafe { GetDpiForSystem() })
+}
+
+/// The size of a small icon at `dpi`, in pixels, as (width, height).
+pub(super) fn small_icon_size_at(dpi: u32) -> (i32, i32) {
+    // SAFETY: a plain query with no pointers; an unusable `dpi` gives 0, which `LoadImageW`
+    // reads as "the icon's own size".
     unsafe {
-        let dpi = GetDpiForSystem();
         (
             GetSystemMetricsForDpi(SM_CXSMICON, dpi),
             GetSystemMetricsForDpi(SM_CYSMICON, dpi),
         )
+    }
+}
+
+/// The DPI of the monitor `hwnd` is on (96 if Windows cannot say). Needs a window of a
+/// per-monitor-aware thread to differ from the system DPI.
+pub(super) fn window_dpi(hwnd: windows::Win32::Foundation::HWND) -> u32 {
+    // SAFETY: `GetDpiForWindow` accepts any handle value and returns 0 for an invalid one.
+    match unsafe { windows::Win32::UI::HiDpi::GetDpiForWindow(hwnd) } {
+        0 => 96,
+        dpi => dpi,
     }
 }
 

@@ -146,6 +146,12 @@ export global ToastTexts {
     pure public function hotkey-unavailable(chord: string) -> string {
         return @tr("Shortcuts are unavailable, so {} is not active. Restart Snipdeck to try again.", chord);
     }
+    pure public function hotkey-own-action(chord: string) -> string {
+        return @tr("{} is already used by another Snipdeck shortcut. Choose another in Settings.", chord);
+    }
+    pure public function hotkey-refused(chord: string, code: int) -> string {
+        return @tr("Windows refused {} (Windows error {}). Choose another in Settings.", chord, code);
+    }
     // `chords`: two or more shortcuts joined with ", ".
     pure public function hotkeys-failed(chords: string) -> string {
         return @tr("These shortcuts are not working: {}. Settings > Shortcuts says why.", chords);
@@ -175,6 +181,10 @@ export global ToastTexts {
     // reason, with the data folder in it.
     pure public function startup-failed(details: string) -> string {
         return @tr("Snipdeck couldn't start.\n\n{}\n\nNothing was deleted. Close any program that may be using your Snipdeck folder, make sure the folder is not read-only, then start Snipdeck again. If you went back to an older version, install the newer one. Your backups are in the backups folder inside your Snipdeck folder.", details);
+    }
+    // The message box a second launch shows when the running Snipdeck does not answer.
+    pure public function already-running-not-answering() -> string {
+        return @tr("Snipdeck is already running, but it did not answer.\n\nIf it is stuck, end Snipdeck in Task Manager and start it again. If it runs as administrator, close it from its tray icon and start it again.");
     }
     pure public function window-not-shown() -> string {
         return @tr("Couldn't open that window.");
@@ -387,6 +397,9 @@ export global ToastTexts {
     }
     pure public function autostart-switched-off() -> string {
         return @tr("Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there.");
+    }
+    pure public function store-data-reminder() -> string {
+        return @tr("The Store version keeps your library inside the app, so uninstalling removes it. Back up now also saves a copy in Documents > Snipdeck backups.");
     }
     pure public function autostart-policy() -> string {
         return @tr("Your organisation's policy keeps Snipdeck from starting with Windows.");

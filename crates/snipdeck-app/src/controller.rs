@@ -364,6 +364,8 @@ pub struct Controller<S, C, K, T> {
     lock: lock_ctl::LockState,
     /// The archive step a worker is writing, if any.
     archive: archive_ctl::ArchiveState,
+    /// Where each backup written is also copied (the Store build), if anywhere.
+    backup_copy_to: Option<std::path::PathBuf>,
     /// Switches the clipboard listener of the Recent inbox (see `recent_ctl.rs`).
     recent_gate: Option<snipdeck_platform::clipboard_watch::WatchGate>,
     /// The typed-trigger service (keyboard hook), once the host hands it over.
@@ -582,6 +584,7 @@ where
             pending: Vec::new(),
             lock: lock_ctl::LockState::new(idle_start),
             archive: archive_ctl::ArchiveState::default(),
+            backup_copy_to: None,
             recent_gate: None,
             typing: None,
             typing_sent: Vec::new(),
@@ -1083,6 +1086,19 @@ where
         effects
     }
 
+    /// The Store build's one-time reminder that uninstalling removes the library, shown when the
+    /// Panel first comes up (`store_data`). Remembered in the settings so it comes once.
+    pub fn remind_store_data(&mut self, packaged: bool) {
+        if !crate::store_data::reminder_due(packaged, self.settings.store_data_reminded) {
+            return;
+        }
+        self.update_settings(|s| s.store_data_reminded = true);
+        self.show_toast(Toast {
+            kind: ToastKind::Neutral,
+            message: ToastMessage::StoreDataReminder,
+        });
+    }
+
     /// The close button or Esc on an empty search. With `close_to_tray` on and a tray icon to
     /// get it back from, the Panel hides; otherwise closing it quits the app.
     pub fn close(&mut self) -> Vec<Effect> {
@@ -1124,6 +1140,9 @@ where
             }
             TrayEvent::TakeScreenshot => self.take_screenshot(),
             TrayEvent::Quit => vec![Effect::Quit],
+            // Flushed by the host on the tray thread before an event could reach here
+            // (`session_end`); the controller has nothing to add.
+            TrayEvent::SessionEnding => Vec::new(),
             TrayEvent::IconPresent(present) => {
                 // With an icon in the notification area closing the Panel hides it (when
                 // `close_to_tray` is on); without one nothing could bring it back, so closing

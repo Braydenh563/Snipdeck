@@ -48,10 +48,34 @@ The script reads `assets/logo/snipdeck-icon.svg` and writes 16 PNGs into `packag
 `StoreLogo` (50 px), `Square44x44Logo` (44 px), `Square150x150Logo` (150 px), a 24 px unplated
 taskbar icon, and `.scale-125`, `.scale-150`, `.scale-200`, `.scale-400` for the three base logos.
 
+Plus the target-size set of the 44 px logo (`Square44x44Logo.targetsize-16`, `-24`, `-32`, `-48`, `-256`, each
+also as `_altform-unplated`). That is why it writes more than 16 files; the exact list is in the script.
+
 It needs cairosvg and the native cairo library. If either is missing, it prints what to install and
 writes nothing. On Windows, cairo is the hard part, so running it on Linux or macOS is simpler.
 
 Do not commit the PNGs. Copy `Assets\` into the staging folder with the filled manifest and the exe.
+
+## Build `resources.pri` (makepri), then pack
+
+Windows picks the scale and target-size files only through a resource index. Build it from the staging folder
+after the manifest and `Assets\` are there, and before `MakeAppx pack`. Keep `priconfig.xml` outside the folder:
+
+```powershell
+makepri createconfig /cf dist\priconfig.xml /dq en-US /o
+makepri new /pr dist\msix-stage /cf dist\priconfig.xml /mn dist\msix-stage\AppxManifest.xml /of dist\msix-stage\resources.pri /o
+makeappx pack /o /d dist\msix-stage /p dist\Snipdeck.msix
+```
+
+`makepri.exe` and `makeappx.exe` sit side by side in the Windows SDK (`...\Windows Kits\10\bin\<version>\x64\`).
+Never run it on the template: a leftover `{{TOKEN}}` stops it. For an ARM64 package fill the manifest with
+`--arch arm64` and stage the ARM64 exe.
+
+## File type, link and alias
+
+The manifest registers the `.snipdeck` file type, the `snipdeck:` scheme and the `snipdeck` command-line alias,
+and `packaging/inno/snipdeck.iss` the first two. Both come from `packaging/registration.json`; change the table
+first, then the two files, and `scripts/installer_check.py` tells you if one is behind.
 
 ## Check the XML
 

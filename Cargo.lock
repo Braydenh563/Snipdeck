@@ -4582,6 +4582,7 @@ dependencies = [
 name = "snipdeck-platform"
 version = "1.0.0"
 dependencies = [
+ "blake3",
  "getrandom 0.4.3",
  "png",
  "snipdeck-core",

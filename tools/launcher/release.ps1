@@ -245,17 +245,6 @@ function Remove-OwnedFolder([string]$Path) {
     } catch { Write-Log 'WARN' ("could not remove ${Path}: " + $_.Exception.Message) }
 }
 
-function Get-PortableProcesses {
-    $appDir = Get-AppDir
-    $found = @()
-    foreach ($p in @(Get-Process -Name 'snipdeck' -ErrorAction SilentlyContinue)) {
-        $path = ''
-        try { $path = [string]$p.Path } catch { }
-        if ($path -and (Test-PathUnder $path $appDir)) { $found += $p }
-    }
-    return $found
-}
-
 function Install-PortableApp {
     # Downloads the latest release zip, verifies it, unpacks it to app\ (replacing an older app\). Returns 0 or 1.
     Say-Step 'Getting the Snipdeck app'
@@ -412,21 +401,6 @@ function Get-DownloadLeftovers {
     return $names
 }
 
-function Stop-PortableApp {
-    # Closes the app running from app\ (window first, then ends what is left). True when none is left.
-    foreach ($p in (Get-PortableProcesses)) {
-        if ($script:Opt.WhatIf) { Say "  [whatif] would stop snipdeck.exe (process $($p.Id))" 'Yellow'; continue }
-        Say "  Stopping snipdeck.exe (process $($p.Id))" 'Gray'
-        Write-Log 'STOP' "snipdeck pid $($p.Id)"
-        try { [void]$p.CloseMainWindow() } catch { }
-        $gone = $false
-        try { $gone = $p.WaitForExit(3000) } catch { }
-        if (-not $gone) { try { Stop-Process -Id $p.Id -Force -ErrorAction Stop } catch { Write-Log 'WARN' $_.Exception.Message } }
-    }
-    Start-Sleep -Milliseconds 400
-    return (@(Get-PortableProcesses).Count -eq 0)
-}
-
 # ---------------------------------------------------------------- commands
 
 function Test-PrebuiltPlatform {
@@ -490,9 +464,9 @@ function Invoke-ReinstallPrebuilt([string[]]$AppArgs) {
         return 0
     }
     if (-not (Test-PrebuiltPlatform)) { return 1 }
-    if (@(Get-PortableProcesses).Count -gt 0) {
+    if (@(Get-AppProcesses).Count -gt 0) {
         Say '  Snipdeck is running from app\; closing it so it can be replaced.' 'Gray'
-        if (-not (Stop-PortableApp)) {
+        if (-not (Stop-AppProcesses)) {
             Write-FailureReport 'reinstall' 'Snipdeck is still running and could not be closed.' @() @('Quit it from its tray icon and run this again.')
             return 1
         }
@@ -518,7 +492,7 @@ function Invoke-UpdatePrebuilt {
         return 0
     }
     if (-not (Test-PrebuiltPlatform)) { return 1 }
-    if (@(Get-PortableProcesses).Count -gt 0) {
+    if (@(Get-AppProcesses).Count -gt 0) {
         Say '  Snipdeck is running from app\, so it cannot be replaced yet.' 'Yellow'
         Say '  Quit it from its tray icon, then run Snipdeck.bat update again.' 'Gray'
         return 1

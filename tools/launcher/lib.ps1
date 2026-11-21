@@ -95,6 +95,13 @@ function Test-PathUnder([string]$Path, [string]$Root, [switch]$AllowEqual) {
     return $p.StartsWith($r + $sep, $cmp)
 }
 
+function Test-OwnedExe([string]$ExePath, [string[]]$Roots) {
+    # True when the exe's full path is inside one of the folders this launcher owns. An empty or unreadable path is not owned.
+    if ([string]::IsNullOrWhiteSpace($ExePath)) { return $false }
+    foreach ($r in @($Roots)) { if ($r -and (Test-PathUnder $ExePath $r)) { return $true } }
+    return $false
+}
+
 function Test-PathEquals([string]$A, [string]$B) {
     $x = Get-NormalPath $A
     $y = Get-NormalPath $B
