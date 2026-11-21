@@ -144,7 +144,7 @@ SOFTWARE.
 
 ## Rust crates (including Slint)
 
-Snipdeck links the 335 crates below (Windows build). Slint is used under GPL-3.0-only, one of its licences. Each licence text is printed once, followed by the crates that carry it. A crate with several licence files appears under each.
+Snipdeck links the 337 crates below (Windows build). Slint is used under GPL-3.0-only, one of its licences. Each licence text is printed once, followed by the crates that carry it. A crate with several licence files appears under each.
 
 | Crate | Licence |
 |---|---|
@@ -193,6 +193,7 @@ Snipdeck links the 335 crates below (Windows build). Slint is used under GPL-3.0
 | const-field-offset 0.2.1 | MIT OR Apache-2.0 |
 | const-field-offset-macro 0.2.1 | MIT OR Apache-2.0 |
 | constant_time_eq 0.4.2 | CC0-1.0 OR MIT-0 OR Apache-2.0 |
+| constant_time_eq 0.6.1 | CC0-1.0 OR MIT-0 OR Apache-2.0 |
 | convert_case 0.10.0 | MIT |
 | core_detect 1.0.0 | MIT/Apache-2.0 |
 | countme 3.0.1 | MIT OR Apache-2.0 |
@@ -419,7 +420,7 @@ Snipdeck links the 335 crates below (Windows build). Slint is used under GPL-3.0
 | tracing-attributes 0.1.31 | MIT |
 | tracing-core 0.1.36 | MIT |
 | typed-index-collections 3.5.0 | MIT OR Apache-2.0 |
-| typed-path 0.12.3 | MIT OR Apache-2.0 |
+| typed-path 0.13.0 | MIT OR Apache-2.0 |
 | typenum 1.20.1 | MIT OR Apache-2.0 |
 | unicase 2.10.0 | MIT OR Apache-2.0 |
 | unicode-bidi 0.3.18 | MIT OR Apache-2.0 |
@@ -475,10 +476,11 @@ Snipdeck links the 335 crates below (Windows build). Slint is used under GPL-3.0
 | zerofrom 0.1.8 | Unicode-3.0 |
 | zerofrom-derive 0.1.8 | Unicode-3.0 |
 | zeroize 1.9.1 | Apache-2.0 OR MIT |
+| zeroize_derive 1.5.0 | Apache-2.0 OR MIT |
 | zerotrie 0.2.5 | Unicode-3.0 |
 | zerovec 0.11.8 | Unicode-3.0 |
 | zerovec-derive 0.11.6 | Unicode-3.0 |
-| zip 9.0.4 | MIT |
+| zip 9.8.1 | MIT |
 | zlib-rs 0.6.8 | Zlib |
 | zmij 1.0.23 | MIT |
 | zune-core 0.5.3 | MIT OR Apache-2.0 OR Zlib |
@@ -707,7 +709,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### adler2 2.0.1, allocator-api2 0.2.21, borsh 1.8.1, borsh-derive 1.8.1, countme 3.0.1, displaydoc 0.2.7, glow 0.18.0, itoa 1.0.18, lazy_static 1.5.1, num_enum 0.7.6, num_enum_derive 0.7.6, once_cell 1.21.4, pin-project 1.1.13, pin-project-internal 1.1.13, pin-project-lite 0.2.17, portable-atomic 1.15.0, proc-macro-crate 3.5.0, proc-macro2 1.0.107, quote 1.0.47, rowan 0.17.0, rustc-hash 1.1.0, rustversion 1.0.23, serde 1.0.229, serde-saphyr 2.1.1, serde_core 1.0.229, serde_derive 1.0.229, serde_json 1.0.154, smol_str 0.2.2, smol_str 0.3.6, spin_on 0.1.1, syn 2.0.119, syn 3.0.9, text-size 1.1.1, thiserror 2.0.21, thiserror-impl 2.0.21, typed-path 0.12.3, unicode-ident 1.0.27, zmij 1.0.23
+### adler2 2.0.1, allocator-api2 0.2.21, borsh 1.8.1, borsh-derive 1.8.1, countme 3.0.1, displaydoc 0.2.7, glow 0.18.0, itoa 1.0.18, lazy_static 1.5.1, num_enum 0.7.6, num_enum_derive 0.7.6, once_cell 1.21.4, pin-project 1.1.13, pin-project-internal 1.1.13, pin-project-lite 0.2.17, portable-atomic 1.15.0, proc-macro-crate 3.5.0, proc-macro2 1.0.107, quote 1.0.47, rowan 0.17.0, rustc-hash 1.1.0, rustversion 1.0.23, serde 1.0.229, serde-saphyr 2.1.1, serde_core 1.0.229, serde_derive 1.0.229, serde_json 1.0.154, smol_str 0.2.2, smol_str 0.3.6, spin_on 0.1.1, syn 2.0.119, syn 3.0.9, text-size 1.1.1, thiserror 2.0.21, thiserror-impl 2.0.21, typed-path 0.13.0, unicode-ident 1.0.27, zmij 1.0.23
 
 ```text
 Permission is hereby granted, free of charge, to any
@@ -972,7 +974,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### allocator-api2 0.2.21, constant_time_eq 0.4.2, itoa 1.0.18, litrs 1.0.1, num_enum 0.7.6, num_enum_derive 0.7.6, proc-macro2 1.0.107, quote 1.0.47, rustversion 1.0.23, serde 1.0.229, serde-saphyr 2.1.1, serde_core 1.0.229, serde_derive 1.0.229, serde_json 1.0.154, syn 2.0.119, syn 3.0.9, thiserror 2.0.21, thiserror-impl 2.0.21, typed-index-collections 3.5.0, typed-path 0.12.3, unicode-ident 1.0.27
+### allocator-api2 0.2.21, constant_time_eq 0.4.2, constant_time_eq 0.6.1, itoa 1.0.18, litrs 1.0.1, num_enum 0.7.6, num_enum_derive 0.7.6, proc-macro2 1.0.107, quote 1.0.47, rustversion 1.0.23, serde 1.0.229, serde-saphyr 2.1.1, serde_core 1.0.229, serde_derive 1.0.229, serde_json 1.0.154, syn 2.0.119, syn 3.0.9, thiserror 2.0.21, thiserror-impl 2.0.21, typed-index-collections 3.5.0, typed-path 0.13.0, unicode-ident 1.0.27
 
 ```text
 Apache License
@@ -2855,7 +2857,7 @@ the License, but only in their entirety and only with respect to the Combined
 Software.
 ```
 
-### blake3 1.8.7, constant_time_eq 0.4.2, imgref 1.12.3
+### blake3 1.8.7, constant_time_eq 0.4.2, constant_time_eq 0.6.1, imgref 1.12.3
 
 ```text
 Creative Commons Legal Code
@@ -3458,7 +3460,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### chacha20 0.10.2, chacha20poly1305 0.11.0
+### chacha20 0.10.2, chacha20poly1305 0.11.0, zeroize_derive 1.5.0
 
 ```text
 Copyright (c) 2019-2026 The RustCrypto Project Developers
@@ -3786,7 +3788,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### cmov 0.5.4, codespan-reporting 0.13.1, ctutils 0.4.5, encoding_rs 0.8.44, imgref 1.12.3, kurbo 0.13.1, multiversion_no_op 1.0.0, polycool 0.4.0, siphasher 1.0.4, static_assertions 1.1.0, sys-locale 0.3.2, tinyvec 1.13.3, unicode-linebreak 0.1.5, utf8_iter 1.0.4, zeroize 1.9.1, zune-core 0.5.3, zune-jpeg 0.5.15
+### cmov 0.5.4, codespan-reporting 0.13.1, ctutils 0.4.5, encoding_rs 0.8.44, imgref 1.12.3, kurbo 0.13.1, multiversion_no_op 1.0.0, polycool 0.4.0, siphasher 1.0.4, static_assertions 1.1.0, sys-locale 0.3.2, tinyvec 1.13.3, unicode-linebreak 0.1.5, utf8_iter 1.0.4, zeroize 1.9.1, zeroize_derive 1.5.0, zune-core 0.5.3, zune-jpeg 0.5.15
 
 ```text
 Apache License
@@ -4048,7 +4050,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### constant_time_eq 0.4.2
+### constant_time_eq 0.4.2, constant_time_eq 0.6.1
 
 ```text
 Permission is hereby granted, free of charge, to any person obtaining a
@@ -12365,7 +12367,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### zip 9.0.4
+### zip 9.8.1
 
 ```text
 The MIT License (MIT)
