@@ -1259,6 +1259,9 @@ impl Settings {
         self.backups_keep = self
             .backups_keep
             .clamp(*BACKUPS_KEEP.start(), *BACKUPS_KEEP.end());
+        if self.trash_days == 0 {
+            self.trash_days = TRASH_DAYS_DEFAULT;
+        }
         self.trash_days = self
             .trash_days
             .clamp(*TRASH_DAYS.start(), *TRASH_DAYS.end());
@@ -2174,7 +2177,10 @@ mod tests {
     #[test]
     fn trash_days_default_to_thirty_and_are_held_between_one_and_365() {
         assert_eq!(Settings::from_json("{}").trash_days, 30);
-        assert_eq!(Settings::from_json(r#"{"trash_days":0}"#).trash_days, 1);
+        // 0 is no choice of the user's (a corrupt or hand-edited file): the default, as for the
+        // clipboard clear time, not the floor of 1 day.
+        assert_eq!(Settings::from_json(r#"{"trash_days":0}"#).trash_days, 30);
+        assert_eq!(Settings::from_json(r#"{"trash_days":1}"#).trash_days, 1);
         assert_eq!(
             Settings::from_json(r#"{"trash_days":9999}"#).trash_days,
             365
