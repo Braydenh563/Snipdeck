@@ -539,7 +539,8 @@ picker_open_in_colours | crates/snipdeck-app/src/controller/colour_main.rs:153
 item_action | crates/snipdeck-app/src/controller/commands_ctl.rs:18
 impl Controller<S, C, K, T> | crates/snipdeck-app/src/controller/commands_ctl.rs:33
 try_tip | crates/snipdeck-app/src/controller/commands_ctl.rs:42
-run_command | crates/snipdeck-app/src/controller/commands_ctl.rs:53
+settings_action | crates/snipdeck-app/src/controller/commands_ctl.rs:51
+run_command | crates/snipdeck-app/src/controller/commands_ctl.rs:58
 
 ### crates/snipdeck-app/src/controller/create_ctl.rs
 
@@ -2509,18 +2510,19 @@ SharedTray | crates/snipdeck-app/src/main.rs:569
 start_maintenance | crates/snipdeck-app/src/main.rs:573
 show_tray | crates/snipdeck-app/src/main.rs:611
 Hotkeys | crates/snipdeck-app/src/main.rs:623
-effect_handler | crates/snipdeck-app/src/main.rs:631
-resize_direction | crates/snipdeck-app/src/main.rs:764
-restore_frame | crates/snipdeck-app/src/main.rs:780
-watch_window_events | crates/snipdeck-app/src/main.rs:799
-report_hotkey_problems | crates/snipdeck-app/src/main.rs:881
-Library | crates/snipdeck-app/src/main.rs:895
-open_library | crates/snipdeck-app/src/main.rs:904
-select_backend | crates/snipdeck-app/src/main.rs:969
-with_app_icon | crates/snipdeck-app/src/main.rs:1002
-attach_when_created | crates/snipdeck-app/src/main.rs:1022
-with_binding | crates/snipdeck-app/src/main.rs:1035
-on_ui_thread | crates/snipdeck-app/src/main.rs:1046
+open_settings | crates/snipdeck-app/src/main.rs:626
+effect_handler | crates/snipdeck-app/src/main.rs:650
+resize_direction | crates/snipdeck-app/src/main.rs:769
+restore_frame | crates/snipdeck-app/src/main.rs:785
+watch_window_events | crates/snipdeck-app/src/main.rs:804
+report_hotkey_problems | crates/snipdeck-app/src/main.rs:886
+Library | crates/snipdeck-app/src/main.rs:900
+open_library | crates/snipdeck-app/src/main.rs:909
+select_backend | crates/snipdeck-app/src/main.rs:974
+with_app_icon | crates/snipdeck-app/src/main.rs:1007
+attach_when_created | crates/snipdeck-app/src/main.rs:1027
+with_binding | crates/snipdeck-app/src/main.rs:1040
+on_ui_thread | crates/snipdeck-app/src/main.rs:1051
 
 ### crates/snipdeck-app/src/main_binding.rs
 

@@ -622,6 +622,25 @@ fn show_tray(tray: &mut Option<Box<dyn snipdeck_platform::tray::Tray>>, window: 
 
 type Hotkeys = Rc<RefCell<Box<dyn host::HotkeyBackend>>>;
 
+/// Shows Settings, then starts `action` on it (the palette's Import, Export and Back up now).
+fn open_settings(
+    settings_ui: &SettingsUi,
+    action: Option<snipdeck_app::controller::SettingsAction>,
+    window_failed: &dyn Fn(snipdeck_app::toast::ToastMessage),
+) {
+    use snipdeck_app::controller::SettingsAction as A;
+    if let Err(e) = settings_ui.open() {
+        eprintln!("snipdeck: cannot open the settings: {e}");
+        window_failed(snipdeck_app::toast::ToastMessage::WindowNotShown);
+    } else if let (Some(action), Some(page)) = (action, settings_ui.window()) {
+        page.invoke_run_action(match action {
+            A::Import => 0,
+            A::Export => 1,
+            A::BackUp => 2,
+        });
+    }
+}
+
 /// What the host does with the controller's [`Effect`]s: quit, pause or resume the hotkeys,
 /// start a window drag, open the Main window.
 #[allow(
@@ -684,23 +703,9 @@ fn effect_handler(
                 window_failed(snipdeck_app::toast::ToastMessage::WindowNotShown);
             }
         },
-        Effect::OpenSettings => {
-            if let Err(e) = settings_ui.open() {
-                eprintln!("snipdeck: cannot open the settings: {e}");
-                window_failed(snipdeck_app::toast::ToastMessage::WindowNotShown);
-            }
-        }
+        Effect::OpenSettings => open_settings(&settings_ui, None, &*window_failed),
         Effect::SettingsAction(action) => {
-            if let Err(e) = settings_ui.open() {
-                eprintln!("snipdeck: cannot open the settings: {e}");
-                window_failed(snipdeck_app::toast::ToastMessage::WindowNotShown);
-            } else if let Some(page) = settings_ui.window() {
-                page.invoke_run_action(match action {
-                    snipdeck_app::controller::SettingsAction::Import => 0,
-                    snipdeck_app::controller::SettingsAction::Export => 1,
-                    snipdeck_app::controller::SettingsAction::BackUp => 2,
-                });
-            }
+            open_settings(&settings_ui, Some(*action), &*window_failed)
         }
         // The optional support page, in the browser: the same opener as Help's links.
         Effect::OpenSupport => {
