@@ -839,6 +839,29 @@ fn a_plain_message_waits_behind_a_fresh_error() {
     );
 }
 
+/// A message that waited behind a guarded error is not lost when the pointer rests on the error
+/// through the whole hold.
+#[test]
+fn a_message_that_waited_is_shown_when_the_hovered_error_ends() {
+    let mut w = world();
+    w.ctl.show_toast(danger(ToastMessage::ClipboardBusy));
+    let error = w.ctl.view().toast.expect("error").seq;
+    assert!(w.ctl.claim_toast_timer(error, 10));
+    w.ctl.show_toast(plain(ToastMessage::Copied));
+    w.ctl.toast_hover(true);
+    // Tick until the error leaves (bounded: the hover extension is finite).
+    for _ in 0..200 {
+        if w.ctl.view().toast.is_none_or(|t| t.seq != error) {
+            break;
+        }
+        w.ctl.toast_tick(error);
+    }
+    assert_eq!(
+        w.ctl.view().toast.expect("the message that waited").message,
+        ToastMessage::Copied
+    );
+}
+
 #[test]
 fn a_newer_error_wins_and_a_message_after_the_guard_wins_again() {
     let mut w = world();

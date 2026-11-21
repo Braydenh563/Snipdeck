@@ -1708,6 +1708,9 @@ msgstr "タグを統合"
 msgid "Merge these tags?"
 msgstr "これらのタグを統合しますか?"
 
+msgid "Merged the tag “{}” into “{}”"
+msgstr "タグ「{}」を「{}」に統合しました"
+
 msgid "Microsoft Store"
 msgstr "Microsoft Store"
 

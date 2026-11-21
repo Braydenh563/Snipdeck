@@ -660,6 +660,7 @@ fn fill(w: &ui::ItemEditor, view: &ItemEditorView) {
     w.set_kind_index(to_i32(kind_index(fields.kind)));
     w.set_item_title(fields.title.as_str().into());
     set_parts(w, &item_editor::split_parts(&fields.content), 0);
+    w.set_content_changed(false);
     w.set_sensitive(fields.sensitive);
     w.set_always_plain(fields.always_plain);
     w.set_trigger(view.trigger.as_str().into());

@@ -154,10 +154,11 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::ExportedSome { .. } => 124,
         ToastMessage::ItemsTagged { .. } => 125,
         ToastMessage::TagDeleted { .. } => 126,
+        ToastMessage::TagMerged { .. } => 127,
     }
 }
 
-const VARIANTS: usize = 127;
+const VARIANTS: usize = 128;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -258,6 +259,10 @@ fn samples() -> Vec<ToastMessage> {
             added: false,
         },
         M::TagDeleted { name: s("Work") },
+        M::TagMerged {
+            from: s("Work"),
+            into: s("Office"),
+        },
         M::ExportFailed(Cause::Locked),
         M::LibraryErased,
         M::EraseFailed,
@@ -455,6 +460,13 @@ fn what_a_toast_carries_reaches_its_sentence() {
         assert_eq!(
             said(ToastMessage::TagDeleted { name: s("Work") }),
             "Deleted the tag “Work”"
+        );
+        assert_eq!(
+            said(ToastMessage::TagMerged {
+                from: s("Work"),
+                into: s("Office")
+            }),
+            "Merged the tag “Work” into “Office”"
         );
         let rebuilt = |recovered, unreadable, missing_sensitive| ToastMessage::DatabaseRebuilt {
             restored: 5,

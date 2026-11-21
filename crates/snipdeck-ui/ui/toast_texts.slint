@@ -384,6 +384,9 @@ export global ToastTexts {
     pure public function tag-deleted(name: string) -> string {
         return @tr("Deleted the tag “{}”", name);
     }
+    pure public function tag-merged(from: string, into: string) -> string {
+        return @tr("Merged the tag “{}” into “{}”", from, into);
+    }
     pure public function export-failed(cause: int) -> string {
         if (cause == 1) {
             return @tr("Couldn't export your library: the disk is full. Free up some space, then try again.");

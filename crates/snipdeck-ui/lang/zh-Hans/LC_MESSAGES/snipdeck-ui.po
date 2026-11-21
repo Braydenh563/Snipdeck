@@ -1708,6 +1708,9 @@ msgstr "合并标签"
 msgid "Merge these tags?"
 msgstr "合并这些标签?"
 
+msgid "Merged the tag “{}” into “{}”"
+msgstr "已将标签“{}”合并到“{}”"
+
 msgid "Microsoft Store"
 msgstr "Microsoft Store"
 

@@ -304,6 +304,10 @@ where
             ToastPhase::Exit => {
                 self.toast = None;
                 self.undo = None;
+                // A message that waited behind a guarded error the pointer held on screen.
+                if let Some(next) = self.pending_toast.take() {
+                    self.show_toast_now(next);
+                }
                 None
             }
         }

@@ -1714,6 +1714,9 @@ msgstr "Tags zusammenführen"
 msgid "Merge these tags?"
 msgstr "Diese Tags zusammenführen?"
 
+msgid "Merged the tag “{}” into “{}”"
+msgstr "Tag „{}“ in „{}“ zusammengeführt"
+
 msgid "Microsoft Store"
 msgstr "Microsoft Store"
 

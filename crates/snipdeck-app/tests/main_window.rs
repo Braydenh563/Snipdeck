@@ -784,6 +784,23 @@ fn renaming_onto_another_tag_asks_and_the_confirmation_merges() {
 }
 
 #[test]
+fn cancelling_the_merge_question_changes_nothing() {
+    on_ui_thread(|| {
+        let r = rig_with_tags();
+        let before = tag_labels(&r);
+        r.ui.invoke_manage_tags_requested();
+        let manager = r.binding.tag_manager().unwrap();
+        manager.set_editing(0);
+        manager.invoke_rename_requested(0, before[1].to_uppercase().into());
+        assert_eq!(manager.get_merge_from(), 0, "the question is open");
+        // The dialog's Cancel (and Esc) only close it.
+        manager.set_merge_from(-1);
+        assert_eq!(tag_labels(&r), before);
+        assert_eq!(manager.get_tags().row_count(), before.len());
+    });
+}
+
+#[test]
 fn a_bad_rename_shows_the_error_and_keeps_the_editor() {
     on_ui_thread(|| {
         let r = rig_with_tags();

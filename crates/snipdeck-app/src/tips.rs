@@ -105,13 +105,6 @@ pub const TIPS: [Tip; 11] = [
 mod tests {
     use super::*;
 
-    /// Every card has its own drawing: `TipArt` has one branch per index, so the index of the last card
-    /// must be the last branch (checked in the UI crate's `tip_art` test).
-    #[test]
-    fn there_is_one_picture_per_card() {
-        assert_eq!(TIPS.len(), 11);
-    }
-
     #[test]
     fn every_action_maps_to_a_command() {
         for tip in TIPS {

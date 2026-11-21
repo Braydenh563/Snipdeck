@@ -503,6 +503,12 @@ fn merging_tags_moves_the_items_and_removes_the_first_tag() {
     assert_eq!(before[0].count, 1);
 
     ctl.main_merge_tag(0, 1);
+    match toast_message(&mut ctl) {
+        Some(ToastMessage::TagMerged { from, into }) => {
+            assert_eq!((from, into), (names[0].clone(), names[1].clone()));
+        }
+        other => panic!("expected a TagMerged toast, got {other:?}"),
+    }
 
     let after = ctl.main_screen();
     assert_eq!(tag_names(&mut ctl), [names[1].clone()]);

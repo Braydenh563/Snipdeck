@@ -435,15 +435,20 @@ where
     pub fn main_merge_tag(&mut self, from: usize, into: usize) {
         self.main_fresh();
         let tags = self.main.tags();
-        let (Some(from), Some(into)) = (tags.get(from).map(|t| t.id), tags.get(into).map(|t| t.id))
-        else {
+        let (Some(from), Some(into)) = (tags.get(from), tags.get(into)) else {
             return;
         };
-        if from == into {
+        if from.id == into.id {
             return;
         }
-        let done = self.store.merge_tag(from, into).map(drop);
-        self.finish(&done, None);
+        let said = ToastMessage::TagMerged {
+            from: from.name.as_str().to_owned(),
+            into: into.name.as_str().to_owned(),
+        };
+        let done = self.store.merge_tag(from.id, into.id).map(drop);
+        // No Undo: the history holds item edits only, and a deleted tag cannot come back through
+        // it (deleting a tag has none either); the window asks before it merges.
+        self.finish(&done, Some(neutral_toast(said)));
     }
 
     /// Adds a tag no item carries yet, from the Tag manager's "New tag" field.

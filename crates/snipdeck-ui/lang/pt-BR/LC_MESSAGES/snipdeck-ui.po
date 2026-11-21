@@ -1714,6 +1714,9 @@ msgstr "Mesclar etiquetas"
 msgid "Merge these tags?"
 msgstr "Mesclar estas etiquetas?"
 
+msgid "Merged the tag “{}” into “{}”"
+msgstr "Tag “{}” mesclada em “{}”"
+
 msgid "Microsoft Store"
 msgstr "Microsoft Store"
 

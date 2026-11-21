@@ -336,6 +336,13 @@ pub enum ToastMessage {
         /// The tag's name.
         name: String,
     },
+    /// "Merged the tag Work into Office".
+    TagMerged {
+        /// The tag that went away.
+        from: String,
+        /// The tag its items carry now.
+        into: String,
+    },
     /// "Couldn't export your library: ..."
     ExportFailed(Cause),
     /// "Your library was erased."

@@ -381,6 +381,7 @@ where
         } => t.invoke_exported_some(file.into(), count(*written), count(*total)),
         ToastMessage::ItemsTagged { count: n, added } => t.invoke_items_tagged(count(*n), *added),
         ToastMessage::TagDeleted { name } => t.invoke_tag_deleted(name.into()),
+        ToastMessage::TagMerged { from, into } => t.invoke_tag_merged(from.into(), into.into()),
         ToastMessage::PickerRecentsCleared => t.invoke_picker_recents_cleared(),
         ToastMessage::DockSet(edge) => t.invoke_dock_set(match edge {
             None => 0,

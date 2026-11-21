@@ -775,6 +775,11 @@ fn a_sensitive_item_made_in_the_window_is_stored_encrypted_and_never_drafted() {
 
 /// The demo library on disk in `data` with one text item over the editing cap in the first list.
 fn with_big_item(data: &Path) -> (ItemId, String) {
+    with_big_item_formatted(data, false)
+}
+
+/// The same, with an HTML format beside the text when `html`.
+fn with_big_item_formatted(data: &Path, html: bool) -> (ItemId, String) {
     use snipdeck_core::{Format, Formats, Item, Placement};
     use snipdeck_store::{BlobStore, BoardRepo};
     let mut store = Store::open(data).expect("store");
@@ -784,15 +789,46 @@ fn with_big_item(data: &Path) -> (ItemId, String) {
     let mut item = Item::new(list, "Giant".into(), ItemKind::Text, now());
     item.preview = Item::preview_of(&big, false);
     let content = store.put(big.clone().into_bytes()).expect("put");
+    let mut formats = vec![Format::Text(content)];
+    if html {
+        formats.push(Format::Html(
+            store
+                .put(format!("<p>{big}</p>").into_bytes())
+                .expect("put"),
+        ));
+    }
     store
         .insert_item(
             &item,
-            &Formats::new(vec![Format::Text(content)]).expect("formats"),
+            &Formats::new(formats).expect("formats"),
             Placement::Last,
         )
         .expect("insert");
     let _ = store.boards().expect("boards");
     (item.id, big)
+}
+
+#[test]
+fn the_formatting_notice_on_a_long_text_waits_for_a_change() {
+    on_ui_thread(|| {
+        let data = tempfile::tempdir().expect("dir");
+        let (id, _) = with_big_item_formatted(data.path(), true);
+        let r = rig_at(data.path(), &SharedProvider::new());
+        r.ctl.borrow_mut().open_item_editor(id);
+        r.editor.redraw();
+        let ed = r.ed();
+        assert!(ed.get_formatted());
+        let notice = "Saving changed text removes the formatting.";
+        assert!(ed.get_content_large());
+        assert!(!ed.get_content_changed(), "untouched on open");
+        assert!(
+            missing(&ed, notice, AccessibleRole::Text),
+            "no notice for text nobody typed in"
+        );
+        ed.set_content_changed(true);
+        r.editor.redraw();
+        let _ = find(&ed, notice, AccessibleRole::Text);
+    });
 }
 
 #[test]

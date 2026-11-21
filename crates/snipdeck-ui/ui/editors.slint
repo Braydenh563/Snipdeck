@@ -828,6 +828,9 @@ export component ItemEditor inherits Window {
     // `saved-content` is the text as saved, which the notice compares the field against.
     in property <bool> formatted: false;
     in property <string> saved-content;
+    // Whether the text was typed in since it opened: the notice's test for a long text, whose
+    // saved text is not kept (it is a part at a time).
+    in-out property <bool> content-changed: false;
     // Anything changed since the window opened (the host clears it after a save with `mark-clean()`).
     out property <bool> dirty: false;
     in-out property <bool> discard-open: false;
@@ -1164,12 +1167,12 @@ export component ItemEditor inherits Window {
                                 private-copy: root.sensitive;
                                 private-copied(t, a, b) => { root.private-copied(t, a, b); }
                                 private-cut(t, a, b) => { return root.private-cut(t, a, b); }
-                                edited(t) => { root.touch(); root.content-edited(); }
+                                edited(t) => { root.content-changed = true; root.touch(); root.content-edited(); }
                                 changed has-focus => {
                                     if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                                 }
                             }
-                            if root.formatted && !root.content-large && root.content != root.saved-content: Notice {
+                            if root.formatted && (root.content-large ? root.content-changed : root.content != root.saved-content): Notice {
                                 text: @tr("Saving changed text removes the formatting.");
                             }
                             if root.formatted: Button {
