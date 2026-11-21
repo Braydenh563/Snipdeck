@@ -860,7 +860,8 @@ fn undoing_an_add_brings_the_next_queued_one() {
 #[test]
 fn ending_a_drag_brings_the_next_queued_one() {
     let mut w = world();
-    w.ctl.drop_hover(Origin::Panel, Some(w.links_list));
+    w.ctl
+        .drop_hover(crate::item_editor::Origin::Panel, Some(w.links_list));
     w.ctl.queue_toast(toast(ToastMessage::SettingsDamaged));
     w.ctl.drop_end();
     assert_eq!(on_screen(&w), Some(ToastMessage::SettingsDamaged));
