@@ -589,6 +589,10 @@ macro_rules! repo_impls {
             fn link_tag(&mut self, id: TagId, items: &[ItemId]) -> Result<()> {
                 self.writer(|cx| tags::link_tag(cx, id, items))
             }
+
+            fn unlink_tag(&mut self, id: TagId, items: &[ItemId]) -> Result<()> {
+                self.writer(|cx| tags::unlink_tag(cx, id, items))
+            }
         }
 
         impl TrashRepo for $ty {

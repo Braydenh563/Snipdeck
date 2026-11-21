@@ -194,6 +194,12 @@ fn apply(b: &mut Batch<'_>, change: &Change, now: Timestamp) -> snipdeck_store::
             Err(e) => return Err(e),
         },
         Change::MakeTag { tag, items } => make_tag(b, tag, items)?,
+        Change::LinkTag { tag, items } => b.link_tag(*tag, items)?,
+        Change::UnlinkTag { tag, items } => match b.unlink_tag(*tag, items) {
+            // The tag is gone since (a later step is undone first, so it normally is not).
+            Ok(()) | Err(snipdeck_store::Error::NotFound { .. }) => {}
+            Err(e) => return Err(e),
+        },
         Change::Barrier(_) => {}
     }
     Ok(())

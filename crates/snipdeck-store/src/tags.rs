@@ -164,6 +164,20 @@ pub(crate) fn link_tag(cx: &mut Ctx<'_>, id: TagId, items: &[ItemId]) -> Result<
     Ok(())
 }
 
+pub(crate) fn unlink_tag(cx: &mut Ctx<'_>, id: TagId, items: &[ItemId]) -> Result<()> {
+    let conn = cx.conn;
+    if !crate::codec::exists(conn, "tags", id_bytes(id))? {
+        return Err(not_found(id));
+    }
+    for item in items {
+        conn.execute(
+            "DELETE FROM item_tags WHERE item_id = ?1 AND tag_id = ?2",
+            params![id_bytes(*item), id_bytes(id)],
+        )?;
+    }
+    Ok(())
+}
+
 /// Fails with [`Error::TagParent`] if `tag.parent` is not a stored tag, is `tag` itself or is
 /// nested under `tag`.
 fn parent_check(conn: &rusqlite::Connection, tag: &Tag) -> Result<()> {

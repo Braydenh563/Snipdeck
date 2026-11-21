@@ -592,11 +592,14 @@ where
         let from = stored.name.as_str().to_owned();
         let now = self.clock.now();
         let carriers = self.store.tag_items(source).unwrap_or_default();
+        let already = self.store.tag_items(target.0).unwrap_or_default();
         let tree = self.main.tag_tree().clone();
         let mut changes = Vec::new();
         let done = self.store.atomically(|b| {
             changes.clear();
-            // The items in the Trash keep no tag after it goes; Undo brings the tag back on them.
+            // The items in the Trash are not rewritten: they gain the target by a link of their own
+            // (so a restore keeps the merged tag), and Undo takes it off again and brings the
+            // source back on them.
             let mut kept = Vec::new();
             for id in &carriers {
                 match b.item(*id) {
@@ -610,6 +613,18 @@ where
                     Err(snipdeck_store::Error::NotFound { .. }) => kept.push(*id),
                     Err(e) => return Err(e),
                 }
+            }
+            let gain: Vec<_> = kept
+                .iter()
+                .copied()
+                .filter(|id| !already.contains(id))
+                .collect();
+            if !gain.is_empty() {
+                b.link_tag(target.0, &gain)?;
+                changes.push(Change::LinkTag {
+                    tag: target.0,
+                    items: gain,
+                });
             }
             // The tags nested under it follow the merge: they go under the target, except the
             // target itself and the tags above it, which go where the merged tag was.

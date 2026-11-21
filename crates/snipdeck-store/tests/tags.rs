@@ -184,6 +184,41 @@ fn a_deleted_tag_can_be_linked_back_to_live_and_trashed_items() {
 }
 
 #[test]
+fn a_tag_can_be_unlinked_from_live_and_trashed_items_and_stays() {
+    use snipdeck_store::{ItemRepo, TrashRepo, Trashable};
+    let mut s = store();
+    let b = board(&mut s, "Work");
+    let l = list(&mut s, b.id, "Replies");
+    let tag = Tag::new(name("urgent"));
+    s.insert_tag(&tag).unwrap();
+    let (live, trashed, plain) = (
+        item(&mut s, l.id, "live", "a"),
+        item(&mut s, l.id, "trashed", "b"),
+        item(&mut s, l.id, "plain", "c"),
+    );
+    s.link_tag(tag.id, &[live.id, trashed.id]).unwrap();
+    s.trash(Trashable::Item(trashed.id), at(100)).unwrap();
+    s.unlink_tag(
+        tag.id,
+        &[
+            live.id,
+            trashed.id,
+            plain.id,
+            snipdeck_core::ItemId::generate(),
+        ],
+    )
+    .unwrap();
+    assert_eq!(s.tag_items(tag.id).unwrap().len(), 0);
+    assert_eq!(s.tags().unwrap().len(), 1, "the tag itself stays");
+    s.restore(Trashable::Item(trashed.id)).unwrap();
+    assert_eq!(s.item(trashed.id).unwrap().tags.len(), 0);
+    assert!(matches!(
+        s.unlink_tag(TagId::generate(), &[]),
+        Err(Error::NotFound { .. })
+    ));
+}
+
+#[test]
 fn a_tag_keeps_its_colour_across_a_rename_and_a_reload() {
     let mut s = store();
     let mut t = Tag::new(name("billing"));

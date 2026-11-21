@@ -20,7 +20,7 @@
 use std::collections::VecDeque;
 
 use snipdeck_core::{
-    Board, BoardId, Group, GroupId, Item, ItemId, List, ListId, Placement, Tag, Trigger,
+    Board, BoardId, Group, GroupId, Item, ItemId, List, ListId, Placement, Tag, TagId, Trigger,
 };
 use snipdeck_store::Trashable;
 
@@ -299,6 +299,21 @@ pub enum Change {
         /// The items that carry it.
         items: Vec<ItemId>,
     },
+    /// Tag `tag` is put on `items`, which sit in the Trash (live items change with
+    /// [`Change::Update`]). Undoing it is [`Change::UnlinkTag`].
+    LinkTag {
+        /// The tag.
+        tag: TagId,
+        /// The items that gain it.
+        items: Vec<ItemId>,
+    },
+    /// Tag `tag` is taken off `items` in the Trash; the inverse of [`Change::LinkTag`].
+    UnlinkTag {
+        /// The tag.
+        tag: TagId,
+        /// The items that lose it.
+        items: Vec<ItemId>,
+    },
     /// An edit of this sensitive item that cannot be undone: its text is not kept. Undo takes the
     /// marker off the list and says so; it changes nothing else.
     Barrier(ItemId),
@@ -400,6 +415,14 @@ impl Change {
                 tag: tag.clone(),
                 items: items.clone(),
             },
+            Self::LinkTag { tag, items } => Self::UnlinkTag {
+                tag: *tag,
+                items: items.clone(),
+            },
+            Self::UnlinkTag { tag, items } => Self::LinkTag {
+                tag: *tag,
+                items: items.clone(),
+            },
             Self::Barrier(id) => Self::Barrier(*id),
         }
     }
@@ -452,7 +475,11 @@ impl Change {
                 spot(out, from);
             }
             Self::Regroup { item, .. } | Self::Barrier(item) => out.items.push(*item),
-            Self::Rename { .. } | Self::DropTag { .. } | Self::MakeTag { .. } => {}
+            Self::Rename { .. }
+            | Self::DropTag { .. }
+            | Self::MakeTag { .. }
+            | Self::LinkTag { .. }
+            | Self::UnlinkTag { .. } => {}
             Self::Rewrite { before, after } => {
                 out.stored.extend(before.stored());
                 out.stored.extend(after.stored());
@@ -460,7 +487,11 @@ impl Change {
             Self::MoveList { id, .. } => out.stored.push(Trashable::List(*id)),
             Self::MoveBoard { id, .. } => out.stored.push(Trashable::Board(*id)),
         }
-        if let Self::DropTag { items, .. } | Self::MakeTag { items, .. } = self {
+        if let Self::DropTag { items, .. }
+        | Self::MakeTag { items, .. }
+        | Self::LinkTag { items, .. }
+        | Self::UnlinkTag { items, .. } = self
+        {
             // Tag links are applied to the items still stored: a purged one is not needed.
             out.carriers.extend(items);
         }

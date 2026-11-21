@@ -243,6 +243,67 @@ fn merging_a_tag_into_one_nested_under_it_keeps_the_target_out_of_a_loop() {
     assert_eq!(shape(&mut ctl), ["0 billing", "1 billing/invoices"]);
 }
 
+/// Tags "Invoice reminder" with `a` alone and "Out of office" with `a` and `b`, then trashes both
+/// (tags a and b are rows 0 and 1). Returns their ids.
+fn two_trashed_carriers(ctl: &mut Ctl) -> (ItemId, ItemId) {
+    for (title, tags) in [("Invoice reminder", vec![0]), ("Out of office", vec![0, 1])] {
+        let at = row_of(&ctl.main_screen(), title);
+        for tag in tags {
+            ctl.main_action(MainAction::Tag, at);
+            ctl.main_toggle_tag(tag, true);
+        }
+    }
+    let ids = (id_of(ctl, "Invoice reminder"), id_of(ctl, "Out of office"));
+    for title in ["Invoice reminder", "Out of office"] {
+        let at = row_of(&ctl.main_screen(), title);
+        ctl.main_action(MainAction::Delete, at);
+    }
+    ids
+}
+
+#[test]
+fn merging_a_tag_gives_the_target_to_the_trashed_carriers_so_a_restore_keeps_it() {
+    let mut ctl = rig_with_tags(&["a", "b"]);
+    let (only_a, both) = two_trashed_carriers(&mut ctl);
+    let b = ctl.main_screen().tags[1].id;
+    ctl.main_merge_tag(0, "b").expect("merged");
+    ctl.main_open(Section::Trash);
+    ctl.main_action(MainAction::Restore, 0);
+    ctl.main_action(MainAction::Restore, 0);
+    assert_eq!(ctl.main_screen().counts.trash, 0);
+    for id in [only_a, both] {
+        assert_eq!(
+            ctl.store().item(id).unwrap().tags,
+            [b].into(),
+            "the restored item carries the merged tag and nothing else"
+        );
+    }
+}
+
+#[test]
+fn undoing_a_merge_restores_the_original_tags_of_trashed_carriers_in_one_step() {
+    let mut ctl = rig_with_tags(&["a", "b"]);
+    let (only_a, both) = two_trashed_carriers(&mut ctl);
+    let (a, b) = (ctl.main_screen().tags[0].id, ctl.main_screen().tags[1].id);
+    let before = ctl.history_view().undo;
+    ctl.main_merge_tag(0, "b").expect("merged");
+    let carriers = |ctl: &Ctl, tag| {
+        let mut ids = ctl.store().tag_items(tag).unwrap();
+        ids.sort();
+        ids
+    };
+    let mut both_ids = vec![only_a, both];
+    both_ids.sort();
+    assert_eq!(carriers(&ctl, b), both_ids, "the target is on both");
+    ctl.undo();
+    assert_eq!(carriers(&ctl, a), both_ids, "a is back on both");
+    assert_eq!(carriers(&ctl, b), [both], "b only where it was");
+    assert_eq!(ctl.history_view().undo, before, "one step undone");
+    ctl.redo();
+    assert_eq!(carriers(&ctl, b), both_ids);
+    assert_eq!(carriers(&ctl, a).len(), 0);
+}
+
 // ---- LIBRARY-38: lists, boards, restore ----------------------------------------------------
 
 #[test]

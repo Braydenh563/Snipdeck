@@ -256,6 +256,11 @@ pub trait TagRepo {
     /// Puts tag `id` back on `items` (live or in the Trash). An item that is gone, or already
     /// has the tag, is skipped; the tag must exist.
     fn link_tag(&mut self, id: TagId, items: &[ItemId]) -> Result<()>;
+
+    /// Takes tag `id` off `items` (live or in the Trash): the inverse of
+    /// [`TagRepo::link_tag`]. An item that is gone, or does not have the tag, is skipped; the tag
+    /// stays.
+    fn unlink_tag(&mut self, id: TagId, items: &[ItemId]) -> Result<()>;
 }
 
 /// Something that can be put in the trash.
