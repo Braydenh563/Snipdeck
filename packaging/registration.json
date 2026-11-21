@@ -1,0 +1,21 @@
+{
+  "_comment": "The one table behind the file association, URL scheme and registry leftovers. packaging/inno/snipdeck.iss and packaging/msix/AppxManifest.xml are written from it by hand and scripts/installer_check.py fails when either disagrees. tools/launcher/data.ps1 (Get-RegistryLeftovers) must list the same leftovers.",
+  "exe": "snipdeck.exe",
+  "file_extension": ".snipdeck",
+  "prog_id": "Snipdeck.Archive",
+  "file_type_name": "Snipdeck archive",
+  "url_scheme": "snipdeck",
+  "url_display_name": "Snipdeck",
+  "open_command": "\"{exe}\" \"%1\"",
+  "app_execution_alias": "snipdeck.exe",
+  "registry_leftovers": [
+    {"kind": "value", "subkey": "Software\\Microsoft\\Windows\\CurrentVersion\\Run", "name": "Snipdeck"},
+    {"kind": "value", "subkey": "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run", "name": "Snipdeck"},
+    {"kind": "key", "subkey": "Software\\Snipdeck"}
+  ],
+  "setup_only_keys": [
+    "Software\\Classes\\.snipdeck",
+    "Software\\Classes\\Snipdeck.Archive",
+    "Software\\Classes\\snipdeck"
+  ]
+}

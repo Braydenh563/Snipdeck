@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Snipdeck colour test page</title>
+<style>
+  html, body { margin: 0; background: #808080; font: 16px "Segoe UI", sans-serif; color: #000; }
+  /* Flat squares with no borders, shadows or anti-aliasing at the edges: the middle of each is exactly its colour. */
+  .row { display: flex; gap: 40px; padding: 40px; }
+  .sq { width: 200px; height: 200px; }
+  .label { margin-top: 8px; background: #fff; padding: 2px 6px; display: inline-block; }
+  .counter { position: fixed; right: 16px; bottom: 16px; background: #fff; padding: 8px 12px; border: 1px solid #000; }
+  .counter output { font-weight: 700; }
+</style>
+</head>
+<body>
+<!-- Used by tools/windows-test/tests/colour.json (docs/reviews/colour-spec.md section 7). -->
+<div class="row">
+  <div><div class="sq" style="background:#3a7bd5"></div><span class="label">#3a7bd5</span></div>
+  <div><div class="sq" style="background:#ff0000"></div><span class="label">#ff0000</span></div>
+  <div><div class="sq" style="background:#ffffff"></div><span class="label">#ffffff</span></div>
+</div>
+<!-- Step 10: a click that reaches this page (button-up included) shows here. -->
+<div class="counter">
+  Left clicks <output id="lc">0</output> &middot; right clicks <output id="rc">0</output>
+  &middot; menus <output id="cm">0</output> &middot; last event <output id="last">none</output>
+</div>
+<script>
+  var n = { lc: 0, rc: 0, cm: 0 };
+  function bump(id, what) {
+    n[id] += 1;
+    document.getElementById(id).textContent = n[id];
+    document.getElementById("last").textContent = what;
+  }
+  // Count the whole click (up, not only down): the up is what the eyedropper must swallow.
+  document.addEventListener("mouseup", function (e) { bump(e.button === 2 ? "rc" : "lc", e.button === 2 ? "right up" : "left up"); });
+  document.addEventListener("contextmenu", function () { bump("cm", "context menu"); });
+</script>
+</body>
+</html>

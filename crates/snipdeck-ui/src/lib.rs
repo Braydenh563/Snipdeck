@@ -17,4 +17,9 @@ mod generated {
 }
 pub use generated::*;
 
+pub mod damage;
+pub mod fonts;
+pub mod layout;
+pub mod selection;
+pub mod symbol_nav;
 pub mod testing;

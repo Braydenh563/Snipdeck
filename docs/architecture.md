@@ -7,7 +7,7 @@ is in [`SPEC.md`](SPEC.md); decisions with wider scope are in [`adr/`](adr/).
 
 | Crate | Status | Owns | May depend on |
 |---|---|---|---|
-| `snipdeck-core` | M1, done | Domain types, template engine, fuzzy search, use-pipeline logic, entitlements, licence verification | nothing internal |
+| `snipdeck-core` | M1, done | Domain types, template engine, fuzzy search, use-pipeline logic | nothing internal |
 | `snipdeck-store` | M1, done | SQLite schema and migrations, repositories, blob store, FTS5, trash, backup, export/import, encryption at rest | core |
 | `snipdeck-portable` | M1, done | `.snipdeck` export/import ([`format.md`](format.md)), folder/Ditto/CopyQ importers, daily backup | core, store |
 | `snipdeck-platform` | M2, written; Windows backend unverified on Windows | Clipboard, hotkeys, Target tracking, paste injection, window styles, capture, OS OCR | core |
@@ -17,7 +17,7 @@ is in [`SPEC.md`](SPEC.md); decisions with wider scope are in [`adr/`](adr/).
 
 **Core is pure.** No file, network, clipboard or OS calls and no OS-specific dependencies, so
 all of it is tested on Linux CI. Whatever needs the outside world takes it as an argument: a
-`now: Timestamp`, the clipboard text for `{clipboard}`, the entitlements. The one exception is id
+`now: Timestamp`, the clipboard text for `{clipboard}`. The one exception is id
 generation, which reads the clock and the OS random source through the portable `uuid` crate.
 
 **Unsafe code** is forbidden in core and store (`#![forbid(unsafe_code)]`). The workspace lint is
@@ -69,7 +69,7 @@ to and no file overwrites another.
 `ItemKind` (text, template, code, link, image, file) describes content; `Item::sensitive` is
 separate. DESIGN.md's "Sensitive" leading row is a UI rule: draw the lock whenever the flag is
 set. One source of truth, and clearing the flag restores the real kind. A sensitive item's
-preview is empty, so no plaintext of it is stored outside its content, which Pro encrypts; the
+preview is empty, so no plaintext of it is stored outside its content, which is encrypted; the
 `•••• 7f3a` hint in DESIGN.md is therefore not shown in v1.
 
 ### Order belongs to storage
@@ -89,12 +89,9 @@ Dense integers were rejected because every move rewrites every row after it. Spa
 one row per drag in the common case, and a rare renumber of a 10 000-item list is one transaction.
 Sorting by most used or recently used is done in memory from `use_count` and `last_used_at`.
 
-### Entitlements are data
-`Entitlements` wraps a `Tier`; `allows(Feature)`, `require(Feature)` and
-`can_create_board(existing)` answer every SPEC §6 question. The `Feature` key names the upsell
-sheet. Storage never checks entitlements: the app checks before acting, and losing Pro never hides
-data (a Free user with five boards keeps them and can't add a sixth). Licence verification
-(Ed25519) goes in `snipdeck_core::licence` and returns `Entitlements`.
+### Nothing is gated
+Every feature is on in every build (SPEC §6, [`licensing.md`](licensing.md)): there is no tier, entitlement or
+licence code, and no board limit.
 
 ### Stable keys, no serde in core
 Stored enums (`ItemKind`, `FormatKind`, `ListAccent`, `ListView`, `ListSort`, `Feature`) have a

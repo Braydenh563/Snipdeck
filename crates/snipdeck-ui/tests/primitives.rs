@@ -40,13 +40,13 @@ fn surfaces_gallery_dark() {
 
 #[test]
 fn menu_gallery_light() {
-    let h = Harness::new(MenuGallery::new, 260, 200);
+    let h = Harness::new(MenuGallery::new, 260, 224);
     assert_golden("menu-light", &h.render());
 }
 
 #[test]
 fn menu_gallery_dark() {
-    let h = Harness::new(MenuGallery::new, 260, 200);
+    let h = Harness::new(MenuGallery::new, 260, 224);
     h.component.set_dark(true);
     assert_golden("menu-dark", &h.render());
 }

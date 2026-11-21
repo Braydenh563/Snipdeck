@@ -11,7 +11,7 @@ Tier: `max` (set `pro` on the Pro plan). Fast checks: `cargo fmt --all --check`,
   command: a 20k-character output rides in every later turn); start a fresh session at each milestone with the state
   in this file or a handover note; crop or avoid screenshots; no idle gaps
   over an hour in a long session.
-- Context ceiling: when the mean context per turn passes 150k (`/dash`), write the handover and end the session. Never wait on agents with repeated foreground polls; at most two agents may run cargo against one shared target dir.
+- Context ceiling: when the mean context per turn passes 150k (`/dash`), write the handover and end the session. Never wait on agents with repeated foreground polls; at most two agents may run cargo against one shared target dir. Each agent gets a 2-hour time box and runs only targeted tests; the coordinator runs the one full check per push.
 - Rungs: Haiku (`scout`) for lookup and mechanical work with a runnable
   check; Sonnet high for implementation; Opus medium for design, ambiguous
   bugs and risky review, high only after a lower rung failed with evidence.

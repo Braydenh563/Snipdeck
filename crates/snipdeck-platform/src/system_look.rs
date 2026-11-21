@@ -64,6 +64,10 @@ pub struct SystemLook {
     pub dark: bool,
     /// A high-contrast theme is on, with its colours. Wins over everything else.
     pub high_contrast: Option<HighContrast>,
+    /// The colour Windows uses as its accent, when it can be read.
+    pub accent: Option<Rgb>,
+    /// Windows' "Animation effects" is off (Settings > Accessibility > Visual effects).
+    pub reduce_motion: bool,
 }
 
 /// Reads the current [`SystemLook`]. Cheap enough to call on every change notification, and
@@ -71,10 +75,89 @@ pub struct SystemLook {
 pub trait SystemLookSource: Send + Sync {
     /// The look now. A value that cannot be read gives the light default.
     fn read(&self) -> SystemLook;
+
+    /// Windows' "Text size" (Settings > Accessibility) as a factor, `1.0 ..= 2.25`; 1.0 when
+    /// it is not set or cannot be read. Read apart from [`read`](Self::read) because the app
+    /// combines it with its own text size setting.
+    fn text_scale(&self) -> f32 {
+        1.0
+    }
+}
+
+/// Windows' text size factor from the `TextScaleFactor` value (a DWORD percentage, 100 to 225;
+/// absent when the text size was never changed), as a multiplier. Anything outside that range
+/// is held to it.
+#[must_use]
+pub fn text_scale_from_percent(percent: Option<u32>) -> f32 {
+    let percent = percent.unwrap_or(100).clamp(100, 225);
+    f32::from(u16::try_from(percent).unwrap_or(100)) / 100.0
+}
+
+/// The accent colour from the two registry values Windows keeps (PLATFORM-21).
+///
+/// `menu` is `HKCU\...\Explorer\Accent\AccentColorMenu`: the colour picked in Settings >
+/// Personalization > Colors, stored as `0xAABBGGRR`. `colorization` is the older
+/// `HKCU\...\DWM\ColorizationColor` (`0xAARRGGBB`), which is the colour *blended* for window
+/// frames and differs from the swatch. The first is the accent; the second is used only when the
+/// first is missing.
+#[must_use]
+pub fn accent_from_registry(menu: Option<u32>, colorization: Option<u32>) -> Option<Rgb> {
+    if let Some(value) = menu {
+        let [_, b, g, r] = value.to_be_bytes();
+        return Some(Rgb { r, g, b });
+    }
+    colorization.map(|value| {
+        let [_, r, g, b] = value.to_be_bytes();
+        Rgb { r, g, b }
+    })
 }
 
 // Window messages and `SPI_*` codes that can change the look. Written out so the filter is
 // testable here; the Windows backend asserts they equal the `windows` crate's constants.
+/// `WM_POWERBROADCAST`.
+pub const WM_POWERBROADCAST: u32 = 0x0218;
+/// `PBT_APMSUSPEND`: the computer is about to sleep.
+pub const PBT_APMSUSPEND: usize = 0x0004;
+/// `WM_WTSSESSION_CHANGE`.
+pub const WM_WTSSESSION_CHANGE: u32 = 0x02B1;
+/// `WTS_SESSION_LOCK`: the user pressed Win+L (or the screen saver locked the session).
+pub const WTS_SESSION_LOCK: usize = 0x0007;
+
+/// `PBT_APMRESUMESUSPEND`: the computer woke up after the user did something.
+pub const PBT_APMRESUMESUSPEND: usize = 0x0007;
+/// `PBT_APMRESUMEAUTOMATIC`: the computer woke up (also without the user, and after sleeping
+/// with no `PBT_APMRESUMESUSPEND` following).
+pub const PBT_APMRESUMEAUTOMATIC: usize = 0x0012;
+/// `WTS_CONSOLE_CONNECT`: the session came to the console (fast user switch back to this user).
+pub const WTS_CONSOLE_CONNECT: usize = 0x0001;
+/// `WTS_REMOTE_CONNECT`: a remote (RDP) connection came to this session.
+pub const WTS_REMOTE_CONNECT: usize = 0x0003;
+/// `WTS_SESSION_UNLOCK`.
+pub const WTS_SESSION_UNLOCK: usize = 0x0008;
+
+/// Whether a window message says the user is back: the computer woke up, the session was
+/// unlocked, or a console or remote connection came to it. The global hotkeys are checked then
+/// (PLATFORM-4): registrations normally survive, but a program that held a shortcut may have
+/// ended, or another may have taken it, in the meantime.
+#[must_use]
+pub fn message_means_resume(message: u32, wparam: usize) -> bool {
+    (message == WM_POWERBROADCAST
+        && matches!(wparam, PBT_APMRESUMESUSPEND | PBT_APMRESUMEAUTOMATIC))
+        || (message == WM_WTSSESSION_CHANGE
+            && matches!(
+                wparam,
+                WTS_SESSION_UNLOCK | WTS_REMOTE_CONNECT | WTS_CONSOLE_CONNECT
+            ))
+}
+
+/// Whether a window message says the session is locking or the computer is going to sleep, the
+/// two moments a library with a master password should lock.
+#[must_use]
+pub fn message_means_lock(message: u32, wparam: usize) -> bool {
+    (message == WM_POWERBROADCAST && wparam == PBT_APMSUSPEND)
+        || (message == WM_WTSSESSION_CHANGE && wparam == WTS_SESSION_LOCK)
+}
+
 /// `WM_SYSCOLORCHANGE`.
 pub const WM_SYSCOLORCHANGE: u32 = 0x0015;
 /// `WM_SETTINGCHANGE`.
@@ -83,9 +166,16 @@ pub const WM_SETTINGCHANGE: u32 = 0x001A;
 pub const WM_THEMECHANGED: u32 = 0x031A;
 /// `SPI_SETHIGHCONTRAST`.
 pub const SPI_SETHIGHCONTRAST: usize = 0x0043;
+/// `SPI_SETCLIENTAREAANIMATION`: "Animation effects" was switched.
+pub const SPI_SETCLIENTAREAANIMATION: usize = 0x1043;
 /// The `lParam` string Windows sends with `WM_SETTINGCHANGE` when the app or system colour mode
 /// changes.
 pub const IMMERSIVE_COLOR_SET: &str = "ImmersiveColorSet";
+/// The `lParam` string of the `WM_SETTINGCHANGE` that may announce a new text size. Not
+/// documented, so it is only one of two routes: the Windows watcher also waits on the registry
+/// key that holds the text size (`RegNotifyChangeKeyValue`), which does not depend on how
+/// Windows words its broadcast. **Unverified on Windows.**
+pub const TEXT_SCALE_FACTOR: &str = "TextScaleFactor";
 
 /// Whether a window message can have changed the look, so the source should be read again.
 ///
@@ -98,7 +188,10 @@ pub fn message_may_change_look(message: u32, wparam: usize, setting_area: Option
     match message {
         WM_SYSCOLORCHANGE | WM_THEMECHANGED => true,
         WM_SETTINGCHANGE => {
-            wparam == SPI_SETHIGHCONTRAST || setting_area == Some(IMMERSIVE_COLOR_SET)
+            wparam == SPI_SETHIGHCONTRAST
+                || wparam == SPI_SETCLIENTAREAANIMATION
+                || setting_area == Some(IMMERSIVE_COLOR_SET)
+                || setting_area == Some(TEXT_SCALE_FACTOR)
         }
         _ => false,
     }
@@ -115,10 +208,65 @@ mod tests {
     }
 
     #[test]
-    fn the_default_look_is_light_with_no_high_contrast() {
+    fn the_default_look_is_light_with_no_high_contrast_and_full_motion() {
         let look = SystemLook::default();
         assert!(!look.dark);
+        assert!(!look.reduce_motion);
         assert_eq!(look.high_contrast, None);
+    }
+
+    #[test]
+    fn a_session_lock_and_a_suspend_mean_lock_and_nothing_else_does() {
+        assert!(message_means_lock(WM_WTSSESSION_CHANGE, WTS_SESSION_LOCK));
+        assert!(message_means_lock(WM_POWERBROADCAST, PBT_APMSUSPEND));
+        // Unlock (8), resume (7 for power), other session events, other messages.
+        assert!(!message_means_lock(WM_WTSSESSION_CHANGE, 8));
+        assert!(!message_means_lock(WM_POWERBROADCAST, 0x0007));
+        assert!(!message_means_lock(WM_POWERBROADCAST, WTS_SESSION_LOCK));
+        assert!(!message_means_lock(WM_THEMECHANGED, PBT_APMSUSPEND));
+    }
+
+    #[test]
+    fn a_wake_an_unlock_and_a_reconnect_mean_resume_and_nothing_else_does() {
+        assert!(message_means_resume(
+            WM_POWERBROADCAST,
+            PBT_APMRESUMEAUTOMATIC
+        ));
+        assert!(message_means_resume(
+            WM_POWERBROADCAST,
+            PBT_APMRESUMESUSPEND
+        ));
+        assert!(message_means_resume(
+            WM_WTSSESSION_CHANGE,
+            WTS_SESSION_UNLOCK
+        ));
+        assert!(message_means_resume(
+            WM_WTSSESSION_CHANGE,
+            WTS_REMOTE_CONNECT
+        ));
+        assert!(message_means_resume(
+            WM_WTSSESSION_CHANGE,
+            WTS_CONSOLE_CONNECT
+        ));
+        // Going away is not coming back: suspend, lock, disconnect (4) and other messages.
+        assert!(!message_means_resume(WM_POWERBROADCAST, PBT_APMSUSPEND));
+        assert!(!message_means_resume(
+            WM_WTSSESSION_CHANGE,
+            WTS_SESSION_LOCK
+        ));
+        assert!(!message_means_resume(WM_WTSSESSION_CHANGE, 4));
+        assert!(!message_means_resume(
+            WM_THEMECHANGED,
+            PBT_APMRESUMEAUTOMATIC
+        ));
+        // The two sets never overlap: one message cannot lock and resume.
+        for message in [WM_POWERBROADCAST, WM_WTSSESSION_CHANGE] {
+            for wparam in 0..0x20 {
+                assert!(
+                    !(message_means_lock(message, wparam) && message_means_resume(message, wparam))
+                );
+            }
+        }
     }
 
     #[test]
@@ -133,6 +281,11 @@ mod tests {
             SPI_SETHIGHCONTRAST,
             None
         ));
+        assert!(message_may_change_look(
+            WM_SETTINGCHANGE,
+            SPI_SETCLIENTAREAANIMATION,
+            None
+        ));
         assert!(message_may_change_look(WM_THEMECHANGED, 0, None));
         assert!(message_may_change_look(WM_SYSCOLORCHANGE, 0, None));
         // Other settings: wallpaper (0x14), the Environment area, a bare WM_SETTINGCHANGE.
@@ -144,5 +297,54 @@ mod tests {
         ));
         assert!(!message_may_change_look(WM_SETTINGCHANGE, 0, None));
         assert!(!message_may_change_look(0x0001, 0, None));
+    }
+
+    #[test]
+    fn the_windows_text_size_is_a_factor_between_one_and_two_and_a_quarter() {
+        assert!((text_scale_from_percent(None) - 1.0).abs() < f32::EPSILON);
+        assert!((text_scale_from_percent(Some(100)) - 1.0).abs() < f32::EPSILON);
+        assert!((text_scale_from_percent(Some(150)) - 1.5).abs() < f32::EPSILON);
+        assert!((text_scale_from_percent(Some(225)) - 2.25).abs() < f32::EPSILON);
+        // A hand-edited or future value is held to the range.
+        assert!((text_scale_from_percent(Some(0)) - 1.0).abs() < f32::EPSILON);
+        assert!((text_scale_from_percent(Some(9000)) - 2.25).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn the_accent_is_the_settings_swatch_not_the_blended_frame_colour() {
+        // AccentColorMenu is 0xAABBGGRR: blue 0x33, green 0x22, red 0x11.
+        let menu = Some(0xFF33_2211);
+        let frame = Some(0xC4AA_BBCC);
+        assert_eq!(
+            accent_from_registry(menu, frame),
+            Some(Rgb {
+                r: 0x11,
+                g: 0x22,
+                b: 0x33
+            })
+        );
+    }
+
+    #[test]
+    fn the_accent_falls_back_to_the_colorization_value() {
+        // ColorizationColor is 0xAARRGGBB.
+        assert_eq!(
+            accent_from_registry(None, Some(0xC411_2233)),
+            Some(Rgb {
+                r: 0x11,
+                g: 0x22,
+                b: 0x33
+            })
+        );
+        assert_eq!(accent_from_registry(None, None), None);
+    }
+
+    #[test]
+    fn a_text_size_change_asks_for_a_new_read() {
+        assert!(message_may_change_look(
+            WM_SETTINGCHANGE,
+            0,
+            Some(TEXT_SCALE_FACTOR)
+        ));
     }
 }

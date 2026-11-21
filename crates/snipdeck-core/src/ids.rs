@@ -75,6 +75,11 @@ define_id!(
     "item id"
 );
 define_id!(
+    /// Identifies a [`Group`](crate::Group).
+    GroupId,
+    "group id"
+);
+define_id!(
     /// Identifies a [`Tag`](crate::Tag).
     TagId,
     "tag id"

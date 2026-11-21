@@ -7,10 +7,18 @@
 //!
 //! - **Add / remove / retitle** the icon, from commands posted by [`Tray`] calls (a channel plus a
 //!   window message to wake the thread; the caller waits for the answer, like the hotkey service).
-//! - **`TaskbarCreated`**: Explorer restarted and dropped every icon; the icon is added again if
-//!   it is wanted. A failed [`Tray::show`] (no taskbar yet, at logon) keeps the icon wanted, so
-//!   this also covers a start-up before Explorer. Only one attempt is made per announcement.
-//! - **Left click** (`NIN_SELECT` / `NIN_KEYSELECT`) gives [`TrayEvent::TogglePanel`].
+//! - **`TaskbarCreated`** and **start-up**: while the icon is wanted and not added, `NIM_ADD` is
+//!   retried with a back-off ([`AddRetry`], one state machine for the first add and for Explorer
+//!   restarts), so an Explorer that is still starting at sign-in cannot leave a `--hidden` app
+//!   with no icon. The icon is also reloaded at the new scale then, and on `WM_DPICHANGED`
+//!   (`NIM_MODIFY`).
+//! - **Left click** (`NIN_SELECT`) gives [`TrayEvent::TogglePanel`]; **Enter** on the focused icon
+//!   (`NIN_KEYSELECT`, debounced: it can arrive twice) acts at once; a **double click**
+//!   (`WM_LBUTTONDBLCLK`) gives [`TrayEvent::OpenSnipdeck`].
+//!   A left click is held for the system double-click time ([`ClickDeferral`]) so a double click
+//!   does not also toggle the Panel, unless the double-click action is switched off
+//!   ([`Tray::set_double_click_opens`]), when a click acts at once; the message order is
+//!   unverified on Windows.
 //! - **Right click** (`WM_CONTEXTMENU`) shows a popup menu with `TrackPopupMenu` at the click
 //!   position; the chosen entry becomes a [`TrayEvent`]. The window is made foreground first and
 //!   `WM_NULL` is posted afterwards, as the menu documentation requires, otherwise the menu does
@@ -30,10 +38,11 @@
 use std::cell::{Cell, RefCell};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use windows::Win32::Foundation::{GetLastError, HANDLE, HWND, LPARAM, LRESULT, POINT, WPARAM};
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+use windows::Win32::UI::Input::KeyboardAndMouse::GetDoubleClickTime;
 use windows::Win32::UI::Shell::{
     NIF_ICON, NIF_MESSAGE, NIF_SHOWTIP, NIF_TIP, NIM_ADD, NIM_DELETE, NIM_MODIFY, NIM_SETVERSION,
     NOTIFY_ICON_DATA_FLAGS, NOTIFY_ICON_MESSAGE, NOTIFYICON_VERSION_4, NOTIFYICONDATAW,
@@ -41,10 +50,11 @@ use windows::Win32::UI::Shell::{
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     AppendMenuW, ChangeWindowMessageFilterEx, CreatePopupMenu, DestroyMenu, GetCursorPos,
-    GetForegroundWindow, HICON, HMENU, IDI_APPLICATION, IMAGE_ICON, IsWindow, LR_SHARED,
+    GetForegroundWindow, HICON, HMENU, IDI_APPLICATION, IMAGE_ICON, IsWindow, KillTimer, LR_SHARED,
     LoadImageW, MF_CHECKED, MF_SEPARATOR, MF_STRING, MSGFLT_ALLOW, PostMessageW,
-    RegisterWindowMessageW, SetForegroundWindow, TPM_BOTTOMALIGN, TPM_RETURNCMD, TPM_RIGHTBUTTON,
-    TrackPopupMenu, WM_APP, WM_CLOSE, WM_CREATE, WM_DESTROY, WM_NULL,
+    RegisterWindowMessageW, SetForegroundWindow, SetTimer, TPM_BOTTOMALIGN, TPM_RETURNCMD,
+    TPM_RIGHTBUTTON, TrackPopupMenu, WM_APP, WM_CLOSE, WM_CREATE, WM_DESTROY, WM_DPICHANGED,
+    WM_NULL, WM_TIMER,
 };
 use windows::core::{HSTRING, PCWSTR, w};
 
@@ -52,9 +62,11 @@ use super::dpi;
 use super::hidden_window::{HiddenWindow, WindowHandler};
 use crate::error::Error;
 use crate::tray::{
-    MenuLine, Reaction, Tray, TrayEntry, TrayEvent, TrayModel, classify, decode_anchor,
-    decode_callback,
+    ClickDeferral, Gesture, MenuLine, Reaction, Tray, TrayEntry, TrayEvent, TrayLabels, TrayModel,
+    classify, decode_anchor, decode_callback,
 };
+use crate::tray_timing::{AddRetry, KeySelectDebounce};
+use crate::win_logic::{SessionEnd, session_end};
 
 /// Wakes the window to drain the command channel.
 const WM_COMMANDS: u32 = WM_APP + 1;
@@ -62,16 +74,51 @@ const WM_COMMANDS: u32 = WM_APP + 1;
 const WM_TRAY: u32 = WM_APP + 2;
 /// The icon's id within this window.
 const ICON_ID: u32 = 1;
+/// The timer that releases a held left click.
+const CLICK_TIMER: usize = 1;
+/// The timer that retries `NIM_ADD` (see [`AddRetry`]).
+const RETRY_TIMER: usize = 2;
 /// How long a caller waits for the tray thread before reporting it unresponsive.
 const REPLY_TIMEOUT: Duration = Duration::from_secs(5);
 
-type Reply = Sender<Result<(), Error>>;
+/// Where a command's answer goes, and the ticket a caller that gives up cancels (PLATFORM-10):
+/// a command whose caller was told "did not answer" is skipped, not run later.
+struct Reply {
+    tx: Sender<Result<(), Error>>,
+    ticket: std::sync::Arc<crate::hotkey_table::Ticket>,
+}
+
+impl Reply {
+    fn send(&self, result: Result<(), Error>) -> Result<(), mpsc::SendError<Result<(), Error>>> {
+        self.tx.send(result)
+    }
+}
+
+impl Command {
+    fn reply(&self) -> &Reply {
+        match self {
+            Self::Show(r)
+            | Self::Hide(r)
+            | Self::Tooltip(_, r)
+            | Self::Paused(_, r)
+            | Self::DoubleClickOpens(_, r)
+            | Self::History(_, _, r)
+            | Self::Labels(_, r) => r,
+        }
+    }
+}
+
+/// How much longer a caller waits for a command the tray thread had already started.
+const STARTED_GRACE: Duration = Duration::from_secs(2);
 
 enum Command {
     Show(Reply),
     Hide(Reply),
     Tooltip(String, Reply),
     Paused(bool, Reply),
+    History(bool, bool, Reply),
+    Labels(TrayLabels, Reply),
+    DoubleClickOpens(bool, Reply),
 }
 
 /// The Windows tray icon. Dropping it removes the icon and stops its thread.
@@ -109,16 +156,21 @@ impl WinTray {
     }
 
     fn call(&self, make: impl FnOnce(Reply) -> Command) -> Result<(), Error> {
-        let (reply_tx, reply_rx) = mpsc::channel();
+        let (tx, reply_rx) = mpsc::channel();
+        let ticket = std::sync::Arc::new(crate::hotkey_table::Ticket::default());
+        let reply = Reply {
+            tx,
+            ticket: std::sync::Arc::clone(&ticket),
+        };
         self.commands
-            .send(make(reply_tx))
+            .send(make(reply))
             .map_err(|_| Error::Unavailable("the tray service is not running"))?;
         if !self.window.post(WM_COMMANDS) {
+            let _ = ticket.cancel();
             return Err(Error::Unavailable("the tray service is not running"));
         }
-        reply_rx
-            .recv_timeout(REPLY_TIMEOUT)
-            .map_err(|_| Error::Unavailable("the tray service did not answer"))?
+        crate::hotkey_table::await_reply(&reply_rx, &ticket, REPLY_TIMEOUT, STARTED_GRACE)
+            .unwrap_or(Err(Error::Unavailable("the tray service did not answer")))
     }
 }
 
@@ -138,6 +190,18 @@ impl Tray for WinTray {
     fn set_hotkeys_paused(&mut self, paused: bool) -> Result<(), Error> {
         self.call(|reply| Command::Paused(paused, reply))
     }
+
+    fn set_history(&mut self, available: bool, paused: bool) -> Result<(), Error> {
+        self.call(|reply| Command::History(available, paused, reply))
+    }
+
+    fn set_labels(&mut self, labels: TrayLabels) -> Result<(), Error> {
+        self.call(|reply| Command::Labels(labels, reply))
+    }
+
+    fn set_double_click_opens(&mut self, opens: bool) -> Result<(), Error> {
+        self.call(|reply| Command::DoubleClickOpens(opens, reply))
+    }
 }
 
 /// Lives on the tray thread; see the module documentation.
@@ -146,9 +210,17 @@ struct TrayHandler {
     commands: Receiver<Command>,
     on_event: Box<dyn Fn(TrayEvent) + Send>,
     taskbar_created: u32,
-    icon: HICON,
+    /// Reloaded when the scale changes (see [`Self::reload_icon`]).
+    icon: Cell<HICON>,
     /// Whether the shell currently has our icon.
     added: Cell<bool>,
+    /// A left click held back until the double-click time passes (see [`ClickDeferral`]).
+    click: Cell<ClickDeferral>,
+    /// When to try `NIM_ADD` again while the icon is wanted and not there.
+    retry: Cell<AddRetry>,
+    /// Drops the repeat of one Enter press.
+    key_select: Cell<KeySelectDebounce>,
+    started: Instant,
 }
 
 impl TrayHandler {
@@ -165,8 +237,12 @@ impl TrayHandler {
             commands,
             on_event,
             taskbar_created,
-            icon: load_icon(),
+            icon: Cell::new(load_icon(dpi::small_icon_size())),
             added: Cell::new(false),
+            click: Cell::new(ClickDeferral::default()),
+            retry: Cell::new(AddRetry::default()),
+            key_select: Cell::new(KeySelectDebounce::default()),
+            started: Instant::now(),
         }
     }
 
@@ -203,7 +279,7 @@ impl TrayHandler {
             uID: ICON_ID,
             uFlags: flags,
             uCallbackMessage: WM_TRAY,
-            hIcon: self.icon,
+            hIcon: self.icon.get(),
             ..Default::default()
         };
         // `tooltip_utf16` leaves room for the terminating NUL the zeroed array already has.
@@ -251,6 +327,76 @@ impl TrayHandler {
         Ok(())
     }
 
+    /// One attempt to add the icon, feeding the retry schedule: success ends it, a failure
+    /// arms the timer for the next try. The one path for the first add, `Tray::show` and
+    /// `TaskbarCreated`.
+    fn try_add(&self, hwnd: HWND) -> Result<(), Error> {
+        let result = self.add_icon(hwnd);
+        let mut retry = self.retry.get();
+        match &result {
+            Ok(()) => retry.reset(),
+            Err(_) => retry.failed(self.now_ms()),
+        }
+        self.retry.set(retry);
+        self.arm_retry(hwnd);
+        result
+    }
+
+    /// Starts a new series of attempts now (the icon was asked for, or the shell restarted).
+    fn add_with_retries(&self, hwnd: HWND) -> Result<(), Error> {
+        let mut retry = self.retry.get();
+        retry.restart(self.now_ms());
+        self.retry.set(retry);
+        self.try_add(hwnd)
+    }
+
+    fn stop_retries(&self, hwnd: HWND) {
+        let mut retry = self.retry.get();
+        retry.reset();
+        self.retry.set(retry);
+        self.arm_retry(hwnd);
+    }
+
+    /// Sets (or clears) the retry timer to the schedule's next due time.
+    fn arm_retry(&self, hwnd: HWND) {
+        match self.retry.get().wait_ms(self.now_ms()) {
+            Some(wait) => {
+                let wait = u32::try_from(wait.max(1)).unwrap_or(u32::MAX);
+                // SAFETY: `hwnd` is our own window, on this thread; the timer id is ours.
+                let _ = unsafe { SetTimer(Some(hwnd), RETRY_TIMER, wait, None) };
+            }
+            None => {
+                // SAFETY: our own window and timer id; a missing timer is only an error code.
+                let _ = unsafe { KillTimer(Some(hwnd), RETRY_TIMER) };
+            }
+        }
+    }
+
+    fn on_retry_timer(&self, hwnd: HWND) {
+        // SAFETY: our own window and timer id.
+        let _ = unsafe { KillTimer(Some(hwnd), RETRY_TIMER) };
+        if !self.model.borrow().is_wanted() || self.added.get() {
+            self.stop_retries(hwnd);
+        } else if self.retry.get().is_due(self.now_ms()) {
+            let _ = self.try_add(hwnd);
+        } else {
+            self.arm_retry(hwnd);
+        }
+    }
+
+    /// Loads the icon again for `dpi` and hands it to the shell, so it stays sharp after the
+    /// display scale changed (the icon was loaded once at the start-up scale).
+    fn reload_icon(&self, hwnd: HWND, dpi: u32) {
+        self.icon.set(load_icon(dpi::small_icon_size_at(dpi)));
+        if self.added.get() {
+            let _ = Self::notify(
+                "Shell_NotifyIconW(NIM_MODIFY)",
+                NIM_MODIFY,
+                &self.data(hwnd, NIF_ICON),
+            );
+        }
+    }
+
     fn remove_icon(&self, hwnd: HWND) -> Result<(), Error> {
         if !self.added.get() {
             return Ok(());
@@ -263,6 +409,18 @@ impl TrayHandler {
         )
     }
 
+    /// Shows the model's hover text on the icon, if the icon is there.
+    fn refresh_tip(&self, hwnd: HWND) -> Result<(), Error> {
+        if !self.added.get() {
+            return Ok(());
+        }
+        Self::notify(
+            "Shell_NotifyIconW(NIM_MODIFY)",
+            NIM_MODIFY,
+            &self.data(hwnd, NIF_TIP | NIF_SHOWTIP),
+        )
+    }
+
     fn serve(&self, hwnd: HWND, command: Command) {
         // A dropped reply receiver (the caller timed out) is not an error here.
         match command {
@@ -271,30 +429,66 @@ impl TrayHandler {
                 let result = if self.added.get() {
                     Ok(())
                 } else {
-                    self.add_icon(hwnd)
+                    self.add_with_retries(hwnd)
                 };
                 let _ = reply.send(result);
             }
             Command::Hide(reply) => {
                 self.model.borrow_mut().hide();
+                self.stop_retries(hwnd);
                 let _ = reply.send(self.remove_icon(hwnd));
             }
             Command::Tooltip(text, reply) => {
                 self.model.borrow_mut().set_tooltip(&text);
-                let result = if self.added.get() {
-                    Self::notify(
-                        "Shell_NotifyIconW(NIM_MODIFY)",
-                        NIM_MODIFY,
-                        &self.data(hwnd, NIF_TIP | NIF_SHOWTIP),
-                    )
-                } else {
-                    Ok(())
-                };
-                let _ = reply.send(result);
+                let _ = reply.send(self.refresh_tip(hwnd));
             }
             Command::Paused(paused, reply) => {
                 self.model.borrow_mut().set_hotkeys_paused(paused);
+                let _ = reply.send(self.refresh_tip(hwnd));
+            }
+            Command::History(available, paused, reply) => {
+                // The menu is built from the model on every right click: nothing to redraw.
+                self.model.borrow_mut().set_history(available, paused);
                 let _ = reply.send(Ok(()));
+            }
+            Command::Labels(labels, reply) => {
+                // The menu is built from the model on every right click: nothing to redraw.
+                self.model.borrow_mut().set_labels(labels);
+                let _ = reply.send(self.refresh_tip(hwnd));
+            }
+            Command::DoubleClickOpens(opens, reply) => {
+                self.model.borrow_mut().set_double_click_opens(opens);
+                let _ = reply.send(Ok(()));
+            }
+        }
+    }
+
+    fn now_ms(&self) -> u64 {
+        u64::try_from(self.started.elapsed().as_millis()).unwrap_or(u64::MAX)
+    }
+
+    fn drop_held_click(&self, hwnd: HWND) {
+        let mut click = self.click.get();
+        // SAFETY: reads a system setting.
+        click.double_select(self.now_ms(), u64::from(unsafe { GetDoubleClickTime() }));
+        self.click.set(click);
+        // SAFETY: our own window and timer id; a missing timer is only an error code.
+        let _ = unsafe { KillTimer(Some(hwnd), CLICK_TIMER) };
+    }
+
+    /// The double-click time passed: a held left click now acts.
+    fn on_click_timer(&self, hwnd: HWND) {
+        // SAFETY: our own window and timer id.
+        let _ = unsafe { KillTimer(Some(hwnd), CLICK_TIMER) };
+        let mut click = self.click.get();
+        // The timer only runs while no double click came, so whatever is held is due (a timer
+        // may fire a few milliseconds early).
+        let due = click.release(self.now_ms(), 0);
+        self.click.set(click);
+        if due {
+            let reaction = self.model.borrow_mut().gesture(Gesture::Select);
+            if let Some(Reaction::Event(event)) = reaction {
+                self.emit(event);
             }
         }
     }
@@ -308,6 +502,31 @@ impl TrayHandler {
         let Some(gesture) = classify(code) else {
             return;
         };
+        match gesture {
+            // A left click waits out the double-click time: a second click makes it a double.
+            Gesture::Select if self.model.borrow().defers_select() => {
+                let mut click = self.click.get();
+                let held = click.select(self.now_ms());
+                self.click.set(click);
+                if held {
+                    // SAFETY: `hwnd` is our own window, on this thread; the timer id is ours.
+                    let _ =
+                        unsafe { SetTimer(Some(hwnd), CLICK_TIMER, GetDoubleClickTime(), None) };
+                }
+                return;
+            }
+            // Enter: acts at once (a double click is a mouse gesture), once per press.
+            Gesture::KeySelect => {
+                let mut debounce = self.key_select.get();
+                let act = debounce.accept(self.now_ms());
+                self.key_select.set(debounce);
+                if !act {
+                    return;
+                }
+            }
+            Gesture::DoubleSelect => self.drop_held_click(hwnd),
+            Gesture::Select | Gesture::ContextMenu => {}
+        }
         // Decide first and drop the borrow: the menu below runs a modal message loop.
         let reaction = self.model.borrow_mut().gesture(gesture);
         match reaction {
@@ -315,6 +534,8 @@ impl TrayHandler {
             Some(Reaction::PopupMenu(lines)) => {
                 if let Some(entry) = popup_menu(hwnd, &lines, wparam.0) {
                     let event = self.model.borrow_mut().pick(entry);
+                    // The paused hover text follows the check mark.
+                    let _ = self.refresh_tip(hwnd);
                     self.emit(event);
                 }
             }
@@ -327,9 +548,27 @@ impl WindowHandler for TrayHandler {
     fn message(&self, hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> Option<LRESULT> {
         if msg == WM_COMMANDS {
             while let Ok(command) = self.commands.try_recv() {
-                self.serve(hwnd, command);
+                // A caller that gave up has cancelled the ticket: the command must not run now.
+                if command.reply().ticket.start() {
+                    self.serve(hwnd, command);
+                }
             }
             return Some(LRESULT(0));
+        }
+        if msg == WM_TIMER && wparam.0 == CLICK_TIMER {
+            self.on_click_timer(hwnd);
+            return Some(LRESULT(0));
+        }
+        if msg == WM_TIMER && wparam.0 == RETRY_TIMER {
+            self.on_retry_timer(hwnd);
+            return Some(LRESULT(0));
+        }
+        if msg == WM_DPICHANGED {
+            // The new DPI is in the low word of `wParam`. Not consumed: the default handling
+            // (a no-op for a window that is never shown) still runs.
+            let dpi = u32::try_from(wparam.0 & 0xFFFF).unwrap_or(96);
+            self.reload_icon(hwnd, dpi);
+            return None;
         }
         if msg == WM_TRAY {
             self.on_callback(hwnd, wparam, lparam);
@@ -338,10 +577,12 @@ impl WindowHandler for TrayHandler {
         if msg == self.taskbar_created && msg != 0 {
             // Every icon was dropped with the old taskbar.
             self.set_added(false);
+            // The new taskbar may be at another scale.
+            self.icon
+                .set(load_icon(dpi::small_icon_size_at(dpi::window_dpi(hwnd))));
             if self.model.borrow().on_taskbar_created() {
-                // One attempt; the shell may not accept icons for a moment yet, and the next
-                // `TaskbarCreated` or `show` tries again.
-                let _ = self.add_icon(hwnd);
+                // The shell may not accept icons for a moment yet: keep trying with a back-off.
+                let _ = self.add_with_retries(hwnd);
             }
             return Some(LRESULT(0));
         }
@@ -354,6 +595,20 @@ impl WindowHandler for TrayHandler {
             self.emit(TrayEvent::Quit);
             return Some(LRESULT(0));
         }
+        match session_end(msg, wparam.0) {
+            Some(SessionEnd::Agree) => {
+                // Never stand in the way of a shutdown: the flush waits for the real end.
+                return Some(LRESULT(1));
+            }
+            Some(SessionEnd::FlushNow) => {
+                // Returns when the app has saved (or gave up waiting): Windows may end the process
+                // right after. Unverified on Windows.
+                self.emit(TrayEvent::SessionEnding);
+                return Some(LRESULT(0));
+            }
+            Some(SessionEnd::Cancelled) => return Some(LRESULT(0)),
+            None => {}
+        }
         if msg == WM_DESTROY {
             let _ = self.remove_icon(hwnd);
         }
@@ -362,10 +617,9 @@ impl WindowHandler for TrayHandler {
 }
 
 /// The small icon: the executable's resource 1, else the generic application icon.
-fn load_icon() -> HICON {
-    // The size at the system DPI, whatever the thread's awareness is (a stretched 16-px icon is
-    // blurry at 150 % / 200 %).
-    let (cx, cy) = dpi::small_icon_size();
+fn load_icon((cx, cy): (i32, i32)) -> HICON {
+    // `(cx, cy)` is the size at the DPI the caller chose, whatever the thread's awareness is (a
+    // stretched 16-px icon is blurry at 150 % / 200 %).
     // SAFETY: a null module name asks for this process's own module handle.
     let own = unsafe { GetModuleHandleW(None) }.ok().map(Into::into);
     let load = |module, name| -> Option<HICON> {
@@ -376,9 +630,16 @@ fn load_icon() -> HICON {
             unsafe { LoadImageW(module, name, IMAGE_ICON, cx, cy, LR_SHARED) }.ok()?;
         Some(HICON(handle.0))
     };
-    own.and_then(|module| load(Some(module), PCWSTR(std::ptr::without_provenance::<u16>(1))))
-        .or_else(|| load(None, IDI_APPLICATION))
-        .unwrap_or_default()
+    own.and_then(|module| {
+        load(
+            Some(module),
+            PCWSTR(std::ptr::without_provenance::<u16>(usize::from(
+                dpi::APP_ICON_RESOURCE,
+            ))),
+        )
+    })
+    .or_else(|| load(None, IDI_APPLICATION))
+    .unwrap_or_default()
 }
 
 /// Shows `lines` at the click position (`anchor`, the callback's `wParam`) and returns the entry
@@ -456,7 +717,7 @@ fn build_menu(lines: &[MenuLine]) -> Option<HMENU> {
                 label,
                 checked,
             } => {
-                let text = HSTRING::from(*label);
+                let text = HSTRING::from(label.as_str());
                 let flags = if *checked {
                     MF_STRING | MF_CHECKED
                 } else {
@@ -486,7 +747,7 @@ fn build_menu(lines: &[MenuLine]) -> Option<HMENU> {
 #[cfg(test)]
 mod tests {
     use windows::Win32::UI::Shell::NIN_SELECT;
-    use windows::Win32::UI::WindowsAndMessaging::WM_CONTEXTMENU;
+    use windows::Win32::UI::WindowsAndMessaging::{WM_CONTEXTMENU, WM_LBUTTONDBLCLK};
 
     use super::*;
 
@@ -496,6 +757,7 @@ mod tests {
         // NIN_KEYSELECT = NIN_SELECT | NINF_KEY (1).
         assert_eq!(crate::tray::NIN_KEYSELECT, NIN_SELECT | 1);
         assert_eq!(crate::tray::WM_CONTEXTMENU, WM_CONTEXTMENU);
+        assert_eq!(crate::tray::WM_LBUTTONDBLCLK, WM_LBUTTONDBLCLK);
     }
 
     #[test]

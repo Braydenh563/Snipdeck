@@ -32,7 +32,8 @@ pub fn wanted(value: Option<&str>) -> bool {
 pub fn enabled() -> bool {
     *ON.get_or_init(|| {
         let _ = START.get_or_init(Instant::now);
-        wanted(std::env::var("SNIPDECK_LOG").ok().as_deref())
+        // `SNIPDECK_DIAG` writes its lines here, so it switches the log on too.
+        wanted(std::env::var("SNIPDECK_LOG").ok().as_deref()) || crate::diag::get().any()
     })
 }
 

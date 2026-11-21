@@ -1,6 +1,6 @@
 # Encryption of sensitive items
 
-Code: `crates/snipdeck-store/src/crypto.rs` and `crypto/`. Pro feature (SPEC §5.7).
+Code: `crates/snipdeck-store/src/crypto.rs` and `crypto/`. SPEC §5.7.
 
 ## Hierarchy
 
@@ -26,9 +26,14 @@ DEK --[optional master password: Argon2id + XChaCha20-Poly1305]--> --KeyProvider
   parameters, salt and mode byte are inside the OS-authenticated blob and are also AAD of the
   password seal. The AEAD tag doubles as the password verifier, so a wrong password is a clean
   `WrongPassword` and no separate hash exists to attack.
-* Changing or removing the password re-seals the same DEK under a fresh salt and nonce
-  (`KeyRing::change_password`); no item is re-encrypted. This is not key rotation: an old
-  record plus the old password still opens the old record.
+* Setting, changing or removing the password **rotates the DEK**: a new DEK and record are made
+  (`KeyRing::rotate`), every sensitive item and every Recent row is re-sealed under it, and the
+  new record replaces the old one in one transaction (`Store::rotate_key_ring`). No earlier
+  record is kept (the `previous` column is always empty; migration 10 clears older ones), so the
+  old password opens nothing in the live library. A *backup file* made before the change still
+  opens with the old password and the old OS key; that is the nature of a copy: backups made
+  before a rotation stay sealed under the old key. The automatic `pre-v*.bak` copy made at an
+  upgrade has the previous key record cleared (and is deleted if that fails).
 
 ## Argon2id parameters
 
@@ -45,6 +50,14 @@ Default: **64 MiB (65 536 KiB), 3 passes, 1 lane**, 16-byte random salt, 32-byte
   the crate's own tests turn on through a dev-dependency on itself.
 * The 64 MiB is a transient allocation (zeroized on drop) during unlock; it is outside the
   40 MB idle-RAM budget of SPEC §9 only while unlocking.
+* **Typed master password (limit):** the unlock window clears the password field as soon as it is
+  submitted, but that only drops the toolkit's reference: Slint stores the text in an immutable,
+  reference-counted string that it frees without overwriting, and it keeps other copies (the
+  text-input edit buffer, undo history, shaped-text caches). Snipdeck cannot wipe any of them, so
+  the typed password can stay in freed UI memory until the allocator reuses it. (Overwriting the
+  field with filler first was tried and dropped: it allocates a new string and leaves the old
+  one untouched.) Only the Rust-side copies are zeroized. Not fixable without a toolkit change;
+  the exposure is that of any process-memory read by an attacker already running as the user.
 * **Measured** (release build, `cargo test -p snipdeck-store --release --lib -- --ignored
   --nocapture default_params`), 7 runs on a Linux cloud VM: min 238 ms, median 250 ms,
   max 253 ms. Re-measure on the reference Windows machine in milestone 2; adjust
@@ -72,8 +85,8 @@ The store does the encryption; the app never handles envelopes.
 * **Key record.** `Store::create_key_ring(&KeyRing, password)` makes the DEK, stores the
   `SNKEY1` record in the single-row `key_ring` table (schema v2), unlocks, and encrypts every
   sensitive item still in plain text (made sensitive on Free). `unlock_key_ring`,
-  `change_master_password` (re-wraps; the old record is overwritten, but a backup still opens
-  with the old password) and `lock_key_ring` (drops the DEK and every decrypted payload held in
+  `change_master_password` (rotates the DEK and re-seals every item and Recent row; the old
+  record is replaced and not kept, but a backup still opens with the old password) and `lock_key_ring` (drops the DEK and every decrypted payload held in
   memory) complete it. The DEK is held in the `Store` only while unlocked. `KeyRing` brings the
   `KeyProvider`, so DPAPI plugs in at milestone 2 without store changes.
 * **Which items.** Without a key ring, sensitive items are kept in plain text (Free: masking
@@ -118,8 +131,8 @@ FTS5 option or the checkpoint off makes it fail.
 What is **not** guaranteed:
 
 * **Copies made earlier keep the plaintext:** the `snipdeck.db.pre-vN.bak` migration backups,
-  the daily `.snipdeck` backups (SPEC §5.7a), OS file history, cloud sync of a relocated data
-  folder, and file-system snapshots. The app should tell the user when they mark an existing
+  the daily `.snipdeck` backups (SPEC §5.7a), OS file history, cloud sync of the data
+  folder (a relocatable data folder is planned for v1.x), and file-system snapshots. The app should tell the user when they mark an existing
   item sensitive.
 * **Below the file system.** Zeroing a page or a file rewrites it through the file system; a
   copy-on-write file system, SSD wear levelling or a journaling layer may keep the old blocks.
@@ -128,12 +141,88 @@ What is **not** guaranteed:
 * **SQLite temporary files** (sorting, large transactions) may be written to the OS temp
   folder and are deleted, not zeroed. Snipdeck's queries over sensitive content are small, but
   this is outside the store's control.
+* **Pasted files.** Pasting a Files item (sensitive or not) writes its files, decrypted, to
+  `%TEMP%\Snipdeck\paste-<random>\` in an unpackaged build, or `%USERPROFILE%\Snipdeck paste files\paste-<random>\` in a packaged (Store) build, which cannot share files under AppData (see `docs/packaging.md`), because `CF_HDROP` needs real paths. The folder is kept while
+  the clipboard may point into it. The next paste and the next start zero each file, then delete
+  the folder; a file another program has open stays until a later run. After a **sensitive** Files
+  item was pasted, locking the library and quitting also delete these folders (a file the target
+  still has open stays). Until then the plaintext is readable by that Windows account, and the
+  zeroing has the same limit as the point above.
+* **Log-off and shutdown.** The clipboard clear for a copied sensitive item runs when Snipdeck
+  quits normally. When Windows ends the session or the process is killed it does not run, so a value
+  copied in the last seconds can stay on the clipboard (and in a clipboard-history tool).
 * **Process memory** still holds plaintext while an item is shown or decrypted (below).
+
+## Windows Hello (v1.1)
+
+Hello never holds the data key and nothing is written to disk. After a password unlock the app asks
+Hello once to sign a random per-seal challenge (kept with the in-memory sealed copy, so every seal has its own secret) (`KeyCredentialManager`, RSA PKCS#1 v1.5, deterministic).
+`KEK = SHA-256("snipdeck-hello-kek-v1" || signature)` seals the data key with `aead.rs`
+(`store/crypto/hello.rs`, `SealedKey`) into an in-memory copy that also records the time of the
+password unlock. Turning Hello on signs twice (two prompts) and refuses a Hello whose two signatures differ; every later seal (after a password unlock) signs once. A later Hello prompt re-signs the challenge and opens it. A restart
+forgets the copy; after 7 days from the last password unlock (injected clock; a clock set back counts as
+expired) the copy is dropped and the password is asked, without a Hello prompt. A cancelled unlock keeps the copy (the button stays for another try); failure, a removed PIN or a wrong signature (for example a PIN reset made a new credential) fall back to the
+password and drop the copy; the option stays on and the next password unlock seals a new copy (one prompt). A cancelled seal never turns Hello off and never counts. A seal that fails twice in a row after password unlocks, or a Hello that is not repeatable, turns the option off and says why (toast, and a line in the unlock window); turning Hello on that fails or is cancelled leaves the switch off. After a changed credential the unlock window says so once, and the next password unlock re-checks that the signature repeats before it seals. Only the first Hello answer after start-up seals; opening Settings or the unlock window later never prompts. The copy is bound to the stored key record it was sealed for: if the record changed (the library was erased, the key forgotten) the copy is refused, Hello is turned off and the password is asked. Turning Hello off, erasing the library, removing or newly setting a password forgets the copy, switches Hello off and deletes the Windows credential "Snipdeck" (`HelloAuthenticator::delete_credential`, `KeyCredentialManager::DeleteAsync`; UNVERIFIED on Windows); changing the password drops the copy and seals a new one at once (one Hello prompt). A switch-on cut short by a lock, or made while locked, goes back off with a message. Closing the unlock window stops a Hello unlock under way. Keys and signatures are zeroized after use, and so is the SHA-256 state that derives the wrapping key (sha2 `zeroize` feature).
+
+## Master password text and wrong tries
+
+* The password is composed to Unicode NFC before it is hashed (sealing and opening), so the same
+  visible text opens the library however the keyboard or a paste produced it. Records made before
+  this were sealed under the raw text: when the NFC form does not open a record, the text as typed
+  and its decomposed (NFD) form are tried too. A record is re-sealed in NFC at the next password
+  change or removal (rotation, `KeyRing::rotate`).
+* Three wrong passwords in a row start a wait of 2, 4, 8, 16 and then 30 seconds before the next
+  try (unlock, change and remove); a right one clears it. The wait lasts only while the app runs:
+  quitting and restarting resets it, so it is a speed bump and not brute-force protection. The clock is the controller's injected
+  clock and the count lives in memory, so it is a speed bump for typing and not a defence against
+  someone who has copies of the files (that is what Argon2id is for).
+* The password fields warn when Caps Lock seems on (guessed from the keys typed; Slint has no
+  Caps Lock state) and have a Show button that draws the text as typed.
+
+## Plain metadata of sealed rows (audit PRIVACY-19)
+
+Only the payload of a sensitive item is encrypted. Its `items` row still holds, in plain form: id,
+list, title, kind, the pinned and sensitive flags, use count, last-used, created, updated and
+deleted times, the source app name and its rank; its `item_formats` rows hold the format names and
+the length of each sealed payload. (The preview of a sensitive item is empty.) Someone with the
+database file can therefore see which items are sensitive, their titles, how big their content is,
+which app they came from and when they were used, but not their text. Do not put a secret in a title. SQLite's temporary
+files are kept in memory (`PRAGMA temp_store = MEMORY` on every open) so sorting and indexing do
+not write row content to a temp file.
 
 ## Limits and non-goals
 
+* No recovery if the master password is forgotten: while one is set the DEK is only inside the
+  password-sealed record, so the OS binding alone cannot open it. The app says so before a
+  password is set (Settings > Privacy).
+* The app passes the typed password to the store as `&str` and keeps no copy, but the Slint
+  string behind the field is not wiped from memory when the field is emptied.
 * No recovery if the OS binding is lost (new Windows profile, DPAPI master key reset) and no
   recovery key. A "recovery key" export would be a separate feature.
+* **Backups and exports do not carry the key (audit G4, decision).** A `.snipdeck` archive holds
+  sensitive payloads as `SNENC2` envelopes under the data key and no key record, so on another
+  PC or Windows profile every sensitive item is skipped on import ("encrypted with a key this
+  library does not have"). The key cannot be carried with the current design: the only stored
+  record (`SNKEY1`) is wrapped by DPAPI, which opens only for the same Windows account; the
+  password-sealed part exists only when a master password is set and is never separate from the
+  OS wrapper; and writing the data key itself into the archive would put the key next to the
+  ciphertext in a file people e-mail and upload. A portable record (password-sealed key
+  without the OS wrapper, or a recovery key) is a new key format and a new restore path, so it
+  is left as a feature. Decision: warn, do not carry. The Backups and your data page of
+  Settings says before any backup or export that sensitive items restore only for the same
+  Windows account on the same PC, and the import and restore preview names the skipped count
+  after the loss (`ImportTexts`). Chosen because it adds no key material outside the OS
+  binding and cannot make a backup less safe.
 * Encrypts item content only. Titles, tags and search text are not covered; the FTS index
   never receives the content of sensitive items (title-only indexing, architecture.md).
 * Process memory can still hold plaintext while an item is shown.
+
+## DLL search order (audit G20)
+
+A DLL planted beside the exe must not load in place of a system one. Two parts, both **unverified
+on Windows** until the owner runs the Windows build and checks that it starts:
+
+- `build.rs` of `snipdeck-app` passes `/DEPENDENTLOADFLAG:0x800` to the MSVC linker, so the DLLs
+  the exe imports are looked for in System32 only. The loader resolves these before `main`.
+- `harden_dll_search` (`SetDefaultDllDirectories`, first thing in `main`) restricts later
+  `LoadLibrary` calls to the application folder and System32. It cannot cover the static imports.

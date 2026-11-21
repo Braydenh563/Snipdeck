@@ -1,10 +1,10 @@
 //! Writing the settings file: atomically, and not on every keystroke.
 //!
 //! - [`write_atomic`] never leaves a half-written `settings.json`: the new text goes to
-//!   `settings.json.tmp`, is flushed to disk (`fsync`), and only then renamed over the old file
+//!   `settings.json.<pid>-<n>.tmp` (a name only this write uses), is flushed to disk (`fsync`), and only then renamed over the old file
 //!   (on Windows `std::fs::rename` replaces an existing file in one `MoveFileExW` call). A crash
 //!   before the rename leaves the old file untouched and a stale `.tmp`, which the next write
-//!   simply overwrites. Reading is [`crate::paths::read_settings`], which also sets a damaged
+//!   removes. Reading is [`crate::paths::read_settings`], which also sets a damaged
 //!   file aside as `settings.json.bad`.
 //! - [`SettingsSaver`] decides *when* to write. A change waits for a quiet moment
 //!   ([`Debounce::quiet`]) so that dragging a slider writes once; continuous changes still write
@@ -12,9 +12,10 @@
 //!   reads a clock: callers pass `now` (the controller's injected clock), so tests are exact.
 
 use std::{
-    fs::{self, File},
+    fs::{self, File, OpenOptions},
     io::{self, Write},
     path::{Path, PathBuf},
+    sync::atomic::{AtomicU64, Ordering},
     time::Duration,
 };
 
@@ -22,8 +23,40 @@ use snipdeck_core::Timestamp;
 
 use crate::{paths::SETTINGS_FILE, settings::Settings};
 
-/// The file a write goes to before it replaces `settings.json`.
-pub const TEMP_FILE: &str = "settings.json.tmp";
+/// The start of the name of the file a write goes to before it replaces `settings.json`.
+pub const TEMP_STEM: &str = "settings.json";
+
+/// Makes a new, empty file `<stem>.<pid>-<n>.tmp` in `dir` that no other write is using
+/// (`create_new`: an existing file is never opened, so a planted or stale name cannot be
+/// written through). One retry with the next number if the name is taken.
+pub(crate) fn create_temp(dir: &Path, stem: &str) -> io::Result<(File, PathBuf)> {
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    let mut last = None;
+    for _ in 0..2 {
+        let n = NEXT.fetch_add(1, Ordering::Relaxed);
+        let path = dir.join(format!("{stem}.{}-{n}.tmp", std::process::id()));
+        match OpenOptions::new().write(true).create_new(true).open(&path) {
+            Ok(file) => return Ok((file, path)),
+            Err(e) if e.kind() == io::ErrorKind::AlreadyExists => last = Some(e),
+            Err(e) => return Err(e),
+        }
+    }
+    Err(last.unwrap_or_else(|| io::Error::other("no temporary name")))
+}
+
+/// Removes the temporary files that earlier, interrupted writes of `stem` left in `dir`.
+fn remove_stale_temps(dir: &Path, stem: &str) {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if name.starts_with(&format!("{stem}.")) && name.ends_with(".tmp") {
+            let _ = fs::remove_file(entry.path());
+        }
+    }
+}
 
 /// Writes `settings` to `folder/settings.json` so that a reader (or a crash) sees the old file
 /// or the new one, never a mixture. Creates `folder` if needed.
@@ -32,6 +65,8 @@ pub const TEMP_FILE: &str = "settings.json.tmp";
 ///
 /// Any I/O error from creating, writing, syncing or renaming. On error the old file is intact.
 pub fn write_atomic(folder: &Path, settings: &Settings) -> io::Result<()> {
+    fs::create_dir_all(folder)?;
+    remove_stale_temps(folder, TEMP_STEM);
     let temp = write_temp(folder, &settings.to_json())?;
     commit(&temp, &folder.join(SETTINGS_FILE))
 }
@@ -39,8 +74,7 @@ pub fn write_atomic(folder: &Path, settings: &Settings) -> io::Result<()> {
 /// Step one of [`write_atomic`]: the complete new text, on disk, under the temporary name.
 pub(crate) fn write_temp(folder: &Path, text: &str) -> io::Result<PathBuf> {
     fs::create_dir_all(folder)?;
-    let temp = folder.join(TEMP_FILE);
-    let mut file = File::create(&temp)?;
+    let (mut file, temp) = create_temp(folder, TEMP_STEM)?;
     let written = file
         .write_all(text.as_bytes())
         .and_then(|()| file.write_all(b"\n"))
@@ -288,7 +322,7 @@ mod tests {
     use std::{cell::RefCell, rc::Rc};
 
     use super::*;
-    use crate::{paths::load_settings, settings::Theme};
+    use crate::{paths::read_settings, settings::Theme};
 
     fn at(s: &str) -> Timestamp {
         s.parse().expect("timestamp")
@@ -308,8 +342,7 @@ mod tests {
         let temp = tempfile::tempdir().expect("dir");
         let folder = temp.path().join("not").join("yet");
         write_atomic(&folder, &dark()).expect("write");
-        assert_eq!(load_settings(&folder), dark());
-        assert!(!folder.join(TEMP_FILE).exists());
+        assert_eq!(read_settings(&folder).settings, dark());
         let names: Vec<_> = fs::read_dir(&folder)
             .expect("dir")
             .map(|e| e.expect("entry").file_name())
@@ -326,7 +359,7 @@ mod tests {
         // The process dies after the temporary file is complete but before the rename.
         let staged = write_temp(dir, &dark().to_json()).expect("temp");
         assert_eq!(
-            load_settings(dir),
+            read_settings(dir).settings,
             Settings::default(),
             "readers still see the old settings"
         );
@@ -337,7 +370,7 @@ mod tests {
 
         // The next run writes again over the stale temporary file.
         write_atomic(dir, &dark()).expect("second");
-        assert_eq!(load_settings(dir), dark());
+        assert_eq!(read_settings(dir).settings, dark());
         assert!(!staged.exists());
     }
 
@@ -350,7 +383,7 @@ mod tests {
         // Pull the temporary file out from under the rename.
         fs::remove_file(&staged).expect("remove");
         assert!(commit(&staged, &dir.join(SETTINGS_FILE)).is_err());
-        assert_eq!(load_settings(dir), Settings::default());
+        assert_eq!(read_settings(dir).settings, Settings::default());
     }
 
     // ---- the debounce ------------------------------------------------------------------------
@@ -383,7 +416,20 @@ mod tests {
         assert!(!s.has_pending());
         assert!(matches!(s.poll(at("2026-10-17T10:00:00Z")), Poll::Idle));
         assert_eq!(s.wait(at("2026-10-17T10:00:00Z")), None);
-        assert!(rec.writes.borrow().is_empty());
+        assert_eq!(rec.writes.borrow().len(), 0);
+    }
+
+    #[test]
+    fn a_saver_started_from_the_defaults_writes_the_salvaged_settings() {
+        // The salvage write failed, so no file exists: the baseline is the defaults and the
+        // settings in use (the salvaged ones) are a change that gets written.
+        let rec = Recorder::default();
+        let mut s = saver(&rec);
+        let salvaged = dark();
+        s.changed(&salvaged, at("2026-10-17T09:00:00Z"));
+        assert!(s.has_pending());
+        assert!(matches!(s.poll(at("2026-10-17T09:00:01Z")), Poll::Saved));
+        assert_eq!(*rec.writes.borrow(), [salvaged]);
     }
 
     #[test]
@@ -399,7 +445,7 @@ mod tests {
             s.poll(at("2026-10-17T09:00:00.4Z")),
             Poll::Waiting(d) if d == Duration::from_millis(100)
         ));
-        assert!(rec.writes.borrow().is_empty());
+        assert_eq!(rec.writes.borrow().len(), 0);
         assert!(matches!(s.poll(at("2026-10-17T09:00:00.5Z")), Poll::Saved));
         assert_eq!(*rec.writes.borrow(), [dark()]);
         assert!(!s.has_pending());
@@ -468,7 +514,7 @@ mod tests {
             s.poll(back),
             Poll::Waiting(d) if d == Duration::from_millis(500)
         ));
-        assert!(rec.writes.borrow().is_empty());
+        assert_eq!(rec.writes.borrow().len(), 0);
         assert!(matches!(s.poll(at("2026-10-17T08:00:00.5Z")), Poll::Saved));
         assert_eq!(*rec.writes.borrow(), [dark()]);
     }
@@ -511,7 +557,7 @@ mod tests {
         s.changed(&Settings::default(), at("2026-10-17T09:00:00.1Z"));
         assert!(!s.has_pending());
         assert!(matches!(s.poll(at("2026-10-17T09:01:00Z")), Poll::Idle));
-        assert!(rec.writes.borrow().is_empty());
+        assert_eq!(rec.writes.borrow().len(), 0);
     }
 
     #[test]
@@ -560,6 +606,6 @@ mod tests {
         s.changed(&dark(), at("2026-10-17T09:00:00Z"));
         assert!(!temp.path().join(SETTINGS_FILE).exists(), "not yet");
         assert!(matches!(s.poll(at("2026-10-17T09:00:00.5Z")), Poll::Saved));
-        assert_eq!(load_settings(temp.path()), dark());
+        assert_eq!(read_settings(temp.path()).settings, dark());
     }
 }

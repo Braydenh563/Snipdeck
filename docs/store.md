@@ -15,7 +15,7 @@ to use SQLite plus a blob folder is [ADR-0002](adr/0002-local-first-sqlite.md).
 
 `Store::open_in_memory()` keeps database and blobs in memory, for tests and previews.
 
-## Schema (version 2)
+## Schema (version 5: v3 added the Recent inbox, v4 the item colour label and list icon, v5 Recent encryption)
 
 Ids are 16-byte `BLOB`s, timestamps `INTEGER` nanoseconds, enums `TEXT` keys, booleans 0/1. Every
 table is `STRICT`. `rank` is a sparse integer, unique within the parent.
@@ -30,6 +30,7 @@ table is `STRICT`. `rank` is a sparse integer, unique within the parent.
 | `tags` | `name`, `name_key` | `name_key` unique: the name decomposed, case-folded (upper then lower case, so `ß` = `SS`) and recomposed to NFC (`tags::name_key`; v2) |
 | `item_tags` | | PK `(item_id, tag_id)`; both FKs cascade; index on `tag_id` |
 | `item_fts` | FTS5 `title`, `body` | `unicode61 remove_diacritics 2`; rowid = `items.seq`; trigger `items_fts_delete`; FTS5 `secure-delete` on (v2) |
+| `recent_entries` (v3, v5) | `hash` (unique; keyed BLAKE3 once a key exists), `text`, `source_app` (BLOBs; envelopes when `encrypted = 1`), `copied_at`, `encrypted` | Not an item, not in the FTS; text and source app are `SNENC2` envelopes bound to the row hash, so a ciphertext moved to another row fails to open. Rows kept before a key exists (or by v4) are plain, `encrypted = 0`, and are sealed the first time a key is available (`create_key_ring` / `unlock_key_ring`; with a master password that is the first unlock). Locked: reads and writes fail with `EncryptionLocked`; delete, clear and prune need no key. The v5 migration rebuilds the table, keeps every row, and scrubs `recent_entries` from the `.pre-vN.bak` it writes |
 | `key_ring` (v2) | `id` (always 1), `record` | At most one row: the `SNKEY1` key record ([crypto.md](crypto.md)); `CHECK` that it starts with `SNKEY1` |
 
 Every foreign key column is the leading column of an index (a test checks this).
@@ -163,8 +164,8 @@ cannot read the FTS index once `secure-delete` is on. Tested on the real v1 fixt
 
 To add a migration:
 
-1. Write `pub(crate) const V3: &str = "..."` in `schema.rs` (SQL only; no `BEGIN`, no `PRAGMA user_version`).
-2. Append `Migration { version: 3, name: "...", sql: schema::V3, post: None }` to `MIGRATIONS`.
+1. Write `pub(crate) const V5: &str = "..."` in `schema.rs` (SQL only; no `BEGIN`, no `PRAGMA user_version`).
+2. Append `Migration { version: 5, name: "...", sql: schema::V5, post: None }` to `MIGRATIONS`.
 3. Add a test that migrates `tests/fixtures/v1.db` (a real v1 file) through every step and
    checks rows survive; extend `tests/fixture.rs` if it should assert new data.
 4. Update the table above and keep the frozen `V1` and `V2` text unchanged.

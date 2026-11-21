@@ -149,10 +149,11 @@ mod tests {
     use chacha20poly1305::aead::{Aead as _, Payload};
     use chacha20poly1305::{KeyInit as _, XChaCha20Poly1305, XNonce};
 
+    use super::super::key::test_bytes;
     use super::*;
 
     fn key() -> DataKey {
-        DataKey::from_bytes([0x11; 32])
+        DataKey::from_bytes(test_bytes(0x11))
     }
 
     fn id() -> ItemId {
@@ -200,7 +201,7 @@ mod tests {
     fn wrong_key_fails_authentication() {
         let id = id();
         let envelope = encrypt_item(&key(), &id, b"secret").unwrap();
-        let other = DataKey::from_bytes([0x22; 32]);
+        let other = DataKey::from_bytes(test_bytes(0x22));
         assert_eq!(
             decrypt_item(&other, &id, &envelope).unwrap_err(),
             CryptoError::AuthenticationFailed
@@ -260,8 +261,9 @@ mod tests {
     fn the_format_byte_is_part_of_the_associated_data() {
         // An envelope sealed with the item id alone (no format byte) must not open.
         let id = id();
-        let nonce = [5_u8; 24];
-        let ciphertext = XChaCha20Poly1305::new((&[0x11_u8; 32]).into())
+        // A nonce that differs from the one the real code draws at random.
+        let nonce: [u8; 24] = test_bytes(5);
+        let ciphertext = XChaCha20Poly1305::new((&test_bytes::<32>(0x11)).into())
             .encrypt(
                 &XNonce::from(nonce),
                 Payload {

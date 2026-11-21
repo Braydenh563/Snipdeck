@@ -1,0 +1,37 @@
+import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
+
+// Names a control. Render only: the window's `TipLayer` (tip-host.slint) places it, keeps the timing and sets
+// `open`. Fades in 90ms when `open` turns on (also under reduced motion, DESIGN.md §8). Never takes pointer or focus.
+export component Tooltip inherits Rectangle {
+    in property <string> text;
+    in property <bool> open: false;
+    // The widest the tooltip may be (`limit-width`); longer text wraps to more lines. The host sets it to the room it
+    // has (the window's width less its margins), so a long name never runs past an edge.
+    in property <length> limit-width: 100000px;
+
+    // Sized by its text: one line when it fits `limit-width`, wrapped otherwise. The host sets its width and
+    // height from these (it is placed, not laid out), then positions it.
+    preferred-width: min(label.preferred-width + 2 * Space.s2, root.limit-width);
+    preferred-height: label.preferred-height + 2 * Space.s1;
+    background: Theme.ink;
+    border-radius: Radius.sm;
+    border-width: Theme.hc-border != transparent ? 1px : 0px;
+    border-color: Theme.hc-border;
+    opacity: root.open ? 1.0 : 0.0;
+    accessible-role: AccessibleRole.none;
+    animate opacity { duration: Motion.fade; easing: Motion.out; }
+
+    label := Text {
+        x: Space.s2;
+        y: Space.s1;
+        width: root.width - 2 * Space.s2;
+        height: root.height - 2 * Space.s1;
+        text: root.text;
+        wrap: word-wrap;
+        color: Theme.text-on-ink;
+        font-family: Fonts.sans;
+        font-size: Type.sm;
+        font-weight: Type.medium;
+        vertical-alignment: center;
+    }
+}

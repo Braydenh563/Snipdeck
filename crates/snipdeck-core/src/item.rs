@@ -1,6 +1,7 @@
 use std::collections::BTreeSet;
 
 use crate::{ItemId, ListId, TagId, Timestamp, UseMode};
+use unicode_segmentation::UnicodeSegmentation as _;
 
 keyed_enum! {
     /// What an item holds, which decides its leading element in the panel (DESIGN.md §4).
@@ -21,6 +22,30 @@ keyed_enum! {
         Image = "image",
         /// One or more files.
         File = "file",
+    }
+}
+
+keyed_enum! {
+    /// An item's colour label: a 4px bar on its card, and a filter in the Main window. The label
+    /// is named wherever it can be read as text (the card's accessible description, the filter
+    /// chip, the editor's swatches); on the card itself the bar is the only visible cue.
+    pub enum ItemLabel ("item label") {
+        /// Blue.
+        Blue = "blue",
+        /// Teal.
+        Teal = "teal",
+        /// Green.
+        Green = "green",
+        /// Amber.
+        Amber = "amber",
+        /// Orange.
+        Orange = "orange",
+        /// Red.
+        Red = "red",
+        /// Violet.
+        Violet = "violet",
+        /// Slate.
+        Slate = "slate",
     }
 }
 
@@ -48,7 +73,7 @@ pub struct Item {
     /// Shown in the favourites strip.
     pub pinned: bool,
     /// Masked, kept out of history, auto-cleared from the clipboard after use, and encrypted at
-    /// rest with Pro (SPEC §5.7).
+    /// rest (SPEC §5.7).
     pub sensitive: bool,
     /// Always paste as plain text (SPEC §5.1a).
     pub always_plain: bool,
@@ -56,6 +81,8 @@ pub struct Item {
     pub use_count: u32,
     /// When the item was last used.
     pub last_used_at: Option<Timestamp>,
+    /// The colour label, if the user set one.
+    pub label: Option<ItemLabel>,
     /// Name of the app the content was captured from, if known.
     pub source_app: Option<String>,
     /// When the item was created.
@@ -83,6 +110,7 @@ impl Item {
             always_plain: false,
             use_count: 0,
             last_used_at: None,
+            label: None,
             source_app: None,
             created_at: now,
             updated_at: now,
@@ -96,10 +124,24 @@ impl Item {
         if sensitive {
             return String::new();
         }
-        text.trim_start()
-            .chars()
-            .take(Self::PREVIEW_CHARS)
-            .collect()
+        let text = text.trim_start();
+        let mut cut = String::new();
+        let mut chars = 0;
+        // Whole grapheme clusters only: a cut must not split an emoji sequence or a letter
+        // from its combining marks.
+        for cluster in text.graphemes(true) {
+            let n = cluster.chars().count();
+            if chars + n > Self::PREVIEW_CHARS {
+                break;
+            }
+            cut.push_str(cluster);
+            chars += n;
+        }
+        if cut.is_empty() {
+            // One cluster longer than the whole preview: fall back to a plain cut.
+            return text.chars().take(Self::PREVIEW_CHARS).collect();
+        }
+        cut
     }
 
     /// The mode to use when the user asks for `requested`, honouring
@@ -136,8 +178,36 @@ mod tests {
     }
 
     #[test]
+    fn a_preview_is_cut_between_grapheme_clusters_not_inside_one() {
+        let family = "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}";
+        let text = format!("{}{family}tail", "a".repeat(Item::PREVIEW_CHARS - 3));
+        let preview = Item::preview_of(&text, false);
+        assert_eq!(
+            preview,
+            "a".repeat(Item::PREVIEW_CHARS - 3),
+            "the family sequence is dropped whole"
+        );
+        let combined = format!("{}e\u{301}", "a".repeat(Item::PREVIEW_CHARS - 1));
+        assert_eq!(
+            Item::preview_of(&combined, false),
+            "a".repeat(Item::PREVIEW_CHARS - 1)
+        );
+        let zalgo = format!("a{}", "\u{301}".repeat(Item::PREVIEW_CHARS + 5));
+        assert_eq!(
+            Item::preview_of(&zalgo, false).chars().count(),
+            Item::PREVIEW_CHARS
+        );
+    }
+
+    #[test]
     fn item_kind_keys_round_trip() {
         crate::key::assert_keys_round_trip(ItemKind::ALL, ItemKind::key);
+    }
+
+    #[test]
+    fn item_label_keys_round_trip_and_there_are_eight() {
+        crate::key::assert_keys_round_trip(ItemLabel::ALL, ItemLabel::key);
+        assert_eq!(ItemLabel::ALL.len(), 8);
     }
 
     #[test]
@@ -145,7 +215,7 @@ mod tests {
         let item = item();
         assert_eq!((item.use_count, item.last_used_at), (0, None));
         assert!(!item.pinned && !item.sensitive && !item.always_plain);
-        assert!(item.tags.is_empty() && item.preview.is_empty());
+        assert!(item.tags.is_empty() && item.preview.is_empty() && item.label.is_none());
         assert_eq!((item.created_at, item.updated_at), (now(), now()));
     }
 

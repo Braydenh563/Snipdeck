@@ -1,0 +1,155 @@
+{
+  "id": "QC",
+  "quickOnly": true,
+  "title": "Quick check: what changed lately and can only be judged on Windows",
+  "friendly": "Quick check (hotkey, one-click paste, Recent opt-in, Alt+Tab, dock, Symbols PNG, render flicker)",
+  "note": "tools/windows-test/README.md, Quick check. Runs the real app on a new, empty test library in spikes-results\\qc-data (deleted at the start of each new run), so your own snippets are never touched.",
+  "dir": ".",
+  "exe": "snipdeck-app",
+  "captureLines": [
+    "snipdeck:",
+    "snipdeck-log"
+  ],
+  "setup": [
+    "This runs the real Snipdeck on a brand-new empty test library (spikes-results\\qc-data, wiped at the start of every new Quick check), so your own snippets and settings are never touched.",
+    "The shortcut that shows the Panel in this test is {HOTKEY}. {REAL_HOTKEY_NOTE}",
+    "Close your normal Snipdeck first (tray icon > Quit): the wizard offers to do it. Have one Notepad window open.",
+    "Some steps run by themselves: the mouse and keyboard move for a few seconds. To stop, hold Esc."
+  ],
+  "tests": [
+    {
+      "id": "1",
+      "qc": true,
+      "qcOnly": true,
+      "gate": true,
+      "launch": {
+        "args": [
+          "--data-dir",
+          "spikes-results\\qc-data"
+        ],
+        "env": {
+          "SNIPDECK_LOG": "1"
+        }
+      },
+      "auto": "Invoke-QcHotkey",
+      "minutes": 0.5,
+      "title": "Panel v2: the hotkey shows and hides the Panel",
+      "do": "Click into a Notepad window so its cursor is blinking. Press {HOTKEY} to show the Panel. Press {HOTKEY} again.",
+      "expect": "The Panel appears on the first press and goes away on the second, and the Notepad cursor keeps blinking (the Panel does not take the keyboard). {HOTKEY} is the shortcut of this test library (a new install). An older Snipdeck keeps Ctrl+Alt+Space; that is not what is tested here. If the Panel asks \"Keep a Recent list of what you copy?\", leave it: step 3 answers it."
+    },
+    {
+      "id": "3",
+      "qc": true,
+      "qcOnly": true,
+      "gate": true,
+      "auto": "Invoke-QcRecent",
+      "minutes": 1.5,
+      "title": "Recent asks first: nothing kept before Yes, a copy kept after",
+      "do": "In Notepad type beforeyes, press Ctrl+A, then Ctrl+C. Open the Panel with {HOTKEY}. It asks \"Keep a Recent list of what you copy?\" (if the welcome tour is open, close or skip it first; the question comes after it). Choose Yes. Now type quickcheck in Notepad, Ctrl+A, Ctrl+C, open the Panel and look in its Recent list.",
+      "expect": "The question appears once, on this new test library. After Yes, quickcheck is in Recent; beforeyes (copied before you answered) is NOT."
+    },
+    {
+      "id": "4",
+      "qc": true,
+      "qcOnly": true,
+      "minutes": 0.5,
+      "title": "Recent ignores a password manager",
+      "do": "Recent is on after step 3 (if step 3 failed, turn on Settings > Keep a Recent inbox of what you copy first). Open a password manager on this PC (KeePass, 1Password, Bitwarden, ...) and copy a password from it. Open the Panel and look in Recent. No password manager installed: press S to skip.",
+      "expect": "The password is NOT in Recent. (The text you copied in Notepad is still there.)"
+    },
+    {
+      "id": "5",
+      "qc": true,
+      "qcOnly": true,
+      "gate": true,
+      "minutes": 1,
+      "title": "Panel v2: one click pastes, then the Panel hides",
+      "do": "Click into Notepad and put the cursor on an empty line. Open the Panel with {HOTKEY}. Click the quickcheck row once.",
+      "expect": "quickcheck is typed into Notepad at the cursor, and the Panel hides by itself right after (it is not pinned)."
+    },
+    {
+      "id": "9",
+      "qc": true,
+      "qcOnly": true,
+      "gate": true,
+      "minutes": 1.5,
+      "title": "Alt+Tab: a paste goes to the window you were in before the Panel",
+      "do": "Open two Notepad windows and call them one and two (type 1 and 2 in them). In Settings turn on Show the Panel in the taskbar and Alt+Tab. Click into Notepad one. Open the Panel with {HOTKEY}. Click the Panel's taskbar button, or press Alt+Tab to it. Click the quickcheck row. Turn the setting off again if you do not want it.",
+      "expect": "quickcheck is typed in Notepad one (the window you were in before the Panel), not in Notepad two and not anywhere else."
+    },
+    {
+      "id": "10",
+      "qc": true,
+      "qcOnly": true,
+      "minutes": 1,
+      "title": "Dock: the Panel docks to the taskbar edge",
+      "do": "In Settings set Dock to = {EDGE_LABEL} (the edge your taskbar is on). Leave Open a docked panel by on Click. Open the Panel with {HOTKEY}.",
+      "expect": "The Panel sits against that edge, next to the taskbar and not over it. {EDGE_NOTE}"
+    },
+    {
+      "id": "11",
+      "qc": true,
+      "qcOnly": true,
+      "gate": true,
+      "auto": "Invoke-QcDockWorkArea",
+      "minutes": 0.5,
+      "title": "Dock: a docked Panel stays out of the taskbar",
+      "do": "Look at the docked Panel next to the taskbar. Then set Dock to back to Floating.",
+      "expect": "No part of the Panel covers the taskbar or goes off the screen, and its bottom row can be seen in full."
+    },
+    {
+      "id": "15",
+      "qc": true,
+      "qcOnly": true,
+      "minutes": 1,
+      "title": "Symbols: Copy PNG into Word and Paint",
+      "do": "In the Symbols tab open the Icons kind and click an icon (an icon click copies a PNG). Paste it into Word with Ctrl+V, then into Paint.",
+      "expect": "The icon pastes as a picture in both. In Word the background is clear (the page shows through); in Paint it is a drawing in the theme's text colour. Note what Paint shows behind it."
+    },
+    {
+      "id": "20",
+      "qc": true,
+      "qcOnly": true,
+      "minutes": 1,
+      "title": "Drag the Panel: no see-through flicker",
+      "do": "Open the Panel. Drag it by its top strip in slow circles in the middle of the screen for 5 seconds, then hold it against the right edge until the dock outline shows, then pull it back to the middle. Do this twice.",
+      "expect": "The Panel stays solid the whole time. When the dock outline comes and goes, the Panel may change size, but no part of it shows the desktop or the window behind it, not even for a moment. Press F if any part flickers see-through."
+    },
+    {
+      "id": "21",
+      "qc": true,
+      "qcOnly": true,
+      "minutes": 1,
+      "title": "Dock near the top-right corner: fully drawn without a click",
+      "do": "Drag the Panel into the top-right corner of the screen (both near the top and against the right edge) and let go so it docks. Do not move the mouse over it; wait 3 seconds. Repeat on the left edge near the top. If you have two screens, also try the corner where the screens meet.",
+      "expect": "Each time, the docked Panel is fully drawn within a moment: every item, the search box and the top strip. You never need to click it, hover it or switch windows to make it show. Press F if any part stays see-through or empty until you click."
+    },
+    {
+      "id": "22",
+      "qc": true,
+      "qcOnly": true,
+      "minutes": 1,
+      "title": "Save an edit: the Panel comes back fully drawn",
+      "do": "Open the Panel, open Edit on any item (right-click > Edit, or the item menu), change one letter, press Save. Do it three times, once with the Panel docked.",
+      "expect": "When the editor closes, the Panel shows again fully drawn straight away: no see-through areas, no items missing until you hover them."
+    },
+    {
+      "id": "23",
+      "qc": true,
+      "qcOnly": true,
+      "minutes": 1,
+      "title": "Slide along the edge: stays solid",
+      "do": "Dock the Panel on the right edge. Drag its top strip up and down along the edge (the Panel slides along it) for 5 seconds, then let go.",
+      "expect": "The Panel stays solid and fully drawn while it slides and after you let go. Press F if it goes see-through, even briefly."
+    },
+    {
+      "id": "24",
+      "qc": true,
+      "qcOnly": true,
+      "minutes": 2,
+      "title": "Other windows: off screen and back, Alt+Tab, minimise",
+      "do": "Open About, then Edit on an item, then the Main window's Tags window. Drag each one half off the bottom or right of the screen, let go, and drag it fully back. Then Alt+Tab away and back to the Main window, minimise it and restore it.",
+      "expect": "Every window is fully drawn after each step: the part that was off screen is drawn when it comes back, and nothing shows the desktop through the window. A short flash of the plain background colour while a window is resized is fine; see-through is not."
+    }
+  ]
+}

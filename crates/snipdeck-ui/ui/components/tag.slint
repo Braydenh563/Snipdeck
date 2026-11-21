@@ -1,4 +1,4 @@
-import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
+import { SystemLook, Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
 import { Icon } from "icon.slint";
 import { StateColor } from "state-color.slint";
 import { Icons } from "../icons.slint";
@@ -21,7 +21,7 @@ export component Tag inherits Rectangle {
     property <bool> pressed: touch.pressed && root.enabled;
     property <bool> hovered: touch.has-hover && root.enabled;
 
-    height: max(Space.hit-min, Type.line-sm + Space.s2);
+    height: max(Space.hit-min * SystemLook.text-scale, Type.line-sm + Space.s2);
     min-width: Space.hit-min;
     background: root.selected
         ? (root.pressed ? Theme.bg-selected.darker(0.1) : Theme.bg-selected)
@@ -46,10 +46,10 @@ export component Tag inherits Rectangle {
         spacing: Space.s1;
         alignment: start;
         if root.selected: Rectangle {
-            width: 12px;
+            width: 12px * SystemLook.text-scale;
             Icon {
                 source: Icons.check;
-                size: 12px;
+                size: 12px * SystemLook.text-scale;
                 tint: Theme.accent-on-selected;
                 y: (parent.height - self.height) / 2;
             }
@@ -63,21 +63,21 @@ export component Tag inherits Rectangle {
             vertical-alignment: center;
         }
         if root.removable: Rectangle {
-            width: Space.hit-min;
+            width: Space.hit-min * SystemLook.text-scale;
             accessible-role: button;
             accessible-label: root.remove-label;
             accessible-enabled: root.enabled;
             accessible-action-default => { if (root.enabled) { root.removed(); } }
 
             Rectangle {
-                width: 20px;
-                height: 20px;
+                width: 20px * SystemLook.text-scale;
+                height: 20px * SystemLook.text-scale;
                 background: x-touch.has-hover && root.enabled ? Theme.bg-hover : transparent;
                 border-radius: Radius.sm;
                 animate background { duration: Motion.instant; easing: Motion.out; }
                 Icon {
                     source: Icons.x;
-                    size: 12px;
+                    size: 12px * SystemLook.text-scale;
                     tint: root.selected ? Theme.text-secondary-on-selected : Theme.text-secondary;
                     x: (parent.width - self.width) / 2;
                     y: (parent.height - self.height) / 2;

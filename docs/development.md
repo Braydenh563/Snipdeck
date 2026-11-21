@@ -14,7 +14,7 @@ view-models. `core` depends on nothing internal.
 
 | Crate | Read first | What to know |
 |---|---|---|
-| `snipdeck-core` | `lib.rs`, `template.rs`, `search.rs`, `licence.rs` | Pure: it never reads the clock, the clipboard or the OS; callers pass `now`, the clipboard text and the entitlements. Ids are UUIDv7 newtypes, stored enums have stable string keys, errors are one `thiserror` enum. `#![forbid(unsafe_code)]`. |
+| `snipdeck-core` | `lib.rs`, `template.rs`, `search.rs` | Pure: it never reads the clock, the clipboard or the OS; callers pass `now`, the clipboard text. Ids are UUIDv7 newtypes, stored enums have stable string keys, errors are one `thiserror` enum. `#![forbid(unsafe_code)]`. |
 | `snipdeck-store` | `store.rs`, `repo.rs`, `schema.rs`, `migrations.rs`, `crypto/` | Synchronous SQLite (`rusqlite`, WAL, FTS5), content-addressed blobs, sparse integer ranks for ordering, trash, `Store::transaction` / `Batch`, XChaCha20-Poly1305 envelopes and the key ring. Repositories are traits, so the rest can run against fakes. See [`store.md`](store.md), [`crypto.md`](crypto.md). |
 | `snipdeck-portable` | `export.rs`, `import.rs`, `archive.rs`, `importers/` | `.snipdeck` zip reader and writer with hard limits, three importers, daily backups. Treats every file as untrusted; validates all of it, then writes in one transaction. See [`format.md`](format.md). |
 | `snipdeck-platform` | `pipeline.rs`, `route.rs`, `keys.rs`, `windows/` | The paste sequence (snapshot, write, inject, wait, restore) is written against traits (`Clipboard`, `Keyboard`, `Timing`), with fakes in `testing`. The `windows/` module (`cfg(windows)`) is the only place `unsafe` is allowed, each block with a `// SAFETY:` note. |
@@ -74,8 +74,10 @@ are right.
 
 ### Windows wizard
 
-`run-windows-tests.bat` builds the apps and walks a person through steps in `tools/windows-test/tests/*.json`
-(`s1`, `s2`, `s4` for the M0 spikes, `m2-platform`, `m3-app`), recording pass, fail or skip per step. Some
+`Test Snipdeck on Windows.bat` (repo root) builds the apps and walks a person through steps in `tools/windows-test/tests/*.json`
+(`s1`, `s2`, `s4` for the M0 spikes, `m2-platform`, `m3-app`), recording pass, fail or skip per step. The default
+is the "v1 check": the steps flagged `"v1": true`. The run ends with one results zip on the Desktop; nothing is
+committed or pushed unless chosen under Advanced options. Some
 steps can run by themselves (`tools/windows-test/auto/`); that automation has never run on Windows, and the
 list of its assumptions is at the end of the wizard README. `tools/windows-test/m2-harness` is a small
 program that drives the platform crate for the M2 steps. When you add Windows-only behaviour, add its
@@ -98,5 +100,5 @@ steps. Results go in `docs/spikes/` (for spikes) only when they came from a real
   in `snipdeck-platform` and the app's window attach code.
 - The renderer is the software renderer: Skia and FemtoVG have open transparency bugs on Windows
   ([`adr/0007-m0-toolkit-constraints.md`](adr/0007-m0-toolkit-constraints.md)).
-- Release builds need `SNIPDECK_LICENCE_PUBLIC_KEY`; see [`licensing.md`](licensing.md).
+- Release builds need no licence key or licensing environment variable ([`licensing.md`](licensing.md)).
 - The current state, open gaps and the next steps live in [`HANDOVER.md`](HANDOVER.md).

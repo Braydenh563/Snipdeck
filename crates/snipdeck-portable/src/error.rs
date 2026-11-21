@@ -58,6 +58,20 @@ pub enum Error {
         /// The limit, in the unit of `what`.
         limit: u64,
     },
+    /// An export or backup cannot hold an item: its attachment is over the entry limit of the
+    /// archive. Names the item, so the person can shrink or remove it. The total being over its
+    /// limit is not one item's fault and stays an [`Error::LimitExceeded`].
+    #[error(
+        "the item \"{title}\" does not fit in the archive: {what} is over the limit of {limit}"
+    )]
+    ItemTooLarge {
+        /// The item's title.
+        title: String,
+        /// Which limit (`"uncompressed entry size"`).
+        what: &'static str,
+        /// The limit, in bytes.
+        limit: u64,
+    },
     /// A required entry is missing from the archive.
     #[error("the archive has no `{0}`")]
     MissingEntry(&'static str),

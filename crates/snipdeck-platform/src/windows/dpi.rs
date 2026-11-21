@@ -17,7 +17,7 @@ use windows::Win32::UI::HiDpi::{
     DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, GetDpiForSystem, GetSystemMetricsForDpi,
     SetProcessDpiAwarenessContext, SetThreadDpiAwarenessContext,
 };
-use windows::Win32::UI::WindowsAndMessaging::{SM_CXSMICON, SM_CYSMICON};
+use windows::Win32::UI::WindowsAndMessaging::{SM_CXICON, SM_CXSMICON, SM_CYICON, SM_CYSMICON};
 
 /// Makes the process per-monitor-v2 DPI aware. Call once, before any window exists.
 ///
@@ -42,9 +42,15 @@ pub(super) fn aware_thread() -> bool {
 /// The size of a small icon (the notification-area size) at the system DPI, in pixels, as
 /// (width, height). Unlike `GetSystemMetrics` this does not depend on the caller's awareness.
 pub(super) fn small_icon_size() -> (i32, i32) {
-    // SAFETY: plain queries with no preconditions; `GetDpiForSystem` gives 96 on failure.
+    // SAFETY: a plain query with no preconditions; gives 96 on failure.
+    small_icon_size_at(unsafe { GetDpiForSystem() })
+}
+
+/// The size of a small icon at `dpi`, in pixels, as (width, height).
+pub(super) fn small_icon_size_at(dpi: u32) -> (i32, i32) {
+    // SAFETY: a plain query with no pointers; an unusable `dpi` gives 0, which `LoadImageW`
+    // reads as "the icon's own size".
     unsafe {
-        let dpi = GetDpiForSystem();
         (
             GetSystemMetricsForDpi(SM_CXSMICON, dpi),
             GetSystemMetricsForDpi(SM_CYSMICON, dpi),
@@ -52,9 +58,52 @@ pub(super) fn small_icon_size() -> (i32, i32) {
     }
 }
 
+/// The DPI of the monitor `hwnd` is on (96 if Windows cannot say). Needs a window of a
+/// per-monitor-aware thread to differ from the system DPI.
+pub(super) fn window_dpi(hwnd: windows::Win32::Foundation::HWND) -> u32 {
+    // SAFETY: `GetDpiForWindow` accepts any handle value and returns 0 for an invalid one.
+    match unsafe { windows::Win32::UI::HiDpi::GetDpiForWindow(hwnd) } {
+        0 => 96,
+        dpi => dpi,
+    }
+}
+
+/// The id of the application icon in the executable's resources (`build.rs` embeds
+/// `assets/logo/snipdeck.ico` as resource 1). The tray and every regular window's icon load it.
+pub const APP_ICON_RESOURCE: u16 = 1;
+
+/// The sizes, in pixels at the system DPI, of the small (title bar) and large (taskbar,
+/// Alt+Tab) window icons: `((cx, cy), (cx, cy))`. Asking the icon resource for exactly these
+/// sizes picks the crisp mark of the `.ico` instead of a stretched one.
+#[must_use]
+pub fn window_icon_sizes() -> ((u32, u32), (u32, u32)) {
+    let positive = |n: i32, floor: u32| u32::try_from(n).unwrap_or(0).max(floor);
+    // SAFETY: plain queries with no preconditions; `GetDpiForSystem` gives 96 on failure.
+    unsafe {
+        let dpi = GetDpiForSystem();
+        (
+            (
+                positive(GetSystemMetricsForDpi(SM_CXSMICON, dpi), 16),
+                positive(GetSystemMetricsForDpi(SM_CYSMICON, dpi), 16),
+            ),
+            (
+                positive(GetSystemMetricsForDpi(SM_CXICON, dpi), 32),
+                positive(GetSystemMetricsForDpi(SM_CYICON, dpi), 32),
+            ),
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_window_icons_are_at_least_sixteen_and_thirty_two_pixels() {
+        let (small, large) = window_icon_sizes();
+        assert!(small.0 >= 16 && small.1 >= 16, "{small:?}");
+        assert!(large.0 >= 32 && large.1 >= 32, "{large:?}");
+    }
 
     #[test]
     fn the_small_icon_is_at_least_sixteen_pixels() {

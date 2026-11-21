@@ -1,0 +1,1889 @@
+// The Panel's Colours tab (docs/reviews/colour-spec.md §3): the current colour, a hand picker (square or wheel),
+// typed values, the format rows, contrast, schemes, recents and saved colours. The host (colours_binding.rs) owns
+// every value: this file draws `ColourState` and reports gestures through its callbacks. The maths is the
+// snipdeck-colour crate; nothing here converts a colour.
+import { ScrollView } from "std-widgets.slint";
+import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook } from "theme.slint";
+import { Icons } from "icons.slint";
+import { Icon } from "components/icon.slint";
+import { IconButton } from "components/icon-button.slint";
+import { Button, ButtonVariant, ButtonSize } from "components/button.slint";
+import { TextField, FieldError } from "components/text_field.slint";
+import { Segmented, SelectField, FormScroll } from "components/form.slint";
+import { Menu, MenuEntry } from "components/menu.slint";
+
+// One colour chip: `hex` is its text (what a click uses), `label` the spoken name ("#3a7bd5, near royalblue").
+export struct ColourSwatch {
+    color: color,
+    hex: string,
+    label: string,
+    translucent: bool,
+}
+
+// One format row: HEX, RGB, HSL, HSB, CMYK, OKLCH, Name.
+export struct ColourFormatRow {
+    label: string,
+    value: string,
+    is-default: bool,
+    can-be-default: bool,
+}
+
+// One contrast line ("on white", "on black", "on other"). `bg` is the background the "Aa" sample sits on.
+export struct ColourContrastRow {
+    name: string,
+    bg: color,
+    ratio: string,
+    aa: bool,
+    aa-large: bool,
+    aaa: bool,
+    aaa-large: bool,
+    ui: bool,
+    // "APCA Lc 62", "over white" (when a translucent colour needs a backdrop, else ""), and the
+    // action that makes the pair pass AA ("" when it passes or nothing passes).
+    apca: string,
+    over: string,
+    fix-text: string,
+    speak: string,
+}
+
+// One typed channel of the Values row ("R", "G", "B", "HEX").
+export struct ColourChannel {
+    label: string,
+    text: string,
+}
+
+// The words Rust builds sentences from (it cannot reach the catalogs).
+export global ColourTexts {
+    pure public function format-name() -> string { return @tr("Name"); }
+    pure public function near(name: string) -> string { return @tr("near {}", name); }
+    pure public function exact(name: string) -> string { return @tr("{}", name); }
+    pure public function no-name() -> string { return @tr("no close name"); }
+    pure public function not-a-colour(sample: string) -> string {
+        return @tr("Not a colour. Try {}", sample);
+    }
+    pure public function value-error(label: string) -> string {
+        return @tr("{} needs a number", label);
+    }
+    pure public function white() -> string { return @tr("On white"); }
+    pure public function black() -> string { return @tr("On black"); }
+    pure public function other() -> string { return @tr("On this colour"); }
+    pure public function use-name(name: string, hex: string) -> string { return @tr("Use {} ({})", name, hex); }
+    pure public function colours-list() -> string { return @tr("Colours"); }
+    pure public function scheme-name(i: int) -> string {
+        return i == 0 ? @tr("Complementary")
+            : i == 1 ? @tr("Analogous")
+            : i == 2 ? @tr("Triadic")
+            : i == 3 ? @tr("Split-complementary")
+            : i == 4 ? @tr("Tetradic")
+            : @tr("Tints & shades");
+    }
+    pure public function model-name(i: int) -> string {
+        return i == 0 ? @tr("HEX") : i == 1 ? @tr("RGB") : i == 2 ? @tr("HSL") : i == 3 ? @tr("HSB") : @tr("CMYK");
+    }
+    pure public function use-hint-paste(target: string) -> string {
+        return @tr("Click pastes into {} · Shift+click copies", target);
+    }
+    pure function pass-word(ok: bool) -> string { return ok ? @tr("pass") : @tr("fail"); }
+    // "On white: 4.22 to 1. AA text fail. AA large text pass. AAA text fail. AAA large text fail. Interface parts pass."
+    pure public function contrast-speak(name: string, ratio: string, aa: bool, aa-large: bool, aaa: bool, aaa-large: bool, ui: bool) -> string {
+        return @tr("{}: {} to 1. AA text {}. AA large text {}. AAA text {}. AAA large text {}. Interface parts {}.", name, ratio, pass-word(aa), pass-word(aa-large), pass-word(aaa), pass-word(aaa-large), pass-word(ui));
+    }
+    pure public function list-in-board(board: string, list: string) -> string { return @tr("{} · {}", board, list); }
+    pure public function new-list-entry() -> string { return @tr("New list…"); }
+    pure public function new-list-name() -> string { return @tr("New list"); }
+    // The title of an item made from a picture that has no file name (it is saved with the item).
+    pure public function pasted-image-title() -> string { return @tr("Pasted image"); }
+    pure public function surface-square(sat: int, bri: int) -> string {
+        return @tr("Saturation {} percent, brightness {} percent", sat, bri);
+    }
+    // The wheel's increment and decrement change the brightness, so the spoken value names it too.
+    pure public function surface-wheel(hue: int, sat: int, bri: int) -> string {
+        return @tr("Hue {} degrees, saturation {} percent, brightness {} percent", hue, sat, bri);
+    }
+    pure public function swatch-label(hex: string, name: string) -> string { return @tr("{}, {}", hex, name); }
+    pure public function use-hint-copy() -> string { return @tr("Click copies"); }
+    // The rule for every swatch (recent, saved, scheme); the format rows state their own beside them.
+    pure public function no-hue-note() -> string { return @tr("No hue to rotate. Greys, white and black have none."); }
+    pure public function previous-colour(name: string) -> string { return @tr("Previous colour {}. Click to go back.", name); }
+    pure public function chip-hint() -> string { return @tr("Click makes a swatch current · Shift+click copies it"); }
+    pure public function over-white() -> string { return @tr("over white"); }
+    pure public function over-black() -> string { return @tr("over black"); }
+    pure public function apca-text(lc: string) -> string { return @tr("APCA Lc {}", lc); }
+    pure public function fix-text(hex: string) -> string { return @tr("Use {} to pass AA", hex); }
+    pure public function eyedrop-hint() -> string { return @tr("Click or Enter picks · Esc cancels · arrows move"); }
+    pure public function eyedrop-title() -> string { return @tr("Eyedropper, {}", "{}"); }
+    pure public function eyedrop-pick() -> string { return @tr("Pick"); }
+    pure public function eyedrop-unavailable() -> string { return @tr("This screen could not be captured"); }
+    pure public function eyedrop-hdr-note() -> string { return @tr("HDR is on for this screen: values are approximate"); }
+}
+
+export global ColourState {
+    // The colour being looked at, its names and the text of the input line.
+    in property <color> current: #3a7bd5;
+    in property <bool> current-translucent: false;
+    in property <string> current-label;
+    in property <string> name-text;
+    in-out property <string> input-text;
+    in property <string> input-error;
+    in property <string> values-error;
+    // Chips.
+    in property <[ColourSwatch]> recents;
+    in property <[ColourSwatch]> saved;
+    in property <[ColourSwatch]> scheme;
+    // True when the current colour has no hue and a hue scheme would only repeat it.
+    in property <bool> scheme-no-hue: false;
+    // Format rows and contrast.
+    in property <[ColourFormatRow]> formats;
+    in property <[ColourContrastRow]> contrast;
+    in-out property <string> other-text;
+    in property <string> other-error;
+    in property <color> other: #ffffff;
+    in property <ColourContrastRow> other-row;
+    // Picker. `surface` is the rendered square or wheel; the marker is a fraction of it.
+    in-out property <bool> picker-open: true;
+    in-out property <int> picker-style: 0;
+    in-out property <int> input-model: 0;
+    in-out property <int> scheme-index: 0;
+    in property <image> surface;
+    in property <float> marker-x: 0.5;
+    in property <float> marker-y: 0.5;
+    in property <float> hue: 0;
+    in property <float> sat: 100;
+    in property <float> bri: 100;
+    in property <float> alpha: 100;
+    in property <[ColourChannel]> channels;
+    // The Target line and the eyedropper.
+    in property <string> use-hint;
+    // The app the tab pastes into ("" when a click only copies).
+    in property <string> target;
+    in property <bool> eyedropper-available: false;
+    in property <bool> has-saved-list: false;
+    in property <bool> eyedropper-running: false;
+    // "Save to…": every list of every board, then "New list…" (the host maps the index back).
+    in property <[MenuEntry]> save-targets;
+    // "Copy as…": one entry per format, in the order of `formats`.
+    in property <[MenuEntry]> copy-as;
+    // The current colour in each of the extra formats (code, frameworks), in menu order.
+    in property <[MenuEntry]> extras;
+    callback extra-copied(int);
+    // Open popup: 0 none, 1 a chip's menu, 2 a format row's menu, 3 Save to…, 4 Copy as…, 5 More formats…. The Panel closes it on Esc.
+    in-out property <int> popup: 0;
+    // Ctrl+Shift+S asks the tab to open Save to…; a printable key asks it to type `typed` into the input line.
+    in-out property <int> save-to-ticks: 0;
+    in-out property <int> type-ticks: 0;
+    in-out property <string> typed;
+    // A text field of the tab has the keyboard (the Panel leaves Ctrl+C, Ctrl+Z and typing to it).
+    in-out property <bool> text-focused: false;
+    // A drop-down list of the tab ("Values as", "Scheme") is open: Esc closes just the list, not the Panel.
+    in-out property <bool> dropdown-open: false;
+    // Callbacks.
+    callback input-edited(string);
+    callback input-accepted(string);
+    callback other-edited(string);
+    callback other-accepted(string);
+    callback eyedropper();
+    // group: 0 recents, 1 saved, 2 scheme. Shift+click is `swatch-copied`.
+    callback swatch-used(int, int);
+    callback swatch-copied(int, int);
+    // group, index, format (the order of `formats`).
+    callback swatch-copied-as(int, int, int);
+    callback swatch-saved(int, int, int);
+    callback swatch-removed(int, int);
+    // A saved swatch: open its item to rename or edit it.
+    callback swatch-edited(int, int);
+    callback format-used(int);
+    callback format-copied(int);
+    callback format-made-default(int);
+    callback format-saved(int, int);
+    // Ctrl+C: the current colour in the default format.
+    callback copy-current();
+    // Ctrl+V outside a field: the first colour literal of the clipboard text.
+    callback paste-colour();
+    // The colour before the last change, drawn as a corner of the current swatch; a click restores it.
+    in property <color> previous;
+    in property <bool> has-previous: false;
+    in property <string> previous-label;
+    callback previous-restored();
+    callback save(int);
+    callback open-saved();
+    callback swap();
+    // The nearest colour that passes AA replaces the current colour: row 0 white, 1 black, 2 the other colour.
+    callback contrast-fixed(int);
+    // A translucent colour is judged over this backdrop: white, or black when true.
+    in property <bool> backdrop-black: false;
+    in property <bool> needs-backdrop: false;
+    callback backdrop-toggled();
+    // The eyedropper picks the other colour of the contrast section.
+    callback eyedropper-other();
+    // A swatch becomes the other colour.
+    callback swatch-other(int, int);
+    callback scheme-picked(int);
+    callback picker-toggled(bool);
+    callback style-picked(int);
+    callback model-picked(int);
+    // The pointer was released after a drag of a slider: the colour is remembered.
+    callback settled();
+    // x and y as fractions of the surface; `done` is the pointer going up.
+    callback surface-moved(float, float, bool);
+    callback hue-moved(float);
+    callback bri-moved(float);
+    callback alpha-moved(float);
+    callback channel-committed(int, string);
+    callback channel-stepped(int, int);
+    callback surface-nudged(int, int);
+    // Page Up / Page Down: brightness by this many percent.
+    callback surface-paged(int);
+}
+
+// A checkerboard to show under a translucent colour.
+component Checker inherits Rectangle {
+    in property <length> cell: 6px;
+    background: #ffffff;
+    clip: true;
+    // One row holds a grey square every second cell; enough rows and columns to cover the size.
+    property <int> cols: ceil(root.width / root.cell / 2) + 1;
+    property <int> rows: ceil(root.height / root.cell);
+    for i in root.cols * root.rows: Rectangle {
+        x: (mod(i, root.cols) * 2 + 1 - mod(floor(i / root.cols), 2)) * root.cell;
+        y: floor(i / root.cols) * root.cell;
+        width: root.cell;
+        height: root.cell;
+        background: #c8c8c8;
+    }
+}
+
+component SectionTitle inherits Rectangle {
+    in property <string> text;
+    height: Space.s6;
+    Text {
+        x: Space.s2;
+        text: root.text;
+        color: Theme.text-secondary;
+        font-family: Fonts.sans;
+        font-size: Type.xs;
+        font-weight: Type.semibold;
+        vertical-alignment: center;
+        height: parent.height;
+        accessible-role: AccessibleRole.text;
+    }
+}
+
+// A colour tile: the colour over a checkerboard, a hairline so white shows on light and black on dark.
+component Tile inherits Rectangle {
+    in property <color> tint;
+    in property <bool> translucent: false;
+    in property <length> corner: Radius.sm;
+    border-radius: root.corner;
+    clip: true;
+    if root.translucent: Checker {
+        width: parent.width;
+        height: parent.height;
+    }
+    Rectangle { background: root.tint; }
+    Rectangle {
+        border-width: 1px;
+        border-color: Theme.hc-border != transparent ? Theme.hc-border : Theme.border-default;
+        border-radius: root.corner;
+    }
+}
+
+// A focus indicator for a marker or thumb that sits on a painted track or surface: the focus ring is sandwiched
+// between a white outer hairline and whatever the control already draws inside it, so it reads on any colour
+// (WCAG 1.4.11), blue included.
+component FocusHalo inherits Rectangle {
+    in property <bool> shown;
+    // The gap between the control's edge and the ring's inner edge.
+    in property <length> inset: 0px;
+    visible: root.shown;
+    Rectangle {
+        x: -(root.inset + 2px);
+        y: -(root.inset + 2px);
+        width: parent.width + 2 * (root.inset + 2px);
+        height: parent.height + 2 * (root.inset + 2px);
+        border-radius: Radius.lg;
+        border-width: 2px;
+        border-color: Theme.focus-ring;
+    }
+    Rectangle {
+        x: -(root.inset + 3px);
+        y: -(root.inset + 3px);
+        width: parent.width + 2 * (root.inset + 3px);
+        height: parent.height + 2 * (root.inset + 3px);
+        border-radius: Radius.lg;
+        border-width: 1px;
+        border-color: #ffffff;
+    }
+}
+
+// A wrapping grid of chips. A click calls `used`, Shift+click `copied`, right-click `menu`. One tab stop; the
+// arrows move the roving selection (chip 0 is selected when the grid takes the focus), Enter and Space use it,
+// Shift+Enter copies it, Menu or Shift+F10 opens its menu at the chip, Delete removes it (a recent).
+component ChipGrid inherits Rectangle {
+    in property <[ColourSwatch]> chips;
+    in property <length> tile: 24px;
+    in property <length> cell-w: 28px;
+    in property <length> cell-h: 28px;
+    in property <bool> captions: false;
+    in property <bool> can-remove: false;
+    in property <string> group-label;
+    in property <int> focus-request: 0;
+    in-out property <int> selected: -1;
+    out property <bool> has-focus: scope.has-focus;
+    out property <string> focus-label: (scope.has-focus && root.selected >= 0 && root.selected < root.chips.length) ? root.chips[root.selected].label : "";
+    callback used(int);
+    callback copied(int);
+    callback removed(int);
+    // The chip, then where to open a menu (absolute).
+    callback menu(int, length, length);
+    callback tip(string, length, length, length, length, bool);
+    // The text of the chip the keyboard is on (for the footer).
+    callback focus-text(string);
+    // The selected chip's top (absolute) and height, so the tab can scroll it into view.
+    callback reveal(length, length);
+
+    property <int> columns: max(1, floor((root.width - 2 * Space.s2) / root.cell-w));
+    property <int> rows: ceil(root.chips.length / root.columns);
+    property <int> count: root.chips.length;
+    preferred-height: root.rows * root.cell-h;
+    min-height: root.rows * root.cell-h;
+    forward-focus: scope;
+    accessible-role: list;
+    accessible-label: root.group-label;
+
+    function step(delta: int) {
+        let n = root.chips.length;
+        if (n > 0) {
+            root.selected = min(max((root.selected < 0 ? 0 : root.selected) + delta, 0), n - 1);
+        }
+    }
+    function ok() -> bool {
+        return root.selected >= 0 && root.selected < root.chips.length;
+    }
+    changed count => {
+        if (root.selected >= root.count) {
+            root.selected = root.count - 1;
+        }
+    }
+    changed focus-request => { scope.focus(); }
+    changed focus-label => { root.focus-text(root.focus-label); }
+    changed selected => {
+        if (scope.has-focus && root.ok()) {
+            root.reveal(root.absolute-position.y + floor(root.selected / root.columns) * root.cell-h, root.cell-h);
+        }
+    }
+
+    scope := FocusScope {
+        changed has-focus => {
+            if (self.has-focus && root.selected < 0 && root.chips.length > 0) {
+                root.selected = 0;
+            }
+            if (self.has-focus && root.ok()) {
+                root.reveal(root.absolute-position.y + floor(root.selected / root.columns) * root.cell-h, root.cell-h);
+            }
+        }
+        key-pressed(event) => {
+            if (event.text == Key.LeftArrow) { root.step(-1); return accept; }
+            if (event.text == Key.RightArrow) { root.step(1); return accept; }
+            if (event.text == Key.UpArrow) { root.step(-root.columns); return accept; }
+            if (event.text == Key.DownArrow) { root.step(root.columns); return accept; }
+            if (event.text == Key.Home) { root.selected = 0; return accept; }
+            if (event.text == Key.End) { root.selected = root.chips.length - 1; return accept; }
+            if ((event.text == Key.Return || event.text == " ") && root.ok()) {
+                if (event.modifiers.shift) {
+                    root.copied(root.selected);
+                } else {
+                    root.used(root.selected);
+                }
+                return accept;
+            }
+            if ((event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10)) && root.ok()) {
+                root.menu(root.selected,
+                    root.absolute-position.x + Space.s2 + (mod(root.selected, root.columns) + 0.5) * root.cell-w,
+                    root.absolute-position.y + (floor(root.selected / root.columns) + 0.5) * root.cell-h);
+                return accept;
+            }
+            if (event.text == Key.Delete && root.can-remove && root.ok()) {
+                root.removed(root.selected);
+                return accept;
+            }
+            return reject;
+        }
+        for chip[i] in root.chips: Rectangle {
+            x: Space.s2 + mod(i, root.columns) * root.cell-w;
+            y: floor(i / root.columns) * root.cell-h;
+            width: root.cell-w;
+            height: root.cell-h;
+            accessible-role: list-item;
+            accessible-label: chip.label;
+            accessible-description: root.group-label;
+            accessible-item-index: i;
+            accessible-item-count: root.chips.length;
+            accessible-item-selectable: true;
+            accessible-item-selected: root.selected == i;
+            accessible-action-default => { root.used(i); }
+            Rectangle {
+                border-radius: Radius.md;
+                background: touch.has-hover ? Theme.bg-hover : transparent;
+                border-width: (root.selected == i && scope.has-focus) ? 2px : 0px;
+                border-color: Theme.focus-ring;
+            }
+            Tile {
+                x: (parent.width - self.width) / 2;
+                y: root.captions ? Space.s0-5 : (parent.height - self.height) / 2;
+                width: root.tile;
+                height: root.tile;
+                tint: chip.color;
+                translucent: chip.translucent;
+            }
+            if root.captions: Text {
+                y: Space.s0-5 + root.tile + Space.s0-5;
+                width: parent.width;
+                text: chip.hex;
+                horizontal-alignment: center;
+                font-family: Fonts.mono;
+                font-size: Type.xs;
+                color: Theme.text-secondary;
+                overflow: elide;
+            }
+            touch := TouchArea {
+                mouse-cursor: pointer;
+                changed has-hover => {
+                    root.tip(chip.label, self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.has-hover);
+                }
+                pointer-event(event) => {
+                    if (event.button == PointerEventButton.left && event.kind == PointerEventKind.up
+                        && self.mouse-x >= 0 && self.mouse-x <= self.width && self.mouse-y >= 0 && self.mouse-y <= self.height) {
+                        root.selected = i;
+                        scope.focus();
+                        if (event.modifiers.shift) {
+                            root.copied(i);
+                        } else {
+                            root.used(i);
+                        }
+                    } else if (event.button == PointerEventButton.right && event.kind == PointerEventKind.up) {
+                        root.selected = i;
+                        scope.focus();
+                        root.menu(i, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+                    }
+                }
+            }
+        }
+    }
+}
+
+// The format rows (HEX, RGB, ...). One tab stop; Up and Down, Home and End move the roving selection (row 0 is
+// selected when the list takes the focus), Enter uses the row, Shift+Enter copies it, Menu or Shift+F10 opens its
+// menu at the row. The copy glyph at the right is the pointer's shortcut for Shift+click and is not a tab stop.
+component FormatList inherits Rectangle {
+    in property <[ColourFormatRow]> rows;
+    in property <string> use-hint;
+    in property <int> focus-request: 0;
+    in-out property <int> selected: -1;
+    out property <bool> has-focus: scope.has-focus;
+    out property <string> focus-label: (scope.has-focus && root.selected >= 0 && root.selected < root.rows.length) ? root.rows[root.selected].label + " " + root.rows[root.selected].value : "";
+    callback used(int);
+    callback copied(int);
+    // The row, then where to open a menu (absolute).
+    callback menu(int, length, length);
+    callback tip(string, length, length, length, length, bool);
+    // The pointer is on (or left) a row: its text, for the footer.
+    callback hovered(string, bool);
+    callback focus-text(string);
+    callback reveal(length, length);
+
+    property <length> row-h: Space.hit;
+    // The label column is as wide as the widest label ("Name" translates to something longer in some languages).
+    property <length> label-w: label-measure.preferred-width;
+    property <length> default-w: default-measure.preferred-width;
+    property <int> count: root.rows.length;
+    height: root.rows.length * root.row-h;
+    preferred-height: root.rows.length * root.row-h;
+    forward-focus: scope;
+    accessible-role: list;
+    accessible-label: @tr("Formats");
+
+    label-measure := VerticalLayout {
+        visible: false;
+        for f in root.rows: Text {
+            text: f.label == "Name" ? ColourTexts.format-name() : f.label;
+            font-family: Fonts.sans;
+            font-size: Type.sm;
+            font-weight: Type.semibold;
+        }
+    }
+    default-measure := Text {
+        visible: false;
+        text: @tr("default");
+        font-family: Fonts.sans;
+        font-size: Type.xs;
+    }
+
+    function step(delta: int) {
+        let n = root.rows.length;
+        if (n > 0) {
+            root.selected = min(max((root.selected < 0 ? 0 : root.selected) + delta, 0), n - 1);
+        }
+    }
+    function ok() -> bool {
+        return root.selected >= 0 && root.selected < root.rows.length;
+    }
+    changed count => {
+        if (root.selected >= root.count) {
+            root.selected = root.count - 1;
+        }
+    }
+    changed focus-request => { scope.focus(); }
+    changed focus-label => { root.focus-text(root.focus-label); }
+    changed selected => {
+        if (scope.has-focus && root.ok()) {
+            root.reveal(root.absolute-position.y + root.selected * root.row-h, root.row-h);
+        }
+    }
+
+    scope := FocusScope {
+        changed has-focus => {
+            if (self.has-focus && root.selected < 0 && root.rows.length > 0) {
+                root.selected = 0;
+            }
+            if (self.has-focus && root.ok()) {
+                root.reveal(root.absolute-position.y + root.selected * root.row-h, root.row-h);
+            }
+        }
+        key-pressed(event) => {
+            if (event.text == Key.DownArrow) { root.step(1); return accept; }
+            if (event.text == Key.UpArrow) { root.step(-1); return accept; }
+            if (event.text == Key.Home) { root.selected = 0; return accept; }
+            if (event.text == Key.End) { root.selected = root.rows.length - 1; return accept; }
+            if ((event.text == Key.Return || event.text == " ") && root.ok()) {
+                if (event.modifiers.shift) {
+                    root.copied(root.selected);
+                } else {
+                    root.used(root.selected);
+                }
+                return accept;
+            }
+            if ((event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10)) && root.ok()) {
+                root.menu(root.selected, root.absolute-position.x + Space.s8, root.absolute-position.y + (root.selected + 0.5) * root.row-h);
+                return accept;
+            }
+            return reject;
+        }
+        for f[i] in root.rows: Rectangle {
+            y: i * root.row-h;
+            width: root.width;
+            height: root.row-h;
+            accessible-role: list-item;
+            accessible-label: f.label + ", " + f.value;
+            accessible-description: root.use-hint;
+            accessible-item-index: i;
+            accessible-item-count: root.rows.length;
+            accessible-item-selectable: true;
+            accessible-item-selected: root.selected == i;
+            accessible-action-default => { root.used(i); }
+            Rectangle {
+                x: Space.s1;
+                width: parent.width - 2 * Space.s1;
+                border-radius: Radius.sm;
+                background: row-touch.has-hover ? Theme.bg-hover : transparent;
+                border-width: (root.selected == i && scope.has-focus) ? 2px : 0px;
+                border-color: Theme.focus-ring;
+            }
+            Text {
+                x: Space.s2;
+                width: root.label-w;
+                height: parent.height;
+                text: f.label == "Name" ? ColourTexts.format-name() : f.label;
+                font-family: Fonts.sans;
+                font-size: Type.sm;
+                font-weight: Type.semibold;
+                color: Theme.text-secondary;
+                vertical-alignment: center;
+            }
+            Text {
+                x: Space.s2 + root.label-w + Space.s2;
+                width: parent.width - self.x - Space.hit - Space.s1 - (f.is-default ? root.default-w + Space.s2 : 0px);
+                height: parent.height;
+                text: f.value;
+                font-family: Fonts.mono;
+                font-size: Type.sm;
+                color: Theme.text-primary;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+            if f.is-default: Text {
+                x: parent.width - Space.hit - Space.s1 - root.default-w - Space.s1;
+                width: root.default-w;
+                height: parent.height;
+                text: @tr("default");
+                font-family: Fonts.sans;
+                font-size: Type.xs;
+                color: Theme.text-tertiary;
+                horizontal-alignment: right;
+                vertical-alignment: center;
+            }
+            row-touch := TouchArea {
+                width: parent.width - Space.hit - Space.s1;
+                mouse-cursor: pointer;
+                changed has-hover => {
+                    root.hovered(f.label == "Name" ? ColourTexts.format-name() + " " + f.value : f.label + " " + f.value, self.has-hover);
+                }
+                pointer-event(event) => {
+                    if (event.button == PointerEventButton.left && event.kind == PointerEventKind.up
+                        && self.mouse-x >= 0 && self.mouse-x <= self.width && self.mouse-y >= 0 && self.mouse-y <= self.height) {
+                        root.selected = i;
+                        scope.focus();
+                        if (event.modifiers.shift) {
+                            root.copied(i);
+                        } else {
+                            root.used(i);
+                        }
+                    } else if (event.button == PointerEventButton.right && event.kind == PointerEventKind.up) {
+                        root.selected = i;
+                        scope.focus();
+                        root.menu(i, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+                    }
+                }
+            }
+            // A pointer shortcut, not a tab stop: the keyboard copies with Shift+Enter or the row menu.
+            copy-touch := TouchArea {
+                x: parent.width - Space.hit - Space.s1;
+                width: Space.hit;
+                mouse-cursor: pointer;
+                accessible-role: none;
+                clicked => { root.copied(i); }
+                changed has-hover => {
+                    root.tip(@tr("Copy"), self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.has-hover);
+                }
+                Icon {
+                    source: Icons.copy;
+                    tint: copy-touch.has-hover ? Theme.text-primary : Theme.text-secondary;
+                    x: (parent.width - self.width) / 2;
+                    y: (parent.height - self.height) / 2;
+                }
+            }
+        }
+    }
+}
+
+// A slider on a painted track (hue, brightness, alpha). `value` is 0..max; the host owns it. The hit area is
+// 24px tall (Space.hit-min); the painted track stays 12px, centred.
+component TrackSlider inherits Rectangle {
+    in property <float> value;
+    in property <float> max-value: 100;
+    in property <string> label;
+    in property <string> value-text;
+    in property <brush> track;
+    in property <bool> checker: false;
+    // Each time this goes up the slider takes the keyboard (Save to… gives it back when it closes).
+    in property <int> focus-request: 0;
+    out property <bool> has-focus: scope.has-focus;
+    callback moved(float);
+    callback released();
+    height: Space.hit-min;
+    forward-focus: scope;
+    changed focus-request => { scope.focus(); }
+    accessible-role: slider;
+    accessible-label: root.label;
+    accessible-value: root.value-text;
+    accessible-value-minimum: 0;
+    accessible-value-maximum: root.max-value;
+    accessible-value-step: 1;
+
+    function nudge(delta: float) {
+        root.moved(min(max(root.value + delta, 0), root.max-value));
+    }
+    accessible-action-increment => { root.nudge(1); }
+    accessible-action-decrement => { root.nudge(-1); }
+
+    scope := FocusScope {
+        key-pressed(event) => {
+            let big = event.modifiers.shift ? 10.0 : 1.0;
+            if (event.text == Key.LeftArrow || event.text == Key.DownArrow) { root.nudge(-big); root.released(); return accept; }
+            if (event.text == Key.RightArrow || event.text == Key.UpArrow) { root.nudge(big); root.released(); return accept; }
+            if (event.text == Key.Home) { root.moved(0); root.released(); return accept; }
+            if (event.text == Key.End) { root.moved(root.max-value); root.released(); return accept; }
+            return reject;
+        }
+    }
+    Rectangle {
+        x: Space.s2;
+        y: (parent.height - self.height) / 2;
+        width: parent.width - 2 * Space.s2;
+        height: Space.s3;
+        border-radius: Radius.sm;
+        clip: true;
+        if root.checker: Checker {
+            width: parent.width;
+            height: parent.height;
+            cell: 4px;
+        }
+        Rectangle { background: root.track; }
+        Rectangle {
+            border-width: 1px;
+            border-color: Theme.border-default;
+            border-radius: Radius.sm;
+        }
+    }
+    thumb := Rectangle {
+        property <length> run: root.width - 2 * Space.s2;
+        x: Space.s2 + (root.value / root.max-value) * self.run - self.width / 2;
+        y: (parent.height - self.height) / 2;
+        width: Space.s4;
+        height: Space.s4;
+        border-radius: Radius.lg;
+        background: transparent;
+        border-width: 2px;
+        border-color: Theme.text-primary;
+        Rectangle {
+            border-radius: Radius.lg;
+            border-width: 1px;
+            border-color: Theme.bg-surface;
+        }
+        FocusHalo {
+            width: parent.width;
+            height: parent.height;
+            shown: scope.has-focus;
+        }
+    }
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        function at(x: length) {
+            let run = root.width - 2 * Space.s2;
+            root.moved(min(max((x - Space.s2) / run, 0), 1) * root.max-value);
+        }
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                scope.focus();
+            }
+            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.up) {
+                root.released();
+            }
+        }
+        clicked => {
+            self.at(self.mouse-x);
+            root.released();
+        }
+        moved => {
+            if (self.pressed) {
+                self.at(self.mouse-x);
+            }
+        }
+    }
+}
+
+// The square or wheel: the image, a ring at the colour, a drag and the arrow keys. Page Up and Page Down step the
+// brightness by ten percent in both modes.
+component Surface inherits Rectangle {
+    in property <image> source;
+    in property <float> marker-x;
+    in property <float> marker-y;
+    in property <bool> wheel: false;
+    in property <string> label;
+    in property <string> value-text;
+    callback moved(float, float, bool);
+    // Arrow keys: dx, dy in steps (Shift is ten).
+    callback nudged(int, int);
+    // Page Up and Page Down, and a screen reader's increment and decrement: brightness by this many percent.
+    callback paged(int);
+    in property <int> focus-request: 0;
+    out property <bool> has-focus: scope.has-focus;
+    forward-focus: scope;
+    changed focus-request => { scope.focus(); }
+    accessible-role: slider;
+    accessible-label: root.label;
+    accessible-value: root.value-text;
+    // The axis the increment and decrement actions move (the brightness, in percent), in both modes.
+    accessible-value-minimum: 0;
+    accessible-value-maximum: 100;
+    accessible-value-step: 1;
+    accessible-action-increment => { root.paged(1); }
+    accessible-action-decrement => { root.paged(-1); }
+
+    scope := FocusScope {
+        key-pressed(event) => {
+            let big = event.modifiers.shift ? 10 : 1;
+            if (event.text == Key.LeftArrow) { root.nudged(-big, 0); return accept; }
+            if (event.text == Key.RightArrow) { root.nudged(big, 0); return accept; }
+            if (event.text == Key.UpArrow) { root.nudged(0, big); return accept; }
+            if (event.text == Key.DownArrow) { root.nudged(0, -big); return accept; }
+            if (event.text == Key.PageUp) { root.paged(10); return accept; }
+            if (event.text == Key.PageDown) { root.paged(-10); return accept; }
+            return reject;
+        }
+    }
+    area := Rectangle {
+        width: parent.width;
+        height: parent.height;
+        border-radius: root.wheel ? self.width / 2 : Radius.md;
+        clip: true;
+        Image {
+            width: parent.width;
+            height: parent.height;
+            source: root.source;
+            image-fit: fill;
+        }
+        Rectangle {
+            border-radius: parent.border-radius;
+            border-width: 1px;
+            border-color: Theme.border-default;
+        }
+    }
+    marker := Rectangle {
+        x: root.marker-x * root.width - self.width / 2;
+        y: root.marker-y * root.height - self.height / 2;
+        width: Space.s4;
+        height: Space.s4;
+        border-radius: Radius.lg;
+        border-width: 2px;
+        border-color: #ffffff;
+        background: transparent;
+        Rectangle {
+            width: parent.width + 2px;
+            height: parent.height + 2px;
+            x: -1px;
+            y: -1px;
+            border-radius: Radius.lg;
+            border-width: 1px;
+            border-color: #000000;
+        }
+        FocusHalo {
+            width: parent.width;
+            height: parent.height;
+            inset: 1px;
+            shown: scope.has-focus;
+        }
+    }
+    touch := TouchArea {
+        mouse-cursor: crosshair;
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                scope.focus();
+                root.moved(self.mouse-x / self.width, self.mouse-y / self.height, false);
+            } else if (event.button == PointerEventButton.left && event.kind == PointerEventKind.up) {
+                root.moved(self.mouse-x / self.width, self.mouse-y / self.height, true);
+            }
+        }
+        moved => {
+            if (self.pressed) {
+                root.moved(self.mouse-x / self.width, self.mouse-y / self.height, false);
+            }
+        }
+    }
+}
+
+// A little pass/fail mark: a word and a check or a cross, so a result is never colour alone.
+component Mark inherits Rectangle {
+    in property <string> text;
+    in property <bool> pass;
+    width: txt.preferred-width + Space.s4 + Space.s1;
+    // Follows the text size: the word and the glyph are Type.xs and Type.sm high.
+    height: max(Space.s5, Type.line-xs + Space.s1);
+    HorizontalLayout {
+        spacing: Space.s0-5;
+        alignment: start;
+        txt := Text {
+            text: root.text;
+            font-family: Fonts.sans;
+            font-size: Type.xs;
+            color: Theme.text-secondary;
+            vertical-alignment: center;
+        }
+        if root.pass: Icon {
+            source: Icons.check;
+            tint: Theme.success-fg;
+        }
+        if !root.pass: Text {
+            text: "×";
+            font-family: Fonts.sans;
+            font-size: Type.sm;
+            font-weight: Type.semibold;
+            color: Theme.danger-fg;
+            vertical-alignment: center;
+        }
+    }
+}
+
+// One contrast line: the sample, the name, the ratio, then the five marks, which wrap onto a second line when the
+// Panel is narrow (under about 360px).
+component ContrastLine inherits Rectangle {
+    in property <ColourContrastRow> data;
+    in property <color> fg;
+    property <length> left: Space.s2;
+    property <length> limit: root.width - Space.s2;
+    property <length> gap: Space.s2;
+    property <length> top: Space.s6 + Space.s1 + Space.s5;
+    callback fix();
+    height: m5.y + m5.height + Space.s0-5 + (root.data.fix-text != "" ? fix-btn.height + Space.s0-5 : 0px);
+    accessible-role: list-item;
+    accessible-label: root.data.speak;
+    Tile {
+        x: Space.s2;
+        y: Space.s1;
+        width: Space.s12 - Space.s2;
+        height: Space.s6;
+        tint: root.data.bg;
+        Text {
+            text: "Aa";
+            color: root.fg;
+            font-family: Fonts.sans;
+            font-size: Type.md;
+            font-weight: Type.semibold;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            width: parent.width;
+            height: parent.height;
+        }
+    }
+    Text {
+        x: Space.s12 + Space.s2;
+        y: Space.s1;
+        height: Space.s6;
+        text: root.data.name;
+        font-family: Fonts.sans;
+        font-size: Type.sm;
+        color: Theme.text-primary;
+        vertical-alignment: center;
+    }
+    Text {
+        x: parent.width - Space.s2 - self.preferred-width;
+        y: Space.s1;
+        height: Space.s6;
+        text: root.data.ratio + ":1";
+        font-family: Fonts.mono;
+        font-size: Type.sm;
+        font-weight: Type.semibold;
+        color: Theme.text-primary;
+        vertical-alignment: center;
+    }
+    m1 := Mark {
+        x: root.left;
+        y: root.top;
+        text: @tr("AA 4.5");
+        pass: root.data.aa;
+    }
+    m2 := Mark {
+        property <bool> wrap: m1.x + m1.width + root.gap + self.width > root.limit;
+        x: self.wrap ? root.left : m1.x + m1.width + root.gap;
+        y: self.wrap ? m1.y + m1.height : m1.y;
+        text: @tr("AA large 3");
+        pass: root.data.aa-large;
+    }
+    m3 := Mark {
+        property <bool> wrap: m2.x + m2.width + root.gap + self.width > root.limit;
+        x: self.wrap ? root.left : m2.x + m2.width + root.gap;
+        y: self.wrap ? m2.y + m2.height : m2.y;
+        text: @tr("AAA 7");
+        pass: root.data.aaa;
+    }
+    m4 := Mark {
+        property <bool> wrap: m3.x + m3.width + root.gap + self.width > root.limit;
+        x: self.wrap ? root.left : m3.x + m3.width + root.gap;
+        y: self.wrap ? m3.y + m3.height : m3.y;
+        text: @tr("AAA large 4.5");
+        pass: root.data.aaa-large;
+    }
+    Text {
+        x: root.left;
+        y: Space.s6 + Space.s1;
+        width: root.width - 2 * Space.s2;
+        height: Space.s5;
+        text: root.data.over != "" ? root.data.apca + " · " + root.data.over : root.data.apca;
+        font-family: Fonts.sans;
+        font-size: Type.xs;
+        color: Theme.text-secondary;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    fix-btn := Button {
+        x: root.left;
+        y: m5.y + m5.height + Space.s0-5;
+        text: root.data.fix-text;
+        size: ButtonSize.sm;
+        variant: ButtonVariant.ghost;
+        visible: root.data.fix-text != "";
+        enabled: root.data.fix-text != "";
+        clicked => { root.fix(); }
+    }
+    m5 := Mark {
+        property <bool> wrap: m4.x + m4.width + root.gap + self.width > root.limit;
+        x: self.wrap ? root.left : m4.x + m4.width + root.gap;
+        y: self.wrap ? m4.y + m4.height : m4.y;
+        text: @tr("UI 3");
+        pass: root.data.ui;
+    }
+}
+
+// One typed channel: a small caption with the channel letter above a field, committed on Enter or when it loses the
+// focus; Up and Down step it (Shift is ten). The keys are taken in the capture phase: a TextInput otherwise reads
+// Up and Down as a move of the caret and never lets them through.
+component ChannelField inherits FocusScope {
+    in property <string> label;
+    in property <string> value;
+    callback committed(string);
+    callback stepped(int);
+    // The field gained or lost the keyboard.
+    callback focus-changed(bool);
+    // `refocus` counts up to hand the keyboard back to the field whose `index` is `refocus-index`.
+    in property <int> index;
+    in property <int> refocus-index: -1;
+    in property <int> refocus: 0;
+    changed refocus => {
+        if (root.refocus-index == root.index) { tf.focus(); }
+    }
+    // The grid gives it the height of the caption, a gap and TextField's box: Type.line-xs + 2px + max(Space.hit,
+    // Type.line-base + 2 * Space.s1).
+    forward-focus: tf;
+
+    changed value => { tf.text = root.value; }
+    init => { tf.text = root.value; }
+
+    capture-key-pressed(event) => {
+        if (event.text == Key.UpArrow) { root.stepped(event.modifiers.shift ? 10 : 1); return accept; }
+        if (event.text == Key.DownArrow) { root.stepped(event.modifiers.shift ? -10 : -1); return accept; }
+        return reject;
+    }
+    VerticalLayout {
+        spacing: Space.s0-5;
+        alignment: start;
+        cap := Text {
+            height: Type.line-xs;
+            text: root.label;
+            font-family: Fonts.sans;
+            font-size: Type.xs;
+            font-weight: Type.semibold;
+            color: Theme.text-secondary;
+            vertical-alignment: center;
+            overflow: elide;
+            // The field below carries the spoken name.
+            accessible-role: AccessibleRole.none;
+        }
+        tf := TextField {
+            label: root.label;
+            monospace: true;
+            accepted(t) => { root.committed(t); }
+            changed has-focus => {
+                root.focus-changed(self.has-focus);
+                if (!self.has-focus && self.text != root.value) {
+                    root.committed(self.text);
+                }
+            }
+        }
+    }
+}
+
+export component ColoursView inherits Rectangle {
+    callback tip(string, length, length, length, length, bool);
+    // Which popup `ColourState.popup` has open: whose chip or row it is, where it opened (relative to this view),
+    // where the keyboard goes back to when it closes (1 recents, 2 saved, 3 scheme, 4 formats) and what "Save to…"
+    // saves (0 the current colour, 1 the chip, 2 the format row).
+    property <int> popup-group: 0;
+    property <int> popup-index: 0;
+    property <length> popup-x: 0px;
+    property <length> popup-y: 0px;
+    property <int> popup-from: 0;
+    property <int> save-ctx: 0;
+    property <int> recent-sel: -1;
+    property <int> saved-sel: -1;
+    property <int> scheme-sel: -1;
+    property <int> format-sel: -1;
+    // Focus requests (a counter each: ids inside `if` blocks are out of reach).
+    property <int> recents-focus: 0;
+    property <int> saved-focus: 0;
+    property <int> scheme-focus: 0;
+    property <int> formats-focus: 0;
+    property <int> input-focus: 0;
+    property <int> channel-focus: -1;
+    property <string> hover-text;
+    property <string> focus-text;
+    // Where the keyboard last was, so Save to… can hand it back: 0 the input line, 1 recents, 2 saved, 3 scheme,
+    // 4 formats, 5 the picker disclosure, 6 the surface, 7 the hue or brightness slider, 8 alpha, 9 a Values field,
+    // 10 the other colour, 11 the Save to… button.
+    property <int> last-stop: 0;
+    property <int> last-channel: 0;
+    property <int> channel-refocus: 0;
+    property <int> surface-focus: 0;
+    property <int> slider-focus: 0;
+    property <int> alpha-focus: 0;
+    // The inline drop-downs ("Values as", "Scheme"): Esc closes the list, not the Panel.
+    property <bool> model-open: false;
+    property <bool> scheme-open: false;
+    property <bool> any-dropdown: root.model-open || root.scheme-open;
+    property <int> popup-now: ColourState.popup;
+    property <int> save-to-now: ColourState.save-to-ticks;
+    property <int> type-now: ColourState.type-ticks;
+    property <bool> typing: input.has-focus || other-field.has-focus || root.channel-focus >= 0;
+
+    background: Theme.bg-surface;
+
+    init => { ColourState.text-focused = false; ColourState.popup = 0; ColourState.dropdown-open = false; }
+    changed typing => { ColourState.text-focused = root.typing; }
+    changed any-dropdown => { ColourState.dropdown-open = root.any-dropdown; }
+    // A popup that closes gives the keyboard back to where it came from.
+    changed popup-now => {
+        if (root.popup-now == 0) {
+            root.restore-focus(root.popup-from);
+            root.popup-from = 0;
+        }
+    }
+    // Ctrl+Shift+S: the menu gives the keyboard back to the control that had it.
+    changed save-to-now => {
+        root.save-ctx = 0;
+        root.popup-from = root.last-stop;
+        root.open-popup(3, root.absolute-position.x + Space.s2, root.absolute-position.y + Space.s12);
+    }
+    // Typing applies a colour in memory only; the setting is written on Enter, on leaving the field, or
+    // when typing pauses for half a second (TOOLS-20).
+    in-out property <bool> input-dirty: false;
+    Timer {
+        interval: 500ms;
+        running: root.input-dirty;
+        triggered => {
+            root.input-dirty = false;
+            ColourState.settled();
+        }
+    }
+    // A printable key with no field focused starts the input line.
+    changed type-now => {
+        input.focus();
+        ColourState.input-text = ColourState.typed;
+        input.set-cursor(ColourState.typed.character-count);
+        ColourState.input-edited(ColourState.typed);
+    }
+
+    // `x` and `y` are absolute.
+    function open-popup(kind: int, x: length, y: length) {
+        root.popup-x = x - root.absolute-position.x;
+        root.popup-y = y - root.absolute-position.y;
+        ColourState.popup = kind;
+    }
+    function reveal(top: length, h: length) {
+        scroll.reveal(top - scroll.absolute-position.y, h);
+    }
+    // The last recent went: its grid (and the keyboard in it) is gone, so the next stop takes the keyboard and the
+    // footer forgets the removed colour.
+    function recents-gone() {
+        root.focus-text = "";
+        root.hover-text = "";
+        if (ColourState.saved.length > 0) {
+            root.saved-focus += 1;
+        } else {
+            root.formats-focus += 1;
+        }
+    }
+    // Hands the keyboard to a stop (the codes of `last-stop`); a stop that is no longer there falls back to the input.
+    function restore-focus(stop: int) {
+        if (stop == 1) {
+            if (ColourState.recents.length > 0) {
+                root.recents-focus += 1;
+            } else {
+                root.recents-gone();
+            }
+        } else if (stop == 2 && ColourState.saved.length > 0) {
+            root.saved-focus += 1;
+        } else if (stop == 3) {
+            root.scheme-focus += 1;
+        } else if (stop == 4) {
+            root.formats-focus += 1;
+        } else if (stop == 5) {
+            pick-scope.focus();
+        } else if (stop == 6 && ColourState.picker-open) {
+            root.surface-focus += 1;
+        } else if (stop == 7 && ColourState.picker-open) {
+            root.slider-focus += 1;
+        } else if (stop == 8 && ColourState.picker-open) {
+            root.alpha-focus += 1;
+        } else if (stop == 9 && ColourState.picker-open && root.last-channel < ColourState.channels.length) {
+            root.channel-refocus += 1;
+        } else if (stop == 10) {
+            other-field.focus();
+        } else if (stop == 11) {
+            save-to.take-focus();
+        } else {
+            input.focus();
+        }
+    }
+
+    VerticalLayout {
+        // ---- The current colour, pinned ------------------------------------------------------------
+        HorizontalLayout {
+            padding: Space.s2;
+            spacing: Space.s2;
+            VerticalLayout {
+                alignment: start;
+                width: Space.s12;
+                Tile {
+                    height: Space.s12;
+                    corner: Radius.md;
+                    tint: ColourState.current;
+                    translucent: ColourState.current-translucent;
+                    accessible-role: AccessibleRole.image;
+                    accessible-label: ColourState.current-label;
+                    if ColourState.has-previous: prev-corner := Rectangle {
+                        x: parent.width - self.width;
+                        y: parent.height - self.height;
+                        width: Space.s5;
+                        height: Space.s5;
+                        border-radius: Radius.sm;
+                        background: ColourState.previous;
+                        border-width: 1px;
+                        border-color: Theme.border-strong;
+                        accessible-role: AccessibleRole.button;
+                        accessible-label: ColourState.previous-label;
+                        accessible-action-default => { ColourState.previous-restored(); }
+                        TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => { ColourState.previous-restored(); }
+                        }
+                    }
+                }
+            }
+            VerticalLayout {
+                spacing: Space.s1;
+                alignment: start;
+                input := TextField {
+                    text <=> ColourState.input-text;
+                    monospace: true;
+                    label: @tr("Colour");
+                    placeholder: @tr("#3a7bd5, rgb(58, 123, 213), royalblue");
+                    error: ColourState.input-error;
+                    focus-request: root.input-focus;
+                    changed has-focus => {
+                        if (self.has-focus) {
+                            root.last-stop = 0;
+                        } else if (root.input-dirty) {
+                            root.input-dirty = false;
+                            ColourState.settled();
+                        }
+                    }
+                    edited(t) => {
+                        root.input-dirty = true;
+                        ColourState.input-edited(t);
+                    }
+                    accepted(t) => {
+                        root.input-dirty = false;
+                        ColourState.input-accepted(t);
+                    }
+                }
+                if ColourState.input-error == "": Text {
+                    height: Space.s6;
+                    text: ColourState.name-text;
+                    font-family: Fonts.sans;
+                    font-size: Type.sm;
+                    color: Theme.text-secondary;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+            }
+            if ColourState.eyedropper-available: VerticalLayout {
+                alignment: start;
+                width: Space.s8;
+                IconButton {
+                    icon: Icons.eyedropper;
+                    tooltip: @tr("Pick a colour from the screen (Ctrl+I)");
+                    own-tooltip: true;
+                    enabled: !ColourState.eyedropper-running;
+                    clicked => { ColourState.eyedropper(); }
+                }
+            }
+        }
+
+        // ---- Everything else scrolls ---------------------------------------------------------------
+        scroll := FormScroll {
+            vertical-stretch: 1;
+            content-height: body.preferred-height;
+            content-width: self.viewport-width;
+
+            body := VerticalLayout {
+                x: 0px;
+                width: parent.viewport-width;
+                alignment: start;
+                spacing: Space.s1;
+
+                // ---- Picker ----------------------------------------------------------------------
+                // The disclosure on the left and the style switch on the right; when they do not fit side by side
+                // (a narrow Panel or large text) the switch drops under the disclosure.
+                Rectangle {
+                    property <length> disc-w: disc-row.preferred-width + Space.s2;
+                    property <length> seg-w: max(160px * SystemLook.text-scale, 2 * (max(seg-square.preferred-width, seg-wheel.preferred-width) + Space.s4 + Space.s2));
+                    property <bool> stacked: ColourState.picker-open && Space.s1 + self.disc-w + Space.s2 + self.seg-w + Space.s2 > self.width;
+                    height: Space.s8 + (self.stacked ? max(Space.hit, Type.line-base + Space.s2) + Space.s1 : 0px);
+                    // Measures for the switch: the same font the options use.
+                    seg-square := Text {
+                        visible: false;
+                        text: @tr("Square");
+                        font-family: Fonts.sans;
+                        font-size: Type.base;
+                        font-weight: Type.semibold;
+                    }
+                    seg-wheel := Text {
+                        visible: false;
+                        text: @tr("Wheel");
+                        font-family: Fonts.sans;
+                        font-size: Type.base;
+                        font-weight: Type.semibold;
+                    }
+                    Rectangle {
+                        x: Space.s1;
+                        y: 0px;
+                        width: parent.disc-w;
+                        height: Space.s8;
+                        border-radius: Radius.sm;
+                        background: pick-touch.has-hover ? Theme.bg-hover : transparent;
+                        border-width: pick-scope.has-focus ? 2px : 0px;
+                        border-color: Theme.focus-ring;
+                        accessible-role: button;
+                        accessible-label: @tr("Picker");
+                        accessible-expanded: ColourState.picker-open;
+                        accessible-action-default => { ColourState.picker-toggled(!ColourState.picker-open); }
+                        pick-scope := FocusScope {
+                            changed has-focus => { if (self.has-focus) { root.last-stop = 5; } }
+                            key-pressed(event) => {
+                                if (event.text == Key.Return || event.text == " ") {
+                                    ColourState.picker-toggled(!ColourState.picker-open);
+                                    return accept;
+                                }
+                                return reject;
+                            }
+                        }
+                        disc-row := HorizontalLayout {
+                            padding-left: Space.s1;
+                            spacing: Space.s1;
+                            alignment: start;
+                            Icon {
+                                source: ColourState.picker-open ? Icons.caret-down : Icons.caret-right;
+                                tint: Theme.text-secondary;
+                            }
+                            Text {
+                                text: @tr("Picker");
+                                font-family: Fonts.sans;
+                                font-size: Type.xs;
+                                font-weight: Type.semibold;
+                                color: Theme.text-secondary;
+                                vertical-alignment: center;
+                            }
+                        }
+                        pick-touch := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => {
+                                pick-scope.focus();
+                                ColourState.picker-toggled(!ColourState.picker-open);
+                            }
+                        }
+                    }
+                    if ColourState.picker-open: seg := Segmented {
+                        x: parent.stacked ? Space.s2 : parent.width - self.width - Space.s2;
+                        y: parent.stacked ? Space.s8 : (Space.s8 - self.height) / 2;
+                        width: min(parent.seg-w, parent.width - 2 * Space.s2);
+                        options: [@tr("Square"), @tr("Wheel")];
+                        current: ColourState.picker-style;
+                        label: @tr("Picker style");
+                        chosen(i) => { ColourState.style-picked(i); }
+                    }
+                }
+                if ColourState.picker-open: VerticalLayout {
+                    spacing: Space.s2;
+                    padding-left: Space.s2;
+                    padding-right: Space.s2;
+                    padding-bottom: Space.s2;
+                    Rectangle {
+                        // A square is wide; a wheel is a disc, centred.
+                        height: ColourState.picker-style == 1 ? 168px * SystemLook.text-scale : 120px * SystemLook.text-scale;
+                        Surface {
+                            x: ColourState.picker-style == 1 ? (parent.width - self.width) / 2 : 0px;
+                            width: ColourState.picker-style == 1 ? parent.height : parent.width;
+                            height: parent.height;
+                            source: ColourState.surface;
+                            focus-request: root.surface-focus;
+                            changed has-focus => { if (self.has-focus) { root.last-stop = 6; } }
+                            marker-x: ColourState.marker-x;
+                            marker-y: ColourState.marker-y;
+                            wheel: ColourState.picker-style == 1;
+                            label: ColourState.picker-style == 1 ? @tr("Hue and saturation") : @tr("Saturation and brightness");
+                            value-text: ColourState.picker-style == 1
+                                ? ColourTexts.surface-wheel(round(ColourState.hue), round(ColourState.sat), round(ColourState.bri))
+                                : ColourTexts.surface-square(round(ColourState.sat), round(ColourState.bri));
+                            moved(x, y, done) => { ColourState.surface-moved(x, y, done); }
+                            nudged(dx, dy) => { ColourState.surface-nudged(dx, dy); }
+                            paged(d) => { ColourState.surface-paged(d); }
+                        }
+                    }
+                    if ColourState.picker-style == 0: TrackSlider {
+                        label: @tr("Hue");
+                        focus-request: root.slider-focus;
+                        changed has-focus => { if (self.has-focus) { root.last-stop = 7; } }
+                        value: ColourState.hue;
+                        max-value: 360;
+                        value-text: @tr("{} degrees", round(ColourState.hue));
+                        track: @linear-gradient(90deg, #ff0000 0%, #ffff00 16.67%, #00ff00 33.33%, #00ffff 50%, #0000ff 66.67%, #ff00ff 83.33%, #ff0000 100%);
+                        moved(v) => { ColourState.hue-moved(v); }
+                        released => { ColourState.settled(); }
+                    }
+                    if ColourState.picker-style == 1: TrackSlider {
+                        label: @tr("Brightness");
+                        focus-request: root.slider-focus;
+                        changed has-focus => { if (self.has-focus) { root.last-stop = 7; } }
+                        value: ColourState.bri;
+                        value-text: @tr("{} percent", round(ColourState.bri));
+                        track: @linear-gradient(90deg, #000000 0%, #ffffff 100%);
+                        moved(v) => { ColourState.bri-moved(v); }
+                        released => { ColourState.settled(); }
+                    }
+                    TrackSlider {
+                        label: @tr("Alpha");
+                        focus-request: root.alpha-focus;
+                        changed has-focus => { if (self.has-focus) { root.last-stop = 8; } }
+                        value: ColourState.alpha;
+                        value-text: @tr("{} percent", round(ColourState.alpha));
+                        checker: true;
+                        track: @linear-gradient(90deg, ColourState.current.with-alpha(0) 0%, ColourState.current.with-alpha(1) 100%);
+                        moved(v) => { ColourState.alpha-moved(v); }
+                        released => { ColourState.settled(); }
+                    }
+                    // ---- Values: the model, then one field per channel, wrapped to the width -------------
+                    Rectangle {
+                        height: Space.s8 + Space.s1;
+                        SelectField {
+                            x: 0px;
+                            width: min(120px * SystemLook.text-scale, parent.width);
+                            options: [ColourTexts.model-name(0), ColourTexts.model-name(1), ColourTexts.model-name(2), ColourTexts.model-name(3), ColourTexts.model-name(4)];
+                            current: ColourState.input-model;
+                            open <=> root.model-open;
+                            label: @tr("Values as");
+                            chosen(i) => { ColourState.model-picked(i); }
+                        }
+                    }
+                    values := Rectangle {
+                        property <int> n: ColourState.channels.length;
+                        property <int> maxcols: max(1, floor((self.width + Space.s2) / (Space.s12 + Space.s2 + Space.s2)));
+                        property <int> nrows: max(1, ceil(self.n / self.maxcols));
+                        property <int> cols: max(1, ceil(self.n / self.nrows));
+                        property <length> cell: (self.width - (self.cols - 1) * Space.s2) / self.cols;
+                        property <length> row-h: Type.line-xs + Space.s0-5 + max(Space.hit, Type.line-base + 2 * Space.s1);
+                        height: self.nrows * self.row-h + (self.nrows - 1) * Space.s2;
+                        for ch[i] in ColourState.channels: ChannelField {
+                            x: mod(i, values.cols) * (values.cell + Space.s2);
+                            y: floor(i / values.cols) * (values.row-h + Space.s2);
+                            width: values.cell;
+                            height: values.row-h;
+                            label: ch.label;
+                            value: ch.text;
+                            index: i;
+                            refocus-index: root.last-channel;
+                            refocus: root.channel-refocus;
+                            committed(t) => { ColourState.channel-committed(i, t); }
+                            stepped(d) => { ColourState.channel-stepped(i, d); }
+                            focus-changed(f) => {
+                                if (f) {
+                                    root.channel-focus = i;
+                                    root.last-channel = i;
+                                    root.last-stop = 9;
+                                } else if (root.channel-focus == i) {
+                                    root.channel-focus = -1;
+                                }
+                            }
+                        }
+                    }
+                    if ColourState.values-error != "": FieldError { text: ColourState.values-error; }
+                }
+
+                // ---- Recently used --------------------------------------------------------------
+                if ColourState.recents.length > 0: SectionTitle { text: @tr("Recently used"); }
+                if ColourState.recents.length > 0: ChipGrid {
+                    chips: ColourState.recents;
+                    group-label: @tr("Recently used");
+                    can-remove: true;
+                    focus-request: root.recents-focus;
+                    selected <=> root.recent-sel;
+                    changed has-focus => { if (self.has-focus) { root.last-stop = 1; } }
+                    used(i) => { ColourState.swatch-used(0, i); }
+                    copied(i) => { ColourState.swatch-copied(0, i); }
+                    removed(i) => {
+                        ColourState.swatch-removed(0, i);
+                        if (ColourState.recents.length == 0) {
+                            root.recents-gone();
+                        }
+                    }
+                    menu(i, x, y) => {
+                        root.popup-group = 0;
+                        root.popup-index = i;
+                        root.popup-from = 1;
+                        root.open-popup(1, x, y);
+                    }
+                    tip(t, x, y, w, h, on) => {
+                        root.hover-text = on ? t : "";
+                        root.tip(t, x, y, w, h, on);
+                    }
+                    focus-text(t) => { root.focus-text = t; }
+                    reveal(top, h) => { root.reveal(top, h); }
+                }
+
+                // ---- Saved ----------------------------------------------------------------------
+                SectionTitle { text: @tr("Saved"); }
+                HorizontalLayout {
+                    padding-left: Space.s2;
+                    padding-right: Space.s2;
+                    spacing: Space.s1;
+                    Button {
+                        text: @tr("Save");
+                        size: ButtonSize.sm;
+                        tooltip: @tr("Save to Colours (Ctrl+S)");
+                        clicked => { ColourState.save(-1); }
+                    }
+                    save-to := Button {
+                        text: @tr("Save to…");
+                        size: ButtonSize.sm;
+                        variant: ButtonVariant.secondary;
+                        tooltip: @tr("Save to a list (Ctrl+Shift+S)");
+                        changed has-focus => { if (self.has-focus) { root.last-stop = 11; } }
+                        clicked => {
+                            root.save-ctx = 0;
+                            root.popup-from = 11;
+                            root.open-popup(3, self.absolute-position.x, self.absolute-position.y + self.height);
+                        }
+                    }
+                    Rectangle { horizontal-stretch: 1; }
+                    Button {
+                        text: @tr("View list");
+                        size: ButtonSize.sm;
+                        variant: ButtonVariant.ghost;
+                        tooltip: @tr("Open the Colours list");
+                        enabled: ColourState.has-saved-list;
+                        clicked => { ColourState.open-saved(); }
+                    }
+                }
+                if ColourState.saved.length > 0: ChipGrid {
+                    chips: ColourState.saved;
+                    group-label: @tr("Saved colours");
+                    can-remove: true;
+                    focus-request: root.saved-focus;
+                    selected <=> root.saved-sel;
+                    changed has-focus => { if (self.has-focus) { root.last-stop = 2; } }
+                    used(i) => { ColourState.swatch-used(1, i); }
+                    copied(i) => { ColourState.swatch-copied(1, i); }
+                    removed(i) => { ColourState.swatch-removed(1, i); }
+                    menu(i, x, y) => {
+                        root.popup-group = 1;
+                        root.popup-index = i;
+                        root.popup-from = 2;
+                        root.open-popup(1, x, y);
+                    }
+                    tip(t, x, y, w, h, on) => {
+                        root.hover-text = on ? t : "";
+                        root.tip(t, x, y, w, h, on);
+                    }
+                    focus-text(t) => { root.focus-text = t; }
+                    reveal(top, h) => { root.reveal(top, h); }
+                }
+
+                // ---- Formats --------------------------------------------------------------------
+                SectionTitle { text: @tr("Formats"); }
+                Text {
+                    x: Space.s2;
+                    width: parent.width - 2 * Space.s2;
+                    text: ColourState.use-hint;
+                    font-family: Fonts.sans;
+                    font-size: Type.xs;
+                    color: Theme.text-secondary;
+                    wrap: word-wrap;
+                }
+                FormatList {
+                    rows: ColourState.formats;
+                    use-hint: ColourState.use-hint;
+                    focus-request: root.formats-focus;
+                    selected <=> root.format-sel;
+                    changed has-focus => { if (self.has-focus) { root.last-stop = 4; } }
+                    used(i) => { ColourState.format-used(i); }
+                    copied(i) => { ColourState.format-copied(i); }
+                    menu(i, x, y) => {
+                        root.popup-index = i;
+                        root.popup-from = 4;
+                        root.open-popup(2, x, y);
+                    }
+                    tip(t, x, y, w, h, on) => {
+                        root.hover-text = on ? t : (root.hover-text == t ? "" : root.hover-text);
+                        root.tip(t, x, y, w, h, on);
+                    }
+                    hovered(t, on) => { root.hover-text = on ? t : (root.hover-text == t ? "" : root.hover-text); }
+                    focus-text(t) => { root.focus-text = t; }
+                    reveal(top, h) => { root.reveal(top, h); }
+                }
+
+                more-btn := Button {
+                    text: @tr("More formats…");
+                    size: ButtonSize.sm;
+                    variant: ButtonVariant.ghost;
+                    clicked => {
+                        root.popup-from = 4;
+                        root.open-popup(5, self.absolute-position.x, self.absolute-position.y + self.height);
+                    }
+                }
+
+                // ---- Contrast -------------------------------------------------------------------
+                SectionTitle { text: @tr("Contrast"); }
+                for c[i] in ColourState.contrast: ContrastLine {
+                    data: c;
+                    fg: ColourState.current;
+                    fix => { ColourState.contrast-fixed(i); }
+                }
+                ContrastLine {
+                    data: ColourState.other-row;
+                    fg: ColourState.current;
+                    fix => { ColourState.contrast-fixed(2); }
+                }
+                if ColourState.needs-backdrop: HorizontalLayout {
+                    padding-left: Space.s2;
+                    padding-right: Space.s2;
+                    Button {
+                        text: ColourState.backdrop-black ? @tr("Backdrop: black") : @tr("Backdrop: white");
+                        size: ButtonSize.sm;
+                        variant: ButtonVariant.secondary;
+                        tooltip: @tr("What a translucent colour is judged over");
+                        clicked => { ColourState.backdrop-toggled(); }
+                    }
+                    Rectangle { horizontal-stretch: 1; }
+                }
+                HorizontalLayout {
+                    padding-left: Space.s2;
+                    padding-right: Space.s2;
+                    spacing: Space.s2;
+                    other-field := TextField {
+                        text <=> ColourState.other-text;
+                        monospace: true;
+                        label: @tr("Other colour");
+                        placeholder: @tr("#ffffff");
+                        changed has-focus => { if (self.has-focus) { root.last-stop = 10; } }
+                        error: ColourState.other-error;
+                        edited(t) => { ColourState.other-edited(t); }
+                        accepted(t) => { ColourState.other-accepted(t); }
+                    }
+                    VerticalLayout {
+                        alignment: start;
+                        width: Space.s8;
+                        IconButton {
+                            icon: Icons.arrows-left-right;
+                            tooltip: @tr("Swap the two colours");
+                            clicked => { ColourState.swap(); }
+                        }
+                        if ColourState.eyedropper-available: IconButton {
+                            icon: Icons.eyedropper;
+                            tooltip: @tr("Pick the other colour from the screen");
+                            enabled: !ColourState.eyedropper-running;
+                            clicked => { ColourState.eyedropper-other(); }
+                        }
+                    }
+                }
+
+                // ---- Schemes --------------------------------------------------------------------
+                SectionTitle { text: @tr("Schemes"); }
+                Rectangle {
+                    height: Space.s8 + Space.s1;
+                    SelectField {
+                        x: Space.s2;
+                        width: parent.width - 2 * Space.s2;
+                        options: [ColourTexts.scheme-name(0), ColourTexts.scheme-name(1), ColourTexts.scheme-name(2), ColourTexts.scheme-name(3), ColourTexts.scheme-name(4), ColourTexts.scheme-name(5)];
+                        current: ColourState.scheme-index;
+                        open <=> root.scheme-open;
+                        label: @tr("Scheme");
+                        chosen(i) => { ColourState.scheme-picked(i); }
+                    }
+                }
+                if ColourState.scheme-no-hue: Text {
+                    x: Space.s2;
+                    width: parent.width - 2 * Space.s2;
+                    text: ColourTexts.no-hue-note();
+                    wrap: word-wrap;
+                    color: Theme.text-secondary;
+                    font-size: Type.xs;
+                    font-family: Fonts.sans;
+                }
+                ChipGrid {
+                    chips: ColourState.scheme;
+                    tile: Space.s12 - Space.s0-5 * 2;
+                    cell-w: 60px;
+                    cell-h: 68px;
+                    captions: true;
+                    group-label: ColourTexts.scheme-name(ColourState.scheme-index);
+                    focus-request: root.scheme-focus;
+                    selected <=> root.scheme-sel;
+                    changed has-focus => { if (self.has-focus) { root.last-stop = 3; } }
+                    used(i) => { ColourState.swatch-used(2, i); }
+                    copied(i) => { ColourState.swatch-copied(2, i); }
+                    menu(i, x, y) => {
+                        root.popup-group = 2;
+                        root.popup-index = i;
+                        root.popup-from = 3;
+                        root.open-popup(1, x, y);
+                    }
+                    tip(t, x, y, w, h, on) => {
+                        root.hover-text = on ? t : "";
+                        root.tip(t, x, y, w, h, on);
+                    }
+                    focus-text(t) => { root.focus-text = t; }
+                    reveal(top, h) => { root.reveal(top, h); }
+                }
+                Rectangle { height: Space.s2; }
+            }
+        }
+
+        // ---- The route line: what the pointer or the keyboard is on, else where a click goes ------------
+        Rectangle {
+            height: Space.s8;
+            route := Text {
+                x: Space.s2;
+                width: parent.width - 2 * Space.s2;
+                height: parent.height;
+                accessible-role: AccessibleRole.text;
+                accessible-label: self.text;
+                text: root.hover-text != "" ? root.hover-text : root.focus-text != "" ? root.focus-text : ColourTexts.chip-hint();
+                font-family: Fonts.sans;
+                font-size: Type.sm;
+                color: Theme.text-secondary;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+        }
+    }
+
+    // ---- Popups -----------------------------------------------------------------------------------
+    if ColourState.popup != 0: TouchArea {
+        width: parent.width;
+        height: parent.height;
+        clicked => { ColourState.popup = 0; }
+    }
+    // A chip's menu: Make current, Copy as…, Save to Colours and Save to… (not on a saved swatch), Remove from recents
+    // (recents only), Edit and Delete (saved swatches only).
+    if ColourState.popup == 1: Menu {
+        x: min(max(Space.s2, root.popup-x), root.width - self.width - Space.s2);
+        y: min(max(Space.s2, root.popup-y), root.height - self.height - Space.s2 - Space.menu-clear);
+        max-w: root.width - Space.s4;
+        menu-max-h: root.height - Space.s4 - Space.menu-clear;
+        label: @tr("Colour");
+        icons: false;
+        entries: [
+            { text: @tr("Make current") },
+            { text: @tr("Copy as…") },
+            { text: @tr("Save to Colours"), hidden: root.popup-group == 1 },
+            { text: @tr("Save to…"), hidden: root.popup-group == 1 },
+            { text: @tr("Remove from recents"), hidden: root.popup-group != 0 },
+            { text: @tr("Edit or rename…"), hidden: root.popup-group != 1 },
+            { text: @tr("Delete"), hidden: root.popup-group != 1 },
+            { text: @tr("Use as other colour") },
+        ];
+        init => { self.focus-menu(); }
+        dismissed => { ColourState.popup = 0; }
+        activated(i) => {
+            if (i == 0) {
+                ColourState.popup = 0;
+                ColourState.swatch-used(root.popup-group, root.popup-index);
+            } else if (i == 1) {
+                // No submenus: the formats are a menu of their own, opened in place.
+                ColourState.popup = 4;
+            } else if (i == 2) {
+                ColourState.popup = 0;
+                ColourState.swatch-saved(root.popup-group, root.popup-index, -1);
+            } else if (i == 3) {
+                root.save-ctx = 1;
+                ColourState.popup = 3;
+            } else if (i == 5) {
+                ColourState.popup = 0;
+                ColourState.swatch-edited(root.popup-group, root.popup-index);
+            } else if (i == 4 || i == 6) {
+                ColourState.popup = 0;
+                ColourState.swatch-removed(root.popup-group, root.popup-index);
+            } else {
+                ColourState.popup = 0;
+                ColourState.swatch-other(root.popup-group, root.popup-index);
+            }
+        }
+    }
+    // A format row's menu.
+    if ColourState.popup == 2: Menu {
+        x: min(max(Space.s2, root.popup-x), root.width - self.width - Space.s2);
+        y: min(max(Space.s2, root.popup-y), root.height - self.height - Space.s2 - Space.menu-clear);
+        max-w: root.width - Space.s4;
+        menu-max-h: root.height - Space.s4 - Space.menu-clear;
+        label: @tr("Format");
+        icons: false;
+        entries: [
+            { text: ColourState.target != "" ? @tr("Paste into {}", ColourState.target) : @tr("Copy") },
+            { text: @tr("Copy only") },
+            { text: @tr("Make default format"), hidden: !ColourState.formats[root.popup-index].can-be-default || ColourState.formats[root.popup-index].is-default },
+            { text: @tr("Save to Colours") },
+            { text: @tr("Save to…") },
+        ];
+        init => { self.focus-menu(); }
+        dismissed => { ColourState.popup = 0; }
+        activated(i) => {
+            if (i == 0) {
+                ColourState.popup = 0;
+                ColourState.format-used(root.popup-index);
+            } else if (i == 1) {
+                ColourState.popup = 0;
+                ColourState.format-copied(root.popup-index);
+            } else if (i == 2) {
+                ColourState.popup = 0;
+                ColourState.format-made-default(root.popup-index);
+            } else if (i == 3) {
+                ColourState.popup = 0;
+                ColourState.format-saved(root.popup-index, -1);
+            } else {
+                root.save-ctx = 2;
+                ColourState.popup = 3;
+            }
+        }
+    }
+    // Save to…: every list of every board, then "New list…" (built by the host).
+    if ColourState.popup == 3: Menu {
+        x: min(max(Space.s2, root.popup-x), root.width - self.width - Space.s2);
+        y: min(max(Space.s2, root.popup-y), root.height - self.height - Space.s2 - Space.menu-clear);
+        max-w: root.width - Space.s4;
+        menu-max-h: root.height - Space.s4 - Space.menu-clear;
+        label: @tr("Save to");
+        icons: false;
+        entries: ColourState.save-targets;
+        init => { self.focus-menu(); }
+        dismissed => { ColourState.popup = 0; }
+        activated(i) => {
+            ColourState.popup = 0;
+            if (root.save-ctx == 1) {
+                ColourState.swatch-saved(root.popup-group, root.popup-index, i);
+            } else if (root.save-ctx == 2) {
+                ColourState.format-saved(root.popup-index, i);
+            } else {
+                ColourState.save(i);
+            }
+        }
+    }
+    // More formats…: the current colour as text for code (hex variants, CSS Color 4, Swift, Kotlin, .NET).
+    if ColourState.popup == 5: Menu {
+        x: min(max(Space.s2, root.popup-x), root.width - self.width - Space.s2);
+        y: min(max(Space.s2, root.popup-y), root.height - self.height - Space.s2 - Space.menu-clear);
+        max-w: root.width - Space.s4;
+        menu-max-h: root.height - Space.s4 - Space.menu-clear;
+        label: @tr("More formats");
+        icons: false;
+        entries: ColourState.extras;
+        init => { self.focus-menu(); }
+        dismissed => { ColourState.popup = 0; }
+        activated(i) => {
+            ColourState.popup = 0;
+            ColourState.extra-copied(i);
+        }
+    }
+    // Copy as…: the chip's colour in one of the formats.
+    if ColourState.popup == 4: Menu {
+        x: min(max(Space.s2, root.popup-x), root.width - self.width - Space.s2);
+        y: min(max(Space.s2, root.popup-y), root.height - self.height - Space.s2 - Space.menu-clear);
+        max-w: root.width - Space.s4;
+        menu-max-h: root.height - Space.s4 - Space.menu-clear;
+        label: @tr("Copy as");
+        icons: false;
+        entries: ColourState.copy-as;
+        init => { self.focus-menu(); }
+        dismissed => { ColourState.popup = 0; }
+        activated(i) => {
+            ColourState.popup = 0;
+            ColourState.swatch-copied-as(root.popup-group, root.popup-index, i);
+        }
+    }
+}

@@ -77,3 +77,372 @@ pub fn chord(window: &Window, modifiers: &[Key], key: &str) {
 pub fn key(k: Key) -> String {
     char::from(k).to_string()
 }
+
+/// One in-memory key provider shared by every controller of a test, so a "restart" (a second
+/// controller on the same data folder) opens the key the first run made.
+#[derive(Clone)]
+pub struct SharedProvider {
+    inner: std::sync::Arc<snipdeck_store::crypto::MemoryKeyProvider>,
+    /// How many more `unwrap_key` calls work; `None` is no limit. At zero every one fails, as a
+    /// key store that went away does.
+    unwraps_left: std::sync::Arc<std::sync::Mutex<Option<u32>>>,
+}
+
+impl SharedProvider {
+    pub fn new() -> Self {
+        Self {
+            inner: std::sync::Arc::new(
+                snipdeck_store::crypto::MemoryKeyProvider::new().expect("provider"),
+            ),
+            unwraps_left: std::sync::Arc::new(std::sync::Mutex::new(None)),
+        }
+    }
+
+    /// From now on `n` more unwraps work, then every one fails (`None` lifts the limit).
+    pub fn fail_unwraps_after(&self, n: Option<u32>) {
+        *self.unwraps_left.lock().unwrap() = n;
+    }
+}
+
+impl snipdeck_store::crypto::KeyProvider for SharedProvider {
+    fn wrap_key(&self, key: &[u8]) -> Result<Vec<u8>, snipdeck_store::crypto::KeyProviderError> {
+        self.inner.wrap_key(key)
+    }
+
+    fn unwrap_key(
+        &self,
+        wrapped: &[u8],
+    ) -> Result<snipdeck_store::crypto::Zeroizing<Vec<u8>>, snipdeck_store::crypto::KeyProviderError>
+    {
+        let mut limit = self.unwraps_left.lock().unwrap();
+        if let Some(left) = *limit {
+            if left == 0 {
+                return Err(snipdeck_store::crypto::KeyProviderError::Unavailable(
+                    "the key store is gone".to_owned(),
+                ));
+            }
+            *limit = Some(left - 1);
+        }
+        drop(limit);
+        self.inner.unwrap_key(wrapped)
+    }
+}
+
+/// Every file under `dir` (database, log, blobs, drafts) is free of each needle.
+pub fn assert_no_plaintext(dir: &std::path::Path, needles: &[&[u8]]) {
+    let mut stack = vec![dir.to_owned()];
+    let mut seen = 0;
+    while let Some(next) = stack.pop() {
+        for entry in std::fs::read_dir(&next).expect("dir").flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                stack.push(path);
+                continue;
+            }
+            let name = path.file_name().map(|n| n.to_string_lossy().into_owned());
+            if name
+                .as_deref()
+                .is_some_and(|n| n.ends_with("-shm") || n == "snipdeck.lock")
+            {
+                continue;
+            }
+            let bytes = std::fs::read(&path).expect("read");
+            seen += 1;
+            for needle in needles {
+                assert!(
+                    !bytes.windows(needle.len()).any(|w| w == *needle),
+                    "{} holds {:?}",
+                    path.display(),
+                    String::from_utf8_lossy(&needle[..needle.len().min(20)])
+                );
+            }
+        }
+    }
+    assert!(seen > 0, "there was something to scan");
+}
+
+/// Holds each master password job until the test releases it, so a window can be looked at while
+/// the key is being derived. Installing it replaces the thread's offload; dropping the guard puts
+/// the inline one back (the UI thread is shared by the tests of a file).
+#[derive(Clone, Default)]
+pub struct Deferred {
+    held: std::rc::Rc<
+        std::cell::RefCell<
+            Vec<(
+                snipdeck_app::master_job::MasterJob,
+                snipdeck_app::master_job::Finish,
+            )>,
+        >,
+    >,
+}
+
+impl snipdeck_app::master_job::Offload for Deferred {
+    fn run(
+        &self,
+        job: snipdeck_app::master_job::MasterJob,
+        finish: snipdeck_app::master_job::Finish,
+    ) {
+        self.held.borrow_mut().push((job, finish));
+    }
+}
+
+/// Puts the inline offload back when dropped.
+pub struct DeferredGuard;
+
+impl Drop for DeferredGuard {
+    fn drop(&mut self) {
+        snipdeck_app::master_job::set_offload(std::rc::Rc::new(snipdeck_app::master_job::Inline));
+    }
+}
+
+impl Deferred {
+    /// Makes the windows of this thread hand their jobs to `self`.
+    pub fn install(&self) -> DeferredGuard {
+        snipdeck_app::master_job::set_offload(std::rc::Rc::new(self.clone()));
+        DeferredGuard
+    }
+
+    /// How many jobs are waiting.
+    pub fn held(&self) -> usize {
+        self.held.borrow().len()
+    }
+
+    /// Runs the oldest waiting job and hands its outcome to the window, as the worker would.
+    pub fn release(&self) {
+        let (job, finish) = self.held.borrow_mut().remove(0);
+        finish(job.run());
+    }
+}
+
+/// A test password derived at run time from `label`: the same label always gives the same text, and
+/// no password is written down in the test source. Leaks a few bytes per call; tests only.
+pub fn pw(label: &str) -> &'static str {
+    let key = blake3::derive_key("snipdeck test password", label.as_bytes());
+    let hex = blake3::Hash::from_bytes(key).to_hex();
+    Box::leak(hex.as_str()[..24].to_owned().into_boxed_str())
+}
+
+/// The master-password steps in one call, for tests: `begin_*`, then the job's `run` (what the
+/// worker thread does), then `finish_master`.
+pub trait MasterSteps {
+    fn unlock_with_password(
+        &mut self,
+        password: &str,
+    ) -> Result<(), snipdeck_app::controller::MasterProblem>;
+    fn set_master_password(
+        &mut self,
+        new: &str,
+        again: &str,
+    ) -> Result<(), snipdeck_app::controller::MasterProblem>;
+    fn change_master_password(
+        &mut self,
+        current: &str,
+        new: &str,
+        again: &str,
+    ) -> Result<(), snipdeck_app::controller::MasterProblem>;
+    fn remove_master_password(
+        &mut self,
+        current: &str,
+    ) -> Result<(), snipdeck_app::controller::MasterProblem>;
+}
+
+type Ctl = snipdeck_app::controller::Controller<
+    snipdeck_store::Store,
+    snipdeck_platform::testing::FakeClipboard,
+    snipdeck_platform::testing::FakeKeyboard,
+    snipdeck_platform::testing::FakeTiming,
+>;
+
+fn finish(
+    ctl: &mut Ctl,
+    job: Option<snipdeck_app::master_job::MasterJob>,
+) -> Result<(), snipdeck_app::controller::MasterProblem> {
+    match job {
+        Some(job) => ctl.finish_master(job.run()),
+        None => Ok(()),
+    }
+}
+
+impl MasterSteps for Ctl {
+    fn unlock_with_password(
+        &mut self,
+        password: &str,
+    ) -> Result<(), snipdeck_app::controller::MasterProblem> {
+        let job = self.begin_unlock_with_password(password)?;
+        finish(self, job)
+    }
+    fn set_master_password(
+        &mut self,
+        new: &str,
+        again: &str,
+    ) -> Result<(), snipdeck_app::controller::MasterProblem> {
+        let job = self.begin_set_master_password(new, again)?;
+        finish(self, Some(job))
+    }
+    fn change_master_password(
+        &mut self,
+        current: &str,
+        new: &str,
+        again: &str,
+    ) -> Result<(), snipdeck_app::controller::MasterProblem> {
+        let job = self.begin_change_master_password(current, new, again)?;
+        finish(self, Some(job))
+    }
+    fn remove_master_password(
+        &mut self,
+        current: &str,
+    ) -> Result<(), snipdeck_app::controller::MasterProblem> {
+        let job = self.begin_remove_master_password(current)?;
+        finish(self, Some(job))
+    }
+}
+
+/// The archive jobs in one call, for tests: `begin_*`, then the job's `run` (what the worker
+/// thread does, here on this thread), then `finish_archive`. A job that ended at once (an
+/// in-memory library, or a refusal) is read as it is.
+pub trait ArchiveSteps {
+    fn backup_now(&mut self, data_dir: &std::path::Path) -> bool;
+    fn export_library(&mut self, folder: &std::path::Path) -> Option<std::path::PathBuf>;
+    fn rebuild_from_backup(&mut self, data_dir: &std::path::Path, backup: &std::path::Path)
+    -> bool;
+    fn preview_import(
+        &mut self,
+        source: &snipdeck_app::controller::ImportSource,
+    ) -> Result<snipdeck_app::controller::ImportPreview, snipdeck_app::controller::ImportProblem>;
+    fn preview_restore(
+        &mut self,
+        backup: &std::path::Path,
+    ) -> Result<snipdeck_app::controller::ImportPreview, snipdeck_app::controller::ImportProblem>;
+    fn apply_import(&mut self, source: &snipdeck_app::controller::ImportSource) -> bool;
+    fn restore_backup(&mut self, backup: &std::path::Path) -> bool;
+}
+
+fn end(
+    ctl: &mut Ctl,
+    begun: snipdeck_app::controller::Begun,
+) -> snipdeck_app::controller::ArchiveEnd {
+    use snipdeck_app::controller::{ArchiveEnd, Begun};
+    match begun {
+        Begun::Refused => ArchiveEnd::Ignored,
+        Begun::Finished(end) => end,
+        Begun::Job(job) => match ctl.finish_archive(job.run()) {
+            // Another pass on a worker (a rebuild whose library changed under its copy).
+            ArchiveEnd::Again(job) => end(ctl, Begun::Job(job)),
+            done => done,
+        },
+    }
+}
+
+impl ArchiveSteps for Ctl {
+    fn backup_now(&mut self, data_dir: &std::path::Path) -> bool {
+        let begun = self.begin_backup_now(data_dir);
+        matches!(
+            end(self, begun),
+            snipdeck_app::controller::ArchiveEnd::BackupNow(true)
+        )
+    }
+    fn export_library(&mut self, folder: &std::path::Path) -> Option<std::path::PathBuf> {
+        let begun = self.begin_export(folder);
+        match end(self, begun) {
+            snipdeck_app::controller::ArchiveEnd::Exported(file) => file,
+            _ => None,
+        }
+    }
+    fn rebuild_from_backup(
+        &mut self,
+        data_dir: &std::path::Path,
+        backup: &std::path::Path,
+    ) -> bool {
+        let begun = self.begin_rebuild_from_backup(data_dir, backup);
+        matches!(
+            end(self, begun),
+            snipdeck_app::controller::ArchiveEnd::Rebuilt(true)
+        )
+    }
+    fn preview_import(
+        &mut self,
+        source: &snipdeck_app::controller::ImportSource,
+    ) -> Result<snipdeck_app::controller::ImportPreview, snipdeck_app::controller::ImportProblem>
+    {
+        let begun = self.begin_import_preview(source);
+        previewed(end(self, begun))
+    }
+    fn preview_restore(
+        &mut self,
+        backup: &std::path::Path,
+    ) -> Result<snipdeck_app::controller::ImportPreview, snipdeck_app::controller::ImportProblem>
+    {
+        let begun = self.begin_restore_preview(backup);
+        previewed(end(self, begun))
+    }
+    fn apply_import(&mut self, source: &snipdeck_app::controller::ImportSource) -> bool {
+        let begun = self.begin_apply_import(source);
+        imported(&end(self, begun))
+    }
+    fn restore_backup(&mut self, backup: &std::path::Path) -> bool {
+        let begun = self.begin_restore_backup(backup);
+        imported(&end(self, begun))
+    }
+}
+
+fn previewed(
+    end: snipdeck_app::controller::ArchiveEnd,
+) -> Result<snipdeck_app::controller::ImportPreview, snipdeck_app::controller::ImportProblem> {
+    match end {
+        snipdeck_app::controller::ArchiveEnd::ImportPreview(outcome) => outcome,
+        other => panic!("not a preview: {other:?}"),
+    }
+}
+
+fn imported(end: &snipdeck_app::controller::ArchiveEnd) -> bool {
+    matches!(end, snipdeck_app::controller::ArchiveEnd::Imported(true))
+}
+
+/// Holds the archive jobs of this thread instead of running them, so a test can look at the
+/// windows while a worker would be busy. Dropping the guard puts the inline offload back.
+#[derive(Clone, Default)]
+pub struct HeldArchive {
+    held: std::rc::Rc<
+        std::cell::RefCell<
+            Vec<(
+                snipdeck_app::archive_job::ArchiveJob,
+                snipdeck_app::archive_job::Finish,
+            )>,
+        >,
+    >,
+}
+
+impl snipdeck_app::archive_job::Offload for HeldArchive {
+    fn run(
+        &self,
+        job: snipdeck_app::archive_job::ArchiveJob,
+        finish: snipdeck_app::archive_job::Finish,
+    ) {
+        self.held.borrow_mut().push((job, finish));
+    }
+}
+
+pub struct HeldArchiveGuard;
+
+impl Drop for HeldArchiveGuard {
+    fn drop(&mut self) {
+        snipdeck_app::archive_job::set_offload(std::rc::Rc::new(snipdeck_app::archive_job::Inline));
+    }
+}
+
+impl HeldArchive {
+    pub fn install(&self) -> HeldArchiveGuard {
+        snipdeck_app::archive_job::set_offload(std::rc::Rc::new(self.clone()));
+        HeldArchiveGuard
+    }
+
+    pub fn held(&self) -> usize {
+        self.held.borrow().len()
+    }
+
+    /// Runs the oldest held job and hands its outcome back, as the worker thread would.
+    pub fn release(&self) {
+        let (job, finish) = self.held.borrow_mut().remove(0);
+        finish(job.run());
+    }
+}

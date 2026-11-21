@@ -20,12 +20,30 @@ use jiff::Zoned;
 use jiff::civil::date;
 use jiff::tz::{Offset, TimeZone};
 use snipdeck_core::{Format, Formats, Item, ItemKind, Placement};
-use snipdeck_portable::KeySource;
 use snipdeck_portable::backup::{
-    BackupOutcome, DEFAULT_KEEP, file_name, list_backups, parse_file_name, restore, run_if_due,
+    BackupOutcome, DEFAULT_KEEP, file_name, list_backups, parse_file_name, run_if_due,
+};
+use snipdeck_portable::{
+    BoardLayout, ImportOptions, ImportReport, KeySource, MergeStrategy, import_archive_path,
 };
 use snipdeck_store::crypto::DataKey;
-use snipdeck_store::{ItemRepo, Store};
+use snipdeck_store::{BoardRepo, ItemRepo, Store};
+
+/// A restore: the shared import path, keeping the backup's boards and skipping what exists.
+fn restore(
+    lib: &mut Store,
+    backup: &std::path::Path,
+    now: snipdeck_core::Timestamp,
+    key: KeySource<'_>,
+) -> snipdeck_portable::Result<ImportReport> {
+    let options = ImportOptions {
+        layout: BoardLayout::KeepBoards,
+        merge: MergeStrategy::SkipDuplicates,
+        key,
+        ..ImportOptions::default()
+    };
+    import_archive_path(lib, backup, now, &options)
+}
 
 fn zone(hours: i8) -> TimeZone {
     TimeZone::fixed(Offset::from_hours(hours).unwrap())
@@ -153,7 +171,7 @@ fn only_the_newest_keep_backups_survive() {
         else {
             panic!()
         };
-        assert!(prune_failed.is_empty());
+        assert_eq!(prune_failed.len(), 0);
         assert_eq!(pruned.len(), usize::from(day > 3), "day {day}");
     }
     assert_eq!(
@@ -162,6 +180,31 @@ fn only_the_newest_keep_backups_survive() {
             "snipdeck-backup-20261008.snipdeck",
             "snipdeck-backup-20261009.snipdeck",
             "snipdeck-backup-20261010.snipdeck",
+        ]
+    );
+}
+
+#[test]
+fn a_future_dated_file_does_not_hold_a_keep_slot() {
+    let dir = tempfile::tempdir().unwrap();
+    let s = sample_store();
+    let backups = dir.path().join("backups");
+    fs::create_dir_all(&backups).unwrap();
+    for name in [
+        "snipdeck-backup-20990101.snipdeck",
+        "snipdeck-backup-20261001.snipdeck",
+        "snipdeck-backup-20261002.snipdeck",
+    ] {
+        fs::write(backups.join(name), b"old").unwrap();
+    }
+    run_if_due(&s, dir.path(), &local(2026, 10, 3, 12, 0, 0), 2, None).unwrap();
+    // Two kept by date (the new one and the 2nd); the 1st goes; the future one is left alone.
+    assert_eq!(
+        names(dir.path()),
+        [
+            "snipdeck-backup-20261002.snipdeck",
+            "snipdeck-backup-20261003.snipdeck",
+            "snipdeck-backup-20990101.snipdeck",
         ]
     );
 }
@@ -379,13 +422,13 @@ fn restore_is_an_import_that_recreates_boards_and_skips_what_exists() {
 
     // Into an empty library: everything comes back under its own board name.
     let mut fresh = store();
-    let report = restore(&mut fresh, &path, at(5), KeySource::Given(&key), None).unwrap();
+    let report = restore(&mut fresh, &path, at(5), KeySource::Given(&key)).unwrap();
     assert_eq!(report.items_added, 2);
     assert_same(&snapshot(&fresh), &snapshot(&original));
 
     // Over an intact library: nothing is added, no board is created.
     let mut intact = vault();
-    let report = restore(&mut intact, &path, at(5), KeySource::Given(&key), None).unwrap();
+    let report = restore(&mut intact, &path, at(5), KeySource::Given(&key)).unwrap();
     assert_eq!(
         (
             report.items_added,
@@ -398,15 +441,15 @@ fn restore_is_an_import_that_recreates_boards_and_skips_what_exists() {
 
     // Without the key the sensitive item is skipped with a warning, the rest restored.
     let mut keyless = store();
-    let report = restore(&mut keyless, &path, at(5), KeySource::None, None).unwrap();
+    let report = restore(&mut keyless, &path, at(5), KeySource::None).unwrap();
     assert_eq!((report.items_added, report.items_skipped), (1, 1));
     assert!(report.has_warnings());
     assert_eq!(keyless.all_items().unwrap().len(), 1);
 }
 
-/// PR 4 review 6: a restore obeys the board limit like any other import.
+/// There is no board limit: a restore adds the backup's board to a library that has one.
 #[test]
-fn restore_refuses_to_go_past_the_board_limit_and_changes_nothing() {
+fn restore_adds_the_backups_board_to_a_library_that_already_has_one() {
     let dir = tempfile::tempdir().unwrap();
     let key = DataKey::generate().unwrap();
     let out = run_if_due(
@@ -419,32 +462,17 @@ fn restore_refuses_to_go_past_the_board_limit_and_changes_nothing() {
     .unwrap();
     let path = created(&out).to_owned();
 
-    // A library already at its limit of one board: the backup's board would be a second.
     let mut full = store();
     board(&mut full, "Mine");
-    let before = counts(&full);
-    let err = restore(&mut full, &path, at(5), KeySource::Given(&key), Some(1)).unwrap_err();
-    assert!(
-        matches!(
-            err,
-            snipdeck_portable::Error::Core(snipdeck_core::Error::ProRequired(
-                snipdeck_core::Feature::UnlimitedBoards
-            ))
-        ),
-        "{err}"
-    );
-    assert_eq!(counts(&full), before, "nothing was written");
-
-    // Within the limit it restores as usual.
-    let mut room = store();
-    let report = restore(&mut room, &path, at(5), KeySource::Given(&key), Some(1)).unwrap();
+    let report = restore(&mut full, &path, at(5), KeySource::Given(&key)).unwrap();
     assert_eq!(report.boards_added, 1);
+    assert_eq!(full.boards().unwrap().len(), 2);
 }
 
 #[test]
 fn listing_backups_is_newest_first_and_empty_without_a_folder() {
     let dir = tempfile::tempdir().unwrap();
-    assert!(list_backups(dir.path()).unwrap().is_empty());
+    assert_eq!(list_backups(dir.path()).unwrap().len(), 0);
     let s = sample_store();
     for day in [3, 1, 2] {
         run_if_due(&s, dir.path(), &local(2026, 10, day, 12, 0, 0), 7, None).unwrap();

@@ -10,8 +10,8 @@ use snipdeck_store::crypto::{DataKey, Slot, encrypt_payload};
 
 use crate::archive::{ASSET_DIR, ArchiveWriter, ITEMS, MANIFEST};
 use crate::dto::{
-    BoardDto, Counts, ENCRYPTION, FORMAT_NAME, FileDto, FormatDto, ItemDto, ItemsDoc, ListDto,
-    MAJOR, MINOR, Manifest, TagDto,
+    BoardDto, Counts, ENCRYPTION, FORMAT_NAME, FileDto, FormatDto, GroupDto, ItemDto, ItemsDoc,
+    ListDto, MAJOR, MINOR, Manifest, TagDto,
 };
 use crate::error::{Error, Result};
 use crate::limits::Limits;
@@ -147,6 +147,22 @@ struct Exporter<'a, L, W: Write + Seek> {
     report: ExportReport,
 }
 
+/// An entry over the entry limit becomes an error that names the item that holds it. The total
+/// is not the fault of the item that happened to cross it, so that error stays as it is.
+fn name_the_item(error: Error, title: &str) -> Error {
+    match error {
+        Error::LimitExceeded {
+            what: what @ "uncompressed entry size",
+            limit,
+        } => Error::ItemTooLarge {
+            title: title.to_owned(),
+            what,
+            limit,
+        },
+        other => other,
+    }
+}
+
 impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
     fn build_doc(&mut self) -> Result<ItemsDoc> {
         let tag_names: HashMap<TagId, String> = self
@@ -157,11 +173,15 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
             .collect();
         let mut used_tags: BTreeSet<TagId> = BTreeSet::new();
         let mut boards = Vec::new();
+        let triggers = trigger_map(self.lib)?;
 
         for board in self.lib.boards()? {
             let mut lists = Vec::new();
             for list in self.lib.lists(board.id)? {
                 let mut items = Vec::new();
+                let runs = self.lib.groups_of(list.id)?;
+                let group_of = group_map(&runs);
+                let mut written_groups = std::collections::HashSet::new();
                 for item in self.lib.items(list.id)? {
                     if self.report.items >= self.options.limits.max_items {
                         return Err(Error::LimitExceeded {
@@ -180,11 +200,7 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
                             Some(key)
                         }
                     };
-                    let formats = self.lib.formats(item.id)?;
-                    let mut format_dtos = Vec::with_capacity(formats.iter().count());
-                    for format in &formats {
-                        format_dtos.push(self.format_dto(item.id, format, key)?);
-                    }
+                    let format_dtos = self.item_formats(item.id, &item.title, key)?;
                     used_tags.extend(item.tags.iter().copied());
                     items.push(ItemDto {
                         id: item.id.to_string(),
@@ -193,6 +209,12 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
                         pinned: item.pinned,
                         sensitive: item.sensitive,
                         always_plain: item.always_plain,
+                        label: item.label.map(|l| l.key().to_owned()),
+                        trigger: triggers.get(&item.id).map(ToString::to_string),
+                        group: group_of.get(&item.id).map(|g| {
+                            written_groups.insert(*g);
+                            g.to_string()
+                        }),
                         use_count: item.use_count,
                         last_used_at: item.last_used_at.map(|t| t.to_string()),
                         source_app: item.source_app.clone(),
@@ -208,6 +230,8 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
                     id: list.id.to_string(),
                     name: list.name.to_string(),
                     accent: list.accent.map(|a| a.key().to_owned()),
+                    icon: list.icon.map(|i| i.key().to_owned()),
+                    groups: group_dtos(&runs, &written_groups),
                     view: list.view.key().to_owned(),
                     sort: list.sort.key().to_owned(),
                     created_at: list.created_at.to_string(),
@@ -239,6 +263,24 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
         tags.sort_by_key(|t| t.name.to_lowercase());
         self.report.tags = tags.len();
         Ok(ItemsDoc { tags, boards })
+    }
+
+    /// Every format of one item, with an archive limit error naming the item.
+    fn item_formats(
+        &mut self,
+        item: ItemId,
+        title: &str,
+        key: Option<&DataKey>,
+    ) -> Result<Vec<FormatDto>> {
+        let formats = self.lib.formats(item)?;
+        let mut dtos = Vec::with_capacity(formats.iter().count());
+        for format in &formats {
+            let dto = self
+                .format_dto(item, format, key)
+                .map_err(|e| name_the_item(e, title))?;
+            dtos.push(dto);
+        }
+        Ok(dtos)
     }
 
     fn format_dto(
@@ -317,10 +359,11 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
     fn finish(mut self, now: Timestamp, doc: &ItemsDoc) -> Result<ExportReport> {
         let json = serde_json::to_vec(doc)
             .map_err(|e| Error::malformed(ITEMS, format!("could not serialise: {e}")))?;
-        if json.len() as u64 > self.options.limits.max_json_bytes {
+        let cap = self.options.limits.export_json_cap();
+        if json.len() as u64 > cap {
             return Err(Error::LimitExceeded {
                 what: "items.json size",
-                limit: self.options.limits.max_json_bytes,
+                limit: cap,
             });
         }
         self.writer.add(ITEMS, &json, true)?;
@@ -351,4 +394,39 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
         out.flush()?;
         Ok(report)
     }
+}
+
+/// The groups of a list that have a member in the archive.
+fn group_dtos(
+    runs: &[snipdeck_store::GroupRun],
+    written: &std::collections::HashSet<snipdeck_core::GroupId>,
+) -> Vec<GroupDto> {
+    runs.iter()
+        .filter(|run| written.contains(&run.group.id))
+        .map(|run| GroupDto {
+            id: run.group.id.to_string(),
+            name: run.group.name.to_string(),
+            collapsed: run.group.collapsed,
+        })
+        .collect()
+}
+
+/// Each item's trigger, by item.
+fn trigger_map<L: Library>(
+    lib: &L,
+) -> Result<std::collections::HashMap<snipdeck_core::ItemId, snipdeck_core::Trigger>> {
+    Ok(lib
+        .triggers()?
+        .into_iter()
+        .map(|(trigger, item)| (item, trigger))
+        .collect())
+}
+
+/// The group of each grouped item.
+fn group_map(
+    runs: &[snipdeck_store::GroupRun],
+) -> std::collections::HashMap<snipdeck_core::ItemId, snipdeck_core::GroupId> {
+    runs.iter()
+        .flat_map(|run| run.items.iter().map(|id| (*id, run.group.id)))
+        .collect()
 }

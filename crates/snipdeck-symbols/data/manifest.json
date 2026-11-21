@@ -1,0 +1,509 @@
+{
+ "emoji_version": "18.0",
+ "cldr_version": "49.0.0",
+ "sources": {
+  "emoji-test": "8f3735cda1f92a779d78af67cf86066bb1f07143dc22f2ac29394d9bc57ab21a",
+  "cldr-annotations-en": "6b6b6e0e5f211bc31cf3fa39f385d80dea6cd19ee19bbc6db9071fce3ae5d360",
+  "cldr-derived-en": "7aad034f689cb6553f8d7366bfee8c4ea2818c7776907bc5118aab575223dea3",
+  "cldr-annotations-de": "4cf155867afb33b66b935edaac882e316c9c96a675e9c4a39af35c07f382d87c",
+  "cldr-derived-de": "f16e90bd7b197dbfa40ffc42ca284e01e4e614bd4f1c7874b67e244056699fb7",
+  "cldr-annotations-es": "f4149459f74207b235e673f62f5671c06ac97ae53f2c1d100e1eae40e54c5306",
+  "cldr-derived-es": "d504c1a0db44fd17431b61bc4bcf07cf26ff1159d7d9fff9b7164736016bffd7",
+  "cldr-annotations-fr": "8448e38ec2e5a377dbaa0b9a552b46cb1d1674c972208836ab5ab52311600f1d",
+  "cldr-derived-fr": "3d059cc0b6fd6b9f47f600b5e55e1c2940a42eafc554f346e1e23362bfb7a9b5",
+  "cldr-annotations-ja": "e42dacabf2eee0aab36c168c995efeaf8add896f8940c5ee86a809d85c2816e7",
+  "cldr-derived-ja": "3d83cf7e4093f7fe77055dc21b1a3a65cd8f48a0249127552d58d3b058dbe4cd",
+  "cldr-annotations-pt": "a64a01f9906ec754487d4d903caa6fb62ee9613047a1c8cfd1c82a0216f0df5e",
+  "cldr-derived-pt": "61e65e2bde4519835701c58382d8ca531216ad4fa1d8bc3804577a5d9f4a01f1",
+  "cldr-annotations-zh": "7d49968f977021fefe6ceea2613e0313de5ea416d8f3c0a8fe3032c9b7f2ebfb",
+  "cldr-derived-zh": "1b86f6dd0b295e64efddaf6028151b6c5c95616b8c98c15f5727cff2b2429d48",
+  "licence-unicode": "220ba0e1c43b99530d2d5bdb892a99dca0989414f51ab695ecd90163eaa1ec3b",
+  "fluent-npm": "7d064769dee690815f823bc5bcc511d957198caf9f5edd8dd9c1aa48a6aeb175",
+  "licence-fluent": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+  "phosphor-npm": "313332be6190b724da24107addd781799b48bf76b13963f24501112ffe1baadd",
+  "unicode-data": "0736451de439ae7baf1425136617da495e09ee5afbe6e394374db7009ea08950",
+  "unihan": "4c93ea9c1f636451729a840978f1667a53886af37ba854fdcce109721c63d43e",
+  "flags-npm": "4e93941b603fef7fb99c8c9d7df98fe202854e7d9b1275a66261845294dc2981",
+  "licence-flag-icons": "8f1195d55a2fd315a07d812328470ca9ba2abb78c8d317ff19619d5125e00cea"
+ },
+ "counts": {
+  "emoji": 1923,
+  "kaomoji": 341,
+  "icons": 1512,
+  "characters": 2714,
+  "tone_bases": 332,
+  "i18n_terms": 64,
+  "emoji_groups": {
+   "Smileys & Emotion": 172,
+   "People & Body": 390,
+   "Animals & Nature": 161,
+   "Food & Drink": 132,
+   "Travel & Places": 221,
+   "Activities": 85,
+   "Objects": 268,
+   "Symbols": 224,
+   "Flags": 270
+  },
+  "names_missing_en": 0,
+  "names_missing": {
+   "de": 0,
+   "es": 0,
+   "fr": 0,
+   "ja": 0,
+   "pt": 0,
+   "zh": 0
+  }
+ },
+ "emoji_groups": [
+  "Smileys & Emotion",
+  "People & Body",
+  "Animals & Nature",
+  "Food & Drink",
+  "Travel & Places",
+  "Activities",
+  "Objects",
+  "Symbols",
+  "Flags"
+ ],
+ "kaomoji_groups": [
+  "joy",
+  "love",
+  "sad",
+  "angry",
+  "surprise",
+  "shrug",
+  "greet",
+  "sorry",
+  "animals",
+  "actions"
+ ],
+ "character_groups": [
+  "Punctuation",
+  "Arrows",
+  "Maths",
+  "Currency",
+  "Letters and numbers",
+  "Super and subscripts",
+  "Technical",
+  "Box drawing",
+  "Shapes",
+  "Symbols"
+ ],
+ "coverage": {
+  "emoji_test_default_tone": 1923,
+  "with_fluent_art": 1853,
+  "system_style": 70,
+  "skin_tone_variants": 2040
+ },
+ "system_style": [
+  {
+   "seq": "1faeb",
+   "name": "cracking face",
+   "group": "Smileys & Emotion"
+  },
+  {
+   "seq": "1fae9",
+   "name": "face with bags under eyes",
+   "group": "Smileys & Emotion"
+  },
+  {
+   "seq": "1faea",
+   "name": "distorted face",
+   "group": "Smileys & Emotion"
+  },
+  {
+   "seq": "1faef",
+   "name": "fight cloud",
+   "group": "Smileys & Emotion"
+  },
+  {
+   "seq": "1faf9",
+   "name": "leftwards thumb sign",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1fafa",
+   "name": "rightwards thumb sign",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1fac8",
+   "name": "hairy creature",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f9d1-200d-1fa70",
+   "name": "ballet dancer",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f9d1-200d-1f91d-200d-1f9d1",
+   "name": "people holding hands",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f46d",
+   "name": "women holding hands",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f46b",
+   "name": "woman and man holding hands",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f46c",
+   "name": "men holding hands",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f48f",
+   "name": "kiss",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f469-200d-2764-fe0f-200d-1f48b-200d-1f468",
+   "name": "kiss: woman, man",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-2764-fe0f-200d-1f48b-200d-1f468",
+   "name": "kiss: man, man",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f469-200d-2764-fe0f-200d-1f48b-200d-1f469",
+   "name": "kiss: woman, woman",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f491",
+   "name": "couple with heart",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f469-200d-2764-fe0f-200d-1f468",
+   "name": "couple with heart: woman, man",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-2764-fe0f-200d-1f468",
+   "name": "couple with heart: man, man",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f469-200d-2764-fe0f-200d-1f469",
+   "name": "couple with heart: woman, woman",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f469-200d-1f466",
+   "name": "family: man, woman, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f469-200d-1f467",
+   "name": "family: man, woman, girl",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f469-200d-1f467-200d-1f466",
+   "name": "family: man, woman, girl, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f469-200d-1f466-200d-1f466",
+   "name": "family: man, woman, boy, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f469-200d-1f467-200d-1f467",
+   "name": "family: man, woman, girl, girl",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f468-200d-1f466",
+   "name": "family: man, man, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f468-200d-1f467",
+   "name": "family: man, man, girl",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f468-200d-1f467-200d-1f466",
+   "name": "family: man, man, girl, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f468-200d-1f466-200d-1f466",
+   "name": "family: man, man, boy, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f468-200d-1f467-200d-1f467",
+   "name": "family: man, man, girl, girl",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f469-200d-1f469-200d-1f466",
+   "name": "family: woman, woman, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f469-200d-1f469-200d-1f467",
+   "name": "family: woman, woman, girl",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f469-200d-1f469-200d-1f467-200d-1f466",
+   "name": "family: woman, woman, girl, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f469-200d-1f469-200d-1f466-200d-1f466",
+   "name": "family: woman, woman, boy, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f469-200d-1f469-200d-1f467-200d-1f467",
+   "name": "family: woman, woman, girl, girl",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f466",
+   "name": "family: man, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f466-200d-1f466",
+   "name": "family: man, boy, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f467",
+   "name": "family: man, girl",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f467-200d-1f466",
+   "name": "family: man, girl, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f467-200d-1f467",
+   "name": "family: man, girl, girl",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f469-200d-1f466",
+   "name": "family: woman, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f469-200d-1f466-200d-1f466",
+   "name": "family: woman, boy, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f469-200d-1f467",
+   "name": "family: woman, girl",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f469-200d-1f467-200d-1f466",
+   "name": "family: woman, girl, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f469-200d-1f467-200d-1f467",
+   "name": "family: woman, girl, girl",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f46a",
+   "name": "family",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f9d1-200d-1f9d1-200d-1f9d2",
+   "name": "family: adult, adult, child",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f9d1-200d-1f9d1-200d-1f9d2-200d-1f9d2",
+   "name": "family: adult, adult, child, child",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f9d1-200d-1f9d2",
+   "name": "family: adult, child",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f9d1-200d-1f9d2-200d-1f9d2",
+   "name": "family: adult, child, child",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1fac6",
+   "name": "fingerprint",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1facd",
+   "name": "orca",
+   "group": "Animals & Nature"
+  },
+  {
+   "seq": "1facc",
+   "name": "monarch butterfly",
+   "group": "Animals & Nature"
+  },
+  {
+   "seq": "1fabe",
+   "name": "leafless tree",
+   "group": "Animals & Nature"
+  },
+  {
+   "seq": "1fadd",
+   "name": "pickle",
+   "group": "Food & Drink"
+  },
+  {
+   "seq": "1fadc",
+   "name": "root vegetable",
+   "group": "Food & Drink"
+  },
+  {
+   "seq": "1f6d8",
+   "name": "landslide",
+   "group": "Travel & Places"
+  },
+  {
+   "seq": "1f6d9",
+   "name": "lighthouse",
+   "group": "Travel & Places"
+  },
+  {
+   "seq": "1fa8b",
+   "name": "meteor",
+   "group": "Travel & Places"
+  },
+  {
+   "seq": "1fa8a",
+   "name": "trombone",
+   "group": "Objects"
+  },
+  {
+   "seq": "1fa89",
+   "name": "harp",
+   "group": "Objects"
+  },
+  {
+   "seq": "1fa8e",
+   "name": "treasure chest",
+   "group": "Objects"
+  },
+  {
+   "seq": "1fa8c",
+   "name": "eraser",
+   "group": "Objects"
+  },
+  {
+   "seq": "1fa8d",
+   "name": "net with handle",
+   "group": "Objects"
+  },
+  {
+   "seq": "1fa8f",
+   "name": "shovel",
+   "group": "Objects"
+  },
+  {
+   "seq": "1fadf",
+   "name": "splatter",
+   "group": "Symbols"
+  },
+  {
+   "seq": "1f1e6-1f1e8",
+   "name": "flag: Ascension Island",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e8-1f1f6",
+   "name": "flag: Sark",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ea-1f1e6",
+   "name": "flag: Ceuta & Melilla",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f9-1f1e6",
+   "name": "flag: Tristan da Cunha",
+   "group": "Flags"
+  }
+ ],
+ "emoji_seqs_sha256": "7cbe7874b2dbe351b505825854ecb15d5fe12a450589bf9b6c6ee317f505d3ec",
+ "art": {
+  "px": 72,
+  "count": 1923,
+  "present": 1853,
+  "bytes": 2153822,
+  "colours": 128,
+  "style": "Fluent Emoji Flat"
+ },
+ "files": {
+  "characters.tsv.z": {
+   "bytes": 28074,
+   "sha256": "f98b7b1ce64ce7eb4880e1f818fe2f29bcf3ae5f9b1a303431cee32c53cc00a3"
+  },
+  "emoji.tsv.z": {
+   "bytes": 39462,
+   "sha256": "c31cebdebfac055dfa59197bbf6245365db3140c672e2335b836425e3db4ae9c"
+  },
+  "emoji72.bin": {
+   "bytes": 2153822,
+   "sha256": "6bd0e6062025b30d9d140db13d92d012274eb154b51b58baa8a2af2e4e5071e2"
+  },
+  "icons.bin.z": {
+   "bytes": 213342,
+   "sha256": "4cb07c49843a0c9a8e68150d5c0b4a01e5d407f63e7ecd2f45956c61e2484242"
+  },
+  "kaomoji.tsv.z": {
+   "bytes": 7378,
+   "sha256": "4e29599adfec8263e7545b896eece05264274d50500a8960a5a8cb8ed80f8d67"
+  },
+  "names-de.tsv.z": {
+   "bytes": 48594,
+   "sha256": "eb99e38d9c83a1afebbbac07c5062ad107833b098c8c02e9639572177d4a2fc3"
+  },
+  "names-es.tsv.z": {
+   "bytes": 39505,
+   "sha256": "07e0993ba654b4c39675209b4df0effd4efe2712e5115220aa2ca1af9a3bd07a"
+  },
+  "names-fr.tsv.z": {
+   "bytes": 49010,
+   "sha256": "eeda1f493db35a1980441bc09df0b10bbda5147169fa6d528d241ea0bfde47ae"
+  },
+  "names-ja.tsv.z": {
+   "bytes": 70405,
+   "sha256": "0166bc6c18bc553b4213fb4649b1c3db8e7c25012f1fa1be57fd691f5d782501"
+  },
+  "names-pt.tsv.z": {
+   "bytes": 49489,
+   "sha256": "609f04109e02d3fc7c0e890513b986e2098d8842d65bb068f64cc5d6991e4b8f"
+  },
+  "names-zh.tsv.z": {
+   "bytes": 83953,
+   "sha256": "9f991a6e7fef215eed45ae9f482dd72a9d39f23743cd414663d49105e73c5fc2"
+  },
+  "tones.tsv.z": {
+   "bytes": 5926,
+   "sha256": "aac418854a074bf2a468e37614639f7c7852427210a393beae611cf01da879eb"
+  }
+ }
+}

@@ -1,0 +1,58 @@
+// The words and pictures of the Tips tab (Help > Tips), one entry per card, in the order of `snipdeck-app`'s
+// `tips::TIPS` (a test in `tests/help_window.rs` checks the lengths). The app builds the cards because Rust cannot
+// reach `@tr` or `@image-url`. The pictures are crops of the golden renders (`scripts/tips_images.py`); the text
+// inside them stays English.
+export global TipTexts {
+    out property <[string]> titles: [
+        @tr("Open the Panel from anywhere"),
+        @tr("Find anything by typing"),
+        @tr("Keep favourites in reach"),
+        @tr("Paste several in order"),
+        @tr("Fill in the blanks"),
+        @tr("Grab text as you go"),
+        @tr("Symbols at your fingertips"),
+        @tr("Every command, one search away"),
+        @tr("Make it fit your screen"),
+        @tr("Keep secrets secret"),
+        @tr("Type a short code, get a snippet"),
+    ];
+    out property <[string]> first-lines: [
+        @tr("Press your Panel shortcut in any app to bring up your snippets."),
+        @tr("Start typing in the Panel or Main to filter every list at once."),
+        @tr("Pin the snippets you use most; they stay at the top of the Panel."),
+        @tr("Paste next pastes the next item each time you press it."),
+        @tr("Templates ask for names, dates and options before they paste."),
+        @tr("Quick capture saves what you copied as a new snippet."),
+        @tr("Emoji, kaomoji and icons live in the Panel's Symbols tab."),
+        @tr("Press Ctrl+K in Main to find any action by name."),
+        @tr("Choose comfortable rows, compact rows or tiles."),
+        @tr("Mark a snippet Sensitive to hide it until you reveal it."),
+        @tr("Give a snippet a trigger, such as ;sig, under More options in its editor."),
+    ];
+    out property <[string]> second-lines: [
+        @tr("Pick one and it pastes where you were typing."),
+        @tr("Titles, text and labels all count."),
+        @tr("Unpin them the same way."),
+        @tr("Handy for forms you fill field by field."),
+        @tr("Add {} or {} to a snippet.", "{field:Name}", "{choice:Tone|warm|firm}"),
+        @tr("With clipboard history on, Recent keeps what you copy in other programs."),
+        @tr("Search them by name, in your language."),
+        @tr("The shortcut for each is shown beside it."),
+        @tr("Light, dark or follow Windows."),
+        @tr("A master password locks the whole deck."),
+        @tr("Then type it in any app. Turn this on in Settings, under Typing."),
+    ];
+    out property <[image]> images: [
+        @image-url("images/tips/01-open-panel.png"),
+        @image-url("images/tips/02-search.png"),
+        @image-url("images/tips/03-pinned.png"),
+        @image-url("images/tips/04-paste-next.png"),
+        @image-url("images/tips/05-templates.png"),
+        @image-url("images/tips/06-capture.png"),
+        @image-url("images/tips/07-symbols.png"),
+        @image-url("images/tips/08-commands.png"),
+        @image-url("images/tips/09-view.png"),
+        @image-url("images/tips/10-sensitive.png"),
+        @image-url("images/tips/11-trigger.png"),
+    ];
+}

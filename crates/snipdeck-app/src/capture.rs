@@ -4,13 +4,19 @@
 //! content are written in one store transaction ([`Library::atomically`]), so a content blob is
 //! never left without its item.
 
-use snipdeck_core::{Format, Formats, Item, ItemId, ItemKind, ListId, Placement, Timestamp};
+use snipdeck_core::{
+    FileEntry, Format, Formats, Item, ItemId, ItemKind, ListId, Placement, Timestamp,
+};
 use snipdeck_store::{BlobStore, BoardRepo, ItemRepo, ListRepo};
 
-use crate::controller::Library;
+use crate::{controller::Library, paste_create::kind_of_text};
 
 /// The largest text a capture saves (SPEC 5.4: over 5 MB is rejected with a toast).
 pub const MAX_TEXT_BYTES: usize = 5 * 1024 * 1024;
+
+/// The English title of an item made from a picture that has no file name; the window layer
+/// hands the controller the translated one.
+pub const PASTED_IMAGE_TITLE: &str = "Pasted image";
 
 /// The list a capture goes into.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -74,18 +80,155 @@ pub fn capture_text<L: Library>(
     text: Option<&str>,
     now: Timestamp,
 ) -> snipdeck_store::Result<Captured> {
+    let kind = text.map_or(ItemKind::Text, kind_of_text);
+    capture_as(library, list, text, kind, Placement::First, now)
+}
+
+/// Saves `text` as a new item of `kind` in `list`, at `at`. Blank text saves nothing.
+///
+/// # Errors
+///
+/// Any store error; nothing is saved then.
+pub fn capture_as<L: Library>(
+    library: &mut L,
+    list: &Destination,
+    text: Option<&str>,
+    kind: ItemKind,
+    at: Placement<ItemId>,
+    now: Timestamp,
+) -> snipdeck_store::Result<Captured> {
+    capture_with(
+        library,
+        list,
+        text,
+        (None, None),
+        Shape::plain(kind),
+        at,
+        now,
+    )
+}
+
+/// Saves `text` at the top of `list` with its HTML and RTF flavours (a Recent entry's), as
+/// [`capture_text`] does for the text itself.
+///
+/// # Errors
+///
+/// Any store error; nothing is saved then.
+pub fn capture_rich_text<L: Library>(
+    library: &mut L,
+    list: &Destination,
+    text: &str,
+    html: Option<&str>,
+    rtf: Option<&[u8]>,
+    now: Timestamp,
+) -> snipdeck_store::Result<Captured> {
+    capture_with(
+        library,
+        list,
+        Some(text),
+        (html, rtf),
+        Shape::plain(kind_of_text(text)),
+        Placement::First,
+        now,
+    )
+}
+
+/// Saves `text` as a new Sensitive item at the top of `list`: sealed with the library key, no
+/// preview, no HTML or RTF.
+///
+/// # Errors
+///
+/// Any store error; nothing is saved then.
+pub fn capture_sensitive_text<L: Library>(
+    library: &mut L,
+    list: &Destination,
+    text: &str,
+    now: Timestamp,
+) -> snipdeck_store::Result<Captured> {
+    let shape = Shape {
+        kind: kind_of_text(text),
+        sensitive: true,
+    };
+    capture_with(
+        library,
+        list,
+        Some(text),
+        (None, None),
+        shape,
+        Placement::First,
+        now,
+    )
+}
+
+/// What a captured item is: its kind, and whether it is Sensitive.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Shape {
+    pub(crate) kind: ItemKind,
+    pub(crate) sensitive: bool,
+}
+
+impl Shape {
+    /// A plain (not Sensitive) item of `kind`.
+    pub(crate) const fn plain(kind: ItemKind) -> Self {
+        Self {
+            kind,
+            sensitive: false,
+        }
+    }
+}
+
+pub(crate) fn capture_with<L: Library>(
+    library: &mut L,
+    list: &Destination,
+    text: Option<&str>,
+    (html, rtf): (Option<&str>, Option<&[u8]>),
+    shape: Shape,
+    at: Placement<ItemId>,
+    now: Timestamp,
+) -> snipdeck_store::Result<Captured> {
     let Some(text) = text.filter(|t| !t.trim().is_empty()) else {
         return Ok(Captured::Empty);
     };
     if text.len() > MAX_TEXT_BYTES {
         return Ok(Captured::TooLarge);
     }
-    let mut item = Item::new(list.id, String::new(), kind_of(text), now);
-    item.preview = Item::preview_of(text, false);
+    let mut item = Item::new(list.id, String::new(), shape.kind, now);
+    item.sensitive = shape.sensitive;
+    item.preview = Item::preview_of(text, shape.sensitive);
     let id = item.id;
     library.atomically(|batch| {
         let content = batch.put(text.as_bytes().to_vec())?;
-        let formats = Formats::new(vec![Format::Text(content)])?;
+        let mut all = vec![Format::Text(content)];
+        if let Some(html) = html {
+            all.push(Format::Html(batch.put(html.as_bytes().to_vec())?));
+        }
+        if let Some(rtf) = rtf {
+            all.push(Format::Rtf(batch.put(rtf.to_vec())?));
+        }
+        batch.insert_item(&item, &Formats::new(all)?, at)
+    })?;
+    Ok(Captured::Saved {
+        item: id,
+        list: list.name.clone(),
+    })
+}
+
+/// Saves a picture (PNG bytes) as a new Image item at the top of `list`.
+///
+/// # Errors
+///
+/// Any store error; nothing is saved then.
+pub fn capture_image<L: Library>(
+    library: &mut L,
+    list: &Destination,
+    png: Vec<u8>,
+    title: &str,
+    now: Timestamp,
+) -> snipdeck_store::Result<Captured> {
+    let item = Item::new(list.id, title.to_owned(), ItemKind::Image, now);
+    let id = item.id;
+    library.atomically(|batch| {
+        let formats = Formats::new(vec![Format::Png(batch.put(png)?)])?;
         batch.insert_item(&item, &formats, Placement::First)
     })?;
     Ok(Captured::Saved {
@@ -94,11 +237,67 @@ pub fn capture_text<L: Library>(
     })
 }
 
-fn kind_of(text: &str) -> ItemKind {
-    let t = text.trim();
-    let web = t.starts_with("http://") || t.starts_with("https://");
-    if web && !t.contains(char::is_whitespace) && t.len() > "https://".len() {
-        ItemKind::Link
+/// Saves files (name and bytes, already read) as new items at the top of `list`, the first on
+/// top: a PNG file becomes an Image item, anything else a File item named like the file. Saves
+/// nothing and says [`Captured::Empty`] for no files.
+///
+/// # Errors
+///
+/// Any store error; nothing is saved then.
+pub fn capture_files<L: Library>(
+    library: &mut L,
+    list: &Destination,
+    files: Vec<(String, Vec<u8>)>,
+    now: Timestamp,
+) -> snipdeck_store::Result<Captured> {
+    if files.is_empty() {
+        return Ok(Captured::Empty);
+    }
+    let mut top = None;
+    library.atomically(|batch| {
+        // Last first, so the first file ends up on top.
+        for (name, bytes) in files.into_iter().rev() {
+            let png = crate::item_editor::is_png(&bytes);
+            let kind = if png { ItemKind::Image } else { ItemKind::File };
+            let item = Item::new(list.id, name.clone(), kind, now);
+            let content = batch.put(bytes)?;
+            let format = if png {
+                Format::Png(content)
+            } else {
+                Format::Files(vec![FileEntry::new(&name, content)?])
+            };
+            batch.insert_item(&item, &Formats::new(vec![format])?, Placement::First)?;
+            top = Some(item.id);
+        }
+        Ok(())
+    })?;
+    Ok(top.map_or(Captured::Empty, |item| Captured::Saved {
+        item,
+        list: list.name.clone(),
+    }))
+}
+
+/// The kind the quick-add box preselects for `text`: a lone web address is a link, text with a
+/// placeholder such as `{date}` or `{field:Name}` that parses is a template, anything else is text.
+#[must_use]
+pub fn detect_kind(text: &str) -> ItemKind {
+    let kind = kind_of_text(text);
+    if kind != ItemKind::Text {
+        return kind;
+    }
+    let has_placeholder = [
+        "{date",
+        "{time",
+        "{clipboard}",
+        "{cursor}",
+        "{uuid}",
+        "{field:",
+        "{choice:",
+    ]
+    .iter()
+    .any(|p| text.contains(p));
+    if has_placeholder && snipdeck_core::template::Template::parse(text).is_ok() {
+        ItemKind::Template
     } else {
         ItemKind::Text
     }
@@ -174,20 +373,6 @@ mod tests {
     }
 
     #[test]
-    fn a_single_web_address_is_a_link_and_other_text_is_not() {
-        for (text, kind) in [
-            ("https://example.com/a?b=1", ItemKind::Link),
-            ("  http://example.com  ", ItemKind::Link),
-            ("https://", ItemKind::Text),
-            ("see https://example.com", ItemKind::Text),
-            ("https://example.com and more", ItemKind::Text),
-            ("ftp://example.com", ItemKind::Text),
-        ] {
-            assert_eq!(kind_of(text), kind, "{text:?}");
-        }
-    }
-
-    #[test]
     fn nothing_or_blank_text_saves_nothing() {
         let (mut store, notes, _) = library();
         for text in [None, Some(""), Some(" \n\t ")] {
@@ -248,5 +433,42 @@ mod tests {
         }
         let bare = Store::open_in_memory().expect("store");
         assert_eq!(default_list(&bare, None).expect("list"), None);
+    }
+
+    #[test]
+    fn any_file_type_is_saved_and_only_a_png_becomes_an_image_item() {
+        let (mut store, notes, _) = library();
+        let to = dest(&store, notes);
+        let mut png = Vec::new();
+        let mut encoder = png::Encoder::new(&mut png, 1, 1);
+        encoder.set_color(png::ColorType::Rgb);
+        encoder.set_depth(png::BitDepth::Eight);
+        encoder
+            .write_header()
+            .and_then(|mut w| w.write_image_data(&[1, 2, 3]))
+            .expect("png");
+        let files = vec![
+            ("shot.png".to_owned(), png),
+            ("photo.jpg".to_owned(), vec![0xFF, 0xD8, 0xFF, 1]),
+            ("clip.webp".to_owned(), b"RIFFxxxxWEBP".to_vec()),
+            ("data.bin".to_owned(), vec![0, 1, 2]),
+            ("Makefile".to_owned(), b"all:".to_vec()),
+        ];
+        let Captured::Saved { .. } = capture_files(&mut store, &to, files, now()).expect("saved")
+        else {
+            panic!("nothing saved")
+        };
+        let items = store.items(notes).expect("items");
+        let kinds: Vec<_> = items.iter().map(|i| (i.title.as_str(), i.kind)).collect();
+        assert_eq!(
+            kinds,
+            [
+                ("shot.png", ItemKind::Image),
+                ("photo.jpg", ItemKind::File),
+                ("clip.webp", ItemKind::File),
+                ("data.bin", ItemKind::File),
+                ("Makefile", ItemKind::File),
+            ]
+        );
     }
 }

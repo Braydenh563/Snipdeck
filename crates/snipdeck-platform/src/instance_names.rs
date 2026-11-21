@@ -1,8 +1,11 @@
 //! Names of the kernel objects that make Snipdeck a single-instance app.
 //!
 //! Portable so the naming rules are tested everywhere; `windows::single_instance` uses them.
-//! Both objects live in the per-session `Local\` namespace, so two users on one machine (fast user
-//! switching, Remote Desktop) can each run their own copy.
+//! All objects live in the per-session `Local\` namespace. The id in every name comes from
+//! [`instance_id`]: a hash of the user's SID and the data folder, so two users in one session
+//! (`runas`) and two copies on different data folders (`--data-dir`) each get their own instance
+//! and cannot collide on, or guess, each other's names. The objects also carry an explicit
+//! owner-only DACL (`windows::single_instance`).
 
 /// The longest `app_id` accepted.
 pub const MAX_APP_ID_LEN: usize = 64;
@@ -52,8 +55,190 @@ pub fn raise_event_name(app_id: &str) -> Result<String, AppIdError> {
     Ok(format!(r"Local\Snipdeck.raise-{app_id}"))
 }
 
+/// The named auto-reset event `snipdeck.exe --quit` signals: `Local\Snipdeck.quit-<app_id>`.
+///
+/// # Errors
+///
+/// See [`AppIdError`].
+pub fn quit_event_name(app_id: &str) -> Result<String, AppIdError> {
+    check(app_id)?;
+    Ok(format!(r"Local\Snipdeck.quit-{app_id}"))
+}
+
+/// The named auto-reset event the first instance sets once it has handled a hand-over:
+/// `Local\Snipdeck.ack-<app_id>`.
+///
+/// # Errors
+///
+/// See [`AppIdError`].
+pub fn ack_event_name(app_id: &str) -> Result<String, AppIdError> {
+    check(app_id)?;
+    Ok(format!(r"Local\Snipdeck.ack-{app_id}"))
+}
+
+/// The named mutex second launches take while they use the mailbox: `Local\Snipdeck.lock-<app_id>`.
+///
+/// # Errors
+///
+/// See [`AppIdError`].
+pub fn lock_mutex_name(app_id: &str) -> Result<String, AppIdError> {
+    check(app_id)?;
+    Ok(format!(r"Local\Snipdeck.lock-{app_id}"))
+}
+
+/// The named shared-memory section that holds the mailbox: `Local\Snipdeck.box-<app_id>`.
+///
+/// # Errors
+///
+/// See [`AppIdError`].
+pub fn section_name(app_id: &str) -> Result<String, AppIdError> {
+    check(app_id)?;
+    Ok(format!(r"Local\Snipdeck.box-{app_id}"))
+}
+
+/// The folder as a comparison key: Windows paths are case-insensitive and have many spellings of
+/// one folder (`/` for `\`, a trailing separator, the `\\?\` verbatim prefix `canonicalize` adds).
+/// Pass the canonical path (`std::fs::canonicalize`, or its nearest existing parent plus the rest).
+#[must_use]
+pub fn normalize_dir_key(path: &str) -> String {
+    let path = path.replace('/', "\\");
+    let path = if let Some(rest) = path.strip_prefix(r"\\?\UNC\") {
+        format!(r"\\{rest}")
+    } else if let Some(rest) = path.strip_prefix(r"\\?\") {
+        rest.to_owned()
+    } else {
+        path
+    };
+    let mut key = path.to_lowercase();
+    // "C:\" keeps its separator (it is the folder); any other trailing one goes.
+    while key.len() > 3 && key.ends_with('\\') {
+        key.pop();
+    }
+    key
+}
+
+/// The fixed mutex name every first instance also holds, for Setup's `AppMutex=Snipdeck-main`
+/// (the installer cannot compute the per-user, per-folder [`instance_id`]).
+pub const INSTALLER_MARKER_MUTEX: &str = r"Local\Snipdeck-main";
+
+/// The `SYNCHRONIZE` access right (all `OpenMutex` in Setup's `CheckForMutexes` asks for).
+const SYNCHRONIZE: &str = "0x00100000";
+
+/// The security descriptor (SDDL) of the installer marker mutex: the owner everything, every
+/// authenticated user `SYNCHRONIZE` only (no write, no delete), and a medium mandatory label that
+/// forbids write-up. So a Setup at normal integrity can open the marker of an app that runs
+/// elevated (or as another administrator account) and cannot change or release it.
+#[must_use]
+pub fn marker_sddl(user_sid: &str) -> String {
+    format!("D:(A;;GA;;;{user_sid})(A;;{SYNCHRONIZE};;;AU)S:(ML;;NW;;;ME)")
+}
+
+/// The id every kernel object name of one instance is built from: 32 hex characters, a hash of
+/// `user_sid` (the SID string of the logged-on user) and the data folder's [`normalize_dir_key`].
+///
+/// Same user and folder: same id, so the launches meet. Another folder (`--data-dir`) or another
+/// user: another id, so they run side by side.
+#[must_use]
+pub fn instance_id(user_sid: &str, dir_key: &str) -> String {
+    let mut hasher = blake3::Hasher::new();
+    hasher.update(b"snipdeck-instance-v1\0");
+    hasher.update(user_sid.as_bytes());
+    hasher.update(b"\0");
+    hasher.update(dir_key.as_bytes());
+    let digest = hasher.finalize();
+    digest.as_bytes()[..16]
+        .iter()
+        .fold(String::with_capacity(32), |mut id, byte| {
+            use std::fmt::Write as _;
+            let _ = write!(id, "{byte:02x}");
+            id
+        })
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn marker_sddl_lets_setup_synchronize_and_nothing_else() {
+        let sddl = super::marker_sddl("S-1-5-21-1-2-3-1001");
+        assert_eq!(
+            sddl,
+            "D:(A;;GA;;;S-1-5-21-1-2-3-1001)(A;;0x00100000;;;AU)S:(ML;;NW;;;ME)"
+        );
+        // Exactly two allow entries; the broad one is SYNCHRONIZE alone, never a generic right.
+        assert_eq!(sddl.matches("(A;;").count(), 2);
+        assert!(sddl.contains("(A;;0x00100000;;;AU)"));
+        assert!(!sddl.contains(";;;WD") && !sddl.contains("GA;;;AU"));
+        // A medium label with no-write-up, so a normal-integrity Setup is not shut out.
+        assert!(sddl.ends_with("S:(ML;;NW;;;ME)"));
+    }
+
+    #[test]
+    fn installer_marker_matches_the_inno_app_mutex() {
+        assert_eq!(super::INSTALLER_MARKER_MUTEX, r"Local\Snipdeck-main");
+    }
+
+    #[test]
+    fn every_object_has_its_own_name_and_all_are_local() {
+        let id = "ab12";
+        let names = [
+            mutex_name(id).unwrap(),
+            raise_event_name(id).unwrap(),
+            quit_event_name(id).unwrap(),
+            ack_event_name(id).unwrap(),
+            lock_mutex_name(id).unwrap(),
+            section_name(id).unwrap(),
+        ];
+        for (i, a) in names.iter().enumerate() {
+            assert!(a.starts_with(r"Local\Snipdeck"), "{a}");
+            for b in &names[i + 1..] {
+                assert_ne!(a, b);
+            }
+        }
+        assert_eq!(ack_event_name("a b"), Err(AppIdError::Character));
+        assert_eq!(lock_mutex_name(""), Err(AppIdError::Length));
+        assert_eq!(section_name("a\\b"), Err(AppIdError::Character));
+    }
+
+    #[test]
+    fn one_folder_has_one_key_whatever_its_spelling() {
+        let key = r"c:\users\ann\snipdeck";
+        for spelling in [
+            r"C:\Users\Ann\Snipdeck",
+            r"C:\Users\Ann\Snipdeck\",
+            r"C:/Users/Ann/Snipdeck",
+            r"\\?\C:\Users\Ann\Snipdeck",
+            r"\\?\c:\USERS\ann\snipdeck\\",
+        ] {
+            assert_eq!(normalize_dir_key(spelling), key, "{spelling}");
+        }
+        assert_eq!(normalize_dir_key(r"\\?\UNC\Srv\Share\D"), r"\\srv\share\d");
+        assert_eq!(
+            normalize_dir_key(r"C:\"),
+            r"c:\",
+            "a drive root keeps its separator"
+        );
+        assert_ne!(normalize_dir_key(r"C:\a"), normalize_dir_key(r"C:\b"));
+    }
+
+    #[test]
+    fn the_id_follows_the_user_and_the_folder() {
+        let sid = "S-1-5-21-1-2-3-1001";
+        let id = instance_id(sid, r"c:\users\ann\snipdeck");
+        assert_eq!(id.len(), 32);
+        assert!(id.bytes().all(|b| b.is_ascii_hexdigit()));
+        assert_eq!(id, instance_id(sid, r"c:\users\ann\snipdeck"), "stable");
+        assert_ne!(id, instance_id(sid, r"d:\other"), "another data folder");
+        assert_ne!(
+            id,
+            instance_id("S-1-5-21-1-2-3-1002", r"c:\users\ann\snipdeck"),
+            "another user"
+        );
+        // The two fields cannot run into each other.
+        assert_ne!(instance_id("ab", "c"), instance_id("a", "bc"));
+        // It is a valid app id for every name.
+        assert!(section_name(&id).is_ok() && mutex_name(&id).is_ok());
+    }
+
     use super::*;
 
     #[test]
@@ -63,7 +248,12 @@ mod tests {
             raise_event_name("main").unwrap(),
             r"Local\Snipdeck.raise-main"
         );
+        assert_eq!(
+            quit_event_name("main").unwrap(),
+            r"Local\Snipdeck.quit-main"
+        );
         assert_ne!(mutex_name("main"), raise_event_name("main"));
+        assert_ne!(raise_event_name("main"), quit_event_name("main"));
     }
 
     #[test]
@@ -73,17 +263,26 @@ mod tests {
         assert!(mutex_name(&"a".repeat(64)).is_ok());
         for bad in ["a\\b", "a b", "a/b", "é", "a\0", "Global\\x"] {
             assert_eq!(raise_event_name(bad), Err(AppIdError::Character), "{bad:?}");
+            assert_eq!(quit_event_name(bad), Err(AppIdError::Character), "{bad:?}");
         }
         assert!(mutex_name("Dev.1_x-y").is_ok());
     }
 
     #[test]
     fn the_mutex_and_event_names_never_collide() {
-        // Mutexes and events share one kernel namespace; the prefixes differ (`Snipdeck-` against
-        // `Snipdeck.raise-`), so no pair of app ids can produce the same string.
-        for a in ["x", "x-raise", "raise-x", "a.b", ".raise-x"] {
-            for b in ["x", "x-raise", "raise-x", "a.b", ".raise-x"] {
-                assert_ne!(mutex_name(a).unwrap(), raise_event_name(b).unwrap());
+        // Mutexes and events share one kernel namespace; the prefixes differ (`Snipdeck-`,
+        // `Snipdeck.raise-`, `Snipdeck.quit-`), so no pair of app ids can produce the same string.
+        let ids = [
+            "x", "x-raise", "raise-x", "quit-x", "x-quit", "a.b", ".raise-x", ".quit-x",
+        ];
+        for a in ids {
+            for b in ids {
+                let m = mutex_name(a).unwrap();
+                let r = raise_event_name(b).unwrap();
+                let q = quit_event_name(b).unwrap();
+                assert_ne!(m, r);
+                assert_ne!(m, q);
+                assert_ne!(r, q);
             }
         }
     }

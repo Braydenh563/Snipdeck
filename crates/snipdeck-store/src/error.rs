@@ -15,6 +15,12 @@ pub enum Error {
     /// A tag with this name, ignoring case, already exists.
     #[error("a tag named `{0}` already exists")]
     TagExists(String),
+    /// Another live item already has this trigger (case counts).
+    #[error("the trigger `{0}` is already used by another item")]
+    TriggerTaken(String),
+    /// A Sensitive item cannot have a trigger: a short code must not release a secret.
+    #[error("a sensitive item cannot have a trigger")]
+    SensitiveTrigger,
     /// Stored data did not form a valid core value.
     #[error(transparent)]
     Core(#[from] snipdeck_core::Error),
@@ -34,6 +40,22 @@ pub enum Error {
     Locked {
         /// The data folder.
         folder: std::path::PathBuf,
+    },
+    /// A rebuild from backup was interrupted and could not be undone on its own. No database
+    /// is created; the marker stays and the next start tries again.
+    #[error(
+        "a rebuild of the library in `{}` was interrupted and could not be undone automatically; \
+         the damaged library is set aside in `{}`. Put its files back by hand (the unfinished new \
+         library may already be removed), then delete `snipdeck.rebuild` from the data folder",
+        folder.display(),
+        aside.display()
+    )]
+    RebuildInterrupted {
+        /// The data folder.
+        folder: std::path::PathBuf,
+        /// The folder the damaged library was set aside in (a pattern when the marker is
+        /// unreadable).
+        aside: std::path::PathBuf,
     },
     /// The database was written by a newer Snipdeck than this one.
     #[error(
@@ -93,4 +115,128 @@ pub enum Error {
     /// The file system reported an error.
     #[error("file system error: {0}")]
     Io(#[from] std::io::Error),
+}
+
+/// What a failed read or write comes down to, when the system says so: the cases a person can
+/// do something about. Anything the system does not distinguish is [`Trouble::Other`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Trouble {
+    /// The disk (or the quota on it) has no room left.
+    DiskFull,
+    /// Another program or another Snipdeck holds the file, or it may not be written (a
+    /// permission, a read-only disk, a sharing violation).
+    InUse,
+    /// Nothing more specific is known.
+    Other,
+}
+
+impl Trouble {
+    /// The trouble behind a file system error.
+    #[must_use]
+    pub fn of_io(error: &std::io::Error) -> Self {
+        use std::io::ErrorKind;
+        // Windows: ERROR_SHARING_VIOLATION (32) and ERROR_LOCK_VIOLATION (33) have no kind of
+        // their own on every toolchain.
+        if cfg!(windows) && matches!(error.raw_os_error(), Some(32 | 33)) {
+            return Self::InUse;
+        }
+        match error.kind() {
+            ErrorKind::StorageFull | ErrorKind::QuotaExceeded => Self::DiskFull,
+            ErrorKind::PermissionDenied
+            | ErrorKind::ResourceBusy
+            | ErrorKind::ReadOnlyFilesystem => Self::InUse,
+            _ => Self::Other,
+        }
+    }
+
+    /// The trouble behind a SQLite error.
+    #[must_use]
+    pub fn of_sqlite(error: &rusqlite::Error) -> Self {
+        use rusqlite::ErrorCode;
+        match error.sqlite_error_code() {
+            Some(ErrorCode::DiskFull) => Self::DiskFull,
+            Some(
+                ErrorCode::DatabaseBusy
+                | ErrorCode::DatabaseLocked
+                | ErrorCode::ReadOnly
+                | ErrorCode::PermissionDenied
+                | ErrorCode::CannotOpen,
+            ) => Self::InUse,
+            _ => Self::Other,
+        }
+    }
+}
+
+impl Error {
+    /// What this error comes down to for the person: a full disk, a file in use, or nothing
+    /// more specific.
+    #[must_use]
+    pub fn trouble(&self) -> Trouble {
+        match self {
+            Self::Io(e) => Trouble::of_io(e),
+            Self::Sqlite(e)
+            | Self::Migration {
+                source: Some(e), ..
+            } => Trouble::of_sqlite(e),
+            Self::Locked { .. } => Trouble::InUse,
+            _ => Trouble::Other,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::{Error as Io, ErrorKind};
+
+    use super::*;
+
+    #[test]
+    fn a_full_disk_and_a_file_in_use_are_told_apart() {
+        assert_eq!(
+            Trouble::of_io(&Io::from(ErrorKind::StorageFull)),
+            Trouble::DiskFull
+        );
+        assert_eq!(
+            Trouble::of_io(&Io::from(ErrorKind::QuotaExceeded)),
+            Trouble::DiskFull
+        );
+        assert_eq!(
+            Trouble::of_io(&Io::from(ErrorKind::PermissionDenied)),
+            Trouble::InUse
+        );
+        assert_eq!(
+            Trouble::of_io(&Io::from(ErrorKind::NotFound)),
+            Trouble::Other
+        );
+    }
+
+    #[test]
+    fn sqlite_codes_map_to_the_same_troubles() {
+        let failure = |code| {
+            rusqlite::Error::SqliteFailure(
+                rusqlite::ffi::Error {
+                    code,
+                    extended_code: 0,
+                },
+                None,
+            )
+        };
+        assert_eq!(
+            Error::Sqlite(failure(rusqlite::ErrorCode::DiskFull)).trouble(),
+            Trouble::DiskFull
+        );
+        assert_eq!(
+            Error::Sqlite(failure(rusqlite::ErrorCode::DatabaseBusy)).trouble(),
+            Trouble::InUse
+        );
+        assert_eq!(
+            Error::Sqlite(failure(rusqlite::ErrorCode::NotADatabase)).trouble(),
+            Trouble::Other
+        );
+        assert_eq!(
+            Error::Io(Io::from(ErrorKind::StorageFull)).trouble(),
+            Trouble::DiskFull
+        );
+        assert_eq!(Error::EncryptionLocked.trouble(), Trouble::Other);
+    }
 }

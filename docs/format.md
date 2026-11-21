@@ -25,7 +25,7 @@ folders; readers must accept both and may ignore folder entries.
 {
   "format": "snipdeck-archive",
   "format_version": "1.0",
-  "app_version": "0.1.0",
+  "app_version": "1.0.0",
   "created_at": "2027-01-15T08:01:40Z",
   "counts": { "boards": 2, "lists": 5, "items": 6, "tags": 2, "assets": 9 },
   "encryption": "SNENC2",
@@ -101,11 +101,16 @@ duplicates; **an importer assigns new ids** to everything it creates.
 | board, list | `name` | string | Same rule. |
 | board, list, item | `created_at`, `updated_at` | RFC 3339 string | Between the years 1677 and 2262 (storage limit). Fractional seconds allowed, offsets other than `Z` allowed. |
 | list | `accent` | string or absent | `blue teal green amber orange red rose violet slate`. |
+| list | `icon` | string or absent | Added in 1.1. One of the 24 icon keys: `folder star heart briefcase house user envelope-simple chat-circle phone calendar-blank shopping-cart credit-card code terminal-window book-open lightbulb flag bookmark-simple globe map-pin camera music-note wrench rocket-launch`. |
+| list | `groups` | array or absent | Added in 1.2. Objects `{id, name, collapsed}` (`id` a UUID unique in the archive, `name` as other names, `collapsed` bool, default false). Only groups with a written member are listed. |
 | list | `view` | string | `compact` or `comfortable`. |
 | list | `sort` | string | `manual`, `most-used` or `recently-used`. |
 | item | `title` | string | May be empty. |
 | item | `kind` | string | `text template code link image file`. Describes content; sensitivity is separate. |
 | item | `pinned`, `sensitive`, `always_plain` | boolean, default `false` | |
+| item | `label` | string or absent | Added in 1.1. The colour label: `blue teal green amber orange red violet slate`. |
+| item | `group` | string or absent | Added in 1.2. The `id` of one of its list's `groups`; an unknown id is malformed. A group's members are contiguous in `items` order. |
+| item | `trigger` | string or absent | Added in 1.2. The typed trigger: 1 to 32 characters, no whitespace or control characters, case counts. At most one per item, never on a sensitive item. If another item in the library (or earlier in the archive) already has it, the importer keeps that owner and imports this item without it, with a note. |
 | item | `use_count` | integer 0 to 4 294 967 295, default 0 | |
 | item | `last_used_at` | RFC 3339 string or absent | |
 | item | `source_app` | string or absent | The app the content was captured from. |
@@ -201,7 +206,7 @@ changing anything**, and a failure leaves the library exactly as it was:
 2. **Sizes.** Each entry's declared uncompressed size, the total of all of them and the
    compression ratio of large entries are checked against limits *before* decompression, and the
    bytes actually produced are checked again while decompressing, because headers can lie.
-   The reference reader's defaults: 200 000 entries, 64 MiB per entry, 1 GiB in total, ratio
+   The reference reader's defaults: 200 000 entries, 64 MiB per entry, 8 GiB in total, ratio
    500:1 for entries over 5 MiB, 64 MiB for `items.json`, 1 MiB for `manifest.json`, 100 000
    items.
 3. **Manifest.** `format` and `format_version` first; then the counts against the data.

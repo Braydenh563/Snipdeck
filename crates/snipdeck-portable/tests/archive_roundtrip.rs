@@ -15,9 +15,7 @@ mod common;
 use std::io::Cursor;
 
 use common::*;
-use snipdeck_portable::{
-    BoardLayout, ExportOptions, ImportOptions, MergeStrategy, Warning, import_archive,
-};
+use snipdeck_portable::{BoardLayout, ExportOptions, ImportOptions, MergeStrategy, import_archive};
 use snipdeck_store::{BoardRepo, ItemRepo, ListRepo};
 
 fn keep_boards() -> ImportOptions<'static> {
@@ -222,97 +220,17 @@ fn skip_duplicates_also_drops_repeats_inside_the_archive() {
     assert_eq!((report.items_added, report.items_skipped), (2, 1));
 }
 
-/// Security review 2, finding 8: an import cannot take a Free library past its board limit.
+/// There is no board cap: an import adds its boards to any number already there.
 #[test]
-fn the_board_cap_refuses_an_import_inside_its_transaction() {
+fn an_import_is_never_refused_for_the_number_of_boards() {
     let bytes = export_bytes(&sample_store(), &ExportOptions::default());
-    assert_eq!(sample_store().boards().unwrap().len(), 2);
-
     let mut target = store();
-    for name in ["a", "b", "c"] {
+    for name in ["a", "b", "c", "d", "e"] {
         board(&mut target, name);
     }
-    let before = counts(&target);
-    let opts = ImportOptions {
-        max_boards: Some(3),
-        ..keep_boards()
-    };
-    let err =
-        import_archive(&mut target, Cursor::new(&bytes), "backup", at(200), &opts).unwrap_err();
-    assert!(
-        matches!(
-            err,
-            snipdeck_portable::Error::Core(snipdeck_core::Error::ProRequired(
-                snipdeck_core::Feature::UnlimitedBoards
-            ))
-        ),
-        "{err}"
-    );
-    assert_eq!(counts(&target), before, "nothing was written");
-    assert_healthy(&target);
-
-    // One board plus the archive's two make three: over a cap of two, within a cap of three.
-    let mut target = store();
-    board(&mut target, "a");
-    let opts = ImportOptions {
-        max_boards: Some(2),
-        ..keep_boards()
-    };
-    assert!(import_archive(&mut target, Cursor::new(&bytes), "backup", at(200), &opts).is_err());
-    assert_eq!(target.boards().unwrap().len(), 1);
-    let opts = ImportOptions {
-        max_boards: Some(3),
-        ..keep_boards()
-    };
-    let report = import(&mut target, &bytes, &opts);
+    let report = import(&mut target, &bytes, &keep_boards());
     assert_eq!(report.boards_added, 2);
-    assert_eq!(target.boards().unwrap().len(), 3);
-}
-
-#[test]
-fn the_board_cap_applies_to_the_folder_importer_too() {
-    let dir = tempfile::tempdir().unwrap();
-    std::fs::write(dir.path().join("a.txt"), "hello").unwrap();
-    let mut target = store();
-    board(&mut target, "only");
-    let opts = ImportOptions {
-        max_boards: Some(1),
-        ..ImportOptions::default()
-    };
-    let err = snipdeck_portable::import_folder(&mut target, dir.path(), at(1), &opts).unwrap_err();
-    assert!(
-        matches!(
-            err,
-            snipdeck_portable::Error::Core(snipdeck_core::Error::ProRequired(_))
-        ),
-        "{err}"
-    );
-    assert_eq!(target.boards().unwrap().len(), 1);
-}
-
-#[test]
-fn free_tier_limit_is_a_warning_only() {
-    let bytes = export_bytes(&sample_store(), &ExportOptions::default());
-    let mut target = store();
-    for name in ["a", "b", "c"] {
-        board(&mut target, name);
-    }
-    let opts = ImportOptions {
-        free_board_limit: Some(3),
-        ..keep_boards()
-    };
-    let report = import(&mut target, &bytes, &opts);
-    assert_eq!(report.boards_added, 2, "nothing is blocked");
-    assert_eq!(target.boards().unwrap().len(), 5);
-    assert!(
-        report
-            .warnings
-            .contains(&Warning::BoardLimit { limit: 3, total: 5 })
-    );
-
-    // No limit given: no warning.
-    let mut other = store();
-    let report = import(&mut other, &bytes, &keep_boards());
+    assert_eq!(target.boards().unwrap().len(), 7);
     assert!(!report.has_warnings());
 }
 
@@ -336,7 +254,7 @@ fn the_archive_is_a_zip_with_the_documented_entries() {
     }
     let manifest: serde_json::Value = serde_json::from_slice(&map["manifest.json"]).unwrap();
     assert_eq!(manifest["format"], "snipdeck-archive");
-    assert_eq!(manifest["format_version"], "1.0");
+    assert_eq!(manifest["format_version"], "1.2");
     assert_eq!(manifest["counts"]["boards"], 2);
     assert_eq!(manifest["counts"]["lists"], 5);
     assert_eq!(manifest["counts"]["items"], 6);
