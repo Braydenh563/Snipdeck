@@ -201,6 +201,7 @@ impl Store {
             key: None,
             quiet: Quiet::default(),
             lock: None,
+            hold: BlobHold::default(),
         })
     }
 

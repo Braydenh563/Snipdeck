@@ -575,12 +575,6 @@ where
         title.clone_into(&mut self.pasted_image_title);
     }
 
-    /// Sets the words a list made by "Save to… New list…" is named from, translated by the window
-    /// layer.
-    pub fn set_new_list_base(&mut self, base: &str) {
-        base.clone_into(&mut self.new_list_base);
-    }
-
     /// The colour items of the home list, newest first (a save appends), at most 24.
     #[must_use]
     pub fn saved_colours(&self) -> Vec<(ItemId, Rgba8)> {
