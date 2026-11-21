@@ -869,6 +869,30 @@ fn the_view_says_which_way_the_handle_runs() {
 }
 
 #[test]
+fn an_idle_dock_polls_slowly_and_speeds_up_near_the_tab_or_while_a_delay_runs() {
+    use crate::dock::{IDLE_TICK, TICK};
+    let mut w = docked(DockTrigger::Both, DockEdge::Right);
+    // Away from the open Panel the leave delay runs: fast until the Panel tucks.
+    w.targets.set_cursor(Some((1000, 300)));
+    w.ctl.dock_tick();
+    assert_eq!(w.ctl.dock_interval(), TICK, "the leave delay is running");
+    advance(&w, 400);
+    w.ctl.dock_tick();
+    assert!(w.ctl.view().dock_collapsed);
+    // Tucked, the pointer far from the tab: nothing to watch, so the slow pace.
+    w.ctl.dock_tick();
+    assert_eq!(w.ctl.dock_interval(), IDLE_TICK);
+    // The pointer comes within the wake zone of the tab: the fast pace, before it is on it.
+    w.targets.set_cursor(Some((1914 - 100, 300)));
+    w.ctl.dock_tick();
+    assert_eq!(w.ctl.dock_interval(), TICK);
+    // And away again.
+    w.targets.set_cursor(Some((1000, 300)));
+    w.ctl.dock_tick();
+    assert_eq!(w.ctl.dock_interval(), IDLE_TICK);
+}
+
+#[test]
 fn the_tick_interval_is_fifty_milliseconds() {
     assert_eq!(TICK, std::time::Duration::from_millis(50));
 }

@@ -329,6 +329,8 @@ struct Core<S, C: Clipboard, K, T> {
     idle_timer: Cell<bool>,
     /// Sends the dock its ticks while a hover or leave delay runs.
     dock_timer: slint::Timer,
+    /// The interval `dock_timer` runs at.
+    dock_pace: Cell<std::time::Duration>,
     drag_timer: slint::Timer,
     /// Looks at the clipboard while "Take screenshot" waits for its picture.
     screen_clip_timer: slint::Timer,
@@ -369,6 +371,7 @@ where
                 clipboard_timer: Cell::new(false),
                 idle_timer: Cell::new(false),
                 dock_timer: slint::Timer::default(),
+                dock_pace: Cell::new(crate::dock::TICK),
                 drag_timer: slint::Timer::default(),
                 screen_clip_timer: slint::Timer::default(),
                 colours: colours::Glue::default(),
@@ -653,14 +656,18 @@ where
     /// then: each tick reads the pointer and runs the hover and leave delays. A tick that
     /// changes nothing redraws nothing.
     fn arm_dock(self: &Rc<Self>) {
-        let needed = self.controller.borrow().dock_live();
-        if needed == self.dock_timer.running() {
+        let (needed, interval) = {
+            let ctl = self.controller.borrow();
+            (ctl.dock_live(), ctl.dock_interval())
+        };
+        if needed == self.dock_timer.running() && (!needed || interval == self.dock_pace.get()) {
             return;
         }
         if needed {
+            self.dock_pace.set(interval);
             let core = Rc::downgrade(self);
             self.dock_timer
-                .start(slint::TimerMode::Repeated, crate::dock::TICK, move || {
+                .start(slint::TimerMode::Repeated, interval, move || {
                     let Some(core) = core.upgrade() else {
                         return;
                     };
@@ -676,6 +683,8 @@ where
                         redraw_all();
                         core.apply(&effects);
                     }
+                    // The pace follows what the tick found (a pointer near the tab, a delay).
+                    core.arm_dock();
                 });
         } else {
             self.dock_timer.stop();

@@ -350,6 +350,8 @@ pub struct Controller<S, C: Clipboard, K, T> {
     /// it since: it stays out until it has, so that it does not tuck away under the hand that
     /// docked it.
     dock_fresh: bool,
+    /// The pointer was near the tucked tab at the last tick: the dock polls at its fast pace.
+    dock_near: bool,
     /// When the Panel was last docked from a menu or from Settings.
     docked_at: Timestamp,
     /// The work area the dock's timer last read for the Panel's monitor: a change in it (the
@@ -573,6 +575,7 @@ where
             resize_loop_seen: false,
             resize_at: shown_at,
             dock_fresh: false,
+            dock_near: false,
             docked_at: shown_at,
             dock_area_seen: None,
             fullscreen: false,

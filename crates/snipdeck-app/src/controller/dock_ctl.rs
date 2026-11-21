@@ -5,6 +5,8 @@
 //! the app moves the window from the cursor, and the cursor alone decides a dock. Slint-free:
 //! `binding` runs the timers that call [`Controller::dock_tick`] and [`Controller::drag_move`].
 
+use std::time::Duration;
+
 use snipdeck_core::UseOutcome;
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 
@@ -164,6 +166,18 @@ where
     #[must_use]
     pub fn dock_live(&self) -> bool {
         self.visible && self.dock_active()
+    }
+
+    /// How long the host waits before the next [`dock_tick`](Self::dock_tick): the fast
+    /// [`dock::TICK`] while a hover or leave delay runs, the Panel was just placed under the
+    /// pointer or the pointer is near the tucked tab, and [`dock::IDLE_TICK`] otherwise (PANEL-43).
+    #[must_use]
+    pub fn dock_interval(&self) -> Duration {
+        if self.dock.needs_tick() || self.dock_fresh || self.dock_near {
+            dock::TICK
+        } else {
+            dock::IDLE_TICK
+        }
     }
 
     /// The open docked Panel, its tucked tab and its edge, on its monitor.
@@ -326,6 +340,7 @@ where
             return Vec::new();
         }
         let mut effects = self.dock_area_refresh();
+        self.dock_near = false;
         let scale = self.monitor.as_ref().map_or(1.0, |m| m.scale);
         let held = self.dock_held();
         self.fullscreen = self
@@ -345,6 +360,8 @@ where
         } else if let (Some(cursor), Some((open, tab, edge))) =
             (self.target.cursor(), self.dock_rects())
         {
+            self.dock_near =
+                self.dock.is_collapsed() && frame::near(cursor, tab, zone(dock::WAKE_ZONE, scale));
             let event = if self.dock.is_collapsed() {
                 DockEvent::HandleHover(frame::on_tab(
                     cursor,
