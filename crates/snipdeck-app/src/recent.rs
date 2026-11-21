@@ -384,12 +384,23 @@ fn files_label(paths: &[String]) -> String {
 
 /// `rgba` (`width` x `height`) shrunk to fit [`THUMB_SIDE`], averaging the source pixels that
 /// fall in each new pixel. `None` for an empty picture or a buffer of the wrong size.
-fn thumbnail(width: u32, height: u32, rgba: &[u8]) -> Option<RecentThumb> {
+pub(crate) fn thumbnail(width: u32, height: u32, rgba: &[u8]) -> Option<RecentThumb> {
+    thumbnail_within(width, height, rgba, THUMB_SIDE)
+}
+
+/// [`thumbnail`] with a longest side of `side` pixels (the Main window's Detail pane draws a
+/// bigger one than a list row).
+pub(crate) fn thumbnail_within(
+    width: u32,
+    height: u32,
+    rgba: &[u8],
+    side: u32,
+) -> Option<RecentThumb> {
     let (w, h) = (width as usize, height as usize);
     if w == 0 || h == 0 || rgba.len() != w * h * 4 {
         return None;
     }
-    let side = THUMB_SIDE as usize;
+    let side = side as usize;
     let (tw, th) = if w.max(h) <= side {
         (w, h)
     } else if w >= h {

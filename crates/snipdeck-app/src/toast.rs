@@ -347,6 +347,34 @@ pub enum ToastMessage {
         /// The title of the first one.
         first: String,
     },
+    /// "Saved {file}: 12 of 15 items. Sensitive items and items with no text are left out."
+    ExportedSome {
+        /// The file's name.
+        file: String,
+        /// Items written.
+        written: usize,
+        /// Items in the list.
+        total: usize,
+    },
+    /// "Tag added to 3 items" or "Tag removed from 3 items" (a bulk tag toggle).
+    ItemsTagged {
+        /// How many items changed.
+        count: usize,
+        /// Whether the tag was added (otherwise removed).
+        added: bool,
+    },
+    /// "Deleted the tag Work".
+    TagDeleted {
+        /// The tag's name.
+        name: String,
+    },
+    /// "Merged the tag Work into Office".
+    TagMerged {
+        /// The tag that went away.
+        from: String,
+        /// The tag its items carry now.
+        into: String,
+    },
     /// "Couldn't export your library: ..."
     ExportFailed(Cause),
     /// "Your library was erased."

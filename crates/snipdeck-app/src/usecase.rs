@@ -215,6 +215,22 @@ pub fn item_text<S: ItemRepo + BlobStore>(
     text_of(store, &formats)
 }
 
+/// The PNG bytes of image item `item`, or `None` when it keeps no picture.
+///
+/// # Errors
+///
+/// A store error.
+pub fn item_png<S: ItemRepo + BlobStore>(
+    store: &S,
+    item: ItemId,
+) -> Result<Option<Vec<u8>>, UseError> {
+    let formats = store.formats(item)?;
+    match formats.get(snipdeck_core::FormatKind::Png) {
+        Some(Format::Png(content)) => Ok(Some(store.read(content)?.into_owned())),
+        _ => Ok(None),
+    }
+}
+
 fn text_of<S: BlobStore>(store: &S, formats: &Formats) -> Result<Option<String>, UseError> {
     match formats.get(snipdeck_core::FormatKind::Text) {
         Some(Format::Text(content)) => {

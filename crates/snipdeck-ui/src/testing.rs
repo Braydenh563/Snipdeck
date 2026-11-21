@@ -138,6 +138,17 @@ impl<C: ComponentHandle> Harness<C> {
         self.try_render().expect("window had nothing to draw")
     }
 
+    /// Like [`Harness::render_settled`], but a window with nothing to draw is fine (a key that changed nothing).
+    pub fn settle(&self) {
+        slint::platform::update_timers_and_animations();
+        for _ in 0..8 {
+            if self.try_render().is_none() {
+                break;
+            }
+            slint::platform::update_timers_and_animations();
+        }
+    }
+
     /// Renders, then keeps rendering while handlers that run during a frame (`changed` callbacks such
     /// as scroll-into-view, repeater instantiation) leave the window dirty; returns the last frame.
     ///

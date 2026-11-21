@@ -159,6 +159,10 @@ pub struct Row {
     pub header: Option<GroupHeader>,
     /// The item sits under a group's header: the card is indented.
     pub grouped: bool,
+    /// An image item: when it last changed, which the thumbnail cache is keyed with.
+    pub image_stamp: Option<snipdeck_core::Timestamp>,
+    /// An image item: its thumbnail, once decoded (MAIN-21).
+    pub thumb: Option<crate::thumb_cache::Thumb>,
 }
 
 /// A list in the sidebar.
@@ -168,6 +172,59 @@ pub struct SideList {
     pub id: ListId,
     /// Its name.
     pub name: String,
+    /// Its colour.
+    pub accent: Option<ListAccent>,
+    /// Its icon.
+    pub icon: Option<ListIcon>,
+    /// How many items it holds.
+    pub count: usize,
+}
+
+/// What the Detail pane shows for the item at the cursor (SPEC 5.3).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DetailView {
+    /// The item.
+    pub item: ItemId,
+    /// What it holds.
+    pub kind: ItemKind,
+    /// Masked: the text is the mask until the item is held revealed.
+    pub sensitive: bool,
+    /// The title, or the first line of the text when there is none.
+    pub title: String,
+    /// The start of the text (the mask for a hidden secret, the file names for a file item).
+    pub text: String,
+    /// The text was cut: the item holds more.
+    pub text_cut: bool,
+    /// A picture item's picture, shrunk to fit the pane.
+    pub thumb: Option<crate::thumb_cache::Thumb>,
+    /// The formats the item keeps, in the item's order.
+    pub formats: Vec<snipdeck_core::FormatKind>,
+    /// How many times it was used.
+    pub use_count: u32,
+    /// When it was last used (empty when never), as local `YYYY-MM-DD HH:MM`.
+    pub last_used: String,
+    /// When it was made.
+    pub created: String,
+    /// When it last changed.
+    pub updated: String,
+    /// The program it was captured from.
+    pub source_app: String,
+    /// The list it lives in (with its board once there are several).
+    pub list_name: String,
+    /// Its tags, comma separated.
+    pub tags: String,
+}
+
+/// A list the *Move to list* chooser offers: lists of the open board first, then those of the
+/// other boards in board order (MAIN-23).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MoveTarget {
+    /// The list.
+    pub list: ListId,
+    /// The board it lives on.
+    pub board: BoardId,
+    /// What the chooser shows: the list's name, with its board in front for another board's list.
+    pub label: String,
     /// Its colour.
     pub accent: Option<ListAccent>,
     /// Its icon.
@@ -271,6 +328,10 @@ pub struct EditorView {
     pub icon: Option<ListIcon>,
     /// A list's item order.
     pub sort: ListSort,
+    /// The boards a list can live on, in board order (empty for a board editor).
+    pub boards: Vec<(BoardId, String)>,
+    /// The chosen board: a position in `boards`.
+    pub board_index: usize,
     /// How many items deleting it affects.
     pub item_count: usize,
     /// Whether it can be deleted.
@@ -279,6 +340,8 @@ pub struct EditorView {
     pub delete_hint: Option<DeleteHint>,
     /// Why the last save was refused.
     pub name_error: Option<NameError>,
+    /// Fields the owner typed before the window closed came back.
+    pub restored: bool,
 }
 
 /// The Main window's state.
@@ -298,9 +361,17 @@ pub struct MainModel {
     cache: crate::index_cache::IndexCache,
     /// The groups of each list of the open board.
     groups: HashMap<ListId, Vec<GroupRun>>,
+    /// Each grouped item's list and the index of its run in `groups` (built by `reload`).
+    group_index: HashMap<ItemId, (ListId, usize)>,
+    /// Bumped whenever something the rows come from changes (MAIN-29).
+    generation: u64,
+    /// The rows' sources for `generation`, so the keys and the rows of one redraw share one pass.
+    entries_cache: std::cell::RefCell<Option<(u64, std::rc::Rc<Vec<Slot>>)>>,
     list_labels: HashMap<ListId, ListLabel>,
     /// The library snapshot read by `reload`; its suggestions are built on first use.
     snapshot: std::rc::Rc<crate::index_cache::Snapshot>,
+    /// The lists of every board, in board order (for the Move chooser).
+    board_lists: Vec<(BoardId, Vec<List>)>,
     trash: Vec<TrashEntry>,
     section: Section,
     query: String,
@@ -318,6 +389,14 @@ impl Default for MainModel {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Where a row's source lives, so the list of rows can be kept between redraws.
+#[derive(Debug, Clone, Copy)]
+enum Slot {
+    Item(usize),
+    Trashed(usize),
+    Header(ListId, usize),
 }
 
 /// A row's source, before it becomes text.
@@ -350,8 +429,12 @@ impl MainModel {
             tag_counts: HashMap::new(),
             items: Vec::new(),
             groups: HashMap::new(),
+            group_index: HashMap::new(),
+            generation: 0,
+            entries_cache: std::cell::RefCell::new(None),
             list_labels: HashMap::new(),
             snapshot: std::rc::Rc::default(),
+            board_lists: Vec::new(),
             trash: Vec::new(),
             section: Section::All,
             query: String::new(),
@@ -421,15 +504,25 @@ impl MainModel {
             .collect::<snipdeck_store::Result<HashMap<_, _>>>()?;
         let tags = store.tags()?;
         let trash = store.trashed()?;
+        let board_lists: Vec<(BoardId, Vec<List>)> = snapshot
+            .boards
+            .iter()
+            .map(|(b, lists)| (b.id, lists.clone()))
+            .collect();
         let list_labels: HashMap<ListId, ListLabel> = snapshot
             .boards
             .iter()
-            .flat_map(|(_, lists)| lists.iter())
-            .map(|l| {
+            .flat_map(|(b, lists)| lists.iter().map(move |l| (b, l)))
+            .map(|(b, l)| {
                 (
                     l.id,
                     ListLabel {
-                        board: String::new(),
+                        // A hit from another board says which one (MAIN-1); with one board the name adds nothing.
+                        board: if boards.len() > 1 {
+                            b.name.as_str().to_owned()
+                        } else {
+                            String::new()
+                        },
                         name: l.name.as_str().to_owned(),
                         accent: l.accent,
                     },
@@ -456,8 +549,18 @@ impl MainModel {
         self.tags = tags;
         self.tag_counts = tag_counts;
         self.items = items;
+        self.group_index = groups
+            .iter()
+            .flat_map(|(list, runs)| {
+                runs.iter().enumerate().flat_map(move |(at, run)| {
+                    run.items.iter().map(move |item| (*item, (*list, at)))
+                })
+            })
+            .collect();
         self.groups = groups;
+        self.generation += 1;
         self.list_labels = list_labels;
+        self.board_lists = board_lists;
         self.trash = trash;
         self.hits = hits;
         self.snapshot = std::rc::Rc::clone(&snapshot);
@@ -499,6 +602,15 @@ impl MainModel {
         self.board
     }
 
+    /// The board list `id` lives on.
+    #[must_use]
+    pub fn board_of_list(&self, id: ListId) -> Option<BoardId> {
+        self.board_lists
+            .iter()
+            .find(|(_, lists)| lists.iter().any(|l| l.id == id))
+            .map(|(b, _)| *b)
+    }
+
     /// The open board's name (empty without boards).
     #[must_use]
     pub fn board_name(&self) -> &str {
@@ -531,6 +643,40 @@ impl MainModel {
                 accent: l.accent,
                 icon: l.icon,
                 count: self.list_counts.get(&l.id).copied().unwrap_or(0),
+            })
+            .collect()
+    }
+
+    /// Every list the *Move to list* chooser offers: the open board's, then the other boards'
+    /// (named with their board once the library has more than one).
+    #[must_use]
+    pub fn move_targets(&self) -> Vec<MoveTarget> {
+        let several = self.boards.len() > 1;
+        let open = self.board;
+        let ordered = self
+            .board_lists
+            .iter()
+            .filter(|(b, _)| Some(*b) == open)
+            .chain(self.board_lists.iter().filter(|(b, _)| Some(*b) != open));
+        ordered
+            .flat_map(|(board, lists)| {
+                let board_name = self
+                    .boards
+                    .iter()
+                    .find(|b| b.id == *board)
+                    .map_or("", |b| b.name.as_str());
+                lists.iter().map(move |l| MoveTarget {
+                    list: l.id,
+                    board: *board,
+                    label: if several && Some(*board) != open {
+                        crate::picker_binding::picker_place(board_name, l.name.as_str())
+                    } else {
+                        l.name.as_str().to_owned()
+                    },
+                    accent: l.accent,
+                    icon: l.icon,
+                    count: self.list_counts.get(&l.id).copied().unwrap_or(0),
+                })
             })
             .collect()
     }
@@ -603,6 +749,12 @@ impl MainModel {
         &self.query
     }
 
+    /// Whether the search stopped at `SEARCH_LIMIT` hits, so more items match than are shown.
+    #[must_use]
+    pub fn search_capped(&self) -> bool {
+        self.searching() && self.hits.len() >= SEARCH_LIMIT
+    }
+
     /// Whether a search is active.
     #[must_use]
     pub fn searching(&self) -> bool {
@@ -651,38 +803,77 @@ impl MainModel {
     }
 
     fn entries(&self) -> Vec<Entry<'_>> {
+        let slots = self.slots();
+        slots
+            .iter()
+            .filter_map(|slot| match *slot {
+                Slot::Item(at) => self.items.get(at).map(|item| Entry::Item(item)),
+                Slot::Trashed(at) => self.trash.get(at).map(Entry::Trashed),
+                Slot::Header(list, at) => self
+                    .groups
+                    .get(&list)
+                    .and_then(|runs| runs.get(at))
+                    .map(Entry::Header),
+            })
+            .collect()
+    }
+
+    /// The rows' sources, worked out once per change of what the rows come from.
+    fn slots(&self) -> std::rc::Rc<Vec<Slot>> {
+        if let Some((generation, slots)) = &*self.entries_cache.borrow()
+            && *generation == self.generation
+        {
+            return std::rc::Rc::clone(slots);
+        }
+        let slots = std::rc::Rc::new(self.build_slots());
+        *self.entries_cache.borrow_mut() = Some((self.generation, std::rc::Rc::clone(&slots)));
+        slots
+    }
+
+    fn build_slots(&self) -> Vec<Slot> {
         if self.section == Section::Trash {
             let needle = self.query.trim().to_lowercase();
             return self
                 .trash
                 .iter()
-                .filter(|t| needle.is_empty() || t.label.to_lowercase().contains(&needle))
-                .map(Entry::Trashed)
+                .enumerate()
+                .filter(|(_, t)| needle.is_empty() || t.label.to_lowercase().contains(&needle))
+                .map(|(at, _)| Slot::Trashed(at))
                 .collect();
         }
         let wanted = self.label_filter;
+        let by_id: HashMap<ItemId, usize> = self
+            .items
+            .iter()
+            .enumerate()
+            .map(|(at, i)| (i.id, at))
+            .collect();
         let items = self
             .unfiltered_items()
             .into_iter()
-            .filter(|i| wanted.is_none() || i.label == wanted);
+            .filter(|i| wanted.is_none() || i.label == wanted)
+            .filter_map(|i| by_id.get(&i.id).copied().map(|at| (at, i)));
         if !self.shows_groups() {
-            return items.map(Entry::Item).collect();
+            return items.map(|(at, _)| Slot::Item(at)).collect();
         }
         // A group is a run of the manual order: its header goes above the first member, and a folded group
         // shows the header only.
-        let mut entries = Vec::new();
+        let mut slots = Vec::new();
         let mut open: Option<GroupId> = None;
-        for item in items {
+        for (at, item) in items {
             let run = self.group_of(item.id);
-            if let Some(run) = run.filter(|r| open != Some(r.group.id)) {
-                entries.push(Entry::Header(run));
+            if let Some(_) = run.filter(|r| open != Some(r.group.id))
+                && let Section::List(list) = self.section
+                && let Some(run_at) = self.group_index.get(&item.id).map(|g| g.1)
+            {
+                slots.push(Slot::Header(list, run_at));
             }
             open = run.map(|r| r.group.id);
             if run.is_none_or(|r| !r.group.collapsed) {
-                entries.push(Entry::Item(item));
+                slots.push(Slot::Item(at));
             }
         }
-        entries
+        slots
     }
 
     /// Whether the rows carry group headers: the open section is one list in manual order, with no search and no
@@ -718,7 +909,11 @@ impl MainModel {
     /// The group item `id` belongs to, in the open list.
     #[must_use]
     pub fn group_of(&self, id: ItemId) -> Option<&GroupRun> {
-        self.open_groups().iter().find(|r| r.items.contains(&id))
+        let (list, at) = *self.group_index.get(&id)?;
+        if self.section != Section::List(list) || !self.shows_groups() {
+            return None;
+        }
+        self.groups.get(&list)?.get(at)
     }
 
     /// The items of the open view before the colour-label filter: the search hits while
@@ -782,6 +977,7 @@ impl MainModel {
     /// cursor returns to the top.
     pub fn set_label_filter(&mut self, label: Option<ItemLabel>) {
         self.label_filter = label;
+        self.generation += 1;
         self.clear_selection();
         self.cursor = 0;
     }
@@ -850,6 +1046,9 @@ impl MainModel {
                         selected: self.selected.contains(&Key::Item(item.id)),
                         header: None,
                         grouped: self.group_of(item.id).is_some() && self.shows_groups(),
+                        image_stamp: (item.kind == ItemKind::Image && !item.sensitive)
+                            .then_some(item.updated_at),
+                        thumb: None,
                     }
                 }
                 Entry::Trashed(entry) => {
@@ -871,6 +1070,8 @@ impl MainModel {
                         marks: Marks::default(),
                         header: None,
                         grouped: false,
+                        image_stamp: None,
+                        thumb: None,
                     }
                 }
                 Entry::Header(run) => Row {
@@ -891,6 +1092,8 @@ impl MainModel {
                         collapsed: run.group.collapsed,
                     }),
                     grouped: false,
+                    image_stamp: None,
+                    thumb: None,
                 },
             })
             .collect()
@@ -931,6 +1134,7 @@ impl MainModel {
     /// returns to the top.
     pub fn open(&mut self, section: Section) {
         self.section = section;
+        self.generation += 1;
         self.label_filter = None;
         self.query.clear();
         self.hits.clear();
@@ -964,6 +1168,7 @@ impl MainModel {
     /// Any store error from the search; the text is kept and the matches are empty.
     pub fn set_query<S: ItemRepo>(&mut self, store: &S, query: &str) -> snipdeck_store::Result<()> {
         query.clone_into(&mut self.query);
+        self.generation += 1;
         self.hits.clear();
         self.clear_selection();
         self.cursor = 0;
@@ -1448,6 +1653,29 @@ mod tests {
         model.open(Section::All);
         assert_eq!(model.query(), "");
         assert_eq!(model.rows().len(), 11);
+    }
+
+    #[test]
+    fn a_hit_on_another_board_names_its_board() {
+        // MAIN-1: the line says "in all boards", so a hit shows where it lives.
+        let (store, mut model) = loaded();
+        model.open(Section::List(list_named(&model, "Code")));
+        model.set_query(&store, "milk").expect("search");
+        let place = model.rows()[0].list.clone().expect("a place");
+        assert!(!place.board.is_empty(), "the board of the hit: {place:?}");
+    }
+
+    #[test]
+    fn a_search_that_fills_its_limit_says_so() {
+        // MAIN-2: 200 hits may be a cut, so the status line says "first 200".
+        let (store, mut model) = loaded();
+        model.set_query(&store, "milk").expect("search");
+        assert!(!model.search_capped(), "one hit is not a cut");
+        let id = store.all_items().expect("items")[0].id;
+        model.hits = vec![id; SEARCH_LIMIT];
+        assert!(model.search_capped());
+        model.set_query(&store, "").expect("clear");
+        assert!(!model.search_capped(), "no search, no cut");
     }
 
     #[test]

@@ -193,6 +193,23 @@ export global Theme {
 // ---------------------------------------------------------------------------------------------
 export enum ListHue { blue, teal, green, amber, orange, red, rose, violet, slate }
 
+// The one named palette (SPEC 5.4, DESIGN.md §2): these nine names are the only names a colour has, on item labels,
+// list and board colours and the accent choice. Each surface offers a subset (labels have no Rose: the library file
+// restricts the stored label keys; accents leave out Orange, Red and Slate, which read as warning or neutral).
+export global HueNames {
+    pure public function name(hue: ListHue) -> string {
+        if (hue == ListHue.blue) { return @tr("Blue"); }
+        if (hue == ListHue.teal) { return @tr("Teal"); }
+        if (hue == ListHue.green) { return @tr("Green"); }
+        if (hue == ListHue.amber) { return @tr("Amber"); }
+        if (hue == ListHue.orange) { return @tr("Orange"); }
+        if (hue == ListHue.red) { return @tr("Red"); }
+        if (hue == ListHue.rose) { return @tr("Rose"); }
+        if (hue == ListHue.violet) { return @tr("Violet"); }
+        return @tr("Slate");
+    }
+}
+
 export global ListAccent {
     pure public function color(hue: ListHue) -> color {
         if (hue == ListHue.blue) { return Palette.dark ? Primitives.blue-400 : Primitives.blue-600; }

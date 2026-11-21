@@ -100,7 +100,7 @@ where
             let dismiss = Weak::clone(&weak);
             window.on_undo(move || {
                 if let Some(core) = weak.upgrade() {
-                    core.controller.borrow_mut().main_undo();
+                    core.controller.borrow_mut().toast_action();
                     redraw_all();
                 }
             });
@@ -244,11 +244,7 @@ fn render(window: &ui::ToastWindow, previous: Option<&Shown>, view: &View, toast
         );
     }
     if differs(&|p| p.toast == *toast) {
-        window.set_undo_label(if toast.undo {
-            wording::UNDO_LABEL.into()
-        } else {
-            SharedString::new()
-        });
+        window.set_undo_label(wording::toast_button_text(window, toast).into());
         window.set_edit_label(if toast.edit {
             wording::toast_edit_label(window).into()
         } else {

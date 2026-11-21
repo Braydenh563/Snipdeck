@@ -154,6 +154,9 @@ fn select_row(ui: &MainWindow, i: usize) {
 fn start() -> (MainWindow, Log) {
     let ui = MainWindow::new().expect("main window");
     fixture::populate(&ui);
+    // These tests measure the list and its toolbar by the width of the item area; the Detail pane (which takes
+    // 360px from a wide window) has its own tests in `main_window.rs`.
+    ui.set_detail_open(false);
     ui.window().set_size(slint::LogicalSize::new(1040.0, 640.0));
     ui.show().expect("show");
     settle();
@@ -224,6 +227,10 @@ fn start() -> (MainWindow, Log) {
     hook!(on_row_dropped_on_list, |row, list| format!(
         "row-on-list:{row}:{list}"
     ));
+    hook!(on_row_dropped_on_trash, |row| format!("row-on-trash:{row}"));
+    hook!(on_row_dropped_on_tag, |row, tag| format!(
+        "row-on-tag:{row}:{tag}"
+    ));
     hook!(on_list_dropped, |from, onto| format!(
         "list-dropped:{from}:{onto}"
     ));
@@ -292,7 +299,10 @@ ui_tests! {
         let (ui, _log) = start();
         ui.set_view(snipdeck_ui::MainView::Tile);
         settle();
-        let tile = || find(&ui, "Tile view", AccessibleRole::Button);
+        let tile = || {
+            let label = if ui.get_has_groups() { "Tile view is not available while the list has groups" } else { "Tile view" };
+            find(&ui, label, AccessibleRole::Button)
+        };
         assert_eq!(tile().accessible_enabled(), Some(true));
         assert_eq!(tile().accessible_checked(), Some(true));
         ui.set_has_groups(true);
@@ -535,10 +545,14 @@ ui_tests! {
         let dialog = find(&ui, "Delete for good?", AccessibleRole::Groupbox);
         assert_eq!(
             dialog.accessible_description().as_deref(),
-            Some("The selected items are deleted for good. This can't be undone.")
+            Some("The selected item is deleted for good. This can't be undone.")
         );
+        // MAIN-44: the focus starts on Cancel, so Enter is the safe answer, never the destructive one.
         press_key(&ui, Key::Return);
-        assert!(ui.get_confirm_open(), "Enter is not the destructive default");
+        assert!(!ui.get_confirm_open(), "Enter on the focused Cancel closes the dialog");
+        assert_eq!(take(&log), Vec::<String>::new(), "and deletes nothing");
+        press_key(&ui, Key::Delete);
+        assert!(ui.get_confirm_open());
         press_key(&ui, Key::Escape);
         assert!(!ui.get_confirm_open());
         assert_eq!(take(&log), Vec::<String>::new());
@@ -759,6 +773,17 @@ ui_tests! {
         let code = centre_of(&find(&ui, "Code", AccessibleRole::ListItem));
         drag(row0, code);
         assert_eq!(take(&log), ["row-on-list:0:2"], "row onto a sidebar list");
+
+        // The Trash and a tag take dropped rows too.
+        let trash = centre_of(&find(&ui, "Trash", AccessibleRole::ListItem));
+        drag(row0, trash);
+        assert_eq!(take(&log), ["row-on-trash:0"], "row onto the Trash");
+        let tag = centre_of(&find(&ui, "billing", AccessibleRole::ListItem));
+        drag(row2, tag);
+        assert_eq!(take(&log), ["row-on-tag:2:0"], "row onto a sidebar tag");
+        // A list dragged onto the Trash or a tag is not a row: nothing happens.
+        drag(code, trash);
+        assert_eq!(take(&log), Vec::<String>::new(), "a list is not dropped on the Trash");
 
         let email = centre_of(&find(&ui, "Email replies", AccessibleRole::ListItem));
         drag(code, email);
@@ -1160,7 +1185,9 @@ ui_tests! {
             take(&log);
             chord(ui.window(), &[Key::Alt], &key(Key::DownArrow));
             chord(ui.window(), &[Key::Alt], &key(Key::UpArrow));
-            assert_eq!(take(&log), ["reorder:1", "reorder:-1"], "{view:?}");
+            // In the tile grid Alt+Down moves a whole row of tiles (MAIN-13).
+            let step = if view == MainView::Tile { 3 } else { 1 };
+            assert_eq!(take(&log), [format!("reorder:{step}"), format!("reorder:-{step}")], "{view:?}");
             press_key(&ui, Key::DownArrow);
             assert!(take(&log).iter().all(|l| !l.starts_with("reorder")), "{view:?}: a plain arrow only moves");
         }
@@ -1424,7 +1451,7 @@ ui_tests! {
         fixture::set_rows(&ui, Vec::new());
         ui.set_section(MainSection::All);
         settle();
-        find(&ui, "No snippets yet", AccessibleRole::Text);
+        find(&ui, "No items yet", AccessibleRole::Text);
         find(&ui, "Save what you paste often.", AccessibleRole::Text);
         take(&log);
         find(&ui, "Save from clipboard", AccessibleRole::Button).invoke_accessible_default_action();
@@ -1454,6 +1481,8 @@ ui_tests! {
 
     fn toolbar_commands_and_view_are_labelled() {
         let (ui, _log) = start();
+        ui.window().set_size(slint::LogicalSize::new(232.0 + 854.0, 640.0));
+        settle();
         let texts = |ui: &MainWindow| -> Vec<String> {
             ElementQuery::from_root(ui)
                 .match_id("ToolbarButton::label-text")
@@ -1462,13 +1491,29 @@ ui_tests! {
                 .filter_map(|e| e.accessible_label().map(|l| l.to_string()))
                 .collect()
         };
-        assert_eq!(texts(&ui), ["Commands", "View"], "ghost buttons with a label at 808 px");
+        assert_eq!(texts(&ui), ["Commands", "View"], "ghost buttons with a label and the keys at 854 px");
         // Commands shows its key: two caps, Ctrl and K.
         let commands = find(&ui, "Commands (Ctrl+K)", AccessibleRole::Button);
         assert!(commands.size().height >= 32.0 - 0.5 && commands.size().height <= 32.0 + 0.5, "h32: {}", commands.size().height);
         assert!(commands.size().width > 100.0, "label and keycaps: {}", commands.size().width);
         let view = find(&ui, "View", AccessibleRole::Button);
         assert!(view.size().width > 32.0, "label and caret: {}", view.size().width);
+    }
+
+    fn the_detail_pane_takes_its_width_before_the_toolbar_is_measured() {
+        let (ui, _log) = start();
+        ui.set_detail_open(true);
+        ui.window().set_size(slint::LogicalSize::new(232.0 + 360.0 + 854.0, 640.0));
+        settle();
+        assert!(ui.get_detail_shown());
+        let labels = ElementQuery::from_root(&ui).match_id("ToolbarButton::label-text").find_all().len();
+        assert_eq!(labels, 2, "the list keeps 854px beside the pane, so the toolbar is as at 854 without it");
+        ui.window().set_size(slint::LogicalSize::new(232.0 + 360.0 + 853.0, 640.0));
+        settle();
+        let keys = find(&ui, "Commands (Ctrl+K)", AccessibleRole::Button).size().width;
+        ui.window().set_size(slint::LogicalSize::new(232.0 + 360.0 + 854.0, 640.0));
+        settle();
+        assert!(find(&ui, "Commands (Ctrl+K)", AccessibleRole::Button).size().width > keys + 40.0, "the keys go at the list's 854, not the window's");
     }
 
     fn the_toolbar_sheds_keys_then_labels_as_the_item_area_narrows() {
@@ -1480,21 +1525,21 @@ ui_tests! {
         };
         let label_count = || ElementQuery::from_root(&ui).match_id("ToolbarButton::label-text").find_all().len();
         let width = |name: &str| find(&ui, name, AccessibleRole::Button).size().width;
-        at(736.0);
-        assert_eq!(label_count(), 2, "both labels at 736");
+        at(854.0);
+        assert_eq!(label_count(), 2, "both labels at 854");
         let with_keys = width("Commands (Ctrl+K)");
-        at(735.0);
-        assert!(width("Commands (Ctrl+K)") < with_keys - 40.0, "the Ctrl K chips go below 736");
+        at(853.0);
+        assert!(width("Commands (Ctrl+K)") < with_keys - 40.0, "the Ctrl K chips go below 854");
         assert_eq!(label_count(), 2, "the labels stay");
-        at(658.0);
-        assert_eq!(label_count(), 2, "both labels at 658");
-        at(657.0);
-        assert_eq!(label_count(), 1, "the Commands label goes below 658");
+        at(776.0);
+        assert_eq!(label_count(), 2, "both labels at 776");
+        at(775.0);
+        assert_eq!(label_count(), 1, "the Commands label goes below 776");
         assert!((width("Commands (Ctrl+K)") - 32.0).abs() < 0.5, "Commands is a 32 px icon button");
-        at(608.0);
-        assert_eq!(label_count(), 1, "the View label stays at 608");
-        at(607.0);
-        assert_eq!(label_count(), 0, "the View label goes below 608");
+        at(726.0);
+        assert_eq!(label_count(), 1, "the View label stays at 726");
+        at(725.0);
+        assert_eq!(label_count(), 0, "the View label goes below 726");
         for name in ["Commands (Ctrl+K)", "View"] {
             let b = find(&ui, name, AccessibleRole::Button);
             assert!((b.size().width - 32.0).abs() < 0.5 && (b.size().height - 32.0).abs() < 0.5, "{name} is a 32 px icon button: {:?}", b.size());
@@ -1505,13 +1550,13 @@ ui_tests! {
         assert!(ui.get_palette_open(), "still opens the palette");
         press_key(&ui, Key::Escape);
         settle();
-        at(736.0);
-        assert_eq!(label_count(), 2, "the labels return at 736");
+        at(854.0);
+        assert_eq!(label_count(), 2, "the labels return at 854");
     }
 
     fn narrow_toolbar_view_menu_holds_the_tile_view() {
         let (ui, log) = start();
-        ui.window().set_size(slint::LogicalSize::new(232.0 + 573.0, 640.0));
+        ui.window().set_size(slint::LogicalSize::new(232.0 + 691.0, 640.0));
         settle();
         take(&log);
         find(&ui, "View", AccessibleRole::Button).invoke_accessible_default_action();
@@ -1613,6 +1658,34 @@ ui_tests! {
         assert!(missing(&ui, "8 selected", AccessibleRole::Groupbox));
     }
 
+    // MAIN-5: the Move chooser opens at the bulk bar's Move button and, whatever the window size and
+    // text scale, is clamped by its real size so it never leaves the window.
+    fn the_bulk_bar_chooser_is_anchored_to_its_button_and_stays_inside_the_window() {
+        for (w, h, scale) in [(1040.0_f32, 640.0_f32, 1.0_f32), (480.0, 360.0, 2.25)] {
+            let (ui, _log) = start();
+            ui.window().set_size(slint::LogicalSize::new(w, h));
+            ui.global::<snipdeck_ui::SystemLook<'_>>().set_text_scale(scale);
+            ui.set_selected_count(2);
+            settle();
+            let button = find(&ui, "Move", AccessibleRole::Button);
+            let (bp, bs) = (button.absolute_position(), button.size());
+            button.invoke_accessible_default_action();
+            settle();
+            assert!(ui.get_menu_open(), "the chooser opens at {w}x{h}@{scale}");
+            let list = find(&ui, "Move to list", AccessibleRole::List);
+            let (p, s) = (list.absolute_position(), list.size());
+            assert!(p.x >= 0.0 && p.y >= 0.0, "inside at the top left: {p:?} at {w}x{h}@{scale}");
+            assert!(p.x + s.width <= w + 0.5, "inside at the right: {p:?} {s:?} at {w}x{h}@{scale}");
+            assert!(p.y + s.height <= h + 0.5, "inside at the bottom: {p:?} {s:?} at {w}x{h}@{scale}");
+            if scale < 1.5 {
+                assert!((p.x - bp.x).abs() <= 1.0, "left edge on the button: {p:?} vs {bp:?}");
+                // Below the button, or pushed up by its real height (300px) when the bar is at the bottom.
+                let want = (bp.y + bs.height).min(h - 300.0);
+                assert!((p.y - want).abs() <= 1.0, "at the button, clamped: {p:?} vs {bp:?} {bs:?}");
+            }
+        }
+    }
+
     fn the_bulk_bar_acts_on_the_selection() {
         let (ui, log) = start();
         ui.set_selected_count(2);
@@ -1702,6 +1775,42 @@ ui_tests! {
         settle();
         assert_eq!(find(&ui, "Trash", AccessibleRole::ListItem).accessible_item_selected(), Some(true));
         assert_eq!(find(&ui, "All items", AccessibleRole::ListItem).accessible_item_selected(), Some(false));
+    }
+
+    // MAIN-15: F2 edits and Delete asks to delete the list under the sidebar cursor, no menu needed.
+    fn f2_and_delete_work_on_a_sidebar_list() {
+        let (ui, log) = start();
+        for _ in 0..16 {
+            if ui.get_sidebar_focused() {
+                break;
+            }
+            press_key(&ui, Key::Backtab);
+        }
+        for _ in 0..4 {
+            press_key(&ui, Key::DownArrow);
+        }
+        take(&log);
+        press_key(&ui, Key::F2);
+        assert_eq!(take(&log), ["list-edit:0"]);
+        press_key(&ui, Key::Delete);
+        settle();
+        assert!(ui.get_confirm_open(), "Delete asks first");
+        assert_eq!(take(&log), Vec::<String>::new());
+        press_key(&ui, Key::Escape);
+        assert!(!ui.get_confirm_open());
+        // On a built-in view neither key does anything (focus is back on the items: return to the sidebar).
+        for _ in 0..16 {
+            if ui.get_sidebar_focused() {
+                break;
+            }
+            press_key(&ui, Key::Backtab);
+        }
+        take(&log);
+        press_key(&ui, Key::Home);
+        press_key(&ui, Key::Delete);
+        press_key(&ui, Key::F2);
+        assert!(!ui.get_confirm_open());
+        assert_eq!(take(&log), Vec::<String>::new());
     }
 
     fn a_list_context_menu_edits_or_asks_before_deleting() {
@@ -1832,7 +1941,7 @@ ui_tests! {
         chord(ui.window(), &[Key::Control], "f");
         type_text(ui.window(), "inv");
         settle();
-        let field = find(&ui, "Search snippets", AccessibleRole::TextInput);
+        let field = find(&ui, "Search items", AccessibleRole::TextInput);
         let clear = find(&ui, "Clear search", AccessibleRole::Button);
         let (fp, fz) = (field.absolute_position(), field.size());
         let (cp, cz) = (clear.absolute_position(), clear.size());
@@ -1855,7 +1964,7 @@ ui_tests! {
         settle();
         assert_eq!(ui.get_query(), "inv");
         assert_eq!(take(&log), ["query:i", "query:in", "query:inv"]);
-        let field = find(&ui, "Search snippets", AccessibleRole::TextInput);
+        let field = find(&ui, "Search items", AccessibleRole::TextInput);
         assert_eq!(field.accessible_value().as_deref(), Some("inv"));
         find(&ui, "Clear search", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(ui.get_query(), "");
@@ -1887,6 +1996,64 @@ ui_tests! {
         }
         press_key(&ui, Key::F1);
         assert_eq!(take(&log), ["help:Guide"]);
+    }
+
+    // MAIN-56 (WCAG 2.4.3): Esc in a menu gives the focus back to the button that opened it. Enter on the focused
+    // button opens the menu again; on the list (where the focus used to go) Enter would use the item instead.
+    fn esc_in_the_view_and_help_menus_returns_the_focus_to_their_button() {
+        let (ui, log) = start();
+        for label in ["View", "Help"] {
+            find(&ui, label, AccessibleRole::Button).invoke_accessible_default_action();
+            settle();
+            assert!(ui.get_menu_open(), "the {label} menu is open");
+            press_key(&ui, Key::Escape);
+            assert!(!ui.get_menu_open(), "Esc closes the {label} menu");
+            assert!(!ui.get_items_focused(), "the list does not take the focus after {label}");
+            take(&log);
+            press_key(&ui, Key::Return);
+            assert!(ui.get_menu_open(), "Enter on the focused {label} button opens its menu again");
+            assert!(take(&log).is_empty(), "and uses nothing");
+            press_key(&ui, Key::Escape);
+        }
+    }
+
+    // MAIN-43: Help > Recent messages asks the host for the text, then shows it in a dialog that Esc closes.
+    fn help_recent_messages_asks_for_the_text_and_shows_it() {
+        let (ui, _log) = start();
+        let asked = Rc::new(std::cell::Cell::new(0));
+        let seen = Rc::clone(&asked);
+        let weak = ui.as_weak();
+        ui.on_recent_messages_requested(move || {
+            seen.set(seen.get() + 1);
+            if let Some(ui) = weak.upgrade() {
+                ui.set_recent_messages_text("Copied\n\nPasted into Notepad".into());
+            }
+        });
+        find(&ui, "Help", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        find(&ui, "Recent messages", AccessibleRole::ListItem).invoke_accessible_default_action();
+        settle();
+        assert_eq!(asked.get(), 1);
+        let dialog = find(&ui, "Recent messages", AccessibleRole::Groupbox);
+        assert_eq!(
+            dialog.accessible_description().as_deref(),
+            Some("Copied\n\nPasted into Notepad")
+        );
+        press_key(&ui, Key::Escape);
+        assert!(missing(&ui, "Recent messages", AccessibleRole::Groupbox), "Esc closes the dialog");
+    }
+
+    // MAIN-57: the scope that holds the focus carries the role and the name, the cursor row is its value.
+    fn the_item_list_scope_is_named_and_reports_the_cursor_row() {
+        let (ui, _log) = start();
+        ui.invoke_focus_items();
+        settle();
+        let list = find(&ui, "Item list", AccessibleRole::List);
+        let first = list.accessible_value();
+        press_key(&ui, Key::DownArrow);
+        let moved = find(&ui, "Item list", AccessibleRole::List).accessible_value();
+        assert_ne!(first, moved, "the value follows the cursor");
+        assert!(moved.is_some_and(|v| !v.is_empty()));
     }
 
     fn the_view_button_opens_a_theme_menu_whose_rows_report_their_index_and_esc_closes_it() {
@@ -2093,14 +2260,14 @@ ui_tests! {
         let (ui, log) = start();
         let splitter = find(&ui, "Sidebar width", AccessibleRole::Slider);
         assert_eq!(splitter.accessible_value().as_deref(), Some("232"));
-        assert!((splitter.size().width - 8.0).abs() < 0.5, "8 px hit area: {:?}", splitter.size());
+        assert!((splitter.size().width - 24.0).abs() < 0.5, "24 px hit area (WCAG 2.5.8): {:?}", splitter.size());
         press_at_centre(&ui, centre_of(&splitter));
         take(&log);
         press_key(&ui, Key::RightArrow);
         assert_eq!(take(&log), ["sidebar-width:240"]);
         assert_eq!(ui.get_sidebar_width(), 240);
         let moved = find(&ui, "Sidebar width", AccessibleRole::Slider);
-        assert!((moved.absolute_position().x - (240.0 - 4.0)).abs() < 0.5, "{:?}", moved.absolute_position());
+        assert!((moved.absolute_position().x - (240.0 - 12.0)).abs() < 0.5, "{:?}", moved.absolute_position());
         press_key(&ui, Key::LeftArrow);
         press_key(&ui, Key::LeftArrow);
         assert_eq!(take(&log), ["sidebar-width:232", "sidebar-width:224"]);
@@ -2112,6 +2279,46 @@ ui_tests! {
             press_key(&ui, Key::RightArrow);
         }
         assert_eq!(ui.get_sidebar_width(), 320, "stops at 320");
+    }
+
+    // MAIN-58: Tab reaches the splitter where it is on screen, right after the sidebar and before the toolbar.
+    fn the_splitter_is_a_tab_stop_between_the_sidebar_and_the_content() {
+        let (ui, _log) = start();
+        let splitter = find(&ui, "Sidebar width", AccessibleRole::Slider);
+        press_at_centre(&ui, centre_of(&splitter));
+        assert!(ui.get_splitter_focused(), "a press on the strip focuses it");
+        let mut back = 0;
+        while !ui.get_sidebar_focused() && back < 6 {
+            press_key(&ui, Key::Backtab);
+            back += 1;
+        }
+        assert!(ui.get_sidebar_focused(), "the sidebar is just before the splitter");
+        assert!(!ui.get_splitter_focused());
+        let mut forward = 0;
+        while !ui.get_splitter_focused() && forward < 6 {
+            press_key(&ui, Key::Tab);
+            forward += 1;
+        }
+        assert!(ui.get_splitter_focused(), "and the splitter comes right after the sidebar");
+        assert_eq!(forward, back, "the same stops both ways");
+        press_key(&ui, Key::Tab);
+        assert!(!ui.get_splitter_focused(), "the next stop is in the content");
+    }
+
+    // MAIN-15: Home and End jump to the narrowest and the widest, a double click resets the default.
+    fn splitter_home_end_and_double_click() {
+        let (ui, _log) = start();
+        let splitter = find(&ui, "Sidebar width", AccessibleRole::Slider);
+        press_at_centre(&ui, centre_of(&splitter));
+        press_key(&ui, Key::End);
+        assert_eq!(ui.get_sidebar_width(), 320);
+        press_key(&ui, Key::Home);
+        assert_eq!(ui.get_sidebar_width(), 200);
+        // Two quick presses on the strip (the pointer is at the strip's new place).
+        let strip = centre_of(&find(&ui, "Sidebar width", AccessibleRole::Slider));
+        press_at_centre(&ui, strip);
+        press_at_centre(&ui, strip);
+        assert_eq!(ui.get_sidebar_width(), 232, "a double click restores the default width");
     }
 
     fn the_sidebar_toggle_is_reachable_at_every_width() {
@@ -2143,7 +2350,7 @@ ui_tests! {
         assert!(ui.get_rail() && !ui.get_drawer_open());
         assert!(missing(&ui, "Close sidebar (Ctrl+B)", AccessibleRole::Button));
         let rail_row = find(&ui, "All items", AccessibleRole::ListItem).size().width;
-        let list_x = |ui: &MainWindow| find(ui, "Snippets", AccessibleRole::List).absolute_position().x;
+        let list_x = |ui: &MainWindow| find(ui, "Item list", AccessibleRole::List).absolute_position().x;
         let list_before = list_x(&ui);
         // Opening it: the full sidebar, wider than the rail, over the list (the list does not move), focus inside.
         find(&ui, "Expand sidebar (Ctrl+B)", AccessibleRole::Button).invoke_accessible_default_action();
@@ -2268,7 +2475,8 @@ ui_tests! {
                         })
                         .collect();
                     roomy_foot.sort_by(|a, b| a.absolute_position().x.total_cmp(&b.absolute_position().x));
-                    if !collapsed && width > 700.0 {
+                    // The rail (collapsed, or the window under 720px of text-scaled width) has icon buttons.
+                    if !ui.get_rail() {
                         assert_eq!(roomy_foot.len(), 2, "{what}: reference footer");
                         for (got, want) in mine.iter().zip(&roomy_foot) {
                             assert!(
@@ -2296,9 +2504,9 @@ ui_tests! {
     fn ctrl_b_with_the_splitter_focused_moves_focus_to_the_list() {
         let (ui, log) = start();
         let splitter = find(&ui, "Sidebar width", AccessibleRole::Slider);
-        // The strip straddles the sidebar's edge: 4 px each side of x = 232.
+        // The strip straddles the sidebar's edge: 12 px each side of x = 232.
         let p = splitter.absolute_position();
-        assert!((p.x - 228.0).abs() < 0.5 && (splitter.size().width - 8.0).abs() < 0.5, "{p:?}");
+        assert!((p.x - 220.0).abs() < 0.5 && (splitter.size().width - 24.0).abs() < 0.5, "{p:?}");
         press_at_centre(&ui, centre_of(&splitter));
         assert!(!ui.get_items_focused());
         take(&log);
@@ -2380,7 +2588,7 @@ ui_tests! {
     fn escape_during_a_search_composition_goes_to_the_composition_not_the_tooltip() {
         let (ui, log) = start();
         let tips = |ui: &MainWindow| ElementQuery::from_root(ui).match_inherits("Tooltip").find_all().len();
-        find(&ui, "Search snippets", AccessibleRole::TextInput).mock_single_click(slint::platform::PointerEventButton::Left);
+        find(&ui, "Search items", AccessibleRole::TextInput).mock_single_click(slint::platform::PointerEventButton::Left);
         settle();
         let button = find(&ui, "Compact view", AccessibleRole::Button);
         ui.window().dispatch_event(WindowEvent::PointerMoved { position: centre_of(&button) });
@@ -2498,7 +2706,7 @@ ui_tests! {
             .collect();
         assert!(labels.iter().any(|l| l.starts_with("Thanks, received")), "{labels:?}");
         assert!(labels.iter().all(|l| !l.contains("hunter2")), "{labels:?}");
-        let _ = find(&ui, "Snippets", AccessibleRole::List);
+        let _ = find(&ui, "Items", AccessibleRole::List);
     }
 
     fn ctrl_v_and_ctrl_c_on_the_item_list_ask_for_a_paste_and_a_copy_of_the_cursor_row() {
@@ -3063,5 +3271,184 @@ ui_tests! {
             "walking back up brings the first row back to the top"
         );
         }
+    }
+}
+
+// ---- The Main-window audit, part 2 (MAIN-3, 4, 6, 7, 8, 9, 16, 17, 18, 20, 28) ------------------------------
+
+ui_tests! {
+    fn down_in_the_search_moves_to_the_first_row_and_enter_uses_it() {
+        let (ui, log) = start();
+        ui.invoke_focus_search();
+        type_text(ui.window(), "re");
+        settle();
+        take(&log);
+        press_key(&ui, Key::DownArrow);
+        assert!(ui.get_items_focused(), "Down leaves the search for the list");
+        assert_eq!(ui.get_cursor(), 0, "on the first row");
+        ui.invoke_focus_search();
+        settle();
+        take(&log);
+        press_key(&ui, Key::Return);
+        let lines = take(&log);
+        assert!(
+            lines.len() == 1 && lines[0].starts_with("action:") && lines[0].ends_with(":0"),
+            "Enter in the search uses the first match: {lines:?}"
+        );
+    }
+
+    fn escape_clears_the_selection_then_the_search_and_a_letter_starts_a_search() {
+        let (ui, log) = start();
+        select_row(&ui, 0);
+        take(&log);
+        press_key(&ui, Key::Escape);
+        assert_eq!(take(&log), ["clear"], "the first Esc drops the selection");
+        ui.set_selected_count(0);
+        ui.set_query("re".into());
+        settle();
+        press_key(&ui, Key::Escape);
+        assert_eq!(ui.get_query(), "", "the next Esc clears the query");
+        assert_eq!(take(&log), ["query:"]);
+
+        ui.invoke_focus_items();
+        settle();
+        take(&log);
+        type_text(ui.window(), "r");
+        settle();
+        assert_eq!(ui.get_query(), "r", "a letter in the list starts a search");
+        assert!(ui.get_search_focused(), "and the keyboard moves to the search box");
+        assert_eq!(take(&log), ["query:r"]);
+    }
+
+    fn the_menu_key_opens_the_menu_at_the_cursor_row() {
+        let (ui, _log) = start();
+        press_key(&ui, Key::DownArrow);
+        press_key(&ui, Key::Menu);
+        let menu = find(&ui, "Item actions", AccessibleRole::List);
+        let row = row_titled(&ui, "Invoice reminder");
+        let (my, ry) = (menu.absolute_position().y, row.absolute_position().y);
+        assert!(
+            my >= ry - 1.0 && my <= ry + row.size().height + 40.0,
+            "the menu top {my} sits at the cursor row {ry}, not at a fixed corner"
+        );
+    }
+
+    fn a_bulk_delete_in_the_trash_and_a_board_delete_count_their_items() {
+        let (ui, _log) = start();
+        ui.set_section(MainSection::Trash);
+        ui.set_selected_count(3);
+        settle();
+        press_key(&ui, Key::Delete);
+        let dialog = find(&ui, "Delete for good?", AccessibleRole::Groupbox);
+        assert_eq!(
+            dialog.accessible_description().as_deref(),
+            Some("The selected items are deleted for good. This can't be undone.")
+        );
+        press_key(&ui, Key::Escape);
+
+        ui.set_board_name("Work".into());
+        for (n, words) in [(1, "and 1 item move"), (3, "and 3 items move")] {
+            ui.set_board_delete_count(n);
+            ui.set_board_delete_open(true);
+            settle();
+            let d = find(&ui, "Delete board “Work”?", AccessibleRole::Groupbox);
+            let text = d.accessible_description().unwrap().to_string();
+            assert!(text.contains(words), "{text:?} says {words:?}");
+            ui.set_board_delete_open(false);
+            settle();
+        }
+    }
+
+    fn the_new_item_button_creates_and_rests_in_the_trash() {
+        let (ui, log) = start();
+        take(&log);
+        let button = find(&ui, "New item", AccessibleRole::Button);
+        assert_eq!(button.accessible_enabled(), Some(true));
+        button.invoke_accessible_default_action();
+        settle();
+        assert!(!take(&log).is_empty(), "the button creates an item");
+        ui.set_section(MainSection::Trash);
+        settle();
+        assert_eq!(
+            find(&ui, "New item", AccessibleRole::Button).accessible_enabled(),
+            Some(false),
+            "nothing can be created inside the Trash"
+        );
+    }
+
+    fn the_rail_keeps_add_list_and_manage_tags_as_buttons() {
+        let (ui, log) = start();
+        ui.set_sidebar_collapsed(true);
+        settle();
+        assert!(ui.get_rail());
+        take(&log);
+        find(&ui, "Add list", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["add-list"]);
+        find(&ui, "Manage tags", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["manage-tags"]);
+    }
+
+    fn the_help_menu_lists_the_pages_then_the_panel_in_a_fixed_order() {
+        let (ui, _log) = start();
+        find(&ui, "Help", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        let order = ["User guide", "Keyboard shortcuts", "Troubleshoot…", "About Snipdeck", "Show Panel"];
+        let ys: Vec<f32> = order
+            .iter()
+            .map(|l| find_top(&ui, l, AccessibleRole::ListItem).absolute_position().y)
+            .collect();
+        assert!(ys.windows(2).all(|w| w[0] < w[1]), "Help menu order {order:?}: {ys:?}");
+    }
+
+    fn the_view_menu_announces_the_density_in_force_as_checked() {
+        let (ui, _log) = start();
+        let checked = |ui: &MainWindow, label: &str| {
+            find_top(ui, label, AccessibleRole::ListItem).accessible_checked()
+        };
+        find(&ui, "View", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert_eq!(checked(&ui, "Main list density: Comfortable"), Some(true));
+        assert_eq!(checked(&ui, "Main list density: Compact"), Some(false));
+        press_key(&ui, Key::Escape);
+        ui.set_view(MainView::Compact);
+        settle();
+        find(&ui, "View", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert_eq!(checked(&ui, "Main list density: Compact"), Some(true));
+        assert_eq!(checked(&ui, "Main list density: Comfortable"), Some(false));
+    }
+
+    fn the_window_title_names_the_section_and_the_board() {
+        let (ui, _log) = start();
+        ui.set_board_name("".into());
+        settle();
+        let bare = ui.get_window_title().to_string();
+        assert!(bare.ends_with("Snipdeck") && !bare.contains("Work"), "{bare:?}");
+        ui.set_board_name("Work".into());
+        settle();
+        let titled = ui.get_window_title().to_string();
+        assert!(titled.contains("Work") && titled.ends_with("- Snipdeck"), "{titled:?}");
+        assert_ne!(bare, titled);
+    }
+
+    fn an_empty_search_or_label_filter_offers_to_clear_itself() {
+        let (ui, log) = start();
+        fixture::set_rows(&ui, Vec::new());
+        ui.set_query("zz".into());
+        settle();
+        take(&log);
+        let clear = all(&ui, "Clear search", AccessibleRole::Button);
+        assert!(clear.len() >= 2, "the field's clear button and the empty state's action");
+        clear.last().unwrap().invoke_accessible_default_action();
+        assert_eq!(take(&log), ["query:"]);
+
+        ui.set_query("".into());
+        ui.set_label_filter(0);
+        settle();
+        let cleared = Rc::new(RefCell::new(Vec::new()));
+        let sink = cleared.clone();
+        ui.on_label_filter_requested(move |i| sink.borrow_mut().push(i));
+        find(&ui, "Clear filter", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(*cleared.borrow(), [-1], "Clear filter drops the label filter");
     }
 }

@@ -1,0 +1,237 @@
+// The pictures of the Tips tab: small drawings made of rectangles, icons and key names, so they follow the theme and the
+// accent and carry no sentence that would stay English. What a card says is said by its words (`tip_texts.slint`); the
+// drawing is decoration (hidden from accessibility). One `art` index per card, in the order of `snipdeck-app`'s `TIPS`.
+import { Theme, Type, Radius, Fonts } from "theme.slint";
+import { Icons } from "icons.slint";
+import { Icon } from "components/icon.slint";
+
+// A grey bar standing for a line of text.
+component Bar inherits Rectangle {
+    in property <bool> strong: false;
+    height: 6px;
+    border-radius: 3px;
+    background: root.strong ? Theme.text-tertiary : Theme.border-default;
+}
+
+// A key cap with a name that is the same in every language ("Ctrl", "K", ";sig").
+component Key inherits Rectangle {
+    in property <string> label;
+    in property <bool> filled: false;
+    width: max(28px, key-text.preferred-width + 14px);
+    height: 26px;
+    border-radius: Radius.sm;
+    border-width: 1px;
+    border-color: root.filled ? Theme.accent : Theme.border-strong;
+    background: root.filled ? Theme.accent : Theme.bg-surface;
+    key-text := Text {
+        text: root.label;
+        color: root.filled ? Theme.text-on-accent : Theme.text-primary;
+        font-family: Fonts.mono;
+        font-size: Type.sm;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
+}
+
+// A glyph centred in a cell of a layout.
+component Glyph inherits Rectangle {
+    in property <image> source;
+    in property <color> tint;
+    in property <length> size: 14px;
+    width: root.size;
+    Icon { y: (parent.height - self.height) / 2; size: root.size; source: root.source; tint: root.tint; }
+}
+
+// One row of a snippet list: a glyph, two bars, and a highlight when `on`.
+component ListRow inherits Rectangle {
+    in property <image> glyph;
+    in property <bool> on: false;
+    in property <bool> pinned: false;
+    height: 28px;
+    border-radius: Radius.sm;
+    background: root.on ? Theme.accent-subtle : transparent;
+    HorizontalLayout {
+        padding-left: 8px;
+        padding-right: 8px;
+        spacing: 8px;
+        Glyph { source: root.glyph; tint: root.on ? Theme.accent-text : Theme.text-secondary; }
+        VerticalLayout {
+            alignment: center;
+            spacing: 4px;
+            Bar { width: 60%; strong: true; }
+            Bar { width: 90%; height: 4px; }
+        }
+        if root.pinned: Glyph { source: Icons.push-pin; tint: Theme.accent-text; }
+    }
+}
+
+// A small window frame: a title strip over a body.
+component Frame inherits Rectangle {
+    background: Theme.bg-surface;
+    border-width: 1px;
+    border-color: Theme.border-default;
+    border-radius: Radius.md;
+    clip: true;
+    @children
+}
+
+export component TipArt inherits Rectangle {
+    in property <int> art;
+    // The same proportions as the cards had (320 x 150).
+    height: 150px;
+    background: Theme.bg-sunken;
+
+    // 0: the Panel opens over any app, from a shortcut.
+    if root.art == 0: Rectangle {
+        Frame { x: 18px; y: 22px; width: 140px; height: 110px; opacity: 0.55;
+            VerticalLayout { padding: 12px; spacing: 8px; Bar { width: 80%; strong: true; } Bar {} Bar { width: 70%; } Bar {} }
+        }
+        Frame { x: 130px; y: 14px; width: 150px; height: 112px;
+            VerticalLayout { padding: 6px; spacing: 2px;
+                ListRow { glyph: Icons.file-text; on: true; }
+                ListRow { glyph: Icons.envelope-simple; }
+                ListRow { glyph: Icons.link; }
+            }
+        }
+        Key { x: 18px; y: 8px; label: "Ctrl"; }
+        Key { x: 62px; y: 8px; label: "Alt"; }
+        Key { x: 98px; y: 8px; label: "V"; filled: true; }
+    }
+    // 1: a search box filters the list.
+    if root.art == 1: Frame { x: 40px; y: 14px; width: 240px; height: 122px;
+        VerticalLayout { padding: 8px; spacing: 6px;
+            Rectangle { height: 30px; border-radius: Radius.sm; border-width: 1px; border-color: Theme.accent; background: Theme.bg-surface;
+                HorizontalLayout { padding-left: 8px; padding-right: 8px; spacing: 8px;
+                    Glyph { source: Icons.magnifying-glass; tint: Theme.text-secondary; }
+                    Rectangle { Bar { width: 70px; strong: true; } }
+                }
+            }
+            ListRow { glyph: Icons.file-text; on: true; }
+            ListRow { glyph: Icons.envelope-simple; }
+        }
+    }
+    // 2: pinned rows stay on top.
+    if root.art == 2: Frame { x: 40px; y: 14px; width: 240px; height: 122px;
+        VerticalLayout { padding: 8px; spacing: 4px;
+            ListRow { glyph: Icons.star; pinned: true; on: true; }
+            ListRow { glyph: Icons.heart; pinned: true; }
+            Rectangle { height: 1px; background: Theme.border-subtle; }
+            ListRow { glyph: Icons.file-text; }
+        }
+    }
+    // 3: paste next, again and again: three rows, an arrow moving down.
+    if root.art == 3: Rectangle {
+        Frame { x: 40px; y: 14px; width: 170px; height: 122px;
+            VerticalLayout { padding: 8px; spacing: 4px;
+                ListRow { glyph: Icons.check-circle; }
+                ListRow { glyph: Icons.arrow-bend-down-left; on: true; }
+                ListRow { glyph: Icons.file-text; }
+            }
+        }
+        Key { x: 226px; y: 38px; label: "Ctrl"; }
+        Key { x: 226px; y: 74px; label: "Shift"; filled: true; }
+        Icon { x: 258px; y: 106px; size: 18px; source: Icons.caret-down; tint: Theme.accent-text; }
+    }
+    // 4: a template with its blanks.
+    if root.art == 4: Frame { x: 40px; y: 14px; width: 240px; height: 122px;
+        VerticalLayout { padding: 12px; spacing: 10px;
+            HorizontalLayout { spacing: 6px; alignment: start;
+                Bar { width: 40px; strong: true; }
+                Rectangle { width: 74px; height: 22px; border-radius: Radius.sm; background: Theme.accent-subtle;
+                    Icon { x: 6px; y: 4px; size: 14px; source: Icons.brackets-curly; tint: Theme.accent-text; }
+                    Bar { x: 26px; y: 8px; width: 40px; }
+                }
+                Bar { width: 50px; strong: true; }
+            }
+            Bar { width: 90%; }
+            HorizontalLayout { spacing: 6px; alignment: start;
+                Bar { width: 60px; strong: true; }
+                Rectangle { width: 74px; height: 22px; border-radius: Radius.sm; background: Theme.accent-subtle;
+                    Icon { x: 6px; y: 4px; size: 14px; source: Icons.list-bullets; tint: Theme.accent-text; }
+                    Bar { x: 26px; y: 8px; width: 40px; }
+                }
+            }
+        }
+    }
+    // 5: capture: a copied page becomes a new row.
+    if root.art == 5: Rectangle {
+        Frame { x: 24px; y: 24px; width: 100px; height: 100px; opacity: 0.7;
+            VerticalLayout { padding: 10px; spacing: 8px; Bar { strong: true; } Bar {} Bar { width: 70%; } Bar {} }
+        }
+        Icon { x: 138px; y: 62px; size: 24px; source: Icons.scissors; tint: Theme.accent-text; }
+        Frame { x: 176px; y: 24px; width: 120px; height: 100px;
+            VerticalLayout { padding: 6px; spacing: 2px;
+                ListRow { glyph: Icons.plus; on: true; }
+                ListRow { glyph: Icons.file-text; }
+                ListRow { glyph: Icons.file-text; }
+            }
+        }
+    }
+    // 6: symbols: a grid of glyphs.
+    if root.art == 6: Frame { x: 40px; y: 14px; width: 240px; height: 122px;
+        GridLayout { padding: 14px; spacing: 10px;
+            Row {
+                Icon { size: 22px; source: Icons.smiley; tint: Theme.accent-text; }
+                Icon { size: 22px; source: Icons.heart; tint: Theme.text-secondary; }
+                Icon { size: 22px; source: Icons.star; tint: Theme.text-secondary; }
+                Icon { size: 22px; source: Icons.sun; tint: Theme.text-secondary; }
+                Icon { size: 22px; source: Icons.moon; tint: Theme.text-secondary; }
+            }
+            Row {
+                Icon { size: 22px; source: Icons.music-note; tint: Theme.text-secondary; }
+                Icon { size: 22px; source: Icons.paw-print; tint: Theme.text-secondary; }
+                Icon { size: 22px; source: Icons.rocket-launch; tint: Theme.text-secondary; }
+                Icon { size: 22px; source: Icons.airplane; tint: Theme.text-secondary; }
+                Icon { size: 22px; source: Icons.hand-waving; tint: Theme.text-secondary; }
+            }
+        }
+    }
+    // 7: the command search: a key chord, then a list with the keys beside each action.
+    if root.art == 7: Frame { x: 40px; y: 14px; width: 240px; height: 122px;
+        VerticalLayout { padding: 8px; spacing: 4px;
+            HorizontalLayout { spacing: 6px; alignment: start; Key { label: "Ctrl"; } Key { label: "K"; filled: true; } }
+            ListRow { glyph: Icons.plus; on: true; }
+            ListRow { glyph: Icons.gear; }
+        }
+    }
+    // 8: the three looks: rows, compact rows and tiles.
+    if root.art == 8: Rectangle {
+        Frame { x: 24px; y: 24px; width: 82px; height: 100px;
+            VerticalLayout { padding: 8px; spacing: 8px; Bar { strong: true; } Bar { width: 70%; } Bar { strong: true; } Bar { width: 70%; } Bar { strong: true; } }
+        }
+        Frame { x: 119px; y: 24px; width: 82px; height: 100px;
+            VerticalLayout { padding: 8px; spacing: 5px; Bar { height: 4px; strong: true; } Bar { height: 4px; } Bar { height: 4px; strong: true; } Bar { height: 4px; } Bar { height: 4px; strong: true; } Bar { height: 4px; } Bar { height: 4px; strong: true; } Bar { height: 4px; } }
+        }
+        Frame { x: 214px; y: 24px; width: 82px; height: 100px;
+            GridLayout { padding: 8px; spacing: 6px;
+                Row { Rectangle { background: Theme.accent-subtle; border-radius: Radius.sm; } Rectangle { background: Theme.border-subtle; border-radius: Radius.sm; } }
+                Row { Rectangle { background: Theme.border-subtle; border-radius: Radius.sm; } Rectangle { background: Theme.border-subtle; border-radius: Radius.sm; } }
+            }
+        }
+    }
+    // 9: sensitive: a row whose text is hidden, with an eye.
+    if root.art == 9: Frame { x: 40px; y: 14px; width: 240px; height: 122px;
+        VerticalLayout { padding: 8px; spacing: 4px;
+            ListRow { glyph: Icons.lock; on: true; }
+            ListRow { glyph: Icons.file-text; }
+            HorizontalLayout { padding-left: 8px; spacing: 8px; alignment: start;
+                Glyph { size: 16px; source: Icons.eye-slash; tint: Theme.text-secondary; }
+                Text { text: "••••••••"; color: Theme.text-secondary; font-family: Fonts.mono; font-size: Type.base; accessible-role: none; }
+            }
+        }
+    }
+    // 10: a trigger typed in any app becomes the snippet.
+    if root.art == 10: Rectangle {
+        Frame { x: 24px; y: 24px; width: 120px; height: 100px;
+            VerticalLayout { padding: 10px; spacing: 10px;
+                Bar { strong: true; }
+                HorizontalLayout { alignment: start; Key { label: ";sig"; filled: true; } }
+            }
+        }
+        Icon { x: 152px; y: 62px; size: 24px; source: Icons.caret-right; tint: Theme.accent-text; }
+        Frame { x: 186px; y: 24px; width: 110px; height: 100px;
+            VerticalLayout { padding: 10px; spacing: 8px; Bar { strong: true; } Bar { width: 70%; } Bar { width: 50%; } }
+        }
+    }
+}

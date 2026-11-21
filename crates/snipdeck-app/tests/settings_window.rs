@@ -828,7 +828,7 @@ fn a_shortcut_that_clashes_is_refused_and_says_which_action_has_it() {
             rows.row_data(2)
                 .unwrap()
                 .conflict
-                .contains("Open the picker"),
+                .contains("Open the Picker"),
             "{:?}",
             rows.row_data(2).unwrap().conflict
         );
@@ -1095,7 +1095,8 @@ fn start_with_windows_shows_the_real_state_when_the_entry_was_removed_outside() 
         assert!(r.ui.get_autostart());
         // The user switches Snipdeck off in Task Manager's Startup tab (or the entry is gone).
         r.host.autostart.set(Some(false));
-        r.ui.invoke_panel_in_taskbar_toggled(true);
+        // The entry is read when the page opens (SET-1: not on every action).
+        r.binding.opened();
         assert!(
             !r.ui.get_autostart(),
             "the page reads the entry, not the stored setting"
@@ -2210,7 +2211,7 @@ fn clearing_recent_emoji_and_colours_asks_first_then_clears_and_says_so() {
         });
         element(
             &r.ui,
-            "Clear recent emoji and colours…",
+            "Clear recent emoji and colours",
             AccessibleRole::Button,
         )
         .invoke_accessible_default_action();
@@ -2219,15 +2220,16 @@ fn clearing_recent_emoji_and_colours_asks_first_then_clears_and_says_so() {
             1,
             "asked first"
         );
-        element(&r.ui, "Keep them", AccessibleRole::Button).invoke_accessible_default_action();
+        element(&r.ui, "Cancel", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(r.ctl.borrow().settings().colours_recent.len(), 1, "kept");
         element(
             &r.ui,
-            "Clear recent emoji and colours…",
+            "Clear recent emoji and colours",
             AccessibleRole::Button,
         )
         .invoke_accessible_default_action();
-        element(&r.ui, "Clear them", AccessibleRole::Button).invoke_accessible_default_action();
+        element(&r.ui, "Clear emoji and colours", AccessibleRole::Button)
+            .invoke_accessible_default_action();
         assert!(r.ctl.borrow().settings().colours_recent.is_empty());
         assert_eq!(
             r.ui.get_toast_text(),
@@ -2841,6 +2843,22 @@ fn the_text_size_row_changes_the_setting_and_scales_the_page_at_once() {
     });
 }
 
+/// MAIN-35: Windows goes to 225 %, so the fixed sizes do too.
+#[test]
+fn the_text_size_row_offers_200_and_225_percent() {
+    on_ui_thread(|| {
+        let r = rig();
+        let look = r.ui.global::<snipdeck_ui::SystemLook<'_>>();
+        r.ui.invoke_text_size_chosen(5);
+        assert_eq!(r.ctl.borrow().settings().text_size, TextSize::P200);
+        assert!((look.get_text_scale() - 2.0).abs() < 1e-6);
+        r.ui.invoke_text_size_chosen(6);
+        assert_eq!(r.ctl.borrow().settings().text_size, TextSize::P225);
+        assert!((look.get_text_scale() - 2.25).abs() < 1e-6);
+        r.ui.invoke_text_size_chosen(0);
+    });
+}
+
 // ---- Support Snipdeck (optional, unlocks nothing) -----------------------------------------------
 
 #[test]
@@ -3174,6 +3192,64 @@ fn the_start_up_entry_is_read_once_when_the_page_opens_not_on_each_redraw() {
         r.binding.redraw();
         assert_eq!(r.host.autostart_reads.get(), after_toggle);
         assert!(r.ui.get_autostart(), "the toggle's result is shown");
+    });
+}
+
+/// MAIN-38: Esc closes the erase question first; it does not close the window or erase anything.
+#[test]
+fn escape_closes_the_erase_question_before_anything_else() {
+    on_ui_thread(|| {
+        let r = library_on_disk(false);
+        r.ui.window()
+            .set_size(slint::LogicalSize::new(640.0, 6000.0));
+        element(&r.ui, "Erase library\u{2026}", AccessibleRole::Button)
+            .invoke_accessible_default_action();
+        assert!(r.ui.get_erase_open());
+        press(r.ui.window(), &key(slint::platform::Key::Escape));
+        assert!(!r.ui.get_erase_open(), "Esc closes the question");
+        assert_eq!(
+            board_names(r.ctl.borrow().store()).len(),
+            2,
+            "and erases nothing"
+        );
+    });
+}
+
+/// SET-1: a step of a stepper does not ask Windows about the start-up entry again.
+#[test]
+fn a_page_action_does_not_reread_the_start_up_entry() {
+    on_ui_thread(|| {
+        let r = rig();
+        let before = r.host.autostart_reads.get();
+        for keep in [5, 6, 7] {
+            r.ui.invoke_backups_keep_chosen(keep);
+        }
+        r.ui.invoke_panel_width_chosen(420);
+        assert_eq!(r.host.autostart_reads.get(), before, "no read per action");
+    });
+}
+
+/// SET-2 and SET-3: what was half done or refused is not still there when the page comes back.
+#[test]
+fn closing_the_page_drops_open_forms_and_old_refusals() {
+    on_ui_thread(|| {
+        let r = rig();
+        // A password form with a problem, the erase form with a typed word, a refused program.
+        r.ui.invoke_paste_rule_added("KeePass.EXE".into());
+        r.ui.invoke_paste_rule_added("keepass.exe".into());
+        assert_ne!(r.ui.get_paste_rule_error(), "");
+        r.ui.set_erase_open(true);
+        r.ui.set_erase_text("erase".into());
+        r.ui.set_master_mode(snipdeck_ui::MasterMode::Set);
+        r.ui.invoke_close_requested();
+        assert!(!r.ui.get_erase_open());
+        assert_eq!(r.ui.get_erase_text(), "");
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Closed);
+        // The page is shown again before it is drawn again, as the real reopen does.
+        r.ui.show().expect("show again");
+        r.binding.opened();
+        assert_eq!(r.ui.get_paste_rule_error(), "", "the refusal is gone");
+        assert!(!r.ui.get_import_open());
     });
 }
 

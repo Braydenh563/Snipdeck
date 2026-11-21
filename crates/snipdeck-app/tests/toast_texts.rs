@@ -155,10 +155,14 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::BackupShrunk { .. } => 125,
         ToastMessage::ExportedSkipping { .. } => 126,
         ToastMessage::LibrarySetAside { .. } => 127,
+        ToastMessage::ExportedSome { .. } => 128,
+        ToastMessage::ItemsTagged { .. } => 129,
+        ToastMessage::TagDeleted { .. } => 130,
+        ToastMessage::TagMerged { .. } => 131,
     }
 }
 
-const VARIANTS: usize = 128;
+const VARIANTS: usize = 132;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -255,6 +259,24 @@ fn samples() -> Vec<ToastMessage> {
             first: s("Screenshot"),
         },
         M::BackupShrunk { was: 120, now: 3 },
+        M::ExportedSome {
+            file: s("list.txt"),
+            written: 12,
+            total: 15,
+        },
+        M::ItemsTagged {
+            count: 3,
+            added: true,
+        },
+        M::ItemsTagged {
+            count: 1,
+            added: false,
+        },
+        M::TagDeleted { name: s("Work") },
+        M::TagMerged {
+            from: s("Work"),
+            into: s("Office"),
+        },
         M::ExportFailed(Cause::Locked),
         M::LibraryErased,
         M::EraseFailed,
@@ -439,6 +461,34 @@ fn what_a_toast_carries_reaches_its_sentence() {
         assert_eq!(
             said(ToastMessage::ItemsTrashed { count: 3 }),
             "Moved 3 items to the Trash"
+        );
+        // MAIN-24, 25: a partial export says how many were written; a bulk tag change counts the items.
+        assert_eq!(
+            said(ToastMessage::ExportedSome {
+                file: s("list.txt"),
+                written: 12,
+                total: 15
+            }),
+            "Saved list.txt: 12 of 15 items. Sensitive items and items with no text are left out."
+        );
+        for (count, added, text) in [
+            (1, true, "Tag added to 1 item"),
+            (3, true, "Tag added to 3 items"),
+            (1, false, "Tag removed from 1 item"),
+            (4, false, "Tag removed from 4 items"),
+        ] {
+            assert_eq!(said(ToastMessage::ItemsTagged { count, added }), text);
+        }
+        assert_eq!(
+            said(ToastMessage::TagDeleted { name: s("Work") }),
+            "Deleted the tag “Work”"
+        );
+        assert_eq!(
+            said(ToastMessage::TagMerged {
+                from: s("Work"),
+                into: s("Office")
+            }),
+            "Merged the tag “Work” into “Office”"
         );
         let rebuilt = |recovered, unreadable, missing_sensitive| ToastMessage::DatabaseRebuilt {
             restored: 5,
@@ -668,5 +718,45 @@ fn a_start_up_failure_names_its_reason_and_the_way_back() {
         assert!(text.contains("C:\\Data: database is locked"), "{text}");
         assert!(text.contains("backups folder"), "{text}");
         assert!(!text.contains("{}"), "{text}");
+    });
+}
+
+/// TOAST-1 and TOAST-2: the button of every kind of toast is worded in the language shown.
+#[test]
+fn the_toast_button_follows_the_selected_translation() {
+    use snipdeck_app::controller::{ToastPhase, ToastView};
+    use snipdeck_app::toast::ToastKind;
+    on_ui_thread(|| {
+        let ui = ui();
+        let view = |message: ToastMessage, undo: bool, open_log: bool| ToastView {
+            seq: 1,
+            kind: ToastKind::Neutral,
+            message,
+            phase: ToastPhase::Hold,
+            undo,
+            edit: false,
+            open_log,
+        };
+        let undo = view(ToastMessage::Copied, true, false);
+        let log = view(ToastMessage::CrashedLastTime, false, true);
+        let switch = view(
+            ToastMessage::SwitchToManual {
+                list: snipdeck_core::ListId::generate(),
+            },
+            false,
+            false,
+        );
+        let none = view(ToastMessage::Copied, false, false);
+        let words = |ui: &PanelWindow| {
+            [&undo, &log, &switch, &none].map(|v| snipdeck_app::wording::toast_button_text(ui, v))
+        };
+        assert_eq!(words(&ui), ["Undo", "Open log", "Switch", ""]);
+        slint::select_bundled_translation("de").expect("de is bundled");
+        let german = words(&ui);
+        slint::select_bundled_translation("").expect("back to the source language");
+        assert_ne!(german[0], "Undo");
+        assert_ne!(german[1], "Open log");
+        assert_ne!(german[2], "Switch");
+        assert_eq!(german[3], "");
     });
 }

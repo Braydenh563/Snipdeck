@@ -114,6 +114,46 @@ pub(crate) fn delete_tag(cx: &mut Ctx<'_>, id: TagId) -> Result<()> {
     Ok(())
 }
 
+/// The tag whose name clashes with `name` (ignoring case and normalisation), if any.
+pub(crate) fn find_tag(conn: &Connection, name: &Name) -> Result<Option<Tag>> {
+    let row = conn
+        .query_row(
+            "SELECT id, name FROM tags WHERE name_key = ?1",
+            params![key(name)],
+            |r| Ok((r.get::<_, Vec<u8>>(0)?, r.get::<_, String>(1)?)),
+        )
+        .optional()?;
+    row.map(|(id, name)| {
+        Ok(Tag {
+            id: id_from(&id)?,
+            name: stored_name(&name)?,
+        })
+    })
+    .transpose()
+}
+
+/// Moves every item of `from` to `into` (items that carry both keep one link) and deletes
+/// `from`. Returns how many items gained `into`.
+pub(crate) fn merge_tag(cx: &mut Ctx<'_>, from: TagId, into: TagId) -> Result<usize> {
+    let conn = cx.conn;
+    for id in [from, into] {
+        if !crate::codec::exists(conn, "tags", id_bytes(id))? {
+            return Err(not_found(id));
+        }
+    }
+    if from == into {
+        return Ok(0);
+    }
+    let moved = conn.execute(
+        "INSERT OR IGNORE INTO item_tags (item_id, tag_id) \
+         SELECT item_id, ?2 FROM item_tags WHERE tag_id = ?1",
+        params![id_bytes(from), id_bytes(into)],
+    )?;
+    // The cascade removes the old links with the tag.
+    conn.execute("DELETE FROM tags WHERE id = ?1", [id_bytes(from)])?;
+    Ok(moved)
+}
+
 /// Fails with [`Error::TagExists`] if another tag has the same name ignoring case.
 fn clash_check(conn: &rusqlite::Connection, tag: &Tag) -> Result<()> {
     let clash = conn

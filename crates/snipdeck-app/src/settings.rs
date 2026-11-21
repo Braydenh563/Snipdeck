@@ -470,6 +470,12 @@ pub enum TextSize {
     /// 175 %.
     #[serde(rename = "175")]
     P175,
+    /// 200 %.
+    #[serde(rename = "200")]
+    P200,
+    /// 225 % (the largest Windows text size).
+    #[serde(rename = "225")]
+    P225,
 }
 
 /// The smallest and largest text scale the UI is laid out for (Windows allows 100 % to 225 %).
@@ -477,7 +483,15 @@ pub const TEXT_SCALE: std::ops::RangeInclusive<f32> = 1.0..=2.25;
 
 impl TextSize {
     /// Every choice, in the order Settings lists them.
-    pub const ALL: [Self; 5] = [Self::System, Self::P100, Self::P125, Self::P150, Self::P175];
+    pub const ALL: [Self; 7] = [
+        Self::System,
+        Self::P100,
+        Self::P125,
+        Self::P150,
+        Self::P175,
+        Self::P200,
+        Self::P225,
+    ];
 
     /// The fixed percentage, or `None` for "follow Windows".
     #[must_use]
@@ -488,6 +502,8 @@ impl TextSize {
             Self::P125 => Some(125),
             Self::P150 => Some(150),
             Self::P175 => Some(175),
+            Self::P200 => Some(200),
+            Self::P225 => Some(225),
         }
     }
 
@@ -497,7 +513,7 @@ impl TextSize {
     pub fn scale(self, system: f32) -> f32 {
         #[allow(
             clippy::cast_precision_loss,
-            reason = "a percentage up to 175 is exact in an f32"
+            reason = "a percentage up to 225 is exact in an f32"
         )]
         let wanted = self.percent().map_or(system, |p| p as f32 / 100.0);
         if wanted.is_nan() {
@@ -813,6 +829,8 @@ pub struct Settings {
     pub main_sidebar_width: u32,
     /// The Main sidebar is collapsed to its icon rail (Ctrl+B).
     pub main_sidebar_collapsed: bool,
+    /// The Main window's Detail pane is on (View menu); it shows only while the window is wide.
+    pub main_detail_open: bool,
     /// How Snipdeck pastes into each program, lower-case executable name first: the paste key,
     /// or "never paste" (SPEC §5.8). A program with no rule gets `Ctrl+V`. A new file starts
     /// with the programs known to need another key.
@@ -952,6 +970,7 @@ impl Default for Settings {
             main_window: None,
             main_sidebar_width: MAIN_SIDEBAR_WIDTH_DEFAULT,
             main_sidebar_collapsed: false,
+            main_detail_open: true,
             programs: builtin_program_rules(),
             no_paste_apps: Vec::new(),
             recent_history: false,
@@ -1099,6 +1118,7 @@ impl Settings {
         field!(main_window);
         field!(main_sidebar_width);
         field!(main_sidebar_collapsed);
+        field!(main_detail_open);
         if let Some(rules) = map.get("programs").and_then(programs_from_value) {
             settings.programs = rules;
         }
@@ -1645,6 +1665,10 @@ mod tests {
         let old = Settings::from_json(r#"{"version":1,"theme":"dark","panel_width":400}"#);
         assert_eq!(old.main_sidebar_width, 232);
         assert!(!old.main_sidebar_collapsed);
+        assert!(
+            old.main_detail_open,
+            "the pane is on until the user turns it off"
+        );
         assert_eq!(old.panel_width, 400);
         let saved = Settings {
             main_sidebar_collapsed: true,
@@ -1656,6 +1680,11 @@ mod tests {
             (back.main_sidebar_width, back.main_sidebar_collapsed),
             (280, true)
         );
+        let off = Settings {
+            main_detail_open: false,
+            ..Settings::default()
+        };
+        assert!(!Settings::from_json(&off.to_json()).main_detail_open);
     }
 
     #[test]
@@ -2345,6 +2374,8 @@ mod tests {
         assert!(near(TextSize::P125.scale(1.0), 1.25));
         assert!(near(TextSize::P150.scale(1.0), 1.5));
         assert!(near(TextSize::P175.scale(1.0), 1.75));
+        assert!(near(TextSize::P200.scale(1.0), 2.0));
+        assert!(near(TextSize::P225.scale(1.0), 2.25));
         assert!(near(TextSize::System.scale(1.0), 1.0));
         assert!(near(TextSize::System.scale(1.5), 1.5));
         // Windows' value is held to 1.0 ..= 2.25, whatever it says.

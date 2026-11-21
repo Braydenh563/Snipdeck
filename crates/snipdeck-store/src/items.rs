@@ -383,6 +383,16 @@ pub(crate) fn all_items(conn: &Connection) -> Result<Vec<Item>> {
     fetch(conn, "", &[], "b.rank, l.rank, i.rank")
 }
 
+/// How many live items are marked sensitive.
+pub(crate) fn count_sensitive(conn: &Connection) -> Result<usize> {
+    let n: i64 = conn.query_row(
+        &format!("SELECT COUNT(*) FROM items i {JOIN_LIVE} WHERE {WHERE_LIVE} AND i.sensitive = 1"),
+        [],
+        |r| r.get(0),
+    )?;
+    Ok(usize::try_from(n).unwrap_or(0))
+}
+
 /// [`ItemRepo::plain_formats`](crate::ItemRepo::plain_formats): two queries for all items.
 pub(crate) fn plain_formats(conn: &Connection) -> Result<Vec<(ItemId, Formats)>> {
     type Part = (Vec<u8>, Option<Vec<u8>>, Option<Vec<u8>>, Option<i64>);

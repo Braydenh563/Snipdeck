@@ -14,7 +14,7 @@ import { Toggle } from "components/choice.slint";
 import { HotkeyRecorder } from "components/hotkey_recorder.slint";
 import { HotkeyHealthLine } from "components/hotkey_health.slint";
 import { FieldError } from "components/text_field.slint";
-import { FormSection, SettingRow, Segmented } from "components/form.slint";
+import { FormScroll, FormSection, SettingRow, Segmented } from "components/form.slint";
 import { HotkeySetting } from "settings.slint";
 
 // One thing the welcome step explains: a glyph, a name and a sentence.
@@ -195,8 +195,9 @@ export component OnboardingWindow inherits Window {
     preferred-height: root.wanted-height;
 
     // The size the window opens at; the host cuts it to the screen before the window exists.
-    out property <length> wanted-width: 560px;
-    out property <length> wanted-height: 540px;
+    // Both follow the text size (MAIN-55): the content at the current scale, never less than the old fixed size.
+    out property <length> wanted-width: 560px + (SystemLook.text-scale - 1) * 160px;
+    out property <length> wanted-height: max(540px, 2 * Space.s6 + 2 * Space.s4 + head.preferred-height + step-body.preferred-height + foot.preferred-height);
 
     in property <bool> dark: false;
     // The step shown, 0 to `step-count - 1`: Welcome, Shortcuts, Panel, Start-up.
@@ -229,8 +230,8 @@ export component OnboardingWindow inherits Window {
     callback tips-requested();
 
     property <[string]> hotkey-names: [
-        @tr("Show or hide the panel"),
-        @tr("Open the picker"),
+        @tr("Show or hide the Panel"),
+        @tr("Open the Picker"),
         @tr("Save the clipboard as an item"),
         @tr("Paste the next item"),
     ];
@@ -262,7 +263,7 @@ export component OnboardingWindow inherits Window {
             spacing: Space.s4;
 
             // Which step this is, and its heading.
-            VerticalLayout {
+            head := VerticalLayout {
                 spacing: Space.s1;
                 Text {
                     text: @tr("Step {} of {}", root.step + 1, root.step-count);
@@ -275,7 +276,7 @@ export component OnboardingWindow inherits Window {
                 Text {
                     text: root.step == 0 ? @tr("Welcome to Snipdeck")
                         : root.step == 1 ? @tr("Your shortcuts")
-                        : root.step == 2 ? @tr("Where the panel sits")
+                        : root.step == 2 ? @tr("Where the Panel sits")
                         : @tr("Start-up");
                     color: Theme.text-primary;
                     font-family: Fonts.sans;
@@ -288,9 +289,17 @@ export component OnboardingWindow inherits Window {
                 }
             }
 
-            // The step's content. Only one exists at a time.
-            VerticalLayout {
+            // The step's content. Only one exists at a time. It scrolls when the window is smaller than the
+            // content at this text size; the Skip / Back / Next row below stays in view.
+            step-scroll := FormScroll {
                 vertical-stretch: 1;
+                min-height: 0px;
+                content-height: step-body.preferred-height;
+                content-width: self.viewport-width;
+
+                step-body := VerticalLayout {
+                x: 0px;
+                width: step-scroll.viewport-width;
                 alignment: start;
                 spacing: Space.s2;
 
@@ -306,18 +315,23 @@ export component OnboardingWindow inherits Window {
                     }
                     Feature {
                         glyph: Icons.sidebar-simple;
-                        title: @tr("The panel");
+                        title: @tr("The Panel");
                         description: @tr("A strip of your snippets beside the app you are working in. Click one to paste it there.");
                     }
                     Feature {
                         glyph: Icons.magnifying-glass;
-                        title: @tr("The picker");
+                        title: @tr("The Picker");
                         description: @tr("Search every board and paste without opening the window.");
                     }
                     Feature {
                         glyph: Icons.keyboard;
                         title: @tr("Shortcuts");
-                        description: @tr("Bring up the panel, open the picker, save the clipboard or paste the next item from any app.");
+                        description: @tr("Bring up the Panel, open the Picker, save the clipboard or paste the next item from any app.");
+                    }
+                    Feature {
+                        glyph: Icons.folder;
+                        title: @tr("Bring your snippets");
+                        description: @tr("Import from TextExpander, Espanso, Beeftext, PhraseExpress, Ditto or CopyQ in Settings, under Import.");
                     }
                     Feature {
                         glyph: Icons.clock;
@@ -365,7 +379,7 @@ export component OnboardingWindow inherits Window {
                 if root.step == 2: VerticalLayout {
                     spacing: Space.s3;
                     Text {
-                        text: @tr("Pick how the panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button.");
+                        text: @tr("Pick how the Panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button.");
                         color: Theme.text-secondary;
                         font-family: Fonts.sans;
                         font-size: Type.base;
@@ -419,7 +433,7 @@ export component OnboardingWindow inherits Window {
                 if root.step == 3: FormSection {
                     title: @tr("Tips");
                     SettingRow {
-                        title: @tr("Ten short tips");
+                        title: @tr("Short tips");
                         description: @tr("What Snipdeck can do, with a picture and a button to try each one. You can open them again from Help.");
                         Button {
                             text: @tr("See the tips");
@@ -427,10 +441,11 @@ export component OnboardingWindow inherits Window {
                         }
                     }
                 }
+                }
             }
 
             // Skip is on every step; Back from the second; Next becomes the last step's button.
-            HorizontalLayout {
+            foot := HorizontalLayout {
                 spacing: Space.s2;
                 Button {
                     text: @tr("Skip");

@@ -159,6 +159,49 @@ fn an_empty_database_file_beside_other_library_files_is_refused_not_replaced() {
 }
 
 #[test]
+fn a_read_only_handle_checks_and_counts_beside_the_owner() {
+    use snipdeck_core::{Item, ItemKind, Placement};
+    use snipdeck_store::ItemRepo;
+    let dir = tempfile::tempdir().unwrap();
+    let mut owner = Store::open(dir.path()).unwrap();
+    let b = board(&mut owner, "B");
+    let l = list(&mut owner, b.id, "L");
+    let mut it = Item::new(l.id, "pin".to_owned(), ItemKind::Text, at(0));
+    it.sensitive = true;
+    owner
+        .insert_item(&it, &text_formats("1234"), Placement::Last)
+        .unwrap();
+    item(&mut owner, l.id, "plain", "x");
+    // The owner still holds the folder lock; the reader takes none.
+    let reader = Store::open_reader(dir.path(), None).unwrap();
+    assert_eq!(reader.count_sensitive().unwrap(), 1);
+    assert_eq!(owner.count_sensitive().unwrap(), 1);
+    assert!(reader.key_ring_exists().is_ok());
+    assert!(reader.check_integrity().is_ok());
+}
+
+#[test]
+fn a_damaged_search_index_is_not_reported_healthy_by_a_read_only_handle() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut owner = Store::open(dir.path()).unwrap();
+    let b = board(&mut owner, "B");
+    let l = list(&mut owner, b.id, "L");
+    item(&mut owner, l.id, "alpha", "some searchable body text");
+    item(&mut owner, l.id, "beta", "more searchable body text");
+    {
+        let raw = Connection::open(dir.path().join("snipdeck.db")).unwrap();
+        raw.execute("UPDATE item_fts_data SET block = x'0000' WHERE id > 10", [])
+            .unwrap();
+    }
+    let reader = Store::open_reader(dir.path(), None).unwrap();
+    let problems = reader.check_integrity().unwrap();
+    assert!(
+        problems.iter().any(|p| p.contains("full-text index")),
+        "{problems:?}"
+    );
+}
+
+#[test]
 fn an_empty_database_file_in_a_folder_with_nothing_else_opens_as_new() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(dir.path().join("snipdeck.db"), b"").unwrap();
@@ -232,4 +275,24 @@ fn a_newer_database_is_never_set_aside() {
     assert!(matches!(err, Error::SchemaTooNew { .. }), "{err:?}");
     assert!(dir.path().join("snipdeck.db").is_file());
     assert!(!dir.path().join("snipdeck.damaged-4").exists());
+}
+
+#[test]
+fn a_busy_database_is_not_reported_as_a_damaged_search_index() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut owner = Store::open(dir.path()).unwrap();
+    let b = board(&mut owner, "B");
+    let l = list(&mut owner, b.id, "L");
+    item(&mut owner, l.id, "alpha", "some searchable body text");
+    let reader = Store::open_reader(dir.path(), None).unwrap();
+    // Another writer holds the write lock, so the check's writable connection times out.
+    let raw = Connection::open(dir.path().join("snipdeck.db")).unwrap();
+    raw.execute_batch("BEGIN IMMEDIATE").unwrap();
+    let problems = reader.check_integrity().unwrap();
+    raw.execute_batch("ROLLBACK").unwrap();
+    assert_eq!(
+        problems.iter().filter(|p| p.contains("damaged")).count(),
+        0,
+        "{problems:?}"
+    );
 }

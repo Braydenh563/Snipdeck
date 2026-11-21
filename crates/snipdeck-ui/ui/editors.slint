@@ -14,7 +14,7 @@
 // Colour names and kind order are the host's mapping to its enums; they are listed next to each property.
 import { TipHost, TipLayer } from "components/tip-host.slint";
 import { ListView } from "std-widgets.slint";
-import { Theme, Type, Space, Radius, Motion, Fonts, Palette, ListHue, SystemLook } from "theme.slint";
+import { Theme, Type, Space, Radius, Motion, Fonts, Palette, ListHue, HueNames, SystemLook } from "theme.slint";
 import { Icons } from "icons.slint";
 import { ListIcons } from "list-icons.slint";
 import { Icon } from "components/icon.slint";
@@ -790,9 +790,16 @@ export component ItemEditor inherits Window {
     // From the host: a title or content problem only the store or the parser knows ("Link needs a scheme").
     in property <string> title-error;
     in property <string> content-error;
-    // The text is over the inline limit (16 KB, SPEC §5.4): shown read-only; `content-size` is its size ("2.4 MB").
+    // The text is over one part (16 KB, SPEC §5.4): the field shows `parts[part-index]` and the host keeps the rest, so a
+    // keystroke never re-shapes more than a part. `content-size` is the whole text's size ("2.4 MB"). The host puts the
+    // field back into `parts` and shows another one on `part-requested`; it also cuts a pasted text that grew past a part
+    // (`content-edited`).
     in property <bool> content-large: false;
     in property <string> content-size;
+    in-out property <[string]> parts;
+    in-out property <int> part-index: 0;
+    callback part-requested(target: int);
+    callback content-edited();
     // Image and file items.
     in property <image> preview;
     in property <string> attachment-name;
@@ -821,6 +828,11 @@ export component ItemEditor inherits Window {
     // `saved-content` is the text as saved, which the notice compares the field against.
     in property <bool> formatted: false;
     in property <string> saved-content;
+    // Whether the text was typed in since it opened: the notice's test for a long text, whose
+    // saved text is not kept (it is a part at a time). It stays on when the typing is taken back:
+    // telling "same as saved" would need the whole text compared on every key press, and the
+    // notice only warns.
+    in-out property <bool> content-changed: false;
     // Anything changed since the window opened (the host clears it after a save with `mark-clean()`).
     out property <bool> dirty: false;
     in-out property <bool> discard-open: false;
@@ -884,7 +896,11 @@ export component ItemEditor inherits Window {
     }
 
     property <bool> text-kind: root.kind-index <= 3;
-    property <[string]> label-names: [@tr("Blue"), @tr("Teal"), @tr("Green"), @tr("Amber"), @tr("Orange"), @tr("Red"), @tr("Violet"), @tr("Slate")];
+    property <[string]> label-names: [
+        HueNames.name(ListHue.blue), HueNames.name(ListHue.teal), HueNames.name(ListHue.green),
+        HueNames.name(ListHue.amber), HueNames.name(ListHue.orange), HueNames.name(ListHue.red),
+        HueNames.name(ListHue.violet), HueNames.name(ListHue.slate),
+    ];
     property <[string]> kind-names: [@tr("Text"), @tr("Code"), @tr("Link"), @tr("Template"), @tr("Image"), @tr("File")];
     // The kind index of this window mapped to the card's kinds (a sensitive text item draws as the masked card).
     property <ItemKind> card-kind: root.sensitive && root.text-kind ? ItemKind.sensitive
@@ -1148,18 +1164,17 @@ export component ItemEditor inherits Window {
                                 min-lines: 6;
                                 max-lines: 14;
                                 monospace: root.kind-index == 1;
-                                read-only: root.content-large;
                                 error: root.content-shown-error;
                                 text <=> root.content;
                                 private-copy: root.sensitive;
                                 private-copied(t, a, b) => { root.private-copied(t, a, b); }
                                 private-cut(t, a, b) => { return root.private-cut(t, a, b); }
-                                edited(t) => { root.touch(); }
+                                edited(t) => { root.content-changed = true; root.touch(); root.content-edited(); }
                                 changed has-focus => {
                                     if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                                 }
                             }
-                            if root.formatted && !root.content-large && root.content != root.saved-content: Notice {
+                            if root.formatted && (root.content-large ? root.content-changed : root.content != root.saved-content): Notice {
                                 text: @tr("Saving changed text removes the formatting.");
                             }
                             if root.formatted: Button {
@@ -1171,7 +1186,30 @@ export component ItemEditor inherits Window {
                                 }
                             }
                             if root.content-large: Notice {
-                                text: @tr("This text is {}. Anything over 16 KB opens read-only here, and the first 16 KB are shown.", root.content-size);
+                                text: @tr("This text is {}. It opens a part at a time, so typing stays fast; all the parts are saved together.", root.content-size);
+                            }
+                            if root.content-large: HorizontalLayout {
+                                spacing: Space.s2;
+                                Button {
+                                    text: @tr("Previous part");
+                                    enabled: root.part-index > 0;
+                                    clicked => { root.part-requested(root.part-index - 1); }
+                                }
+                                Text {
+                                    horizontal-stretch: 1;
+                                    text: @tr("Part {} of {}", root.part-index + 1, root.parts.length);
+                                    color: Theme.text-secondary;
+                                    font-family: Fonts.sans;
+                                    font-size: Type.sm;
+                                    horizontal-alignment: center;
+                                    vertical-alignment: center;
+                                    accessible-role: AccessibleRole.text;
+                                }
+                                Button {
+                                    text: @tr("Next part");
+                                    enabled: root.part-index + 1 < root.parts.length;
+                                    clicked => { root.part-requested(root.part-index + 1); }
+                                }
                             }
                         }
                         attachment := VerticalLayout {
@@ -1280,7 +1318,7 @@ export component ItemEditor inherits Window {
                         for ph in root.placeholders: PlaceholderRow {
                             token: ph.token;
                             help: ph.help;
-                            chip-enabled: !root.content-large;
+                            chip-enabled: true;
                             chip-w: chip-measure.preferred-width;
                             // The form's width less its side padding.
                             avail: flick.viewport-width - Space.s4 * 2;
@@ -1535,7 +1573,7 @@ export component ItemEditor inherits Window {
         }
     }
 
-    Dialog {
+    cancel-dlg-1 := Dialog {
         open: root.discard-open;
         variant: DialogVariant.destructive;
         title: @tr("Discard your changes?");
@@ -1543,6 +1581,7 @@ export component ItemEditor inherits Window {
         dismissed => { root.discard-open = false; }
         closed => { scope.focus(); }
         Button {
+            focus-request: cancel-dlg-1.cancel-focus;
             text: @tr("Keep editing");
             clicked => { root.discard-open = false; }
         }
@@ -1708,6 +1747,8 @@ component EntityEditorBody inherits Rectangle {
 
     in property <bool> dark: false;
     in property <bool> is-new: false;
+    // The host put back fields the owner typed before the window closed (MAIN-42).
+    in property <bool> restored: false;
     in-out property <string> name;
     // Needs the store (a name already taken); the host sets it after `save-requested`.
     in property <string> name-error;
@@ -1720,6 +1761,10 @@ component EntityEditorBody inherits Rectangle {
     // 0 manual, 1 most used, 2 recently used.
     in-out property <int> sort-index: 0;
     in property <bool> show-icon: false;
+    // A list's board (MAIN-23): the field shows when there are two boards or more; `board-index` is the position in
+    // `board-names`.
+    in property <[string]> board-names;
+    in-out property <int> board-index: 0;
     in property <bool> show-colour: true;
     in property <bool> show-sort: true;
     // How many items a deletion affects (the confirmation says so).
@@ -1753,8 +1798,9 @@ component EntityEditorBody inherits Rectangle {
     property <string> name-shown-error: root.name-error != "" ? root.name-error
         : (root.show-errors && root.name-missing) ? root.missing-name-text : "";
     property <[string]> colour-names: [
-        @tr("Blue"), @tr("Teal"), @tr("Green"), @tr("Amber"), @tr("Orange"),
-        @tr("Red"), @tr("Rose"), @tr("Violet"), @tr("Slate"),
+        HueNames.name(ListHue.blue), HueNames.name(ListHue.teal), HueNames.name(ListHue.green),
+        HueNames.name(ListHue.amber), HueNames.name(ListHue.orange), HueNames.name(ListHue.red),
+        HueNames.name(ListHue.rose), HueNames.name(ListHue.violet), HueNames.name(ListHue.slate),
     ];
 
     function touch() {
@@ -1838,6 +1884,10 @@ component EntityEditorBody inherits Rectangle {
                     spacing: Space.s4;
                     alignment: start;
 
+                    if root.restored: Notice {
+                        text: @tr("Restored the changes you had not saved.");
+                    }
+
                     FormField {
                         label: root.name-label;
                         name-field := TextField {
@@ -1847,6 +1897,21 @@ component EntityEditorBody inherits Rectangle {
                             text <=> root.name;
                             edited(t) => { root.touch(); }
                             accepted(t) => { root.try-save(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    if root.board-names.length > 1: FormField {
+                        label: @tr("Board");
+                        SelectField {
+                            label: @tr("Board");
+                            options: root.board-names;
+                            current: root.board-index;
+                            chosen(i) => {
+                                root.board-index = i;
+                                root.touch();
+                            }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }
@@ -1918,7 +1983,7 @@ component EntityEditorBody inherits Rectangle {
         }
     }
 
-    Dialog {
+    cancel-dlg-2 := Dialog {
         open: root.discard-open;
         variant: DialogVariant.destructive;
         title: @tr("Discard your changes?");
@@ -1926,6 +1991,7 @@ component EntityEditorBody inherits Rectangle {
         dismissed => { root.discard-open = false; }
         closed => { scope.focus(); }
         Button {
+            focus-request: cancel-dlg-2.cancel-focus;
             text: @tr("Keep editing");
             clicked => { root.discard-open = false; }
         }
@@ -1939,7 +2005,7 @@ component EntityEditorBody inherits Rectangle {
         }
     }
 
-    Dialog {
+    cancel-dlg-3 := Dialog {
         open: root.delete-open;
         variant: DialogVariant.destructive;
         title: root.delete-title;
@@ -1947,6 +2013,7 @@ component EntityEditorBody inherits Rectangle {
         dismissed => { root.delete-open = false; }
         closed => { scope.focus(); }
         Button {
+            focus-request: cancel-dlg-3.cancel-focus;
             text: @tr("Cancel");
             clicked => { root.delete-open = false; }
         }
@@ -1974,6 +2041,7 @@ export component ListEditor inherits Window {
 
     in property <bool> dark <=> body.dark;
     in property <bool> is-new <=> body.is-new;
+    in property <bool> restored <=> body.restored;
     in-out property <string> name <=> body.name;
     in property <string> name-error <=> body.name-error;
     // -1 no colour, else 0 to 8 in the order of `ListHue` (blue, teal, green, amber, orange, red, rose, violet, slate).
@@ -1981,6 +2049,9 @@ export component ListEditor inherits Window {
     // -1 no icon, else 0 to 23 in the order of the `ListIcons` global.
     in-out property <int> icon-index <=> body.icon-index;
     in property <[string]> icon-names <=> body.icon-names;
+    // The boards the list can live on, and the position of its board.
+    in property <[string]> board-names <=> body.board-names;
+    in-out property <int> board-index <=> body.board-index;
     // 0 manual, 1 most used, 2 recently used.
     in-out property <int> sort-index <=> body.sort-index;
     in property <bool> show-colour <=> body.show-colour;
@@ -2037,6 +2108,7 @@ export component BoardEditor inherits Window {
 
     in property <bool> dark <=> body.dark;
     in property <bool> is-new <=> body.is-new;
+    in property <bool> restored <=> body.restored;
     in-out property <string> name <=> body.name;
     in property <string> name-error <=> body.name-error;
     in-out property <int> accent <=> body.accent;
@@ -2082,8 +2154,9 @@ export component BoardEditor inherits Window {
 
 // ---- Tag management ------------------------------------------------------------------------------
 
-// Rename and delete tags. A row shows the tag and how many items carry it; Rename turns the name into a field
-// (Enter applies, Esc cancels), Delete asks first and says how many items lose the tag (the items stay).
+// Add, rename, merge and delete tags. A row shows the tag and how many items carry it; Rename turns the name into a
+// field (Enter applies, Esc cancels; a name another tag has asks to merge the two), Delete asks first and says how
+// many items lose the tag (the items stay). The field above the list adds a tag no item carries yet.
 export component TagManager inherits Window {
     title: @tr("Tags");
     background: Theme.bg-app;
@@ -2091,7 +2164,7 @@ export component TagManager inherits Window {
     min-height: 280px;
     preferred-width: 440px;
     // Fits its content (the intro, one row per tag, the Close row), at most 520px; a long list scrolls.
-    out property <length> wanted-height: min(520px, max(280px, 2 * Space.s4 + 2 * Space.s3 + intro.preferred-height + max(root.tags.length, 2) * root.row-h + 2px + close-row.preferred-height));
+    out property <length> wanted-height: min(520px, max(280px, 2 * Space.s4 + 2 * Space.s3 + intro.preferred-height + new-row.preferred-height + Space.s3 + max(root.tags.length, 2) * root.row-h + 2px + close-row.preferred-height));
     preferred-height: root.wanted-height;
 
     in property <bool> dark: false;
@@ -2104,18 +2177,34 @@ export component TagManager inherits Window {
     in-out property <string> rename-text;
     // The row whose deletion the dialog asks about, or -1 (dialog closed).
     in-out property <int> delete-index: -1;
+    // The tag being renamed onto another tag's name (`merge-from`) and that other tag (`merge-into`), both rows of
+    // `tags`, or -1 (dialog closed). `merge-count` = items the renamed tag has.
+    in-out property <int> merge-from: -1;
+    in-out property <int> merge-into: -1;
+    in-out property <int> merge-count: 0;
+    // The "New tag" field and the reason the host refused its text.
+    in-out property <string> new-text;
+    in property <string> new-error;
 
     callback rename-requested(index: int, name: string);
+    callback create-requested(name: string);
+    callback merge-confirmed(from: int, into: int);
     callback delete-confirmed(index: int);
     callback close-requested();
 
     public function finish-rename() { root.editing = -1; }
+    public function finish-create() { root.new-text = ""; }
 
     property <length> row-h: max(Space.hit + Space.s2, Type.line-base + Space.s3);
 
     function begin-rename(i: int) {
         root.rename-text = root.tags[i].label;
         root.editing = i;
+    }
+    function apply-create() {
+        if (root.new-text != "") {
+            root.create-requested(root.new-text);
+        }
     }
     function apply-rename() {
         if (root.editing >= 0 && root.rename-text != "") {
@@ -2135,7 +2224,7 @@ export component TagManager inherits Window {
             return reject;
         }
         key-pressed(event) => {
-            if (event.text == Key.Escape && root.delete-index < 0) {
+            if (event.text == Key.Escape && root.delete-index < 0 && root.merge-from < 0) {
                 if (root.editing >= 0) {
                     root.editing = -1;
                     // The field is gone: keep the keys (a second Esc closes the page).
@@ -2153,12 +2242,32 @@ export component TagManager inherits Window {
             spacing: Space.s3;
 
             intro := Text {
-                text: @tr("Rename or delete tags. Deleting a tag removes it from its items; the items stay.");
+                text: @tr("Add, rename, merge or delete tags. A new name another tag already has merges the two. Deleting a tag removes it from its items; the items stay.");
                 color: Theme.text-secondary;
                 font-family: Fonts.sans;
                 font-size: Type.sm;
                 wrap: word-wrap;
                 accessible-role: none;
+            }
+
+            new-row := HorizontalLayout {
+                spacing: Space.s2;
+                TextField {
+                    horizontal-stretch: 1;
+                    label: @tr("New tag");
+                    placeholder: @tr("New tag");
+                    error: root.new-error;
+                    text <=> root.new-text;
+                    accepted(t) => { root.apply-create(); }
+                }
+                VerticalLayout {
+                    alignment: start;
+                    Button {
+                        text: @tr("Add tag");
+                        enabled: root.new-text != "";
+                        clicked => { root.apply-create(); }
+                    }
+                }
             }
 
             Rectangle {
@@ -2280,14 +2389,17 @@ export component TagManager inherits Window {
         }
     }
 
-    Dialog {
+    cancel-dlg-4 := Dialog {
         open: root.delete-index >= 0;
         variant: DialogVariant.destructive;
         title: @tr("Delete this tag?");
-        body: @tr("It is removed from {n} item. The item stays." | "It is removed from {n} items. The items stay." % (root.delete-index >= 0 && root.delete-index < root.tags.length ? root.tags[root.delete-index].count : 0));
+        body: (root.delete-index >= 0 && root.delete-index < root.tags.length && root.tags[root.delete-index].count == 0)
+            ? @tr("No item uses this tag.")
+            : @tr("It is removed from {n} item. The item stays." | "It is removed from {n} items. The items stay." % (root.delete-index >= 0 && root.delete-index < root.tags.length ? root.tags[root.delete-index].count : 0));
         dismissed => { root.delete-index = -1; }
         closed => { scope.focus(); }
         Button {
+            focus-request: cancel-dlg-4.cancel-focus;
             text: @tr("Cancel");
             clicked => { root.delete-index = -1; }
         }
@@ -2302,6 +2414,30 @@ export component TagManager inherits Window {
         }
     }
 
+    Dialog {
+        open: root.merge-from >= 0;
+        title: @tr("Merge these tags?");
+        body: (root.merge-from >= 0 && root.merge-from < root.tags.length && root.merge-into >= 0 && root.merge-into < root.tags.length)
+            ? @tr("{n} item will carry \"{}\" instead of \"{}\"." | "{n} items will carry \"{}\" instead of \"{}\"." % root.merge-count, root.tags[root.merge-into].label, root.tags[root.merge-from].label)
+            : "";
+        dismissed => { root.merge-from = -1; }
+        closed => { scope.focus(); }
+        Button {
+            text: @tr("Cancel");
+            clicked => { root.merge-from = -1; }
+        }
+        Button {
+            text: @tr("Merge tags");
+            variant: ButtonVariant.primary;
+            clicked => {
+                let from = root.merge-from;
+                let into = root.merge-into;
+                root.merge-from = -1;
+                root.merge-confirmed(from, into);
+            }
+        }
+    }
+
     // The window's tooltip layer: last, so no sibling paints over a tooltip and no container clips it.
-    TipLayer { suppressed: root.delete-index >= 0; }
+    TipLayer { suppressed: root.delete-index >= 0 || root.merge-from >= 0; }
 }

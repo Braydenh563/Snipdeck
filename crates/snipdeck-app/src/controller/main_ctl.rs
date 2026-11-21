@@ -26,6 +26,7 @@ use crate::{
     usecase,
 };
 
+pub(crate) mod detail;
 mod editors;
 mod items;
 mod lists;
@@ -35,8 +36,17 @@ mod lists;
 pub enum TagRenameError {
     /// The new name is not a valid name (blank, too long, a control character).
     Name(NameError),
-    /// Another tag already has that name (compared ignoring case).
+    /// Another tag already has that name (compared ignoring case): a new tag is refused.
     Exists,
+    /// Renaming would give the tag another tag's name: the two merge once the user confirms.
+    /// `into` is that other tag (an index of [`MainScreen::tags`](crate::controller::MainScreen::tags)),
+    /// `count` how many items the renamed tag has.
+    Merge {
+        /// The tag that keeps the name.
+        into: usize,
+        /// Items of the renamed tag, which carry `into` afterwards.
+        count: usize,
+    },
     /// The library could not be written; a toast says so.
     Failed,
 }
@@ -143,6 +153,12 @@ pub struct MainScreen {
     pub board_delete: Option<usize>,
     /// The open board's lists.
     pub lists: Vec<SideList>,
+    /// The Detail pane's item (the one under the cursor), when there is one.
+    pub detail: Option<crate::main_window::DetailView>,
+    /// The Detail pane is switched on in the View menu.
+    pub detail_open: bool,
+    /// What the *Move to list* chooser offers: the open board's lists, then the other boards'.
+    pub move_targets: Vec<crate::main_window::MoveTarget>,
     /// The tags.
     pub tags: Vec<SideTag>,
     /// The *Tags* chooser's entries.
@@ -174,6 +190,8 @@ pub struct MainScreen {
     pub label_filter: Option<ItemLabel>,
     /// The search text.
     pub query: String,
+    /// The search stopped at its limit: more items match than the rows show (MAIN-2).
+    pub search_capped: bool,
     /// The keyboard cursor.
     pub cursor: usize,
     /// Rows can be dragged into a new place: the open list is in manual order and no search is running.
@@ -226,6 +244,8 @@ pub(super) enum EditorTarget {
 /// What to show after an editor saved.
 enum Opened {
     List(ListId),
+    /// A list now on another board: open that board, then the list.
+    MovedList(BoardId, ListId),
     Board(BoardId),
 }
 
@@ -266,7 +286,15 @@ where
             rows.iter()
                 .position(|r| r.header.as_ref().is_some_and(|h| h.group == g))
         });
+        self.fill_thumbs(&mut rows);
+        let detail = if self.settings.main_detail_open {
+            self.detail_view()
+        } else {
+            None
+        };
         MainScreen {
+            detail,
+            detail_open: self.settings.main_detail_open,
             dark: look.dark,
             high_contrast: look.high_contrast,
             accent: self.accent(),
@@ -280,6 +308,7 @@ where
                 .then(|| self.board_menu_entries()),
             board_delete: self.board_delete_count(),
             lists: self.main.side_lists(),
+            move_targets: self.main.move_targets(),
             tags: self.main.side_tags(),
             tag_choices: self.tag_choices(),
             counts: Counts {
@@ -308,6 +337,7 @@ where
             label_chips: self.main.label_chips(),
             label_filter: self.main.label_filter(),
             query: self.main.query().to_owned(),
+            search_capped: self.main.search_capped(),
             cursor: self.main.cursor(),
             reorderable: self.main.reorderable(),
             reorder_offer: !self.main.searching()
