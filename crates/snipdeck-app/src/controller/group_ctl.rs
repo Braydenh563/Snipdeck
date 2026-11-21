@@ -117,7 +117,11 @@ where
         // the top level, as it always did).
         let parents: Vec<Option<GroupId>> = members
             .iter()
-            .map(|id| runs.iter().find(|r| r.items.contains(id)).map(|r| r.group.id))
+            .map(|id| {
+                runs.iter()
+                    .find(|r| r.items.contains(id))
+                    .map(|r| r.group.id)
+            })
             .collect();
         if let Some(Some(parent)) = parents.first().copied()
             && parents.iter().all(|p| *p == Some(parent))
@@ -443,7 +447,9 @@ where
             if at.len() < level || at[..level] != path[..level] {
                 continue;
             }
-            let block = at.get(level).map_or(Block::Item(item), |g| Block::Group(*g));
+            let block = at
+                .get(level)
+                .map_or(Block::Item(item), |g| Block::Group(*g));
             if blocks.last() != Some(&block) {
                 blocks.push(block);
             }
@@ -458,7 +464,9 @@ where
         let run = self.group_row(s, index)?;
         let list = self.group_list(s)?;
         let blocks = self.sibling_blocks(s, list, run.group.id);
-        let at = blocks.iter().position(|b| *b == Block::Group(run.group.id))?;
+        let at = blocks
+            .iter()
+            .position(|b| *b == Block::Group(run.group.id))?;
         let next = *blocks.get(at.checked_add_signed(delta)?)?;
         self.row_marks(s).iter().position(|m| match (m, next) {
             (RowMark::Header(h), Block::Group(g)) => *h == g,

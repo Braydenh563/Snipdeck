@@ -322,8 +322,8 @@ ui_tests! {
                 ..Default::default()
             },
         );
-        rows[1].grouped = true;
-        rows[2].grouped = true;
+        rows[1].depth = 1;
+        rows[2].depth = 1;
         fixture::set_rows(&ui, rows);
         ui.set_has_groups(true);
         settle();
@@ -343,8 +343,8 @@ ui_tests! {
         let mut rows = fixture::sample_rows();
         rows.truncate(3);
         rows.insert(0, header(2, false));
-        rows[1].grouped = true;
-        rows[2].grouped = true;
+        rows[1].depth = 1;
+        rows[2].depth = 1;
         let model = fixture::set_rows(&ui, rows);
         ui.set_has_groups(true);
         ui.set_list_total(9);
@@ -1074,8 +1074,8 @@ ui_tests! {
                 ..Default::default()
             },
         );
-        rows[1].grouped = true;
-        rows[2].grouped = true;
+        rows[1].depth = 1;
+        rows[2].depth = 1;
         fixture::set_rows(&ui, rows);
         ui.set_has_groups(true);
         settle();

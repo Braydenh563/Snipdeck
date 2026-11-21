@@ -36,8 +36,7 @@ Features that exist now (user-facing list in `README.md` and `docs/user-guide.md
   group delete confirmation and "Move group to list", tag colours with Merge on a rename clash, board accent and icon,
   and Trash search. Store schema V12 to V15 and archive format 1.3 carry them (`docs/format.md`). Group colour is built (Main window dot,
   menu row, dialog and the palette's "Group colour…"). Nested tags are built (`Tag.parent`, `TagTree` in core, V14, portable `parent`,
-  sidebar tree, Tag manager "Nest under" dialog, undoable nest/merge/delete). V15 (`item_groups.parent`) exists in the schema but
-  nested GROUPS are NOT built: nothing reads or writes the column yet (design in `.claude/remaining/views.md`, SPEC post-1.0 list).
+  sidebar tree, Tag manager "Nest under" dialog, undoable nest/merge/delete). Nested GROUPS are built (V15 `item_groups.parent`, `MAX_GROUP_DEPTH` 3, `GroupTree` in core, store `reparent_group`/`restore_group`, portable `parent`, shared `GroupWalk` in `snipdeck-app/src/group_walk.rs`, Main window indent, "Nest under…" in the header menu and the palette, subtree-aware ungroup/delete/move, one undo step each; see SPEC Groups). The Panel lists nested groups flat (headers and fold work, no indent yet); Ctrl+G on rows from several groups still makes a top-level group.
 - Recent copies, with a first-run question; nothing is kept until the owner of the PC says yes.
 - Master password with optional Windows Hello unlock; Sensitive items encrypted on disk.
 - Import from `.snipdeck`, Ditto, CopyQ, Espanso, Beeftext, TextExpander, PhraseExpress, Windows clipboard

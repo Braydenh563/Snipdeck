@@ -158,7 +158,10 @@ fn apply(b: &mut Batch<'_>, change: &Change, now: Timestamp) -> snipdeck_store::
             } else {
                 let mut group = group.clone();
                 // The group it was nested under may be gone since: it comes back at the top.
-                if group.parent.is_some_and(|p| !group_exists(b, group.list_id, p)) {
+                if group
+                    .parent
+                    .is_some_and(|p| !group_exists(b, group.list_id, p))
+                {
                     group.parent = None;
                 }
                 b.restore_group(&group, members, children)?;
@@ -197,7 +200,11 @@ fn apply(b: &mut Batch<'_>, change: &Change, now: Timestamp) -> snipdeck_store::
 }
 
 /// Whether group `id` exists in `list` now.
-fn group_exists(b: &mut Batch<'_>, list: snipdeck_core::ListId, id: snipdeck_core::GroupId) -> bool {
+fn group_exists(
+    b: &mut Batch<'_>,
+    list: snipdeck_core::ListId,
+    id: snipdeck_core::GroupId,
+) -> bool {
     b.groups_of(list)
         .is_ok_and(|runs| runs.iter().any(|r| r.group.id == id))
 }

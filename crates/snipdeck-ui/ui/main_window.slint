@@ -3222,9 +3222,11 @@ export component MainWindow inherits Window {
         dismissed => { root.close-menus(); }
     }
     if root.chooser-open: Chooser {
-        x: root.chooser-x;
+        // At a large text scale the chooser is wider than the room right of its anchor: it slides left, and is never
+        // wider than the window.
+        x: max(0px, min(root.chooser-x, root.width - self.width));
         y: root.chooser-y;
-        width: 240px * SystemLook.text-scale;
+        width: min(240px * SystemLook.text-scale, root.width - 16px);
         multi: root.chooser-tags;
         entries: root.chooser-nest ? root.nest-choices : root.chooser-paste ? (root.chooser-colour ? root.colour-choices : root.paste-choices) : root.chooser-filter ? root.filter-tag-choices : root.chooser-tags ? root.tag-choices : root.lists;
         label: root.chooser-nest ? MenuTexts.group-nest() : root.chooser-paste ? MenuTexts.item-paste-as() : root.chooser-filter ? @tr("Filter by tags") : root.chooser-tags ? @tr("Tags") : @tr("Move to list");

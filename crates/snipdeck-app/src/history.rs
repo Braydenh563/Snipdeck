@@ -118,7 +118,11 @@ impl Membership {
     /// The membership of the members of group `id`, read from the list's `runs`.
     #[must_use]
     pub fn of(runs: &[snipdeck_store::GroupRun], id: GroupId) -> Option<Self> {
-        let find = |id: GroupId| runs.iter().find(|r| r.group.id == id).map(|r| r.group.clone());
+        let find = |id: GroupId| {
+            runs.iter()
+                .find(|r| r.group.id == id)
+                .map(|r| r.group.clone())
+        };
         let group = find(id)?;
         let mut up: Vec<Group> = Vec::new();
         let mut at = group.parent;

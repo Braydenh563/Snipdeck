@@ -573,8 +573,8 @@ fn main_window_with_a_group_light_and_dark() {
         let mut rows = fixture::sample_rows();
         rows.truncate(4);
         rows.insert(0, header("Replies", 2, false));
-        rows[1].grouped = true;
-        rows[2].grouped = true;
+        rows[1].depth = 1;
+        rows[2].depth = 1;
         rows.push(header("Archive", 5, true));
         fixture::set_rows(&h.component, rows);
         h.component.set_has_groups(true);
@@ -603,8 +603,8 @@ fn a_main_group_header_grows_with_the_text_size() {
                 ..Default::default()
             },
         );
-        rows[1].grouped = true;
-        rows[2].grouped = true;
+        rows[1].depth = 1;
+        rows[2].depth = 1;
         fixture::set_rows(&h.component, rows);
         h.component.set_has_groups(true);
         let _ = render(&h);

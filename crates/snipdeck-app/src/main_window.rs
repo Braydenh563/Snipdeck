@@ -1597,7 +1597,12 @@ mod tests {
     fn nested(
         store: &mut Store,
         model: &mut MainModel,
-    ) -> (ListId, Vec<ItemId>, snipdeck_core::Group, snipdeck_core::Group) {
+    ) -> (
+        ListId,
+        Vec<ItemId>,
+        snipdeck_core::Group,
+        snipdeck_core::Group,
+    ) {
         use snipdeck_store::GroupRepo;
         let (list, ids) = fullest_list(model, store);
         let outer = snipdeck_core::Group::new(list, Name::new("Outer").expect("name"));
@@ -1628,7 +1633,10 @@ mod tests {
             ]
         );
         let depth = |r: &Row| r.header.as_ref().map_or(r.depth, |h| h.depth);
-        assert_eq!(rows[..5].iter().map(depth).collect::<Vec<_>>(), [0, 1, 1, 2, 2]);
+        assert_eq!(
+            rows[..5].iter().map(depth).collect::<Vec<_>>(),
+            [0, 1, 1, 2, 2]
+        );
         assert_eq!(rows[0].header.as_ref().map(|h| h.count), Some(3));
         assert_eq!(rows[2].header.as_ref().map(|h| h.count), Some(2));
         assert_eq!(model.group_of(ids[2]).map(|r| r.group.id), Some(inner.id));
@@ -1659,7 +1667,11 @@ mod tests {
         model.open(Section::List(list));
         assert_eq!(
             model.keys()[..3],
-            [Key::Group(outer.id), Key::Item(ids[0]), Key::Group(inner.id)]
+            [
+                Key::Group(outer.id),
+                Key::Item(ids[0]),
+                Key::Group(inner.id)
+            ]
         );
         assert!(!model.keys().contains(&Key::Item(ids[1])));
     }
@@ -1668,16 +1680,27 @@ mod tests {
     fn a_sort_orders_the_rows_inside_each_block_of_a_nested_group() {
         let (mut store, mut model) = loaded();
         let (list, ids, _, inner) = nested(&mut store, &mut model);
-        let mut sorted = model.lists().iter().find(|l| l.id == list).expect("list").clone();
+        let mut sorted = model
+            .lists()
+            .iter()
+            .find(|l| l.id == list)
+            .expect("list")
+            .clone();
         sorted.sort = Sort::new(snipdeck_core::SortKey::Name, true);
         store.update_list(&sorted).expect("sort");
         model.reload(&store).expect("reload");
         model.open(Section::List(list));
         let keys = model.keys();
         let at = |k: Key| keys.iter().position(|x| *x == k).expect("row");
-        assert!(at(Key::Item(ids[0])) < at(Key::Group(inner.id)), "the parent's member stays above the child");
+        assert!(
+            at(Key::Item(ids[0])) < at(Key::Group(inner.id)),
+            "the parent's member stays above the child"
+        );
         let (b, c) = (at(Key::Item(ids[1])), at(Key::Item(ids[2])));
-        assert!(at(Key::Group(inner.id)) < b.min(c), "the child's members stay under its header");
+        assert!(
+            at(Key::Group(inner.id)) < b.min(c),
+            "the child's members stay under its header"
+        );
         assert!(b.abs_diff(c) == 1, "and together");
     }
 

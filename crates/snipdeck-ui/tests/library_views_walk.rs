@@ -731,7 +731,7 @@ fn main_with_groups(width: u32, scale: f32, dark: bool, hc: bool) -> Harness<Mai
     rows.insert(0, header("Replies", 1));
     rows.insert(3, header("Plain", -1));
     for i in [1, 2, 4] {
-        rows[i].grouped = true;
+        rows[i].depth = 1;
     }
     fixture::set_rows(&h.component, rows);
     h.component.set_has_groups(true);
@@ -942,6 +942,318 @@ fn the_group_header_dot_golden_light_and_dark() {
     drop(h);
     let h = main_with_groups(1040, 1.0, true, false);
     assert_golden("main-group-colour-dark", &h.render_settled());
+}
+
+// ---- Nested groups (LIBRARY-43) -------------------------------------------------------------------------------
+
+/// (Tall enough to show every row at the largest text scale.)
+/// `Outer` (3 items) holding `Inner` (2 items) and one item of its own, then a loose item:
+/// Outer / Inner / two items one level deeper / an item of Outer / a loose item.
+fn main_with_nested_groups(width: u32, scale: f32, dark: bool, hc: bool) -> Harness<MainWindow> {
+    let h = Harness::new(MainWindow::new, width, 1000);
+    h.component.set_dark(dark);
+    look!(h.component, scale, hc);
+    let _ = fixture::populate(&h.component);
+    h.component.set_section(MainSection::List);
+    h.component.set_section_index(0);
+    let header = |title: &str, count: i32, depth: i32| MainRow {
+        title: title.into(),
+        is_header: true,
+        group_count: count,
+        group_colour: -1,
+        depth,
+        ..Default::default()
+    };
+    let mut rows = fixture::sample_rows();
+    rows.truncate(4);
+    rows.insert(0, header("Outer", 3, 0));
+    rows.insert(1, header("Inner", 2, 1));
+    for (i, depth) in [(2, 2), (3, 2), (4, 1)] {
+        rows[i].depth = depth;
+    }
+    fixture::set_rows(&h.component, rows);
+    h.component.set_has_groups(true);
+    h
+}
+
+#[test]
+fn nested_headers_and_items_step_in_by_one_level_and_keep_their_right_edge_at_every_size_scale_and_look()
+ {
+    let mut problems: Vec<String> = Vec::new();
+    for width in WIDTHS {
+        for scale in SCALES {
+            for (name, dark, hc) in LOOKS {
+                let h = main_with_nested_groups(width, scale, dark, hc);
+                let _ = settle_quietly(&h);
+                let at = format!("{width}px, scale {scale}, {name}");
+                let found = |label: &str| {
+                    let role = if label.starts_with("group ") {
+                        Role::Button
+                    } else {
+                        Role::ListItem
+                    };
+                    all(&h)
+                        .into_iter()
+                        .find(|b| b.label.contains(label) && b.role == role)
+                };
+                let stops = [
+                    ("group Outer", 0.0_f32),
+                    ("group Inner", 1.0),
+                    ("Invoice reminder", 2.0),
+                    ("Retry helper", 1.0),
+                    ("Design spec", 0.0),
+                ];
+                let mut seen = Vec::new();
+                for (label, level) in stops {
+                    match found(label) {
+                        Some(b) => seen.push((label, level, b)),
+                        None => problems.push(format!("{at}: no `{label}` control")),
+                    }
+                }
+                if seen.len() != stops.len() {
+                    continue;
+                }
+                let base = seen[0].2.x;
+                let right = seen[0].2.x + seen[0].2.w;
+                for (label, level, b) in &seen {
+                    // One level is Space.s3 (12 px), logical and not scaled with the text.
+                    let step = (b.x - base) / 12.0;
+                    if (step - level).abs() > 0.2 {
+                        problems.push(format!(
+                            "{at}: `{label}` is {step:.2} steps in, wanted {level}"
+                        ));
+                    }
+                    if (b.x + b.w - right).abs() > 1.0 {
+                        problems.push(format!(
+                            "{at}: `{label}` ends at {:.1}, the outer header at {right:.1}",
+                            b.x + b.w
+                        ));
+                    }
+                    if b.x < 0.0 || b.x + b.w > width as f32 + 0.5 || b.h < 27.5 {
+                        problems.push(format!(
+                            "{at}: `{label}` x {:.0}..{:.0}, height {:.0} leaves the window or is under 28",
+                            b.x, b.x + b.w, b.h
+                        ));
+                    }
+                }
+                // Reading order: top to bottom, no overlap.
+                for pair in seen.windows(2) {
+                    let (a, b) = (&pair[0].2, &pair[1].2);
+                    if b.y + 0.5 < a.y + a.h {
+                        problems.push(format!(
+                            "{at}: `{}` (y {:.0}..{:.0}) overlaps `{}` (y {:.0})",
+                            pair[0].0,
+                            a.y,
+                            a.y + a.h,
+                            pair[1].0,
+                            b.y
+                        ));
+                    }
+                }
+            }
+        }
+    }
+    assert_eq!(problems.len(), 0, "{}", problems.join("\n"));
+}
+
+#[test]
+fn the_nest_chooser_lists_the_places_inside_the_window_and_reports_the_pick() {
+    use slint::platform::{PointerEventButton, WindowEvent};
+    let mut problems: Vec<String> = Vec::new();
+    for (width, scale) in [(480_u32, 1.0_f32), (1040, 1.0), (480, 2.25), (1040, 2.25)] {
+        let h = main_with_nested_groups(width, scale, false, false);
+        let entry = |label: &str, count: i32| snipdeck_ui::ChoiceEntry {
+            label: label.into(),
+            count,
+            color: slint::Color::default(),
+            icon: slint::Image::default(),
+            checked: false,
+        };
+        h.component
+            .set_nest_choices(ModelRc::new(VecModel::from(vec![
+                entry("Top level", -1),
+                entry("Outer", 3),
+            ])));
+        let asked = std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
+        let picked = std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
+        let (a, p) = (asked.clone(), picked.clone());
+        h.component
+            .on_group_nest_requested(move |row| a.borrow_mut().push(row));
+        h.component
+            .on_group_nest_chosen(move |i| p.borrow_mut().push(i));
+        let _ = settle_quietly(&h);
+        let at = format!("{width}px, scale {scale}");
+        let Some(header) = all(&h)
+            .into_iter()
+            .find(|b| b.role == Role::Button && b.label.starts_with("group Inner"))
+        else {
+            problems.push(format!("{at}: no Inner header"));
+            continue;
+        };
+        let position =
+            slint::LogicalPosition::new(header.x + header.w / 2.0, header.y + header.h / 2.0);
+        h.component
+            .window()
+            .dispatch_event(WindowEvent::PointerPressed {
+                position,
+                button: PointerEventButton::Right,
+            });
+        h.component
+            .window()
+            .dispatch_event(WindowEvent::PointerReleased {
+                position,
+                button: PointerEventButton::Right,
+            });
+        let _ = settle_quietly(&h);
+        let menu_entry = ElementQuery::from_root(&h.component)
+            .match_descendants()
+            .match_predicate(|e| {
+                e.accessible_label()
+                    .is_some_and(|l| l.as_str() == "Nest under…")
+            })
+            .find_first();
+        let Some(menu_entry) = menu_entry else {
+            problems.push(format!("{at}: the header menu has no Nest under… row"));
+            continue;
+        };
+        menu_entry.invoke_accessible_default_action();
+        let frame = settle_quietly(&h);
+        if *asked.borrow() != [1] {
+            problems.push(format!(
+                "{at}: asked for rows {:?}, wanted [1]",
+                asked.borrow()
+            ));
+        }
+        let places: Vec<Boxed> = all(&h)
+            .into_iter()
+            .filter(|b| b.label.contains("Top level") || b.label.starts_with("Outer"))
+            .filter(|b| b.role != Role::Button || !b.label.starts_with("group "))
+            .collect();
+        if places.len() < 2 {
+            problems.push(format!(
+                "{at}: the chooser lists {:?}",
+                places.iter().map(|b| &b.label).collect::<Vec<_>>()
+            ));
+            continue;
+        }
+        for b in &places {
+            if b.x < 0.0 || b.x + b.w > width as f32 + 0.5 || b.h < 27.5 {
+                problems.push(format!(
+                    "{at}: `{}` x {:.0}..{:.0}, height {:.0} leaves the window or is under 28",
+                    b.label,
+                    b.x,
+                    b.x + b.w,
+                    b.h
+                ));
+            }
+        }
+        if width == 1040 && scale < 1.1 {
+            assert_golden(
+                "main-group-nest-chooser-light",
+                &frame.expect("the open chooser drew"),
+            );
+        }
+        let outer = ElementQuery::from_root(&h.component)
+            .match_descendants()
+            .match_predicate(|e| {
+                e.accessible_label()
+                    .is_some_and(|l| l.as_str().starts_with("Outer"))
+                    && e.accessible_role() != Some(Role::Button)
+            })
+            .find_first();
+        let Some(outer) = outer else {
+            problems.push(format!("{at}: no `Outer` place"));
+            continue;
+        };
+        outer.invoke_accessible_default_action();
+        let _ = settle_quietly(&h);
+        if *picked.borrow() != [1] {
+            problems.push(format!("{at}: picked {:?}, wanted [1]", picked.borrow()));
+        }
+    }
+    assert_eq!(problems.len(), 0, "{}", problems.join("\n"));
+}
+
+#[test]
+fn arrow_keys_walk_the_nested_rows_in_reading_order_and_draw_the_focus_ring_on_each_in_turn() {
+    use slint::platform::{Key, WindowEvent};
+    let mut problems: Vec<String> = Vec::new();
+    for scale in SCALES {
+        for (name, dark, hc) in LOOKS {
+            let h = main_with_nested_groups(1040, scale, dark, hc);
+            h.component
+                .window()
+                .dispatch_event(WindowEvent::WindowActiveChanged(true));
+            let _ = settle_quietly(&h);
+            let at = format!("scale {scale}, {name}");
+            let mut rows: Vec<Boxed> = all(&h)
+                .into_iter()
+                .filter(|b| {
+                    b.x > 235.0
+                        && ((b.role == Role::Button && b.label.starts_with("group "))
+                            || b.role == Role::ListItem)
+                })
+                .collect();
+            rows.sort_by(|a, b| a.y.total_cmp(&b.y));
+            if rows.len() != 6 {
+                problems.push(format!("{at}: {} rows, wanted 6", rows.len()));
+                continue;
+            }
+            h.component.invoke_focus_items();
+            // The first Down brings the keyboard ring, on the row the cursor is on.
+            let mut before = settle_quietly(&h);
+            let mut at_row = h.component.get_cursor();
+            for step in 0..5 {
+                support::press(h.component.window(), &support::key(Key::DownArrow));
+                let after = settle_quietly(&h);
+                let now = h.component.get_cursor();
+                if now != at_row + 1 {
+                    problems.push(format!(
+                        "{at}: Down {step} moved the cursor {at_row} -> {now}"
+                    ));
+                    break;
+                }
+                if let (Some(a), Some(b)) = (&before, &after) {
+                    // Every pixel that changed lies inside the row left or the row reached, plus the ring.
+                    let (from, to) = (&rows[at_row as usize], &rows[now as usize]);
+                    let top = (from.y.min(to.y) - 6.0).max(0.0) as u32;
+                    let bottom = ((from.y + from.h).max(to.y + to.h) + 6.0) as u32;
+                    let mut ring_on_target = 0;
+                    for y in 0..b.height.min(a.height) {
+                        for x in 236..b.width {
+                            if a.pixel(x, y) != b.pixel(x, y) {
+                                if y < top || y > bottom {
+                                    problems.push(format!(
+                                        "{at}: step {step}: a pixel changed at ({x}, {y}) outside rows {at_row} and {now}"
+                                    ));
+                                    break;
+                                }
+                                if (to.y - 6.0..=to.y + to.h + 6.0).contains(&(y as f32)) {
+                                    ring_on_target += 1;
+                                }
+                            }
+                        }
+                    }
+                    if ring_on_target < 20 {
+                        problems.push(format!(
+                            "{at}: step {step}: only {ring_on_target} pixels changed on row {now}: no ring"
+                        ));
+                    }
+                }
+                before = after;
+                at_row = now;
+            }
+        }
+    }
+    assert_eq!(problems.len(), 0, "{}", problems.join("\n"));
+}
+
+#[test]
+fn nested_groups_golden_light_dark_and_high_contrast() {
+    for (name, dark, hc) in LOOKS {
+        let h = main_with_nested_groups(1040, 1.0, dark, hc);
+        assert_golden(&format!("main-nested-groups-{name}"), &h.render_settled());
+    }
 }
 
 // ---- Board editor --------------------------------------------------------------------------------------------

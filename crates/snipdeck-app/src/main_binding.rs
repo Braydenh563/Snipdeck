@@ -1410,7 +1410,11 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
                 Some(name) => format!("{}{name}", "\u{2003}".repeat(c.depth)).into(),
                 None => top.clone(),
             },
-            count: if c.name.is_some() { to_i32(c.count) } else { -1 },
+            count: if c.name.is_some() {
+                to_i32(c.count)
+            } else {
+                -1
+            },
             color: slint::Color::default(),
             icon: slint::Image::default(),
             checked: false,
