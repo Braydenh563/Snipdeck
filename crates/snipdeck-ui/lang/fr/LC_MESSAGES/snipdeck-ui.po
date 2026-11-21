@@ -1798,6 +1798,12 @@ msgstr "Les noms ne peuvent pas contenir de sauts de ligne ni de caractères de 
 msgid "Navigation"
 msgstr "Navigation"
 
+msgid "Nest tag {} under"
+msgstr "Imbriquer l’étiquette {} sous"
+
+msgid "Nest tag {} under another"
+msgstr "Imbriquer l’étiquette {} sous une autre"
+
 msgid "Never keep copies from these programs"
 msgstr "Ne jamais garder de copies de ces programmes"
 
@@ -2287,6 +2293,9 @@ msgstr "Choisissez la position du panneau. Vous pouvez la modifier à tout momen
 msgid "Pick one and it pastes where you were typing."
 msgstr "Choisissez-en un et il se colle là où vous tapiez."
 
+msgid "Pick the tag it goes under. Its own nested tags go with it. Esc closes."
+msgstr "Choisissez l’étiquette sous laquelle elle ira. Ses étiquettes imbriquées la suivent. Échap ferme."
+
 msgid "Picker"
 msgstr "Sélecteur"
 
@@ -2512,11 +2521,11 @@ msgstr "Renommer le tableau…"
 msgid "Rename group"
 msgstr "Renommer le groupe"
 
-msgid "Rename or delete tags. Deleting a tag removes it from its items; the items stay."
-msgstr "Renommez ou supprimez des étiquettes. Supprimer une étiquette la retire de ses extraits ; les extraits sont conservés."
-
 msgid "Rename tag {}"
 msgstr "Renommer l'étiquette {}"
+
+msgid "Rename, nest or delete tags. Deleting a tag removes it from its items; the items stay, and the tags nested under it move up a level."
+msgstr "Renommez, imbriquez ou supprimez des étiquettes. Supprimer une étiquette la retire de ses éléments ; les éléments restent et les étiquettes imbriquées dessous remontent d’un niveau."
 
 msgid "Repeat the new password"
 msgstr "Répétez le nouveau mot de passe"
@@ -3394,6 +3403,9 @@ msgstr "Outils"
 
 msgid "Top edge"
 msgstr "Bord supérieur"
+
+msgid "Top level (not nested)"
+msgstr "Niveau supérieur (sans imbrication)"
 
 msgid "Trash"
 msgstr "Corbeille"

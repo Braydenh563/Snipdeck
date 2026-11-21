@@ -1792,6 +1792,12 @@ msgstr "名称不能包含换行或控制字符。"
 msgid "Navigation"
 msgstr "导航"
 
+msgid "Nest tag {} under"
+msgstr "将标签 {} 嵌套到"
+
+msgid "Nest tag {} under another"
+msgstr "将标签 {} 嵌套到另一个标签下"
+
 msgid "Never keep copies from these programs"
 msgstr "从不保留这些程序中的复制内容"
 
@@ -2281,6 +2287,9 @@ msgstr "选择面板的位置。你可以随时在设置中更改，还可设置
 msgid "Pick one and it pastes where you were typing."
 msgstr "选择一项，它就会粘贴到你正在输入的位置。"
 
+msgid "Pick the tag it goes under. Its own nested tags go with it. Esc closes."
+msgstr "选择它要嵌套到的标签。它下面的标签会一起移动。按 Esc 关闭。"
+
 msgid "Picker"
 msgstr "选择器"
 
@@ -2506,11 +2515,11 @@ msgstr "重命名看板…"
 msgid "Rename group"
 msgstr "重命名分组"
 
-msgid "Rename or delete tags. Deleting a tag removes it from its items; the items stay."
-msgstr "重命名或删除标签。删除标签会将其从片段中移除，片段本身保留。"
-
 msgid "Rename tag {}"
 msgstr "重命名标签 {}"
+
+msgid "Rename, nest or delete tags. Deleting a tag removes it from its items; the items stay, and the tags nested under it move up a level."
+msgstr "重命名、嵌套或删除标签。删除标签会把它从各项目上移除，项目保留，嵌套在其下的标签会上移一级。"
 
 msgid "Repeat the new password"
 msgstr "再次输入新密码"
@@ -3386,6 +3395,9 @@ msgstr "工具"
 
 msgid "Top edge"
 msgstr "顶边"
+
+msgid "Top level (not nested)"
+msgstr "顶层（不嵌套）"
 
 msgid "Trash"
 msgstr "回收站"

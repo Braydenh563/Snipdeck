@@ -1798,6 +1798,12 @@ msgstr "Namen dürfen keine Zeilenumbrüche oder Steuerzeichen enthalten."
 msgid "Navigation"
 msgstr "Navigation"
 
+msgid "Nest tag {} under"
+msgstr "Tag {} einordnen unter"
+
+msgid "Nest tag {} under another"
+msgstr "Tag {} unter einen anderen einordnen"
+
 msgid "Never keep copies from these programs"
 msgstr "Nie Kopien aus diesen Programmen speichern"
 
@@ -2287,6 +2293,9 @@ msgstr "Wähle, wo das Panel sitzt. Du kannst das jederzeit in den Einstellungen
 msgid "Pick one and it pastes where you were typing."
 msgstr "Wähle eines aus, und es wird dort eingefügt, wo du getippt hast."
 
+msgid "Pick the tag it goes under. Its own nested tags go with it. Esc closes."
+msgstr "Wählen Sie den Tag, unter den er kommt. Seine eingeordneten Tags wandern mit. Esc schließt."
+
 msgid "Picker"
 msgstr "Auswahl"
 
@@ -2512,11 +2521,11 @@ msgstr "Board umbenennen…"
 msgid "Rename group"
 msgstr "Gruppe umbenennen"
 
-msgid "Rename or delete tags. Deleting a tag removes it from its items; the items stay."
-msgstr "Schlagwörter umbenennen oder löschen. Beim Löschen eines Schlagworts wird es aus seinen Textbausteinen entfernt; die Textbausteine bleiben erhalten."
-
 msgid "Rename tag {}"
 msgstr "Schlagwort {} umbenennen"
+
+msgid "Rename, nest or delete tags. Deleting a tag removes it from its items; the items stay, and the tags nested under it move up a level."
+msgstr "Tags umbenennen, einordnen oder löschen. Beim Löschen verschwindet der Tag von seinen Einträgen; die Einträge bleiben, und die darunter eingeordneten Tags rücken eine Ebene nach oben."
 
 msgid "Repeat the new password"
 msgstr "Neues Passwort wiederholen"
@@ -3394,6 +3403,9 @@ msgstr "Werkzeuge"
 
 msgid "Top edge"
 msgstr "Oberer Rand"
+
+msgid "Top level (not nested)"
+msgstr "Oberste Ebene (nicht eingeordnet)"
 
 msgid "Trash"
 msgstr "Papierkorb"

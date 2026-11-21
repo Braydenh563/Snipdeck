@@ -1798,6 +1798,12 @@ msgstr "Los nombres no pueden contener saltos de línea ni caracteres de control
 msgid "Navigation"
 msgstr "Navegación"
 
+msgid "Nest tag {} under"
+msgstr "Anidar la etiqueta {} bajo"
+
+msgid "Nest tag {} under another"
+msgstr "Anidar la etiqueta {} bajo otra"
+
 msgid "Never keep copies from these programs"
 msgstr "No guardar nunca copias de estos programas"
 
@@ -2287,6 +2293,9 @@ msgstr "Elige cómo se coloca el panel. Puedes cambiarlo cuando quieras en Confi
 msgid "Pick one and it pastes where you were typing."
 msgstr "Elige uno y se pega donde estabas escribiendo."
 
+msgid "Pick the tag it goes under. Its own nested tags go with it. Esc closes."
+msgstr "Elija la etiqueta bajo la que irá. Sus etiquetas anidadas van con ella. Esc cierra."
+
 msgid "Picker"
 msgstr "Selector"
 
@@ -2512,11 +2521,11 @@ msgstr "Renombrar tablero…"
 msgid "Rename group"
 msgstr "Renombrar grupo"
 
-msgid "Rename or delete tags. Deleting a tag removes it from its items; the items stay."
-msgstr "Cambia el nombre o elimina etiquetas. Al eliminar una etiqueta, se quita de sus fragmentos; los fragmentos se conservan."
-
 msgid "Rename tag {}"
 msgstr "Renombrar la etiqueta {}"
+
+msgid "Rename, nest or delete tags. Deleting a tag removes it from its items; the items stay, and the tags nested under it move up a level."
+msgstr "Cambie el nombre, anide o elimine etiquetas. Al eliminar una etiqueta se quita de sus elementos; los elementos se quedan y las etiquetas anidadas bajo ella suben un nivel."
 
 msgid "Repeat the new password"
 msgstr "Repite la nueva contraseña"
@@ -3394,6 +3403,9 @@ msgstr "Herramientas"
 
 msgid "Top edge"
 msgstr "Borde superior"
+
+msgid "Top level (not nested)"
+msgstr "Nivel superior (sin anidar)"
 
 msgid "Trash"
 msgstr "Papelera"

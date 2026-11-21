@@ -471,6 +471,244 @@ fn the_tag_dot_is_drawn_only_for_a_coloured_tag() {
     assert_ne!(dots[1], dots[3], "amber and slate differ");
 }
 
+// ---- Nested tags ----------------------------------------------------------------------------------------------
+
+/// The Tag manager with five tags nested as billing > (meeting > sql, the long name) and unused alone.
+fn nested_manager(
+    width: u32,
+    height: u32,
+    scale: f32,
+    dark: bool,
+    hc: bool,
+) -> Harness<TagManager> {
+    let h = tag_manager(width, height, scale, dark, hc);
+    h.component
+        .set_depths(ModelRc::new(VecModel::from(vec![0, 1, 2, 1, 0])));
+    let paths: Vec<slint::SharedString> = [
+        "billing",
+        "billing/meeting",
+        "billing/meeting/sql",
+        "billing/a-rather-long-tag-name-that-needs-to-be-elided-somewhere",
+        "unused",
+    ]
+    .map(Into::into)
+    .to_vec();
+    h.component.set_paths(ModelRc::new(VecModel::from(paths)));
+    h.component
+        .set_own_counts(ModelRc::new(VecModel::from(vec![2, 4, 3, 1, 0])));
+    h
+}
+
+#[test]
+fn every_nested_tag_row_keeps_its_four_buttons_inside_the_window_apart_and_hit_sized() {
+    let mut problems: Vec<String> = Vec::new();
+    for (width, height) in [(360_u32, 420_u32), (440, 520), (800, 700)] {
+        for scale in SCALES {
+            for (name, dark, hc) in LOOKS {
+                // Tall enough for all five rows at the scale: a list scrolls, and a row out of view has no buttons.
+                let h = nested_manager(width, (height as f32 * scale) as u32, scale, dark, hc);
+                let _ = h.render_settled();
+                let at = format!("{width}px, scale {scale}, {name}");
+                let by = |prefix: &str| -> Vec<Boxed> {
+                    let mut v: Vec<Boxed> = all(&h)
+                        .into_iter()
+                        .filter(|b| b.role == Role::Button && b.label.starts_with(prefix))
+                        .collect();
+                    v.sort_by(|a, b| a.y.total_cmp(&b.y));
+                    v
+                };
+                let (nest, colour) = (by("Nest tag"), by("Colour of tag"));
+                if nest.len() != 5 || colour.len() != 5 {
+                    problems.push(format!(
+                        "{at}: {} nest and {} colour buttons instead of 5 and 5",
+                        nest.len(),
+                        colour.len()
+                    ));
+                    continue;
+                }
+                for (n, c) in nest.iter().zip(&colour) {
+                    if n.x < 0.0 || c.x + c.w > width as f32 {
+                        problems.push(format!("{at}: {:?} leaves the window", n.label));
+                    }
+                    if n.w < 27.5 || n.h < 27.5 {
+                        problems.push(format!("{at}: {:?} is {:.0}x{:.0}", n.label, n.w, n.h));
+                    }
+                    if n.x + n.w > c.x + 0.5 {
+                        problems.push(format!("{at}: {:?} touches the colour button", n.label));
+                    }
+                }
+            }
+        }
+    }
+    assert_eq!(problems.len(), 0, "{}", problems.join("\n"));
+}
+
+#[test]
+fn a_nested_tags_dot_and_name_sit_one_step_in_per_level() {
+    // The colour dots [blue, amber, none, slate, none] start at x 28 at the top level; each level moves a row 16 px in.
+    let h = nested_manager(440, 520, 1.0, false, false);
+    let frame = h.render_settled();
+    let mut rows: Vec<Boxed> = all(&h)
+        .into_iter()
+        .filter(|b| b.role == Role::Button && b.label.starts_with("Colour of tag"))
+        .collect();
+    rows.sort_by(|a, b| a.y.total_cmp(&b.y));
+    let dot_at = |row: &Boxed, x: u32| -> bool {
+        let y = (row.y + row.h / 2.0) as u32;
+        let (bg, p1, p2) = (
+            frame.pixel(24, y),
+            frame.pixel(x + 3, y),
+            frame.pixel(x + 5, y),
+        );
+        p1 == p2
+            && p1
+                .iter()
+                .zip(bg.iter())
+                .map(|(a, b)| u32::from(a.abs_diff(*b)))
+                .sum::<u32>()
+                > 60
+    };
+    assert!(dot_at(&rows[0], 28), "the top-level dot is at x 28");
+    assert!(!dot_at(&rows[1], 28), "a nested row has nothing at x 28");
+    assert!(dot_at(&rows[1], 44), "one level in: x 44");
+    assert!(
+        dot_at(&rows[3], 44),
+        "the long name's row is one level in too"
+    );
+    assert_golden("tag-manager-nested-light", &frame);
+}
+
+#[test]
+fn the_nest_dialog_lists_its_places_inside_its_card_and_reports_the_pick() {
+    let mut problems: Vec<String> = Vec::new();
+    for (width, height) in [(360_u32, 420_u32), (440, 520), (800, 700)] {
+        for scale in SCALES {
+            for (name, dark, hc) in LOOKS {
+                let h = nested_manager(width, height, scale, dark, hc);
+                let chosen = std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
+                let sink = std::rc::Rc::clone(&chosen);
+                h.component
+                    .on_nest_chosen(move |i, under| sink.borrow_mut().push((i, under)));
+                let places = ["", "billing", "unused"].map(slint::SharedString::from);
+                h.component
+                    .set_nest_labels(ModelRc::new(VecModel::from(places.to_vec())));
+                h.component
+                    .set_nest_targets(ModelRc::new(VecModel::from(vec![-1, 0, 4])));
+                h.component.set_nest_index(1);
+                let frame = settle_quietly(&h);
+                let at = format!("{width}px, scale {scale}, {name}");
+                let card = f32::min(384.0, width as f32 - 32.0);
+                let (left, right) = (
+                    (width as f32 - card) / 2.0,
+                    f32::midpoint(width as f32, card),
+                );
+                let want = ["Top level (not nested)", "billing", "unused"];
+                let rows: Vec<Boxed> = want
+                    .iter()
+                    .filter_map(|w| {
+                        all(&h)
+                            .into_iter()
+                            .find(|b| b.role == Role::Button && b.label == *w)
+                    })
+                    .collect();
+                if rows.len() != 3 {
+                    problems.push(format!("{at}: {} of the 3 places are drawn", rows.len()));
+                    continue;
+                }
+                for r in &rows {
+                    if r.x < left || r.x + r.w > right || r.h < 27.5 {
+                        problems.push(format!(
+                            "{at}: {:?} at x {:.0}..{:.0}, {:.0} high is outside the card {left:.0}..{right:.0} or under 28",
+                            r.label, r.x, r.x + r.w, r.h
+                        ));
+                    }
+                }
+                for pair in rows.windows(2) {
+                    if pair[0].y + pair[0].h > pair[1].y + 0.5 {
+                        problems.push(format!(
+                            "{at}: {:?} overlaps {:?}",
+                            pair[0].label, pair[1].label
+                        ));
+                    }
+                }
+                if width == 440 && scale < 1.1 && !dark && !hc {
+                    assert_golden(
+                        "tag-manager-nest-dialog-light",
+                        &frame.expect("the dialog drew"),
+                    );
+                }
+                let pick = ElementQuery::from_root(&h.component)
+                    .match_descendants()
+                    .match_accessible_role(Role::Button)
+                    .match_predicate(|e| {
+                        e.accessible_label().is_some_and(|l| l.as_str() == "unused")
+                    })
+                    .find_first();
+                if let Some(pick) = pick {
+                    pick.invoke_accessible_default_action();
+                }
+                if *chosen.borrow() != [(1, 4)] || h.component.get_nest_index() != -1 {
+                    problems.push(format!(
+                        "{at}: picking unused reported {:?}, dialog index {}",
+                        chosen.borrow(),
+                        h.component.get_nest_index()
+                    ));
+                }
+            }
+        }
+    }
+    assert_eq!(problems.len(), 0, "{}", problems.join("\n"));
+}
+
+#[test]
+fn the_sidebar_indents_a_nested_tag_one_step_per_level_and_never_leaves_the_rail() {
+    let h = Harness::new(MainWindow::new, 1040, 640);
+    let _ = fixture::populate(&h.component);
+    h.component
+        .set_tag_depths(ModelRc::new(VecModel::from(vec![0, 1, 2])));
+    let frame = h.render_settled();
+    let mut rows: Vec<Boxed> = all(&h)
+        .into_iter()
+        .filter(|b| {
+            b.role == Role::ListItem && ["billing", "meeting", "sql"].contains(&b.label.as_str())
+        })
+        .collect();
+    rows.sort_by(|a, b| a.y.total_cmp(&b.y));
+    assert_eq!(
+        rows.len(),
+        3,
+        "{:?}",
+        rows.iter().map(|r| &r.label).collect::<Vec<_>>()
+    );
+    // The first column where a pixel differs from the row's background is the tag glyph's left edge.
+    let edge = |r: &Boxed| -> f32 {
+        let y = (r.y + r.h / 2.0) as u32;
+        let bg = frame.pixel(r.x as u32 + 1, y);
+        (r.x as u32 + 2..(r.x + r.w) as u32)
+            .find(|x| {
+                frame
+                    .pixel(*x, y)
+                    .iter()
+                    .zip(bg.iter())
+                    .map(|(a, b)| u32::from(a.abs_diff(*b)))
+                    .sum::<u32>()
+                    > 90
+            })
+            .map_or(-1.0, |x| x as f32)
+    };
+    let (e0, e1, e2) = (edge(&rows[0]), edge(&rows[1]), edge(&rows[2]));
+    assert!(e0 > 0.0, "the glyph of the top-level tag is found");
+    assert!(
+        (e1 - e0 - 16.0).abs() <= 2.0,
+        "one level in moves 16 px: {e0} -> {e1}"
+    );
+    assert!(
+        (e2 - e1 - 16.0).abs() <= 2.0,
+        "two levels in moves 32 px: {e1} -> {e2}"
+    );
+    assert_golden("main-sidebar-nested-tags-light", &frame);
+}
+
 // ---- Group colour ---------------------------------------------------------------------------------------------
 
 /// A list with a teal "Replies" group of two items, then an uncoloured "Plain" group of one item.

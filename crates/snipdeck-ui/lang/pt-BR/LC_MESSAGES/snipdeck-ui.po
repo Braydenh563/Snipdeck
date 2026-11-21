@@ -1798,6 +1798,12 @@ msgstr "Nomes não podem conter quebras de linha nem caracteres de controle."
 msgid "Navigation"
 msgstr "Navegação"
 
+msgid "Nest tag {} under"
+msgstr "Aninhar a etiqueta {} em"
+
+msgid "Nest tag {} under another"
+msgstr "Aninhar a etiqueta {} em outra"
+
 msgid "Never keep copies from these programs"
 msgstr "Nunca guardar cópias destes programas"
 
@@ -2287,6 +2293,9 @@ msgstr "Escolha como o painel fica posicionado. Você pode alterar isso quando q
 msgid "Pick one and it pastes where you were typing."
 msgstr "Escolha um e ele é colado onde você estava digitando."
 
+msgid "Pick the tag it goes under. Its own nested tags go with it. Esc closes."
+msgstr "Escolha a etiqueta sob a qual ela ficará. As etiquetas aninhadas nela vão junto. Esc fecha."
+
 msgid "Picker"
 msgstr "Seletor"
 
@@ -2512,11 +2521,11 @@ msgstr "Renomear quadro…"
 msgid "Rename group"
 msgstr "Renomear grupo"
 
-msgid "Rename or delete tags. Deleting a tag removes it from its items; the items stay."
-msgstr "Renomeie ou exclua etiquetas. Excluir uma etiqueta a remove dos seus trechos; os trechos permanecem."
-
 msgid "Rename tag {}"
 msgstr "Renomear a etiqueta {}"
+
+msgid "Rename, nest or delete tags. Deleting a tag removes it from its items; the items stay, and the tags nested under it move up a level."
+msgstr "Renomeie, aninhe ou exclua etiquetas. Excluir uma etiqueta a remove de seus itens; os itens ficam e as etiquetas aninhadas nela sobem um nível."
 
 msgid "Repeat the new password"
 msgstr "Repita a nova senha"
@@ -3394,6 +3403,9 @@ msgstr "Ferramentas"
 
 msgid "Top edge"
 msgstr "Borda superior"
+
+msgid "Top level (not nested)"
+msgstr "Nível superior (sem aninhamento)"
 
 msgid "Trash"
 msgstr "Lixeira"

@@ -1792,6 +1792,12 @@ msgstr "名前に改行や制御文字を含めることはできません。"
 msgid "Navigation"
 msgstr "ナビゲーション"
 
+msgid "Nest tag {} under"
+msgstr "タグ {} の移動先"
+
+msgid "Nest tag {} under another"
+msgstr "タグ {} を別のタグの下に入れる"
+
 msgid "Never keep copies from these programs"
 msgstr "これらのプログラムからのコピーは保存しない"
 
@@ -2281,6 +2287,9 @@ msgstr "パネルの配置を選びます。設定でいつでも変更でき、
 msgid "Pick one and it pastes where you were typing."
 msgstr "選ぶと、入力していた場所に貼り付けられます。"
 
+msgid "Pick the tag it goes under. Its own nested tags go with it. Esc closes."
+msgstr "入れ先のタグを選びます。中に入っているタグも一緒に移動します。Esc で閉じます。"
+
 msgid "Picker"
 msgstr "ピッカー"
 
@@ -2506,11 +2515,11 @@ msgstr "ボード名を変更…"
 msgid "Rename group"
 msgstr "グループ名を変更"
 
-msgid "Rename or delete tags. Deleting a tag removes it from its items; the items stay."
-msgstr "タグの名前を変更または削除します。タグを削除しても、それが付いたスニペットは残ります。"
-
 msgid "Rename tag {}"
 msgstr "タグ {} の名前を変更"
+
+msgid "Rename, nest or delete tags. Deleting a tag removes it from its items; the items stay, and the tags nested under it move up a level."
+msgstr "タグの名前変更、入れ子、削除ができます。タグを削除しても項目は残り、中に入っていたタグは一つ上の階層に移ります。"
 
 msgid "Repeat the new password"
 msgstr "新しいパスワードを再入力"
@@ -3386,6 +3395,9 @@ msgstr "ツール"
 
 msgid "Top edge"
 msgstr "上端"
+
+msgid "Top level (not nested)"
+msgstr "最上位（入れ子にしない）"
 
 msgid "Trash"
 msgstr "ゴミ箱"
