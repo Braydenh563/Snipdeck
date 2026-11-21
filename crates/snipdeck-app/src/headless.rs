@@ -5,6 +5,7 @@
 //! is migrated, no lock is taken) and the settings file is never set aside, so they are safe beside
 //! a running Snipdeck and a mistyped `--data-dir` is an error, not a new library. The words are literal English, like [`crate::doctor`].
 
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
 use jiff::civil::Date;
@@ -83,10 +84,20 @@ pub fn backup_to(folder: &Path, now: jiff::Timestamp, dest: &Path) -> Outcome {
     };
     let options = snipdeck_portable::ExportOptions::default();
     match snipdeck_portable::export_to_path(&store, now, &options, dest) {
-        Ok(_) => Outcome {
-            text: format!("ok: wrote {}", dest.display()),
-            code: 0,
-        },
+        Ok(report) => {
+            let mut text = format!("ok: wrote {}", dest.display());
+            if report.sensitive_omitted > 0 {
+                let n = report.sensitive_omitted;
+                let _ = write!(
+                    text,
+                    "; {n} sensitive item{} {} left out: the command line has no key for {}",
+                    if n == 1 { "" } else { "s" },
+                    if n == 1 { "was" } else { "were" },
+                    if n == 1 { "it" } else { "them" },
+                );
+            }
+            Outcome { text, code: 0 }
+        }
         Err(e) => could_not_run(folder, &format!("the backup could not be written: {e}")),
     }
 }
@@ -280,6 +291,52 @@ mod tests {
         let out = backup_to(&typo, now, &out_dir.path().join("x.snipdeck"));
         assert_eq!(out.code, COULD_NOT_RUN, "{}", out.text);
         assert!(!typo.exists());
+    }
+
+    #[test]
+    fn a_backup_says_how_many_sensitive_items_it_left_out() {
+        use snipdeck_core::{
+            Board, Content, Format, Formats, Inline, Item, ItemKind, List, Name, Placement,
+            Timestamp,
+        };
+        use snipdeck_store::{BoardRepo, ListRepo};
+
+        let dir = tempfile::tempdir().expect("dir");
+        let mut store = Store::open(dir.path()).expect("store");
+        let at = Timestamp::from_second(1_800_000_000).expect("time");
+        let board = Board::new(Name::new("Vault").expect("name"), at);
+        store.insert_board(&board, Placement::Last).expect("board");
+        let list = List::new(board.id, Name::new("Cards").expect("name"), at);
+        store.insert_list(&list, Placement::Last).expect("list");
+        for title in ["PIN", "Card"] {
+            let mut item = Item::new(list.id, title.to_owned(), ItemKind::Text, at);
+            item.sensitive = true;
+            let text = Content::Inline(Inline::new(b"secret".to_vec()).expect("inline"));
+            store
+                .insert_item(
+                    &item,
+                    &Formats::new(vec![Format::Text(text)]).expect("formats"),
+                    Placement::Last,
+                )
+                .expect("item");
+        }
+        drop(store);
+
+        let out_dir = tempfile::tempdir().expect("dir");
+        let dest = out_dir.path().join("mine.snipdeck");
+        let now = jiff::Timestamp::from_second(1_760_000_000).expect("time");
+        let out = backup_to(dir.path(), now, &dest);
+        assert_eq!(out.code, 0, "{}", out.text);
+        assert!(
+            out.text.contains("2 sensitive items were left out"),
+            "{}",
+            out.text
+        );
+
+        // No sensitive item, nothing to say.
+        let plain = library();
+        let out = backup_to(plain.path(), now, &out_dir.path().join("plain.snipdeck"));
+        assert!(!out.text.contains("sensitive"), "{}", out.text);
     }
 
     #[test]
