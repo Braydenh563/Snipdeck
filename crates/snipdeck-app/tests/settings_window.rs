@@ -1644,11 +1644,11 @@ fn a_file_that_cannot_be_imported_shows_a_problem_and_nothing_to_confirm() {
             true,
         );
         let junk = r.dir.path().join("junk.db");
-        std::fs::write(&junk, b"not a database").unwrap();
+        std::fs::write(&junk, b"not a Ditto file").unwrap();
         *r.host.import_pick.borrow_mut() = Some(junk);
         r.ui.invoke_import_source_chosen(1);
         assert!(r.ui.get_import_open());
-        assert_eq!(r.ui.get_import_problem(), "That isn't a Ditto database.");
+        assert_eq!(r.ui.get_import_problem(), "That isn't a Ditto file.");
         // Confirming a problem writes nothing.
         r.ui.invoke_import_confirmed();
         assert!(!r.ui.get_import_open());
@@ -2028,7 +2028,7 @@ fn import_choices_list_nine_sources() {
         .invoke_accessible_default_action();
         for name in [
             ".snipdeck file",
-            "Ditto database",
+            "Ditto",
             "CopyQ export",
             "Folder of .txt and .md files",
             "Espanso (folder)",
@@ -2144,14 +2144,12 @@ fn the_clear_recent_button_asks_first_and_cancel_clears_nothing() {
         let seen = std::rc::Rc::clone(&cleared);
         // The window's own handler is replaced: only the click path is under test.
         r.ui.on_recent_history_cleared(move || seen.set(seen.get() + 1));
-        element(&r.ui, "Clear recent history", AccessibleRole::Button)
-            .invoke_accessible_default_action();
+        element(&r.ui, "Clear Recent", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(cleared.get(), 0, "one click asks, it does not clear");
         element(&r.ui, "Cancel", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(cleared.get(), 0, "Cancel clears nothing");
-        element(&r.ui, "Clear recent history", AccessibleRole::Button)
-            .invoke_accessible_default_action();
-        element(&r.ui, "Clear history", AccessibleRole::Button).invoke_accessible_default_action();
+        element(&r.ui, "Clear Recent", AccessibleRole::Button).invoke_accessible_default_action();
+        element(&r.ui, "Clear Recent", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(cleared.get(), 1, "the second button clears");
     });
 }

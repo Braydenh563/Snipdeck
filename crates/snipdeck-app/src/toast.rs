@@ -350,7 +350,7 @@ pub enum ToastMessage {
     BoardSaved,
     /// "Removed from Recent".
     RecentDeleted,
-    /// "Recent history cleared".
+    /// "Recent cleared".
     RecentCleared,
     /// "Recently used emoji and colours cleared".
     PickerRecentsCleared,

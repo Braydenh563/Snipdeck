@@ -477,7 +477,7 @@ fn what_a_toast_carries_reaches_its_sentence() {
         );
         assert_eq!(said(ToastMessage::BoardSaved), "Board saved");
         assert_eq!(said(ToastMessage::RecentDeleted), "Removed from Recent");
-        assert_eq!(said(ToastMessage::RecentCleared), "Recent history cleared");
+        assert_eq!(said(ToastMessage::RecentCleared), "Recent cleared");
         assert_eq!(
             said(ToastMessage::PickerRecentsCleared),
             "Recently used emoji and colours cleared"
