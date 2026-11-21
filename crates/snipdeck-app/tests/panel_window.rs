@@ -315,7 +315,7 @@ fn the_first_run_asks_about_recent_and_the_answer_is_kept() {
             "nothing is kept yet"
         );
         assert!(
-            ElementHandle::find_by_accessible_label(&r.ui, "Keep a Recent list of what you copy?")
+            ElementHandle::find_by_accessible_label(&r.ui, "Keep what you copy in Recent?")
                 .count()
                 > 0
         );

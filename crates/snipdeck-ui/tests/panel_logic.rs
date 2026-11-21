@@ -3814,7 +3814,7 @@ fn the_recent_question_keeps_its_answers_in_view_when_narrow_and_scaled() {
         settle();
         let card = find(
             &ui,
-            "Keep a Recent list of what you copy?",
+            "Keep what you copy in Recent?",
             AccessibleRole::Groupbox,
         );
         let inside = |e: &ElementHandle, what: &str| {
