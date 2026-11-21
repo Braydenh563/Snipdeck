@@ -290,7 +290,31 @@ pub struct KeyWords {
     pub comma: String,
     /// The `/` key.
     pub slash: String,
+    /// [`PHRASES`] in the language selected for the UI, in the same order.
+    pub phrases: Vec<String>,
 }
+
+/// The spoken forms of the shortcut rows that are not one chord, and the two words shown instead
+/// of keys, in English; the English text is what the shortcut catalogue names a phrase by.
+pub const PHRASES: [&str; 17] = [
+    "The item's trigger",
+    "Tab while the suggestion hint shows",
+    "Alt+Up or Alt+Down",
+    "Hold Space",
+    "Left, Right or Enter on a group header",
+    "Type",
+    "Up or Down",
+    "PageUp or PageDown",
+    "Alt+1 to 9",
+    "Shift+Up or Shift+Down",
+    "Shift+F10 or the Menu key",
+    "Left, Right, Enter or Space on a group header",
+    "Alt+Up or Alt+Down on a group header",
+    "Tab or Shift+Tab",
+    "Unlock with Windows Hello",
+    "Trigger",
+    "Hello",
+];
 
 impl KeyWords {
     /// The English words: what tests that do not run a window compare against.
@@ -305,7 +329,18 @@ impl KeyWords {
             plus: word("Plus"),
             comma: word("Comma"),
             slash: word("Slash"),
+            phrases: PHRASES.iter().map(|p| (*p).to_owned()).collect(),
         }
+    }
+
+    /// `english` (one of [`PHRASES`]) in the selected language; anything else is returned as is.
+    #[must_use]
+    pub fn phrase(&self, english: &str) -> String {
+        PHRASES
+            .iter()
+            .position(|p| *p == english)
+            .and_then(|i| self.phrases.get(i))
+            .map_or_else(|| english.to_owned(), Clone::clone)
     }
 }
 

@@ -255,9 +255,9 @@ impl Keys {
             Self::Chord(text) => (caps(text), spoken(text, words)),
             Self::Custom { caps, spoken } => (
                 caps.iter().map(|c| (*c).to_owned()).collect(),
-                spoken.to_owned(),
+                words.phrase(spoken),
             ),
-            Self::Plain { text, spoken } => (vec![text.to_owned()], spoken.to_owned()),
+            Self::Plain { text, spoken } => (vec![words.phrase(text)], words.phrase(spoken)),
             Self::Global(action) => crate::commands::chord_caps(hotkeys, action, words),
         }
     }
@@ -686,6 +686,35 @@ mod tests {
                 atoms(&format!("{} {spoken}", caps.join(" ")))
             })
             .collect()
+    }
+
+    /// Every spoken form and every plain word of the list is one of `commands::PHRASES`, which is
+    /// what gets translated: a new row with a new phrase must be added there too.
+    #[test]
+    fn every_phrase_the_list_speaks_is_one_that_gets_translated() {
+        for s in &CATALOGUE {
+            let named: Vec<&str> = match s.keys {
+                Keys::Custom { spoken, .. } => vec![spoken],
+                Keys::Plain { text, spoken } => vec![text, spoken],
+                Keys::Chord(_) | Keys::Global(_) => continue,
+            };
+            for phrase in named {
+                assert!(
+                    crate::commands::PHRASES.contains(&phrase),
+                    "{phrase:?} is not in commands::PHRASES"
+                );
+            }
+        }
+        for phrase in crate::commands::PHRASES {
+            assert!(
+                CATALOGUE.iter().any(|s| match s.keys {
+                    Keys::Custom { spoken, .. } => spoken == phrase,
+                    Keys::Plain { text, spoken } => text == phrase || spoken == phrase,
+                    Keys::Chord(_) | Keys::Global(_) => false,
+                }),
+                "{phrase:?} in commands::PHRASES is spoken by no row"
+            );
+        }
     }
 
     #[test]

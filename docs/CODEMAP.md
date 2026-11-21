@@ -327,37 +327,39 @@ chord_text | crates/snipdeck-app/src/commands.rs:233
 chord_caps | crates/snipdeck-app/src/commands.rs:239
 caps | crates/snipdeck-app/src/commands.rs:253
 KeyWords | crates/snipdeck-app/src/commands.rs:278
-impl KeyWords | crates/snipdeck-app/src/commands.rs:295
-english | crates/snipdeck-app/src/commands.rs:298
-spoken | crates/snipdeck-app/src/commands.rs:314
-Context | crates/snipdeck-app/src/commands.rs:337
-CursorGroup | crates/snipdeck-app/src/commands.rs:362
-Entry | crates/snipdeck-app/src/commands.rs:371
-available | crates/snipdeck-app/src/commands.rs:387
-rank | crates/snipdeck-app/src/commands.rs:413
-entries | crates/snipdeck-app/src/commands.rs:432
-tests | crates/snipdeck-app/src/commands.rs:477
-texts | crates/snipdeck-app/src/commands.rs:480
-ctx | crates/snipdeck-app/src/commands.rs:526
-labels | crates/snipdeck-app/src/commands.rs:541
-the_catalogue_ids_round_trip | crates/snipdeck-app/src/commands.rs:546
-an_empty_query_lists_what_applies_in_catalogue_order | crates/snipdeck-app/src/commands.rs:556
-palette_marks_label_prefix | crates/snipdeck-app/src/commands.rs:565
-item_commands_follow_the_cursor_and_the_trash | crates/snipdeck-app/src/commands.rs:578
-duplicate_is_offered_for_an_item_outside_the_trash_and_has_ctrl_d | crates/snipdeck-app/src/commands.rs:599
-the_filter_matches_names_and_synonyms_ignoring_case | crates/snipdeck-app/src/commands.rs:625
-a_name_match_outranks_a_synonym_match | crates/snipdeck-app/src/commands.rs:641
-take_screenshot_is_found_by_its_name_and_a_synonym | crates/snipdeck-app/src/commands.rs:660
-every_word_of_the_query_must_match | crates/snipdeck-app/src/commands.rs:671
-global_hotkeys_show_the_configured_chords | crates/snipdeck-app/src/commands.rs:685
-texts_with_groups | crates/snipdeck-app/src/commands.rs:705
-group_commands_are_offered_where_the_code_performs_them_and_carry_their_keys | crates/snipdeck-app/src/commands.rs:725
-new_list_and_new_item_have_their_own_chords | crates/snipdeck-app/src/commands.rs:787
-the_theme_commands_are_found_by_theme_dark_and_light_and_have_no_shortcut | crates/snipdeck-app/src/commands.rs:800
-paste_next_and_select_all_are_in_the_palette_with_their_keys | crates/snipdeck-app/src/commands.rs:821
-the_colour_commands_follow_the_tab_the_eyedropper_and_the_saved_list | crates/snipdeck-app/src/commands.rs:841
-symbols_is_found_by_name_and_offered_only_while_the_tab_is_on | crates/snipdeck-app/src/commands.rs:873
-caps_and_speech_of_a_shortcut | crates/snipdeck-app/src/commands.rs:888
+PHRASES | crates/snipdeck-app/src/commands.rs:299
+impl KeyWords | crates/snipdeck-app/src/commands.rs:319
+english | crates/snipdeck-app/src/commands.rs:322
+phrase | crates/snipdeck-app/src/commands.rs:338
+spoken | crates/snipdeck-app/src/commands.rs:349
+Context | crates/snipdeck-app/src/commands.rs:372
+CursorGroup | crates/snipdeck-app/src/commands.rs:397
+Entry | crates/snipdeck-app/src/commands.rs:406
+available | crates/snipdeck-app/src/commands.rs:422
+rank | crates/snipdeck-app/src/commands.rs:448
+entries | crates/snipdeck-app/src/commands.rs:467
+tests | crates/snipdeck-app/src/commands.rs:512
+texts | crates/snipdeck-app/src/commands.rs:515
+ctx | crates/snipdeck-app/src/commands.rs:561
+labels | crates/snipdeck-app/src/commands.rs:576
+the_catalogue_ids_round_trip | crates/snipdeck-app/src/commands.rs:581
+an_empty_query_lists_what_applies_in_catalogue_order | crates/snipdeck-app/src/commands.rs:591
+palette_marks_label_prefix | crates/snipdeck-app/src/commands.rs:600
+item_commands_follow_the_cursor_and_the_trash | crates/snipdeck-app/src/commands.rs:613
+duplicate_is_offered_for_an_item_outside_the_trash_and_has_ctrl_d | crates/snipdeck-app/src/commands.rs:634
+the_filter_matches_names_and_synonyms_ignoring_case | crates/snipdeck-app/src/commands.rs:660
+a_name_match_outranks_a_synonym_match | crates/snipdeck-app/src/commands.rs:676
+take_screenshot_is_found_by_its_name_and_a_synonym | crates/snipdeck-app/src/commands.rs:695
+every_word_of_the_query_must_match | crates/snipdeck-app/src/commands.rs:706
+global_hotkeys_show_the_configured_chords | crates/snipdeck-app/src/commands.rs:720
+texts_with_groups | crates/snipdeck-app/src/commands.rs:740
+group_commands_are_offered_where_the_code_performs_them_and_carry_their_keys | crates/snipdeck-app/src/commands.rs:760
+new_list_and_new_item_have_their_own_chords | crates/snipdeck-app/src/commands.rs:822
+the_theme_commands_are_found_by_theme_dark_and_light_and_have_no_shortcut | crates/snipdeck-app/src/commands.rs:835
+paste_next_and_select_all_are_in_the_palette_with_their_keys | crates/snipdeck-app/src/commands.rs:856
+the_colour_commands_follow_the_tab_the_eyedropper_and_the_saved_list | crates/snipdeck-app/src/commands.rs:876
+symbols_is_found_by_name_and_offered_only_while_the_tab_is_on | crates/snipdeck-app/src/commands.rs:908
+caps_and_speech_of_a_shortcut | crates/snipdeck-app/src/commands.rs:923
 
 ### crates/snipdeck-app/src/controller.rs
 
@@ -4007,7 +4009,8 @@ the_user_guide_lists_every_editor_shortcut | crates/snipdeck-app/src/shortcuts.r
 atoms | crates/snipdeck-app/src/shortcuts.rs:643
 guide_scopes | crates/snipdeck-app/src/shortcuts.rs:657
 listed | crates/snipdeck-app/src/shortcuts.rs:679
-every_shortcut_in_the_guides_keyboard_table_is_in_the_list | crates/snipdeck-app/src/shortcuts.rs:692
+every_phrase_the_list_speaks_is_one_that_gets_translated | crates/snipdeck-app/src/shortcuts.rs:694
+every_shortcut_in_the_guides_keyboard_table_is_in_the_list | crates/snipdeck-app/src/shortcuts.rs:721
 
 ### crates/snipdeck-app/src/starter.rs
 
@@ -4357,42 +4360,42 @@ item_label_name | crates/snipdeck-app/src/wording.rs:61
 list_icon_name | crates/snipdeck-app/src/wording.rs:73
 starter_words | crates/snipdeck-app/src/wording.rs:85
 key_words | crates/snipdeck-app/src/wording.rs:108
-import_warning_text | crates/snipdeck-app/src/wording.rs:133
-note_text | crates/snipdeck-app/src/wording.rs:161
-entry_label | crates/snipdeck-app/src/wording.rs:218
-numbered_label | crates/snipdeck-app/src/wording.rs:233
-toast_text | crates/snipdeck-app/src/wording.rs:245
-LANGUAGE_NAMES | crates/snipdeck-app/src/wording.rs:397
-LANGUAGE_TAGS | crates/snipdeck-app/src/wording.rs:408
-action_word | crates/snipdeck-app/src/wording.rs:411
-undo_tip | crates/snipdeck-app/src/wording.rs:418
-redo_tip | crates/snipdeck-app/src/wording.rs:429
-UNDO_LABEL | crates/snipdeck-app/src/wording.rs:439
-toast_edit_label | crates/snipdeck-app/src/wording.rs:443
-OPEN_LOG_LABEL | crates/snipdeck-app/src/wording.rs:451
-SWITCH_LABEL | crates/snipdeck-app/src/wording.rs:454
-import_problem_text | crates/snipdeck-app/src/wording.rs:459
-history_source_name | crates/snipdeck-app/src/wording.rs:490
-toast_button_text | crates/snipdeck-app/src/wording.rs:496
-use_label_text | crates/snipdeck-app/src/wording.rs:511
-paste_stack_idle_text | crates/snipdeck-app/src/wording.rs:525
-app_menu_text | crates/snipdeck-app/src/wording.rs:532
-app_menu_shortcut | crates/snipdeck-app/src/wording.rs:571
-item_menu_shortcut | crates/snipdeck-app/src/wording.rs:583
-item_menu_label | crates/snipdeck-app/src/wording.rs:611
-transform_name | crates/snipdeck-app/src/wording.rs:647
-symbol_menu_entry | crates/snipdeck-app/src/wording.rs:666
-board_menu_text | crates/snipdeck-app/src/wording.rs:704
-int | crates/snipdeck-app/src/wording.rs:723
-name_error_text | crates/snipdeck-app/src/wording.rs:729
-tag_rename_error_text | crates/snipdeck-app/src/wording.rs:745
-delete_hint_text | crates/snipdeck-app/src/wording.rs:760
-size_text | crates/snipdeck-app/src/wording.rs:773
-attachment_name_text | crates/snipdeck-app/src/wording.rs:793
-attachment_detail_text | crates/snipdeck-app/src/wording.rs:809
-template_problem_text | crates/snipdeck-app/src/wording.rs:831
-code | crates/snipdeck-app/src/wording.rs:836
-editor_problem_text | crates/snipdeck-app/src/wording.rs:903
+import_warning_text | crates/snipdeck-app/src/wording.rs:140
+note_text | crates/snipdeck-app/src/wording.rs:168
+entry_label | crates/snipdeck-app/src/wording.rs:225
+numbered_label | crates/snipdeck-app/src/wording.rs:240
+toast_text | crates/snipdeck-app/src/wording.rs:252
+LANGUAGE_NAMES | crates/snipdeck-app/src/wording.rs:404
+LANGUAGE_TAGS | crates/snipdeck-app/src/wording.rs:415
+action_word | crates/snipdeck-app/src/wording.rs:418
+undo_tip | crates/snipdeck-app/src/wording.rs:425
+redo_tip | crates/snipdeck-app/src/wording.rs:436
+UNDO_LABEL | crates/snipdeck-app/src/wording.rs:446
+toast_edit_label | crates/snipdeck-app/src/wording.rs:450
+OPEN_LOG_LABEL | crates/snipdeck-app/src/wording.rs:458
+SWITCH_LABEL | crates/snipdeck-app/src/wording.rs:461
+import_problem_text | crates/snipdeck-app/src/wording.rs:466
+history_source_name | crates/snipdeck-app/src/wording.rs:497
+toast_button_text | crates/snipdeck-app/src/wording.rs:503
+use_label_text | crates/snipdeck-app/src/wording.rs:518
+paste_stack_idle_text | crates/snipdeck-app/src/wording.rs:532
+app_menu_text | crates/snipdeck-app/src/wording.rs:539
+app_menu_shortcut | crates/snipdeck-app/src/wording.rs:578
+item_menu_shortcut | crates/snipdeck-app/src/wording.rs:590
+item_menu_label | crates/snipdeck-app/src/wording.rs:618
+transform_name | crates/snipdeck-app/src/wording.rs:654
+symbol_menu_entry | crates/snipdeck-app/src/wording.rs:673
+board_menu_text | crates/snipdeck-app/src/wording.rs:711
+int | crates/snipdeck-app/src/wording.rs:730
+name_error_text | crates/snipdeck-app/src/wording.rs:736
+tag_rename_error_text | crates/snipdeck-app/src/wording.rs:752
+delete_hint_text | crates/snipdeck-app/src/wording.rs:767
+size_text | crates/snipdeck-app/src/wording.rs:780
+attachment_name_text | crates/snipdeck-app/src/wording.rs:800
+attachment_detail_text | crates/snipdeck-app/src/wording.rs:816
+template_problem_text | crates/snipdeck-app/src/wording.rs:838
+code | crates/snipdeck-app/src/wording.rs:843
+editor_problem_text | crates/snipdeck-app/src/wording.rs:910
 
 ### crates/snipdeck-colour/src/contrast.rs
 
@@ -8856,7 +8859,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/src/settings.rs` (inline) | 64 |
 | `crates/snipdeck-app/src/settings_binding.rs` (inline) | 16 |
 | `crates/snipdeck-app/src/settings_store.rs` (inline) | 16 |
-| `crates/snipdeck-app/src/shortcuts.rs` (inline) | 14 |
+| `crates/snipdeck-app/src/shortcuts.rs` (inline) | 15 |
 | `crates/snipdeck-app/src/starter.rs` (inline) | 11 |
 | `crates/snipdeck-app/src/symbols_panel.rs` (inline) | 9 |
 | `crates/snipdeck-app/src/text_scale.rs` (inline) | 1 |

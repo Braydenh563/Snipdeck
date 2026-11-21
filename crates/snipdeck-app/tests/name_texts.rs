@@ -96,6 +96,11 @@ fn a_new_library_is_worded_in_the_selected_language() {
         // The template card keeps its placeholders, whatever the language.
         assert!(german.cards[2].1.contains("{date}") && german.cards[2].1.contains("{time}"));
         assert_ne!(key_words(&window), KeyWords::english());
+        // Every phrase of a shortcut row is worded in German, none left as the English.
+        let (german, english) = (key_words(&window), KeyWords::english());
+        for (g, e) in german.phrases.iter().zip(&english.phrases) {
+            assert_ne!(g, e, "{e:?} is not translated");
+        }
         slint::select_bundled_translation("").expect("untranslated");
     });
 }

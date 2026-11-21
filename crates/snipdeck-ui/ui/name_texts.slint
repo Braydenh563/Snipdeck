@@ -54,4 +54,28 @@ export global NameTexts {
         if index == 6 { return @tr("Slash"); }
         return "";
     }
+
+    // The spoken form of a shortcut row that is not one chord ("Up or Down"), and the two words
+    // shown instead of keys ("Trigger", "Hello"): the English text is the key of the Rust side's
+    // `commands::PHRASES`, in this order.
+    pure public function phrase(index: int) -> string {
+        if index == 0 { return @tr("The item's trigger"); }
+        if index == 1 { return @tr("Tab while the suggestion hint shows"); }
+        if index == 2 { return @tr("Alt+Up or Alt+Down"); }
+        if index == 3 { return @tr("Hold Space"); }
+        if index == 4 { return @tr("Left, Right or Enter on a group header"); }
+        if index == 5 { return @tr("Type"); }
+        if index == 6 { return @tr("Up or Down"); }
+        if index == 7 { return @tr("PageUp or PageDown"); }
+        if index == 8 { return @tr("Alt+1 to 9"); }
+        if index == 9 { return @tr("Shift+Up or Shift+Down"); }
+        if index == 10 { return @tr("Shift+F10 or the Menu key"); }
+        if index == 11 { return @tr("Left, Right, Enter or Space on a group header"); }
+        if index == 12 { return @tr("Alt+Up or Alt+Down on a group header"); }
+        if index == 13 { return @tr("Tab or Shift+Tab"); }
+        if index == 14 { return @tr("Unlock with Windows Hello"); }
+        if index == 15 { return @tr("Trigger"); }
+        if index == 16 { return @tr("Hello"); }
+        return "";
+    }
 }

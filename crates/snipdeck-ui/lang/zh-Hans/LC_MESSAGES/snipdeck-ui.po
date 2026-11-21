@@ -200,6 +200,15 @@ msgstr "同时保留我复制的内容？"
 msgid "Alt 1 to 9"
 msgstr "Alt 1 到 9"
 
+msgid "Alt+1 to 9"
+msgstr "Alt+1 至 9"
+
+msgid "Alt+Up or Alt+Down"
+msgstr "Alt+上或Alt+下"
+
+msgid "Alt+Up or Alt+Down on a group header"
+msgstr "在分组标题上按 Alt+上或Alt+下"
+
 msgid "Alt+{}"
 msgstr "Alt+{}"
 
@@ -1295,6 +1304,9 @@ msgstr "收到了。此快捷键可用。"
 msgid "Heart"
 msgstr "心形"
 
+msgid "Hello"
+msgstr "Windows Hello"
+
 msgid "Help"
 msgstr "帮助"
 
@@ -1330,6 +1342,9 @@ msgstr "隐藏标题、颜色、标签、触发词和隐私"
 
 msgid "History is paused"
 msgstr "历史记录已暂停"
+
+msgid "Hold Space"
+msgstr "按住空格键"
 
 msgid "Hold to reveal"
 msgstr "按住以显示"
@@ -1531,6 +1546,12 @@ msgstr "左侧"
 
 msgid "Left edge"
 msgstr "左边"
+
+msgid "Left, Right or Enter on a group header"
+msgstr "在分组标题上按左、右或 Enter"
+
+msgid "Left, Right, Enter or Space on a group header"
+msgstr "在分组标题上按左、右、Enter 或空格键"
 
 msgid "Lengthen the hover delay"
 msgstr "延长悬停延迟"
@@ -2079,6 +2100,9 @@ msgstr "PNG，{}"
 
 msgid "PNG, {} × {}, {}"
 msgstr "PNG，{} × {}，{}"
+
+msgid "PageUp or PageDown"
+msgstr "Page Up 或 Page Down"
 
 msgid "Panel"
 msgstr "面板"
@@ -2721,8 +2745,14 @@ msgstr "Shift Enter"
 msgid "Shift F10"
 msgstr "Shift F10"
 
+msgid "Shift+F10 or the Menu key"
+msgstr "Shift+F10 或菜单键"
+
 msgid "Shift+Insert"
 msgstr "Shift+Insert"
+
+msgid "Shift+Up or Shift+Down"
+msgstr "Shift+上或Shift+下"
 
 msgid "Shift+click (or Shift+Enter) only copies a card to the clipboard, so you can paste it yourself."
 msgstr "Shift+单击（或 Shift+Enter）只会将卡片复制到剪贴板，以便你自己粘贴。"
@@ -2997,6 +3027,12 @@ msgstr "符号数据"
 msgid "Tab"
 msgstr "Tab"
 
+msgid "Tab or Shift+Tab"
+msgstr "Tab 或 Shift+Tab"
+
+msgid "Tab while the suggestion hint shows"
+msgstr "建议提示显示时按 Tab"
+
 msgid "Tabs"
 msgstr "标签页"
 
@@ -3143,6 +3179,9 @@ msgstr "完整性检查未发现问题。"
 
 msgid "The integrity check found {} problem(s); the first: {}"
 msgstr "完整性检查发现 {} 个问题；第一个：{}"
+
+msgid "The item's trigger"
+msgstr "片段的触发词"
 
 msgid "The items cannot be read: {}"
 msgstr "无法读取片段：{}"
@@ -3464,6 +3503,9 @@ msgstr "取消置顶的方式相同。"
 
 msgid "Unsaved: this is how the item will look once you save it."
 msgstr "未保存：保存后片段将如此显示。"
+
+msgid "Up or Down"
+msgstr "上或下"
 
 msgid "Use"
 msgstr "使用"

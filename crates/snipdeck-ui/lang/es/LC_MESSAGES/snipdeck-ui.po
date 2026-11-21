@@ -201,6 +201,15 @@ msgstr "¿Guardar también lo que copio?"
 msgid "Alt 1 to 9"
 msgstr "Alt 1 a 9"
 
+msgid "Alt+1 to 9"
+msgstr "Alt+1 a 9"
+
+msgid "Alt+Up or Alt+Down"
+msgstr "Alt+Arriba o Alt+Abajo"
+
+msgid "Alt+Up or Alt+Down on a group header"
+msgstr "Alt+Arriba o Alt+Abajo en el encabezado de un grupo"
+
 msgid "Alt+{}"
 msgstr "Alt+{}"
 
@@ -1296,6 +1305,9 @@ msgstr "Lo oí. Este atajo funciona."
 msgid "Heart"
 msgstr "Corazón"
 
+msgid "Hello"
+msgstr "Windows Hello"
+
 msgid "Help"
 msgstr "Ayuda"
 
@@ -1331,6 +1343,9 @@ msgstr "Ocultar título, color, etiquetas, activador y privacidad"
 
 msgid "History is paused"
 msgstr "El historial está en pausa"
+
+msgid "Hold Space"
+msgstr "Mantener Espacio"
 
 msgid "Hold to reveal"
 msgstr "Mantén pulsado para mostrar"
@@ -1535,6 +1550,12 @@ msgstr "Izquierda"
 
 msgid "Left edge"
 msgstr "Borde izquierdo"
+
+msgid "Left, Right or Enter on a group header"
+msgstr "Izquierda, Derecha o Enter en el encabezado de un grupo"
+
+msgid "Left, Right, Enter or Space on a group header"
+msgstr "Izquierda, Derecha, Enter o Espacio en el encabezado de un grupo"
 
 msgid "Lengthen the hover delay"
 msgstr "Alargar el retraso al pasar el puntero"
@@ -2085,6 +2106,9 @@ msgstr "PNG, {}"
 
 msgid "PNG, {} × {}, {}"
 msgstr "PNG, {} × {}, {}"
+
+msgid "PageUp or PageDown"
+msgstr "Re Pág o Av Pág"
 
 msgid "Panel"
 msgstr "Panel"
@@ -2729,8 +2753,14 @@ msgstr "Shift Enter"
 msgid "Shift F10"
 msgstr "Shift F10"
 
+msgid "Shift+F10 or the Menu key"
+msgstr "Shift+F10 o la tecla Menú"
+
 msgid "Shift+Insert"
 msgstr "Shift+Insert"
+
+msgid "Shift+Up or Shift+Down"
+msgstr "Shift+Arriba o Shift+Abajo"
 
 msgid "Shift+click (or Shift+Enter) only copies a card to the clipboard, so you can paste it yourself."
 msgstr "Shift+clic (o Shift+Enter) solo copia una tarjeta al portapapeles, para que la pegues tú mismo."
@@ -3005,6 +3035,12 @@ msgstr "Datos de símbolos"
 msgid "Tab"
 msgstr "Tab"
 
+msgid "Tab or Shift+Tab"
+msgstr "Tab o Shift+Tab"
+
+msgid "Tab while the suggestion hint shows"
+msgstr "Tab mientras se muestra la sugerencia"
+
 msgid "Tabs"
 msgstr "Pestañas"
 
@@ -3151,6 +3187,9 @@ msgstr "La comprobación de integridad no encontró problemas."
 
 msgid "The integrity check found {} problem(s); the first: {}"
 msgstr "La comprobación de integridad encontró {} problema(s); el primero: {}"
+
+msgid "The item's trigger"
+msgstr "El activador del fragmento"
 
 msgid "The items cannot be read: {}"
 msgstr "No se pueden leer los fragmentos: {}"
@@ -3472,6 +3511,9 @@ msgstr "Desfíjalos del mismo modo."
 
 msgid "Unsaved: this is how the item will look once you save it."
 msgstr "Sin guardar: así se verá el fragmento una vez guardado."
+
+msgid "Up or Down"
+msgstr "Arriba o Abajo"
 
 msgid "Use"
 msgstr "Usar"

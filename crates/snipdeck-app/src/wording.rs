@@ -20,7 +20,7 @@ use snipdeck_core::{
 };
 
 use crate::{
-    commands::KeyWords,
+    commands::{KeyWords, PHRASES},
     item_editor::{AttachmentView, EditorProblem, SaveFailure, TemplateProblem},
     settings::{DockEdge, Theme},
     starter::StarterWords,
@@ -119,6 +119,13 @@ where
         plus: word(4),
         comma: word(5),
         slash: word(6),
+        phrases: (0..PHRASES.len())
+            .map(|i| {
+                texts
+                    .invoke_phrase(i32::try_from(i).unwrap_or(0))
+                    .to_string()
+            })
+            .collect(),
     }
 }
 

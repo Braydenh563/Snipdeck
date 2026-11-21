@@ -201,6 +201,15 @@ msgstr "Conserver aussi ce que je copie ?"
 msgid "Alt 1 to 9"
 msgstr "Alt 1 à 9"
 
+msgid "Alt+1 to 9"
+msgstr "Alt+1 à 9"
+
+msgid "Alt+Up or Alt+Down"
+msgstr "Alt+Haut ou Alt+Bas"
+
+msgid "Alt+Up or Alt+Down on a group header"
+msgstr "Alt+Haut ou Alt+Bas sur un en-tête de groupe"
+
 msgid "Alt+{}"
 msgstr "Alt+{}"
 
@@ -1296,6 +1305,9 @@ msgstr "Entendu. Ce raccourci fonctionne."
 msgid "Heart"
 msgstr "Cœur"
 
+msgid "Hello"
+msgstr "Windows Hello"
+
 msgid "Help"
 msgstr "Aide"
 
@@ -1331,6 +1343,9 @@ msgstr "Masquer le titre, la couleur, les étiquettes, le déclencheur et la con
 
 msgid "History is paused"
 msgstr "L'historique est suspendu"
+
+msgid "Hold Space"
+msgstr "Maintenir Espace"
 
 msgid "Hold to reveal"
 msgstr "Maintenir pour afficher"
@@ -1535,6 +1550,12 @@ msgstr "À gauche"
 
 msgid "Left edge"
 msgstr "Bord gauche"
+
+msgid "Left, Right or Enter on a group header"
+msgstr "Gauche, Droite ou Enter sur un en-tête de groupe"
+
+msgid "Left, Right, Enter or Space on a group header"
+msgstr "Gauche, Droite, Enter ou Espace sur un en-tête de groupe"
 
 msgid "Lengthen the hover delay"
 msgstr "Allonger le délai de survol"
@@ -2085,6 +2106,9 @@ msgstr "PNG, {}"
 
 msgid "PNG, {} × {}, {}"
 msgstr "PNG, {} × {}, {}"
+
+msgid "PageUp or PageDown"
+msgstr "Page précédente ou Page suivante"
 
 msgid "Panel"
 msgstr "Panneau"
@@ -2729,8 +2753,14 @@ msgstr "Shift Enter"
 msgid "Shift F10"
 msgstr "Shift F10"
 
+msgid "Shift+F10 or the Menu key"
+msgstr "Shift+F10 ou la touche Menu"
+
 msgid "Shift+Insert"
 msgstr "Shift+Insert"
+
+msgid "Shift+Up or Shift+Down"
+msgstr "Shift+Haut ou Shift+Bas"
 
 msgid "Shift+click (or Shift+Enter) only copies a card to the clipboard, so you can paste it yourself."
 msgstr "Shift+clic (ou Shift+Enter) copie seulement une carte dans le presse-papiers, pour que vous la colliez vous-même."
@@ -3005,6 +3035,12 @@ msgstr "Données des symboles"
 msgid "Tab"
 msgstr "Tab"
 
+msgid "Tab or Shift+Tab"
+msgstr "Tab ou Shift+Tab"
+
+msgid "Tab while the suggestion hint shows"
+msgstr "Tab pendant que la suggestion s'affiche"
+
 msgid "Tabs"
 msgstr "Onglets"
 
@@ -3151,6 +3187,9 @@ msgstr "La vérification d’intégrité n’a trouvé aucun problème."
 
 msgid "The integrity check found {} problem(s); the first: {}"
 msgstr "La vérification d’intégrité a trouvé {} problème(s) ; le premier : {}"
+
+msgid "The item's trigger"
+msgstr "Le déclencheur de l'extrait"
 
 msgid "The items cannot be read: {}"
 msgstr "Les extraits ne peuvent pas être lus : {}"
@@ -3472,6 +3511,9 @@ msgstr "Désépinglez-les de la même façon."
 
 msgid "Unsaved: this is how the item will look once you save it."
 msgstr "Non enregistré : voici l'aspect de l'extrait une fois enregistré."
+
+msgid "Up or Down"
+msgstr "Haut ou Bas"
 
 msgid "Use"
 msgstr "Utiliser"

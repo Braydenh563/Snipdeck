@@ -200,6 +200,15 @@ msgstr "コピーした内容も保存しますか？"
 msgid "Alt 1 to 9"
 msgstr "Alt 1～9"
 
+msgid "Alt+1 to 9"
+msgstr "Alt+1～9"
+
+msgid "Alt+Up or Alt+Down"
+msgstr "Alt+↑またはAlt+↓"
+
+msgid "Alt+Up or Alt+Down on a group header"
+msgstr "グループの見出しでAlt+↑またはAlt+↓"
+
 msgid "Alt+{}"
 msgstr "Alt+{}"
 
@@ -1295,6 +1304,9 @@ msgstr "聞こえました。このショートカットは使えます。"
 msgid "Heart"
 msgstr "ハート"
 
+msgid "Hello"
+msgstr "Windows Hello"
+
 msgid "Help"
 msgstr "ヘルプ"
 
@@ -1330,6 +1342,9 @@ msgstr "タイトル、色、タグ、トリガー、プライバシーを隠す
 
 msgid "History is paused"
 msgstr "履歴は一時停止中です"
+
+msgid "Hold Space"
+msgstr "スペースキーを押し続ける"
 
 msgid "Hold to reveal"
 msgstr "長押しで表示"
@@ -1531,6 +1546,12 @@ msgstr "左"
 
 msgid "Left edge"
 msgstr "左端"
+
+msgid "Left, Right or Enter on a group header"
+msgstr "グループの見出しで←、→またはEnter"
+
+msgid "Left, Right, Enter or Space on a group header"
+msgstr "グループの見出しで←、→、Enter、またはスペース"
 
 msgid "Lengthen the hover delay"
 msgstr "ポイントの待ち時間を長くする"
@@ -2079,6 +2100,9 @@ msgstr "PNG、{}"
 
 msgid "PNG, {} × {}, {}"
 msgstr "PNG、{} × {}、{}"
+
+msgid "PageUp or PageDown"
+msgstr "Page UpまたはPage Down"
 
 msgid "Panel"
 msgstr "パネル"
@@ -2721,8 +2745,14 @@ msgstr "Shift Enter"
 msgid "Shift F10"
 msgstr "Shift F10"
 
+msgid "Shift+F10 or the Menu key"
+msgstr "Shift+F10またはメニューキー"
+
 msgid "Shift+Insert"
 msgstr "Shift+Insert"
+
+msgid "Shift+Up or Shift+Down"
+msgstr "Shift+↑またはShift+↓"
 
 msgid "Shift+click (or Shift+Enter) only copies a card to the clipboard, so you can paste it yourself."
 msgstr "Shift+クリック（またはShift+Enter）ではカードがクリップボードにコピーされるだけなので、自分で貼り付けられます。"
@@ -2997,6 +3027,12 @@ msgstr "記号のデータ"
 msgid "Tab"
 msgstr "Tab"
 
+msgid "Tab or Shift+Tab"
+msgstr "TabまたはShift+Tab"
+
+msgid "Tab while the suggestion hint shows"
+msgstr "候補のヒントが出ている間のTab"
+
 msgid "Tabs"
 msgstr "タブ"
 
@@ -3143,6 +3179,9 @@ msgstr "整合性チェックで問題は見つかりませんでした。"
 
 msgid "The integrity check found {} problem(s); the first: {}"
 msgstr "整合性チェックで {} 件の問題が見つかりました。最初の問題：{}"
+
+msgid "The item's trigger"
+msgstr "スニペットのトリガー"
 
 msgid "The items cannot be read: {}"
 msgstr "スニペットを読み取れません：{}"
@@ -3464,6 +3503,9 @@ msgstr "ピン留めの解除も同じ操作です。"
 
 msgid "Unsaved: this is how the item will look once you save it."
 msgstr "未保存：保存するとスニペットはこのように表示されます。"
+
+msgid "Up or Down"
+msgstr "↑または↓"
 
 msgid "Use"
 msgstr "使用"

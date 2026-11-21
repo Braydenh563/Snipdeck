@@ -201,6 +201,15 @@ msgstr "Auch Kopiertes behalten?"
 msgid "Alt 1 to 9"
 msgstr "Alt 1 bis 9"
 
+msgid "Alt+1 to 9"
+msgstr "Alt+1 bis 9"
+
+msgid "Alt+Up or Alt+Down"
+msgstr "Alt+Auf oder Alt+Ab"
+
+msgid "Alt+Up or Alt+Down on a group header"
+msgstr "Alt+Auf oder Alt+Ab auf einer Gruppenüberschrift"
+
 msgid "Alt+{}"
 msgstr "Alt+{}"
 
@@ -1296,6 +1305,9 @@ msgstr "Gehört. Dieses Tastenkürzel funktioniert."
 msgid "Heart"
 msgstr "Herz"
 
+msgid "Hello"
+msgstr "Windows Hello"
+
 msgid "Help"
 msgstr "Hilfe"
 
@@ -1331,6 +1343,9 @@ msgstr "Titel, Farbe, Tags, Kürzel und Datenschutz ausblenden"
 
 msgid "History is paused"
 msgstr "Verlauf ist pausiert"
+
+msgid "Hold Space"
+msgstr "Leertaste halten"
 
 msgid "Hold to reveal"
 msgstr "Gedrückt halten zum Anzeigen"
@@ -1535,6 +1550,12 @@ msgstr "Links"
 
 msgid "Left edge"
 msgstr "Linker Rand"
+
+msgid "Left, Right or Enter on a group header"
+msgstr "Links, Rechts oder Enter auf einer Gruppenüberschrift"
+
+msgid "Left, Right, Enter or Space on a group header"
+msgstr "Links, Rechts, Enter oder Leertaste auf einer Gruppenüberschrift"
 
 msgid "Lengthen the hover delay"
 msgstr "Verzögerung beim Darüberfahren verlängern"
@@ -2085,6 +2106,9 @@ msgstr "PNG, {}"
 
 msgid "PNG, {} × {}, {}"
 msgstr "PNG, {} × {}, {}"
+
+msgid "PageUp or PageDown"
+msgstr "Bild auf oder Bild ab"
 
 msgid "Panel"
 msgstr "Panel"
@@ -2729,8 +2753,14 @@ msgstr "Shift Enter"
 msgid "Shift F10"
 msgstr "Shift F10"
 
+msgid "Shift+F10 or the Menu key"
+msgstr "Shift+F10 oder die Menütaste"
+
 msgid "Shift+Insert"
 msgstr "Shift+Insert"
+
+msgid "Shift+Up or Shift+Down"
+msgstr "Shift+Auf oder Shift+Ab"
 
 msgid "Shift+click (or Shift+Enter) only copies a card to the clipboard, so you can paste it yourself."
 msgstr "Shift+Klick (oder Shift+Enter) kopiert eine Karte nur in die Zwischenablage, damit du sie selbst einfügen kannst."
@@ -3005,6 +3035,12 @@ msgstr "Symboldaten"
 msgid "Tab"
 msgstr "Tab"
 
+msgid "Tab or Shift+Tab"
+msgstr "Tab oder Shift+Tab"
+
+msgid "Tab while the suggestion hint shows"
+msgstr "Tab, solange der Vorschlagshinweis angezeigt wird"
+
 msgid "Tabs"
 msgstr "Tabs"
 
@@ -3151,6 +3187,9 @@ msgstr "Die Integritätsprüfung hat keine Probleme gefunden."
 
 msgid "The integrity check found {} problem(s); the first: {}"
 msgstr "Die Integritätsprüfung hat {} Problem(e) gefunden; das erste: {}"
+
+msgid "The item's trigger"
+msgstr "Das Kürzel des Textbausteins"
 
 msgid "The items cannot be read: {}"
 msgstr "Die Textbausteine können nicht gelesen werden: {}"
@@ -3472,6 +3511,9 @@ msgstr "Löse sie auf dieselbe Weise."
 
 msgid "Unsaved: this is how the item will look once you save it."
 msgstr "Nicht gespeichert: So sieht der Textbaustein nach dem Speichern aus."
+
+msgid "Up or Down"
+msgstr "Auf oder Ab"
 
 msgid "Use"
 msgstr "Verwenden"

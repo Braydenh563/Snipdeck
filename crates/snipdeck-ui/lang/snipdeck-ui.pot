@@ -264,6 +264,18 @@ msgstr ""
 msgid "Alt 1 to 9"
 msgstr ""
 
+#: ui/name_texts.slint:70
+msgid "Alt+1 to 9"
+msgstr ""
+
+#: ui/name_texts.slint:64
+msgid "Alt+Up or Alt+Down"
+msgstr ""
+
+#: ui/name_texts.slint:74
+msgid "Alt+Up or Alt+Down on a group header"
+msgstr ""
+
 #: ui/components/item-card.slint:52 ui/components/item-card.slint:645
 msgid "Alt+{}"
 msgstr ""
@@ -472,7 +484,7 @@ msgstr ""
 msgid "Browse…"
 msgstr ""
 
-#: ui/help.slint:422
+#: ui/help.slint:433
 msgid "Built on"
 msgstr ""
 
@@ -488,7 +500,7 @@ msgstr ""
 msgid "Camera"
 msgstr ""
 
-#: ui/components/hotkey_health.slint:39 ui/components/quick-add.slint:182 ui/editors.slint:1522 ui/editors.slint:1907 ui/editors.slint:1945 ui/editors.slint:2288 ui/help.slint:505 ui/main_window.slint:3005 ui/main_window.slint:3027 ui/master_password.slint:270 ui/master_password.slint:405 ui/panel.slint:3150 ui/panel.slint:3168 ui/panel.slint:3186 ui/settings.slint:1117 ui/settings.slint:1682 ui/settings.slint:1756 ui/template_fill.slint:330
+#: ui/components/hotkey_health.slint:39 ui/components/quick-add.slint:182 ui/editors.slint:1522 ui/editors.slint:1907 ui/editors.slint:1945 ui/editors.slint:2288 ui/help.slint:516 ui/main_window.slint:3005 ui/main_window.slint:3027 ui/master_password.slint:270 ui/master_password.slint:405 ui/panel.slint:3150 ui/panel.slint:3168 ui/panel.slint:3186 ui/settings.slint:1117 ui/settings.slint:1682 ui/settings.slint:1756 ui/template_fill.slint:330
 msgid "Cancel"
 msgstr ""
 
@@ -532,7 +544,7 @@ msgstr ""
 msgid "Check again"
 msgstr ""
 
-#: ui/help.slint:463
+#: ui/help.slint:474
 msgid "Check for updates"
 msgstr ""
 
@@ -600,7 +612,7 @@ msgstr ""
 msgid "Clear recent history?"
 msgstr ""
 
-#: ui/components/command-palette.slint:189 ui/help.slint:267 ui/main_window.slint:1539 ui/panel.slint:1897 ui/panel.slint:2584 ui/picker.slint:467 ui/symbols.slint:167
+#: ui/components/command-palette.slint:189 ui/help.slint:278 ui/main_window.slint:1539 ui/panel.slint:1897 ui/panel.slint:2584 ui/picker.slint:467 ui/symbols.slint:167
 msgid "Clear search"
 msgstr ""
 
@@ -836,7 +848,7 @@ msgstr ""
 msgid "Copy as…"
 msgstr ""
 
-#: ui/help.slint:237
+#: ui/help.slint:241
 msgid "Copy diagnostic report"
 msgstr ""
 
@@ -1408,7 +1420,7 @@ msgstr ""
 msgid "Emoji"
 msgstr ""
 
-#: ui/help.slint:482
+#: ui/help.slint:493
 msgid "Emoji art: Microsoft Fluent Emoji (MIT). Icons: Phosphor (MIT). Emoji names and keywords: Unicode CLDR (Unicode-3.0)."
 msgstr ""
 
@@ -1724,6 +1736,10 @@ msgstr ""
 msgid "Heart"
 msgstr ""
 
+#: ui/name_texts.slint:78
+msgid "Hello"
+msgstr ""
+
 #: ui/help.slint:40 ui/main_window.slint:1470 ui/main_window.slint:1485 ui/main_window.slint:2864 ui/settings.slint:1802
 msgid "Help"
 msgstr ""
@@ -1770,6 +1786,10 @@ msgstr ""
 
 #: ui/panel.slint:2510
 msgid "History is paused"
+msgstr ""
+
+#: ui/name_texts.slint:65
+msgid "Hold Space"
 msgstr ""
 
 #: ui/components/item-card.slint:952
@@ -2042,6 +2062,14 @@ msgstr ""
 msgid "Left edge"
 msgstr ""
 
+#: ui/name_texts.slint:66
+msgid "Left, Right or Enter on a group header"
+msgstr ""
+
+#: ui/name_texts.slint:73
+msgid "Left, Right, Enter or Space on a group header"
+msgstr ""
+
 #: ui/settings.slint:1000
 msgid "Lengthen the hover delay"
 msgstr ""
@@ -2070,7 +2098,7 @@ msgstr ""
 msgid "Link"
 msgstr ""
 
-#: ui/help.slint:434
+#: ui/help.slint:445
 msgid "Links"
 msgstr ""
 
@@ -2650,7 +2678,7 @@ msgstr ""
 msgid "Only with Start with Windows: wait in the tray, or open the Panel as well."
 msgstr ""
 
-#: ui/help.slint:439 ui/help.slint:457 ui/help.slint:466 ui/help.slint:475 ui/help.slint:488 ui/settings.slint:1790
+#: ui/help.slint:450 ui/help.slint:468 ui/help.slint:477 ui/help.slint:486 ui/help.slint:499 ui/settings.slint:1790
 msgid "Open"
 msgstr ""
 
@@ -2678,7 +2706,7 @@ msgstr ""
 msgid "Open backups folder"
 msgstr ""
 
-#: ui/help.slint:111 ui/help.slint:241 ui/settings.slint:1491
+#: ui/help.slint:111 ui/help.slint:248 ui/settings.slint:1491
 msgid "Open data folder"
 msgstr ""
 
@@ -2686,7 +2714,7 @@ msgstr ""
 msgid "Open in Colours"
 msgstr ""
 
-#: ui/help.slint:111 ui/help.slint:246
+#: ui/help.slint:111 ui/help.slint:256
 msgid "Open logs folder"
 msgstr ""
 
@@ -2702,7 +2730,7 @@ msgstr ""
 msgid "Open the Picker at your cursor"
 msgstr ""
 
-#: ui/help.slint:476 ui/settings.slint:1791
+#: ui/help.slint:487 ui/settings.slint:1791
 msgid "Open the Support Snipdeck page in your browser"
 msgstr ""
 
@@ -2714,19 +2742,19 @@ msgstr ""
 msgid "Open the picker"
 msgstr ""
 
-#: ui/help.slint:467
+#: ui/help.slint:478
 msgid "Open the releases page"
 msgstr ""
 
-#: ui/help.slint:458
+#: ui/help.slint:469
 msgid "Open the source code"
 msgstr ""
 
-#: ui/help.slint:489
+#: ui/help.slint:500
 msgid "Open the third-party notices"
 msgstr ""
 
-#: ui/help.slint:440
+#: ui/help.slint:451
 msgid "Open the user guide"
 msgstr ""
 
@@ -2742,11 +2770,11 @@ msgstr ""
 msgid "Opens"
 msgstr ""
 
-#: ui/help.slint:437
+#: ui/help.slint:448
 msgid "Opens in your browser."
 msgstr ""
 
-#: ui/help.slint:473 ui/settings.slint:1788
+#: ui/help.slint:484 ui/settings.slint:1788
 msgid "Optional. Snipdeck is free and stays free. This opens a donation page in your browser and unlocks nothing."
 msgstr ""
 
@@ -2772,6 +2800,10 @@ msgstr ""
 
 #: ui/form_texts.slint:60
 msgid "PNG, {} × {}, {}"
+msgstr ""
+
+#: ui/name_texts.slint:69
+msgid "PageUp or PageDown"
 msgstr ""
 
 #: ui/settings.slint:879 ui/shortcut_texts.slint:10
@@ -3138,7 +3170,7 @@ msgstr ""
 msgid "Ready. Press Test to check it."
 msgstr ""
 
-#: ui/help.slint:510
+#: ui/help.slint:521
 msgid "Rebuild"
 msgstr ""
 
@@ -3146,7 +3178,7 @@ msgstr ""
 msgid "Rebuild from backup…"
 msgstr ""
 
-#: ui/help.slint:501
+#: ui/help.slint:512
 msgid "Rebuild from the newest backup?"
 msgstr ""
 
@@ -3630,8 +3662,16 @@ msgstr ""
 msgid "Shift F10"
 msgstr ""
 
+#: ui/name_texts.slint:72
+msgid "Shift+F10 or the Menu key"
+msgstr ""
+
 #: ui/settings.slint:157
 msgid "Shift+Insert"
+msgstr ""
+
+#: ui/name_texts.slint:71
+msgid "Shift+Up or Shift+Down"
 msgstr ""
 
 #: ui/starter_texts.slint:22
@@ -3670,7 +3710,7 @@ msgstr ""
 msgid "Shorten the leave delay"
 msgstr ""
 
-#: ui/help.slint:448
+#: ui/help.slint:459
 msgid "Show"
 msgstr ""
 
@@ -3714,7 +3754,7 @@ msgstr ""
 msgid "Show the Panel in the taskbar and Alt+Tab"
 msgstr ""
 
-#: ui/help.slint:449
+#: ui/help.slint:460
 msgid "Show the welcome tour again"
 msgstr ""
 
@@ -3838,7 +3878,7 @@ msgstr ""
 msgid "Snipdeck keeps the text you paste again and again, one shortcut away. The basics:"
 msgstr ""
 
-#: ui/help.slint:464
+#: ui/help.slint:475
 msgid "Snipdeck never checks by itself. This opens the releases page in your browser."
 msgstr ""
 
@@ -3898,7 +3938,7 @@ msgstr ""
 msgid "Sort: {}"
 msgstr ""
 
-#: ui/help.slint:454
+#: ui/help.slint:465
 msgid "Source code"
 msgstr ""
 
@@ -3966,7 +4006,7 @@ msgstr ""
 msgid "Support"
 msgstr ""
 
-#: ui/command_texts.slint:30 ui/help.slint:472 ui/settings.slint:499 ui/settings.slint:1786
+#: ui/command_texts.slint:30 ui/help.slint:483 ui/settings.slint:499 ui/settings.slint:1786
 msgid "Support Snipdeck"
 msgstr ""
 
@@ -3990,12 +4030,20 @@ msgstr ""
 msgid "Symbols at your fingertips"
 msgstr ""
 
-#: ui/help.slint:481
+#: ui/help.slint:492
 msgid "Symbols data"
 msgstr ""
 
 #: ui/picker.slint:644
 msgid "Tab"
+msgstr ""
+
+#: ui/name_texts.slint:75
+msgid "Tab or Shift+Tab"
+msgstr ""
+
+#: ui/name_texts.slint:63
+msgid "Tab while the suggestion hint shows"
 msgstr ""
 
 #: ui/settings.slint:809
@@ -4194,6 +4242,10 @@ msgstr ""
 msgid "The integrity check found {} problem(s); the first: {}"
 msgstr ""
 
+#: ui/name_texts.slint:62
+msgid "The item's trigger"
+msgstr ""
+
 #: ui/doctor_texts.slint:27
 msgid "The items cannot be read: {}"
 msgstr ""
@@ -4214,7 +4266,7 @@ msgstr ""
 msgid "The library could not be unlocked or changed. Nothing was changed."
 msgstr ""
 
-#: ui/help.slint:486
+#: ui/help.slint:497
 msgid "The licences of the libraries Snipdeck is built from."
 msgstr ""
 
@@ -4226,7 +4278,7 @@ msgstr ""
 msgid "The list holds at most {} programs."
 msgstr ""
 
-#: ui/help.slint:502
+#: ui/help.slint:513
 msgid "The newest backup is from {} and holds {} items on {} boards. Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read."
 msgstr ""
 
@@ -4246,7 +4298,7 @@ msgstr ""
 msgid "The picker"
 msgstr ""
 
-#: ui/help.slint:252
+#: ui/help.slint:263
 msgid "The report holds versions and settings switches, never your items."
 msgstr ""
 
@@ -4310,7 +4362,7 @@ msgstr ""
 msgid "These shortcuts are not working: {}. Settings > Shortcuts says why."
 msgstr ""
 
-#: ui/help.slint:485
+#: ui/help.slint:496
 msgid "Third-party notices"
 msgstr ""
 
@@ -4318,7 +4370,7 @@ msgstr ""
 msgid "This board"
 msgstr ""
 
-#: ui/help.slint:410
+#: ui/help.slint:421
 msgid "This copy"
 msgstr ""
 
@@ -4446,7 +4498,7 @@ msgstr ""
 msgid "Triadic"
 msgstr ""
 
-#: ui/editors.slint:1473 ui/editors.slint:1484 ui/editors.slint:1489
+#: ui/editors.slint:1473 ui/editors.slint:1484 ui/editors.slint:1489 ui/name_texts.slint:77
 msgid "Trigger"
 msgstr ""
 
@@ -4486,7 +4538,7 @@ msgstr ""
 msgid "Turns off sliding and fading in Snipdeck. It is also off when Windows has Animation effects off."
 msgstr ""
 
-#: ui/editors.slint:705
+#: ui/editors.slint:705 ui/name_texts.slint:67
 msgid "Type"
 msgstr ""
 
@@ -4570,7 +4622,7 @@ msgstr ""
 msgid "Unlock window"
 msgstr ""
 
-#: ui/master_password.slint:387 ui/settings.slint:491 ui/settings.slint:1209 ui/settings.slint:1257 ui/settings.slint:1260
+#: ui/master_password.slint:387 ui/name_texts.slint:76 ui/settings.slint:491 ui/settings.slint:1209 ui/settings.slint:1257 ui/settings.slint:1260
 msgid "Unlock with Windows Hello"
 msgstr ""
 
@@ -4622,6 +4674,10 @@ msgstr ""
 msgid "Unsaved: this is how the item will look once you save it."
 msgstr ""
 
+#: ui/name_texts.slint:68
+msgid "Up or Down"
+msgstr ""
+
 #: ui/components/item-card.slint:936 ui/main_window.slint:326 ui/menu_texts.slint:111
 msgid "Use"
 msgstr ""
@@ -4662,7 +4718,7 @@ msgstr ""
 msgid "Use {} for {}"
 msgstr ""
 
-#: ui/command_texts.slint:25 ui/help.slint:436 ui/main_window.slint:2859 ui/menu_texts.slint:97 ui/shortcut_texts.slint:33 ui/shortcut_texts.slint:86
+#: ui/command_texts.slint:25 ui/help.slint:447 ui/main_window.slint:2859 ui/menu_texts.slint:97 ui/shortcut_texts.slint:33 ui/shortcut_texts.slint:86
 msgid "User guide"
 msgstr ""
 
@@ -4670,7 +4726,7 @@ msgstr ""
 msgid "Values as"
 msgstr ""
 
-#: ui/help.slint:412
+#: ui/help.slint:423
 msgid "Version"
 msgstr ""
 
@@ -4686,7 +4742,7 @@ msgstr ""
 msgid "Violet"
 msgstr ""
 
-#: ui/help.slint:446
+#: ui/help.slint:457
 msgid "Walk through the basics again."
 msgstr ""
 
@@ -4698,7 +4754,7 @@ msgstr ""
 msgid "Welcome to Snipdeck"
 msgstr ""
 
-#: ui/command_texts.slint:26 ui/help.slint:445
+#: ui/command_texts.slint:26 ui/help.slint:456
 msgid "Welcome tour"
 msgstr ""
 
