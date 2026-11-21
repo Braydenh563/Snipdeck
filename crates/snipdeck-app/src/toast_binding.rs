@@ -200,7 +200,7 @@ impl ToastUi {
             }
         });
         register_redraw(&core.redraw);
-        crate::binding::register_toast_redraw(&core.toast_redraw);
+        crate::binding::register_toast_redraw(&core.redraw, &core.toast_redraw);
         Self {
             _core: core,
             window: Box::new({

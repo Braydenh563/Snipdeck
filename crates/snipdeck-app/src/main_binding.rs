@@ -617,7 +617,7 @@ where
             }
         });
         register_redraw(&core.redraw);
-        crate::binding::register_toast_redraw(&core.toast_redraw);
+        crate::binding::register_toast_redraw(&core.redraw, &core.toast_redraw);
         // The OS draws the title bar and its caption buttons until the client-area chrome of
         // ADR-0008 exists, so the toolbar reserves nothing for them.
         window.global::<ui::SystemLook<'_>>().set_caption_inset(0.0);

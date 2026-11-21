@@ -52,27 +52,35 @@ thread_local! {
 }
 
 thread_local! {
-    /// The redraws of the windows that draw the toast, for the toast timer: a tick changes only
-    /// the toast, so a window whose toast is unchanged is not drawn.
-    static TOAST_REDRAW: RefCell<Vec<Weak<dyn Fn()>>> = const { RefCell::new(Vec::new()) };
+    /// For the windows that can draw only their toast: their toast-only redraw, by the address of
+    /// the window's full redraw (the key in `REDRAW`). A window without one is redrawn whole.
+    static TOAST_REDRAW: RefCell<HashMap<usize, Weak<dyn Fn()>>> = RefCell::new(HashMap::new());
 }
 
-/// Adds a window's toast-only redraw to the set [`redraw_toast`] runs.
-pub(crate) fn register_toast_redraw(redraw: &Rc<dyn Fn()>) {
+fn redraw_key(redraw: &Rc<dyn Fn()>) -> usize {
+    Rc::as_ptr(redraw).cast::<()>() as usize
+}
+
+/// Gives the window whose full redraw is `redraw` a cheaper redraw for a toast tick: it runs
+/// `toast_only`, which draws only if the toast changed.
+pub(crate) fn register_toast_redraw(redraw: &Rc<dyn Fn()>, toast_only: &Rc<dyn Fn()>) {
     TOAST_REDRAW.with(|all| {
         let mut all = all.borrow_mut();
-        all.retain(|w| w.strong_count() > 0);
-        all.push(Rc::downgrade(redraw));
+        all.retain(|_, w| w.strong_count() > 0);
+        all.insert(redraw_key(redraw), Rc::downgrade(toast_only));
     });
 }
 
-/// Runs each toast-drawing window's check after a toast tick; a window redraws only when its
-/// toast differs from the one it shows. Call without a controller borrow held.
+/// Redraws the windows after a toast tick: a window with a toast-only redraw runs that (it
+/// draws only when its toast differs from the one it shows), every other window is redrawn
+/// whole, as [`redraw_all`] does. Call without a controller borrow held.
 pub(crate) fn redraw_toast() {
     let all: Vec<Rc<dyn Fn()>> =
-        TOAST_REDRAW.with(|all| all.borrow().iter().filter_map(Weak::upgrade).collect());
+        REDRAW.with(|all| all.borrow().iter().filter_map(Weak::upgrade).collect());
     for redraw in all {
-        redraw();
+        let cheap =
+            TOAST_REDRAW.with(|t| t.borrow().get(&redraw_key(&redraw)).and_then(Weak::upgrade));
+        (cheap.as_ref().unwrap_or(&redraw))();
     }
 }
 
@@ -378,7 +386,7 @@ where
             }
         });
         register_redraw(&core.redraw);
-        register_toast_redraw(&core.toast_redraw);
+        register_toast_redraw(&core.redraw, &core.toast_redraw);
         core
     }
 
@@ -2313,21 +2321,40 @@ impl Payload {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn a_toast_tick_runs_only_the_toast_redraws() {
+    fn a_toast_tick_runs_the_toast_redraw_or_else_the_full_one() {
         use std::{cell::Cell, rc::Rc};
-        let toast_runs = Rc::new(Cell::new(0_u32));
-        let full_runs = Rc::new(Cell::new(0_u32));
-        let t = Rc::clone(&toast_runs);
-        let toast: Rc<dyn Fn()> = Rc::new(move || t.set(t.get() + 1));
-        let f = Rc::clone(&full_runs);
-        let full: Rc<dyn Fn()> = Rc::new(move || f.set(f.get() + 1));
-        super::register_toast_redraw(&toast);
-        super::register_redraw(&full);
+        super::REDRAW.with(|r| r.borrow_mut().clear());
+        super::TOAST_REDRAW.with(|r| r.borrow_mut().clear());
+        let count = |c: &Rc<Cell<u32>>| {
+            let c = Rc::clone(c);
+            let f: Rc<dyn Fn()> = Rc::new(move || c.set(c.get() + 1));
+            f
+        };
+        let (full_a, toast_a, full_b) = (
+            Rc::new(Cell::new(0_u32)),
+            Rc::new(Cell::new(0_u32)),
+            Rc::new(Cell::new(0_u32)),
+        );
+        // Window A has a toast-only redraw; window B (Help, say) has only the full one.
+        let (redraw_a, toast_only_a, redraw_b) = (count(&full_a), count(&toast_a), count(&full_b));
+        super::register_redraw(&redraw_a);
+        super::register_redraw(&redraw_b);
+        super::register_toast_redraw(&redraw_a, &toast_only_a);
         super::redraw_toast();
-        assert_eq!((toast_runs.get(), full_runs.get()), (1, 0));
-        drop(toast);
+        assert_eq!(
+            (full_a.get(), toast_a.get(), full_b.get()),
+            (0, 1, 1),
+            "A draws its toast only; B, with no toast-only redraw, is redrawn whole"
+        );
+        drop(toast_only_a);
         super::redraw_toast();
-        assert_eq!(toast_runs.get(), 1, "a dropped window is not redrawn");
+        assert_eq!(
+            full_a.get(),
+            1,
+            "a gone toast-only redraw falls back to the full one"
+        );
+        super::REDRAW.with(|r| r.borrow_mut().clear());
+        super::TOAST_REDRAW.with(|r| r.borrow_mut().clear());
     }
 
     #[test]

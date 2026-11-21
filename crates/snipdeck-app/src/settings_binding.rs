@@ -1761,7 +1761,7 @@ where
             }
         });
         register_redraw(&core.redraw);
-        crate::binding::register_toast_redraw(&core.toast_redraw);
+        crate::binding::register_toast_redraw(&core.redraw, &core.toast_redraw);
         let follow = window.invoke_follow_windows_text();
         window.set_languages(model(
             std::iter::once(follow).chain(LANGUAGE_NAMES.iter().map(|n| SharedString::from(*n))),

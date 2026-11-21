@@ -357,6 +357,11 @@ impl IndexCache {
             let position = *old.positions.get(&id)?;
             let item = store.item(id).ok()?;
             let before = &old.all[position];
+            // A move to another list puts the item last there with a new rank: the positions
+            // (and so All and the pinned strip) are wrong, so the library is read again.
+            if before.list_id != item.list_id {
+                return None;
+            }
             names_changed |= before.title != item.title
                 || before.tags != item.tags
                 || before.sensitive != item.sensitive;
@@ -733,6 +738,67 @@ mod tests {
         let full = cache.snapshot(&s).unwrap();
         assert_eq!(full.index().len(), 3);
         assert_eq!((cache.rebuilds(), cache.patches()), (2, 1));
+    }
+
+    /// An editor save that moves the item to another list puts it at the end of that list with
+    /// a new rank, so the positions of the snapshot are wrong: the snapshot is read again.
+    #[test]
+    fn an_edit_that_changes_the_list_rereads_the_library() {
+        let (mut s, l) = seeded();
+        let board = s.boards().unwrap()[0].id;
+        let other = List::new(board, Name::new("Other").unwrap(), at());
+        s.insert_list(&other, Placement::Last).unwrap();
+        add(&mut s, l, "alpha");
+        add(&mut s, l, "beta");
+        add(&mut s, other.id, "gamma");
+        let cache = IndexCache::new();
+        let first = cache.snapshot(&s).unwrap();
+        let id = first.all[0].id;
+        let mut item = s.item(id).unwrap();
+        item.list_id = other.id;
+        cache
+            .edit_item(&mut s, id, |s| s.update_item(&item, None))
+            .unwrap();
+        let after = cache.snapshot(&s).unwrap();
+        assert_eq!(
+            (cache.rebuilds(), cache.patches()),
+            (2, 0),
+            "a list change is read again, not patched"
+        );
+        let titles: Vec<&str> = after.all.iter().map(|i| i.title.as_str()).collect();
+        assert_eq!(
+            titles,
+            ["beta", "gamma", "alpha"],
+            "the item sits last in its new list"
+        );
+    }
+
+    /// A list renamed after the snapshot was read and before an edit is hinted: the suggestions
+    /// follow the new name because the counters no longer explain the hint.
+    #[test]
+    fn a_renamed_list_is_read_again_even_with_an_edit_hint() {
+        let (mut s, l) = seeded();
+        add(&mut s, l, "alpha");
+        let cache = IndexCache::new();
+        let first = cache.snapshot(&s).unwrap();
+        let _ = first.suggest();
+        let board = s.boards().unwrap()[0].id;
+        let mut list = s.lists(board).unwrap().remove(0);
+        list.name = Name::new("Renamed").unwrap();
+        s.update_list(&list).unwrap();
+        let id = first.all[0].id;
+        let mut item = s.item(id).unwrap();
+        item.title = "beta".to_owned();
+        cache
+            .edit_item(&mut s, id, |s| s.update_item(&item, None))
+            .unwrap();
+        let after = cache.snapshot(&s).unwrap();
+        assert_eq!(
+            cache.patches(),
+            0,
+            "the rename is not explained by the hint"
+        );
+        assert_eq!(after.boards[0].1[0].name.as_str(), "Renamed");
     }
 
     /// A store that counts how often the Recent list is read.
