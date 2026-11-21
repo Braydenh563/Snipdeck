@@ -78,16 +78,13 @@ where
             | Command::UsePlain
             | Command::RestoreItem
             | Command::DeleteForever => {}
-            Command::ImportLibrary => self
-                .pending
-                .push(Effect::SettingsAction(SettingsAction::Import)),
-            Command::ExportLibrary => self
-                .pending
-                .push(Effect::SettingsAction(SettingsAction::Export)),
-            Command::BackUpNow => self
-                .pending
-                .push(Effect::SettingsAction(SettingsAction::BackUp)),
-            Command::EmptyTrash => self.main_open(Section::Trash),
+            Command::ImportLibrary | Command::ExportLibrary | Command::BackUpNow => {
+                self.pending.push(Effect::SettingsAction(match command {
+                    Command::ImportLibrary => SettingsAction::Import,
+                    Command::ExportLibrary => SettingsAction::Export,
+                    _ => SettingsAction::BackUp,
+                }));
+            }
             Command::ShowPanel | Command::HidePanel => self.main_toggle_panel(),
             Command::Undo => self.undo(),
             Command::Redo => self.redo(),
@@ -150,7 +147,7 @@ where
             Command::GoAll => self.main_open(Section::All),
             Command::GoPinned => self.main_open(Section::Pinned),
             Command::GoRecent => self.main_open(Section::Recent),
-            Command::GoTrash => self.main_open(Section::Trash),
+            Command::GoTrash | Command::EmptyTrash => self.main_open(Section::Trash),
             Command::KeepPanelOpen | Command::LetPanelClose => {
                 let on_top = !self.on_top;
                 self.choose_on_top(on_top);
