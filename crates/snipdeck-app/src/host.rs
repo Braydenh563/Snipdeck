@@ -793,7 +793,7 @@ mod tests {
         assert_eq!(retry_failed(&mut backend, &hotkeys, &problems), problems);
         // The other program ended: the retry registers it and nothing remains.
         backend.taken.clear();
-        assert!(retry_failed(&mut backend, &hotkeys, &problems).is_empty());
+        assert_eq!(retry_failed(&mut backend, &hotkeys, &problems).len(), 0);
         assert!(
             backend
                 .registered
@@ -803,7 +803,7 @@ mod tests {
         // A hotkey the user has since turned off is not retried.
         let mut off = hotkeys.clone();
         off.toggle_panel = String::new();
-        assert!(retry_failed(&mut backend, &off, &problems).is_empty());
+        assert_eq!(retry_failed(&mut backend, &off, &problems).len(), 0);
     }
 
     #[test]
