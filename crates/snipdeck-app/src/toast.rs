@@ -570,7 +570,7 @@ mod tests {
         assert_eq!(
             toast.message,
             ToastMessage::CopiedNothingFocused {
-                app: "Explorer".into()
+                app: "File Explorer".into()
             }
         );
         let toast = after_use(
