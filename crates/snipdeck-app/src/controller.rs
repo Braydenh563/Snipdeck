@@ -96,7 +96,7 @@ pub const TOAST_ERROR_HOLD: Duration = Duration::from_secs(10);
 pub const TOAST_UNDO_HOLD: Duration = Duration::from_millis(4880);
 /// A toast whose text is long stays at least this long plus [`TOAST_READ_PER_CHAR`] for each character of it
 /// (WCAG 2.2.1: about 17 characters a second, and a second to take it in), at most [`TOAST_READ_MAX`].
-pub const TOAST_READ_BASE: Duration = Duration::from_millis(1000);
+pub const TOAST_READ_BASE: Duration = Duration::from_secs(1);
 /// The reading time of one character of a toast, see [`TOAST_READ_BASE`].
 pub const TOAST_READ_PER_CHAR: Duration = Duration::from_millis(60);
 /// The longest a toast is held for the length of its text.

@@ -106,7 +106,7 @@ mod tests {
     use super::*;
 
     /// Every card has its own drawing: `TipArt` has one branch per index, so the index of the last card
-    /// must be the last branch (checked in the UI crate's tip_art test).
+    /// must be the last branch (checked in the UI crate's `tip_art` test).
     #[test]
     fn there_is_one_picture_per_card() {
         assert_eq!(TIPS.len(), 11);

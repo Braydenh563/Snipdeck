@@ -320,7 +320,7 @@ fn an_error_toast_holds_longer_than_a_neutral_one() {
     assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_ERROR_GUARD));
     assert_eq!(
         w.ctl.toast_tick(seq),
-        Some(TOAST_ERROR_HOLD - TOAST_ERROR_GUARD)
+        TOAST_ERROR_HOLD.checked_sub(TOAST_ERROR_GUARD)
     );
     assert!(TOAST_ERROR_HOLD >= TOAST_HOLD * 4);
     // Under the pointer it stays, and after the pointer leaves it gets a fresh error hold.

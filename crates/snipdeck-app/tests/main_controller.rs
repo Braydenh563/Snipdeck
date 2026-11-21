@@ -2530,6 +2530,8 @@ fn a_tag_drop_is_one_undo_step() {
     assert_eq!(ctl.main_screen().tags[0].count, 11);
     ctl.undo();
     assert_eq!(ctl.main_screen().tags[0].count, 0);
+}
+
 // ---- Moving a list to another board (MAIN-23) -------------------------------------------------
 
 /// Whether the board `board` holds a list called `list`.

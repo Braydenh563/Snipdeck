@@ -793,6 +793,7 @@ fn a_bad_rename_shows_the_error_and_keeps_the_editor() {
 
         manager.invoke_rename_requested(0, "".into());
         assert_eq!(manager.get_rename_error(), "Give it a name.");
+        assert_eq!(tag_labels(&r), before, "a refused rename changes nothing");
         // A good name clears the message and closes the field.
         manager.invoke_rename_requested(0, "Receipts".into());
         assert_eq!(manager.get_rename_error(), "");

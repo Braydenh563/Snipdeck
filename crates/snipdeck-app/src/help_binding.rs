@@ -912,7 +912,6 @@ impl HelpUi {
         let slot: Slot<C, K, T> = Rc::default();
         let open = {
             let controller = Rc::clone(controller);
-            let host = Rc::clone(&host);
             move |topic: HelpTopic| -> Result<(), slint::PlatformError> {
                 if topic == HelpTopic::Guide {
                     // The guide is a page in the browser: a browser that will not start says so,
