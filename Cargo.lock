@@ -4570,8 +4570,6 @@ dependencies = [
  "jiff",
  "nucleo-matcher",
  "proptest",
- "serde",
- "serde_json",
  "thiserror 2.0.21",
  "unicode-normalization",
  "unicode-segmentation",
