@@ -224,6 +224,12 @@ where
         ));
         wire!(on_edit_requested, |core, i| core
             .act(|ctl| ctl.picker_edit(index(i))));
+        wire!(on_pin_requested, |core, i| core
+            .act(|ctl| ctl.picker_pin(index(i))));
+        wire!(on_duplicate_requested, |core, i| core
+            .act(|ctl| ctl.picker_duplicate(index(i))));
+        wire!(on_trash_requested, |core, i| core
+            .act(|ctl| ctl.picker_trash(index(i))));
         wire!(on_close_requested, |core| core
             .act(Controller::close_picker));
         wire!(on_dismissed, |core| core.act(Controller::dismiss_picker));

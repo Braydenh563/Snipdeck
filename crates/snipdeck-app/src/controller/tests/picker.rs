@@ -323,3 +323,44 @@ fn the_picker_starts_on_the_scope_it_was_left_on_and_falls_back_without_a_list()
     w.ctl.on_hotkey(HotkeyAction::Picker);
     assert_eq!(w.ctl.view().picker.expect("open").scope, Scope::Pinned);
 }
+
+#[test]
+fn ctrl_p_in_the_picker_pins_and_unpins_the_row_and_keeps_the_search() {
+    let mut w = world();
+    w.ctl.on_hotkey(HotkeyAction::Picker);
+    w.ctl.picker_query("o");
+    let before = picker_titles(&w);
+    let id = w.ctl.view().picker.expect("open").rows[1].id;
+    w.ctl.picker_pin(1);
+    assert!(w.ctl.store().item(id).expect("item").pinned);
+    let view = w.ctl.view().picker.expect("still open");
+    assert_eq!(view.query, "o", "the search stays");
+    assert_eq!(view.selected, 0, "a pin does not move the cursor");
+    w.ctl.picker_pin(1);
+    assert!(!w.ctl.store().item(id).expect("item").pinned);
+    assert_eq!(picker_titles(&w).len(), before.len());
+    w.ctl.picker_pin(99);
+}
+
+#[test]
+fn ctrl_d_in_the_picker_duplicates_the_row_and_the_list_shows_the_copy() {
+    let mut w = world();
+    w.ctl.on_hotkey(HotkeyAction::Picker);
+    w.ctl.picker_scope(Scope::Board);
+    let before = picker_titles(&w).len();
+    w.ctl.picker_duplicate(0);
+    assert_eq!(picker_titles(&w).len(), before + 1);
+    w.ctl.picker_duplicate(99);
+    assert_eq!(picker_titles(&w).len(), before + 1);
+}
+
+#[test]
+fn delete_in_the_picker_trashes_the_row_with_an_undo_toast() {
+    let mut w = world();
+    w.ctl.on_hotkey(HotkeyAction::Picker);
+    w.ctl.picker_scope(Scope::Board);
+    let before = picker_titles(&w).len();
+    w.ctl.picker_trash(0);
+    assert_eq!(picker_titles(&w).len(), before - 1);
+    assert!(w.ctl.view().toast.is_some(), "the Undo toast");
+}

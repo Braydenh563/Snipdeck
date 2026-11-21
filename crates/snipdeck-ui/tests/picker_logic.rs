@@ -50,6 +50,9 @@ fn start() -> (PickerWindow, Log) {
     hook!(on_quick_use, |n| format!("quick:{n}"));
     hook!(on_selection_moved, |d| format!("move:{d}"));
     hook!(on_edit_requested, |i| format!("edit:{i}"));
+    hook!(on_pin_requested, |i| format!("pin:{i}"));
+    hook!(on_duplicate_requested, |i| format!("duplicate:{i}"));
+    hook!(on_trash_requested, |i| format!("trash:{i}"));
     hook!(on_close_requested, || "close".to_string());
     hook!(on_open_requested, || "open".to_string());
     hook!(on_dismissed, || "dismissed".to_string());
@@ -103,6 +106,27 @@ fn by_role(root: &impl ElementRoot, role: AccessibleRole) -> Vec<ElementHandle> 
             fresh
         })
         .collect()
+}
+
+/// A real left click at the middle of `element`: pointer down and up, as a mouse sends them, so any control that
+/// takes the keyboard focus on a click does so here.
+fn click(ui: &PickerWindow, element: &ElementHandle) {
+    let (p, s) = (element.absolute_position(), element.size());
+    let at = slint::LogicalPosition::new(p.x + s.width / 2.0, p.y + s.height / 2.0);
+    let button = slint::platform::PointerEventButton::Left;
+    ui.window()
+        .dispatch_event(slint::platform::WindowEvent::PointerMoved { position: at });
+    ui.window()
+        .dispatch_event(slint::platform::WindowEvent::PointerPressed {
+            position: at,
+            button,
+        });
+    ui.window()
+        .dispatch_event(slint::platform::WindowEvent::PointerReleased {
+            position: at,
+            button,
+        });
+    settle();
 }
 
 fn rows(ui: &PickerWindow) -> Vec<ElementHandle> {
@@ -361,6 +385,29 @@ ui_tests! {
         assert_eq!(ui.get_selected_index(), 1);
     }
 
+    fn ctrl_p_ctrl_d_and_delete_ask_to_pin_duplicate_and_trash_the_selected_row() {
+        let (ui, log) = start();
+        press(ui.window(), &key(Key::DownArrow));
+        take(&log);
+        chord(ui.window(), &[Key::Control], "p");
+        chord(ui.window(), &[Key::Control], "d");
+        press(ui.window(), &key(Key::Delete));
+        assert_eq!(take(&log), ["pin:1", "duplicate:1", "trash:1"]);
+        assert_eq!(ui.get_query(), "", "the shortcuts are not search text");
+    }
+
+    fn delete_edits_the_search_text_instead_of_trashing_once_something_is_typed() {
+        let (ui, log) = start();
+        press(ui.window(), &key(Key::DownArrow));
+        type_text(ui.window(), "o");
+        take(&log);
+        press(ui.window(), &key(Key::Delete));
+        assert!(
+            !take(&log).iter().any(|l| l.starts_with("trash")),
+            "a search is being edited"
+        );
+    }
+
     fn ctrl_e_asks_to_edit_the_selected_row() {
         let (ui, log) = start();
         press(ui.window(), &key(Key::DownArrow));
@@ -524,6 +571,38 @@ ui_tests! {
         // Choosing the scope already chosen is not a change.
         find(&ui, "This board", AccessibleRole::Button).invoke_accessible_default_action();
         assert!(take(&log).is_empty(), "no callback fired");
+    }
+
+    fn a_pointer_click_on_every_scope_chip_changes_the_scope_and_never_dismisses() {
+        let (ui, log) = start();
+        // The window has the keyboard, as it does when Windows activates it.
+        ui.window().dispatch_event(slint::platform::WindowEvent::WindowActiveChanged(true));
+        ui.invoke_focus_search();
+        settle();
+        take(&log);
+        for (label, scope) in [
+            ("This board", PickerScope::Board),
+            ("This list", PickerScope::List),
+            ("Pinned", PickerScope::Pinned),
+            ("All", PickerScope::All),
+        ] {
+            click(&ui, &find(&ui, label, AccessibleRole::Button));
+            assert_eq!(ui.get_scope(), scope, "{label}");
+            let seen = take(&log);
+            assert!(!seen.iter().any(|l| l == "dismissed"), "a click on {label} dismissed the Picker: {seen:?}");
+            assert!(ui.get_search_focused(), "the keyboard stays in the search after {label}");
+        }
+    }
+
+    fn a_pointer_click_on_a_row_uses_it_without_a_dismiss_first() {
+        let (ui, log) = start();
+        ui.window().dispatch_event(slint::platform::WindowEvent::WindowActiveChanged(true));
+        ui.invoke_focus_search();
+        settle();
+        take(&log);
+        let first = rows(&ui).into_iter().next().expect("a row");
+        click(&ui, &first);
+        assert_eq!(take(&log), ["use:0"], "the click uses the row and nothing dismissed the Picker before it");
     }
 
     fn the_list_chip_exists_and_a_cut_list_says_how_many_are_shown() {

@@ -147,6 +147,10 @@ export component PickerWindow inherits Window {
     callback colour-choices-requested(int);
     // Format `format` (an index into the host's formats) of colour row `row` chosen; `copy` when Shift was held.
     callback colour-chosen(int, int, bool);
+    // Ctrl+P, Ctrl+D and Delete (with an empty search) on result row `index`: pin or unpin, duplicate, move to the Trash.
+    callback pin-requested(int);
+    callback duplicate-requested(int);
+    callback trash-requested(int);
     // Ctrl+O on colour row `index`: the Panel shows the colour on its Colours tab.
     callback colour-open-requested(int);
     // The formats of the colour on the row "Paste as" is open for, one choice each.
@@ -397,6 +401,14 @@ export component PickerWindow inherits Window {
                     }
                     return accept;
                 }
+                if ((event.text == "p" || event.text == "P") && root.sel >= 0) {
+                    root.pin-requested(root.sel);
+                    return accept;
+                }
+                if ((event.text == "d" || event.text == "D") && root.sel >= 0) {
+                    root.duplicate-requested(root.sel);
+                    return accept;
+                }
                 if ((event.text == "o" || event.text == "O") && root.sel-colour && root.colour-can-open) {
                     root.colour-open-requested(root.sel);
                     return accept;
@@ -420,6 +432,11 @@ export component PickerWindow inherits Window {
             }
             if (root.sel-colour && (event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10))) {
                 root.open-colour-menu(root.sel);
+                return accept;
+            }
+            // Delete trashes the selected row only while the search holds nothing: otherwise it edits the text.
+            if (event.text == Key.Delete && root.query == "" && root.sel >= 0) {
+                root.trash-requested(root.sel);
                 return accept;
             }
             if (event.text == Key.F1) {

@@ -635,7 +635,7 @@ where
         }
     }
 
-    fn set_item_pinned(&mut self, id: ItemId, pin: bool) {
+    pub(super) fn set_item_pinned(&mut self, id: ItemId, pin: bool) {
         let now = self.clock.now();
         let mut changes = Vec::new();
         let done = self.index_cache.edit_item(&mut self.store, id, |store| {

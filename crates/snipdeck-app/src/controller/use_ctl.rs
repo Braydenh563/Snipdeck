@@ -95,6 +95,54 @@ where
         }
     }
 
+    /// Reads the library again for an open Picker after one of its own item keys changed something,
+    /// keeping its query, scope and selected row.
+    fn refresh_picker(&mut self) {
+        let Some(old) = self.picker.take() else {
+            return;
+        };
+        let (query, scope, at) = (old.query().to_owned(), old.scope(), old.selected());
+        let list = old.list();
+        drop(old);
+        let loaded = PickerModel::load_cached(&self.store, self.model.board(), &self.index_cache);
+        if let Ok(picker) = loaded {
+            let mut picker = picker.with_list(list);
+            picker.set_scope(scope);
+            picker.set_query(&query);
+            picker.move_selection(isize::try_from(at).unwrap_or(0));
+            self.picker = Some(picker);
+        }
+    }
+
+    /// Ctrl+P in the Picker on result row `index`: pins the item, or unpins it when it is pinned.
+    pub fn picker_pin(&mut self, index: usize) {
+        let Some(id) = self.picker.as_ref().and_then(|p| p.item_at(index)) else {
+            return;
+        };
+        let pinned = self.store.item(id).is_ok_and(|i| i.pinned);
+        self.set_item_pinned(id, !pinned);
+        self.refresh_picker();
+    }
+
+    /// Ctrl+D in the Picker on result row `index`: a copy of the item right after it.
+    pub fn picker_duplicate(&mut self, index: usize) {
+        let Some(id) = self.picker.as_ref().and_then(|p| p.item_at(index)) else {
+            return;
+        };
+        self.duplicate(&[id]);
+        self.refresh_picker();
+    }
+
+    /// Delete in the Picker (with an empty search) on result row `index`: the item goes to the Trash
+    /// with an Undo toast.
+    pub fn picker_trash(&mut self, index: usize) {
+        let Some(id) = self.picker.as_ref().and_then(|p| p.item_at(index)) else {
+            return;
+        };
+        self.trash_items(&[id]);
+        self.refresh_picker();
+    }
+
     /// Closes the Picker without using anything (Esc, the hotkey again) and hands the focus
     /// back to the Target.
     pub fn close_picker(&mut self) {
