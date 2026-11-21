@@ -69,7 +69,9 @@ pub fn append(data_dir: &Path, line: &str, max_bytes: u64) -> io::Result<()> {
     }
     if fs::metadata(&file).is_ok_and(|m| m.len() >= max_bytes) {
         // `rename` replaces the older copy on Windows too (std uses MoveFileExW with replace).
-        fs::rename(&file, file.with_file_name(OLD_FILE))?;
+        // A rename that fails (the older copy is held open, say) must not lose the line: the
+        // file only grows past its limit until a later rename works.
+        let _ = fs::rename(&file, file.with_file_name(OLD_FILE));
     }
     let mut out = OpenOptions::new().create(true).append(true).open(&file)?;
     writeln!(out, "{line}")
@@ -171,5 +173,16 @@ mod tests {
         let tail = tail(dir.path(), 3);
         assert_eq!(tail.last().map(String::as_str), Some("line 39"));
         assert_eq!(tail.len(), 3, "the tail spans the rolled file");
+    }
+
+    #[test]
+    fn a_roll_over_that_fails_still_appends_the_line() {
+        let dir = tempfile::tempdir().unwrap();
+        append(dir.path(), "first line, long enough to roll", 10).unwrap();
+        // A folder where the rolled-over file belongs: the rename cannot replace it.
+        fs::create_dir(path(dir.path()).with_file_name(OLD_FILE)).unwrap();
+        append(dir.path(), "second", 10).expect("the line is written all the same");
+        let text = fs::read_to_string(path(dir.path())).unwrap();
+        assert!(text.ends_with("second\n"), "{text:?}");
     }
 }
