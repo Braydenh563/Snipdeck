@@ -504,6 +504,24 @@ macro_rules! repo_impls {
                 self.writer(|cx| groups::create_group(cx, group, members))
             }
 
+            fn restore_group(
+                &mut self,
+                group: &Group,
+                members: &[ItemId],
+                children: &[GroupId],
+            ) -> Result<()> {
+                self.writer(|cx| groups::restore_group(cx, group, members, children))
+            }
+
+            fn reparent_group(
+                &mut self,
+                id: GroupId,
+                parent: Option<GroupId>,
+                at: Placement<ItemId>,
+            ) -> Result<()> {
+                self.writer(|cx| groups::reparent_group(cx, id, parent, at))
+            }
+
             fn update_group(&mut self, group: &Group) -> Result<()> {
                 self.writer(|cx| groups::update_group(cx, group))
             }

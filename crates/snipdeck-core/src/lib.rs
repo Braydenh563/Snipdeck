@@ -38,7 +38,7 @@ pub use board::Board;
 pub use content::{BlobRef, Content, INLINE_LIMIT, Inline};
 pub use error::Error;
 pub use format::{FileEntry, Format, FormatKind, Formats};
-pub use group::Group;
+pub use group::{Group, GroupTree, MAX_GROUP_DEPTH};
 pub use ids::{BoardId, GroupId, ItemId, ListId, TagId};
 pub use item::{Item, ItemKind, ItemLabel};
 pub use jiff::Timestamp;

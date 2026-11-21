@@ -74,12 +74,33 @@ pub trait GroupRepo {
     /// The list's groups that have a live member, with those members, top to bottom.
     fn groups_of(&self, list: ListId) -> Result<Vec<GroupRun>>;
 
-    /// Adds `group` (its `list_id` names the list) with `members`, which must be live items
+    /// Adds `group` (its `list_id` names the list, its `parent` the group it is nested in, whose
+    /// own members `members` must then be) with `members`, which must be live items
     /// of that list; they gather directly below the topmost one, keeping list order.
     /// Members of other groups leave them. Fails if `members` is empty.
     fn create_group(&mut self, group: &Group, members: &[ItemId]) -> Result<()>;
 
-    /// Overwrites the group's name and collapsed flag.
+    /// Makes the group again where it was (for undo): `members` become its own members and
+    /// `children` are nested in it again, without moving any row. It may have no member of its
+    /// own. Fails if the result would split a run.
+    fn restore_group(
+        &mut self,
+        group: &Group,
+        members: &[ItemId],
+        children: &[GroupId],
+    ) -> Result<()>;
+
+    /// Nests the group in `parent` (`None`: at the top level) and moves its whole run to `at`,
+    /// corrected to a place inside the parent's run. Fails with `Error::GroupParent` for a
+    /// parent that is the group itself, one of its own, gone, empty, or too deep.
+    fn reparent_group(
+        &mut self,
+        id: GroupId,
+        parent: Option<GroupId>,
+        at: Placement<ItemId>,
+    ) -> Result<()>;
+
+    /// Overwrites the group's name, collapsed flag and colour (not its place in the nesting).
     fn update_group(&mut self, group: &Group) -> Result<()>;
 
     /// Deletes the group: its items stay ungrouped or go to the trash, in one transaction.
