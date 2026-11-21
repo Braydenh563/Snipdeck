@@ -37,22 +37,28 @@
 
 mod archive;
 pub mod backup;
+mod check;
 mod decoded;
 mod dto;
 mod error;
 mod export;
+mod folder;
 mod import;
 mod importers;
 mod limits;
 mod plan;
 mod report;
 
+pub use check::{ArchiveSummary, Depth, check_archive_path};
 pub use decoded::{Decoded, Known};
 pub use error::{Error, Result};
-pub use export::{ExportOptions, ExportReport, SensitivePolicy, export_to_path, export_to_writer};
+pub use export::{
+    ExportOptions, ExportReport, SensitivePolicy, SkippedItem, export_to_path, export_to_writer,
+};
+pub use folder::{FolderRisk, folder_risks};
 pub use import::{
-    BoardLayout, ImportOptions, KeySource, MergeStrategy, decode_archive, decode_archive_path,
-    import_archive, import_archive_path,
+    BoardLayout, ImportOptions, KeySource, MergeStrategy, Triggers, decode_archive,
+    decode_archive_path, import_archive, import_archive_path,
 };
 pub use importers::{
     HistoryEntry, MEMORY_BUDGET, decode_beeftext, decode_copyq_json, decode_ditto, decode_entries,
@@ -62,4 +68,4 @@ pub use importers::{
 };
 pub use limits::{ENVELOPE_OVERHEAD_BYTES, Limits, TEXT_LIMIT};
 pub use plan::Library;
-pub use report::{ImportReport, MAX_WARNINGS, Note, Warning};
+pub use report::{ImportReport, MAX_TRIGGERS_LISTED, MAX_WARNINGS, Note, Warning};

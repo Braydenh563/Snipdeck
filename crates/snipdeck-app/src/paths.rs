@@ -186,6 +186,41 @@ pub fn saver_baseline(loaded: &Loaded, salvage_written: bool) -> Settings {
     }
 }
 
+/// Opens the library in `folder`. One that cannot be opened (damaged, empty beside backups, a
+/// failed migration) is kept in `snipdeck.damaged-<stamp>/` and a fresh one opens, with a Danger
+/// notice pointing at Settings > Rebuild from backup. Everything else (another Snipdeck holds
+/// the folder, a newer database, a full or read-only disk) is an error and nothing moves.
+///
+/// # Errors
+/// The store's error when the library cannot be opened and moving it aside is not safe.
+pub fn open_library_folder(
+    folder: &Path,
+    now: jiff::Timestamp,
+) -> Result<(snipdeck_store::Store, Option<crate::toast::Toast>), snipdeck_store::Error> {
+    let stamp = now
+        .to_zoned(jiff::tz::TimeZone::system())
+        .strftime("%Y%m%d-%H%M");
+    let stem = (0..100)
+        .map(|n| {
+            if n == 0 {
+                format!("snipdeck.damaged-{stamp}")
+            } else {
+                format!("snipdeck.damaged-{stamp}-{n}")
+            }
+        })
+        .find(|stem| !folder.join(stem).exists())
+        .unwrap_or_else(|| format!("snipdeck.damaged-{stamp}-x"));
+    let (store, kept) = snipdeck_store::Store::open_or_set_aside(folder, &stem)?;
+    let has_backup =
+        snipdeck_portable::backup::list_backups(&snipdeck_portable::backup::backups_dir(folder))
+            .is_ok_and(|list| !list.is_empty());
+    let toast = kept.map(|folder| crate::toast::Toast {
+        kind: crate::toast::ToastKind::Danger,
+        message: crate::toast::ToastMessage::LibrarySetAside { folder, has_backup },
+    });
+    Ok((store, toast))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -507,5 +542,39 @@ mod tests {
             std::fs::read_to_string(dir.join(SETTINGS_FILE)).expect("still there"),
             cut
         );
+    }
+    #[test]
+    fn a_library_that_cannot_be_opened_starts_fresh_with_a_danger_notice() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("snipdeck.db"), vec![7u8; 2048]).unwrap();
+        let now: jiff::Timestamp = "2026-11-16T10:00:00Z".parse().unwrap();
+        let (_store, toast) = open_library_folder(dir.path(), now).unwrap();
+        let toast = toast.expect("a notice");
+        assert_eq!(toast.kind, crate::toast::ToastKind::Danger);
+        let crate::toast::ToastMessage::LibrarySetAside { folder, has_backup } = &toast.message
+        else {
+            panic!("the set-aside notice");
+        };
+        assert!(folder.starts_with("snipdeck.damaged-"));
+        assert!(!has_backup, "no backup in this folder");
+        let kept: Vec<_> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .filter(|n| n.starts_with("snipdeck.damaged-"))
+            .collect();
+        assert_eq!(kept.len(), 1, "{kept:?}");
+        assert_eq!(
+            std::fs::read(dir.path().join(&kept[0]).join("snipdeck.db")).unwrap(),
+            vec![7u8; 2048]
+        );
+    }
+
+    #[test]
+    fn a_library_held_by_another_snipdeck_is_not_moved() {
+        let dir = tempfile::tempdir().unwrap();
+        let _held = snipdeck_store::Store::open(dir.path()).unwrap();
+        let now: jiff::Timestamp = "2026-11-16T10:00:00Z".parse().unwrap();
+        assert!(open_library_folder(dir.path(), now).is_err());
+        assert!(dir.path().join("snipdeck.db").is_file());
     }
 }

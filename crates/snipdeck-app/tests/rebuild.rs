@@ -109,7 +109,7 @@ fn assert_no_marker(dir: &Path) {
 }
 
 fn newest_backup(dir: &Path) -> std::path::PathBuf {
-    snipdeck_portable::backup::list_backups(dir)
+    snipdeck_portable::backup::list_backups(&snipdeck_portable::backup::backups_dir(dir))
         .expect("list")
         .first()
         .expect("a backup")
@@ -141,7 +141,11 @@ fn rebuilding_restores_the_backup_recovers_newer_items_and_keeps_the_damaged_fol
     else {
         panic!("a rebuilt toast");
     };
-    assert!(restored > 0 && restored <= backed_up);
+    assert_eq!(
+        restored + missing_sensitive,
+        backed_up,
+        "every item but the plain-text sensitive one came back"
+    );
     assert_eq!(
         recovered, 1,
         "only the newer item came from the damaged file"
@@ -373,4 +377,48 @@ fn quitting_while_the_rebuild_reads_leaves_the_library_as_it_was() {
             .any(|e| e.file_name().to_string_lossy().contains("damaged")),
         "nothing was set aside"
     );
+}
+
+#[test]
+fn a_library_that_cannot_be_opened_is_set_aside_and_rebuild_finds_the_backups() {
+    let dir = tempfile::tempdir().expect("dir");
+    let mut ctl = start(dir.path());
+    assert!(ctl.backup_now(dir.path()));
+    let backed_up = titles(&ctl).len();
+    drop(ctl);
+    // Damage the header: the next start cannot open it.
+    let db = dir.path().join("snipdeck.db");
+    let mut bytes = fs::read(&db).expect("db");
+    bytes[..16].fill(0x42);
+    fs::write(&db, &bytes).expect("damage");
+    assert!(Store::open(dir.path()).is_err());
+
+    let (store, toast) = snipdeck_app::paths::open_library_folder(dir.path(), now())
+        .expect("the app opens a fresh library");
+    let Some(ToastMessage::LibrarySetAside { folder, has_backup }) = toast.map(|t| t.message)
+    else {
+        panic!("the set-aside notice");
+    };
+    assert!(has_backup, "the backup stays where Rebuild looks");
+    assert_eq!(damaged_files(dir.path()), vec![folder.clone()]);
+    assert_eq!(
+        fs::read(dir.path().join(&folder).join("snipdeck.db")).expect("kept"),
+        bytes
+    );
+    assert_no_marker(dir.path());
+
+    // The real proof: Rebuild from backup restores the newest backup into the fresh library.
+    let mut ctl = start_with(store);
+    assert!(ctl.rebuild_from_backup(dir.path(), &newest_backup(dir.path())));
+    assert_eq!(
+        titles(&ctl).len(),
+        backed_up - 1,
+        "the backup was restored, all of it (the demo's one plain-text sensitive item is in no backup)"
+    );
+    assert_eq!(
+        damaged_files(dir.path()).len(),
+        2,
+        "the first set-aside stays beside the new one"
+    );
+    assert_no_marker(dir.path());
 }

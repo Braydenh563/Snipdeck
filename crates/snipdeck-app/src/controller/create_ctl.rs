@@ -215,7 +215,7 @@ where
                 .as_ref()
                 .is_some_and(|t| matches!(t.toast.message, ToastMessage::DropTo { .. }))
         {
-            self.toast = None;
+            self.clear_toast();
         }
     }
 

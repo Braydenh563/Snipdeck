@@ -121,6 +121,7 @@ pub fn import_warning_text(window: &SettingsPage, warning: &Warning) -> String {
     let texts = ImportTexts::get(window);
     let count = |n: usize| i32::try_from(n).unwrap_or(i32::MAX);
     let name = |name: &str| entry_label(&texts, name);
+    let count_u64 = |n: u64| i32::try_from(n).unwrap_or(i32::MAX);
     let text = match warning {
         Warning::NewerMinorVersion { found } => texts.invoke_newer_minor_version(found.into()),
         Warning::UnknownEntries { count: n } => texts.invoke_unknown_entries(count(*n)),
@@ -128,8 +129,9 @@ pub fn import_warning_text(window: &SettingsPage, warning: &Warning) -> String {
         Warning::SensitiveNeedKey { count: n } => texts.invoke_sensitive_need_key(count(*n)),
         Warning::CannotDecrypt { title } => texts.invoke_cannot_decrypt(title.into()),
         Warning::SensitiveOmittedByExport { count: n } => {
-            texts.invoke_sensitive_omitted_by_export(i32::try_from(*n).unwrap_or(i32::MAX))
+            texts.invoke_sensitive_omitted_by_export(count_u64(*n))
         }
+        Warning::SkippedByExport { count: n } => texts.invoke_skipped_by_export(count_u64(*n)),
         Warning::LossyText { name: n } => texts.invoke_lossy_text(name(n)),
         Warning::TooLarge { name: n, size } => {
             texts.invoke_too_large(name(n), size_text(window, *size).into())
@@ -138,6 +140,9 @@ pub fn import_warning_text(window: &SettingsPage, warning: &Warning) -> String {
         Warning::Unreadable { name: n, .. } => texts.invoke_unreadable(name(n)),
         Warning::SymlinkSkipped { name: n } => texts.invoke_symlink_skipped(name(n)),
         Warning::NonTextSkipped { count: n } => texts.invoke_non_text_skipped(count(*n)),
+        Warning::DeeperFoldersSkipped { count: n } => {
+            texts.invoke_deeper_folders_skipped(count(*n))
+        }
         Warning::Truncated { .. } => texts.invoke_truncated(),
         Warning::Note(note) => note_text(&texts, note, &count),
     };
@@ -184,6 +189,9 @@ fn note_text(
             texts.invoke_note_form_field(entry_label(texts, what), name.into())
         }
         Note::ColumnsCut { file } => texts.invoke_note_columns_cut(file.into()),
+        Note::TriggerTooShort { title, trigger } => {
+            texts.invoke_note_trigger_too_short(title.into(), trigger.into())
+        }
         Note::TriggerTaken { title, trigger } => {
             texts.invoke_note_trigger_taken(title.into(), trigger.into())
         }
@@ -298,6 +306,9 @@ where
         ToastMessage::SettingsNotSaved => t.invoke_settings_not_saved(),
         ToastMessage::SettingsDamaged => t.invoke_settings_damaged(),
         ToastMessage::SettingsUnreadable => t.invoke_settings_unreadable(),
+        ToastMessage::LibrarySetAside { folder, has_backup } => {
+            t.invoke_library_set_aside(folder.into(), *has_backup)
+        }
         ToastMessage::ClipboardWatchFailed => t.invoke_clipboard_watch_failed(),
         ToastMessage::ItemsTrashed { count: n } => t.invoke_items_trashed(count(*n)),
         ToastMessage::ListTrashed { name } => t.invoke_list_trashed(name.into()),
@@ -314,6 +325,15 @@ where
         ToastMessage::LibraryProblem => t.invoke_library_problem(),
         ToastMessage::CrashedLastTime => t.invoke_crashed_last_time(),
         ToastMessage::BackupMade => t.invoke_backup_made(),
+        ToastMessage::BackupMadeSkipping { count: n, first } => {
+            t.invoke_backup_made_skipping(count(*n), first.into())
+        }
+        ToastMessage::BackupShrunk { was, now } => t.invoke_backup_shrunk(count(*was), count(*now)),
+        ToastMessage::ExportedSkipping {
+            file,
+            count: n,
+            first,
+        } => t.invoke_exported_skipping(file.into(), count(*n), first.into()),
         ToastMessage::ArchiveBusy => t.invoke_archive_busy(),
         ToastMessage::BackupFailed(cause) => t.invoke_backup_failed(cause.code()),
         ToastMessage::DailyBackupFailed(cause) => t.invoke_daily_backup_failed(cause.code()),

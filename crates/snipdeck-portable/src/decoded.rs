@@ -7,31 +7,65 @@
 //! read from a snapshot (so the slow pass over the library happens off the UI thread) or `None`
 //! to read it from the library at hand.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use snipdeck_store::name_key;
 
 use crate::{
     error::{Error, Result},
-    import::{ImportOptions, MergeStrategy},
+    import::{ImportOptions, MergeStrategy, Triggers},
     plan::{AssetRef, Library, Plan, apply, existing_hashes},
-    report::{ImportReport, Note, Warning},
+    report::{ImportReport, MAX_TRIGGERS_LISTED, Note, Warning},
 };
 
-/// The content hashes of the items a library holds, for skipping duplicates.
+/// Where an item sits and what it is: board name, list name (both as [`name_key`]), title and
+/// content hash.
+type Placed = (String, String, String, [u8; 32]);
+
+/// What a library holds, for skipping duplicates: the content hashes of its items (a foreign
+/// import skips by content alone) and, for each place, title and content, how many items are
+/// there (a restore matches its own items one for one).
 #[derive(Debug, Clone, Default)]
-pub struct Known(HashSet<[u8; 32]>);
+pub struct Known {
+    hashes: HashSet<[u8; 32]>,
+    placed: HashMap<Placed, usize>,
+    boards: HashMap<String, HashSet<String>>,
+}
 
 impl Known {
     #[cfg(test)]
     pub(crate) fn from_hashes(hashes: HashSet<[u8; 32]>) -> Self {
-        Self(hashes)
+        Self {
+            hashes,
+            ..Self::default()
+        }
     }
 
-    /// Reads the hashes from `lib` (a pass over every item, so not for the UI thread of a big
-    /// library: read them from a snapshot on a worker).
+    /// Reads the set from `lib` (a pass over every item, so not for the UI thread of a big
+    /// library: read it from a snapshot on a worker).
     pub fn of<L: Library>(lib: &L) -> Result<Self> {
-        existing_hashes(lib).map(Self)
+        let by_item = existing_hashes(lib)?;
+        let mut known = Self {
+            hashes: by_item.values().copied().collect(),
+            ..Self::default()
+        };
+        for board in lib.boards()? {
+            let board_key = name_key(board.name.as_str());
+            let lists = known.boards.entry(board_key.clone()).or_default();
+            for list in lib.lists(board.id)? {
+                let list_key = name_key(list.name.as_str());
+                lists.insert(list_key.clone());
+                for item in lib.items(list.id)? {
+                    if let Some(hash) = by_item.get(&item.id) {
+                        *known
+                            .placed
+                            .entry((board_key.clone(), list_key.clone(), item.title, *hash))
+                            .or_insert(0) += 1;
+                    }
+                }
+            }
+        }
+        Ok(known)
     }
 }
 
@@ -73,32 +107,111 @@ impl<'a> Decoded<'a> {
         options: &ImportOptions<'_>,
         fetch: Fetch<'a>,
     ) -> Self {
-        Self {
+        let mut decoded = Self {
             plan,
             report,
             merge: options.merge,
             fetch,
+        };
+        decoded.vet_triggers();
+        if options.triggers == Triggers::Leave {
+            decoded.leave_triggers();
+        }
+        decoded
+    }
+
+    /// Drops triggers too short to type safely (a one-character trigger fires inside ordinary
+    /// words), noting each.
+    fn vet_triggers(&mut self) {
+        for item in self
+            .plan
+            .boards
+            .iter_mut()
+            .flat_map(|b| &mut b.lists)
+            .flat_map(|l| &mut l.items)
+        {
+            let Some(trigger) = item.trigger.take() else {
+                continue;
+            };
+            if trigger.as_str().chars().count() < snipdeck_core::SUGGEST_MIN_CHARS {
+                self.report.warn(Warning::Note(Note::TriggerTooShort {
+                    title: item.title.clone(),
+                    trigger: trigger.to_string(),
+                }));
+                continue;
+            }
+            item.trigger = Some(trigger);
+        }
+    }
+
+    /// Imports every item without its trigger: the choice of a caller that showed the list from
+    /// [`ImportReport::triggers`] and was told no.
+    pub fn leave_triggers(&mut self) {
+        for item in self
+            .plan
+            .boards
+            .iter_mut()
+            .flat_map(|b| &mut b.lists)
+            .flat_map(|l| &mut l.items)
+        {
+            item.trigger = None;
         }
     }
 
     /// For each item in write order, whether it is kept (not a duplicate of `known` or of an
     /// earlier item of this import).
     fn keep_flags(&self, known: &Known) -> Vec<bool> {
-        let mut seen = known.0.clone();
-        let skip = self.merge == MergeStrategy::SkipDuplicates;
-        self.plan
-            .boards
-            .iter()
-            .flat_map(|b| &b.lists)
-            .flat_map(|l| &l.items)
-            .map(|i| !skip || seen.insert(i.content_hash))
-            .collect()
+        match self.merge {
+            MergeStrategy::ImportAsNew => self
+                .plan
+                .boards
+                .iter()
+                .flat_map(|b| &b.lists)
+                .flat_map(|l| &l.items)
+                .map(|_| true)
+                .collect(),
+            MergeStrategy::SkipDuplicates => {
+                let mut seen = known.hashes.clone();
+                self.plan
+                    .boards
+                    .iter()
+                    .flat_map(|b| &b.lists)
+                    .flat_map(|l| &l.items)
+                    .map(|i| seen.insert(i.content_hash))
+                    .collect()
+            }
+            MergeStrategy::Restore => {
+                let mut left = known.placed.clone();
+                let mut flags = Vec::new();
+                for board in &self.plan.boards {
+                    let board_key = name_key(board.name.as_str());
+                    for list in &board.lists {
+                        let list_key = name_key(list.name.as_str());
+                        for item in &list.items {
+                            let key = (
+                                board_key.clone(),
+                                list_key.clone(),
+                                item.title.clone(),
+                                item.content_hash,
+                            );
+                            let matched = left.get_mut(&key).is_some_and(|n| {
+                                let found = *n > 0;
+                                *n = n.saturating_sub(1);
+                                found
+                            });
+                            flags.push(!matched);
+                        }
+                    }
+                }
+                flags
+            }
+        }
     }
 
     fn known_for<L: Library>(&self, lib: &L, known: Option<&Known>) -> Result<Known> {
         match known {
             Some(k) => Ok(k.clone()),
-            None if self.merge == MergeStrategy::SkipDuplicates => Known::of(lib),
+            None if self.merge != MergeStrategy::ImportAsNew => Known::of(lib),
             None => Ok(Known::default()),
         }
     }
@@ -110,7 +223,8 @@ impl<'a> Decoded<'a> {
     ///
     /// A storage error from reading `lib`.
     pub fn preview<L: Library>(&self, lib: &L, known: Option<&Known>) -> Result<ImportReport> {
-        let flags = self.keep_flags(&self.known_for(lib, known)?);
+        let known_set = self.known_for(lib, known)?;
+        let flags = self.keep_flags(&known_set);
         let mut report = self.report.clone();
         let mut kept = flags.iter().copied();
         let mut dropped = 0;
@@ -135,9 +249,23 @@ impl<'a> Decoded<'a> {
                     }
                 }
             }
-            if board_items > 0 || self.merge != MergeStrategy::SkipDuplicates {
-                report.boards_added += 1;
-                report.lists_added += board.lists.len();
+            match self.merge {
+                MergeStrategy::Restore => {
+                    // Boards and lists the library has are reused; the rest are made, empty
+                    // ones included.
+                    let have = known_set.boards.get(&name_key(board.name.as_str()));
+                    report.boards_added += usize::from(have.is_none());
+                    report.lists_added += board
+                        .lists
+                        .iter()
+                        .filter(|l| have.is_none_or(|h| !h.contains(&name_key(l.name.as_str()))))
+                        .count();
+                }
+                _ if board_items > 0 || self.merge != MergeStrategy::SkipDuplicates => {
+                    report.boards_added += 1;
+                    report.lists_added += board.lists.len();
+                }
+                _ => {}
             }
         }
         report.items_added += wanted.len();
@@ -150,7 +278,9 @@ impl<'a> Decoded<'a> {
             .map(|t| name_key(t.name.as_str()))
             .collect();
         for (index, name) in self.plan.tags.iter().enumerate() {
-            if used.contains(&index) && have.insert(name_key(name.as_str())) {
+            if (self.merge == MergeStrategy::Restore || used.contains(&index))
+                && have.insert(name_key(name.as_str()))
+            {
                 report.tags_added += 1;
             }
         }
@@ -181,6 +311,10 @@ impl<'a> Decoded<'a> {
             }
             triggers.push(code.to_owned());
             triggers.sort();
+            report.triggers_total += 1;
+            if report.triggers.len() < MAX_TRIGGERS_LISTED {
+                report.triggers.push(code.to_owned());
+            }
         }
         Ok(report)
     }
@@ -192,6 +326,7 @@ impl<'a> Decoded<'a> {
     ///
     /// A storage error, or a payload that changed since it was checked; `lib` is unchanged.
     pub fn apply<L: Library>(mut self, lib: &mut L, known: Option<&Known>) -> Result<ImportReport> {
+        self.plan.reuse_existing = self.merge == MergeStrategy::Restore;
         let mut flags = self.keep_flags(&self.known_for(lib, known)?).into_iter();
         let mut dropped = 0;
         for list in self.plan.boards.iter_mut().flat_map(|b| &mut b.lists) {

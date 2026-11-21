@@ -8,6 +8,9 @@ use snipdeck_core::BoardId;
 /// [`ImportReport::warnings_dropped`], so a folder of 100 000 bad files cannot exhaust memory.
 pub const MAX_WARNINGS: usize = 200;
 
+/// Most triggers an [`ImportReport`] lists by name.
+pub const MAX_TRIGGERS_LISTED: usize = 50;
+
 /// Something the import did not do, or did differently from what the source said. Warnings never
 /// fail an import; the caller shows them.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -43,6 +46,11 @@ pub enum Warning {
         /// How many items the exporter left out.
         count: u64,
     },
+    /// The exporter could not read some items' attachments and left those items out.
+    SkippedByExport {
+        /// How many items.
+        count: u64,
+    },
     /// A file was not valid UTF-8; invalid bytes were replaced with U+FFFD.
     LossyText {
         /// The file or item.
@@ -74,6 +82,11 @@ pub enum Warning {
     },
     /// The source holds entries that are not text (images, files, ...), which are not imported.
     NonTextSkipped {
+        /// How many.
+        count: usize,
+    },
+    /// Folders inside the imported subfolders were not read (one level of subfolders is).
+    DeeperFoldersSkipped {
         /// How many.
         count: usize,
     },
@@ -181,6 +194,14 @@ pub enum Note {
         /// The file.
         file: String,
     },
+    /// A trigger of one character would fire in the middle of ordinary typing; the snippet came
+    /// in without it.
+    TriggerTooShort {
+        /// The snippet's title.
+        title: String,
+        /// The trigger.
+        trigger: String,
+    },
     /// The trigger is already used by another snippet; the snippet came in without it.
     TriggerTaken {
         /// The snippet's title.
@@ -265,6 +286,10 @@ impl fmt::Display for Note {
                 f,
                 "{file}: some rows have more than 256 columns; the rest were ignored"
             ),
+            Self::TriggerTooShort { title, trigger } => write!(
+                f,
+                "`{title}`: the trigger `{trigger}` is too short (a trigger needs at least two characters); imported without it"
+            ),
             Self::TriggerTaken { title, trigger } => write!(
                 f,
                 "`{title}`: the trigger `{trigger}` is already used by another snippet; imported without it"
@@ -315,6 +340,10 @@ impl fmt::Display for Warning {
                 f,
                 "{count} sensitive item(s) were left out when this file was exported"
             ),
+            Self::SkippedByExport { count } => write!(
+                f,
+                "{count} item(s) with an unreadable attachment were left out when this file was exported"
+            ),
             Self::LossyText { name } => write!(
                 f,
                 "`{name}` is not valid UTF-8; unreadable bytes were replaced with \u{fffd}"
@@ -335,6 +364,9 @@ impl fmt::Display for Warning {
                     f,
                     "{count} entry(ies) without text (images, files) were skipped"
                 )
+            }
+            Self::DeeperFoldersSkipped { count } => {
+                write!(f, "{count} folder(s) inside subfolders were not read")
             }
             Self::Truncated { reason } => write!(f, "the import stopped early: {reason}"),
             Self::Note(note) => note.fmt(f),
@@ -359,6 +391,11 @@ pub struct ImportReport {
     pub tags_added: usize,
     /// The boards created, in order, so the UI can open the first one.
     pub boards: Vec<BoardId>,
+    /// The triggers the import installs (or would install), at most [`MAX_TRIGGERS_LISTED`], so
+    /// a preview can show what a file wants to type.
+    pub triggers: Vec<String>,
+    /// How many triggers in all, which can exceed `triggers.len()`.
+    pub triggers_total: usize,
     /// Up to [`MAX_WARNINGS`] warnings.
     pub warnings: Vec<Warning>,
     /// Warnings beyond [`MAX_WARNINGS`], which were counted but not kept.

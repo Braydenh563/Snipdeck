@@ -33,6 +33,9 @@ pub(crate) struct Manifest {
     /// Sensitive items the exporter left out; absent when none.
     #[serde(default, skip_serializing_if = "is_zero")]
     pub sensitive_omitted: u64,
+    /// Items the exporter left out because an attachment could not be read; absent when none.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub skipped_unreadable: u64,
 }
 
 #[expect(

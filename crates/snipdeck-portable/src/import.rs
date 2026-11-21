@@ -34,7 +34,7 @@ use crate::dto::{
     MINOR, Manifest, TagDto, parse_items_doc,
 };
 use crate::error::{Error, Result};
-use crate::importers::{MEMORY_BUDGET, truncate_chars};
+use crate::importers::truncate_chars;
 use crate::limits::{Limits, TEXT_LIMIT};
 use crate::plan::{
     AssetRef, ContentHasher, Library, Plan, PlanBoard, PlanFile, PlanFormat, PlanItem, PlanList,
@@ -53,6 +53,12 @@ pub enum MergeStrategy {
     /// an item already in the library or earlier in the same import. If nothing is left the
     /// board is not created.
     SkipDuplicates,
+    /// Restoring a Snipdeck backup or rebuilding from one: each archive item is matched by
+    /// where it is (board and list name), its title and its content against the library, one
+    /// for one, so two items with the same text in different lists both come back, and an item
+    /// that is already there is left alone. Boards and lists are reused by name and created only
+    /// when the library has none (empty ones included); items go back into their own lists.
+    Restore,
 }
 
 /// How a `.snipdeck` archive's boards and lists are laid out on import.
@@ -82,6 +88,17 @@ pub enum KeySource<'k> {
     Given(&'k DataKey),
 }
 
+/// Whether triggers in the source are installed. A trigger types text into other programs, so a
+/// caller that takes a file from someone else can leave them out after showing the list.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Triggers {
+    /// Install the source's triggers (the default; a restore of one's own backup).
+    #[default]
+    Install,
+    /// Import every item without its trigger.
+    Leave,
+}
+
 /// Options shared by every importer. Fields an importer has no use for are ignored.
 #[derive(Debug, Clone, Default)]
 pub struct ImportOptions<'k> {
@@ -100,6 +117,8 @@ pub struct ImportOptions<'k> {
     /// would add, then roll the transaction back so the library is unchanged. This is the
     /// preview the Settings import and Restore show before anything is written.
     pub dry_run: bool,
+    /// Whether the source's triggers are installed.
+    pub triggers: Triggers,
 }
 
 /// A board name from a file or folder name: trimmed, control characters replaced, shortened to
@@ -264,6 +283,11 @@ pub fn decode_archive<'a, R: Read + Seek + Send + 'a>(
             count: manifest.sensitive_omitted,
         });
     }
+    if manifest.skipped_unreadable > 0 {
+        report.warn(Warning::SkippedByExport {
+            count: manifest.skipped_unreadable,
+        });
+    }
 
     // Decrypted payloads are moved into the plan here, so the key is no longer needed after.
     let key = match options.key {
@@ -275,6 +299,7 @@ pub fn decode_archive<'a, R: Read + Seek + Send + 'a>(
         &mut plan,
         key,
         options.limits.max_total_bytes,
+        options.limits.max_sensitive_bytes,
         &mut report,
     )?;
 
@@ -440,6 +465,7 @@ fn build_plan<R: Read + Seek>(
     let mut plan = Plan {
         tags,
         boards: Vec::new(),
+        reuse_existing: false,
     };
 
     let keep_boards = options.layout == BoardLayout::KeepBoards;
@@ -477,6 +503,8 @@ fn build_plan<R: Read + Seek>(
         }
     }
 
+    distrust_claims(&mut plan, now, options.merge == MergeStrategy::Restore);
+
     let unreferenced = archive
         .asset_hashes()
         .filter(|h| !builder.referenced.contains(h))
@@ -486,6 +514,33 @@ fn build_plan<R: Read + Seek>(
         unreferenced,
         truncated: builder.truncated,
     })
+}
+
+/// What a file says about time and use is a claim, not a fact: nothing may be dated after `now`
+/// (it would sort first and, for the Trash, never expire), and use counts only carry over when
+/// the file is the user's own backup being restored (DATA-10).
+fn distrust_claims(plan: &mut Plan, now: Timestamp, own_backup: bool) {
+    let cap = |t: &mut Timestamp| *t = (*t).min(now);
+    for board in &mut plan.boards {
+        cap(&mut board.created_at);
+        cap(&mut board.updated_at);
+        for list in &mut board.lists {
+            cap(&mut list.created_at);
+            cap(&mut list.updated_at);
+            for item in &mut list.items {
+                cap(&mut item.created_at);
+                cap(&mut item.updated_at);
+                if own_backup {
+                    if let Some(t) = &mut item.last_used_at {
+                        cap(t);
+                    }
+                } else {
+                    item.use_count = 0;
+                    item.last_used_at = None;
+                }
+            }
+        }
+    }
 }
 
 /// The manifest's counts must equal what the document and the zip really hold.
@@ -858,6 +913,8 @@ struct Verified {
     plain: HashSet<(BlobRef, bool)>,
     /// Bytes of decrypted payload the plan may still hold in memory.
     decrypt_budget: u64,
+    /// The budget at the start, for the error.
+    decrypt_limit: u64,
     /// Bytes of encrypted asset the checks may still read. Every reference reads and decrypts
     /// its asset again (the envelope is bound to the item), so many items pointing at one big
     /// asset would otherwise cost one read each without limit.
@@ -886,11 +943,13 @@ fn verify<R: Read + Seek>(
     plan: &mut Plan,
     key: Option<&DataKey>,
     read_limit: u64,
+    decrypt_limit: u64,
     report: &mut ImportReport,
 ) -> Result<()> {
     let mut verified = Verified {
         plain: HashSet::new(),
-        decrypt_budget: MEMORY_BUDGET,
+        decrypt_budget: decrypt_limit,
+        decrypt_limit,
         read_budget: read_limit,
         read_budget_limit: read_limit,
     };
@@ -1054,7 +1113,7 @@ fn check_source<R: Read + Seek>(
                     .checked_sub(len)
                     .ok_or(Error::LimitExceeded {
                         what: "decrypted size",
-                        limit: MEMORY_BUDGET,
+                        limit: verified.decrypt_limit,
                     })?;
             Ok(Checked::Ok {
                 hash: *blake3::hash(&plain).as_bytes(),

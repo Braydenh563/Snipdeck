@@ -82,15 +82,17 @@ fn an_open_library_hands_the_backup_to_a_worker_and_a_second_request_waits() {
     ));
     assert!(!ctl.archive_busy());
     assert_eq!(
-        snipdeck_portable::backup::list_backups(dir.path())
-            .expect("list")
-            .len(),
+        snipdeck_portable::backup::list_backups(&snipdeck_portable::backup::backups_dir(
+            dir.path()
+        ))
+        .expect("list")
+        .len(),
         1
     );
 }
 
 #[test]
-fn the_store_builds_copy_goes_to_documents_for_both_backups_and_is_pruned() {
+fn the_store_builds_copy_goes_to_documents_for_the_daily_and_the_manual_backup_and_is_pruned() {
     let dir = tempfile::tempdir().expect("dir");
     let docs = tempfile::tempdir().expect("docs");
     let copies = docs.path().join("Snipdeck backups");
@@ -119,15 +121,26 @@ fn the_store_builds_copy_goes_to_documents_for_both_backups_and_is_pruned() {
         names(&snipdeck_portable::backup::backups_dir(dir.path()))
     );
 
-    // "Back up now" replaces today's copy: still one file.
+    // "Back up now" writes a file of its own and copies that one: today's daily copy stays, and
+    // the manual file is beside it, named like the one in the backups folder.
     let now_job = job(ctl.begin_backup_now(dir.path()));
     assert!(matches!(
         ctl.finish_archive(now_job.run()),
         ArchiveEnd::BackupNow(true)
     ));
-    assert_eq!(names(&copies), today);
+    let both = names(&copies);
+    assert_eq!(both.len(), 2, "the daily copy and the manual one: {both:?}");
+    assert!(
+        both.contains(&today[0]),
+        "today's daily copy is not replaced"
+    );
+    assert_eq!(
+        both,
+        names(&snipdeck_portable::backup::backups_dir(dir.path()))
+    );
 
-    // Old copies beyond the kept count go: keep is 7, so plant 8 older ones.
+    // Old copies beyond the kept count go: keep is 7, so plant 8 older daily ones. The manual
+    // copy is not a daily one and stays.
     for day in 1..=8 {
         std::fs::write(
             copies.join(format!("snipdeck-backup-202610{day:02}.snipdeck")),
@@ -135,10 +148,23 @@ fn the_store_builds_copy_goes_to_documents_for_both_backups_and_is_pruned() {
         )
         .expect("plant");
     }
-    let again = job(ctl.begin_backup_now(dir.path()));
+    let again = job(ctl.begin_daily_backup(dir.path(), &zoned).expect("begun"));
     ctl.finish_archive(again.run());
-    assert_eq!(names(&copies).len(), 7, "pruned to the backups' retention");
-    assert!(names(&copies).contains(&today[0]), "today's copy stays");
+    let now_job = job(ctl.begin_backup_now(dir.path()));
+    ctl.finish_archive(now_job.run());
+    let kept = names(&copies);
+    let daily: Vec<_> = kept.iter().filter(|n| n.len() == today[0].len()).collect();
+    assert_eq!(
+        daily.len(),
+        7,
+        "daily copies pruned to the retention: {kept:?}"
+    );
+    assert!(kept.contains(&today[0]), "today's copy stays");
+    assert_eq!(
+        kept.len(),
+        8,
+        "the manual copy is kept beside them: {kept:?}"
+    );
 }
 
 #[test]
@@ -342,9 +368,11 @@ fn the_daily_backup_through_spawn_backup_updates_the_scheduler() {
     assert!(!ctl.borrow().archive_busy());
     assert!(dir.path().join("maintenance.json").exists());
     assert_eq!(
-        snipdeck_portable::backup::list_backups(dir.path())
-            .expect("list")
-            .len(),
+        snipdeck_portable::backup::list_backups(&snipdeck_portable::backup::backups_dir(
+            dir.path()
+        ))
+        .expect("list")
+        .len(),
         1
     );
 }
@@ -392,9 +420,11 @@ fn the_daily_backup_goes_to_a_worker_and_the_scheduler_waits_for_it() {
     assert_eq!(outcomes.len(), 1, "one BackupCreated");
     assert!(dir.path().join("maintenance.json").exists());
     assert_eq!(
-        snipdeck_portable::backup::list_backups(dir.path())
-            .expect("list")
-            .len(),
+        snipdeck_portable::backup::list_backups(&snipdeck_portable::backup::backups_dir(
+            dir.path()
+        ))
+        .expect("list")
+        .len(),
         1
     );
 }

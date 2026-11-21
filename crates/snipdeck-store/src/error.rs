@@ -74,6 +74,18 @@ pub enum Error {
         /// The offending file.
         path: std::path::PathBuf,
     },
+    /// `snipdeck.db` is zero bytes long but the folder holds backups, attachments or a
+    /// write-ahead log: what a crashed sync client or a full disk leaves. Opening would start
+    /// an empty library beside the real data, so the open is refused and nothing is changed.
+    #[error(
+        "the database in `{}` is empty, but the folder holds backups or attachments; restore the \
+         newest backup instead of starting a new library",
+        folder.display()
+    )]
+    EmptyDatabase {
+        /// The data folder.
+        folder: std::path::PathBuf,
+    },
     /// A migration failed; the database was left at the previous version.
     #[error("migration to database format {version} ({name}) failed: {reason}")]
     Migration {
@@ -123,9 +135,11 @@ pub enum Error {
 pub enum Trouble {
     /// The disk (or the quota on it) has no room left.
     DiskFull,
-    /// Another program or another Snipdeck holds the file, or it may not be written (a
-    /// permission, a read-only disk, a sharing violation).
+    /// Another program or another Snipdeck holds the file (a sharing violation, a busy or
+    /// locked database).
     InUse,
+    /// The file or folder may not be written: a permission is missing or the disk is read-only.
+    NotAllowed,
     /// Nothing more specific is known.
     Other,
 }
@@ -142,9 +156,8 @@ impl Trouble {
         }
         match error.kind() {
             ErrorKind::StorageFull | ErrorKind::QuotaExceeded => Self::DiskFull,
-            ErrorKind::PermissionDenied
-            | ErrorKind::ResourceBusy
-            | ErrorKind::ReadOnlyFilesystem => Self::InUse,
+            ErrorKind::PermissionDenied | ErrorKind::ReadOnlyFilesystem => Self::NotAllowed,
+            ErrorKind::ResourceBusy => Self::InUse,
             _ => Self::Other,
         }
     }
@@ -155,13 +168,10 @@ impl Trouble {
         use rusqlite::ErrorCode;
         match error.sqlite_error_code() {
             Some(ErrorCode::DiskFull) => Self::DiskFull,
-            Some(
-                ErrorCode::DatabaseBusy
-                | ErrorCode::DatabaseLocked
-                | ErrorCode::ReadOnly
-                | ErrorCode::PermissionDenied
-                | ErrorCode::CannotOpen,
-            ) => Self::InUse,
+            Some(ErrorCode::DatabaseBusy | ErrorCode::DatabaseLocked | ErrorCode::CannotOpen) => {
+                Self::InUse
+            }
+            Some(ErrorCode::ReadOnly | ErrorCode::PermissionDenied) => Self::NotAllowed,
             _ => Self::Other,
         }
     }
@@ -202,7 +212,7 @@ mod tests {
         );
         assert_eq!(
             Trouble::of_io(&Io::from(ErrorKind::PermissionDenied)),
-            Trouble::InUse
+            Trouble::NotAllowed
         );
         assert_eq!(
             Trouble::of_io(&Io::from(ErrorKind::NotFound)),

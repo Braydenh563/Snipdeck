@@ -57,6 +57,7 @@ pub fn decode_folder(
     let mut lists = Vec::new();
     let root = read_list(&mut state, &files, board.as_str(), now, &mut report)?;
     lists.extend(root);
+    let mut deeper = 0;
     for dir in dirs {
         if state.stopped {
             break;
@@ -67,7 +68,10 @@ pub fn decode_folder(
             .unwrap_or_default();
         // One unreadable subfolder is a warning, like an unreadable file; the rest still import.
         let files = match list(&dir, &mut report) {
-            Ok((files, _)) => files,
+            Ok((files, below)) => {
+                deeper += below.len();
+                files
+            }
             Err(Error::File { source, .. }) => {
                 report.warn(Warning::Unreadable {
                     name: label,
@@ -87,6 +91,9 @@ pub fn decode_folder(
         )?);
     }
 
+    if deeper > 0 {
+        report.warn(Warning::DeeperFoldersSkipped { count: deeper });
+    }
     let mut plan = Plan::default();
     if !lists.is_empty() {
         plan.boards.push(PlanBoard {

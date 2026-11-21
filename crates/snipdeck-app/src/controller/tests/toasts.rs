@@ -746,3 +746,166 @@ fn pausing_the_hotkeys_ends_a_running_test_so_a_press_after_resume_is_not_swallo
         );
     }
 }
+
+fn toast(message: ToastMessage) -> Toast {
+    Toast {
+        kind: ToastKind::Danger,
+        message,
+    }
+}
+
+fn on_screen(w: &World) -> Option<ToastMessage> {
+    w.ctl.view().toast.map(|t| t.message)
+}
+
+/// Runs the toast on screen to its end the way the host's timer does.
+fn run_out(w: &mut World) {
+    let seq = w.ctl.view().toast.expect("toast").seq;
+    while w.ctl.toast_tick(seq).is_some() {}
+}
+
+#[test]
+fn a_queued_toast_shows_at_once_when_none_is_showing() {
+    let mut w = world();
+    w.ctl.queue_toast(toast(ToastMessage::SettingsDamaged));
+    assert_eq!(on_screen(&w), Some(ToastMessage::SettingsDamaged));
+}
+
+#[test]
+fn queued_toasts_show_one_after_another_in_order_when_each_times_out() {
+    let mut w = world();
+    w.ctl.queue_toast(toast(ToastMessage::SettingsDamaged));
+    w.ctl.queue_toast(toast(ToastMessage::SettingsUnreadable));
+    w.ctl.queue_toast(toast(ToastMessage::ClipboardWatchFailed));
+    assert_eq!(on_screen(&w), Some(ToastMessage::SettingsDamaged));
+    let first = w.ctl.view().toast.expect("toast").seq;
+
+    run_out(&mut w);
+    let second = w.ctl.view().toast.expect("the next toast");
+    assert_eq!(second.message, ToastMessage::SettingsUnreadable);
+    assert_ne!(second.seq, first, "a new toast has a new timer");
+    assert_eq!(second.phase, ToastPhase::Enter);
+
+    run_out(&mut w);
+    assert_eq!(on_screen(&w), Some(ToastMessage::ClipboardWatchFailed));
+    run_out(&mut w);
+    assert_eq!(on_screen(&w), None);
+}
+
+#[test]
+fn dismissing_a_toast_brings_the_next_queued_one() {
+    let mut w = world();
+    w.ctl.queue_toast(toast(ToastMessage::SettingsDamaged));
+    w.ctl.queue_toast(toast(ToastMessage::LibrarySetAside {
+        folder: "snipdeck.damaged-1".to_owned(),
+        has_backup: false,
+    }));
+    w.ctl.toast_dismiss();
+    assert!(matches!(
+        on_screen(&w),
+        Some(ToastMessage::LibrarySetAside { .. })
+    ));
+    w.ctl.toast_dismiss();
+    assert_eq!(on_screen(&w), None);
+}
+
+#[test]
+fn an_identical_consecutive_message_is_queued_once() {
+    let mut w = world();
+    w.ctl.queue_toast(toast(ToastMessage::SettingsDamaged));
+    // The same as the one showing.
+    w.ctl.queue_toast(toast(ToastMessage::SettingsDamaged));
+    w.ctl.queue_toast(toast(ToastMessage::SettingsUnreadable));
+    // The same as the last one waiting.
+    w.ctl.queue_toast(toast(ToastMessage::SettingsUnreadable));
+    // Not consecutive with its earlier copy: kept.
+    w.ctl.queue_toast(toast(ToastMessage::SettingsDamaged));
+
+    let mut seen = vec![on_screen(&w).expect("first")];
+    while let Some(()) = {
+        run_out(&mut w);
+        on_screen(&w).map(|m| seen.push(m))
+    } {}
+    assert_eq!(
+        seen,
+        [
+            ToastMessage::SettingsDamaged,
+            ToastMessage::SettingsUnreadable,
+            ToastMessage::SettingsDamaged,
+        ]
+    );
+}
+
+#[test]
+fn show_toast_still_replaces_the_one_on_screen() {
+    let mut w = world();
+    w.ctl.queue_toast(toast(ToastMessage::SettingsDamaged));
+    w.ctl.queue_toast(toast(ToastMessage::SettingsUnreadable));
+    w.ctl.show_toast(Toast {
+        kind: ToastKind::Neutral,
+        message: ToastMessage::Copied,
+    });
+    assert_eq!(on_screen(&w), Some(ToastMessage::Copied));
+    // The queue is left alone: the replaced toast is not requeued, the waiting one stays.
+    run_out(&mut w);
+    assert_eq!(on_screen(&w), Some(ToastMessage::SettingsUnreadable));
+    run_out(&mut w);
+    assert_eq!(on_screen(&w), None);
+}
+
+#[test]
+fn dismissing_with_nothing_on_screen_leaves_the_queue_alone() {
+    let mut w = world();
+    w.ctl.queue_toast(toast(ToastMessage::SettingsDamaged));
+    run_out(&mut w);
+    assert_eq!(on_screen(&w), None);
+    w.ctl.toast_dismiss();
+    assert_eq!(on_screen(&w), None);
+    w.ctl.queue_toast(toast(ToastMessage::SettingsUnreadable));
+    w.ctl.queue_toast(toast(ToastMessage::ClipboardWatchFailed));
+    w.ctl.toast_dismiss(); // the first one goes, the second shows
+    w.ctl.toast_dismiss(); // the second goes, nothing is left
+    assert_eq!(on_screen(&w), None);
+    w.ctl.toast_dismiss();
+    assert_eq!(on_screen(&w), None);
+}
+
+#[test]
+fn editing_from_a_toast_brings_the_next_queued_one() {
+    let mut w = world();
+    let id = w.ctl.view().rows[0].id;
+    w.ctl.show_saved_toast(toast(ToastMessage::Copied), id);
+    w.ctl.queue_toast(toast(ToastMessage::SettingsDamaged));
+    assert_eq!(w.ctl.toast_edit(), [Effect::EditItem(id)]);
+    assert_eq!(on_screen(&w), Some(ToastMessage::SettingsDamaged));
+}
+
+#[test]
+fn opening_the_log_from_the_crash_toast_brings_the_next_queued_one() {
+    let mut w = world();
+    w.ctl.set_log_opener(Box::new(|| Ok(())));
+    w.ctl.queue_toast(toast(ToastMessage::CrashedLastTime));
+    w.ctl.queue_toast(toast(ToastMessage::SettingsDamaged));
+    w.ctl.toast_action();
+    assert_eq!(on_screen(&w), Some(ToastMessage::SettingsDamaged));
+}
+
+#[test]
+fn undoing_an_add_brings_the_next_queued_one() {
+    let mut w = world();
+    let id = w.ctl.view().rows[0].id;
+    w.ctl.show_saved_toast(toast(ToastMessage::Copied), id);
+    w.ctl.queue_toast(toast(ToastMessage::SettingsDamaged));
+    w.ctl.toast_action();
+    assert_eq!(on_screen(&w), Some(ToastMessage::SettingsDamaged));
+}
+
+#[test]
+fn ending_a_drag_brings_the_next_queued_one() {
+    let mut w = world();
+    w.ctl
+        .drop_hover(crate::item_editor::Origin::Panel, Some(w.links_list));
+    w.ctl.queue_toast(toast(ToastMessage::SettingsDamaged));
+    w.ctl.drop_end();
+    assert_eq!(on_screen(&w), Some(ToastMessage::SettingsDamaged));
+}

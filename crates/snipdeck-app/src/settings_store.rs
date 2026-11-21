@@ -45,7 +45,7 @@ pub(crate) fn create_temp(dir: &Path, stem: &str) -> io::Result<(File, PathBuf)>
 }
 
 /// Removes the temporary files that earlier, interrupted writes of `stem` left in `dir`.
-fn remove_stale_temps(dir: &Path, stem: &str) {
+pub(crate) fn remove_stale_temps(dir: &Path, stem: &str) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
     };

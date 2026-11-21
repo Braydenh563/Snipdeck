@@ -355,11 +355,12 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
             snipdeck_app::paths::documents_folder().as_deref(),
         ));
         controller.prune_recent();
-        if let Some(toast) = settings_toast {
-            controller.show_toast(toast);
+        // The notices from opening the library, one after the other.
+        for toast in settings_toast {
+            controller.queue_toast(toast);
         }
         if clipboard_watch_failed {
-            controller.show_toast(Toast {
+            controller.queue_toast(Toast {
                 kind: snipdeck_app::toast::ToastKind::Danger,
                 message: snipdeck_app::toast::ToastMessage::ClipboardWatchFailed,
             });
@@ -1146,13 +1147,13 @@ fn report_hotkey_problems(problems: &[host::HotkeyProblem]) {
 /// What [`open_library`] returns: the library, the settings, and the data
 /// folder (`None` only for the demo, which has none), and what the settings saver starts from
 /// (`None` when changes must not be written: the demo, `--dark`, and a settings file that could
-/// not be read or set aside).
+/// not be read or set aside), and the notices to show at start (settings, library moved aside).
 type Library = (
     Store,
     Settings,
     Option<PathBuf>,
     Option<Settings>,
-    Option<Toast>,
+    Vec<Toast>,
 );
 
 /// Where the library lives: `--data-dir`, or the default folder.
@@ -1176,7 +1177,7 @@ fn open_library(args: &Args) -> Result<Library, String> {
         };
         let store = demo::store(now).map_err(|e| format!("demo library: {e}"))?;
         snipdeck_app::trace!("demo library");
-        return Ok((store, settings, None, None, None));
+        return Ok((store, settings, None, None, Vec::new()));
     }
     let folder = data_folder(args)?;
     // Where a crash report goes (set for any real library, also when the settings stay unsaved).
@@ -1219,7 +1220,11 @@ fn open_library(args: &Args) -> Result<Library, String> {
     if args.dark {
         settings.theme = Theme::Dark;
     }
-    let mut store = Store::open(&folder).map_err(|e| format!("{}: {e}", folder.display()))?;
+    // A library that cannot be opened is kept aside and a fresh one opened (DATA-5): exiting
+    // here would leave no way to reach Settings > Rebuild from backup.
+    let (mut store, set_aside_toast) =
+        snipdeck_app::paths::open_library_folder(&folder, Timestamp::now())
+            .map_err(|e| format!("{}: {e}", folder.display()))?;
     // A new library has no board, and the Panel cannot make one: without this every control of a
     // first run has nothing to act on (an empty board menu, no tabs, no rows).
     match snipdeck_app::starter::ensure_first_run(&mut store, now) {
@@ -1231,7 +1236,12 @@ fn open_library(args: &Args) -> Result<Library, String> {
         settings,
         Some(folder),
         saver_baseline,
-        loaded_outcome.toast(),
+        // The settings notice first, then the library one.
+        loaded_outcome
+            .toast()
+            .into_iter()
+            .chain(set_aside_toast)
+            .collect(),
     ))
 }
 

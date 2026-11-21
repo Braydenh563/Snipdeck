@@ -1138,16 +1138,17 @@ fn backups_to_keep_is_what_the_prune_keeps() {
         r.ui.invoke_backups_keep_chosen(2);
         assert_eq!(r.ctl.borrow().settings().backups_keep, 2);
         assert_eq!(r.ui.get_backups_keep(), 2);
-        // Four days of backups on the frozen clock, moved on a day at a time.
-        for day in 0..4 {
+        // Twelve manual backups, a minute apart on the frozen clock: the daily count does not
+        // touch them, the manual ones keep their own newest ten.
+        for minute in 0..12 {
             r.clock
-                .set(at(&format!("2026-10-{:02}T10:30:00Z", 17 + day)));
+                .set(at(&format!("2026-10-17T10:{:02}:00Z", 10 + minute)));
             assert!(r.ctl.borrow_mut().backup_now(r.dir.path()));
         }
         let files = std::fs::read_dir(r.dir.path().join("backups"))
             .unwrap()
             .count();
-        assert_eq!(files, 2, "only the newest two stay");
+        assert_eq!(files, snipdeck_portable::backup::MANUAL_KEPT);
         // A bigger number is held between 1 and 60.
         r.ui.invoke_backups_keep_chosen(900);
         assert_eq!(r.ctl.borrow().settings().backups_keep, 60);
@@ -1313,24 +1314,31 @@ fn restoring_a_backup_round_trips_the_demo_library() {
 }
 
 #[test]
-fn back_up_now_replaces_todays_backup_instead_of_refusing() {
+fn back_up_now_writes_a_file_of_its_own_and_leaves_todays_backup_alone() {
     on_ui_thread(|| {
         let r = rig_on(
             demo::store(now()).unwrap(),
             tempfile::tempdir().unwrap(),
             true,
         );
+        let dir = snipdeck_portable::backup::backups_dir(r.dir.path());
         r.ui.invoke_backup_now_requested();
-        let files = snipdeck_portable::backup::list_backups(r.dir.path()).unwrap();
+        let files = snipdeck_portable::backup::list_backups(&dir).unwrap();
         assert_eq!(files.len(), 1);
-        // Today's file is stale (stand-in: three bytes); asking again writes a real one over it.
-        std::fs::write(&files[0].path, b"old").unwrap();
+        assert!(files[0].manual, "a file of its own, not today's daily one");
+        assert!(files[0].bytes > 100, "{} bytes", files[0].bytes);
+        // Today's daily backup exists (three bytes stand in for it): asking again leaves it be.
+        let daily = dir.join(snipdeck_portable::backup::file_name(files[0].date));
+        std::fs::write(&daily, b"old").unwrap();
         r.ui.invoke_backup_now_requested();
         assert_eq!(r.ui.get_toast_text(), "Backed up");
-        let after = snipdeck_portable::backup::list_backups(r.dir.path()).unwrap();
-        assert_eq!(after.len(), 1, "still one file for today");
-        assert!(after[0].bytes > 100, "{} bytes", after[0].bytes);
-        assert_eq!(r.ui.get_backups().row_count(), 1);
+        assert_eq!(std::fs::read(&daily).unwrap(), b"old");
+        let after = snipdeck_portable::backup::list_backups(&dir).unwrap();
+        assert_eq!(
+            after.len(),
+            2,
+            "the daily file and the manual one: {after:?}"
+        );
     });
 }
 
@@ -1344,9 +1352,11 @@ fn back_up_now_makes_no_second_export_the_copy_is_the_backup_jobs_own() {
         // binding writes no export of its own and raises no second toast.
         assert!(!r.dir.path().join("Documents").exists());
         assert_eq!(
-            snipdeck_portable::backup::list_backups(r.dir.path())
-                .unwrap()
-                .len(),
+            snipdeck_portable::backup::list_backups(&snipdeck_portable::backup::backups_dir(
+                r.dir.path()
+            ))
+            .unwrap()
+            .len(),
             1
         );
     });
@@ -1695,6 +1705,7 @@ fn every_warning() -> Vec<snipdeck_portable::Warning> {
             title: "Bank PIN".into(),
         },
         W::SensitiveOmittedByExport { count: 4 },
+        W::SkippedByExport { count: 2 },
         W::LossyText { name: name() },
         W::TooLarge {
             name: name(),
@@ -1707,6 +1718,7 @@ fn every_warning() -> Vec<snipdeck_portable::Warning> {
         },
         W::SymlinkSkipped { name: name() },
         W::NonTextSkipped { count: 7 },
+        W::DeeperFoldersSkipped { count: 2 },
         W::Truncated {
             reason: "too many entries".into(),
         },
@@ -1723,12 +1735,14 @@ fn every_warning() -> Vec<snipdeck_portable::Warning> {
             | W::SensitiveNeedKey { .. }
             | W::CannotDecrypt { .. }
             | W::SensitiveOmittedByExport { .. }
+            | W::SkippedByExport { .. }
             | W::LossyText { .. }
             | W::TooLarge { .. }
             | W::Empty { .. }
             | W::Unreadable { .. }
             | W::SymlinkSkipped { .. }
             | W::NonTextSkipped { .. }
+            | W::DeeperFoldersSkipped { .. }
             | W::Truncated { .. }
             | W::Note(_) => {}
         }
@@ -1777,6 +1791,10 @@ fn every_note() -> Vec<snipdeck_portable::Note> {
             name: s("f"),
         },
         N::ColumnsCut { file: s("a.csv") },
+        N::TriggerTooShort {
+            title: s("Sig"),
+            trigger: s("s"),
+        },
         N::TriggerTaken {
             title: s("Sig"),
             trigger: s(";sig"),
@@ -1809,6 +1827,7 @@ fn every_note() -> Vec<snipdeck_portable::Note> {
             | N::DateFormat { .. }
             | N::FormField { .. }
             | N::ColumnsCut { .. }
+            | N::TriggerTooShort { .. }
             | N::TriggerTaken { .. }
             | N::TriggerOverlap { .. }
             | N::TitleCut { .. } => {}
@@ -1838,7 +1857,9 @@ fn note_args(n: &snipdeck_portable::Note) -> Vec<String> {
         N::DateFormat { what, format } => v(&[what, format]),
         N::FormField { what, name } => v(&[what, name]),
         N::ColumnsCut { file } => v(&[file]),
-        N::TriggerTaken { title, trigger } => v(&[title, trigger]),
+        N::TriggerTooShort { title, trigger } | N::TriggerTaken { title, trigger } => {
+            v(&[title, trigger])
+        }
         N::TriggerOverlap {
             title,
             trigger,
@@ -2733,11 +2754,13 @@ fn the_backups_section_names_the_newest_backup_or_says_there_is_none() {
             assert!(r.ctl.borrow_mut().backup_now(r.dir.path()));
         }
         r.ui.invoke_backup_now_requested();
-        let newest = snipdeck_portable::backup::list_backups(r.dir.path())
-            .unwrap()
-            .first()
-            .map(|b| b.date.to_string())
-            .unwrap();
+        let newest = snipdeck_portable::backup::list_backups(
+            &snipdeck_portable::backup::backups_dir(r.dir.path()),
+        )
+        .unwrap()
+        .first()
+        .map(|b| b.date.to_string())
+        .unwrap();
         assert_eq!(r.ui.get_last_backup(), newest.as_str());
         assert!(
             newest.starts_with("2026-10-1"),
@@ -3162,7 +3185,7 @@ fn restoring_shows_the_busy_state_while_the_backup_is_read_and_then_the_preview(
         snipdeck_app::demo::seed(&mut store, now()).unwrap();
         snipdeck_portable::backup::run_if_due(
             &store,
-            dir.path(),
+            &snipdeck_portable::backup::backups_dir(dir.path()),
             &now().to_zoned(jiff::tz::TimeZone::UTC),
             7,
             None,

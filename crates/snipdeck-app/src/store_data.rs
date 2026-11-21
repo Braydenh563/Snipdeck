@@ -118,13 +118,16 @@ pub struct CopyReport {
 /// Why a backup was not copied out.
 #[derive(Debug, thiserror::Error)]
 pub enum CopyError {
-    /// The file is not named like one of Snipdeck's backups.
+    /// The file is not named like one of Snipdeck's backups (daily or manual).
     #[error("{0} is not a backup file")]
     NotABackup(PathBuf),
     /// The folder or the copy could not be written.
     #[error("could not copy the backup: {0}")]
     Io(#[from] io::Error),
 }
+
+/// The day and the (hour, minute) of a manual backup.
+type When = (Date, (i8, i8));
 
 /// Copies the backup `file` (just written, so it exists) into `folder` under the same name, then
 /// keeps only the newest `keep` copies there (at least 1). `today` is the day the backup was made:
@@ -146,7 +149,7 @@ pub fn copy_out(
     let name = file
         .file_name()
         .and_then(|n| n.to_str())
-        .filter(|n| backup::parse_file_name(n).is_some())
+        .filter(|n| backup::parse_backup_name(n).is_some())
         .ok_or_else(|| CopyError::NotABackup(file.to_path_buf()))?;
     fs.create_dir_all(folder)?;
     let target = folder.join(name);
@@ -159,17 +162,30 @@ pub fn copy_out(
         return Err(e.into());
     }
 
+    // Daily copies keep `keep`, manual ones the newest `MANUAL_KEPT`, as in the backups folder.
     let mut dated: Vec<(Date, String)> = Vec::new();
+    let mut manual: Vec<(When, String)> = Vec::new();
     for found in fs.file_names(folder)? {
-        if let Some(date) = backup::parse_file_name(&found)
-            && date <= today
-        {
-            dated.push((date, found));
+        match backup::parse_backup_name(&found) {
+            Some((date, None)) if date <= today => dated.push((date, found)),
+            Some((date, Some(time))) if date <= today => manual.push(((date, time), found)),
+            _ => {}
         }
     }
     dated.sort_by_key(|(date, _)| std::cmp::Reverse(*date));
+    manual.sort_by_key(|(when, _)| std::cmp::Reverse(*when));
+    let doomed = dated
+        .into_iter()
+        .skip(keep.max(1))
+        .map(|(_, found)| found)
+        .chain(
+            manual
+                .into_iter()
+                .skip(backup::MANUAL_KEPT)
+                .map(|(_, found)| found),
+        );
     let (mut pruned, mut prune_failed) = (0, 0);
-    for (_, found) in dated.into_iter().skip(keep.max(1)) {
+    for found in doomed {
         if found == name {
             continue;
         }
@@ -329,6 +345,28 @@ mod tests {
             "the two newest stay; a file that is not a backup is not touched"
         );
         assert_eq!(fs.files.borrow()[&report.copied], "new");
+    }
+
+    #[test]
+    fn a_manual_backup_is_copied_and_pruned_apart_from_the_daily_ones() {
+        let manual = "/data/backups/snipdeck-backup-20261116-0930.snipdeck";
+        let mut names = vec!["snipdeck-backup-20261115.snipdeck".to_owned()];
+        // Ten older manual copies: with the new one that is one over the newest ten.
+        for day in 6..16 {
+            names.push(format!("snipdeck-backup-202611{day:02}-0800.snipdeck"));
+        }
+        let refs: Vec<&str> = names.iter().map(String::as_str).collect();
+        let fs = FakeFs::with(&refs);
+        fs.files
+            .borrow_mut()
+            .insert(PathBuf::from(manual), "manual".into());
+        let report = copy_out(&fs, Path::new(manual), Path::new(DOCS), 1, day()).unwrap();
+        assert_eq!(report.pruned, 1, "only the oldest manual copy goes");
+        let left = fs.names();
+        assert!(left.contains(&"snipdeck-backup-20261115.snipdeck".to_owned()));
+        assert!(left.contains(&"snipdeck-backup-20261116-0930.snipdeck".to_owned()));
+        assert!(!left.contains(&"snipdeck-backup-20261106-0800.snipdeck".to_owned()));
+        assert_eq!(left.len(), 11);
     }
 
     #[test]

@@ -299,6 +299,13 @@ msgstr "背景：白色"
 msgid "Backed up"
 msgstr "已备份"
 
+msgid "Backed up, but {} item could not be included: \"{}\". Its attachment could not be read."
+msgid_plural "Backed up, but {} items could not be included, such as \"{}\". Their attachments could not be read."
+msgstr[0] "已备份，但有 {} 个项目（如“{}”）未能包含，其附件无法读取。"
+
+msgid "Backup folder"
+msgstr "备份文件夹"
+
 msgid "Backup of {}, {}"
 msgstr "{} 的备份（{}）"
 
@@ -412,6 +419,9 @@ msgstr "请选择文件，或取消。"
 
 msgid "Choose comfortable rows, compact rows or tiles."
 msgstr "可选择舒适行、紧凑行或磁贴。"
+
+msgid "Choose folder…"
+msgstr "选择文件夹…"
 
 msgid "Choose one to add it where the cursor is. It is filled in when you use the item."
 msgstr "选择一项，将其添加到光标所在位置。使用该片段时会填入内容。"
@@ -662,14 +672,17 @@ msgstr "CopyQ 导出"
 msgid "Couldn't change the Windows start-up entry."
 msgstr "无法更改 Windows 开机启动项。"
 
-msgid "Couldn't clear old items out of the Trash. Check the disk has room, then restart Snipdeck to try again."
-msgstr "无法清除回收站中的旧项目。请检查磁盘空间，然后重启 Snipdeck 重试。"
+msgid "Couldn't clear old items out of the Trash. Restart Snipdeck to try again; if it keeps failing, check that the data folder can be written to."
+msgstr "无法清理回收站中的旧项目。请重启 Snipdeck 重试；如果仍然失败，请检查数据文件夹是否可写入。"
 
 msgid "Couldn't erase everything. Quit Snipdeck and try again."
 msgstr "无法全部删除。请退出 Snipdeck 后重试。"
 
-msgid "Couldn't export your library. Check the disk has room, then try again."
-msgstr "无法导出你的资料库。请检查磁盘空间，然后重试。"
+msgid "Couldn't export your library. Try again, or pick another folder."
+msgstr "无法导出你的库。请重试，或选择其他文件夹。"
+
+msgid "Couldn't export your library: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then try again."
+msgstr "无法导出你的资料库：Snipdeck 没有写入该位置的权限。请检查文件夹是否为只读，以及你的账户是否可以修改它，然后重试。"
 
 msgid "Couldn't export your library: an attachment, or your attachments together, are too big for a .snipdeck file (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then try again."
 msgstr "无法导出你的库:某个附件或所有附件的总大小超出 .snipdeck 文件的上限(单个文件 64 MB,总计 8 GB)。请删除或压缩最大的文件,然后重试。"
@@ -689,6 +702,9 @@ msgstr "无法导入该内容。"
 msgid "Couldn't import that. Choose the file again, or try another one."
 msgstr "无法导入。请重新选择文件，或换一个文件。"
 
+msgid "Couldn't import that: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then try again."
+msgstr "无法导入该文件：Snipdeck 没有写入该位置的权限。请检查文件夹是否为只读，以及你的账户是否可以修改它，然后重试。"
+
 msgid "Couldn't import that: it isn't a file Snipdeck can read, or it is damaged. Choose a .snipdeck export."
 msgstr "无法导入：Snipdeck 无法读取该文件，或文件已损坏。请选择 .snipdeck 导出文件。"
 
@@ -704,8 +720,11 @@ msgstr "无法导入：文件正被其他程序占用或无法读取。请关闭
 msgid "Couldn't import that: your library is locked. Unlock it, then try again."
 msgstr "无法导入：你的资料库已锁定。请先解锁，然后重试。"
 
-msgid "Couldn't make a backup. Check the disk has room, then use Back up now in Settings."
-msgstr "无法创建备份。请检查磁盘空间，然后使用“设置”中的“立即备份”。"
+msgid "Couldn't make a backup. Try Back up now in Settings again; if it keeps failing, open the data folder from Settings and check that it can be written to."
+msgstr "无法完成备份。请在设置中再试一次“立即备份”；如果仍然失败，请从设置中打开数据文件夹，检查它是否可写入。"
+
+msgid "Couldn't make a backup: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then use Back up now in Settings."
+msgstr "无法创建备份：Snipdeck 没有写入该位置的权限。请检查文件夹是否为只读，以及你的账户是否可以修改它，然后在设置中使用“立即备份”。"
 
 msgid "Couldn't make a backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
 msgstr "无法创建备份:某个附件或所有附件的总大小超出备份的上限(单个文件 64 MB,总计 8 GB)。请删除或压缩最大的文件,然后在“设置”中使用“立即备份”。"
@@ -722,6 +741,9 @@ msgstr "无法创建备份：你的资料库已锁定。请先解锁，然后使
 msgid "Couldn't make that change. Try again, or restart Snipdeck if it keeps happening."
 msgstr "无法完成此更改。请重试；如果问题持续出现，请重启 Snipdeck。"
 
+msgid "Couldn't make that change: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then try again."
+msgstr "无法进行该更改：Snipdeck 没有写入该位置的权限。请检查文件夹是否为只读，以及你的账户是否可以修改它，然后重试。"
+
 msgid "Couldn't make that change: the disk is full. Free up some space, then try again."
 msgstr "无法完成此更改：磁盘已满。请释放一些空间，然后重试。"
 
@@ -731,8 +753,11 @@ msgstr "无法完成此更改：你的资料库文件正被其他程序占用。
 msgid "Couldn't make that change: your library is locked. Unlock it, then try again."
 msgstr "无法完成此更改：你的资料库已锁定。请先解锁，然后重试。"
 
-msgid "Couldn't make today's backup. Check the disk has room, then use Back up now in Settings."
-msgstr "无法创建今天的备份。请检查磁盘空间，然后使用“设置”中的“立即备份”。"
+msgid "Couldn't make today's backup. Use Back up now in Settings to try again; if it keeps failing, open the data folder from Settings and check that it can be written to."
+msgstr "无法完成今天的备份。请在设置中使用“立即备份”重试；如果仍然失败，请从设置中打开数据文件夹，检查它是否可写入。"
+
+msgid "Couldn't make today's backup: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then use Back up now in Settings."
+msgstr "无法创建今天的备份：Snipdeck 没有写入该位置的权限。请检查文件夹是否为只读，以及你的账户是否可以修改它，然后在设置中使用“立即备份”。"
 
 msgid "Couldn't make today's backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
 msgstr "无法创建今天的备份:某个附件或所有附件的总大小超出备份的上限(单个文件 64 MB,总计 8 GB)。请删除或压缩最大的文件,然后在“设置”中使用“立即备份”。"
@@ -782,6 +807,9 @@ msgstr "无法重新打开你的库。请重启 Snipdeck。你的文件没有被
 msgid "Couldn't restore that backup. Choose another backup, or try again."
 msgstr "无法还原该备份。请选择其他备份，或重试。"
 
+msgid "Couldn't restore that backup: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then try again."
+msgstr "无法还原该备份：Snipdeck 没有写入该位置的权限。请检查文件夹是否为只读，以及你的账户是否可以修改它，然后重试。"
+
 msgid "Couldn't restore that backup: a file is in use by another program. Close it, then try again."
 msgstr "无法还原该备份：有文件正被其他程序占用。请关闭它，然后重试。"
 
@@ -814,6 +842,9 @@ msgstr "无法启动键入触发。不会展开或推荐任何内容。"
 
 msgid "Couldn't use this item. Try again, or restart Snipdeck if it keeps happening."
 msgstr "无法使用此片段。请重试；如果问题持续出现，请重启 Snipdeck。"
+
+msgid "Couldn't use this item: Snipdeck isn't allowed to write there. Check that the folder isn't read-only and that your account may change it, then try again."
+msgstr "无法使用此项目：Snipdeck 没有写入该位置的权限。请检查文件夹是否为只读，以及你的账户是否可以修改它，然后重试。"
 
 msgid "Couldn't use this item: the disk is full. Free up some space, then try again."
 msgstr "无法使用此片段：磁盘已满。请释放一些空间，然后重试。"
@@ -850,6 +881,9 @@ msgstr "当前密码"
 
 msgid "Cut"
 msgstr "剪切"
+
+msgid "Daily copies kept; older ones are deleted when you lower this."
+msgstr "保留的每日副本数；调低后，更早的副本会被删除。"
 
 msgid "Dark"
 msgstr "深色"
@@ -1115,8 +1149,8 @@ msgstr "一切正常。"
 msgid "Everything in the Trash is deleted for good. This can't be undone."
 msgstr "回收站中的所有内容都将被永久删除，此操作无法撤销。"
 
-msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings stay."
-msgstr "资料库中的所有内容都会被删除：看板、列表、项目、图片、草稿和备份。如需副本，请先导出。你的设置会保留。"
+msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings stay. Deleted files may still be recoverable with disk tools unless your disk is encrypted."
+msgstr "库中的所有内容都会被删除：看板、列表、项目、图片、草稿和备份。如需副本，请先导出。你的设置会保留。如果磁盘未加密，已删除的文件仍可能被磁盘工具恢复。"
 
 msgid "Expand abbreviations as I type"
 msgstr "输入时展开缩写"
@@ -1395,6 +1429,9 @@ msgstr "插入建议的项目（仅限 Windows）"
 msgid "Insert {}"
 msgstr "插入 {}"
 
+msgid "Install these triggers"
+msgstr "安装这些触发词"
+
 msgid "It is removed from {n} item. The item stays."
 msgid_plural "It is removed from {n} items. The items stay."
 msgstr[0] "将从 {n} 个片段中移除。片段本身保留。"
@@ -1498,6 +1535,10 @@ msgstr "语言"
 
 msgid "Last backup: {}"
 msgstr "上次备份：{}"
+
+msgid "Last backup: {}, {}, {} item"
+msgid_plural "Last backup: {}, {}, {} items"
+msgstr[0] "上次备份：{}，{}，{} 项"
 
 msgid "Layout"
 msgstr "布局"
@@ -2589,6 +2630,10 @@ msgstr "已保存到 {}"
 msgid "Saved {}"
 msgstr "已保存 {}"
 
+msgid "Saved {}, but {} item could not be included: \"{}\". Its attachment could not be read."
+msgid_plural "Saved {}, but {} items could not be included, such as \"{}\". Their attachments could not be read."
+msgstr[0] "已保存 {}，但有 {} 个项目（如“{}”）未能包含，其附件无法读取。"
+
 msgid "Saved {}."
 msgstr "已保存 {}。"
 
@@ -2895,8 +2940,8 @@ msgstr "Snipdeck 不会自行检查。这会在浏览器中打开发布页面。
 msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
 msgstr "Snipdeck 从不连接互联网：它显示的每个图标和字体都已随应用打包。"
 
-msgid "Snipdeck saves a copy of your library once a day and keeps the newest {}. Restoring adds back what is missing and never removes anything."
-msgstr "Snipdeck 每天保存一份资料库副本，并保留最新的 {} 份。还原只会补回缺少的内容，不会删除任何东西。"
+msgid "Snipdeck saves a copy of your library once a day and keeps the newest {}, plus the last copy of each of the past four weeks and six months. A backup holds every board, list, item and tag; the Trash is not in it. Restoring adds back what is missing and never removes anything."
+msgstr "Snipdeck 每天保存一份资料库副本，保留最新的 {} 份，另外保留过去四周和过去六个月中每一段的最后一份。备份包含所有看板、列表、项目和标签；回收站不在其中。还原只会补回缺少的内容，绝不会删除任何东西。"
 
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "Snipdeck 会待在系统托盘中，以便登录后快捷键仍可使用。"
@@ -3156,9 +3201,6 @@ msgstr "列表最多可包含 {} 个程序。"
 msgid "The newest backup is from {} and holds {} items on {} boards. Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read."
 msgstr "最新备份来自 {}，包含 {} 个看板上的 {} 项内容。当前数据库会被另行保存，不会被删除。此备份之后添加的内容，能读取的会被恢复。"
 
-msgid "The oldest ones are deleted once there are more than this."
-msgstr "超过此数量后，最旧的备份会被删除。"
-
 msgid "The panel"
 msgstr "面板"
 
@@ -3219,6 +3261,9 @@ msgstr "以下快捷键无法使用：{}。原因见 设置 > 快捷键。"
 msgid "Third-party notices"
 msgstr "第三方声明"
 
+msgid "This backup holds {} items; the one before held {}. The older backups were kept. Check that nothing was deleted by mistake."
+msgstr "此备份包含 {} 个项目，上一次备份包含 {} 个。较旧的备份已保留。请检查是否误删了内容。"
+
 msgid "This board"
 msgstr "此看板"
 
@@ -3231,8 +3276,18 @@ msgstr "此演示不会在磁盘上保存任何内容，因此没有备份。"
 msgid "This field is required"
 msgstr "此字段为必填项"
 
+msgid "This file has {} trigger, which types text into other programs: {}"
+msgid_plural "This file has {} triggers, which type text into other programs: {}"
+msgstr[0] "此文件包含 {} 个会向其他程序输入文本的触发词：{}"
+
 msgid "This file was made by a newer Snipdeck (format {}), so anything this version does not know was left out."
 msgstr "此文件由更新版本的 Snipdeck 创建（格式 {}），因此本版本不认识的内容已被省略。"
+
+msgid "This folder is on a network share. A backup can fail while the share is offline, and a half-written copy there is hard to spot. Keep a second copy somewhere local."
+msgstr "此文件夹位于网络共享上。共享离线时备份可能失败，而写了一半的副本很难发现。请在本地另存一份副本。"
+
+msgid "This folder is synced by {}. Every backup is uploaded, and the service can bring an old copy back over a new one. Sensitive items stay encrypted, but a synced copy is still a copy."
+msgstr "此文件夹由 {} 同步。每次备份都会上传，服务可能会用旧副本覆盖新副本。敏感项目仍保持加密，但同步的副本依然是副本。"
 
 msgid "This is your only board. Add another before deleting it."
 msgstr "这是你唯一的看板。请先添加另一个再删除它。"
@@ -3471,6 +3526,9 @@ msgstr "使用所选片段"
 msgid "Use the Nth item"
 msgstr "使用第 N 个片段"
 
+msgid "Use the default"
+msgstr "使用默认位置"
+
 msgid "Use the item"
 msgstr "使用该片段"
 
@@ -3638,6 +3696,12 @@ msgstr "是"
 
 msgid "Your Windows Hello PIN, face or fingerprint changed. Unlock with your password once to set Windows Hello up again."
 msgstr "你的 Windows Hello PIN、面部或指纹已更改。请先用密码解锁一次，以重新设置 Windows Hello。"
+
+msgid "Your library couldn't be opened, so it was moved aside to {} in your Snipdeck data folder. Settings > Rebuild from backup restores your newest backup."
+msgstr "无法打开你的资料库，已将其移至 Snipdeck 数据文件夹中的 {}。在 设置 > 从备份重建 中可恢复最新的备份。"
+
+msgid "Your library couldn't be opened, so it was moved aside to {} in your Snipdeck data folder. There is no backup to restore from yet."
+msgstr "无法打开你的资料库，已将其移至 Snipdeck 数据文件夹中的 {}。目前还没有可供恢复的备份。"
 
 msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, backups (as many as you choose to keep) and logs."
 msgstr "你的资料库位于一个文件夹 %LOCALAPPDATA%\\Snipdeck 中：snipdeck.db（看板、列表、项目、标签和回收站）、blobs（图片、文件和长文本）、settings.json、backups（保留你选定的份数）和 logs。"
@@ -4074,6 +4138,10 @@ msgid "{} file, {} in all"
 msgid_plural "{} files, {} in all"
 msgstr[0] "{} 个文件，共 {} 个"
 
+msgid "{} folder inside a subfolder was not read; Snipdeck reads one level of subfolders."
+msgid_plural "{} folders inside subfolders were not read; Snipdeck reads one level of subfolders."
+msgstr[0] "子文件夹内的 {} 个文件夹未被读取；Snipdeck 只读取一级子文件夹。"
+
 msgid "{} found"
 msgstr "找到 {} 个"
 
@@ -4135,6 +4203,10 @@ msgid "{} item that is not text (a picture or file) was skipped."
 msgid_plural "{} items that are not text (pictures or files) were skipped."
 msgstr[0] "{} 项不是文本（图片或文件），已跳过。"
 
+msgid "{} item with an attachment that could not be read was left out when this file was made."
+msgid_plural "{} items with an attachment that could not be read were left out when this file was made."
+msgstr[0] "创建此文件时，有 {} 个带有无法读取的附件的项目被排除在外。"
+
 msgid "{} match in all boards"
 msgid_plural "{} matches in all boards"
 msgstr[0] "所有看板中有 {} 个匹配项"
@@ -4157,6 +4229,10 @@ msgstr "有 {} 项检查需要留意。"
 
 msgid "{} of {} · next: {}"
 msgstr "{} / {} · 下一项：{}"
+
+msgid "{} older backup was deleted."
+msgid_plural "{} older backups were deleted."
+msgstr[0] "已删除 {} 份较旧的备份。"
 
 msgid "{} on its own is used by every program. Add Ctrl, Alt or Win."
 msgstr "单独的 {} 会被所有程序使用。请加上 Ctrl、Alt 或 Win。"
@@ -4188,6 +4264,10 @@ msgstr[0] "备份中不包含 {} 项敏感项目。"
 
 msgid "{} takes no argument"
 msgstr "{} 不接受参数"
+
+msgid "{} trigger will be restored: {}"
+msgid_plural "{} triggers will be restored: {}"
+msgstr[0] "将还原 {} 个触发词：{}"
 
 msgid "{} · {}"
 msgstr "{} · {}"
@@ -4239,6 +4319,9 @@ msgstr "{}：触发词 {} 与 {} 开头相同，因此较短的会先触发。"
 
 msgid "{}: the trigger {} is already used by another snippet, so it was imported without it."
 msgstr "{}：触发词 {} 已被另一个片段使用，因此导入时未带触发词。"
+
+msgid "{}: the trigger {} is too short (a trigger needs at least two characters), so it was imported without it."
+msgstr "{}：触发词 {} 太短（触发词至少需要两个字符），因此导入时未包含它。"
 
 msgid "{}: this entry is not a match and was skipped."
 msgstr "{}：此条目不是匹配项，已跳过。"
