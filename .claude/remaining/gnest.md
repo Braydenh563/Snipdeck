@@ -1,16 +1,17 @@
-# gnest agent remaining work (group nesting, LIBRARY-43)
+# gnest (group nesting, LIBRARY-43): built
 
-## Decisions
-- Depth limit `MAX_GROUP_DEPTH` = 3 levels. `items.group_id` stays the innermost group; `GroupRun.items` = own members, `GroupRun.run` = whole subtree run, `GroupRun.depth`.
-- Ungroup (Keep) lifts members and child groups to the grandparent; Delete group trashes the whole subtree run (restore brings headers back).
-- Undo of an ungroup of a parent uses `restore_group(group, members, children)` (no row moves). Nest/unnest = `reparent_group(id, parent, at)`; undo passes the old parent and old placement.
-- Ctrl+G with marked rows all in one group makes a child of it; a mixed selection stays top level (legacy behaviour).
-- Nest chooser (Main window "Nest under..." and palette) works in any sort order; Panel shows nested groups flat (no indent; PANEL-* out of scope).
-- Nested header moves (Alt+Arrows/drag) stay inside the parent run.
+Everything is built and merged on claude/fix-audit-library: core `GroupTree`, store V15 (`item_groups.parent`, `reparent_group`,
+`restore_group`), portable `parent` (format 1.3), app (shared `GroupWalk`, controller, commands, one undo step each), Main window
+indent and "Nest under..." chooser, palette command, strings (6 locales), SPEC, user guide, HANDOVER, tests (store
+`group_nesting.rs`, app, portable, UI walk in `library_views_walk.rs`).
 
-## Done
-- core, store, portable (+format.md), app model/controller/history/commands/binding, UI indent + chooser, i18n (6 locales), controller tests (group_nesting.rs), SPEC, user-guide, HANDOVER.
-- UI walk tests in crates/snipdeck-ui/tests/library_views_walk.rs (nested indent matrix, nest chooser, goldens).
+## Decisions (kept)
+- `MAX_GROUP_DEPTH` = 3. `items.group_id` is the innermost group; `GroupRun.items` own members, `.run` the subtree, `.depth`.
+- Ungroup lifts members and child groups to the grandparent; Delete takes the subtree along (restore brings headers back).
+- Ctrl+G on marked rows all in one group makes a child of it; a mixed selection stays top level.
+- Nested header moves stay inside the parent run.
 
-## Next
-Final gate: fmt, clippy -D warnings, targeted tests, i18n check --strict; SubagentHandback.
+## Open
+- The Panel lists nested groups flat: no indent and no group colour dot (see views.md). Needs a `PanelRow` depth/colour and a
+  `panel.slint` change (PANEL-* area).
+- Windows behaviour unverified.

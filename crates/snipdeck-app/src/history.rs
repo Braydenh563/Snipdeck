@@ -407,6 +407,17 @@ impl Change {
                 from: *to,
                 to: *from,
             },
+            Self::DropTag { .. }
+            | Self::MakeTag { .. }
+            | Self::LinkTag { .. }
+            | Self::UnlinkTag { .. } => self.tag_inverse(),
+            Self::Barrier(id) => Self::Barrier(*id),
+        }
+    }
+
+    /// The inverse of a change to a tag: a deletion and a creation, a link and an unlink, swap.
+    fn tag_inverse(&self) -> Self {
+        match self {
             Self::DropTag { tag, items } => Self::MakeTag {
                 tag: tag.clone(),
                 items: items.clone(),
@@ -423,7 +434,7 @@ impl Change {
                 tag: *tag,
                 items: items.clone(),
             },
-            Self::Barrier(id) => Self::Barrier(*id),
+            other => other.clone(),
         }
     }
 

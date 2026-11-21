@@ -187,6 +187,19 @@ mod tests {
         );
     }
 
+    /// Kept from the old `preview_mark_first_line_only`: only one line is marked, and a query
+    /// that no preview line holds marks nothing.
+    #[test]
+    fn preview_mark_marks_one_line_and_none_when_no_line_matches() {
+        assert_eq!(
+            preview_mark("first Needle\nsecond Needle", "needle"),
+            Some(("first ".into(), "Needle".into(), String::new())),
+            "the first matching line wins; the second is not marked"
+        );
+        assert_eq!(preview_mark("first line\nsecond line", "needle"), None);
+        assert_eq!(preview_mark("first line\nsecond line", ""), None);
+    }
+
     #[test]
     fn tag_hit_when_only_tag_matched() {
         let only_tag = marks("Invoice", "pay now", false, Some("billing"), "billing");

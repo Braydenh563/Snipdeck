@@ -799,22 +799,22 @@ spot_of | crates/snipdeck-app/src/controller/history_ctl.rs:53
 move_recorded | crates/snipdeck-app/src/controller/history_ctl.rs:69
 update_recorded | crates/snipdeck-app/src/controller/history_ctl.rs:92
 apply | crates/snipdeck-app/src/controller/history_ctl.rs:107
-group_exists | crates/snipdeck-app/src/controller/history_ctl.rs:203
-make_tag | crates/snipdeck-app/src/controller/history_ctl.rs:214
-permanent | crates/snipdeck-app/src/controller/history_ctl.rs:240
-regroup | crates/snipdeck-app/src/controller/history_ctl.rs:257
-impl Controller<S, C, K, T> | crates/snipdeck-app/src/controller/history_ctl.rs:289
-history_view | crates/snipdeck-app/src/controller/history_ctl.rs:298
-record_step | crates/snipdeck-app/src/controller/history_ctl.rs:306
-clear_history | crates/snipdeck-app/src/controller/history_ctl.rs:319
-undo | crates/snipdeck-app/src/controller/history_ctl.rs:324
-redo | crates/snipdeck-app/src/controller/history_ctl.rs:329
-undo_step | crates/snipdeck-app/src/controller/history_ctl.rs:366
-prune_history | crates/snipdeck-app/src/controller/history_ctl.rs:431
-restored_count | crates/snipdeck-app/src/controller/history_ctl.rs:442
-item_targets | crates/snipdeck-app/src/controller/history_ctl.rs:458
-tests | crates/snipdeck-app/src/controller/history_ctl.rs:463
-a_delete_step_counts_its_trash_entries | crates/snipdeck-app/src/controller/history_ctl.rs:467
+group_exists | crates/snipdeck-app/src/controller/history_ctl.rs:209
+make_tag | crates/snipdeck-app/src/controller/history_ctl.rs:220
+permanent | crates/snipdeck-app/src/controller/history_ctl.rs:246
+regroup | crates/snipdeck-app/src/controller/history_ctl.rs:263
+impl Controller<S, C, K, T> | crates/snipdeck-app/src/controller/history_ctl.rs:295
+history_view | crates/snipdeck-app/src/controller/history_ctl.rs:304
+record_step | crates/snipdeck-app/src/controller/history_ctl.rs:312
+clear_history | crates/snipdeck-app/src/controller/history_ctl.rs:325
+undo | crates/snipdeck-app/src/controller/history_ctl.rs:330
+redo | crates/snipdeck-app/src/controller/history_ctl.rs:335
+undo_step | crates/snipdeck-app/src/controller/history_ctl.rs:372
+prune_history | crates/snipdeck-app/src/controller/history_ctl.rs:437
+restored_count | crates/snipdeck-app/src/controller/history_ctl.rs:448
+item_targets | crates/snipdeck-app/src/controller/history_ctl.rs:464
+tests | crates/snipdeck-app/src/controller/history_ctl.rs:469
+a_delete_step_counts_its_trash_entries | crates/snipdeck-app/src/controller/history_ctl.rs:473
 
 ### crates/snipdeck-app/src/controller/library.rs
 
@@ -1011,13 +1011,13 @@ main_rename_tag | crates/snipdeck-app/src/controller/main_ctl/items.rs:451
 main_set_tag_colour | crates/snipdeck-app/src/controller/main_ctl/items.rs:490
 main_nest_tag | crates/snipdeck-app/src/controller/main_ctl/items.rs:524
 main_merge_tag | crates/snipdeck-app/src/controller/main_ctl/items.rs:574
-main_delete_tag | crates/snipdeck-app/src/controller/main_ctl/items.rs:647
-stored_tag | crates/snipdeck-app/src/controller/main_ctl/items.rs:680
-main_undo | crates/snipdeck-app/src/controller/main_ctl/items.rs:687
-main_empty_trash | crates/snipdeck-app/src/controller/main_ctl/items.rs:739
-purge_expired_trash | crates/snipdeck-app/src/controller/main_ctl/items.rs:762
-trash_cutoff | crates/snipdeck-app/src/controller/main_ctl/items.rs:774
-lift_children | crates/snipdeck-app/src/controller/main_ctl/items.rs:782
+main_delete_tag | crates/snipdeck-app/src/controller/main_ctl/items.rs:662
+stored_tag | crates/snipdeck-app/src/controller/main_ctl/items.rs:695
+main_undo | crates/snipdeck-app/src/controller/main_ctl/items.rs:702
+main_empty_trash | crates/snipdeck-app/src/controller/main_ctl/items.rs:754
+purge_expired_trash | crates/snipdeck-app/src/controller/main_ctl/items.rs:777
+trash_cutoff | crates/snipdeck-app/src/controller/main_ctl/items.rs:789
+lift_children | crates/snipdeck-app/src/controller/main_ctl/items.rs:797
 
 ### crates/snipdeck-app/src/controller/main_ctl/lists.rs
 
@@ -2183,48 +2183,49 @@ Record | crates/snipdeck-app/src/history.rs:140
 impl Record | crates/snipdeck-app/src/history.rs:149
 stored | crates/snipdeck-app/src/history.rs:151
 Change | crates/snipdeck-app/src/history.rs:162
-impl Change | crates/snipdeck-app/src/history.rs:307
-inverse | crates/snipdeck-app/src/history.rs:310
-names | crates/snipdeck-app/src/history.rs:410
-Names | crates/snipdeck-app/src/history.rs:472
-Step | crates/snipdeck-app/src/history.rs:480
-impl Step | crates/snipdeck-app/src/history.rs:489
-undo_changes | crates/snipdeck-app/src/history.rs:492
-is_barrier | crates/snipdeck-app/src/history.rs:498
-made | crates/snipdeck-app/src/history.rs:505
-names | crates/snipdeck-app/src/history.rs:522
-overlaps | crates/snipdeck-app/src/history.rs:533
-needs | crates/snipdeck-app/src/history.rs:551
-History | crates/snipdeck-app/src/history.rs:563
-impl History | crates/snipdeck-app/src/history.rs:569
-new | crates/snipdeck-app/src/history.rs:572
-record | crates/snipdeck-app/src/history.rs:578
-next_undo | crates/snipdeck-app/src/history.rs:598
-next_undo_id | crates/snipdeck-app/src/history.rs:604
-next_redo | crates/snipdeck-app/src/history.rs:610
-peek_undo | crates/snipdeck-app/src/history.rs:620
-can_undo | crates/snipdeck-app/src/history.rs:638
-peek_redo | crates/snipdeck-app/src/history.rs:645
-undone | crates/snipdeck-app/src/history.rs:651
-drop_undo | crates/snipdeck-app/src/history.rs:661
-redone | crates/snipdeck-app/src/history.rs:666
-drop_redo | crates/snipdeck-app/src/history.rs:676
-retain | crates/snipdeck-app/src/history.rs:681
-clear | crates/snipdeck-app/src/history.rs:687
-redo_len | crates/snipdeck-app/src/history.rs:694
-undo_len | crates/snipdeck-app/src/history.rs:700
-tests | crates/snipdeck-app/src/history.rs:706
-trash | crates/snipdeck-app/src/history.rs:709
-the_latest_step_is_the_first_undone_and_redo_returns_it | crates/snipdeck-app/src/history.rs:716
-a_new_action_clears_redo | crates/snipdeck-app/src/history.rs:733
-a_step_without_changes_is_not_recorded | crates/snipdeck-app/src/history.rs:744
-a_bulk_step_is_one_step_and_undoes_in_reverse_order | crates/snipdeck-app/src/history.rs:751
-the_history_keeps_the_newest_steps_up_to_its_limit | crates/snipdeck-app/src/history.rs:773
-a_step_can_be_taken_by_id_from_the_middle | crates/snipdeck-app/src/history.rs:783
-a_step_a_later_step_overlaps_cannot_be_taken_alone | crates/snipdeck-app/src/history.rs:796
-a_barrier_leaves_the_undo_list_without_reaching_redo | crates/snipdeck-app/src/history.rs:818
-inverting_twice_gives_the_change_back | crates/snipdeck-app/src/history.rs:831
-a_nest_swaps_its_two_places_and_a_group_with_children_becomes_an_ungroup_with_them | crates/snipdeck-app/src/history.rs:843
+impl Change | crates/snipdeck-app/src/history.rs:322
+inverse | crates/snipdeck-app/src/history.rs:325
+tag_inverse | crates/snipdeck-app/src/history.rs:419
+names | crates/snipdeck-app/src/history.rs:444
+Names | crates/snipdeck-app/src/history.rs:514
+Step | crates/snipdeck-app/src/history.rs:522
+impl Step | crates/snipdeck-app/src/history.rs:531
+undo_changes | crates/snipdeck-app/src/history.rs:534
+is_barrier | crates/snipdeck-app/src/history.rs:540
+made | crates/snipdeck-app/src/history.rs:547
+names | crates/snipdeck-app/src/history.rs:564
+overlaps | crates/snipdeck-app/src/history.rs:575
+needs | crates/snipdeck-app/src/history.rs:593
+History | crates/snipdeck-app/src/history.rs:605
+impl History | crates/snipdeck-app/src/history.rs:611
+new | crates/snipdeck-app/src/history.rs:614
+record | crates/snipdeck-app/src/history.rs:620
+next_undo | crates/snipdeck-app/src/history.rs:640
+next_undo_id | crates/snipdeck-app/src/history.rs:646
+next_redo | crates/snipdeck-app/src/history.rs:652
+peek_undo | crates/snipdeck-app/src/history.rs:662
+can_undo | crates/snipdeck-app/src/history.rs:680
+peek_redo | crates/snipdeck-app/src/history.rs:687
+undone | crates/snipdeck-app/src/history.rs:693
+drop_undo | crates/snipdeck-app/src/history.rs:703
+redone | crates/snipdeck-app/src/history.rs:708
+drop_redo | crates/snipdeck-app/src/history.rs:718
+retain | crates/snipdeck-app/src/history.rs:723
+clear | crates/snipdeck-app/src/history.rs:729
+redo_len | crates/snipdeck-app/src/history.rs:736
+undo_len | crates/snipdeck-app/src/history.rs:742
+tests | crates/snipdeck-app/src/history.rs:748
+trash | crates/snipdeck-app/src/history.rs:751
+the_latest_step_is_the_first_undone_and_redo_returns_it | crates/snipdeck-app/src/history.rs:758
+a_new_action_clears_redo | crates/snipdeck-app/src/history.rs:775
+a_step_without_changes_is_not_recorded | crates/snipdeck-app/src/history.rs:786
+a_bulk_step_is_one_step_and_undoes_in_reverse_order | crates/snipdeck-app/src/history.rs:793
+the_history_keeps_the_newest_steps_up_to_its_limit | crates/snipdeck-app/src/history.rs:815
+a_step_can_be_taken_by_id_from_the_middle | crates/snipdeck-app/src/history.rs:825
+a_step_a_later_step_overlaps_cannot_be_taken_alone | crates/snipdeck-app/src/history.rs:838
+a_barrier_leaves_the_undo_list_without_reaching_redo | crates/snipdeck-app/src/history.rs:860
+inverting_twice_gives_the_change_back | crates/snipdeck-app/src/history.rs:873
+a_nest_swaps_its_two_places_and_a_group_with_children_becomes_an_ungroup_with_them | crates/snipdeck-app/src/history.rs:885
 
 ### crates/snipdeck-app/src/host.rs
 
@@ -3673,11 +3674,12 @@ word_mark | crates/snipdeck-app/src/search_mark.rs:148
 tests | crates/snipdeck-app/src/search_mark.rs:159
 title_mark_case_insensitive | crates/snipdeck-app/src/search_mark.rs:163
 preview_mark_shows_the_first_line_that_matches | crates/snipdeck-app/src/search_mark.rs:175
-tag_hit_when_only_tag_matched | crates/snipdeck-app/src/search_mark.rs:191
-no_mark_for_sensitive | crates/snipdeck-app/src/search_mark.rs:202
-fields_split_the_marks_into_row_strings | crates/snipdeck-app/src/search_mark.rs:214
-every_kind_of_match_is_marked | crates/snipdeck-app/src/search_mark.rs:235
-palette_marks_label_prefix | crates/snipdeck-app/src/search_mark.rs:268
+preview_mark_marks_one_line_and_none_when_no_line_matches | crates/snipdeck-app/src/search_mark.rs:193
+tag_hit_when_only_tag_matched | crates/snipdeck-app/src/search_mark.rs:204
+no_mark_for_sensitive | crates/snipdeck-app/src/search_mark.rs:215
+fields_split_the_marks_into_row_strings | crates/snipdeck-app/src/search_mark.rs:227
+every_kind_of_match_is_marked | crates/snipdeck-app/src/search_mark.rs:248
+palette_marks_label_prefix | crates/snipdeck-app/src/search_mark.rs:281
 
 ### crates/snipdeck-app/src/search_suggest.rs
 
@@ -4995,8 +4997,9 @@ marks_stay_inside_the_text | crates/snipdeck-core/src/search/tests.rs:547
 queries_never_panic_and_respect_the_limit | crates/snipdeck-core/src/search/tests.rs:561
 SPEC_BUDGET | crates/snipdeck-core/src/search/tests.rs:582
 budget | crates/snipdeck-core/src/search/tests.rs:589
-median | crates/snipdeck-core/src/search/tests.rs:597
-search_10k_items_stays_within_budget | crates/snipdeck-core/src/search/tests.rs:609
+TIMED_RUNS | crates/snipdeck-core/src/search/tests.rs:600
+best | crates/snipdeck-core/src/search/tests.rs:602
+search_10k_items_stays_within_budget | crates/snipdeck-core/src/search/tests.rs:615
 
 ### crates/snipdeck-core/src/sort.rs
 
@@ -7825,12 +7828,12 @@ restore_reporting | crates/snipdeck-store/src/batch.rs:356
 put_sensitive | crates/snipdeck-store/src/batch.rs:361
 impl Store | crates/snipdeck-store/src/batch.rs:366
 restore_reporting | crates/snipdeck-store/src/batch.rs:373
-impl BlobStore for Store | crates/snipdeck-store/src/batch.rs:626
-put | crates/snipdeck-store/src/batch.rs:627
-read | crates/snipdeck-store/src/batch.rs:631
-impl BlobStore for Batch<'_> | crates/snipdeck-store/src/batch.rs:637
-put | crates/snipdeck-store/src/batch.rs:638
-read | crates/snipdeck-store/src/batch.rs:642
+impl BlobStore for Store | crates/snipdeck-store/src/batch.rs:630
+put | crates/snipdeck-store/src/batch.rs:631
+read | crates/snipdeck-store/src/batch.rs:635
+impl BlobStore for Batch<'_> | crates/snipdeck-store/src/batch.rs:641
+put | crates/snipdeck-store/src/batch.rs:642
+read | crates/snipdeck-store/src/batch.rs:646
 
 ### crates/snipdeck-store/src/blobs.rs
 
@@ -8496,15 +8499,16 @@ update_tag | crates/snipdeck-store/src/repo.rs:247
 delete_tag | crates/snipdeck-store/src/repo.rs:250
 tag_items | crates/snipdeck-store/src/repo.rs:254
 link_tag | crates/snipdeck-store/src/repo.rs:258
-Trashable | crates/snipdeck-store/src/repo.rs:263
-TrashEntry | crates/snipdeck-store/src/repo.rs:274
-TrashRepo | crates/snipdeck-store/src/repo.rs:287
-trash | crates/snipdeck-store/src/repo.rs:289
-restore | crates/snipdeck-store/src/repo.rs:296
-trashed | crates/snipdeck-store/src/repo.rs:300
-purge | crates/snipdeck-store/src/repo.rs:304
-purge_entry | crates/snipdeck-store/src/repo.rs:314
-is_stored | crates/snipdeck-store/src/repo.rs:317
+unlink_tag | crates/snipdeck-store/src/repo.rs:263
+Trashable | crates/snipdeck-store/src/repo.rs:268
+TrashEntry | crates/snipdeck-store/src/repo.rs:279
+TrashRepo | crates/snipdeck-store/src/repo.rs:292
+trash | crates/snipdeck-store/src/repo.rs:294
+restore | crates/snipdeck-store/src/repo.rs:301
+trashed | crates/snipdeck-store/src/repo.rs:305
+purge | crates/snipdeck-store/src/repo.rs:309
+purge_entry | crates/snipdeck-store/src/repo.rs:319
+is_stored | crates/snipdeck-store/src/repo.rs:322
 
 ### crates/snipdeck-store/src/schema.rs
 
@@ -8599,11 +8603,12 @@ update_tag | crates/snipdeck-store/src/tags.rs:109
 delete_tag | crates/snipdeck-store/src/tags.rs:130
 tag_items | crates/snipdeck-store/src/tags.rs:144
 link_tag | crates/snipdeck-store/src/tags.rs:151
-parent_check | crates/snipdeck-store/src/tags.rs:169
-clash_check | crates/snipdeck-store/src/tags.rs:199
-tests | crates/snipdeck-store/src/tags.rs:214
-keys_fold_case_fully_and_normalise | crates/snipdeck-store/src/tags.rs:218
-rekeying_keeps_tags_that_now_clash_and_parks_no_duplicate | crates/snipdeck-store/src/tags.rs:228
+unlink_tag | crates/snipdeck-store/src/tags.rs:167
+parent_check | crates/snipdeck-store/src/tags.rs:183
+clash_check | crates/snipdeck-store/src/tags.rs:213
+tests | crates/snipdeck-store/src/tags.rs:228
+keys_fold_case_fully_and_normalise | crates/snipdeck-store/src/tags.rs:232
+rekeying_keeps_tags_that_now_clash_and_parks_no_duplicate | crates/snipdeck-store/src/tags.rs:242
 
 ### crates/snipdeck-store/src/trash.rs
 
@@ -9437,7 +9442,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/src/recent.rs` (inline) | 17 |
 | `crates/snipdeck-app/src/repaint.rs` (inline) | 10 |
 | `crates/snipdeck-app/src/screen_clip.rs` (inline) | 13 |
-| `crates/snipdeck-app/src/search_mark.rs` (inline) | 7 |
+| `crates/snipdeck-app/src/search_mark.rs` (inline) | 8 |
 | `crates/snipdeck-app/src/search_suggest.rs` (inline) | 10 |
 | `crates/snipdeck-app/src/selection.rs` (inline) | 4 |
 | `crates/snipdeck-app/src/settings.rs` (inline) | 63 |
@@ -9484,7 +9489,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/tests/support/mod.rs` | 0 |
 | `crates/snipdeck-app/tests/template_texts.rs` | 1 |
 | `crates/snipdeck-app/tests/toast_texts.rs` | 5 |
-| `crates/snipdeck-app/tests/undo_steps.rs` | 17 |
+| `crates/snipdeck-app/tests/undo_steps.rs` | 19 |
 | `crates/snipdeck-app/tests/unlock_window.rs` | 24 |
 | `crates/snipdeck-colour/tests/parsing.rs` | 10 |
 | `crates/snipdeck-colour/tests/properties.rs` | 12 |
@@ -9587,7 +9592,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-store/tests/release_guard.rs` | 3 |
 | `crates/snipdeck-store/tests/remanence.rs` | 5 |
 | `crates/snipdeck-store/tests/search.rs` | 14 |
-| `crates/snipdeck-store/tests/tags.rs` | 14 |
+| `crates/snipdeck-store/tests/tags.rs` | 15 |
 | `crates/snipdeck-store/tests/trash.rs` | 24 |
 | `crates/snipdeck-store/tests/triggers.rs` | 11 |
 | `crates/snipdeck-symbols/tests/art.rs` | 4 |
