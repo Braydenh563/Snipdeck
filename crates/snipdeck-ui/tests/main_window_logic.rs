@@ -2718,18 +2718,23 @@ ui_tests! {
         ui.set_section(MainSection::Recent);
         settle();
         take(&log);
-        find(&ui, "Clear recent history", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Clear Recent", AccessibleRole::Button).invoke_accessible_default_action();
         settle();
         assert!(ui.get_confirm_open());
         assert_eq!(take(&log), Vec::<String>::new(), "one click clears nothing");
-        find(&ui, "Clear history", AccessibleRole::Button).invoke_accessible_default_action();
+        // The dialog's button carries the same name as the toolbar's, and comes later in the tree.
+        ElementHandle::find_by_accessible_label(&ui, "Clear Recent")
+            .filter(|e| e.accessible_role() == Some(AccessibleRole::Button))
+            .last()
+            .expect("the dialog's button")
+            .invoke_accessible_default_action();
         assert_eq!(take(&log), ["cleared"]);
 
         ui.set_recent_rows(ModelRc::new(VecModel::from(Vec::<snipdeck_ui::RecentRow>::new())));
         ui.set_recent_locked(true);
         fixture::set_rows(&ui, Vec::new());
         settle();
-        assert!(ElementHandle::find_by_accessible_label(&ui, "Recent copies are locked").next().is_some());
+        assert!(ElementHandle::find_by_accessible_label(&ui, "Recent is locked").next().is_some());
         find(&ui, "Unlock", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["unlock"]);
     }
