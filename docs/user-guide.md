@@ -225,6 +225,13 @@ the right of the sidebar header (or `Ctrl+B`) folds the sidebar to a narrow rail
     folded group asks first and names how many items it hides.
   - **Move to another list.** **Move group to list…** in the header's menu takes the header and all its items.
   - **Other sorts.** Under any sort except Manual the headers stay and the items sort inside each group.
+  - **Groups inside groups (Main window).** Select rows that are all in one group and press `Ctrl+G` to make a
+    group inside it, or choose **Nest under…** from a header's menu (or **Nest under…** in the command
+    palette, `Ctrl+K`) and pick the group it goes under; pick **Top level** to take it out again. A group can
+    sit three levels deep. Inner headers are indented, folding a group folds the groups inside it, and
+    **Ungroup** moves what was inside up to the group above. **Delete group** on a group with groups inside asks
+    first with the total count, **Move group to list…** takes them all, and each step is one `Ctrl+Z`. The Panel
+    shows inner groups without the indent.
   - **Move.** Drag a header to move the whole group, or press `Alt+Up` or `Alt+Down` on it. Dropping an item on a
     header adds it to that group.
   - **Search.** Searching lists every match, even inside a folded group, under the group's header in the Panel;

@@ -1283,6 +1283,9 @@ msgstr "分组名称"
 msgid "Group the selected rows"
 msgstr "将所选的行分组"
 
+msgid "Groups nest three levels deep at most"
+msgstr "分组最多嵌套三层"
+
 msgid "Group…"
 msgstr "分组…"
 
@@ -1798,6 +1801,9 @@ msgstr "将标签 {} 嵌套到"
 msgid "Nest tag {} under another"
 msgstr "将标签 {} 嵌套到另一个标签下"
 
+msgid "Nest under…"
+msgstr "嵌套到…"
+
 msgid "Never keep copies from these programs"
 msgstr "从不保留这些程序中的复制内容"
 
@@ -1887,6 +1893,9 @@ msgstr "所有看板中均无匹配项"
 
 msgid "No matches in {}"
 msgstr "在 {} 中没有匹配项"
+
+msgid "No other group to nest under"
+msgstr "没有其他分组可嵌套"
 
 msgid "No programs yet."
 msgstr "还没有程序。"
@@ -3396,6 +3405,9 @@ msgstr "工具"
 msgid "Top edge"
 msgstr "顶边"
 
+msgid "Top level"
+msgstr "顶层"
+
 msgid "Top level (not nested)"
 msgstr "顶层（不嵌套）"
 
@@ -3998,6 +4010,9 @@ msgstr "导航 侧边栏 折叠 展开 列表 面板 左侧 宽度"
 
 msgid "near {}"
 msgstr "接近 {}"
+
+msgid "nest under inside child sub subgroup indent parent move out top level section"
+msgstr "嵌套 放入 里面 子 子分组 缩进 父 移动 移出 顶层 分区"
 
 msgid "never paste excluded apps"
 msgstr "从不粘贴 排除的程序"

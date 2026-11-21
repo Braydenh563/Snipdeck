@@ -1284,6 +1284,9 @@ msgstr "Nom du groupe"
 msgid "Group the selected rows"
 msgstr "Regrouper les lignes sélectionnées"
 
+msgid "Groups nest three levels deep at most"
+msgstr "Les groupes s’imbriquent sur trois niveaux au plus"
+
 msgid "Group…"
 msgstr "Regrouper…"
 
@@ -1804,6 +1807,9 @@ msgstr "Imbriquer l’étiquette {} sous"
 msgid "Nest tag {} under another"
 msgstr "Imbriquer l’étiquette {} sous une autre"
 
+msgid "Nest under…"
+msgstr "Imbriquer dans…"
+
 msgid "Never keep copies from these programs"
 msgstr "Ne jamais garder de copies de ces programmes"
 
@@ -1893,6 +1899,9 @@ msgstr "Aucun résultat dans tous les tableaux"
 
 msgid "No matches in {}"
 msgstr "Aucun résultat dans {}"
+
+msgid "No other group to nest under"
+msgstr "Aucun autre groupe où imbriquer"
 
 msgid "No programs yet."
 msgstr "Aucun programme pour le moment."
@@ -3404,6 +3413,9 @@ msgstr "Outils"
 msgid "Top edge"
 msgstr "Bord supérieur"
 
+msgid "Top level"
+msgstr "Niveau supérieur"
+
 msgid "Top level (not nested)"
 msgstr "Niveau supérieur (sans imbrication)"
 
@@ -4009,6 +4021,9 @@ msgstr "navigation barre réduire développer listes panneau gauche largeur"
 
 msgid "near {}"
 msgstr "proche de {}"
+
+msgid "nest under inside child sub subgroup indent parent move out top level section"
+msgstr "imbriquer dans sous enfant sous-groupe retrait parent déplacer sortir niveau supérieur section"
 
 msgid "never paste excluded apps"
 msgstr "ne jamais coller programmes exclus"

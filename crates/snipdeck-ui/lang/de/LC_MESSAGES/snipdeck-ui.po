@@ -1284,6 +1284,9 @@ msgstr "Gruppenname"
 msgid "Group the selected rows"
 msgstr "Ausgewählte Zeilen gruppieren"
 
+msgid "Groups nest three levels deep at most"
+msgstr "Gruppen lassen sich höchstens drei Ebenen tief verschachteln"
+
 msgid "Group…"
 msgstr "Gruppieren…"
 
@@ -1804,6 +1807,9 @@ msgstr "Tag {} einordnen unter"
 msgid "Nest tag {} under another"
 msgstr "Tag {} unter einen anderen einordnen"
 
+msgid "Nest under…"
+msgstr "Verschachteln in …"
+
 msgid "Never keep copies from these programs"
 msgstr "Nie Kopien aus diesen Programmen speichern"
 
@@ -1893,6 +1899,9 @@ msgstr "Keine Treffer in allen Boards"
 
 msgid "No matches in {}"
 msgstr "Keine Treffer in {}"
+
+msgid "No other group to nest under"
+msgstr "Keine andere Gruppe zum Verschachteln"
 
 msgid "No programs yet."
 msgstr "Noch keine Programme."
@@ -3404,6 +3413,9 @@ msgstr "Werkzeuge"
 msgid "Top edge"
 msgstr "Oberer Rand"
 
+msgid "Top level"
+msgstr "Oberste Ebene"
+
 msgid "Top level (not nested)"
 msgstr "Oberste Ebene (nicht eingeordnet)"
 
@@ -4009,6 +4021,9 @@ msgstr "navigation leiste einklappen ausklappen listen panel links breite"
 
 msgid "near {}"
 msgstr "nahe {}"
+
+msgid "nest under inside child sub subgroup indent parent move out top level section"
+msgstr "verschachteln unter in Kind Unter Untergruppe Einzug Eltern verschieben heraus oberste Ebene Abschnitt"
 
 msgid "never paste excluded apps"
 msgstr "nie einfügen ausgeschlossene Programme"

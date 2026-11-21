@@ -1284,6 +1284,9 @@ msgstr "Nome do grupo"
 msgid "Group the selected rows"
 msgstr "Agrupar as linhas selecionadas"
 
+msgid "Groups nest three levels deep at most"
+msgstr "Os grupos se aninham em no máximo três níveis"
+
 msgid "Group…"
 msgstr "Agrupar…"
 
@@ -1804,6 +1807,9 @@ msgstr "Aninhar a etiqueta {} em"
 msgid "Nest tag {} under another"
 msgstr "Aninhar a etiqueta {} em outra"
 
+msgid "Nest under…"
+msgstr "Aninhar em…"
+
 msgid "Never keep copies from these programs"
 msgstr "Nunca guardar cópias destes programas"
 
@@ -1893,6 +1899,9 @@ msgstr "Nenhuma correspondência em todos os quadros"
 
 msgid "No matches in {}"
 msgstr "Nenhuma correspondência em {}"
+
+msgid "No other group to nest under"
+msgstr "Nenhum outro grupo para aninhar"
 
 msgid "No programs yet."
 msgstr "Nenhum programa ainda."
@@ -3404,6 +3413,9 @@ msgstr "Ferramentas"
 msgid "Top edge"
 msgstr "Borda superior"
 
+msgid "Top level"
+msgstr "Nível superior"
+
 msgid "Top level (not nested)"
 msgstr "Nível superior (sem aninhamento)"
 
@@ -4009,6 +4021,9 @@ msgstr "navegação barra recolher expandir listas painel esquerda largura"
 
 msgid "near {}"
 msgstr "perto de {}"
+
+msgid "nest under inside child sub subgroup indent parent move out top level section"
+msgstr "aninhar em dentro filho sub subgrupo recuo pai mover sair nível superior seção"
 
 msgid "never paste excluded apps"
 msgstr "nunca colar apps excluídos"

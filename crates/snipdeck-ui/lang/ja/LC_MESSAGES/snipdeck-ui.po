@@ -1283,6 +1283,9 @@ msgstr "グループ名"
 msgid "Group the selected rows"
 msgstr "選択した行をグループ化"
 
+msgid "Groups nest three levels deep at most"
+msgstr "グループの入れ子は最大3階層までです"
+
 msgid "Group…"
 msgstr "グループ化…"
 
@@ -1798,6 +1801,9 @@ msgstr "タグ {} の移動先"
 msgid "Nest tag {} under another"
 msgstr "タグ {} を別のタグの下に入れる"
 
+msgid "Nest under…"
+msgstr "入れ子にする先…"
+
 msgid "Never keep copies from these programs"
 msgstr "これらのプログラムからのコピーは保存しない"
 
@@ -1887,6 +1893,9 @@ msgstr "すべてのボードに一致する項目はありません"
 
 msgid "No matches in {}"
 msgstr "{} に一致するものはありません"
+
+msgid "No other group to nest under"
+msgstr "入れ子にできる他のグループがありません"
 
 msgid "No programs yet."
 msgstr "まだプログラムがありません。"
@@ -3396,6 +3405,9 @@ msgstr "ツール"
 msgid "Top edge"
 msgstr "上端"
 
+msgid "Top level"
+msgstr "最上位"
+
 msgid "Top level (not nested)"
 msgstr "最上位（入れ子にしない）"
 
@@ -3998,6 +4010,9 @@ msgstr "ナビゲーション サイドバー 折りたたむ 展開 リスト �
 
 msgid "near {}"
 msgstr "{}に近い"
+
+msgid "nest under inside child sub subgroup indent parent move out top level section"
+msgstr "入れ子 ネスト 中に 子 サブ サブグループ インデント 親 移動 外へ 最上位 セクション"
 
 msgid "never paste excluded apps"
 msgstr "貼り付けない 除外するプログラム"

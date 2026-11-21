@@ -1284,6 +1284,9 @@ msgstr "Nombre del grupo"
 msgid "Group the selected rows"
 msgstr "Agrupar las filas seleccionadas"
 
+msgid "Groups nest three levels deep at most"
+msgstr "Los grupos se anidan como máximo en tres niveles"
+
 msgid "Group…"
 msgstr "Agrupar…"
 
@@ -1804,6 +1807,9 @@ msgstr "Anidar la etiqueta {} bajo"
 msgid "Nest tag {} under another"
 msgstr "Anidar la etiqueta {} bajo otra"
 
+msgid "Nest under…"
+msgstr "Anidar en…"
+
 msgid "Never keep copies from these programs"
 msgstr "No guardar nunca copias de estos programas"
 
@@ -1893,6 +1899,9 @@ msgstr "Sin coincidencias en todos los tableros"
 
 msgid "No matches in {}"
 msgstr "Sin coincidencias en {}"
+
+msgid "No other group to nest under"
+msgstr "No hay otro grupo donde anidar"
 
 msgid "No programs yet."
 msgstr "Aún no hay programas."
@@ -3404,6 +3413,9 @@ msgstr "Herramientas"
 msgid "Top edge"
 msgstr "Borde superior"
 
+msgid "Top level"
+msgstr "Nivel superior"
+
 msgid "Top level (not nested)"
 msgstr "Nivel superior (sin anidar)"
 
@@ -4009,6 +4021,9 @@ msgstr "navegación barra contraer expandir listas panel izquierda ancho"
 
 msgid "near {}"
 msgstr "cerca de {}"
+
+msgid "nest under inside child sub subgroup indent parent move out top level section"
+msgstr "anidar en dentro hijo sub subgrupo sangría padre mover fuera nivel superior sección"
 
 msgid "never paste excluded apps"
 msgstr "nunca pegar programas excluidos"
