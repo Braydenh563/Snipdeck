@@ -50,7 +50,7 @@ use snipdeck_store::{
     BoardRepo, ItemRepo, Store,
     crypto::{KeyRing, MemoryKeyProvider},
 };
-use snipdeck_ui::{SettingsPage, ToastKind};
+use snipdeck_ui::{SettingsFilter, SettingsPage, ToastKind};
 
 #[path = "support/mod.rs"]
 mod support;
@@ -1560,6 +1560,29 @@ fn the_main_windows_settings_button_opens_the_page_once_and_shows_it_again() {
             "the same window"
         );
         assert_eq!(again.get_hotkeys().row_count(), 4);
+    });
+}
+
+/// UX-37: the Recent empty state's "Open Settings" lands on the Privacy section, where the Recent switch is.
+#[test]
+fn the_recent_empty_states_link_opens_settings_at_the_privacy_section() {
+    on_ui_thread(|| {
+        let clock = FixedClock::new(now());
+        let ctl = controller_on(demo::store(now()).unwrap(), &clock);
+        let host: Rc<dyn SettingsHost> = Rc::new(FakeHost::default());
+        let settings_ui = SettingsUi::new(&ctl, None, host);
+        let main_ui = MainUi::new(&ctl);
+        main_ui.open().unwrap();
+        main_ui
+            .window()
+            .unwrap()
+            .invoke_privacy_settings_requested();
+        let page = settings_ui.window().expect("created");
+        assert!(page.window().is_visible());
+        let filter = page.global::<SettingsFilter<'_>>();
+        assert_eq!(filter.get_jump_target(), settings_binding::SECTION_PRIVACY);
+        assert_eq!(filter.get_jump_seq(), 1);
+        assert_eq!(filter.get_query().as_str(), "");
     });
 }
 

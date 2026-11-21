@@ -113,7 +113,7 @@ fn tab_walk<C: ComponentHandle>(h: &Harness<C>, scene: &str, limit: usize) -> Ve
     let w = h.component.window();
     let mut out = Vec::new();
     let mut last = hash(&h.render_settled());
-    let mut first_after_tab: Option<u64> = None;
+    let mut seen: Vec<u64> = Vec::new();
     for press in 1..=limit {
         support::press(w, &support::key(Key::Tab));
         let Some(frame) = snap(h) else {
@@ -124,10 +124,12 @@ fn tab_walk<C: ComponentHandle>(h: &Harness<C>, scene: &str, limit: usize) -> Ve
         if now == last {
             out.push(format!("{scene}: Tab {press} drew the same picture"));
         }
-        if first_after_tab == Some(now) {
-            return out; // came round to the first stop
+        // Back at a picture seen before: the focus has come round. (The first stop is not compared on its own:
+        // a scrolled form comes back to it at another scroll offset than the one it started from.)
+        if seen.contains(&now) {
+            return out;
         }
-        first_after_tab.get_or_insert(now);
+        seen.push(now);
         last = now;
     }
     out.push(format!("{scene}: no way round after {limit} Tab presses"));
@@ -168,7 +170,7 @@ fn run<C: ComponentHandle>(
             let (n, found) = problems(&h, w, &scene);
             *checked += n;
             all.extend(found);
-            all.extend(tab_walk(&h, &scene, 80));
+            all.extend(tab_walk(&h, &scene, 200));
         }
     }
 }

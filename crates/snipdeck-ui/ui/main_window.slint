@@ -431,6 +431,8 @@ export component MainWindow inherits Window {
     callback tag-toggled(int, bool);
     callback reveal-requested(int, bool);
     callback settings-requested();
+    // The Recent empty state's "Open Settings": Settings at the Privacy section, where the Recent switch is.
+    callback privacy-settings-requested();
     // Ctrl+W: close the window like its X button does.
     callback close-requested();
     // "Show Panel": the toolbar button and the Help menu's last entry (the Panel may have been closed).
@@ -2504,7 +2506,7 @@ export component MainWindow inherits Window {
                             } else if (root.section == MainSection.recent && root.recent-locked) {
                                 root.recent-unlock-requested();
                             } else if (root.section == MainSection.recent) {
-                                root.settings-requested();
+                                root.privacy-settings-requested();
                             } else {
                                 root.new-item();
                             }

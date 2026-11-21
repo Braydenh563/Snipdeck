@@ -711,6 +711,10 @@ where
                 }
             });
         }
+        window.on_privacy_settings_requested(|| {
+            crate::native_window::note_opener(crate::native_window::Surface::Main);
+            crate::settings_binding::request_open_section(crate::settings_binding::SECTION_PRIVACY);
+        });
         window.on_settings_requested(|| {
             // Settings opens over the Main window the user is in.
             crate::native_window::note_opener(crate::native_window::Surface::Main);

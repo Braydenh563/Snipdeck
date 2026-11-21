@@ -26,6 +26,10 @@ component Feature inherits HorizontalLayout {
     spacing: Space.s4;
     padding-top: Space.s2;
     padding-bottom: Space.s2;
+    // The text column's width, so the two paragraphs report the height they wrap to at that width (a layout asks
+    // its children for their height before it knows their width, and wrapped text would otherwise report one line).
+    property <length> text-w: max(40px, root.width - 40px * SystemLook.text-scale - Space.s4);
+    min-height: root.padding-top + root.padding-bottom + max(40px * SystemLook.text-scale, ttl.preferred-height + Space.s0-5 + dsc.preferred-height);
     accessible-role: groupbox;
     accessible-label: root.title;
     accessible-description: root.description;
@@ -53,7 +57,8 @@ component Feature inherits HorizontalLayout {
         min-width: 0px;
         alignment: start;
         spacing: Space.s0-5;
-        Text {
+        ttl := Text {
+            width: root.text-w;
             text: root.title;
             color: Theme.text-primary;
             font-family: Fonts.sans;
@@ -62,7 +67,8 @@ component Feature inherits HorizontalLayout {
             wrap: word-wrap;
             accessible-role: none;
         }
-        Text {
+        dsc := Text {
+            width: root.text-w;
             text: root.description;
             color: Theme.text-secondary;
             font-family: Fonts.sans;
@@ -247,6 +253,8 @@ export component OnboardingWindow inherits Window {
     changed dark => { Palette.dark = root.dark; }
 
     scope := FocusScope {
+        // The key scope is not a Tab stop: it has no ring, so a Tab onto it would change nothing on screen.
+        focus-on-tab-navigation: false;
         key-pressed(event) => {
             if (event.text == Key.Escape) {
                 // Esc backs out one step; only the first step has nothing before it, so there it skips.

@@ -76,11 +76,34 @@ fn elements(root: &impl ElementRoot) -> Vec<El> {
     out
 }
 
+/// The visible rectangles of the form scrollers: content inside one is clipped to it.
+fn viewports(root: &impl ElementRoot) -> Vec<(f32, f32, f32, f32)> {
+    ElementQuery::from_root(root)
+        .match_descendants()
+        .match_inherits("FormScroll")
+        .find_all()
+        .iter()
+        .map(|e| {
+            let (p, s) = (e.absolute_position(), e.size());
+            (p.x, p.y, p.x + s.width, p.y + s.height)
+        })
+        .collect()
+}
+
 /// Problems at a window of `w` x `h`: an element past the left or right edge; a footer button (`footer` names the
 /// footer's buttons, matched by `starts_with`) past the bottom edge, overlapping another footer button, or crossed by
 /// a control of the content above it.
 fn problems(root: &impl ElementRoot, w: f32, h: f32, footer: &[&str], scene: &str) -> Vec<String> {
     let els = elements(root);
+    let views = viewports(root);
+    // What of `e` can be seen: its rows clipped to the scroller it sits in (it starts inside it), else all of it.
+    let visible = |e: &El| {
+        let (top, bottom) = (e.y, e.y + e.h);
+        views
+            .iter()
+            .find(|v| e.x >= v.0 - 0.5 && e.x < v.2 && top >= v.1 - 0.5 && top < v.3)
+            .map_or((top, bottom), |v| (top, bottom.min(v.3)))
+    };
     let is_footer = |e: &El| footer.iter().any(|f| e.name.starts_with(f));
     let band_top = els
         .iter()
@@ -123,12 +146,12 @@ fn problems(root: &impl ElementRoot, w: f32, h: f32, footer: &[&str], scene: &st
                     ));
                 }
             }
-        } else if band_top < f32::MAX && e.y < band_top - 0.5 && e.y + e.h > band_top + 0.5 {
+        } else if band_top < f32::MAX && e.y < band_top - 0.5 && visible(e).1 > band_top + 0.5 {
             out.push(format!(
                 "{scene}: {:?} spans y {:.0}..{:.0} across the footer at {band_top:.0}",
                 e.name,
                 e.y,
-                e.y + e.h
+                visible(e).1
             ));
         }
     }

@@ -2239,6 +2239,22 @@ pub fn request_open() {
     }
 }
 
+thread_local! {
+    /// The section the next open should scroll to (an index of the page's section links), set by
+    /// [`request_open_section`].
+    static PENDING_SECTION: std::cell::Cell<Option<i32>> = const { std::cell::Cell::new(None) };
+}
+
+/// The page's section links, by index: the Privacy section holds the Recent switch.
+pub const SECTION_PRIVACY: i32 = 4;
+
+/// Opens the Settings page scrolled to the section with this index (see the page's "Jump to a
+/// section" list), for a link such as the Recent empty state's "Open Settings". UI thread only.
+pub fn request_open_section(section: i32) {
+    PENDING_SECTION.with(|p| p.set(Some(section)));
+    request_open();
+}
+
 /// Creates the Settings page the first time it is asked for, binds it, and shows and raises it
 /// every time. Not generic: the host keeps one of these.
 pub struct SettingsUi {
@@ -2312,6 +2328,13 @@ impl SettingsUi {
                 crate::unlock_binding::refresh_hello(&controller);
                 // The page was hidden, so it skipped the redraws; draw it now that it is up.
                 binding.opened();
+                if let Some(section) = PENDING_SECTION.with(std::cell::Cell::take) {
+                    // The search would hide the section; the jump runs on the next change of `jump-seq`.
+                    let filter = ui::SettingsFilter::get(window);
+                    filter.set_query(SharedString::new());
+                    filter.set_jump_target(section);
+                    filter.set_jump_seq(filter.get_jump_seq() + 1);
+                }
                 crate::native_window::activate_regular(window);
                 Ok(())
             })
