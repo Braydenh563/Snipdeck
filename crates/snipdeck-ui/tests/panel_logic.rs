@@ -3477,6 +3477,13 @@ ui_tests! {
         chord(ui.window(), &[Key::Alt], &key(Key::Return));
         press(ui.window(), &key(Key::Delete));
         press(ui.window(), &key(Key::F2));
+        settle();
+        assert!(
+            ElementHandle::find_by_accessible_label(&ui, "Save to…").count() > 0,
+            "F2 opens the menu whose Save to makes the entry an item"
+        );
+        press(ui.window(), &key(Key::Escape));
+        settle();
         press(ui.window(), "1");
         chord(ui.window(), &[Key::Control], "e");
         chord(ui.window(), &[Key::Control], "d");

@@ -1548,7 +1548,9 @@ export component PanelWindow inherits Window {
                         }
                         return accept;
                     }
-                    if (event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10)) {
+                    // F2 is "name it": a clipboard entry has no name, so it opens the menu whose "Save to" makes
+                    // it an item (the item list's F2 renames the row).
+                    if (event.text == Key.Menu || event.text == Key.F2 || (event.modifiers.shift && event.text == Key.F10)) {
                         root.recent-menu-at(root.rsel, Space.s6, deck.absolute-position.y + Space.s8);
                         return accept;
                     }
