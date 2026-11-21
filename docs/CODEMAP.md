@@ -554,7 +554,8 @@ item_action_on | crates/snipdeck-app/src/controller/commands_ctl.rs:72
 palette_places | crates/snipdeck-app/src/controller/commands_ctl.rs:98
 main_go | crates/snipdeck-app/src/controller/commands_ctl.rs:128
 settings_action | crates/snipdeck-app/src/controller/commands_ctl.rs:147
-run_command | crates/snipdeck-app/src/controller/commands_ctl.rs:154
+run_item_command | crates/snipdeck-app/src/controller/commands_ctl.rs:153
+run_command | crates/snipdeck-app/src/controller/commands_ctl.rs:170
 
 ### crates/snipdeck-app/src/controller/create_ctl.rs
 
