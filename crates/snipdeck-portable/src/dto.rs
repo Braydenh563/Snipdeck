@@ -125,6 +125,10 @@ pub(crate) struct GroupDto {
     /// Added in 1.3: one of the nine list accent keys.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub colour: Option<String>,
+    /// Added in 1.3: the id (in this list) of the group this one is nested in. Older readers
+    /// ignore it and see a flat group.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent: Option<String>,
 }
 
 thread_local! {

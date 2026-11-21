@@ -36,8 +36,8 @@ use crate::error::{Error, Result};
 use crate::importers::{MEMORY_BUDGET, truncate_chars};
 use crate::limits::{Limits, TEXT_LIMIT};
 use crate::plan::{
-    AssetRef, ContentHasher, Library, Plan, PlanBoard, PlanFile, PlanFormat, PlanItem, PlanList,
-    Source, apply, existing_hashes,
+    AssetRef, ContentHasher, Library, Plan, PlanBoard, PlanFile, PlanFormat, PlanGroup, PlanItem,
+    PlanList, Source, apply, existing_hashes,
 };
 use crate::report::{ImportReport, Note, Warning};
 
@@ -608,6 +608,47 @@ impl<R: Read + Seek> Builder<'_, R> {
         Ok((names, colours, parents))
     }
 
+    /// The nesting of a list's groups (1.3). A parent the list does not hold, a loop, a parent
+    /// listed after its child and a nesting deeper than `MAX_GROUP_DEPTH` levels are refused;
+    /// an archive without the field has flat groups.
+    fn read_group_parents(&self, dto: &ListDto, list: &mut PlanList) -> Result<()> {
+        for (index, group) in dto.groups.iter().enumerate() {
+            let Some(parent) = &group.parent else {
+                continue;
+            };
+            let parent: GroupId = parse_id(parent, "group parent")?;
+            let Some(&at) = self.group_index.get(&parent) else {
+                return Err(Error::malformed(
+                    ITEMS,
+                    "a group is nested in a group the list does not hold".to_owned(),
+                ));
+            };
+            if at >= index {
+                return Err(Error::malformed(
+                    ITEMS,
+                    "the groups are nested in a loop or listed before the group they are in"
+                        .to_owned(),
+                ));
+            }
+            list.groups[index].parent = Some(at);
+        }
+        for index in 0..list.groups.len() {
+            let mut depth = 1;
+            let mut at = list.groups[index].parent;
+            while let Some(up) = at {
+                depth += 1;
+                at = list.groups[up].parent;
+            }
+            if depth > snipdeck_core::MAX_GROUP_DEPTH {
+                return Err(Error::malformed(
+                    ITEMS,
+                    "the groups are nested deeper than three levels".to_owned(),
+                ));
+            }
+        }
+        Ok(())
+    }
+
     /// One list. `prefix` is the archive board's name when boards are being merged into one.
     fn list(&mut self, dto: &ListDto, prefix: Option<&Name>) -> Result<PlanList> {
         let id: ListId = parse_id(&dto.id, "list")?;
@@ -648,9 +689,14 @@ impl<R: Read + Seek> Builder<'_, R> {
                 .as_deref()
                 .map(|c| parse_key::<ListAccent>(c, "group colour"))
                 .transpose()?;
-            list.groups
-                .push((parse_name(&group.name, "group")?, group.collapsed, colour));
+            list.groups.push(PlanGroup {
+                name: parse_name(&group.name, "group")?,
+                collapsed: group.collapsed,
+                colour,
+                parent: None,
+            });
         }
+        self.read_group_parents(dto, &mut list)?;
         for item in &dto.items {
             let item_id: ItemId = parse_id(&item.id, "item")?;
             unique(&mut self.seen_items, item_id, "item")?;

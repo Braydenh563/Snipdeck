@@ -17,9 +17,9 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 use snipdeck_core::{
-    BlobRef, Board, Content, FileEntry, Format, FormatKind, Formats, Group, Item, ItemId, ItemKind,
-    ItemLabel, List, ListAccent, ListIcon, ListView, Name, Placement, Sort, Tag, TagId, Timestamp,
-    Trigger,
+    BlobRef, Board, Content, FileEntry, Format, FormatKind, Formats, Group, GroupId, Item, ItemId,
+    ItemKind, ItemLabel, List, ListAccent, ListIcon, ListView, Name, Placement, Sort, Tag, TagId,
+    Timestamp, Trigger,
 };
 use snipdeck_store::crypto::{DataKey, Slot};
 use snipdeck_store::{
@@ -147,6 +147,16 @@ impl PlanItem {
     }
 }
 
+/// A group of a list in a plan.
+#[derive(Debug)]
+pub(crate) struct PlanGroup {
+    pub name: Name,
+    pub collapsed: bool,
+    pub colour: Option<ListAccent>,
+    /// The group it is nested in, an index into [`PlanList::groups`] (always an earlier one).
+    pub parent: Option<usize>,
+}
+
 #[derive(Debug)]
 pub(crate) struct PlanList {
     pub name: Name,
@@ -156,8 +166,8 @@ pub(crate) struct PlanList {
     pub sort: Sort,
     pub created_at: Timestamp,
     pub updated_at: Timestamp,
-    /// Name, collapsed flag and colour of each group; items point at them by index.
-    pub groups: Vec<(Name, bool, Option<ListAccent>)>,
+    /// Each group; items point at them by index.
+    pub groups: Vec<PlanGroup>,
     pub items: Vec<PlanItem>,
 }
 
@@ -478,16 +488,42 @@ fn write(
                 }
                 report.items_added += 1;
             }
-            // Items skipped as duplicates leave their group short; one left empty is not made.
-            for ((name, collapsed, colour), ids) in plan_list.groups.iter().zip(&members) {
-                if !ids.is_empty() {
-                    let mut group = Group::new(list.id, name.clone());
-                    group.collapsed = *collapsed;
-                    group.colour = *colour;
-                    lib.create_group(&group, ids)?;
-                }
-            }
+            make_groups(lib, list.id, &plan_list.groups, &members)?;
         }
+    }
+    Ok(())
+}
+
+/// Makes a list's groups, the deepest first so that a parent can take the groups nested in it
+/// where they stand. Items skipped as duplicates leave their group short; a group left with
+/// nothing in it (and nothing nested in it) is not made.
+fn make_groups(
+    lib: &mut Batch<'_>,
+    list: snipdeck_core::ListId,
+    groups: &[PlanGroup],
+    members: &[Vec<ItemId>],
+) -> Result<()> {
+    let mut made: Vec<Option<Group>> = vec![None; groups.len()];
+    // A parent comes before the groups nested in it, so going backwards finds children first.
+    for index in (0..groups.len()).rev() {
+        let plan = &groups[index];
+        let children: Vec<GroupId> = (index + 1..groups.len())
+            .filter(|c| groups[*c].parent == Some(index))
+            .filter_map(|c| made[c].as_ref().map(|g| g.id))
+            .collect();
+        let ids = &members[index];
+        if ids.is_empty() && children.is_empty() {
+            continue;
+        }
+        let mut group = Group::new(list, plan.name.clone());
+        group.collapsed = plan.collapsed;
+        group.colour = plan.colour;
+        if children.is_empty() {
+            lib.create_group(&group, ids)?;
+        } else {
+            lib.restore_group(&group, ids, &children)?;
+        }
+        made[index] = Some(group);
     }
     Ok(())
 }

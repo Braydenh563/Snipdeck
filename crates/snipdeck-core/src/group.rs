@@ -185,8 +185,8 @@ mod tests {
         assert_eq!(tree.depth(a.id), 0);
         assert_eq!(tree.depth(c.id), 2);
         assert_eq!(tree.ancestors(c.id).collect::<Vec<_>>(), vec![b.id, a.id]);
-        assert_eq!(tree.is_under(c.id, a.id), true);
-        assert_eq!(tree.is_under(a.id, c.id), false);
+        assert!(tree.is_under(c.id, a.id));
+        assert!(!tree.is_under(a.id, c.id));
         assert_eq!(tree.height(a.id), 3);
         assert_eq!(tree.height(c.id), 1);
         assert_eq!(tree.subtree(a.id).len(), 3);
@@ -200,16 +200,16 @@ mod tests {
         let d = group(None);
         let e = group(Some(&d));
         let tree = GroupTree::new([&a, &b, &c, &d, &e]);
-        assert_eq!(tree.can_nest(a.id, Some(a.id)), false);
-        assert_eq!(tree.can_nest(a.id, Some(c.id)), false);
+        assert!(!tree.can_nest(a.id, Some(a.id)));
+        assert!(!tree.can_nest(a.id, Some(c.id)));
         // d with e under it is two levels; under c (depth 2) it would be five.
-        assert_eq!(tree.can_nest(d.id, Some(c.id)), false);
-        assert_eq!(tree.can_nest(d.id, Some(a.id)), true);
+        assert!(!tree.can_nest(d.id, Some(c.id)));
+        assert!(tree.can_nest(d.id, Some(a.id)));
         // A single group fits under b (depth 1 + 1 + height 1 = 3), a pair does not.
-        assert_eq!(tree.can_nest(d.id, Some(b.id)), false);
-        assert_eq!(tree.can_nest(e.id, Some(b.id)), true);
-        assert_eq!(tree.can_nest(c.id, None), true);
-        assert_eq!(tree.can_nest(c.id, Some(b.id)), true);
+        assert!(!tree.can_nest(d.id, Some(b.id)));
+        assert!(tree.can_nest(e.id, Some(b.id)));
+        assert!(tree.can_nest(c.id, None));
+        assert!(tree.can_nest(c.id, Some(b.id)));
     }
 
     #[test]
@@ -222,7 +222,7 @@ mod tests {
         y.parent = Some(x.id);
         let tree = GroupTree::new([&orphan, &x, &y]);
         assert_eq!(tree.parent(orphan.id), None);
-        assert_eq!(tree.depth(x.id) > 0, true);
-        assert_eq!(tree.ancestors(x.id).count() <= 32, true);
+        assert!(tree.depth(x.id) > 0);
+        assert!(tree.ancestors(x.id).count() <= 32);
     }
 }

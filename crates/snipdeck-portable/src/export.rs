@@ -440,13 +440,23 @@ fn group_dtos(
     runs: &[snipdeck_store::GroupRun],
     written: &std::collections::HashSet<snipdeck_core::GroupId>,
 ) -> Vec<GroupDto> {
+    // A group is written when it or a group nested in it has a written member.
+    let mut kept: std::collections::HashSet<snipdeck_core::GroupId> = written.clone();
+    for run in runs.iter().rev() {
+        if kept.contains(&run.group.id)
+            && let Some(parent) = run.group.parent
+        {
+            kept.insert(parent);
+        }
+    }
     runs.iter()
-        .filter(|run| written.contains(&run.group.id))
+        .filter(|run| kept.contains(&run.group.id))
         .map(|run| GroupDto {
             id: run.group.id.to_string(),
             name: run.group.name.to_string(),
             collapsed: run.group.collapsed,
             colour: run.group.colour.map(|c| c.key().to_owned()),
+            parent: run.group.parent.map(|p| p.to_string()),
         })
         .collect()
 }
