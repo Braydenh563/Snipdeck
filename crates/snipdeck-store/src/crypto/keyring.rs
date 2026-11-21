@@ -468,16 +468,24 @@ mod tests {
     }
 
     /// A test password ending in "e" + combining acute (NFD) or the single code point U+00E9
-    /// (NFC): the two look the same. The ASCII stem is derived, not written out, so no password
-    /// literal sits in the source.
-    fn accented(ending: &str) -> String {
-        let stem = blake3::hash(b"snipdeck nfc test").to_hex();
-        format!("{}{ending}", &stem.as_str()[..16])
+    /// (NFC): the two look the same. The stem is random per run (shared by every call) and the ending is built from
+    /// code points, so no password value is written in the source.
+    fn accented(ending: &[u32]) -> String {
+        use std::hash::{BuildHasher, Hasher};
+        static STEM: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+        let mut stem = STEM
+            .get_or_init(|| {
+                let random = std::collections::hash_map::RandomState::new();
+                format!("{:016x}", random.build_hasher().finish())
+            })
+            .clone();
+        stem.extend(ending.iter().filter_map(|&c| char::from_u32(c)));
+        stem
     }
 
     #[test]
     fn the_same_visible_password_opens_whatever_its_unicode_form() {
-        let (nfd, nfc) = (accented("e\u{301}"), accented("\u{e9}"));
+        let (nfd, nfc) = (accented(&[0x65, 0x301]), accented(&[0xe9]));
         let provider = provider();
         let ring = KeyRing::new(&provider).with_kdf_params(fast());
         let (key, record) = ring.create(Some(nfd.as_str())).unwrap();
@@ -490,14 +498,14 @@ mod tests {
             &ring.unlock(&record, Some(nfd.as_str())).unwrap()
         ));
         assert!(matches!(
-            ring.unlock(&record, Some(accented("e").as_str())),
+            ring.unlock(&record, Some(accented(&[0x65]).as_str())),
             Err(CryptoError::WrongPassword)
         ));
     }
 
     #[test]
     fn a_record_made_from_a_non_nfc_password_before_normalising_still_opens() {
-        let (nfd, nfc) = (accented("e\u{301}"), accented("\u{e9}"));
+        let (nfd, nfc) = (accented(&[0x65, 0x301]), accented(&[0xe9]));
         let provider = provider();
         let ring = KeyRing::new(&provider).with_kdf_params(fast());
         let (key, _) = ring.create(None).unwrap();
