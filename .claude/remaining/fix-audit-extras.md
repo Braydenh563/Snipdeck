@@ -46,3 +46,7 @@ EXTRAS-4 (Rust-side English into *Texts globals), 12 (portable marker, trash ret
 - EXTRAS-7 done: native SEH filter (unverified on Windows) + crash check every maintenance tick (every 6 h).
 - EXTRAS-15 done: `tests/locale_fit.rs` (`a_language_does_not_push_more_past_the_window_edge_than_english_does`). It found and fixed: Help > Tools buttons ran past the window in es/fr/pt-BR/ja (now stacked). Open (English too): Main window toolbar at 2.25x text in a 480 px window runs past the edge; skipped in the test until branch fix/narrow-toolbar lands.
 - Not audited in depth: main.rs lines 260-870.
+
+## Update (final batch)
+- Spoken shortcut phrases and the Trigger/Hello words are translated (`commands::PHRASES`, `NameTexts.phrase`, 6 locales); test `every_phrase_the_list_speaks_is_one_that_gets_translated`. Still English by design: the technical reasons in main.rs start-up failures ("creating the Panel: {e}"), framed by `wording::startup_failure_text`.
+- main.rs 260-870 audited: only the stale "30 days" comment (fixed). No other findings.
