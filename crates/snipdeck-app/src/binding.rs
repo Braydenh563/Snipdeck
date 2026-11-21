@@ -111,6 +111,29 @@ where
     paste_tick_after(Rc::downgrade(controller));
 }
 
+/// Has the controller start the paste timer chain the moment a paste begins waiting, whichever
+/// window or trigger started it (a redraw would only arm it if a bound window drew then). The
+/// chain starts on the next turn of the event loop: the controller is still borrowed when it asks.
+pub fn arm_paste_when_waiting<S, C, K, T>(controller: &Rc<RefCell<Controller<S, C, K, T>>>)
+where
+    S: Library + 'static,
+    C: Clipboard + ClipboardText + 'static,
+    K: Keyboard + 'static,
+    T: Timing + 'static,
+{
+    let weak = Rc::downgrade(controller);
+    controller
+        .borrow_mut()
+        .set_on_paste_waiting(Rc::new(move || {
+            let weak = Weak::clone(&weak);
+            slint::Timer::single_shot(std::time::Duration::ZERO, move || {
+                if let Some(strong) = weak.upgrade() {
+                    arm_paste(&strong);
+                }
+            });
+        }));
+}
+
 fn paste_tick_after<S, C, K, T>(controller: Weak<RefCell<Controller<S, C, K, T>>>)
 where
     S: Library + 'static,

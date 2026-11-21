@@ -320,6 +320,9 @@ pub fn run(
     let mut consumed: u64 = 0;
     let mut idle: u32 = 0;
     loop {
+        // The drain stays at the top of every turn: the app sends the update, then a `Wake`
+        // with `try_send`, and a full event queue drops the wake. The update is then picked up
+        // at the next turn, by any later key, so no update waits on a wake alone.
         while let Ok(update) = updates.try_recv() {
             match update {
                 Update::List(list) => {

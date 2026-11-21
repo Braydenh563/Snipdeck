@@ -588,6 +588,12 @@ where
         self.paste.is_some()
     }
 
+    /// Sets what runs when a paste starts waiting for its target. The host arms the polling
+    /// timer there; it must not borrow the controller before the call returns.
+    pub fn set_on_paste_waiting(&mut self, wake: std::rc::Rc<dyn Fn()>) {
+        self.on_paste_waiting = Some(wake);
+    }
+
     /// Whether the caller should start the timer chain that polls the waiting paste: true once
     /// per paste, until [`paste_timer_next`](Self::paste_timer_next) ends the chain.
     pub fn claim_paste_timer(&mut self) -> bool {
@@ -747,6 +753,9 @@ where
                     pasted_into,
                     sequence_before,
                 });
+                if let Some(wake) = &self.on_paste_waiting {
+                    wake();
+                }
                 UseResult::Done(UseOutcome::Pasted)
             }
             Err(UseError::Platform(snipdeck_platform::pipeline::Error::Superseded)) => {
@@ -882,6 +891,9 @@ where
     /// timer that would have done it dies with the event loop). A clipboard that someone else
     /// has written to since is left alone, as for the timed clear.
     pub fn clear_pending_clipboard_now(&mut self) {
+        // A paste still waiting for its target holds the user's clipboard aside (a sensitive item
+        // is on it): it ends first, so the restore is not lost with the event loop.
+        self.drain_paste();
         self.clear_clipboard(true);
         self.forget_secret_files();
     }

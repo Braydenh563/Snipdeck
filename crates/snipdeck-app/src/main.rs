@@ -282,6 +282,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     )
     .map_err(|e| format!("loading the library: {e}"))?;
     let controller = Rc::new(RefCell::new(controller));
+    snipdeck_app::binding::arm_paste_when_waiting(&controller);
     {
         let mut controller = controller.borrow_mut();
         controller.set_system_look(look.read());

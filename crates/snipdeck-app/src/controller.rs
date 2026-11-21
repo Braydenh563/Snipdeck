@@ -211,6 +211,9 @@ pub struct Controller<S, C: Clipboard, K, T> {
     paste: Option<use_ctl::PendingPaste<C>>,
     /// A timer chain is polling [`Self::paste`] (one chain, however many windows are bound).
     paste_timer: bool,
+    /// Told when a paste starts waiting, from whichever entry point started it (the Panel, the
+    /// Picker, a typed trigger), so the host arms the polling timer without waiting for a redraw.
+    on_paste_waiting: Option<std::rc::Rc<dyn Fn()>>,
     /// A sensitive Files item was pasted: its decrypted files wait in the temp folder until the
     /// lock or the quit deletes them.
     secret_files_pasted: bool,
@@ -515,6 +518,7 @@ where
             clipboard_clear: None,
             paste: None,
             paste_timer: false,
+            on_paste_waiting: None,
             secret_files_pasted: false,
             secret_files_due: None,
             model,

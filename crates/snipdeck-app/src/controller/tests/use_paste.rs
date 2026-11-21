@@ -1700,3 +1700,47 @@ fn a_feature_that_is_off_explains_nothing() {
     w.ctl.expand_typed(&Typed::new(fired, false, || true));
     assert_eq!(w.ctl.last_skipped_trigger(), None);
 }
+
+#[test]
+fn quitting_settles_a_paste_still_waiting_for_its_target() {
+    let mut w = world();
+    w.ctl.activate_row(1, UseMode::Paste);
+    assert!(w.ctl.paste_pending(), "the key is out, the tail waits");
+    w.ctl.clear_pending_clipboard_now();
+    assert!(!w.ctl.paste_pending(), "the quit ran the paste to its end");
+    assert_eq!(uses(&w, w.ids[1]), 1);
+}
+
+#[test]
+fn locking_settles_a_paste_still_waiting_for_its_target() {
+    let mut w = world();
+    w.ctl.lock.set = true;
+    w.ctl.activate_row(1, UseMode::Paste);
+    assert!(w.ctl.paste_pending());
+    w.ctl.lock_now();
+    assert!(
+        !w.ctl.paste_pending(),
+        "the clipboard is put back before the key goes"
+    );
+    assert_eq!(uses(&w, w.ids[1]), 1);
+}
+
+#[test]
+fn a_paste_that_starts_asks_the_host_to_poll_it_wherever_it_started() {
+    let mut w = world();
+    let asked = std::rc::Rc::new(std::cell::Cell::new(0_u32));
+    let seen = std::rc::Rc::clone(&asked);
+    w.ctl
+        .set_on_paste_waiting(std::rc::Rc::new(move || seen.set(seen.get() + 1)));
+    w.ctl.activate_row(1, UseMode::Paste);
+    assert_eq!(asked.get(), 1, "asked once, when the paste began waiting");
+    // A copy waits for nothing.
+    w.ctl.drain_paste();
+    w.ctl.activate_row(1, UseMode::Copy);
+    assert_eq!(asked.get(), 1);
+    // The Picker's path starts a paste too.
+    w.ctl.drain_paste();
+    let id = w.ids[0];
+    w.ctl.use_item(id, UseMode::Paste);
+    assert_eq!(asked.get(), 2);
+}
