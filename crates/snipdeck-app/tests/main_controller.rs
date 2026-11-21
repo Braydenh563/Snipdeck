@@ -2734,7 +2734,7 @@ fn the_detail_pane_shows_the_item_under_the_cursor_with_its_metadata() {
     assert!(screen.detail_open);
     let detail = screen.detail.expect("detail");
     assert_eq!(detail.title, "Out of office");
-    assert!(!detail.text.is_empty());
+    assert_ne!(detail.text.len(), 0);
     assert!(!detail.text_cut);
     assert!(detail.formats.contains(&snipdeck_core::FormatKind::Text));
     assert_eq!(detail.created.len(), 16, "{}", detail.created);
