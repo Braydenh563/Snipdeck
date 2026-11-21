@@ -705,7 +705,7 @@ fn effect_handler(
         },
         Effect::OpenSettings => open_settings(&settings_ui, None, &*window_failed),
         Effect::SettingsAction(action) => {
-            open_settings(&settings_ui, Some(*action), &*window_failed)
+            open_settings(&settings_ui, Some(*action), &*window_failed);
         }
         // The optional support page, in the browser: the same opener as Help's links.
         Effect::OpenSupport => {
