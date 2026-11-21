@@ -34,3 +34,11 @@ Owner 2026-11-21: "dont stop and make sure no work is missed, I want absolutely 
 Reviewers running on data (a1db682..7d3c212, branch claude/fable2-last) and perf (923f2ba).
 Reviews 2026-11-21: data MERGE-WITH-FIXES (queue stall via toast=None paths, dismiss guard, show_toast/queue SPEC, wording, rebuild test equality) sent to session_01NKjURwbF14wPLCdeoEXgfd. perf MERGE-WITH-FIXES (HIGH Help toast never advances; MEDIUM patched snapshot order on list change; rename suggestions; budget test margin) sent to perf pt2 session_01NKjURujwKd9MubADsQ4Ane. Merge both after their gated push.
 08:30 UTC: zip 9.8.1 (RUSTSEC-2026-0548, real vuln in import) + chrono ignore, af7568c3, gate34 running then push. UX de7d039 ungated: told to clip a11y bounds to scroll viewport (not weaken), fix fr board editor 5px overlap, treat ux_matrix focus failures as real, build Recent "Open Settings" deep link, then gate.
+
+## State 2026-11-21 11:30 UTC
+- Merged and pushed: platform (0127039a + codemap). CI uses Rust 1.100 now: chunks_exact(const) lint fixed in 782ba2b7 (gate38 running, pushes if green). 1.100 toolchain installed locally; clippy +1.100.0 for the Windows target is clean.
+- After gate38: drop the unused serde/serde_json from snipdeck-core/Cargo.toml (1.100 cargo warns).
+- Data: a local agent is merging origin/claude/fable2-last into merge-tmp in the worktree /tmp/wt-merge (backup decision in now.md). Then merge-tmp → PR branch (merge in PR head first), then perf ae7f8e32 (conflicts: lock_ctl.rs, codemap).
+- Main 0c210e2: review MERGE-WITH-FIXES, 7 fixes sent (FTS check, tag-merge undo/toast, toast pending+hover, saved_text >16KB, autosave size check, TIPS test, ID test coverage).
+- Extras 9b47c5a: review MERGE-WITH-FIXES, 4 fixes sent plus the 2.25x toolbar overflow (locale_fit skip removed).
+- Panel, UX, library: working.
