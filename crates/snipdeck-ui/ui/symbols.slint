@@ -11,7 +11,7 @@ import { EmptyState, EmptyStateKind } from "components/empty_state.slint";
 import { OverlayScrollbar } from "components/scrollbar.slint";
 
 // One symbol. `art` is its catalog number for `SymbolsView.art` (-1: no picture, draw `text`). `kind` is 0 emoji,
-// 1 kaomoji, 2 icon. `flat` numbers the cells in reading order: it is the selection index.
+// 1 kaomoji, 2 icon, 3 character. `flat` numbers the cells in reading order: it is the selection index.
 export struct SymbolCell {
     art: int,
     text: string,
@@ -28,6 +28,8 @@ export struct SymbolRow {
     header: string,
     link: string,
     link-kind: int,
+    // The group a section header stands for (-1: not a group header): the group strip lists these.
+    group: int,
     cells: [SymbolCell],
     chips: bool,
     y: length,
@@ -39,7 +41,7 @@ export global SymbolTexts {
     pure public function recently-used() -> string { return @tr("Recently used"); }
     pure public function show-all() -> string { return @tr("Show all"); }
     pure public function kind-name(kind: int) -> string {
-        return kind == 0 ? @tr("Emoji") : kind == 1 ? @tr("Kaomoji") : @tr("Icons");
+        return kind == 0 ? @tr("Emoji") : kind == 1 ? @tr("Kaomoji") : kind == 2 ? @tr("Icons") : @tr("Characters");
     }
     pure public function emoji-group(group: int) -> string {
         return group == 0 ? @tr("Smileys & Emotion")
@@ -52,25 +54,18 @@ export global SymbolTexts {
             : group == 7 ? @tr("Symbols")
             : @tr("Flags");
     }
-    pure public function kaomoji-group(group: int) -> string {
-        return group == 0 ? @tr("Joy")
-            : group == 1 ? @tr("Love")
-            : group == 2 ? @tr("Sad")
-            : group == 3 ? @tr("Angry")
-            : group == 4 ? @tr("Surprise")
-            : group == 5 ? @tr("Shrug")
-            : group == 6 ? @tr("Greet")
-            : group == 7 ? @tr("Sorry")
-            : group == 8 ? @tr("Animals")
-            : @tr("Actions");
+    // A kaomoji's screen-reader name: its tag and its place in its group ("cat, 3 of 10").
+    pure public function kaomoji-label(tag: string, place: int, of: int) -> string {
+        return @tr("{}, {} of {}", tag, place, of);
     }
+    pure public function sample-label() -> string { return @tr("Selected symbol"); }
     pure public function no-match(query: string) -> string { return @tr("No symbols match “{}”", query); }
     pure public function no-match-body() -> string { return @tr("Try another word, or a different kind."); }
 }
 
 export component SymbolsView inherits Rectangle {
     in property <[SymbolRow]> rows;
-    // 0 All, 1 Emoji, 2 Kaomoji, 3 Icons.
+    // 0 All, 1 Emoji, 2 Kaomoji, 3 Icons, 4 Characters.
     in property <int> kind: 0;
     in-out property <string> query <=> search.text;
     // The keyboard-selected cell (flat index, -1 none) and the grid row that holds it.
@@ -85,8 +80,9 @@ export component SymbolsView inherits Rectangle {
     in property <string> use-hint;
     // The chosen group of the strip (-1 none).
     in property <int> group: -1;
-    // Emoji kind only: the strip of group buttons.
-    property <bool> strip-shown: root.kind == 1 && root.query == "";
+    // A kind with groups, no query: the strip of group buttons (icons for emoji, names for the rest).
+    property <bool> strip-shown: root.kind != 0 && root.query == "";
+    property <bool> text-strip: root.kind != 1;
     out property <int> columns: max(1, floor((root.width - 2 * Space.s2) / Space.cell));
     out property <length> side-pad: (root.width - root.columns * Space.cell) / 2;
     out property <length> scroll-y: grid.content-y;
@@ -106,9 +102,18 @@ export component SymbolsView inherits Rectangle {
     callback composing-changed(bool);
     // The name of the cell under the pointer ("" when it leaves): the Panel's footer shows it.
     callback hover-name(string);
+    // A key the grid took while it had the focus: the host's move codes (0 left, 1 right, 2 up, 3 down, 4 home, 5 end,
+    // 6 page up, 7 page down).
+    callback grid-move(int);
+    // Bumped by the Panel when Down is pressed in the search field: the grid takes the focus. The grid is also a
+    // focus stop of its own, so Tab reaches it.
+    in property <int> enter-grid-ticks: 0;
 
     public function focus-search() {
         search.focus();
+    }
+    public function focus-grid() {
+        gridscope.focus();
     }
     public function select-search() {
         search.focus();
@@ -127,6 +132,11 @@ export component SymbolsView inherits Rectangle {
     changed selected-row => {
         if (root.selected-row >= 0 && root.selected-row < root.rows.length) {
             root.reveal(root.rows[root.selected-row].y, root.rows[root.selected-row].h);
+        }
+    }
+    changed enter-grid-ticks => {
+        if (root.rows.length > 0) {
+            gridscope.focus();
         }
     }
     changed top-row-ticks => {
@@ -162,7 +172,7 @@ export component SymbolsView inherits Rectangle {
                 height: self.box-height;
                 min-box-h: Space.s8;
                 clearable: true;
-                placeholder: @tr("Search emoji, kaomoji, icons");
+                placeholder: @tr("Search emoji, kaomoji, icons, characters");
                 label: @tr("Search symbols");
                 clear-label: @tr("Clear search");
                 edited(text) => { root.query-edited(text); }
@@ -186,19 +196,19 @@ export component SymbolsView inherits Rectangle {
                 padding-right: Space.s2;
                 spacing: Space.s0-5;
                 alignment: start;
-                for name[i] in [@tr("All"), @tr("Emoji"), @tr("Kaomoji"), @tr("Icons")]: Tab {
+                for name[i] in [@tr("All"), @tr("Emoji"), @tr("Kaomoji"), @tr("Icons"), @tr("Characters")]: Tab {
                     text: name;
                     accent: Theme.accent;
                     selected: root.kind == i;
                     index: i;
-                    count: 4;
+                    count: 5;
                     clicked => { root.kind-picked(i); }
                 }
             }
         }
 
-        // ---- Group strip (28): emoji only ---------------------------------------------------------------
-        if root.strip-shown: Rectangle {
+        // ---- Group strip (28): emoji by icon, every other kind by name ------------------------------------
+        if root.strip-shown && !root.text-strip: Rectangle {
             height: Space.hit;
             HorizontalLayout {
                 padding-left: Space.s2;
@@ -223,6 +233,20 @@ export component SymbolsView inherits Rectangle {
                     accessible-role: button;
                     accessible-label: g.label;
                     accessible-action-default => { root.group-picked(i); }
+                    efocus := FocusScope {
+                        key-pressed(event) => {
+                            if (event.text == Key.Return || event.text == " ") {
+                                root.group-picked(i);
+                                return accept;
+                            }
+                            return reject;
+                        }
+                    }
+                    if efocus.has-focus: Rectangle {
+                        border-width: 2px;
+                        border-color: Theme.focus-ring;
+                        border-radius: Radius.md;
+                    }
                     Icon {
                         source: g.icon;
                         size: Space.s4;
@@ -239,12 +263,102 @@ export component SymbolsView inherits Rectangle {
             }
         }
 
+        if root.strip-shown && root.text-strip: Rectangle {
+            height: Space.hit;
+            clip: true;
+            Flickable {
+                viewport-width: textstrip.preferred-width;
+                interactive: true;
+                textstrip := HorizontalLayout {
+                    padding-left: Space.s2;
+                    padding-right: Space.s2;
+                    spacing: Space.s1;
+                    alignment: start;
+                    for grow in root.rows: Rectangle {
+                        visible: grow.group >= 0;
+                        width: grow.group >= 0 ? max(Space.hit-min, chiplabel.preferred-width + 2 * Space.s2) : 0px;
+                        border-radius: Radius.md;
+                        background: cfocus.has-focus || ctap.has-hover ? Theme.bg-hover : transparent;
+                        accessible-role: button;
+                        accessible-label: grow.header;
+                        accessible-action-default => { root.group-picked(grow.group); }
+                        cfocus := FocusScope {
+                            key-pressed(event) => {
+                                if (event.text == Key.Return || event.text == " ") {
+                                    root.group-picked(grow.group);
+                                    return accept;
+                                }
+                                return reject;
+                            }
+                        }
+                        chiplabel := Text {
+                            x: Space.s2;
+                            text: grow.header;
+                            font-family: Fonts.sans;
+                            font-size: Type.xs;
+                            font-weight: Type.medium;
+                            color: Theme.text-primary;
+                            vertical-alignment: center;
+                            height: parent.height;
+                        }
+                        if cfocus.has-focus: Rectangle {
+                            border-width: 2px;
+                            border-color: Theme.focus-ring;
+                            border-radius: Radius.md;
+                        }
+                        ctap := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => { root.group-picked(grow.group); }
+                        }
+                    }
+                }
+            }
+        }
+
         // ---- The grid ---------------------------------------------------------------------------------
         deck := Rectangle {
             vertical-stretch: 1;
             min-height: Space.s12;
             clip: true;
 
+            gridscope := FocusScope {
+                width: parent.width;
+                height: parent.height;
+                key-pressed(event) => {
+                    if (event.modifiers.control || event.modifiers.alt || event.modifiers.meta) {
+                        return reject;
+                    }
+                    if (event.text == Key.UpArrow) {
+                        // Up from the first row of cells goes back to the search field.
+                        if (root.selected-row <= (root.rows.length > 0 && root.rows[0].header != "" ? 1 : 0)) {
+                            search.focus();
+                        } else {
+                            root.grid-move(2);
+                        }
+                        return accept;
+                    }
+                    if (event.text == Key.DownArrow) { root.grid-move(3); return accept; }
+                    if (event.text == Key.LeftArrow) { root.grid-move(0); return accept; }
+                    if (event.text == Key.RightArrow) { root.grid-move(1); return accept; }
+                    if (event.text == Key.Home) { root.grid-move(4); return accept; }
+                    if (event.text == Key.End) { root.grid-move(5); return accept; }
+                    if (event.text == Key.PageUp) { root.grid-move(6); return accept; }
+                    if (event.text == Key.PageDown) { root.grid-move(7); return accept; }
+                    if ((event.text == Key.Return || event.text == " ") && root.selected >= 0) {
+                        if (event.modifiers.shift) {
+                            root.cell-copied(root.selected);
+                        } else {
+                            root.cell-used(root.selected);
+                        }
+                        return accept;
+                    }
+                    if (event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10)) {
+                        root.cell-menu(root.selected, gridscope.absolute-position.x + Space.s6, gridscope.absolute-position.y + Space.s8);
+                        return accept;
+                    }
+                    // Everything else (typing, Esc, Tab) is the Panel's: typing goes back to the search field.
+                    return reject;
+                }
             grid := ListView {
                 x: 0px;
                 width: parent.width;
@@ -300,7 +414,7 @@ export component SymbolsView inherits Rectangle {
                             background: self.chosen ? Theme.bg-selected : ctouch.has-hover ? Theme.bg-hover : transparent;
                             accessible-role: list-item;
                             accessible-label: cell.label;
-                            accessible-description: cell.kind == 0 ? @tr("Emoji") : cell.kind == 1 ? @tr("Kaomoji") : @tr("Icon");
+                            accessible-description: cell.kind == 0 ? @tr("Emoji") : cell.kind == 1 ? @tr("Kaomoji") : cell.kind == 2 ? @tr("Icon") : @tr("Character");
                             accessible-item-selectable: true;
                             accessible-item-selected: self.chosen;
                             accessible-action-default => { root.selected = cell.flat; root.cell-used(cell.flat); }
@@ -324,7 +438,7 @@ export component SymbolsView inherits Rectangle {
                                 image-fit: contain;
                             }
                             // Kaomoji, and an emoji whose art is missing: the characters themselves.
-                            if cell.kind == 1 || (cell.kind == 0 && !(cell.art >= 0 && cbox.picture.width > 0)): Text {
+                            if cell.kind == 1 || cell.kind == 3 || (cell.kind == 0 && !(cell.art >= 0 && cbox.picture.width > 0)): Text {
                                 width: parent.width;
                                 height: parent.height;
                                 text: cell.text;
@@ -338,7 +452,7 @@ export component SymbolsView inherits Rectangle {
                             }
                             // The focus ring of the selected cell (keyboard focus is in the search field).
                             Rectangle {
-                                visible: cbox.chosen && search.has-focus;
+                                visible: cbox.chosen && (search.has-focus || gridscope.has-focus);
                                 border-width: 2px;
                                 border-color: Theme.focus-ring;
                                 border-radius: Radius.md;
@@ -369,6 +483,7 @@ export component SymbolsView inherits Rectangle {
                     }
                 }
             }
+            }
             // No deck edges here: the cells are not cards, and an edge drawn over the first row reads as stray lines.
             OverlayScrollbar {
                 content-y: grid.content-y;
@@ -385,6 +500,43 @@ export component SymbolsView inherits Rectangle {
                 kind: EmptyStateKind.search;
                 heading: root.empty-heading;
                 body: root.empty-body;
+            }
+        }
+
+        // ---- Preview (the selected symbol, large) -------------------------------------------------------
+        Rectangle {
+            height: max(Space.s12, Type.xl * 2);
+            accessible-role: AccessibleRole.none;
+            Rectangle {
+                height: 1px;
+                background: Theme.border-subtle;
+            }
+            for prow in root.rows: Rectangle {
+                for pcell in prow.cells: pbox := Rectangle {
+                    visible: pcell.flat == root.selected;
+                    property <image> big: pcell.art >= 0 ? root.art(pcell.art) : @image-url("../icons/x.svg");
+                    if pcell.kind != 1 && pcell.art >= 0 && pbox.big.width > 0: Image {
+                        source: pbox.big;
+                        colorize: pcell.kind == 2 ? Theme.text-primary : transparent;
+                        x: Space.s2;
+                        width: Space.s8;
+                        height: Space.s8;
+                        y: (parent.height - self.height) / 2;
+                        image-fit: contain;
+                    }
+                    if pcell.kind == 1 || pcell.kind == 3 || (pcell.kind == 0 && pcell.art < 0): Text {
+                        x: Space.s2;
+                        width: parent.width - 2 * Space.s2;
+                        height: parent.height;
+                        text: pcell.text;
+                        font-family: Fonts.sans;
+                        font-size: pcell.kind == 1 ? Type.lg : Type.xl * 1.5;
+                        color: Theme.text-primary;
+                        vertical-alignment: center;
+                        overflow: elide;
+                        accessible-role: AccessibleRole.none;
+                    }
+                }
             }
         }
     }

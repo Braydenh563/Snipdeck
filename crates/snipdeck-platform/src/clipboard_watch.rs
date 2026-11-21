@@ -73,6 +73,8 @@ pub struct RichClip {
     pub html: Option<String>,
     /// The Rich Text Format flavour; only next to text.
     pub rtf: Option<Vec<u8>>,
+    /// The copy carries a "keep me out" marker (see [`excluded_by_markers`]); nothing was read.
+    pub excluded: bool,
 }
 
 // The content may be a secret: never print it.
@@ -82,6 +84,7 @@ impl std::fmt::Debug for RichClip {
             .field("text", &self.text.is_some())
             .field("html", &self.html.is_some())
             .field("rtf", &self.rtf.is_some())
+            .field("excluded", &self.excluded)
             .finish()
     }
 }

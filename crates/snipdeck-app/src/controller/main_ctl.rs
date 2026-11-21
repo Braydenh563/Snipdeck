@@ -151,6 +151,8 @@ pub struct MainScreen {
     pub counts: Counts,
     /// The Recent inbox is on (its entries are listed in the Panel's clock tab).
     pub recent_on: bool,
+    /// How many days Recent keeps an entry.
+    pub recent_days: u32,
     /// The library is locked: the Recent section shows an unlock prompt instead of entries.
     pub recent_locked: bool,
     /// The Recent section's entries, newest first (the search box narrows them); empty while the
@@ -285,6 +287,7 @@ where
                 ..self.main.counts()
             },
             recent_on: self.settings.recent_history,
+            recent_days: self.settings.recent_max_days,
             recent_locked: self.recent_locked(),
             recent_rows: if in_recent {
                 self.main_recent_rows()

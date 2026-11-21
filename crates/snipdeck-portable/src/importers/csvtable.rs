@@ -165,12 +165,12 @@ pub(crate) fn cell(row: &[String], index: Option<usize>) -> Option<&str> {
 use snipdeck_core::Timestamp;
 use std::path::Path;
 
+use crate::decoded::Decoded;
 use crate::error::Result;
 use crate::import::ImportOptions;
-use crate::plan::Library;
 use crate::report::{ImportReport, Note, Warning};
 
-use super::expander::{Body, Snip, import_snips, read_capped};
+use super::expander::{Body, Snip, decode_snips, read_capped};
 use super::{decode_text, note_lossy};
 
 /// What differs between the CSV importers.
@@ -189,13 +189,12 @@ pub(crate) struct Spec {
 }
 
 /// Reads `path` as a CSV of snippets and imports it.
-pub(crate) fn import_csv<L: Library>(
-    lib: &mut L,
+pub(crate) fn decode_csv(
     path: &Path,
     now: Timestamp,
     options: &ImportOptions<'_>,
     spec: &Spec,
-) -> Result<ImportReport> {
+) -> Result<Decoded<'static>> {
     let bytes = read_capped(path, spec.file, options)?;
     let mut report = ImportReport::default();
     let (text, how) = decode_text(&bytes);
@@ -251,5 +250,5 @@ pub(crate) fn import_csv<L: Library>(
             body: (spec.convert)(content, &shown, &mut report),
         });
     }
-    import_snips(lib, snips, spec.defaults, now, options, report)
+    decode_snips(snips, spec.defaults, now, options, report)
 }

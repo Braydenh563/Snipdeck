@@ -22,6 +22,8 @@ pub enum Cause {
     TooNew,
     /// An item, or the attachments together, are too big for a backup or an export.
     TooBig,
+    /// Another backup or export is still running (nothing was written; try again later).
+    Busy,
     /// Nothing more specific is known.
     Other,
 }
@@ -38,6 +40,7 @@ impl Cause {
             Self::NotArchive => 4,
             Self::TooNew => 5,
             Self::TooBig => 6,
+            Self::Busy => 7,
         }
     }
 

@@ -6,10 +6,10 @@ use std::{cell::RefCell, rc::Rc};
 
 use slint::{Global, Model, ModelRc, SharedString, VecModel};
 use snipdeck_colour::{
-    Format, InputModel, PickerStyle, Rgba8, Scheme, contrast_ratio, from_hsv, marks, nearest_name,
-    parse, ratio_text, render_square, render_wheel, scheme,
+    Format, InputModel, PickerStyle, Rgba8, Scheme, apca, composite, contrast_over, from_hsv,
+    marks, nearest_name, nearest_passing, parse, ratio_text, render_square, render_wheel, scheme,
 };
-use snipdeck_core::{ListId, UseMode};
+use snipdeck_core::{ItemId, ListId, UseMode};
 use snipdeck_ui as ui;
 
 use super::Core;
@@ -69,9 +69,14 @@ struct Drawn {
     values_error: String,
     held: Option<(Rgba8, panel::Hsb)>,
     typed: Option<(InputModel, Rgba8, panel::Memo)>,
+    backdrop_black: bool,
 }
 
 #[derive(Default)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "independent view flags of one window, each read on its own"
+)]
 struct Inner {
     /// The HSL or CMYK values as last typed or stepped, next to the colour they made.
     typed: Option<(InputModel, Rgba8, panel::Memo)>,
@@ -94,6 +99,8 @@ struct Inner {
     drawn: Option<Drawn>,
     /// The tab was just opened: the next redraw rewrites the input line.
     fresh: bool,
+    /// A translucent colour is judged over black instead of white.
+    backdrop_black: bool,
 }
 
 fn color(c: Rgba8) -> slint::Color {
@@ -113,26 +120,64 @@ fn name_text(t: &ui::ColourTexts<'_>, c: Rgba8) -> String {
     }
 }
 
+/// The Name row: the keyword when it is exactly the colour, else the explicit "Use royalblue
+/// (#4169e1)": a keyword that is another colour is never pasted.
+fn name_row_text(t: &ui::ColourTexts<'_>, c: Rgba8) -> SharedString {
+    let n = nearest_name(c);
+    if n.exact && c.a == 255 {
+        t.invoke_exact(n.name.into())
+    } else {
+        t.invoke_use_name(n.name.into(), n.rgb.to_hex().into())
+    }
+}
+
+/// A chip: its caption is always the short hex (a 60 px cell elides a long OKLCH text to the same
+/// prefix); the default format's full text is in the label the tooltip and screen reader read.
 fn swatch(t: &ui::ColourTexts<'_>, c: Rgba8, format: Format) -> ui::ColourSwatch {
-    let hex = snipdeck_colour::format(c, format);
+    let full = snipdeck_colour::format(c, format);
+    let label = t.invoke_swatch_label(full.as_str().into(), name_text(t, c).into());
     ui::ColourSwatch {
         color: color(c),
-        label: t.invoke_swatch_label(c.to_hex().into(), name_text(t, c).into()),
-        hex: hex.into(),
+        label,
+        hex: c.to_hex().into(),
         translucent: c.a < 255,
     }
 }
 
+/// One contrast line: `fg` on `bg`, a translucent colour judged over `backdrop`. Carries the APCA
+/// lightness contrast, which backdrop was used, and the nearest colour that passes AA.
 fn contrast_row(
     t: &ui::ColourTexts<'_>,
     name: SharedString,
     fg: Rgba8,
     bg: Rgba8,
+    backdrop: Rgba8,
 ) -> ui::ColourContrastRow {
-    let ratio = contrast_ratio(fg, bg);
+    let ratio = contrast_over(fg, bg, backdrop);
     let m = marks(ratio);
     let text = ratio_text(ratio);
+    let solid_bg = composite(bg, Rgba8 { a: 255, ..backdrop });
+    let solid_ink = composite(fg, solid_bg);
+    let over = if fg.a < 255 || bg.a < 255 {
+        if backdrop.r == 0 {
+            t.invoke_over_black()
+        } else {
+            t.invoke_over_white()
+        }
+    } else {
+        SharedString::new()
+    };
+    let fix_text = if m.aa {
+        SharedString::new()
+    } else {
+        nearest_passing(solid_ink, solid_bg, 4.5)
+            .map(|c| t.invoke_fix_text(c.to_hex().into()))
+            .unwrap_or_default()
+    };
     ui::ColourContrastRow {
+        apca: t.invoke_apca_text(format!("{:.0}", apca(solid_ink, solid_bg).abs()).into()),
+        over,
+        fix_text,
         speak: t.invoke_contrast_speak(
             name.clone(),
             text.as_str().into(),
@@ -254,7 +299,7 @@ impl Glue {
         state.set_other_error(SharedString::from(s.other_error.as_str()));
         state.set_values_error(SharedString::from(s.values_error.as_str()));
 
-        s.groups = chips(&state, &t, view);
+        s.groups = chips(&state, &t, view, s.backdrop_black);
 
         picker(&state, &mut s, view);
         state.set_use_hint(if pastes {
@@ -262,6 +307,12 @@ impl Glue {
         } else {
             t.invoke_use_hint_copy()
         });
+        state.set_target(target.as_str().into());
+        state.set_has_previous(view.previous.is_some());
+        if let Some(p) = view.previous {
+            state.set_previous(color(p));
+            state.set_previous_label(t.invoke_previous_colour(p.to_hex().into()));
+        }
         state.set_has_saved_list(view.has_saved_list);
         state.set_eyedropper_available(eyedropper.0);
         state.set_eyedropper_running(eyedropper.1);
@@ -278,6 +329,15 @@ impl Glue {
             ..Default::default()
         });
         state.set_save_targets(model(targets));
+        state.set_extras(model(
+            snipdeck_colour::ExtraFormat::ALL
+                .iter()
+                .map(|f| ui::MenuEntry {
+                    text: snipdeck_colour::extra_text(view.current, *f).into(),
+                    ..Default::default()
+                })
+                .collect(),
+        ));
         state.set_copy_as(model(
             Format::ALL
                 .iter()
@@ -300,6 +360,7 @@ fn chips(
     state: &ui::ColourState<'_>,
     t: &ui::ColourTexts<'_>,
     view: &ColourView,
+    backdrop_black: bool,
 ) -> [Vec<Rgba8>; 3] {
     let c = view.current;
     let recents = view.recents.clone();
@@ -313,6 +374,7 @@ fn chips(
             .map(|c| swatch(t, *c, view.format))
             .collect(),
     ));
+    state.set_scheme_no_hue(view.scheme != Scheme::TintsShades && !snipdeck_colour::has_hue(c));
     state.set_scheme(model(
         scheme_colours
             .iter()
@@ -328,7 +390,7 @@ fn chips(
             .map(|f| ui::ColourFormatRow {
                 label: f.label().into(),
                 value: if *f == Format::Name {
-                    name_text(t, c).into()
+                    name_row_text(t, c)
                 } else {
                     snipdeck_colour::format(c, *f).into()
                 },
@@ -338,25 +400,21 @@ fn chips(
             .collect(),
     ));
 
-    // Contrast.
+    // Contrast. A translucent colour is laid over the backdrop (white, or black on request) and the
+    // line says which.
+    let backdrop = if backdrop_black {
+        Rgba8::rgb(0, 0, 0)
+    } else {
+        Rgba8::rgb(255, 255, 255)
+    };
     state.set_contrast(model(vec![
-        contrast_row(t, t.invoke_white(), c, Rgba8::rgb(255, 255, 255)),
-        contrast_row(t, t.invoke_black(), c, Rgba8::rgb(0, 0, 0)),
+        contrast_row(t, t.invoke_white(), c, Rgba8::rgb(255, 255, 255), backdrop),
+        contrast_row(t, t.invoke_black(), c, Rgba8::rgb(0, 0, 0), backdrop),
     ]));
-    // The ratio treats its background as opaque: a translucent second colour is laid over white
-    // first, and the row says so.
-    let flat = panel::over_white(view.other);
     state.set_other(color(view.other));
-    state.set_other_row(contrast_row(
-        t,
-        if view.other.a < 255 {
-            t.invoke_other_flat()
-        } else {
-            t.invoke_other()
-        },
-        c,
-        flat,
-    ));
+    state.set_other_row(contrast_row(t, t.invoke_other(), c, view.other, backdrop));
+    state.set_needs_backdrop(snipdeck_colour::needs_backdrop(c, view.other));
+    state.set_backdrop_black(backdrop_black);
     groups
 }
 
@@ -451,6 +509,7 @@ fn key_of(
         values_error: s.values_error.clone(),
         held: s.held,
         typed: s.typed.clone(),
+        backdrop_black: s.backdrop_black,
     }
 }
 
@@ -468,6 +527,10 @@ where
         ctl.set_eyedrop_texts(snipdeck_platform::eyedrop::EyedropTexts {
             hint: texts.invoke_eyedrop_hint().to_string(),
             hdr_note: texts.invoke_eyedrop_hdr_note().to_string(),
+            title: texts.invoke_eyedrop_title().to_string(),
+            pick_label: texts.invoke_eyedrop_pick().to_string(),
+            unavailable: texts.invoke_eyedrop_unavailable().to_string(),
+            ..snipdeck_platform::eyedrop::EyedropTexts::default()
         });
         ctl.set_colours_list_name(&texts.invoke_colours_list());
         ctl.set_starter_words(&crate::wording::starter_words(window));
@@ -495,6 +558,16 @@ where
     }
 
     /// The colour of chip `i` of `group` (0 recents, 1 saved, 2 scheme).
+    /// The item of saved chip `i` (the strip is read from the controller, newest first).
+    fn saved_id(&self, i: i32) -> Option<ItemId> {
+        let i = usize::try_from(i).ok()?;
+        self.controller
+            .borrow()
+            .saved_colours()
+            .get(i)
+            .map(|(id, _)| *id)
+    }
+
     fn chip(&self, group: i32, i: i32) -> Option<Rgba8> {
         let s = self.colours.inner.borrow();
         s.groups
@@ -568,11 +641,12 @@ where
         {
             let core = Rc::clone(self);
             state.on_input_edited(move |text| {
-                // A whole colour literal applies live; the error waits for Enter.
-                if let Ok(c) = parse(text.as_str()) {
+                // A whole colour literal applies live, in memory only (words and bare numbers do not
+                // count while typing); the error waits for Enter and the setting for a pause.
+                if let Ok(c) = snipdeck_colour::parse_live(text.as_str()) {
                     core.colours.inner.borrow_mut().typing_input = true;
                     core.colours.inner.borrow_mut().input_error.clear();
-                    core.act(|ctl| ctl.set_colour(c));
+                    core.act(|ctl| ctl.set_colour_live(c));
                 }
             });
         }
@@ -598,7 +672,7 @@ where
         {
             let core = Rc::clone(self);
             state.on_other_edited(move |text| {
-                if let Ok(c) = parse(text.as_str()) {
+                if let Ok(c) = snipdeck_colour::parse_live(text.as_str()) {
                     core.colours.inner.borrow_mut().typing_other = true;
                     core.colours.inner.borrow_mut().other_error.clear();
                     core.act(|ctl| ctl.set_contrast_with(c));
@@ -649,6 +723,15 @@ where
         }
         {
             let core = Rc::clone(self);
+            state.on_extra_copied(move |i| {
+                core.act_effects(|ctl| {
+                    let used = ctl.copy_extra_format(usize::try_from(i).unwrap_or(0));
+                    ctl.after_use(&used)
+                });
+            });
+        }
+        {
+            let core = Rc::clone(self);
             state.on_swatch_copied_as(move |group, i, format| {
                 if let Some(c) = core.chip(group, i)
                     && let Some(f) = usize::try_from(format)
@@ -686,11 +769,27 @@ where
         }
         {
             let core = Rc::clone(self);
-            state.on_swatch_removed(move |group, i| {
-                if group == 0
-                    && let Some(c) = core.chip(group, i)
+            state.on_swatch_removed(move |group, i| match group {
+                0 => {
+                    if let Some(c) = core.chip(group, i) {
+                        core.act(|ctl| ctl.forget_recent_colour(c));
+                    }
+                }
+                1 => {
+                    if let Some(id) = core.saved_id(i) {
+                        core.act(|ctl| ctl.delete_saved_colour(id));
+                    }
+                }
+                _ => {}
+            });
+        }
+        {
+            let core = Rc::clone(self);
+            state.on_swatch_edited(move |group, i| {
+                if group == 1
+                    && let Some(id) = core.saved_id(i)
                 {
-                    core.act(|ctl| ctl.forget_recent_colour(c));
+                    core.act_effects(|ctl| ctl.edit_saved_colour(id));
                 }
             });
         }
@@ -706,6 +805,10 @@ where
                 };
                 core.act_effects(|ctl| {
                     let c = ctl.colour_view().current;
+                    if snipdeck_colour::copy_text(c, f).is_none() {
+                        ctl.use_nearest_name();
+                        return Vec::new();
+                    }
                     let used = ctl.use_colour(c, f, mode);
                     ctl.after_use(&used)
                 });
@@ -753,7 +856,68 @@ where
         }
         {
             let core = Rc::clone(self);
+            state.on_previous_restored(move || core.act(Controller::restore_previous_colour));
+        }
+        {
+            let core = Rc::clone(self);
+            state.on_paste_colour(move || {
+                core.act(Controller::paste_colour);
+            });
+        }
+        {
+            let core = Rc::clone(self);
             state.on_swap(move || core.act(Controller::swap_contrast));
+        }
+        {
+            let core = Rc::clone(self);
+            state.on_backdrop_toggled(move || {
+                {
+                    let mut s = core.colours.inner.borrow_mut();
+                    s.backdrop_black = !s.backdrop_black;
+                }
+                core.act(|_| ());
+            });
+        }
+        {
+            let core = Rc::clone(self);
+            state.on_contrast_fixed(move |row| {
+                let (fg, other, black) = {
+                    let v = core.colour_view();
+                    (
+                        v.current,
+                        v.other,
+                        core.colours.inner.borrow().backdrop_black,
+                    )
+                };
+                let bg = match row {
+                    0 => Rgba8::rgb(255, 255, 255),
+                    1 => Rgba8::rgb(0, 0, 0),
+                    _ => other,
+                };
+                let backdrop = if black {
+                    Rgba8::rgb(0, 0, 0)
+                } else {
+                    Rgba8::rgb(255, 255, 255)
+                };
+                let solid_bg = composite(bg, backdrop);
+                if let Some(fixed) = nearest_passing(composite(fg, solid_bg), solid_bg, 4.5) {
+                    core.act(|ctl| ctl.set_colour(Rgba8 { a: 255, ..fixed }));
+                }
+            });
+        }
+        {
+            let core = Rc::clone(self);
+            state.on_swatch_other(move |group, i| {
+                if let Some(c) = core.chip(group, i) {
+                    core.act(|ctl| ctl.set_contrast_with(c));
+                }
+            });
+        }
+        {
+            let core = Rc::clone(self);
+            state.on_eyedropper_other(move || {
+                core.act_effects(Controller::start_eyedropper_for_other);
+            });
         }
         {
             let core = Rc::clone(self);

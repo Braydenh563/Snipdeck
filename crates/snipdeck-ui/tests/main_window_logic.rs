@@ -18,7 +18,7 @@ use slint::{
     ComponentHandle, LogicalPosition, Model, ModelRc, SharedString, VecModel,
     platform::{Key, WindowEvent},
 };
-use snipdeck_ui::{Fonts, MainSection, MainView, MainWindow, PaletteRow, selection};
+use snipdeck_ui::{Fonts, MainSection, MainView, MainWindow, PaletteRow, SystemLook, selection};
 
 #[path = "support/mod.rs"]
 mod support;
@@ -2112,6 +2112,185 @@ ui_tests! {
             press_key(&ui, Key::RightArrow);
         }
         assert_eq!(ui.get_sidebar_width(), 320, "stops at 320");
+    }
+
+    fn the_sidebar_toggle_is_reachable_at_every_width() {
+        for (width, collapsed) in [(1040.0, false), (1040.0, true), (900.0, false), (721.0, false), (719.0, false), (640.0, false), (480.0, false), (360.0, false)] {
+            let (ui, _log) = start();
+            ui.set_sidebar_collapsed(collapsed);
+            ui.window().set_size(slint::LogicalSize::new(width, 640.0));
+            settle();
+            let what = format!("width {width}, collapsed {collapsed}");
+            let win = ui.window().size().to_logical(ui.window().scale_factor());
+            let toggle = ["Collapse sidebar (Ctrl+B)", "Expand sidebar (Ctrl+B)"]
+                .into_iter()
+                .find_map(|l| all(&ui, l, AccessibleRole::Button).into_iter().next())
+                .unwrap_or_else(|| panic!("{what}: no sidebar toggle"));
+            let (p, z) = (toggle.absolute_position(), toggle.size());
+            assert!(z.width >= MIN_HIT && z.height >= MIN_HIT, "{what}: hit target {z:?}");
+            assert!(p.x >= 0.0 && p.y >= 0.0 && p.x + z.width <= win.width && p.y + z.height <= win.height, "{what}: on screen {p:?} {z:?}");
+            // At the rail's width the toggle says "Expand".
+            if width < 720.0 || collapsed {
+                assert_eq!(toggle.accessible_label().as_deref(), Some("Expand sidebar (Ctrl+B)"), "{what}");
+            }
+        }
+    }
+
+    fn the_rail_toggle_opens_the_full_sidebar_as_a_drawer_and_focus_comes_back() {
+        let (ui, log) = start();
+        ui.window().set_size(slint::LogicalSize::new(640.0, 520.0));
+        settle();
+        assert!(ui.get_rail() && !ui.get_drawer_open());
+        assert!(missing(&ui, "Close sidebar (Ctrl+B)", AccessibleRole::Button));
+        let rail_row = find(&ui, "All items", AccessibleRole::ListItem).size().width;
+        let list_x = |ui: &MainWindow| find(ui, "Items", AccessibleRole::List).absolute_position().x;
+        let list_before = list_x(&ui);
+        // Opening it: the full sidebar, wider than the rail, over the list (the list does not move), focus inside.
+        find(&ui, "Expand sidebar (Ctrl+B)", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert!(ui.get_drawer_open());
+        assert!(ui.get_sidebar_focused(), "focus moves into the drawer");
+        let row = find(&ui, "All items", AccessibleRole::ListItem).size().width;
+        assert!(row > rail_row + 100.0, "full rows in the drawer: {row} vs rail {rail_row}");
+        assert!((list_x(&ui) - list_before).abs() < 0.5, "the list stays where it was");
+        let _ = find(&ui, "Close sidebar (Ctrl+B)", AccessibleRole::Button);
+        // Esc closes it and the toggle has the keys again: Enter on it opens the drawer once more.
+        press_key(&ui, Key::Escape);
+        assert!(!ui.get_drawer_open());
+        assert!(!ui.get_sidebar_focused());
+        press_key(&ui, Key::Return);
+        assert!(ui.get_drawer_open(), "focus returned to the toggle");
+        // Ctrl+B closes it, too, and so does the toggle.
+        chord(ui.window(), &[Key::Control], "b");
+        settle();
+        assert!(!ui.get_drawer_open());
+        chord(ui.window(), &[Key::Control], "b");
+        settle();
+        assert!(ui.get_drawer_open());
+        find(&ui, "Close sidebar (Ctrl+B)", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert!(!ui.get_drawer_open());
+        // A click on the scrim, right of the drawer, closes it.
+        chord(ui.window(), &[Key::Control], "b");
+        settle();
+        assert!(ui.get_drawer_open());
+        press_at_centre(&ui, slint::LogicalPosition::new(560.0, 300.0));
+        assert!(!ui.get_drawer_open(), "a click outside closes it");
+        // Choosing an item closes it and reports the choice.
+        chord(ui.window(), &[Key::Control], "b");
+        settle();
+        take(&log);
+        find(&ui, "Pinned", AccessibleRole::ListItem).invoke_accessible_default_action();
+        settle();
+        assert!(!ui.get_drawer_open(), "choosing an item closes it");
+        assert!(take(&log).iter().any(|l| l.starts_with("section:Pinned")));
+        assert!(ui.get_items_focused(), "the keys go to the list that was chosen");
+        // Widening the window past 720 px leaves no drawer behind.
+        chord(ui.window(), &[Key::Control], "b");
+        settle();
+        ui.window().set_size(slint::LogicalSize::new(900.0, 520.0));
+        settle();
+        assert!(!ui.get_drawer_open() && !ui.get_rail());
+    }
+
+    fn tab_and_shift_tab_stay_inside_the_open_drawer() {
+        let (ui, _log) = start();
+        ui.window().set_size(slint::LogicalSize::new(640.0, 520.0));
+        settle();
+        chord(ui.window(), &[Key::Control], "b");
+        settle();
+        assert!(ui.get_drawer_open());
+        let mut saw_nav = false;
+        for step in 0..14 {
+            press_key(&ui, Key::Tab);
+            assert!(ui.get_drawer_open(), "Tab {step}: still open");
+            assert!(!ui.get_search_focused() && !ui.get_items_focused(), "Tab {step}: focus left the drawer");
+            saw_nav |= ui.get_sidebar_focused();
+        }
+        assert!(saw_nav, "the sidebar list is one of the drawer's tab stops");
+        for step in 0..14 {
+            shift(&ui, Key::Tab);
+            assert!(ui.get_drawer_open(), "Shift+Tab {step}: still open");
+            assert!(!ui.get_search_focused() && !ui.get_items_focused(), "Shift+Tab {step}: focus left the drawer");
+        }
+    }
+
+    fn the_footer_buttons_keep_the_token_gap_from_the_status_line() {
+        // Settings and Help sit at the sidebar's foot; the status line starts right of the sidebar. Measured from
+        // element boxes: the lowest, right-most footer button's right edge to the status text's left edge (the status
+        // rectangle's x plus its 16px padding), at every text scale, sidebar width and language.
+        const GAP: f32 = 16.0; // Space.s4
+        // The bundled translations are registered when the first window is made.
+        drop(start());
+        for lang in ["", "de", "fr", "es", "ja", "pt-BR", "zh-Hans"] {
+            slint::select_bundled_translation(lang).expect("bundled");
+            for scale in [1.0f32, 1.5, 2.25] {
+                for (width, collapsed, sidebar) in [(1040.0, false, 232), (1040.0, false, 200), (1040.0, true, 232), (640.0, false, 232)] {
+                    let (ui, _log) = start();
+                    ui.global::<SystemLook<'_>>().set_text_scale(scale);
+                    ui.set_sidebar_width(sidebar);
+                    ui.set_sidebar_collapsed(collapsed);
+                    ui.window().set_size(slint::LogicalSize::new(width, 700.0));
+                    settle();
+                    let what = format!("lang {lang:?}, scale {scale}, width {width}, collapsed {collapsed}, sidebar {sidebar}");
+                    let win = ui.window().size().to_logical(ui.window().scale_factor());
+                    let slot = ui.get_sidebar_slot_width();
+                    let foot: Vec<_> = by_role(&ui, AccessibleRole::Button)
+                        .into_iter()
+                        .filter(|b| {
+                            let (p, z) = (b.absolute_position(), b.size());
+                            p.x + z.width / 2.0 < slot && p.y > win.height - 3.0 * 28.0 * scale
+                        })
+                        .collect();
+                    assert!(foot.len() == 2, "{what}: Settings and Help at the foot, found {}", foot.len());
+                    for b in &foot {
+                        let (p, z) = (b.absolute_position(), b.size());
+                        assert!(p.y + z.height <= win.height + 0.5, "{what}: on screen");
+                        assert!(p.x >= 0.0 && p.x + z.width <= slot, "{what}: inside the sidebar: {p:?} {z:?} of {slot}");
+                    }
+                    // Each button has at least the width it has when there is room (its preferred width).
+                    let mut mine = foot.clone();
+                    mine.sort_by(|a, b| {
+                        let (pa, pb) = (a.absolute_position(), b.absolute_position());
+                        pa.y.round().total_cmp(&pb.y.round()).then(pa.x.total_cmp(&pb.x))
+                    });
+                    let (roomy, _roomy_log) = start();
+                    roomy.global::<SystemLook<'_>>().set_text_scale(scale);
+                    roomy.set_sidebar_width(320);
+                    roomy.window().set_size(slint::LogicalSize::new(1400.0, 700.0));
+                    settle();
+                    let roomy_slot = roomy.get_sidebar_slot_width();
+                    let mut roomy_foot: Vec<_> = by_role(&roomy, AccessibleRole::Button)
+                        .into_iter()
+                        .filter(|b| {
+                            let (p, z) = (b.absolute_position(), b.size());
+                            p.x + z.width / 2.0 < roomy_slot && p.y > 700.0 - 3.0 * 28.0 * scale
+                        })
+                        .collect();
+                    roomy_foot.sort_by(|a, b| a.absolute_position().x.total_cmp(&b.absolute_position().x));
+                    if !collapsed && width > 700.0 {
+                        assert_eq!(roomy_foot.len(), 2, "{what}: reference footer");
+                        for (got, want) in mine.iter().zip(&roomy_foot) {
+                            assert!(
+                                got.size().width >= want.size().width - 0.5,
+                                "{what}: a footer button is {} wide, its preferred width is {}",
+                                got.size().width,
+                                want.size().width
+                            );
+                        }
+                    }
+                    let right = foot.iter().map(|b| b.absolute_position().x + b.size().width).fold(0.0, f32::max);
+                    let status = by_role(&ui, AccessibleRole::Text)
+                        .into_iter()
+                        .rfind(|e| e.accessible_label().is_some_and(|l| !l.is_empty()) && e.absolute_position().y > win.height - 40.0 * scale)
+                        .unwrap_or_else(|| panic!("{what}: no status line"));
+                    let text_left = status.absolute_position().x + GAP;
+                    let gap = text_left - right;
+                    assert!(gap >= GAP, "{what}: gap {gap} < {GAP}");
+                }
+            }
+        }
+        slint::select_bundled_translation("").expect("back");
     }
 
     fn ctrl_b_with_the_splitter_focused_moves_focus_to_the_list() {

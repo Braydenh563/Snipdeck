@@ -623,6 +623,8 @@ where
             .recent_delete(i64::from(id)));
         wire!(on_recent_saved, |ctl, id, target| ctl
             .recent_promote_to(i64::from(id), index(target)));
+        wire!(on_recent_saved_sensitive, |ctl, id, target| ctl
+            .recent_promote_sensitive_to(i64::from(id), index(target)));
         wire!(on_recent_cleared, |ctl| ctl.recent_clear());
         wire!(on_recent_unlock_requested, |ctl| ctl.request_unlock());
         wire!(on_item_action, |ctl, action, i| ctl
@@ -1235,8 +1237,9 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
     if window.get_recent_locked() != screen.recent_locked {
         window.set_recent_locked(screen.recent_locked);
     }
-    if window.get_recent_days() != crate::recent::max_age_days() {
-        window.set_recent_days(crate::recent::max_age_days());
+    let days = i32::try_from(screen.recent_days).unwrap_or(i32::MAX);
+    if window.get_recent_days() != days {
+        window.set_recent_days(days);
     }
     if window.get_recent_on() != screen.recent_on {
         window.set_recent_on(screen.recent_on);

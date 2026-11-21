@@ -422,6 +422,8 @@ export component PanelWindow inherits Window {
     callback recent-plain(int);
     callback recent-deleted(int);
     callback recent-saved(int, int);
+    // "Save as Sensitive…": the same chooser, and the item is saved as Sensitive (text entries only).
+    callback recent-saved-sensitive(int, int);
     callback recent-unlock-requested();
     callback add-list-requested();
     callback settings-requested();
@@ -655,6 +657,10 @@ export component PanelWindow inherits Window {
     property <int> rsel: root.recent-rows.length == 0 ? -1 : min(max(root.recent-selected, 0), root.recent-rows.length - 1);
     property <bool> recent-menu-open: false;
     property <bool> recent-save-open: false;
+    // The open "Save to…" chooser saves as Sensitive.
+    property <bool> recent-save-sensitive: false;
+    // The entry the menu is on is text, so "Save as Sensitive…" is offered.
+    property <bool> recent-menu-text: true;
     property <int> recent-menu-row: 0;
     // The entry the open menu acts on, by id (the rows may shift while it is open).
     property <int> recent-menu-id: 0;
@@ -779,6 +785,8 @@ export component PanelWindow inherits Window {
     property <string> symbol-hover-name: "";
     property <string> symbol-typed: "";
     property <int> symbol-typed-ticks: 0;
+    // Bump to hand the keyboard to the Symbols grid (Down in the search field; see SymbolsView.enter-grid-ticks).
+    in-out property <int> symbol-enter-grid-ticks: 0;
     changed scroll-y => { root.row-tips-close(); }
 
     property <bool> narrow: false;
@@ -1022,7 +1030,7 @@ export component PanelWindow inherits Window {
     }
 
     function step-symbol-kind(dir: int) {
-        root.symbol-kind = mod(root.symbol-kind + dir + 4, 4);
+        root.symbol-kind = mod(root.symbol-kind + dir + 5, 5);
         root.symbol-kind-changed(root.symbol-kind);
     }
 
@@ -1055,6 +1063,7 @@ export component PanelWindow inherits Window {
 
     function recent-menu-at(row: int, x: length, y: length) {
         root.recent-menu-row = row;
+        root.recent-menu-text = root.recent-rows[row].kind != ItemKind.image && root.recent-rows[row].kind != ItemKind.file;
         root.recent-menu-id = root.recent-rows[row].id;
         root.recent-menu-x = x;
         root.recent-menu-y = y;
@@ -1063,6 +1072,7 @@ export component PanelWindow inherits Window {
     }
 
     function recent-save-at(row: int, x: length, y: length) {
+        root.recent-save-sensitive = false;
         root.recent-menu-row = row;
         root.recent-menu-id = root.recent-rows[row].id;
         root.recent-menu-x = x;
@@ -1316,6 +1326,11 @@ export component PanelWindow inherits Window {
                         ColourState.copy-current();
                         return accept;
                     }
+                    // Ctrl+V on the Colours tab (outside a field) takes the first colour literal in the clipboard text.
+                    if (root.colours-open && (event.text == "v" || event.text == "V") && !event.modifiers.shift && !ColourState.text-focused) {
+                        ColourState.paste-colour();
+                        return accept;
+                    }
                     if ((event.text == "a" || event.text == "A") && !root.searching && !root.list-hidden) {
                         root.select-all-requested();
                         return accept;
@@ -1432,7 +1447,10 @@ export component PanelWindow inherits Window {
                 }
                 if (root.symbols-open && !switcher.has-focus && (root.symbol-search-focused || rest.has-focus)) {
                     // The grid has one selection; the search field keeps the focus and the arrows drive the grid.
-                    if (event.text == Key.DownArrow) { root.symbol-move(3); return accept; }
+                    if (event.text == Key.DownArrow) {
+                        if (root.symbol-search-focused) { root.symbol-enter-grid-ticks += 1; } else { root.symbol-move(3); }
+                        return accept;
+                    }
                     if (event.text == Key.UpArrow) { root.symbol-move(2); return accept; }
                     if (event.text == Key.PageDown) { root.symbol-move(7); return accept; }
                     if (event.text == Key.PageUp) { root.symbol-move(6); return accept; }
@@ -2539,6 +2557,7 @@ export component PanelWindow inherits Window {
                         use-hint: root.pastes ? @tr("Click pastes into {} · Shift+click copies", root.target-name) : @tr("Click copies");
                         typed: root.symbol-typed;
                         typed-ticks: root.symbol-typed-ticks;
+                        enter-grid-ticks: root.symbol-enter-grid-ticks;
                         art(i) => { root.symbol-art(i) }
                         query-edited(text) => { root.symbol-query-changed(text); }
                         kind-picked(k) => {
@@ -2562,6 +2581,7 @@ export component PanelWindow inherits Window {
                         }
                         composing-changed(on) => { root.symbol-composing = on; }
                         hover-name(name) => { root.symbol-hover-name = name; }
+                        grid-move(code) => { root.symbol-move(code); }
                         tip(text, left, top, w, h, on) => {
                             root.tip-set(text, left, top, w, h, on);
                             root.row-tip-text = on ? text : "";
@@ -3094,25 +3114,40 @@ export component PanelWindow inherits Window {
             x: max(Space.s2, min(root.recent-menu-x, root.width - self.width - Space.s2));
             y: max(Space.s2, min(root.recent-menu-y, root.height - self.height - Space.s2 - Space.menu-clear));
             menu-max-h: root.height - 2 * Space.s2 - Space.menu-clear;
-            entries: root.pastes ? [
+            entries: root.pastes ? (root.recent-menu-text ? [
                 { text: @tr("Save to…"), icon: Icons.folder },
+                { text: @tr("Save as Sensitive…"), icon: Icons.lock },
                 { text: @tr("Copy"), icon: Icons.copy },
                 { text: @tr("Paste as plain text"), icon: Icons.clipboard },
                 { text: @tr("Remove from Recent"), icon: Icons.trash, destructive: true },
             ] : [
                 { text: @tr("Save to…"), icon: Icons.folder },
                 { text: @tr("Copy"), icon: Icons.copy },
+                { text: @tr("Paste as plain text"), icon: Icons.clipboard },
                 { text: @tr("Remove from Recent"), icon: Icons.trash, destructive: true },
-            ];
+            ]) : (root.recent-menu-text ? [
+                { text: @tr("Save to…"), icon: Icons.folder },
+                { text: @tr("Save as Sensitive…"), icon: Icons.lock },
+                { text: @tr("Copy"), icon: Icons.copy },
+                { text: @tr("Remove from Recent"), icon: Icons.trash, destructive: true },
+            ] : [
+                { text: @tr("Save to…"), icon: Icons.folder },
+                { text: @tr("Copy"), icon: Icons.copy },
+                { text: @tr("Remove from Recent"), icon: Icons.trash, destructive: true },
+            ]);
             label: @tr("Recent entry actions");
             init => { self.focus-menu(); }
             activated(i) => {
                 root.recent-menu-open = false;
-                if (i == 0) {
+                // The position in the full list [save, sensitive, copy, plain, remove], skipping what is not offered.
+                let skipped-sensitive = (i >= 1 && !root.recent-menu-text) ? i + 1 : i;
+                let a = (skipped-sensitive >= 3 && !root.pastes) ? skipped-sensitive + 1 : skipped-sensitive;
+                if (a == 0 || a == 1) {
+                    root.recent-save-sensitive = a == 1;
                     root.recent-save-open = true;
-                } else if (i == 1) {
+                } else if (a == 2) {
                     root.recent-copied(root.recent-menu-id);
-                } else if (i == 2 && root.pastes) {
+                } else if (a == 3) {
                     root.recent-plain(root.recent-menu-id);
                 } else {
                     root.recent-deleted(root.recent-menu-id);
@@ -3125,7 +3160,7 @@ export component PanelWindow inherits Window {
             y: max(Space.s2, min(root.recent-menu-y, root.height - self.height - Space.s2));
             width: min(240px, root.width - 2 * Space.s2);
             entries: root.recent-targets;
-            label: @tr("Save to…");
+            label: root.recent-save-sensitive ? @tr("Save as Sensitive to…") : @tr("Save to…");
             empty-text: @tr("No lists yet");
             init => {
                 self.current = 0;
@@ -3133,7 +3168,11 @@ export component PanelWindow inherits Window {
             }
             chosen(i) => {
                 root.recent-save-open = false;
-                root.recent-saved(root.recent-menu-id, i);
+                if (root.recent-save-sensitive) {
+                    root.recent-saved-sensitive(root.recent-menu-id, i);
+                } else {
+                    root.recent-saved(root.recent-menu-id, i);
+                }
             }
             dismissed => { root.recent-save-open = false; }
         }

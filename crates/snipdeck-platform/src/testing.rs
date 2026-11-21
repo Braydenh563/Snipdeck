@@ -47,6 +47,9 @@ pub struct FakeClipboard {
     pub held_html: Option<String>,
     /// The RTF flavour that rides with the copied text (`ClipboardText::read_rich`).
     pub held_rtf: Option<Vec<u8>>,
+    /// The copy carries a "keep me out" marker (a password manager's copy): `read_rich` then
+    /// returns no text and sets `excluded`.
+    pub held_excluded: bool,
     /// Files copied in Explorer (`ClipboardText::read_files`).
     pub held_files: Vec<String>,
     /// The Explorer copy holds more files than a paste takes (`ClipFiles::TooMany`).
@@ -61,6 +64,9 @@ pub struct FakeClipboard {
     pub never_confirm: bool,
     /// How many times the app asked to delete the files that pastes left in the temp folder.
     pub pasted_files_forgotten: u32,
+    /// How many of those asks waited for the deletion to finish (the quit's) instead of leaving
+    /// it to a background thread.
+    pub pasted_files_forgotten_waited: u32,
 }
 
 impl FakeClipboard {
@@ -553,6 +559,7 @@ struct FakeHelloState {
     secret: Vec<u8>,
     jitter: bool,
     prompts: usize,
+    deletions: usize,
 }
 
 impl std::fmt::Debug for FakeHello {
@@ -581,6 +588,7 @@ impl FakeHello {
                 secret: b"fake-credential-1".to_vec(),
                 jitter: false,
                 prompts: 0,
+                deletions: 0,
             }),
         }
     }
@@ -617,6 +625,12 @@ impl FakeHello {
         self.with(|s| s.jitter = on);
     }
 
+    /// How many times the credential was deleted.
+    #[must_use]
+    pub fn deletions(&self) -> usize {
+        self.with(|s| s.deletions)
+    }
+
     /// How many times a signature was asked for.
     #[must_use]
     pub fn prompts(&self) -> usize {
@@ -631,6 +645,13 @@ impl HelloAuthenticator for FakeHello {
 
     fn ensure_credential(&self) -> Result<(), HelloError> {
         self.with(|s| s.ensure)
+    }
+
+    fn delete_credential(&self) -> Result<(), HelloError> {
+        self.with(|s| {
+            s.deletions += 1;
+            Ok(())
+        })
     }
 
     fn sign_challenge(&self, challenge: &[u8]) -> Result<zeroize::Zeroizing<Vec<u8>>, HelloError> {

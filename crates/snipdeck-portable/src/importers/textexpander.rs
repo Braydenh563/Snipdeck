@@ -19,12 +19,13 @@ use std::path::Path;
 
 use snipdeck_core::Timestamp;
 
+use crate::decoded::Decoded;
 use crate::error::Result;
 use crate::import::ImportOptions;
-use crate::plan::Library;
+
 use crate::report::{ImportReport, Note, Warning};
 
-use super::csvtable::{Columns, Names, Spec, import_csv};
+use super::csvtable::{Columns, Names, Spec, decode_csv};
 use super::expander::{Body, Tpl};
 
 /// Imports a `TextExpander` CSV export into a new board named `Imported from TextExpander`
@@ -35,14 +36,12 @@ use super::expander::{Body, Tpl};
 /// [`Error::File`](crate::Error::File) if the file cannot be read,
 /// [`Error::LimitExceeded`](crate::Error::LimitExceeded) if it is over the size limit, and
 /// storage errors. Rows with no content, or over 5 MB, are skipped with a warning.
-pub fn import_textexpander_csv<L: Library>(
-    lib: &mut L,
+pub fn decode_textexpander_csv(
     path: &Path,
     now: Timestamp,
     options: &ImportOptions<'_>,
-) -> Result<ImportReport> {
-    import_csv(
-        lib,
+) -> Result<Decoded<'static>> {
+    decode_csv(
         path,
         now,
         options,

@@ -5,6 +5,7 @@
 #![forbid(unsafe_code)]
 
 pub mod accent;
+pub mod archive_job;
 pub mod binding;
 pub mod capture;
 pub mod cli;

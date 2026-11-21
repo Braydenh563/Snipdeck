@@ -33,8 +33,8 @@ use crate::{
     accent::AccentChoice,
     binding::{Loggable, Shown, arm_toast, model, redraw_all, register_redraw, to_i32},
     controller::{
-        Controller, HelpTopic, ImportKind, ImportPreview, ImportProblem, ImportSource, MasterState,
-        ToastPhase, ToastView,
+        ArchiveEnd, Begun, Controller, HelpTopic, ImportKind, ImportPreview, ImportProblem,
+        ImportSource, MasterState, ToastPhase, ToastView, spawn_archive,
     },
     host::{self, ClipboardText, HotkeyBackend, HotkeyFailure, HotkeyProblem},
     hotkey_health::{self, HotkeyHealth},
@@ -731,6 +731,7 @@ struct PageView {
     screenshot_keep_panel: bool,
     dock_full_edge: bool,
     recent_history: bool,
+    recent_keep_unknown_source: bool,
     expand_triggers: bool,
     suggest_triggers: bool,
     reduce_motion: bool,
@@ -742,6 +743,11 @@ struct PageView {
     backups_keep: i32,
     trash_days: i32,
     clipboard_clear_secs: i32,
+    recent_max_entries: i32,
+    recent_max_days: i32,
+    /// How many entries Recent holds now (what a switch-off would offer to clear).
+    recent_count: i32,
+    idle_lock_minutes: i32,
     paste_rules: Vec<(String, i32)>,
     paste_rule_error: String,
     no_history_apps: Vec<String>,
@@ -991,6 +997,7 @@ where
         screenshot_keep_panel: settings.screenshot_keep_panel,
         dock_full_edge: settings.dock.full_edge,
         recent_history: settings.recent_history,
+        recent_keep_unknown_source: settings.recent_keep_unknown_source,
         expand_triggers: settings.expand_triggers,
         suggest_triggers: settings.suggest_triggers,
         reduce_motion: settings.reduce_motion,
@@ -1002,6 +1009,10 @@ where
         backups_keep: i32::try_from(settings.backups_keep).unwrap_or(7),
         trash_days: i32::try_from(settings.trash_days).unwrap_or(30),
         clipboard_clear_secs: i32::try_from(settings.clipboard_clear_secs).unwrap_or(30),
+        recent_max_entries: i32::try_from(settings.recent_max_entries).unwrap_or(200),
+        recent_max_days: i32::try_from(settings.recent_max_days).unwrap_or(7),
+        recent_count: i32::try_from(controller.recent_entries().len()).unwrap_or(i32::MAX),
+        idle_lock_minutes: i32::try_from(settings.idle_lock_minutes).unwrap_or(15),
         paste_rules: settings
             .programs
             .iter()
@@ -1479,9 +1490,22 @@ where
         let Some(dir) = self.data_dir.clone() else {
             return;
         };
-        self.act(|ctl| ctl.backup_now(&dir));
-        self.refresh_backups();
-        redraw_all();
+        let begun = self.act(|ctl| ctl.begin_backup_now(&dir));
+        self.show_busy();
+        let this = Rc::clone(self);
+        spawn_archive(&self.controller, begun, move |_| {
+            this.show_busy();
+            this.refresh_backups();
+            redraw_all();
+        });
+    }
+
+    /// Greys out "Back up now" and "Export library" while an archive job runs.
+    fn show_busy(&self) {
+        let busy = self.controller.borrow().archive_busy();
+        if let Some(window) = self.window.upgrade() {
+            window.set_backup_busy(busy);
+        }
     }
 
     /// "Restore" on a backup row: shows what the backup would add, the same preview as an import.
@@ -1563,22 +1587,26 @@ where
 
     /// Works out what `source` would do (nothing is written) and opens the preview on it.
     fn preview(self: &Rc<Self>, source: ImportSource, restore: bool, name: String) {
-        let outcome = self.act(|ctl| {
-            if restore {
-                source
-                    .path()
-                    .map_or(Err(ImportProblem::Failed), |p| ctl.preview_restore(p))
-            } else {
-                ctl.preview_import(&source)
+        let begun = self.act(|ctl| match source.path() {
+            Some(path) if restore => ctl.begin_restore_preview(path),
+            _ if restore => Begun::Refused,
+            _ => ctl.begin_import_preview(&source),
+        });
+        self.show_busy();
+        let this = Rc::clone(self);
+        spawn_archive(&self.controller, begun, move |end| {
+            this.show_busy();
+            // Refused (busy, or locked): the toast has said so; no preview opens.
+            if let ArchiveEnd::ImportPreview(outcome) = end {
+                this.state.borrow_mut().import = Some(PendingImport {
+                    source,
+                    restore,
+                    name,
+                    outcome,
+                });
             }
+            redraw_all();
         });
-        self.state.borrow_mut().import = Some(PendingImport {
-            source,
-            restore,
-            name,
-            outcome,
-        });
-        redraw_all();
     }
 
     /// "Import" / "Restore" in the preview: does what was previewed.
@@ -1587,12 +1615,18 @@ where
             return;
         };
         if pending.outcome.is_ok() {
-            if pending.restore {
-                self.act(|ctl| pending.source.path().is_some_and(|p| ctl.restore_backup(p)));
-            } else {
-                self.act(|ctl| ctl.apply_import(&pending.source));
-            }
-            self.refresh_backups();
+            let begun = self.act(|ctl| match pending.source.path() {
+                Some(path) if pending.restore => ctl.begin_restore_backup(path),
+                _ if pending.restore => Begun::Refused,
+                _ => ctl.begin_apply_import(&pending.source),
+            });
+            self.show_busy();
+            let this = Rc::clone(self);
+            spawn_archive(&self.controller, begun, move |_| {
+                this.show_busy();
+                this.refresh_backups();
+                redraw_all();
+            });
         }
         redraw_all();
     }
@@ -1652,12 +1686,18 @@ where
                 .documents_folder()
                 .unwrap_or_else(|| dir.join("exports")),
         };
-        let saved = self.act(|ctl| ctl.export_library(&folder));
-        if let Some(file) = saved
-            && let Some(parent) = file.parent()
-        {
-            self.open_folder(parent);
-        }
+        let begun = self.act(|ctl| ctl.begin_export(&folder));
+        self.show_busy();
+        let this = Rc::clone(self);
+        spawn_archive(&self.controller, begun, move |end| {
+            this.show_busy();
+            if let ArchiveEnd::Exported(Some(file)) = end
+                && let Some(parent) = file.parent()
+            {
+                this.open_folder(parent);
+            }
+            redraw_all();
+        });
     }
 
     fn erase(self: &Rc<Self>, typed: &str, forget_key: bool) {
@@ -1703,6 +1743,7 @@ where
                 shown: RefCell::new(None),
                 redraw: Rc::new(move || {
                     if let Some(core) = weak.upgrade() {
+                        core.show_busy();
                         core.sync();
                     }
                 }),
@@ -1852,6 +1893,9 @@ where
         ));
         wire!(on_recent_history_toggled, |core, on| core
             .act(|ctl| ctl.set_recent_history(on)));
+        wire!(on_recent_keep_unknown_source_toggled, |core, on| core.act(
+            |ctl| ctl.update_settings(|s| s.recent_keep_unknown_source = on)
+        ));
         wire!(on_expand_triggers_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.expand_triggers = on)));
         wire!(on_suggest_triggers_toggled, |core, on| core
@@ -1890,8 +1934,19 @@ where
                 |s| s.trash_days = u32::try_from(n).unwrap_or(0)
             )));
         wire!(on_clipboard_clear_secs_chosen, |core, n| core.act(|ctl| {
-            ctl.update_settings(|s| s.clipboard_clear_secs = u32::try_from(n).unwrap_or(0));
+            ctl.update_settings(|s| s.clipboard_clear_secs = u32::try_from(n).unwrap_or(0).max(1));
         }));
+        wire!(on_recent_max_entries_chosen, |core, n| core.act(|ctl| {
+            ctl.update_settings(|s| s.recent_max_entries = u32::try_from(n).unwrap_or(0));
+        }));
+        wire!(on_recent_max_days_chosen, |core, n| core.act(|ctl| {
+            ctl.update_settings(|s| s.recent_max_days = u32::try_from(n).unwrap_or(0));
+        }));
+        wire!(on_idle_lock_minutes_chosen, |core, n| core.act(|ctl| {
+            ctl.update_settings(|s| s.idle_lock_minutes = u32::try_from(n).unwrap_or(0));
+        }));
+        wire!(on_recent_history_off_kept, |core| core
+            .act(Controller::set_recent_history_off_keeping_entries));
         wire!(on_paste_rule_added, |core, name| core
             .paste_rule_added(&name));
         wire!(on_paste_rule_chosen, |core, i, choice| core
@@ -1918,9 +1973,6 @@ where
         wire!(on_master_unlock_requested, |core| core
             .act(Controller::request_unlock));
         window.on_master_strength(|password| crate::master_password::strength(&password).level());
-        window.set_master_idle_minutes(
-            i32::try_from(crate::master_password::IDLE_LOCK.as_secs() / 60).unwrap_or(15),
-        );
         window.set_master_min_length(to_i32(crate::master_password::MIN_LEN));
         {
             use crate::settings as s;
@@ -2105,6 +2157,9 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     if differs(&|p| p.screenshot_keep_panel == view.screenshot_keep_panel) {
         window.set_screenshot_keep_panel(view.screenshot_keep_panel);
     }
+    if differs(&|p| p.recent_keep_unknown_source == view.recent_keep_unknown_source) {
+        window.set_recent_keep_unknown_source(view.recent_keep_unknown_source);
+    }
     if differs(&|p| p.expand_triggers == view.expand_triggers) {
         window.set_expand_triggers(view.expand_triggers);
     }
@@ -2113,8 +2168,18 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     }
     if differs(&|p| p.recent_history == view.recent_history) {
         window.set_recent_history(view.recent_history);
-        window.set_recent_max_entries(crate::recent::max_entries_count());
-        window.set_recent_max_days(crate::recent::max_age_days());
+    }
+    if differs(&|p| p.recent_max_entries == view.recent_max_entries) {
+        window.set_recent_max_entries(view.recent_max_entries);
+    }
+    if differs(&|p| p.recent_max_days == view.recent_max_days) {
+        window.set_recent_max_days(view.recent_max_days);
+    }
+    if differs(&|p| p.recent_count == view.recent_count) {
+        window.set_recent_count(view.recent_count);
+    }
+    if differs(&|p| p.idle_lock_minutes == view.idle_lock_minutes) {
+        window.set_master_idle_minutes(view.idle_lock_minutes);
     }
     if differs(&|p| p.backups_keep == view.backups_keep) {
         window.set_backups_keep(view.backups_keep);

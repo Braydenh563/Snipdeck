@@ -1,5 +1,5 @@
 mode: continue
-status: blocked (waiting on gate3, cloud workers, fixer, reviewer; monitor bxaup0qa0 wakes me)
+status: stopped (usage)
 max-continues: 80
 max-idle-minutes: 60
 finish-up-line: 97%   # owner: "until 97% weekly usage"

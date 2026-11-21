@@ -17,6 +17,7 @@ use snipdeck_platform::{
     tray::TrayEvent,
 };
 
+mod archive_ctl;
 mod colour_ctl;
 mod colour_main;
 mod commands_ctl;
@@ -45,6 +46,7 @@ mod trigger_ctl;
 mod use_ctl;
 mod views;
 
+pub use archive_ctl::{ArchiveEnd, Begun, spawn as spawn_archive};
 pub use colour_ctl::{ColourView, SaveList, SaveTarget};
 pub use colour_main::{ColourBlock, colour_formats};
 pub use create_ctl::DropRun;
@@ -203,6 +205,8 @@ pub struct Controller<S, C, K, T> {
     /// A sensitive Files item was pasted: its decrypted files wait in the temp folder until the
     /// lock or the quit deletes them.
     secret_files_pasted: bool,
+    /// A background deletion of those files was started (the lock): the quit waits for it.
+    secret_files_deleting: bool,
     /// When the decrypted files of that paste are deleted (the clipboard clear's timer); none
     /// when clearing is off, then the lock or the quit does it.
     secret_files_due: Option<Timestamp>,
@@ -272,6 +276,8 @@ pub struct Controller<S, C, K, T> {
     parked_editors: Vec<(main_ctl::EditorTarget, crate::main_window::EditorView)>,
     /// The item editor, while one is open.
     item_editor: Option<editor_ctl::ItemEditorSlot>,
+    /// A sensitive editor the lock took off the screen, sealed, until the unlock.
+    parked_editor: Option<editor_ctl::ParkedEditor>,
     item_editor_seq: u64,
     /// What the item editor needs from the machine (drafts folder, key protection, file dialog).
     editor_env: editor_ctl::EditorEnv,
@@ -299,6 +305,10 @@ pub struct Controller<S, C, K, T> {
     /// name in the language shown.
     colour: snipdeck_colour::Rgba8,
     colour_other: snipdeck_colour::Rgba8,
+    /// The colour before the last change, for the click that restores it.
+    colour_previous: Option<snipdeck_colour::Rgba8>,
+    /// The colour a drag began with, until it settles.
+    colour_gesture_from: Option<snipdeck_colour::Rgba8>,
     colours_list_name: String,
     /// The title of an item made from a picture with no file name, in the language shown.
     pasted_image_title: String,
@@ -352,6 +362,8 @@ pub struct Controller<S, C, K, T> {
     pending: Vec<Effect>,
     /// The master password: whether one is set, whether its prompt is open, the idle clock.
     lock: lock_ctl::LockState,
+    /// The archive step a worker is writing, if any.
+    archive: archive_ctl::ArchiveState,
     /// Switches the clipboard listener of the Recent inbox (see `recent_ctl.rs`).
     recent_gate: Option<snipdeck_platform::clipboard_watch::WatchGate>,
     /// The typed-trigger service (keyboard hook), once the host hands it over.
@@ -377,6 +389,8 @@ pub struct Controller<S, C, K, T> {
     /// the dock (the pointer is away, picking) nor a blur (the overlay takes the foreground)
     /// changes what the Panel is meanwhile.
     eyedropping: bool,
+    /// The run in progress picks the contrast section's other colour, not the current one.
+    eyedrop_for_other: bool,
 }
 
 /// Opens the folder of the crash reports in the file manager.
@@ -429,8 +443,6 @@ struct Session {
     /// A fingerprint of the chord each shortcut had when the "press it now" test heard it; a
     /// changed chord is untested again.
     hotkeys_heard: [Option<u64>; 4],
-    /// "Pause history" is on: the Recent inbox collects nothing until Snipdeck restarts.
-    history_paused: bool,
     /// The Panel's clock tab is the one selected.
     recent_open: bool,
     /// The last settings save failed and the user was told.
@@ -477,6 +489,7 @@ where
         model.set_paste_rules(settings.paste_rules());
         model.set_target(target.current());
         let shown_at = clock.now();
+        let idle_start = clock.elapsed();
         let pinned = settings.panel_pinned;
         let colour =
             colour_ctl::colour_or(&settings.colour_current, crate::settings::DEFAULT_COLOUR);
@@ -491,6 +504,7 @@ where
             tz: TimeZone::system(),
             clipboard_clear: None,
             secret_files_pasted: false,
+            secret_files_deleting: false,
             secret_files_due: None,
             model,
             index_cache,
@@ -526,6 +540,7 @@ where
             board_delete: None,
             parked_editors: Vec::new(),
             item_editor: None,
+            parked_editor: None,
             item_editor_seq: 0,
             editor_env: editor_ctl::EditorEnv::default(),
             log_opener: None,
@@ -539,6 +554,8 @@ where
             starter: crate::starter::StarterWords::english(),
             colour,
             colour_other,
+            colour_previous: None,
+            colour_gesture_from: None,
             colours_list_name: String::from("Colours"),
             pasted_image_title: crate::capture::PASTED_IMAGE_TITLE.to_owned(),
             colour_made_list: None,
@@ -562,7 +579,8 @@ where
             dock_area_seen: None,
             fullscreen: false,
             pending: Vec::new(),
-            lock: lock_ctl::LockState::new(shown_at),
+            lock: lock_ctl::LockState::new(idle_start),
+            archive: archive_ctl::ArchiveState::default(),
             recent_gate: None,
             typing: None,
             typing_sent: Vec::new(),
@@ -576,6 +594,7 @@ where
             eyedrop_mailbox: std::sync::Arc::default(),
             eyedrop_wake: None,
             eyedropping: false,
+            eyedrop_for_other: false,
         })
     }
 
@@ -719,6 +738,8 @@ where
             fill: self.fill_view(),
             recent: self.recent_view(),
             recent_question: self.recent_question_due(),
+            recent_max_entries: self.settings.recent_max_entries,
+            recent_days: self.settings.recent_max_days,
         }
     }
 

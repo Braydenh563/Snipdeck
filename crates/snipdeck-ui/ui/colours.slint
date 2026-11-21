@@ -38,6 +38,11 @@ export struct ColourContrastRow {
     aaa: bool,
     aaa-large: bool,
     ui: bool,
+    // "APCA Lc 62", "over white" (when a translucent colour needs a backdrop, else ""), and the
+    // action that makes the pair pass AA ("" when it passes or nothing passes).
+    apca: string,
+    over: string,
+    fix-text: string,
     speak: string,
 }
 
@@ -61,7 +66,7 @@ export global ColourTexts {
     pure public function white() -> string { return @tr("On white"); }
     pure public function black() -> string { return @tr("On black"); }
     pure public function other() -> string { return @tr("On this colour"); }
-    pure public function other-flat() -> string { return @tr("On this colour (on white)"); }
+    pure public function use-name(name: string, hex: string) -> string { return @tr("Use {} ({})", name, hex); }
     pure public function colours-list() -> string { return @tr("Colours"); }
     pure public function scheme-name(i: int) -> string {
         return i == 0 ? @tr("Complementary")
@@ -95,7 +100,18 @@ export global ColourTexts {
     }
     pure public function swatch-label(hex: string, name: string) -> string { return @tr("{}, {}", hex, name); }
     pure public function use-hint-copy() -> string { return @tr("Click copies"); }
+    // The rule for every swatch (recent, saved, scheme); the format rows state their own beside them.
+    pure public function no-hue-note() -> string { return @tr("No hue to rotate. Greys, white and black have none."); }
+    pure public function previous-colour(name: string) -> string { return @tr("Previous colour {}. Click to go back.", name); }
+    pure public function chip-hint() -> string { return @tr("Click makes a swatch current · Shift+click copies it"); }
+    pure public function over-white() -> string { return @tr("over white"); }
+    pure public function over-black() -> string { return @tr("over black"); }
+    pure public function apca-text(lc: string) -> string { return @tr("APCA Lc {}", lc); }
+    pure public function fix-text(hex: string) -> string { return @tr("Use {} to pass AA", hex); }
     pure public function eyedrop-hint() -> string { return @tr("Click or Enter picks · Esc cancels · arrows move"); }
+    pure public function eyedrop-title() -> string { return @tr("Eyedropper, {}", "{}"); }
+    pure public function eyedrop-pick() -> string { return @tr("Pick"); }
+    pure public function eyedrop-unavailable() -> string { return @tr("This screen could not be captured"); }
     pure public function eyedrop-hdr-note() -> string { return @tr("HDR is on for this screen: values are approximate"); }
 }
 
@@ -112,6 +128,8 @@ export global ColourState {
     in property <[ColourSwatch]> recents;
     in property <[ColourSwatch]> saved;
     in property <[ColourSwatch]> scheme;
+    // True when the current colour has no hue and a hue scheme would only repeat it.
+    in property <bool> scheme-no-hue: false;
     // Format rows and contrast.
     in property <[ColourFormatRow]> formats;
     in property <[ColourContrastRow]> contrast;
@@ -134,6 +152,8 @@ export global ColourState {
     in property <[ColourChannel]> channels;
     // The Target line and the eyedropper.
     in property <string> use-hint;
+    // The app the tab pastes into ("" when a click only copies).
+    in property <string> target;
     in property <bool> eyedropper-available: false;
     in property <bool> has-saved-list: false;
     in property <bool> eyedropper-running: false;
@@ -141,7 +161,10 @@ export global ColourState {
     in property <[MenuEntry]> save-targets;
     // "Copy as…": one entry per format, in the order of `formats`.
     in property <[MenuEntry]> copy-as;
-    // Open popup: 0 none, 1 a chip's menu, 2 a format row's menu, 3 Save to…, 4 Copy as…. The Panel closes it on Esc.
+    // The current colour in each of the extra formats (code, frameworks), in menu order.
+    in property <[MenuEntry]> extras;
+    callback extra-copied(int);
+    // Open popup: 0 none, 1 a chip's menu, 2 a format row's menu, 3 Save to…, 4 Copy as…, 5 More formats…. The Panel closes it on Esc.
     in-out property <int> popup: 0;
     // Ctrl+Shift+S asks the tab to open Save to…; a printable key asks it to type `typed` into the input line.
     in-out property <int> save-to-ticks: 0;
@@ -164,15 +187,34 @@ export global ColourState {
     callback swatch-copied-as(int, int, int);
     callback swatch-saved(int, int, int);
     callback swatch-removed(int, int);
+    // A saved swatch: open its item to rename or edit it.
+    callback swatch-edited(int, int);
     callback format-used(int);
     callback format-copied(int);
     callback format-made-default(int);
     callback format-saved(int, int);
     // Ctrl+C: the current colour in the default format.
     callback copy-current();
+    // Ctrl+V outside a field: the first colour literal of the clipboard text.
+    callback paste-colour();
+    // The colour before the last change, drawn as a corner of the current swatch; a click restores it.
+    in property <color> previous;
+    in property <bool> has-previous: false;
+    in property <string> previous-label;
+    callback previous-restored();
     callback save(int);
     callback open-saved();
     callback swap();
+    // The nearest colour that passes AA replaces the current colour: row 0 white, 1 black, 2 the other colour.
+    callback contrast-fixed(int);
+    // A translucent colour is judged over this backdrop: white, or black when true.
+    in property <bool> backdrop-black: false;
+    in property <bool> needs-backdrop: false;
+    callback backdrop-toggled();
+    // The eyedropper picks the other colour of the contrast section.
+    callback eyedropper-other();
+    // A swatch becomes the other colour.
+    callback swatch-other(int, int);
     callback scheme-picked(int);
     callback picker-toggled(bool);
     callback style-picked(int);
@@ -210,7 +252,6 @@ component Checker inherits Rectangle {
 
 component SectionTitle inherits Rectangle {
     in property <string> text;
-    in property <string> hint;
     height: Space.s6;
     Text {
         x: Space.s2;
@@ -511,7 +552,7 @@ component FormatList inherits Rectangle {
             if (event.text == Key.UpArrow) { root.step(-1); return accept; }
             if (event.text == Key.Home) { root.selected = 0; return accept; }
             if (event.text == Key.End) { root.selected = root.rows.length - 1; return accept; }
-            if (event.text == Key.Return && root.ok()) {
+            if ((event.text == Key.Return || event.text == " ") && root.ok()) {
                 if (event.modifiers.shift) {
                     root.copied(root.selected);
                 } else {
@@ -868,8 +909,9 @@ component ContrastLine inherits Rectangle {
     property <length> left: Space.s2;
     property <length> limit: root.width - Space.s2;
     property <length> gap: Space.s2;
-    property <length> top: Space.s6 + Space.s1;
-    height: m5.y + m5.height + Space.s0-5;
+    property <length> top: Space.s6 + Space.s1 + Space.s5;
+    callback fix();
+    height: m5.y + m5.height + Space.s0-5 + (root.data.fix-text != "" ? fix-btn.height + Space.s0-5 : 0px);
     accessible-role: list-item;
     accessible-label: root.data.speak;
     Tile {
@@ -914,35 +956,57 @@ component ContrastLine inherits Rectangle {
     m1 := Mark {
         x: root.left;
         y: root.top;
-        text: @tr("AA");
+        text: @tr("AA 4.5");
         pass: root.data.aa;
     }
     m2 := Mark {
         property <bool> wrap: m1.x + m1.width + root.gap + self.width > root.limit;
         x: self.wrap ? root.left : m1.x + m1.width + root.gap;
         y: self.wrap ? m1.y + m1.height : m1.y;
-        text: @tr("AA large");
+        text: @tr("AA large 3");
         pass: root.data.aa-large;
     }
     m3 := Mark {
         property <bool> wrap: m2.x + m2.width + root.gap + self.width > root.limit;
         x: self.wrap ? root.left : m2.x + m2.width + root.gap;
         y: self.wrap ? m2.y + m2.height : m2.y;
-        text: @tr("AAA");
+        text: @tr("AAA 7");
         pass: root.data.aaa;
     }
     m4 := Mark {
         property <bool> wrap: m3.x + m3.width + root.gap + self.width > root.limit;
         x: self.wrap ? root.left : m3.x + m3.width + root.gap;
         y: self.wrap ? m3.y + m3.height : m3.y;
-        text: @tr("AAA large");
+        text: @tr("AAA large 4.5");
         pass: root.data.aaa-large;
+    }
+    Text {
+        x: root.left;
+        y: Space.s6 + Space.s1;
+        width: root.width - 2 * Space.s2;
+        height: Space.s5;
+        text: root.data.over != "" ? root.data.apca + " · " + root.data.over : root.data.apca;
+        font-family: Fonts.sans;
+        font-size: Type.xs;
+        color: Theme.text-secondary;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    fix-btn := Button {
+        x: root.left;
+        y: m5.y + m5.height + Space.s0-5;
+        text: root.data.fix-text;
+        size: ButtonSize.sm;
+        variant: ButtonVariant.ghost;
+        visible: root.data.fix-text != "";
+        enabled: root.data.fix-text != "";
+        clicked => { root.fix(); }
     }
     m5 := Mark {
         property <bool> wrap: m4.x + m4.width + root.gap + self.width > root.limit;
         x: self.wrap ? root.left : m4.x + m4.width + root.gap;
         y: self.wrap ? m4.y + m4.height : m4.y;
-        text: @tr("UI");
+        text: @tr("UI 3");
         pass: root.data.ui;
     }
 }
@@ -1065,6 +1129,17 @@ export component ColoursView inherits Rectangle {
         root.popup-from = root.last-stop;
         root.open-popup(3, root.absolute-position.x + Space.s2, root.absolute-position.y + Space.s12);
     }
+    // Typing applies a colour in memory only; the setting is written on Enter, on leaving the field, or
+    // when typing pauses for half a second (TOOLS-20).
+    in-out property <bool> input-dirty: false;
+    Timer {
+        interval: 500ms;
+        running: root.input-dirty;
+        triggered => {
+            root.input-dirty = false;
+            ColourState.settled();
+        }
+    }
     // A printable key with no field focused starts the input line.
     changed type-now => {
         input.focus();
@@ -1141,6 +1216,23 @@ export component ColoursView inherits Rectangle {
                     translucent: ColourState.current-translucent;
                     accessible-role: AccessibleRole.image;
                     accessible-label: ColourState.current-label;
+                    if ColourState.has-previous: prev-corner := Rectangle {
+                        x: parent.width - self.width;
+                        y: parent.height - self.height;
+                        width: Space.s5;
+                        height: Space.s5;
+                        border-radius: Radius.sm;
+                        background: ColourState.previous;
+                        border-width: 1px;
+                        border-color: Theme.border-strong;
+                        accessible-role: AccessibleRole.button;
+                        accessible-label: ColourState.previous-label;
+                        accessible-action-default => { ColourState.previous-restored(); }
+                        TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => { ColourState.previous-restored(); }
+                        }
+                    }
                 }
             }
             VerticalLayout {
@@ -1153,9 +1245,22 @@ export component ColoursView inherits Rectangle {
                     placeholder: @tr("#3a7bd5, rgb(58, 123, 213), royalblue");
                     error: ColourState.input-error;
                     focus-request: root.input-focus;
-                    changed has-focus => { if (self.has-focus) { root.last-stop = 0; } }
-                    edited(t) => { ColourState.input-edited(t); }
-                    accepted(t) => { ColourState.input-accepted(t); }
+                    changed has-focus => {
+                        if (self.has-focus) {
+                            root.last-stop = 0;
+                        } else if (root.input-dirty) {
+                            root.input-dirty = false;
+                            ColourState.settled();
+                        }
+                    }
+                    edited(t) => {
+                        root.input-dirty = true;
+                        ColourState.input-edited(t);
+                    }
+                    accepted(t) => {
+                        root.input-dirty = false;
+                        ColourState.input-accepted(t);
+                    }
                 }
                 if ColourState.input-error == "": Text {
                     height: Space.s6;
@@ -1447,11 +1552,13 @@ export component ColoursView inherits Rectangle {
                 if ColourState.saved.length > 0: ChipGrid {
                     chips: ColourState.saved;
                     group-label: @tr("Saved colours");
+                    can-remove: true;
                     focus-request: root.saved-focus;
                     selected <=> root.saved-sel;
                     changed has-focus => { if (self.has-focus) { root.last-stop = 2; } }
                     used(i) => { ColourState.swatch-used(1, i); }
                     copied(i) => { ColourState.swatch-copied(1, i); }
+                    removed(i) => { ColourState.swatch-removed(1, i); }
                     menu(i, x, y) => {
                         root.popup-group = 1;
                         root.popup-index = i;
@@ -1468,6 +1575,15 @@ export component ColoursView inherits Rectangle {
 
                 // ---- Formats --------------------------------------------------------------------
                 SectionTitle { text: @tr("Formats"); }
+                Text {
+                    x: Space.s2;
+                    width: parent.width - 2 * Space.s2;
+                    text: ColourState.use-hint;
+                    font-family: Fonts.sans;
+                    font-size: Type.xs;
+                    color: Theme.text-secondary;
+                    wrap: word-wrap;
+                }
                 FormatList {
                     rows: ColourState.formats;
                     use-hint: ColourState.use-hint;
@@ -1490,15 +1606,39 @@ export component ColoursView inherits Rectangle {
                     reveal(top, h) => { root.reveal(top, h); }
                 }
 
+                more-btn := Button {
+                    text: @tr("More formats…");
+                    size: ButtonSize.sm;
+                    variant: ButtonVariant.ghost;
+                    clicked => {
+                        root.popup-from = 4;
+                        root.open-popup(5, self.absolute-position.x, self.absolute-position.y + self.height);
+                    }
+                }
+
                 // ---- Contrast -------------------------------------------------------------------
                 SectionTitle { text: @tr("Contrast"); }
                 for c[i] in ColourState.contrast: ContrastLine {
                     data: c;
                     fg: ColourState.current;
+                    fix => { ColourState.contrast-fixed(i); }
                 }
                 ContrastLine {
                     data: ColourState.other-row;
                     fg: ColourState.current;
+                    fix => { ColourState.contrast-fixed(2); }
+                }
+                if ColourState.needs-backdrop: HorizontalLayout {
+                    padding-left: Space.s2;
+                    padding-right: Space.s2;
+                    Button {
+                        text: ColourState.backdrop-black ? @tr("Backdrop: black") : @tr("Backdrop: white");
+                        size: ButtonSize.sm;
+                        variant: ButtonVariant.secondary;
+                        tooltip: @tr("What a translucent colour is judged over");
+                        clicked => { ColourState.backdrop-toggled(); }
+                    }
+                    Rectangle { horizontal-stretch: 1; }
                 }
                 HorizontalLayout {
                     padding-left: Space.s2;
@@ -1522,6 +1662,12 @@ export component ColoursView inherits Rectangle {
                             tooltip: @tr("Swap the two colours");
                             clicked => { ColourState.swap(); }
                         }
+                        if ColourState.eyedropper-available: IconButton {
+                            icon: Icons.eyedropper;
+                            tooltip: @tr("Pick the other colour from the screen");
+                            enabled: !ColourState.eyedropper-running;
+                            clicked => { ColourState.eyedropper-other(); }
+                        }
                     }
                 }
 
@@ -1538,6 +1684,15 @@ export component ColoursView inherits Rectangle {
                         label: @tr("Scheme");
                         chosen(i) => { ColourState.scheme-picked(i); }
                     }
+                }
+                if ColourState.scheme-no-hue: Text {
+                    x: Space.s2;
+                    width: parent.width - 2 * Space.s2;
+                    text: ColourTexts.no-hue-note();
+                    wrap: word-wrap;
+                    color: Theme.text-secondary;
+                    font-size: Type.xs;
+                    font-family: Fonts.sans;
                 }
                 ChipGrid {
                     chips: ColourState.scheme;
@@ -1577,7 +1732,7 @@ export component ColoursView inherits Rectangle {
                 height: parent.height;
                 accessible-role: AccessibleRole.text;
                 accessible-label: self.text;
-                text: root.hover-text != "" ? root.hover-text : root.focus-text != "" ? root.focus-text : ColourState.use-hint;
+                text: root.hover-text != "" ? root.hover-text : root.focus-text != "" ? root.focus-text : ColourTexts.chip-hint();
                 font-family: Fonts.sans;
                 font-size: Type.sm;
                 color: Theme.text-secondary;
@@ -1593,7 +1748,8 @@ export component ColoursView inherits Rectangle {
         height: parent.height;
         clicked => { ColourState.popup = 0; }
     }
-    // A chip's menu: Make current, Copy as…, Save to Colours, Save to…, Remove from recents (recents only).
+    // A chip's menu: Make current, Copy as…, Save to Colours and Save to… (not on a saved swatch), Remove from recents
+    // (recents only), Edit and Delete (saved swatches only).
     if ColourState.popup == 1: Menu {
         x: min(max(Space.s2, root.popup-x), root.width - self.width - Space.s2);
         y: min(max(Space.s2, root.popup-y), root.height - self.height - Space.s2 - Space.menu-clear);
@@ -1604,9 +1760,12 @@ export component ColoursView inherits Rectangle {
         entries: [
             { text: @tr("Make current") },
             { text: @tr("Copy as…") },
-            { text: @tr("Save to Colours") },
-            { text: @tr("Save to…") },
+            { text: @tr("Save to Colours"), hidden: root.popup-group == 1 },
+            { text: @tr("Save to…"), hidden: root.popup-group == 1 },
             { text: @tr("Remove from recents"), hidden: root.popup-group != 0 },
+            { text: @tr("Edit or rename…"), hidden: root.popup-group != 1 },
+            { text: @tr("Delete"), hidden: root.popup-group != 1 },
+            { text: @tr("Use as other colour") },
         ];
         init => { self.focus-menu(); }
         dismissed => { ColourState.popup = 0; }
@@ -1623,9 +1782,15 @@ export component ColoursView inherits Rectangle {
             } else if (i == 3) {
                 root.save-ctx = 1;
                 ColourState.popup = 3;
-            } else {
+            } else if (i == 5) {
+                ColourState.popup = 0;
+                ColourState.swatch-edited(root.popup-group, root.popup-index);
+            } else if (i == 4 || i == 6) {
                 ColourState.popup = 0;
                 ColourState.swatch-removed(root.popup-group, root.popup-index);
+            } else {
+                ColourState.popup = 0;
+                ColourState.swatch-other(root.popup-group, root.popup-index);
             }
         }
     }
@@ -1638,7 +1803,7 @@ export component ColoursView inherits Rectangle {
         label: @tr("Format");
         icons: false;
         entries: [
-            { text: ColourState.use-hint != "" && ColourState.formats.length > root.popup-index ? @tr("Paste or copy") : @tr("Copy") },
+            { text: ColourState.target != "" ? @tr("Paste into {}", ColourState.target) : @tr("Copy") },
             { text: @tr("Copy only") },
             { text: @tr("Make default format"), hidden: !ColourState.formats[root.popup-index].can-be-default || ColourState.formats[root.popup-index].is-default },
             { text: @tr("Save to Colours") },
@@ -1685,6 +1850,22 @@ export component ColoursView inherits Rectangle {
             } else {
                 ColourState.save(i);
             }
+        }
+    }
+    // More formats…: the current colour as text for code (hex variants, CSS Color 4, Swift, Kotlin, .NET).
+    if ColourState.popup == 5: Menu {
+        x: min(max(Space.s2, root.popup-x), root.width - self.width - Space.s2);
+        y: min(max(Space.s2, root.popup-y), root.height - self.height - Space.s2 - Space.menu-clear);
+        max-w: root.width - Space.s4;
+        menu-max-h: root.height - Space.s4 - Space.menu-clear;
+        label: @tr("More formats");
+        icons: false;
+        entries: ColourState.extras;
+        init => { self.focus-menu(); }
+        dismissed => { ColourState.popup = 0; }
+        activated(i) => {
+            ColourState.popup = 0;
+            ColourState.extra-copied(i);
         }
     }
     // Copy as…: the chip's colour in one of the formats.

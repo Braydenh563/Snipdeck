@@ -5,13 +5,13 @@
 use std::{cell::RefCell, collections::HashMap};
 
 use slint::{Global, ModelRc, SharedString, VecModel};
-use snipdeck_symbols::{Catalog, KAOMOJI_GROUPS, Kind, Lang, SymbolId};
+use snipdeck_symbols::{Catalog, Kind, Lang, SymbolId};
 use snipdeck_ui::{self as ui, symbol_nav};
 
 use crate::symbols_panel::{self, Grid, Title};
 
-/// Pixel size of the art asked of the catalog (its native size: no resampling).
-const ART_PX: u32 = 48;
+/// Pixel size of the art asked of the catalog (its native size: no resampling); 72 px stays sharp at 300% scale.
+const ART_PX: u32 = 72;
 /// Most pictures kept before the cache starts over.
 const ART_CACHE_MAX: usize = 1200;
 /// The ink icons are drawn in before the theme colours them (`colorize` keeps the alpha).
@@ -49,6 +49,8 @@ struct Inner {
 impl Glue {
     /// The tab was opened: a clean query, the first cell selected.
     pub fn opened(&self, w: &ui::PanelWindow, recents: &[SymbolId], lang: Lang) {
+        // The folded names of the UI language are built now, not on the first key (TOOLS-61).
+        Catalog::get().prepare(lang);
         {
             let mut s = self.inner.borrow_mut();
             s.query.clear();
@@ -71,7 +73,7 @@ impl Glue {
     pub fn kind(&self, w: &ui::PanelWindow, tab: i32, recents: &[SymbolId], lang: Lang) {
         {
             let mut s = self.inner.borrow_mut();
-            s.tab = tab.clamp(0, 3);
+            s.tab = tab.clamp(0, 4);
             s.selected = 0;
         }
         self.rebuild(w, recents, lang);
@@ -226,10 +228,9 @@ fn rows_of(grid: &Grid, t: &ui::SymbolTexts<'_>, lang: Lang) -> Vec<ui::SymbolRo
     grid.rows
         .iter()
         .map(|row| {
-            let header = row
-                .title
-                .as_ref()
-                .map_or_else(String::new, |title| title_text(title, t).to_uppercase());
+            let header = row.title.as_ref().map_or_else(String::new, |title| {
+                title_text(title, t, lang).to_uppercase()
+            });
             let link = row
                 .link
                 .map_or_else(String::new, |_| t.invoke_show_all().to_string());
@@ -240,17 +241,26 @@ fn rows_of(grid: &Grid, t: &ui::SymbolTexts<'_>, lang: Lang) -> Vec<ui::SymbolRo
                     let sym = Catalog::get().symbol(cell.index)?;
                     let kind = sym.id.kind();
                     Some(ui::SymbolCell {
-                        art: if kind == Kind::Kaomoji {
+                        // Kaomoji and characters are text; so is an emoji with no art (system style).
+                        art: if matches!(kind, Kind::Kaomoji | Kind::Character)
+                            || (kind == Kind::Emoji && !Catalog::get().has_art(cell.index))
+                        {
                             -1
                         } else {
                             i32::try_from(cell.index).unwrap_or(-1)
                         },
                         text: sym.text.clone().unwrap_or_default().into(),
-                        label: label_of(cell.index, lang).into(),
+                        label: if kind == Kind::Kaomoji {
+                            let (place, of) = kaomoji_place(cell.index);
+                            t.invoke_kaomoji_label(label_of(cell.index, lang).into(), place, of)
+                        } else {
+                            label_of(cell.index, lang).into()
+                        },
                         kind: match kind {
                             Kind::Emoji => 0,
                             Kind::Kaomoji => 1,
                             Kind::Icon => 2,
+                            Kind::Character => 3,
                         },
                         wide: cell.wide,
                         flat: i32::try_from(cell.flat).unwrap_or(0),
@@ -264,7 +274,17 @@ fn rows_of(grid: &Grid, t: &ui::SymbolTexts<'_>, lang: Lang) -> Vec<ui::SymbolRo
                     Kind::Emoji => 1,
                     Kind::Kaomoji => 2,
                     Kind::Icon => 3,
+                    Kind::Character => 4,
                 }),
+                group: match row.title {
+                    Some(
+                        Title::EmojiGroup(g)
+                        | Title::KaomojiGroup(g)
+                        | Title::IconCategory(g)
+                        | Title::CharacterGroup(g),
+                    ) => i32::try_from(g).unwrap_or(-1),
+                    _ => -1,
+                },
                 cells: ModelRc::new(VecModel::from(cells)),
                 chips: row.chips,
                 y: row.y,
@@ -277,7 +297,10 @@ fn rows_of(grid: &Grid, t: &ui::SymbolTexts<'_>, lang: Lang) -> Vec<ui::SymbolRo
 /// What a step that rebuilds the grid is given: the glue, the window, the recents and the language.
 pub type Step<'a> = &'a dyn Fn(&Glue, &ui::PanelWindow, &[SymbolId], Lang);
 
-fn title_text(title: &Title, t: &ui::SymbolTexts<'_>) -> String {
+fn title_text(title: &Title, t: &ui::SymbolTexts<'_>, lang: Lang) -> String {
+    let catalog = Catalog::get();
+    let group =
+        |kind: Kind, g: usize| catalog.group_name(kind, u8::try_from(g).unwrap_or(u8::MAX), lang);
     match title {
         Title::Recent => t.invoke_recently_used().to_string(),
         Title::Kind(k) => t
@@ -285,16 +308,16 @@ fn title_text(title: &Title, t: &ui::SymbolTexts<'_>) -> String {
                 Kind::Emoji => 0,
                 Kind::Kaomoji => 1,
                 Kind::Icon => 2,
+                Kind::Character => 3,
             })
             .to_string(),
         Title::EmojiGroup(g) => t
             .invoke_emoji_group(i32::try_from(*g).unwrap_or(0))
             .to_string(),
-        Title::KaomojiGroup(g) if *g < KAOMOJI_GROUPS.len() => t
-            .invoke_kaomoji_group(i32::try_from(*g).unwrap_or(0))
-            .to_string(),
-        Title::None | Title::KaomojiGroup(_) => String::new(),
-        Title::IconCategory(name) => capitalise(name),
+        Title::KaomojiGroup(g) => group(Kind::Kaomoji, *g),
+        Title::CharacterGroup(g) => group(Kind::Character, *g),
+        Title::IconCategory(g) => capitalise(&group(Kind::Icon, *g)),
+        Title::None => String::new(),
     }
 }
 
@@ -314,7 +337,7 @@ pub fn label_of(index: usize, lang: Lang) -> String {
         return String::new();
     };
     match sym.id.kind() {
-        Kind::Emoji => catalog.display_name(index, lang).to_owned(),
+        Kind::Emoji | Kind::Character => catalog.display_name(index, lang).to_owned(),
         Kind::Kaomoji => sym
             .keywords
             .first()
@@ -322,6 +345,23 @@ pub fn label_of(index: usize, lang: Lang) -> String {
             .unwrap_or_else(|| sym.name.clone()),
         Kind::Icon => sym.name.replace('-', " "),
     }
+}
+
+/// A kaomoji's place in its group (1-based) and the size of the group: "cat, 3 of 10".
+fn kaomoji_place(index: usize) -> (i32, i32) {
+    let catalog = Catalog::get();
+    let group = catalog.symbol(index).map(|s| s.group);
+    let mut place = 0;
+    let mut of = 0;
+    for i in catalog.range(Kind::Kaomoji) {
+        if catalog.symbol(i).map(|s| s.group) == group {
+            of += 1;
+            if i <= index {
+                place += 1;
+            }
+        }
+    }
+    (place, of)
 }
 
 fn load_art(index: usize) -> Option<slint::Image> {
@@ -339,7 +379,7 @@ fn load_art(index: usize) -> Option<slint::Image> {
             buf.truncate(info.buffer_size());
             (buf, ART_PX)
         }
-        Kind::Kaomoji => return None,
+        Kind::Kaomoji | Kind::Character => return None,
     };
     let buffer = slint::SharedPixelBuffer::<slint::Rgba8Pixel>::clone_from_slice(&rgba, px, px);
     Some(slint::Image::from_rgba8(buffer))

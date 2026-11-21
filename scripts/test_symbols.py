@@ -4,8 +4,10 @@
   python3 -I scripts/test_symbols.py
 """
 import json
+import os
 import pathlib
 import sys
+import tempfile
 import unittest
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
@@ -202,21 +204,92 @@ class Kaomoji(unittest.TestCase):
                 symbols.parse_kaomoji(text)
 
 
+# TOOLS-57: the code points a kaomoji may use that the bundled IBM Plex fonts lack. Each block is covered
+# by a font a clean Windows 10 installs (Segoe UI, Segoe UI Symbol, Cambria Math, Microsoft YaHei, Yu
+# Gothic, MS Gothic, Malgun Gothic, Nirmala UI, Leelawadee UI, Gadugi, Sylfaen). Phonetic Extensions
+# (U+1D00..1DBF) and Supplemental Punctuation (U+2E00..2E7F) are NOT on the list: no default font is
+# known to cover them, so a kaomoji may not use them. Windows rendering is unverified until the owner
+# looks at it on Windows.
+WINDOWS_10_RANGES = [
+    (0x0080, 0x036F),  # Latin, IPA, modifier letters, combining marks (Segoe UI)
+    (0x0370, 0x03FF),  # Greek (Segoe UI)
+    (0x0400, 0x04FF),  # Cyrillic (Segoe UI)
+    (0x0600, 0x06FF),  # Arabic (Segoe UI)
+    (0x0A80, 0x0AFF),  # Gujarati (Nirmala UI)
+    (0x0B00, 0x0B7F),  # Oriya (Nirmala UI)
+    (0x0C80, 0x0CFF),  # Kannada (Nirmala UI)
+    (0x0E00, 0x0E7F),  # Thai (Leelawadee UI)
+    (0x10A0, 0x10FF),  # Georgian (Sylfaen)
+    (0x1100, 0x11FF),  # Hangul Jamo (Malgun Gothic)
+    (0x1400, 0x167F),  # Canadian Syllabics (Gadugi)
+    (0x2000, 0x209F),  # General punctuation, super and subscripts (Segoe UI)
+    (0x2100, 0x218F),  # Letterlike, number forms (Segoe UI Symbol)
+    (0x2200, 0x22FF),  # Mathematical operators (Cambria Math)
+    (0x2300, 0x23FF),  # Misc technical
+    (0x2460, 0x24FF),  # Enclosed alphanumerics
+    (0x2500, 0x259F),  # Box drawing, block elements (MS Gothic, Segoe UI Symbol)
+    (0x25A0, 0x27BF),  # Geometric shapes, misc symbols, dingbats (Segoe UI Symbol)
+    (0x3000, 0x30FF),  # CJK punctuation, kana (Yu Gothic, MS Gothic)
+    (0x4E00, 0x9FFF),  # CJK ideographs (Microsoft YaHei)
+    (0xAC00, 0xD7A3),  # Hangul syllables (Malgun Gothic)
+    (0xFE30, 0xFE4F),  # CJK compatibility forms
+    (0xFE70, 0xFEFF),  # Arabic presentation forms B
+    (0xFF00, 0xFFEF),  # Half and full width forms
+]
+
+
+class KaomojiFonts(unittest.TestCase):
+    def test_every_character_is_in_a_bundled_font_or_a_windows_10_block(self):
+        rows = symbols.parse_kaomoji(symbols.KAOMOJI_SRC.read_text(encoding="utf-8"))
+        bad = {}
+        for row in rows:
+            for ch in row["text"]:
+                cp = ord(ch)
+                if cp < 0x80 or any(lo <= cp <= hi for lo, hi in WINDOWS_10_RANGES):
+                    continue
+                bad.setdefault(f"U+{cp:04X}", []).append(row["id"])
+        self.assertEqual(bad, {}, "kaomoji need a font a clean Windows 10 may lack")
+
+    def test_the_check_rejects_a_phonetic_extension_letter(self):
+        self.assertFalse(any(lo <= 0x1D25 <= hi for lo, hi in WINDOWS_10_RANGES))
+
+    def test_bundled_fonts_cover_the_ascii_a_kaomoji_uses(self):
+        try:
+            from fontTools.ttLib import TTFont
+        except ImportError:
+            self.skipTest("fontTools is not installed")
+        fonts = symbols.ROOT / "crates" / "snipdeck-ui" / "fonts"
+        cmap = set(TTFont(fonts / "IBMPlexSans-Regular.ttf").getBestCmap())
+        text = "".join(r["text"] for r in symbols.parse_kaomoji(symbols.KAOMOJI_SRC.read_text(encoding="utf-8")))
+        missing = {c for c in text if 0x20 < ord(c) < 0x7F and ord(c) not in cmap}
+        self.assertEqual(missing, set())
+
+
 class Build(unittest.TestCase):
-    def test_set_is_the_intersection_with_fluent_in_catalog_order(self):
+    def test_every_emoji_is_kept_and_those_without_art_are_system_style(self):
+        # TOOLS-45: the catalogue is all of emoji-test.txt's default-tone sequences; an emoji with no
+        # Fluent art is drawn by the system font, never dropped.
         files, frag = symbols.build_text(inputs())
         rows = symbols.inflate(files["emoji.tsv.z"]).decode().splitlines()
-        self.assertEqual([r.split("\t")[0] for r in rows], ["1f600", "263a-fe0f"])
-        self.assertEqual(frag["coverage"]["without_fluent_art"], 3)
-        self.assertEqual({d["name"] for d in frag["dropped"]}, {"waving hand", "woman technologist", "flag: Australia"})
-        self.assertEqual(frag["kept_seqs"], ["1f600", "263a-fe0f"])
+        self.assertEqual(
+            [r.split("\t")[0] for r in rows],
+            ["1f600", "263a-fe0f", "1f44b", "1f469-200d-1f4bb", "1f1e6-1f1fa"],
+        )
+        self.assertEqual(frag["coverage"]["with_fluent_art"], 2)
+        self.assertEqual(frag["coverage"]["system_style"], 3)
+        self.assertEqual(
+            {d["name"] for d in frag["system_style"]},
+            {"waving hand", "woman technologist", "flag: Australia"},
+        )
+        self.assertEqual(frag["art_present"], [True, True, False, False, False])
+        self.assertEqual(frag["coverage"]["skin_tone_variants"], 1)
 
     def test_names_and_keywords_from_cldr_with_fallback(self):
         files, frag = symbols.build_text(inputs(art_map={**ART_MAP, "1f44b": ("waving-hand", False)}))
         rows = [r.split("\t") for r in symbols.inflate(files["emoji.tsv.z"]).decode().splitlines()]
         self.assertEqual(rows[0][3:], ["grinning face", "face|grin"])
         self.assertEqual(rows[2][3], "waving hand")  # not in CLDR: emoji-test name
-        self.assertEqual(frag["counts"]["names_missing_en"], 1)
+        self.assertEqual(frag["counts"]["names_missing_en"], 3)
 
     def test_other_languages_list_only_what_they_name(self):
         ja = symbols.parse_cldr({"annotations": {"annotations": {"\U0001F600": {"default": ["\u9854"], "tts": ["\u306b\u3063\u3053\u308a"]}}}}, "annotations")
@@ -225,8 +298,8 @@ class Build(unittest.TestCase):
         files, frag = symbols.build_text(inputs(cldr=cldr))
         rows = symbols.inflate(files["names-ja.tsv.z"]).decode().splitlines()
         self.assertEqual(rows, ["1f600\t\u306b\u3063\u3053\u308a\t\u9854"])
-        self.assertEqual(frag["counts"]["names_missing"]["ja"], 1)
-        self.assertEqual(frag["counts"]["names_missing"]["de"], 2)
+        self.assertEqual(frag["counts"]["names_missing"]["ja"], 4)
+        self.assertEqual(frag["counts"]["names_missing"]["de"], 5)
 
     def test_kaomoji_and_icons_files(self):
         files, frag = symbols.build_text(inputs(kaomoji=KAOMOJI + "wide\tjoy\t\\(^o^)/ \\(^o^)/ \\(^o^)/\tcheer,joy\n"))
@@ -282,10 +355,10 @@ class Art(unittest.TestCase):
 
 class Notices(unittest.TestCase):
     def test_every_section_carries_its_licence(self):
-        text = symbols.build_notices({"unicode": "UNICODE LICENSE V3 text", "fluent": "MIT Microsoft", "phosphor": "MIT Phosphor"})
+        text = symbols.build_notices({k: f"LICENCE of {k}" for _t, k, _w in symbols.NOTICE_SECTIONS})
         for title, _k, _w in symbols.NOTICE_SECTIONS:
             self.assertIn(f"## {title}", text)
-        self.assertIn("MIT Phosphor", text)
+        self.assertIn("LICENCE of flags", text)
 
 
 class Committed(unittest.TestCase):
@@ -299,6 +372,25 @@ class Committed(unittest.TestCase):
         for k, s in lock["sources"].items():
             self.assertRegex(s["sha256"], r"^[0-9a-f]{64}$", k)
             self.assertTrue(s["url"].startswith("https://"), k)
+
+    def test_every_emoji_of_the_pinned_emoji_test_file_is_in_the_catalogue_live(self):
+        """TOOLS-45: the catalogue is the pinned emoji-test.txt, sequence for sequence.
+
+        Opt-in (`SNIPDECK_LIVE=1`): it downloads the file (the sha256 pin is checked, a changed
+        upstream file is refused) and compares every default-tone emoji with `emoji.tsv.z`.
+        """
+        if os.environ.get("SNIPDECK_LIVE") != "1":
+            self.skipTest("set SNIPDECK_LIVE=1 to download the pinned emoji-test.txt")
+        lock = json.loads(symbols.LOCK.read_text())
+        raw = symbols.fetch(lock["sources"]["emoji-test"], pathlib.Path(tempfile.mkdtemp()))
+        entries, _ = symbols.parse_emoji_test(raw.decode("utf-8"))
+        rows = symbols.inflate((symbols.DATA / "emoji.tsv.z").read_bytes()).decode("utf-8").splitlines()
+        self.assertEqual([e["seq"] for e in entries], [r.split("\t")[0] for r in rows])
+
+    def test_the_manifest_pins_the_same_emoji_test_hash_as_the_lock(self):
+        lock = json.loads(symbols.LOCK.read_text())
+        m = json.loads(symbols.MANIFEST.read_text())
+        self.assertEqual(m["sources"]["emoji-test"], lock["sources"]["emoji-test"]["sha256"])
 
 
 if __name__ == "__main__":

@@ -27,6 +27,7 @@ use slint::{
     winit_030::{WinitWindowAccessor, winit},
 };
 use snipdeck_app::{
+    archive_job,
     binding::Binding,
     cli::{self, Args},
     controller::{Controller, Effect},
@@ -348,6 +349,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
         // Argon2id takes a moment on purpose: a master password step works its key out on a
         // worker thread, and the window waits with a status instead of freezing.
         master_job::set_offload(Rc::new(master_job::Threads));
+        archive_job::set_offload(Rc::new(archive_job::Threads));
         snipdeck_app::drop_read::use_threads();
         // Windows Hello prompts wait for a person, so they run on a worker too.
         hello_job::use_worker_threads();
@@ -595,6 +597,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     item_editor.flush_draft();
     // A sensitive copy still waiting for its clear timer would outlive the app.
     controller.borrow_mut().clear_pending_clipboard_now();
+    controller.borrow_mut().abandon_unfinished_archive();
     // Settings changed in the last moments are still waiting for their quiet time.
     if let Err(e) = controller.borrow_mut().flush_settings() {
         snipdeck_app::warn!("could not save the settings: {e}");
@@ -621,10 +624,14 @@ where
         let Some(controller) = controller.upgrade() else {
             return;
         };
-        let reported =
-            maintenance::run(&mut maintenance.borrow_mut(), &mut controller.borrow_mut());
-        // A toast the run set is drawn (and its timer started) by a redraw; the borrow is released.
-        if reported > 0 {
+        let ran = maintenance::run(&mut maintenance.borrow_mut(), &mut controller.borrow_mut());
+        // The borrows are released: a daily backup goes to a worker now, and its toast is drawn
+        // when it comes back.
+        if let Some(job) = ran.backup {
+            maintenance::spawn_backup(job, &maintenance, &controller);
+        }
+        // A toast the run set is drawn (and its timer started) by a redraw.
+        if ran.outcomes > 0 {
             with_binding(Binding::redraw);
         }
     });
@@ -771,6 +778,8 @@ fn effect_handler(
             }
         }
         // The binding has already acted: placed the window, or opened the item editor.
+        Effect::HideMainForEyedropper => hide_main_for_eyedropper(&main_ui),
+        Effect::RestoreMainAfterEyedropper => restore_main_after_eyedropper(&main_ui),
         Effect::HidePanel
         | Effect::ShowSymbols
         | Effect::ShowColours
@@ -780,6 +789,31 @@ fn effect_handler(
         | Effect::NewItem
         | Effect::EditItem(_) => {}
     }
+}
+
+/// The eyedropper's overlay must not catch the Main window: hide it and remember it was there.
+fn hide_main_for_eyedropper(main_ui: &MainUi) {
+    use slint::ComponentHandle;
+    if let Some(w) = main_ui.window()
+        && w.window().is_visible()
+    {
+        MAIN_HIDDEN_FOR_EYEDROPPER.with(|c| c.set(true));
+        let _ = w.hide();
+    }
+}
+
+/// Brings the Main window back when the eyedropper run ends, if the run hid it.
+fn restore_main_after_eyedropper(main_ui: &MainUi) {
+    if MAIN_HIDDEN_FOR_EYEDROPPER.with(|c| c.replace(false))
+        && let Err(e) = main_ui.open()
+    {
+        eprintln!("snipdeck: cannot bring the main window back: {e}");
+    }
+}
+
+thread_local! {
+    /// Whether the Main window was on screen when the eyedropper started.
+    static MAIN_HIDDEN_FOR_EYEDROPPER: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
 fn resize_direction(edge: snipdeck_app::frame::Edge) -> winit::window::ResizeDirection {

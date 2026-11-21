@@ -97,7 +97,15 @@ pub fn capture_as<L: Library>(
     at: Placement<ItemId>,
     now: Timestamp,
 ) -> snipdeck_store::Result<Captured> {
-    capture_with(library, list, text, (None, None), kind, at, now)
+    capture_with(
+        library,
+        list,
+        text,
+        (None, None),
+        Shape::plain(kind),
+        at,
+        now,
+    )
 }
 
 /// Saves `text` at the top of `list` with its HTML and RTF flavours (a Recent entry's), as
@@ -119,10 +127,54 @@ pub fn capture_rich_text<L: Library>(
         list,
         Some(text),
         (html, rtf),
-        kind_of_text(text),
+        Shape::plain(kind_of_text(text)),
         Placement::First,
         now,
     )
+}
+
+/// Saves `text` as a new Sensitive item at the top of `list`: sealed with the library key, no
+/// preview, no HTML or RTF.
+///
+/// # Errors
+///
+/// Any store error; nothing is saved then.
+pub fn capture_sensitive_text<L: Library>(
+    library: &mut L,
+    list: &Destination,
+    text: &str,
+    now: Timestamp,
+) -> snipdeck_store::Result<Captured> {
+    let shape = Shape {
+        kind: kind_of_text(text),
+        sensitive: true,
+    };
+    capture_with(
+        library,
+        list,
+        Some(text),
+        (None, None),
+        shape,
+        Placement::First,
+        now,
+    )
+}
+
+/// What a captured item is: its kind, and whether it is Sensitive.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Shape {
+    pub(crate) kind: ItemKind,
+    pub(crate) sensitive: bool,
+}
+
+impl Shape {
+    /// A plain (not Sensitive) item of `kind`.
+    pub(crate) const fn plain(kind: ItemKind) -> Self {
+        Self {
+            kind,
+            sensitive: false,
+        }
+    }
 }
 
 pub(crate) fn capture_with<L: Library>(
@@ -130,7 +182,7 @@ pub(crate) fn capture_with<L: Library>(
     list: &Destination,
     text: Option<&str>,
     (html, rtf): (Option<&str>, Option<&[u8]>),
-    kind: ItemKind,
+    shape: Shape,
     at: Placement<ItemId>,
     now: Timestamp,
 ) -> snipdeck_store::Result<Captured> {
@@ -140,8 +192,9 @@ pub(crate) fn capture_with<L: Library>(
     if text.len() > MAX_TEXT_BYTES {
         return Ok(Captured::TooLarge);
     }
-    let mut item = Item::new(list.id, String::new(), kind, now);
-    item.preview = Item::preview_of(text, false);
+    let mut item = Item::new(list.id, String::new(), shape.kind, now);
+    item.sensitive = shape.sensitive;
+    item.preview = Item::preview_of(text, shape.sensitive);
     let id = item.id;
     library.atomically(|batch| {
         let content = batch.put(text.as_bytes().to_vec())?;

@@ -296,3 +296,153 @@ impl MasterSteps for Ctl {
         finish(self, Some(job))
     }
 }
+
+/// The archive jobs in one call, for tests: `begin_*`, then the job's `run` (what the worker
+/// thread does, here on this thread), then `finish_archive`. A job that ended at once (an
+/// in-memory library, or a refusal) is read as it is.
+pub trait ArchiveSteps {
+    fn backup_now(&mut self, data_dir: &std::path::Path) -> bool;
+    fn export_library(&mut self, folder: &std::path::Path) -> Option<std::path::PathBuf>;
+    fn rebuild_from_backup(&mut self, data_dir: &std::path::Path, backup: &std::path::Path)
+    -> bool;
+    fn preview_import(
+        &mut self,
+        source: &snipdeck_app::controller::ImportSource,
+    ) -> Result<snipdeck_app::controller::ImportPreview, snipdeck_app::controller::ImportProblem>;
+    fn preview_restore(
+        &mut self,
+        backup: &std::path::Path,
+    ) -> Result<snipdeck_app::controller::ImportPreview, snipdeck_app::controller::ImportProblem>;
+    fn apply_import(&mut self, source: &snipdeck_app::controller::ImportSource) -> bool;
+    fn restore_backup(&mut self, backup: &std::path::Path) -> bool;
+}
+
+fn end(
+    ctl: &mut Ctl,
+    begun: snipdeck_app::controller::Begun,
+) -> snipdeck_app::controller::ArchiveEnd {
+    use snipdeck_app::controller::{ArchiveEnd, Begun};
+    match begun {
+        Begun::Refused => ArchiveEnd::Ignored,
+        Begun::Finished(end) => end,
+        Begun::Job(job) => match ctl.finish_archive(job.run()) {
+            // Another pass on a worker (a rebuild whose library changed under its copy).
+            ArchiveEnd::Again(job) => end(ctl, Begun::Job(job)),
+            done => done,
+        },
+    }
+}
+
+impl ArchiveSteps for Ctl {
+    fn backup_now(&mut self, data_dir: &std::path::Path) -> bool {
+        let begun = self.begin_backup_now(data_dir);
+        matches!(
+            end(self, begun),
+            snipdeck_app::controller::ArchiveEnd::BackupNow(true)
+        )
+    }
+    fn export_library(&mut self, folder: &std::path::Path) -> Option<std::path::PathBuf> {
+        let begun = self.begin_export(folder);
+        match end(self, begun) {
+            snipdeck_app::controller::ArchiveEnd::Exported(file) => file,
+            _ => None,
+        }
+    }
+    fn rebuild_from_backup(
+        &mut self,
+        data_dir: &std::path::Path,
+        backup: &std::path::Path,
+    ) -> bool {
+        let begun = self.begin_rebuild_from_backup(data_dir, backup);
+        matches!(
+            end(self, begun),
+            snipdeck_app::controller::ArchiveEnd::Rebuilt(true)
+        )
+    }
+    fn preview_import(
+        &mut self,
+        source: &snipdeck_app::controller::ImportSource,
+    ) -> Result<snipdeck_app::controller::ImportPreview, snipdeck_app::controller::ImportProblem>
+    {
+        let begun = self.begin_import_preview(source);
+        previewed(end(self, begun))
+    }
+    fn preview_restore(
+        &mut self,
+        backup: &std::path::Path,
+    ) -> Result<snipdeck_app::controller::ImportPreview, snipdeck_app::controller::ImportProblem>
+    {
+        let begun = self.begin_restore_preview(backup);
+        previewed(end(self, begun))
+    }
+    fn apply_import(&mut self, source: &snipdeck_app::controller::ImportSource) -> bool {
+        let begun = self.begin_apply_import(source);
+        imported(&end(self, begun))
+    }
+    fn restore_backup(&mut self, backup: &std::path::Path) -> bool {
+        let begun = self.begin_restore_backup(backup);
+        imported(&end(self, begun))
+    }
+}
+
+fn previewed(
+    end: snipdeck_app::controller::ArchiveEnd,
+) -> Result<snipdeck_app::controller::ImportPreview, snipdeck_app::controller::ImportProblem> {
+    match end {
+        snipdeck_app::controller::ArchiveEnd::ImportPreview(outcome) => outcome,
+        other => panic!("not a preview: {other:?}"),
+    }
+}
+
+fn imported(end: &snipdeck_app::controller::ArchiveEnd) -> bool {
+    matches!(end, snipdeck_app::controller::ArchiveEnd::Imported(true))
+}
+
+/// Holds the archive jobs of this thread instead of running them, so a test can look at the
+/// windows while a worker would be busy. Dropping the guard puts the inline offload back.
+#[derive(Clone, Default)]
+pub struct HeldArchive {
+    held: std::rc::Rc<
+        std::cell::RefCell<
+            Vec<(
+                snipdeck_app::archive_job::ArchiveJob,
+                snipdeck_app::archive_job::Finish,
+            )>,
+        >,
+    >,
+}
+
+impl snipdeck_app::archive_job::Offload for HeldArchive {
+    fn run(
+        &self,
+        job: snipdeck_app::archive_job::ArchiveJob,
+        finish: snipdeck_app::archive_job::Finish,
+    ) {
+        self.held.borrow_mut().push((job, finish));
+    }
+}
+
+pub struct HeldArchiveGuard;
+
+impl Drop for HeldArchiveGuard {
+    fn drop(&mut self) {
+        snipdeck_app::archive_job::set_offload(std::rc::Rc::new(snipdeck_app::archive_job::Inline));
+    }
+}
+
+impl HeldArchive {
+    pub fn install(&self) -> HeldArchiveGuard {
+        snipdeck_app::archive_job::set_offload(std::rc::Rc::new(self.clone()));
+        HeldArchiveGuard
+    }
+
+    pub fn held(&self) -> usize {
+        self.held.borrow().len()
+    }
+
+    /// Runs the oldest held job and hands its outcome back, as the worker thread would.
+    pub fn release(&self) {
+        let (job, finish) = self.held.borrow_mut().remove(0);
+        finish(job.run());
+    }
+}

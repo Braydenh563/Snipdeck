@@ -28,6 +28,7 @@ use snipdeck_store::crypto::{DataKey, Slot, decrypt_payload};
 use snipdeck_store::name_key;
 
 use crate::archive::{ITEMS, MANIFEST, SafeArchive};
+use crate::decoded::Decoded;
 use crate::dto::{
     ENCRYPTION, FORMAT_NAME, FormatDto, Header, ItemDto, ItemsDoc, ItemsParseError, ListDto, MAJOR,
     MINOR, Manifest, TagDto, parse_items_doc,
@@ -37,7 +38,7 @@ use crate::importers::{MEMORY_BUDGET, truncate_chars};
 use crate::limits::{Limits, TEXT_LIMIT};
 use crate::plan::{
     AssetRef, ContentHasher, Library, Plan, PlanBoard, PlanFile, PlanFormat, PlanItem, PlanList,
-    Source, apply, existing_hashes,
+    Source,
 };
 use crate::report::{ImportReport, Note, Warning};
 
@@ -112,24 +113,29 @@ pub(crate) fn board_name(raw: &str, fallback: &str) -> Result<Name> {
     Ok(Name::new(&cleaned).or_else(|_| Name::new(fallback))?)
 }
 
-/// The common ending of every importer: skip duplicates, write the
-/// plan. `plan` must hold only in-memory payloads.
-pub(crate) fn finish<L: Library>(
-    lib: &mut L,
-    mut plan: Plan,
+/// The common ending of every importer: hands the finished plan on for previewing or writing.
+pub(crate) fn finish(
+    plan: Plan,
     options: &ImportOptions<'_>,
-    mut report: ImportReport,
+    report: ImportReport,
+) -> Decoded<'static> {
+    Decoded::new(plan, report, options)
+}
+
+/// Reads and checks every source with `decode`, then writes it (or, with `options.dry_run`,
+/// only reports what it would add). The one-call form of the two halves in [`Decoded`], for
+/// callers that hold the library and have no worker.
+pub(crate) fn one_pass<'d, L: Library>(
+    lib: &mut L,
+    options: &ImportOptions<'_>,
+    decode: impl FnOnce(&L, &ImportOptions<'_>) -> Result<Decoded<'d>>,
 ) -> Result<ImportReport> {
-    if options.merge == MergeStrategy::SkipDuplicates {
-        let mut known = existing_hashes(lib)?;
-        let dropped = plan.drop_duplicates(&mut known);
-        report.items_skipped += dropped;
-        report.duplicates_skipped += dropped;
+    let decoded = decode(lib, options)?;
+    if options.dry_run {
+        decoded.preview(lib, None)
+    } else {
+        decoded.apply(lib, None)
     }
-    let mut no_assets = |_: &AssetRef| -> Result<Vec<u8>> {
-        Err(Error::malformed("import", "internal: no assets expected"))
-    };
-    apply(lib, &mut plan, &mut no_assets, report, options.dry_run)
 }
 
 /// Imports the `.snipdeck` file at `path`. The default new board is named after the file.
@@ -154,6 +160,29 @@ pub fn import_archive_path<L: Library>(
     import_archive(lib, BufReader::new(file), &stem, now, options)
 }
 
+/// Reads and checks the `.snipdeck` file at `path` without a library: the half of
+/// [`import_archive_path`] that can run on a worker. `options.key` must not be
+/// [`KeySource::Library`]: pass the key itself.
+///
+/// # Errors
+///
+/// See [`import_archive`].
+pub fn decode_archive_path(
+    path: &Path,
+    now: Timestamp,
+    options: &ImportOptions<'_>,
+) -> Result<Decoded<'static>> {
+    let file = File::open(path).map_err(|source| Error::File {
+        path: path.to_owned(),
+        source,
+    })?;
+    let stem = path
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    decode_archive(BufReader::new(file), &stem, now, options)
+}
+
 /// Imports a `.snipdeck` archive. `source_name` (normally the file name without extension) names
 /// the new board unless the options say otherwise.
 ///
@@ -165,16 +194,38 @@ pub fn import_archive_path<L: Library>(
 ///
 /// An [`Error`] naming the first problem; the library is unchanged. Warnings (sensitive items
 /// that need a key, unknown entries) go in the report instead.
-pub fn import_archive<L: Library, R: Read + Seek>(
+pub fn import_archive<L: Library, R: Read + Seek + Send>(
     lib: &mut L,
     reader: R,
     source_name: &str,
     now: Timestamp,
     options: &ImportOptions<'_>,
 ) -> Result<ImportReport> {
+    one_pass(lib, options, |lib, options| {
+        // The key may be borrowed from the library; it is dropped with `own` before writing.
+        let mut own = options.clone();
+        if matches!(own.key, KeySource::Library) {
+            own.key = lib.data_key().map_or(KeySource::None, KeySource::Given);
+        }
+        decode_archive(reader, source_name, now, &own)
+    })
+}
+
+/// Reads and checks a `.snipdeck` archive without a library (see [`import_archive`] for what is
+/// validated). The result owns everything it needs, the open archive included.
+/// `options.key` must not be [`KeySource::Library`].
+///
+/// # Errors
+///
+/// See [`import_archive`].
+pub fn decode_archive<'a, R: Read + Seek + Send + 'a>(
+    reader: R,
+    source_name: &str,
+    now: Timestamp,
+    options: &ImportOptions<'_>,
+) -> Result<Decoded<'a>> {
     let mut archive = SafeArchive::open(reader, options.limits)?;
     let mut report = ImportReport::default();
-
     let manifest = read_manifest(&archive.read_manifest()?, &mut report)?;
     let doc: ItemsDoc =
         parse_items_doc(&archive.read_items()?, options.limits.max_items).map_err(|e| match e {
@@ -214,12 +265,10 @@ pub fn import_archive<L: Library, R: Read + Seek>(
         });
     }
 
-    // Decrypted payloads are moved into the plan here, so the key (which may be borrowed from
-    // the library) is no longer needed when the library is borrowed mutably for writing.
+    // Decrypted payloads are moved into the plan here, so the key is no longer needed after.
     let key = match options.key {
-        KeySource::None => None,
+        KeySource::None | KeySource::Library => None,
         KeySource::Given(key) => Some(key),
-        KeySource::Library => lib.data_key(),
     };
     verify(
         &mut archive,
@@ -229,14 +278,7 @@ pub fn import_archive<L: Library, R: Read + Seek>(
         &mut report,
     )?;
 
-    if options.merge == MergeStrategy::SkipDuplicates {
-        let mut known = existing_hashes(lib)?;
-        let dropped = plan.drop_duplicates(&mut known);
-        report.items_skipped += dropped;
-        report.duplicates_skipped += dropped;
-    }
-
-    let mut fetch = |asset: &AssetRef| -> Result<Vec<u8>> {
+    let fetch = move |asset: &AssetRef| -> Result<Vec<u8>> {
         // Encrypted payloads were decrypted into the plan; only plain assets are fetched.
         let bytes = archive.read_asset(&asset.hash)?;
         // The file was verified before writing began; check again in case it changed
@@ -249,7 +291,7 @@ pub fn import_archive<L: Library, R: Read + Seek>(
         }
         Ok(bytes)
     };
-    apply(lib, &mut plan, &mut fetch, report, options.dry_run)
+    Ok(Decoded::with_assets(plan, report, options, Box::new(fetch)))
 }
 
 /// Reads `manifest.json`: checks it is a Snipdeck manifest of a readable version before looking

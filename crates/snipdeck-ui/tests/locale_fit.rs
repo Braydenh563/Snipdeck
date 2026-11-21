@@ -67,12 +67,12 @@ type Run = Box<dyn Fn(f32) -> Vec<String>>;
 fn fit<C: ComponentHandle>(
     make: fn() -> Result<C, slint::PlatformError>,
     size: (u32, u32),
-    scaled_min: f32,
+    min_at: fn(f32) -> f32,
     scale: f32,
     set_scale: fn(&C, f32),
 ) -> Vec<String> {
-    // Settings and Help widen their smallest size with the text size (their `min-window-width`).
-    let width = size.0.max((scaled_min * scale).ceil() as u32);
+    // Settings, Help and the Main window widen their smallest size with the text size (`min-window-width`).
+    let width = size.0.max(min_at(scale).ceil() as u32);
     let h = Harness::new(make, width, size.1);
     set_scale(&h.component, scale);
     let _ = h.render_settled();
@@ -90,41 +90,71 @@ fn a_language_does_not_push_more_past_the_window_edge_than_english_does() {
         (
             "Panel",
             Box::new(|v| {
-                fit(PanelWindow::new, (260, 560), 0.0, v, |c, v| {
-                    c.global::<SystemLook<'_>>().set_text_scale(v);
-                })
+                fit(
+                    PanelWindow::new,
+                    (260, 560),
+                    |_| 0.0,
+                    v,
+                    |c, v| {
+                        c.global::<SystemLook<'_>>().set_text_scale(v);
+                    },
+                )
             }),
         ),
         (
             "Settings",
             Box::new(|v| {
-                fit(SettingsPage::new, (420, 900), 340.0, v, |c, v| {
-                    c.global::<SystemLook<'_>>().set_text_scale(v);
-                })
+                fit(
+                    SettingsPage::new,
+                    (420, 900),
+                    |s| 340.0 * s,
+                    v,
+                    |c, v| {
+                        c.global::<SystemLook<'_>>().set_text_scale(v);
+                    },
+                )
             }),
         ),
         (
             "Main window",
             Box::new(|v| {
-                fit(MainWindow::new, (480, 640), 0.0, v, |c, v| {
-                    c.global::<SystemLook<'_>>().set_text_scale(v);
-                })
+                fit(
+                    MainWindow::new,
+                    (480, 640),
+                    |s| 480.0 + (s - 1.0) * 552.0,
+                    v,
+                    |c, v| {
+                        c.global::<SystemLook<'_>>().set_text_scale(v);
+                    },
+                )
             }),
         ),
         (
             "Help",
             Box::new(|v| {
-                fit(HelpWindow::new, (420, 360), 270.0, v, |c, v| {
-                    c.global::<SystemLook<'_>>().set_text_scale(v);
-                })
+                fit(
+                    HelpWindow::new,
+                    (420, 360),
+                    |s| 270.0 * s,
+                    v,
+                    |c, v| {
+                        c.global::<SystemLook<'_>>().set_text_scale(v);
+                    },
+                )
             }),
         ),
         (
             "Welcome",
             Box::new(|v| {
-                fit(OnboardingWindow::new, (560, 540), 0.0, v, |c, v| {
-                    c.global::<SystemLook<'_>>().set_text_scale(v);
-                })
+                fit(
+                    OnboardingWindow::new,
+                    (560, 540),
+                    |_| 0.0,
+                    v,
+                    |c, v| {
+                        c.global::<SystemLook<'_>>().set_text_scale(v);
+                    },
+                )
             }),
         ),
     ];
@@ -136,13 +166,13 @@ fn a_language_does_not_push_more_past_the_window_edge_than_english_does() {
         slint::select_bundled_translation(lang).unwrap();
         for (si, (name, run)) in surfaces.iter().enumerate() {
             for (ci, scale) in SCALES.iter().enumerate() {
-                // The Main window's toolbar already runs past 480 px at 2.25x in English; the
-                // tiered toolbar of branch fix/narrow-toolbar is the fix, so that size waits for it.
-                if *name == "Main window" && *scale > 1.0 {
-                    continue;
-                }
                 let found = run(*scale);
                 if lang.is_empty() {
+                    // The Main window's toolbar fits at every text size in English: its minimum width
+                    // grows with the text size (`min-window-width`), so a language starts from zero.
+                    if *name == "Main window" {
+                        assert_eq!(found, Vec::<String>::new(), "English, {scale}x");
+                    }
                     baseline.insert((si, ci), found.len());
                 } else if found.len() > baseline[&(si, ci)] {
                     problems.push(format!(

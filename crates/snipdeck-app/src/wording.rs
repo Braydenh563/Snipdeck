@@ -277,9 +277,15 @@ where
         ToastMessage::HelloEnrolFailed => t.invoke_hello_enrol_failed(),
         ToastMessage::MasterPasswordRemovedNotOpen => t.invoke_master_password_removed_not_open(),
         ToastMessage::LockedEditorClosed => t.invoke_locked_editor_closed(),
+        ToastMessage::LockedEditorKept => t.invoke_locked_editor_kept(),
         ToastMessage::LockedFillClosed => t.invoke_locked_fill_closed(),
         ToastMessage::UnlockFirst => t.invoke_unlock_first(),
         ToastMessage::Saved { list } => t.invoke_saved(list.into()),
+        ToastMessage::NoColourOnClipboard => t.invoke_no_colour_on_clipboard(),
+        ToastMessage::AlreadySaved { list } => t.invoke_already_saved(list.into()),
+        ToastMessage::NameNotExact { name, hex } => {
+            t.invoke_name_not_exact(name.into(), hex.into())
+        }
         ToastMessage::AddedTo { list, .. } => t.invoke_added_to(list.into()),
         ToastMessage::AddedSomeFiles { list } => t.invoke_added_some_files(list.into()),
         ToastMessage::FilesNotAdded => t.invoke_files_not_added(),
@@ -324,6 +330,7 @@ where
         ToastMessage::LibraryProblem => t.invoke_library_problem(),
         ToastMessage::CrashedLastTime => t.invoke_crashed_last_time(),
         ToastMessage::BackupMade => t.invoke_backup_made(),
+        ToastMessage::ArchiveBusy => t.invoke_archive_busy(),
         ToastMessage::BackupFailed(cause) => t.invoke_backup_failed(cause.code()),
         ToastMessage::DailyBackupFailed(cause) => t.invoke_daily_backup_failed(cause.code()),
         ToastMessage::TrashPurgeFailed => t.invoke_trash_purge_failed(),
@@ -395,6 +402,10 @@ where
         ToastMessage::IconSaved { name } => t.invoke_icon_saved(name.into()),
         ToastMessage::EyedropFailed => t.invoke_eyedrop_failed(),
         ToastMessage::EyedropHdr { hex } => t.invoke_eyedrop_hdr(hex.into()),
+        ToastMessage::EyedropHdrCopied { hex } => t.invoke_eyedrop_hdr_copied(hex.into()),
+        ToastMessage::EyedropRefused => t.invoke_eyedrop_refused(),
+        ToastMessage::EyedropEnded { timed_out } => t.invoke_eyedrop_ended(*timed_out),
+        ToastMessage::EyedropKeysBusy { keys } => t.invoke_eyedrop_keys_busy(keys.into()),
     };
     text.into()
 }
@@ -691,6 +702,13 @@ pub fn symbol_menu_entry(
         SymbolMenuEntry::CopyPng => (t.invoke_symbol_copy_png(), "", false),
         SymbolMenuEntry::SaveAsSvg => (t.invoke_symbol_save_svg(), "", false),
         SymbolMenuEntry::SaveAsPng => (t.invoke_symbol_save_png(), "", false),
+        SymbolMenuEntry::PngSize(px) => (
+            t.invoke_symbol_png_size(i32::try_from(*px).unwrap_or(0)),
+            "",
+            false,
+        ),
+        SymbolMenuEntry::PngInk { dark } => (t.invoke_symbol_png_ink(*dark), "", false),
+        SymbolMenuEntry::Tone(n) => (t.invoke_symbol_tone(i32::from(*n)), "", false),
         SymbolMenuEntry::Separator => {
             return snipdeck_ui::MenuEntry {
                 separator: true,

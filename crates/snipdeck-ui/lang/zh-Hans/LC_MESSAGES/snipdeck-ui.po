@@ -94,17 +94,20 @@ msgstr "标题不能包含换行或控制字符。"
 msgid "A trigger is 1 to 32 characters with no spaces."
 msgstr "触发词为 1 到 32 个字符，不含空格。"
 
-msgid "AA"
-msgstr "AA"
+msgid "AA 4.5"
+msgstr "AA 4.5"
 
-msgid "AA large"
-msgstr "AA 大号文本"
+msgid "AA large 3"
+msgstr "AA 大字 3"
 
-msgid "AAA"
-msgstr "AAA"
+msgid "AAA 7"
+msgstr "AAA 7"
 
-msgid "AAA large"
-msgstr "AAA 大号文本"
+msgid "AAA large 4.5"
+msgstr "AAA 大字 4.5"
+
+msgid "APCA Lc {}"
+msgstr "APCA Lc {}"
 
 msgid "About"
 msgstr "关于"
@@ -191,6 +194,9 @@ msgstr "将删除全部 {} 条最近复制的内容。此操作无法撤销。"
 msgid "Alpha"
 msgstr "透明度"
 
+msgid "Already saved in {}"
+msgstr "已保存在 {} 中"
+
 msgid "Also forget the encryption key"
 msgstr "同时忘记加密密钥"
 
@@ -230,14 +236,14 @@ msgstr "编辑器中已打开一个片段，所以粘贴的文本没有添加。
 msgid "Analogous"
 msgstr "邻近色"
 
-msgid "Angry"
-msgstr "生气"
-
-msgid "Animals"
-msgstr "动物"
-
 msgid "Animals & Nature"
 msgstr "动物与自然"
+
+msgid "Another app has {}: use the mouse for those."
+msgstr "其他应用占用了 {}：请改用鼠标操作。"
+
+msgid "Another backup or export is still running. Try again when it has finished."
+msgstr "另一个备份或导出仍在进行。请在完成后再试。"
 
 msgid "Another item already uses this trigger."
 msgstr "另一个片段已使用此触发词。"
@@ -292,6 +298,12 @@ msgstr "返回编辑 (Ctrl+P)"
 
 msgid "Back up now"
 msgstr "立即备份"
+
+msgid "Backdrop: black"
+msgstr "背景：黑色"
+
+msgid "Backdrop: white"
+msgstr "背景：白色"
 
 msgid "Backed up"
 msgstr "已备份"
@@ -383,6 +395,9 @@ msgstr "取消"
 msgid "Cancel the test of {}"
 msgstr "取消 {} 的测试"
 
+msgid "Caps Lock is on."
+msgstr "大写锁定已开启。"
+
 msgid "Captured items keep their kind."
 msgstr "捕获的片段保留其类型。"
 
@@ -403,6 +418,12 @@ msgstr "更改立即生效。"
 
 msgid "Change…"
 msgstr "更改…"
+
+msgid "Character"
+msgstr "字符"
+
+msgid "Characters"
+msgstr "字符"
 
 msgid "Chat"
 msgstr "聊天"
@@ -494,6 +515,9 @@ msgstr "点击"
 msgid "Click copies"
 msgstr "点击为复制"
 
+msgid "Click makes a swatch current · Shift+click copies it"
+msgstr "单击设为当前色 · Shift+单击复制"
+
 msgid "Click me to paste"
 msgstr "点我粘贴"
 
@@ -526,6 +550,9 @@ msgstr "关闭面板 (Esc)"
 
 msgid "Close search"
 msgstr "关闭搜索"
+
+msgid "Close sidebar (Ctrl+B)"
+msgstr "关闭侧边栏 (Ctrl+B)"
 
 msgid "Close the tag list"
 msgstr "关闭标签列表"
@@ -602,6 +629,9 @@ msgstr "Ctrl O"
 msgid "Copied"
 msgstr "已复制"
 
+msgid "Copied {}. HDR is on for this screen, so it is approximate."
+msgstr "已复制 {}。此屏幕启用了 HDR，因此数值为近似值。"
+
 msgid "Copied. Nothing in {} can take text right now."
 msgstr "已复制。{} 当前无法接收文本。"
 
@@ -613,6 +643,9 @@ msgstr "已复制。你正在使用的窗口已关闭。"
 
 msgid "Copied. {} runs as administrator, so Snipdeck can’t paste into it."
 msgstr "已复制。{} 以管理员身份运行，Snipdeck 无法粘贴到其中。"
+
+msgid "Copies older than this are deleted, even when Recent is off or paused."
+msgstr "超过此天数的副本会被删除，即使“最近”已关闭或暂停。"
 
 msgid "Copy"
 msgstr "复制"
@@ -884,6 +917,9 @@ msgstr "以你选择的格式显示日期和时间"
 msgid "Dates are today’s; a field you fill in when you use the item shows its name or default."
 msgstr "日期为今天的日期；使用该片段时才填写的字段会显示其名称或默认值。"
 
+msgid "Days a copy stays in Recent"
+msgstr "副本在“最近”中保留的天数"
+
 msgid "Days in the Trash"
 msgstr "回收站保留天数"
 
@@ -946,6 +982,9 @@ msgstr "要删除此列表吗？"
 
 msgid "Delete this tag?"
 msgstr "要删除此标签吗？"
+
+msgid "Delete what Recent has kept?"
+msgstr "要删除“最近”保留的内容吗？"
 
 msgid "Delete “{}”"
 msgstr "删除“{}”"
@@ -1049,6 +1088,9 @@ msgstr "编辑列表"
 msgid "Edit list…"
 msgstr "编辑列表…"
 
+msgid "Edit or rename…"
+msgstr "编辑或重命名…"
+
 msgid "Edit selected item"
 msgstr "编辑所选片段"
 
@@ -1147,6 +1189,9 @@ msgstr "导出为文本"
 
 msgid "Export library"
 msgstr "导出资料库"
+
+msgid "Eyedropper, {}"
+msgstr "取色器，{}"
 
 msgid "Fields"
 msgstr "字段"
@@ -1265,9 +1310,6 @@ msgstr "随手保存文本"
 msgid "Green"
 msgstr "绿色"
 
-msgid "Greet"
-msgstr "问候"
-
 msgid "Group"
 msgstr "分组"
 
@@ -1330,6 +1372,9 @@ msgstr "隐藏面板"
 
 msgid "Hide Panel ({})"
 msgstr "隐藏面板 ({})"
+
+msgid "Hide password"
+msgstr "隐藏密码"
 
 msgid "Hide the Panel"
 msgstr "隐藏面板"
@@ -1463,9 +1508,6 @@ msgstr[0] "其列表及其中的 {n} 个片段将移至回收站。你可以在 
 msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
 msgstr "它的列表和 {} 个片段将移到回收站。你可以在 {} 天内恢复。"
 
-msgid "Joy"
-msgstr "喜悦"
-
 msgid "Jump to a section"
 msgstr "跳转到某个部分"
 
@@ -1481,11 +1523,23 @@ msgstr "面板保持在最前"
 msgid "Keep Panel visible during screenshots"
 msgstr "截图时保持面板可见"
 
+msgid "Keep Recent on"
+msgstr "保持“最近”开启"
+
 msgid "Keep a Recent inbox of what you copy"
 msgstr "保留你复制内容的“最近”收件箱"
 
 msgid "Keep a Recent list of what you copy?"
 msgstr "要保留你复制内容的“最近”列表吗？"
+
+msgid "Keep copies for fewer days"
+msgstr "减少副本保留天数"
+
+msgid "Keep copies for more days"
+msgstr "增加副本保留天数"
+
+msgid "Keep copies from unknown sources"
+msgstr "保留来源未知的复制内容"
 
 msgid "Keep deleted items for fewer days"
 msgstr "减少已删除片段的保留天数"
@@ -1502,8 +1556,14 @@ msgstr "常用内容触手可及"
 msgid "Keep fewer backups"
 msgstr "减少保留的备份"
 
+msgid "Keep fewer copies"
+msgstr "保留更少副本"
+
 msgid "Keep more backups"
 msgstr "增加保留的备份"
+
+msgid "Keep more copies"
+msgstr "保留更多副本"
 
 msgid "Keep running in the tray when the window closes"
 msgstr "关闭窗口时继续在通知区域运行"
@@ -1601,11 +1661,17 @@ msgstr "列表用来存放你的片段。"
 msgid "Location marker"
 msgstr "位置标记"
 
+msgid "Lock after"
+msgstr "锁定时间"
+
+msgid "Lock later"
+msgstr "延后锁定"
+
+msgid "Lock sooner"
+msgstr "提前锁定"
+
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "日志只在 Snipdeck 崩溃时写入，不含片段内容，也不会发送到任何地方。"
-
-msgid "Love"
-msgstr "爱"
 
 msgid "Main list"
 msgstr "主列表"
@@ -1670,8 +1736,20 @@ msgstr "主密码已设置。"
 msgid "Menu"
 msgstr "菜单"
 
+msgid "Minutes before the library locks"
+msgstr "资料库锁定前的分钟数"
+
+msgid "Minutes without use before a master password locks your sensitive items again."
+msgstr "主密码在无操作多少分钟后再次锁定你的敏感片段。"
+
 msgid "More"
 msgstr "更多"
+
+msgid "More formats"
+msgstr "更多格式"
+
+msgid "More formats…"
+msgstr "更多格式…"
 
 msgid "More options"
 msgstr "更多选项"
@@ -1684,6 +1762,9 @@ msgstr "更多置顶片段"
 
 msgid "More tips"
 msgstr "更多提示"
+
+msgid "Most copies kept in Recent"
+msgstr "“最近”中保留的最大副本数"
 
 msgid "Most used"
 msgstr "最常用"
@@ -1840,6 +1921,9 @@ msgstr "尚无备份"
 msgid "No colour"
 msgstr "无颜色"
 
+msgid "No colour in the clipboard"
+msgstr "剪贴板中没有颜色"
+
 msgid "No commands match “{}”"
 msgstr "没有与“{}”匹配的命令"
 
@@ -1848,6 +1932,9 @@ msgstr "没有崩溃报告。"
 
 msgid "No global shortcut is set."
 msgstr "未设置任何全局快捷键。"
+
+msgid "No hue to rotate. Greys, white and black have none."
+msgstr "没有可旋转的色相。灰色、白色和黑色没有色相。"
 
 msgid "No icon"
 msgstr "无图标"
@@ -1990,14 +2077,14 @@ msgstr "关闭：停靠在左侧或右侧的面板保持你放下时的高度。
 msgid "Off: a docked Panel does not tuck and hides like a floating one. Otherwise it tucks into a thin tab at its edge, and the Panel shortcut opens it too."
 msgstr "关闭：停靠的面板不会收起，而是像浮动面板一样隐藏。否则它会收成边缘上的一条细标签，面板快捷键也能打开它。"
 
+msgid "Older copies are deleted when there are more than this many."
+msgstr "超过此数量时，较旧的副本会被删除。"
+
 msgid "On black"
 msgstr "在黑色上"
 
 msgid "On this colour"
 msgstr "在此颜色上"
-
-msgid "On this colour (on white)"
-msgstr "在此颜色上（在白色上）"
 
 msgid "On white"
 msgstr "在白色上"
@@ -2095,6 +2182,15 @@ msgstr "其他颜色"
 msgid "Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."
 msgstr "在该文件夹之外，Snipdeck 只会写入 Windows 开机启动项（如果你开启了它），以及在你使用片段时写入剪贴板。"
 
+msgid "PNG ink: dark (click for theme colour)"
+msgstr "PNG 颜色：深色（点击改为主题色）"
+
+msgid "PNG ink: theme colour (click for dark)"
+msgstr "PNG 颜色：主题色（点击改为深色）"
+
+msgid "PNG size: {} px (click for the next)"
+msgstr "PNG 尺寸：{} px（点击切换下一个）"
+
 msgid "PNG, {}"
 msgstr "PNG，{}"
 
@@ -2149,6 +2245,9 @@ msgstr "以纯文本粘贴"
 msgid "Paste as…"
 msgstr "粘贴为…"
 
+msgid "Paste into {}"
+msgstr "粘贴到 {}"
+
 msgid "Paste key for {}"
 msgstr "{} 的粘贴键"
 
@@ -2157,9 +2256,6 @@ msgstr "粘贴下一个片段"
 
 msgid "Paste next pastes the next item each time you press it."
 msgstr "“粘贴下一个”每按一次就粘贴下一个片段。"
-
-msgid "Paste or copy"
-msgstr "粘贴或复制"
 
 msgid "Paste several in order"
 msgstr "按顺序粘贴多项"
@@ -2193,6 +2289,24 @@ msgstr "粘贴堆栈中的下一个片段"
 
 msgid "Paste the result"
 msgstr "粘贴结果"
+
+msgid "Paste, dark skin tone"
+msgstr "粘贴，深肤色"
+
+msgid "Paste, default tone"
+msgstr "粘贴，默认色调"
+
+msgid "Paste, light skin tone"
+msgstr "粘贴，浅肤色"
+
+msgid "Paste, medium skin tone"
+msgstr "粘贴，中等肤色"
+
+msgid "Paste, medium-dark skin tone"
+msgstr "粘贴，中深肤色"
+
+msgid "Paste, medium-light skin tone"
+msgstr "粘贴，中浅肤色"
 
 msgid "Pasted"
 msgstr "已粘贴"
@@ -2248,6 +2362,9 @@ msgstr "电话"
 msgid "PhraseExpress export (CSV)"
 msgstr "PhraseExpress 导出文件（CSV）"
 
+msgid "Pick"
+msgstr "选取"
+
 msgid "Pick a colour from the screen"
 msgstr "从屏幕上取色"
 
@@ -2259,6 +2376,9 @@ msgstr "选择面板的位置。你可以随时在设置中更改，还可设置
 
 msgid "Pick one and it pastes where you were typing."
 msgstr "选择一项，它就会粘贴到你正在输入的位置。"
+
+msgid "Pick the other colour from the screen"
+msgstr "从屏幕选取另一种颜色"
 
 msgid "Picker"
 msgstr "选择器"
@@ -2328,6 +2448,9 @@ msgstr "预览"
 
 msgid "Preview how this item will look (Ctrl+P)"
 msgstr "预览此片段的外观 (Ctrl+P)"
+
+msgid "Previous colour {}. Click to go back."
+msgstr "上一个颜色 {}。单击可返回。"
 
 msgid "Previous list"
 msgstr "上一个列表"
@@ -2401,8 +2524,20 @@ msgstr "最近条目操作"
 msgid "Recent history cleared"
 msgstr "已清除最近记录"
 
+msgid "Recent holds {} copies. Turning it off deletes them, unless you choose to keep them hidden; kept copies show again if you turn Recent back on."
+msgstr "“最近”中有{}个副本。关闭后会将其删除，除非你选择隐藏保留；保留的副本会在重新开启“最近”后再次显示。"
+
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "“最近”会保留你复制的文本，仅保存在这台电脑上，最多保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感片段不会被保留。你可以随时在设置中更改。"
+
+msgid "Recent skips a copy when Snipdeck cannot tell which program it came from, because it could be a password manager. Turn this on to keep those copies too."
+msgstr "当 Snipdeck 无法判断复制内容来自哪个程序时，“最近”会跳过它，因为它可能来自密码管理器。开启后，这些内容也会被保留。"
+
+msgid "Recent: days kept"
+msgstr "最近：保留天数"
+
+msgid "Recent: most copies kept"
+msgstr "最近：最大保留副本数"
 
 msgid "Recently used"
 msgstr "最近使用"
@@ -2541,9 +2676,6 @@ msgstr "火箭"
 msgid "Rose"
 msgstr "玫瑰色"
 
-msgid "Sad"
-msgstr "难过"
-
 msgid "Saturation and brightness"
 msgstr "饱和度和亮度"
 
@@ -2561,6 +2693,12 @@ msgstr "另存为 PNG…"
 
 msgid "Save as SVG…"
 msgstr "另存为 SVG…"
+
+msgid "Save as Sensitive to…"
+msgstr "作为敏感项目保存到…"
+
+msgid "Save as Sensitive…"
+msgstr "保存为敏感项目…"
 
 msgid "Save from clipboard"
 msgstr "从剪贴板保存"
@@ -2640,8 +2778,8 @@ msgstr "搜索 (Ctrl+F)"
 msgid "Search all items"
 msgstr "搜索所有片段"
 
-msgid "Search emoji, kaomoji, icons"
-msgstr "搜索表情符号、颜文字、图标"
+msgid "Search emoji, kaomoji, icons, characters"
+msgstr "搜索表情、颜文字、图标、字符"
 
 msgid "Search every board and paste without opening the window."
 msgstr "搜索所有看板，无需打开窗口即可粘贴。"
@@ -2679,8 +2817,8 @@ msgstr "可用你的语言按名称搜索。"
 msgid "Searched every board and list."
 msgstr "已搜索所有看板和列表。"
 
-msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
-msgstr "复制敏感片段后，若期间未复制其他内容，则在此秒数后从剪贴板清除。设为 0 则永不清除。粘贴时会改为恢复你原本的剪贴板内容。"
+msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. Pasting restores your own clipboard instead."
+msgstr "复制敏感片段后，若期间未复制其他内容，则在此秒数后从剪贴板清除。粘贴时会改为恢复你原本的剪贴板内容。"
 
 msgid "See the tips"
 msgstr "查看提示"
@@ -2711,6 +2849,9 @@ msgstr "选中或取消选中该行"
 
 msgid "Select several items"
 msgstr "选择多个片段"
+
+msgid "Selected symbol"
+msgstr "所选符号"
 
 msgid "Sensitive"
 msgstr "敏感"
@@ -2808,6 +2949,9 @@ msgstr "显示或隐藏面板"
 msgid "Show or hide the sidebar"
 msgstr "显示或隐藏侧边栏"
 
+msgid "Show password"
+msgstr "显示密码"
+
 msgid "Show the Panel"
 msgstr "显示面板"
 
@@ -2819,9 +2963,6 @@ msgstr "再次显示欢迎导览"
 
 msgid "Show title, colour, tags, trigger and privacy"
 msgstr "显示标题、颜色、标签、触发词和隐私"
-
-msgid "Shrug"
-msgstr "耸肩"
 
 msgid "Sidebar width"
 msgstr "侧边栏宽度"
@@ -2928,9 +3069,6 @@ msgstr "片段"
 msgid "Some files were left out: together they are over 64 MB."
 msgstr "部分文件被忽略：它们加起来超过 64 MB。"
 
-msgid "Sorry"
-msgstr "抱歉"
-
 msgid "Sort by"
 msgstr "排序方式"
 
@@ -3005,9 +3143,6 @@ msgstr "支持"
 
 msgid "Support Snipdeck"
 msgstr "支持 Snipdeck"
-
-msgid "Surprise"
-msgstr "惊讶"
 
 msgid "Swap the two colours"
 msgstr "交换两种颜色"
@@ -3162,6 +3297,9 @@ msgstr "剪贴板历史记录中还没有文本。请先复制一些文本，然
 msgid "The backups cannot be read: {}"
 msgstr "无法读取备份：{}"
 
+msgid "The colour pick timed out."
+msgstr "取色已超时。"
+
 msgid "The file dialog couldn’t open. Type the path instead."
 msgstr "无法打开文件对话框。请改为输入路径。"
 
@@ -3224,6 +3362,9 @@ msgstr "选择器"
 
 msgid "The report holds versions and settings switches, never your items."
 msgstr "报告只包含版本和设置开关，绝不包含你的片段。"
+
+msgid "The screen changed, so the colour pick ended."
+msgstr "屏幕已变化，取色已结束。"
 
 msgid "The selected items are deleted for good. This can’t be undone."
 msgstr "所选片段将被永久删除，此操作无法撤销。"
@@ -3303,6 +3444,9 @@ msgstr "此列表为空"
 msgid "This looks like a password or key, so it was not saved. Check it, then save."
 msgstr "这看起来像密码或密钥，所以没有保存。请检查后再保存。"
 
+msgid "This screen could not be captured"
+msgstr "无法捕获此屏幕"
+
 msgid "This template can’t be read. Open it to fix it."
 msgstr "无法读取此模板。请打开它进行修复。"
 
@@ -3351,6 +3495,9 @@ msgstr "今天的日期"
 msgid "Toggle keep Panel open"
 msgstr "切换保持面板打开"
 
+msgid "Too many wrong passwords. Wait a few seconds and try again."
+msgstr "错误密码次数过多。请稍等几秒后重试。"
+
 msgid "Tools"
 msgstr "工具"
 
@@ -3393,6 +3540,12 @@ msgstr "试试其他词，或换一种类型。"
 msgid "Try it"
 msgstr "试一试"
 
+msgid "Turn off and delete"
+msgstr "关闭并删除"
+
+msgid "Turn off, keep them"
+msgstr "关闭并保留"
+
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "在设置中开启剪贴板历史，以收集你复制的内容。"
 
@@ -3423,8 +3576,8 @@ msgstr "输入"
 msgid "Typing triggers work on Windows only."
 msgstr "键入触发词仅适用于 Windows。"
 
-msgid "UI"
-msgstr "UI"
+msgid "UI 3"
+msgstr "UI 3"
 
 msgid "UPPERCASE"
 msgstr "大写"
@@ -3510,6 +3663,9 @@ msgstr "上或下"
 msgid "Use"
 msgstr "使用"
 
+msgid "Use as other colour"
+msgstr "用作另一种颜色"
+
 msgid "Use at least {} characters."
 msgstr "至少使用 {} 个字符。"
 
@@ -3534,8 +3690,14 @@ msgstr "使用面部、指纹或 PIN 代替输入主密码。重启后以及每�
 msgid "Use {}"
 msgstr "使用 {}"
 
+msgid "Use {} ({})"
+msgstr "使用 {}（{}）"
+
 msgid "Use {} for {}"
 msgstr "将 {} 用于 {}"
+
+msgid "Use {} to pass AA"
+msgstr "使用 {} 以达到 AA"
 
 msgid "User guide"
 msgstr "用户指南"
@@ -3572,6 +3734,9 @@ msgstr "Snipdeck 的功能介绍，每条都有图片和试用按钮。你可以
 
 msgid "What a click on the Snipdeck icon in the tray opens. The tray menu still has both."
 msgstr "点击托盘中的 Snipdeck 图标时打开的内容。托盘菜单中仍有这两项。"
+
+msgid "What a translucent colour is judged over"
+msgstr "半透明颜色的判断底色"
 
 msgid "What is on the clipboard"
 msgstr "剪贴板中的内容"
@@ -3660,6 +3825,9 @@ msgstr "Windows 跟随你的 Windows 文字大小（设置 > 辅助功能 > 文�
 msgid "Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there."
 msgstr "Windows 已在“设置”>“应用”>“启动”中关闭了 Snipdeck。请在那里重新打开。"
 
+msgid "Windows won't let Snipdeck read this screen."
+msgstr "Windows 不允许 Snipdeck 读取此屏幕。"
+
 msgid "With clipboard history on, Recent keeps what you copy in other programs."
 msgstr "开启剪贴板历史后，“最近”会保存你在其他程序中复制的内容。"
 
@@ -3689,6 +3857,9 @@ msgstr "你的库在一段时间后已锁定。你正在填写的敏感模板表
 
 msgid "Your library locked after a while. The sensitive item you were editing was closed without saving."
 msgstr "资料库在一段时间后自动锁定。你正在编辑的敏感片段已关闭，未保存。"
+
+msgid "Your library locked. What you were typing in the sensitive item is kept, and comes back when you unlock."
+msgstr "你的资料库已锁定。你在敏感片段中输入的内容已保留，解锁后会恢复。"
 
 msgid "Your library was erased."
 msgstr "资料库已删除。"
@@ -3814,6 +3985,9 @@ msgstr "创建“{}”"
 msgid "creates “{}” in {}"
 msgstr "创建“{}”(在 {})"
 
+msgid "days"
+msgstr "天"
+
 msgid "default"
 msgstr "默认"
 
@@ -3905,6 +4079,9 @@ msgstr "小写"
 msgid "make new folder together section collect"
 msgstr "创建 新建 文件夹 一起 区段 收集"
 
+msgid "min"
+msgstr "分钟"
+
 msgid "move"
 msgstr "移动"
 
@@ -3940,6 +4117,12 @@ msgstr "可选区段不能嵌套"
 
 msgid "or"
 msgstr "或"
+
+msgid "over black"
+msgstr "在黑色上"
+
+msgid "over white"
+msgstr "在白色上"
 
 msgid "pass"
 msgstr "通过"
@@ -4281,3 +4464,6 @@ msgstr "{}：{} 未保留为触发词，因为一个片段只有一个触发词�
 
 msgid "{}: {} was not kept as a trigger, because it fires after a separator and a Snipdeck trigger does not wait for one."
 msgstr "{}：{} 未保留为触发词，因为它在分隔符之后触发，而 Snipdeck 的触发词不会等待分隔符。"
+
+msgid "≈ {}, not an exact colour name. Nothing copied. Click the Name row to switch to {}."
+msgstr "≈ {}，不是精确的颜色名称。未复制任何内容。点击“名称”行可切换为 {}。"

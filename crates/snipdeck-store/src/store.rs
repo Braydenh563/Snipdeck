@@ -43,8 +43,18 @@ pub struct Store {
     /// Rows changed by "quiet" writes (a use counted, the Recent inbox), which are not part
     /// of [`ItemRepo::change_counter`](crate::ItemRepo::change_counter).
     pub(crate) quiet: Quiet,
+    /// While held, blob files an edit orphans are not deleted but queued here (with whether to
+    /// scrub them), so a reader's snapshot taken before the edit can still open them.
+    pub(crate) hold: BlobHold,
     // Last, so the database is closed before the lock is released.
     lock: Option<FolderLock>,
+}
+
+/// Blob releases deferred while a worker reads a snapshot ([`Store::hold_blob_release`]).
+#[derive(Debug, Default)]
+pub(crate) struct BlobHold {
+    on: bool,
+    queued: Vec<(BlobRef, bool)>,
 }
 
 /// The held single-writer lock of a data folder (`snipdeck.lock`).
@@ -244,8 +254,44 @@ impl Store {
             blobs: Blobs::on_disk(folder.join(BLOB_DIR)),
             key: None,
             quiet: Quiet::default(),
+            hold: BlobHold::default(),
             lock: None,
         })
+    }
+
+    /// A second, read-only view of the open database in `folder`, for work that must not hold
+    /// the UI thread (an export, a backup): its own connection, no folder lock, no migration and
+    /// no write of any kind. `key` is a copy of the unlocked data key
+    /// ([`Store::duplicate_data_key`]), so encrypted items read as they do from the main store.
+    ///
+    /// The database must already be open and migrated by a [`Store`] (WAL mode lets this reader
+    /// run beside its writer); a write through the result fails. A caller that needs one
+    /// consistent picture reads inside [`Store::begin_snapshot`].
+    pub fn open_reader(folder: impl AsRef<Path>, key: Option<DataKey>) -> Result<Self> {
+        let folder = folder.as_ref();
+        let conn = Connection::open_with_flags(
+            folder.join(DB_FILE),
+            rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
+        )?;
+        conn.busy_timeout(Duration::from_secs(5))?;
+        conn.pragma_update(None, "foreign_keys", true)?;
+        Ok(Self {
+            conn,
+            blobs: Blobs::on_disk(folder.join(BLOB_DIR)),
+            key,
+            quiet: Quiet::default(),
+            hold: BlobHold::default(),
+            lock: None,
+        })
+    }
+
+    /// Starts a read transaction on a reader, so every read after the first sees the same
+    /// moment of the database. Ends when the reader is dropped. Does nothing useful on the main
+    /// store (which writes).
+    pub fn begin_snapshot(&self) -> Result<()> {
+        self.conn
+            .execute_batch("BEGIN; SELECT 1 FROM sqlite_master LIMIT 1;")?;
+        Ok(())
     }
 
     /// Closes the store: folds the write-ahead log into the database
@@ -287,6 +333,7 @@ impl Store {
             blobs: Blobs::in_memory(),
             key: None,
             quiet: Quiet::default(),
+            hold: BlobHold::default(),
             lock: None,
         })
     }
@@ -306,6 +353,11 @@ impl Store {
     /// blob that [`BlobStore::put`](crate::BlobStore::put) has written but the caller has not
     /// yet attached to an item (`put` refreshes the age of a blob it finds already stored).
     pub fn gc_blobs(&mut self, grace: Duration) -> Result<GcReport> {
+        if self.hold.on {
+            // A worker's snapshot may still name files the sweep would remove: the next sweep
+            // (or the end of the hold) collects them.
+            return Ok(GcReport::default());
+        }
         let referenced: HashSet<BlobRef> = blob_refs(
             &self.conn,
             "SELECT blob_hash FROM item_formats WHERE blob_hash IS NOT NULL
@@ -350,6 +402,22 @@ impl Store {
         Ok(report)
     }
 
+    /// Starts or ends a hold on deleting blob files. While held, files that edits orphan stay on
+    /// disk, so an archive worker reading a snapshot taken earlier never meets a missing file;
+    /// ending the hold releases what was queued. Returns how many files could not be deleted
+    /// then (left for [`Store::gc_blobs`]).
+    pub fn hold_blob_release(&mut self, hold: bool) -> usize {
+        self.hold.on = hold;
+        if hold {
+            return 0;
+        }
+        let queued = std::mem::take(&mut self.hold.queued);
+        let (scrubbed, plain): (Vec<_>, Vec<_>) = queued.into_iter().partition(|(_, s)| *s);
+        let scrubbed: Vec<BlobRef> = scrubbed.into_iter().map(|(b, _)| b).collect();
+        let plain: Vec<BlobRef> = plain.into_iter().map(|(b, _)| b).collect();
+        self.release_blobs(&scrubbed, true) + self.release_blobs(&plain, false)
+    }
+
     /// After a commit: deletes the blob files in `candidates` that no row references and that
     /// no `put` is still waiting to attach (review M3). With `scrub` (the blobs held plaintext
     /// of an item that is now sensitive) files are zeroed before they are deleted.
@@ -357,6 +425,12 @@ impl Store {
     /// Best effort (review M4): the change is committed, so a blob that cannot be checked or
     /// deleted now is left to [`Store::gc_blobs`], and the number left is returned for tests.
     pub(crate) fn release_blobs(&mut self, candidates: &[BlobRef], scrub: bool) -> usize {
+        if self.hold.on {
+            self.hold
+                .queued
+                .extend(candidates.iter().map(|b| (*b, scrub)));
+            return 0;
+        }
         let mut left = 0;
         for blob in candidates {
             if self.blobs.is_pending(blob) {
@@ -614,6 +688,9 @@ pub(crate) fn begin(conn: &mut Connection) -> Result<Transaction<'_>> {
 /// writes when rows are deleted or shrink, which for a clipboard library is small.
 fn secure_delete(conn: &Connection) -> Result<()> {
     conn.pragma_update(None, "secure_delete", "ON")?;
+    // SQLite's own temporary files (sorting, indexes, big statements, VACUUM) can hold row
+    // content outside the database file and its log: keep them in memory (2 = MEMORY).
+    conn.pragma_update(None, "temp_store", 2)?;
     Ok(())
 }
 
@@ -671,6 +748,46 @@ mod tests {
     use crate::BlobStore as _;
     use crate::blobs::FAIL_REMOVES;
 
+    /// Temporary files (sorts, indexes, large statements) hold row content: keep them in memory.
+    #[test]
+    fn temp_store_is_memory_on_every_open_path() {
+        let temp_store = |s: &Store| -> i64 {
+            s.conn
+                .pragma_query_value(None, "temp_store", |r| r.get(0))
+                .unwrap()
+        };
+        assert_eq!(temp_store(&Store::open_in_memory().unwrap()), 2);
+        let dir = tempfile::tempdir().unwrap();
+        assert_eq!(temp_store(&Store::open(dir.path()).unwrap()), 2);
+    }
+
+    #[test]
+    fn a_reader_sees_the_open_database_beside_its_writer_and_cannot_write() {
+        use crate::BoardRepo as _;
+        use snipdeck_core::{Board, Name, Placement, Timestamp};
+        let add = |store: &mut Store, name: &str| {
+            let board = Board::new(Name::new(name).unwrap(), Timestamp::from_second(0).unwrap());
+            store.insert_board(&board, Placement::Last).unwrap();
+        };
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = Store::open(dir.path()).unwrap();
+        let reader = Store::open_reader(dir.path(), None).unwrap();
+        let before = reader.boards().unwrap().len();
+        add(&mut store, "Later");
+        assert_eq!(
+            reader.boards().unwrap().len(),
+            before + 1,
+            "a commit shows without reopening"
+        );
+        reader.begin_snapshot().unwrap();
+        let held = reader.boards().unwrap().len();
+        add(&mut store, "After the snapshot");
+        assert_eq!(reader.boards().unwrap().len(), held, "one moment");
+        assert!(reader.conn.execute("DELETE FROM boards", []).is_err());
+        // The writer's lock is untouched: a reader takes none.
+        assert!(matches!(Store::open(dir.path()), Err(Error::Locked { .. })));
+    }
+
     #[test]
     fn the_integrity_check_reports_secure_delete_being_off() {
         let store = Store::open_in_memory().unwrap();
@@ -714,6 +831,22 @@ mod tests {
         FAIL_REMOVES.with(|f| f.set(false));
         assert_eq!(left, 1);
         assert_eq!(store.gc_blobs(Duration::ZERO).unwrap().blobs, 1);
+    }
+
+    #[test]
+    fn a_hold_keeps_orphaned_blobs_until_it_ends() {
+        let mut store = Store::open_in_memory().unwrap();
+        let content = store.put(vec![4; INLINE_LIMIT + 1]).unwrap();
+        let snipdeck_core::Content::Blob { blob, .. } = content else {
+            panic!()
+        };
+        store.blobs.attached([blob]);
+        store.hold_blob_release(true);
+        assert_eq!(store.release_blobs(&[blob], false), 0);
+        assert_eq!(store.gc_blobs(Duration::ZERO).unwrap().blobs, 0, "held");
+        assert!(store.blobs.list().unwrap().0.iter().any(|b| b.blob == blob));
+        assert_eq!(store.hold_blob_release(false), 0);
+        assert!(store.blobs.list().unwrap().0.is_empty(), "released");
     }
 
     #[test]

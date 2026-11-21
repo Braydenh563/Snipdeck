@@ -89,13 +89,15 @@ fn strict_literals() {
     assert_eq!(literal("rgba(255 204 0 / 50%)"), Some(hex("#ffcc0080")));
     assert_eq!(literal("hsl(48, 100%, 50%)"), Some(hex("#ffcc00")));
     assert!(literal("oklch(58.62% 0.1533 257.23)").is_some());
+    assert_eq!(literal("hsb(1, 2%, 3%)"), Some(hex("#080707")));
+    assert_eq!(literal("cmyk(0,0,0,0)"), Some(hex("#ffffff")));
     for no in [
         "red",
         "ffcc00",
         "0xffcc00",
         "58, 123, 213",
-        "hsb(1, 2%, 3%)",
-        "cmyk(0,0,0,0)",
+        "color(srgb 1 0 0)",
+        "0xff0000",
         "#ffcc0",
         "color: #fff",
         "",

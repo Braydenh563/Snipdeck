@@ -24,6 +24,10 @@ use snipdeck_platform::testing::{FakeClipboard, FakeKeyboard, FakeTiming};
 use snipdeck_portable::{ExportOptions, HistoryEntry, export_to_path};
 use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, Store};
 
+#[path = "support/mod.rs"]
+mod support;
+use support::ArchiveSteps as _;
+
 type Ctl = Controller<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
 
 fn now() -> Timestamp {

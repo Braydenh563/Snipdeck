@@ -104,6 +104,17 @@ impl HelloAuthenticator for WindowsHello {
         })
     }
 
+    /// UNVERIFIED on Windows: `KeyCredentialManager::DeleteAsync` on the "Snipdeck" credential.
+    fn delete_credential(&self) -> Result<(), HelloError> {
+        on_worker(|| {
+            let name = HSTRING::from(CREDENTIAL_NAME);
+            // A credential that does not exist is already what we want; any error is `Failed`.
+            KeyCredentialManager::DeleteAsync(&name)
+                .and_then(|op| op.join())
+                .map_err(|_| HelloError::Failed)
+        })
+    }
+
     fn sign_challenge(&self, challenge: &[u8]) -> Result<Zeroizing<Vec<u8>>, HelloError> {
         let challenge = challenge.to_vec();
         on_worker(move || {
