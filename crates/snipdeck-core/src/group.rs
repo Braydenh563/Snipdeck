@@ -194,22 +194,22 @@ mod tests {
 
     #[test]
     fn nesting_refuses_a_cycle_itself_and_a_tree_deeper_than_the_limit() {
-        let a = group(None);
-        let b = group(Some(&a));
-        let c = group(Some(&b));
-        let d = group(None);
-        let e = group(Some(&d));
-        let tree = GroupTree::new([&a, &b, &c, &d, &e]);
-        assert!(!tree.can_nest(a.id, Some(a.id)));
-        assert!(!tree.can_nest(a.id, Some(c.id)));
-        // d with e under it is two levels; under c (depth 2) it would be five.
-        assert!(!tree.can_nest(d.id, Some(c.id)));
-        assert!(tree.can_nest(d.id, Some(a.id)));
-        // A single group fits under b (depth 1 + 1 + height 1 = 3), a pair does not.
-        assert!(!tree.can_nest(d.id, Some(b.id)));
-        assert!(tree.can_nest(e.id, Some(b.id)));
-        assert!(tree.can_nest(c.id, None));
-        assert!(tree.can_nest(c.id, Some(b.id)));
+        let root = group(None);
+        let mid = group(Some(&root));
+        let leaf = group(Some(&mid));
+        let other = group(None);
+        let other_child = group(Some(&other));
+        let tree = GroupTree::new([&root, &mid, &leaf, &other, &other_child]);
+        assert!(!tree.can_nest(root.id, Some(root.id)));
+        assert!(!tree.can_nest(root.id, Some(leaf.id)));
+        // `other` with a child is two levels; under `leaf` (depth 2) it would be five.
+        assert!(!tree.can_nest(other.id, Some(leaf.id)));
+        assert!(tree.can_nest(other.id, Some(root.id)));
+        // A single group fits under `mid` (depth 1 + 1 + height 1 = 3), a pair does not.
+        assert!(!tree.can_nest(other.id, Some(mid.id)));
+        assert!(tree.can_nest(other_child.id, Some(mid.id)));
+        assert!(tree.can_nest(leaf.id, None));
+        assert!(tree.can_nest(leaf.id, Some(mid.id)));
     }
 
     #[test]

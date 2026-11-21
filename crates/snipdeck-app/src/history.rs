@@ -838,4 +838,42 @@ mod tests {
         };
         assert_eq!(change.inverse().inverse(), change);
     }
+
+    #[test]
+    fn a_nest_swaps_its_two_places_and_a_group_with_children_becomes_an_ungroup_with_them() {
+        let (group, parent, child) = (
+            GroupId::generate(),
+            GroupId::generate(),
+            GroupId::generate(),
+        );
+        let item = ItemId::generate();
+        let nest = Change::Reparent {
+            group,
+            from: (None, Placement::First),
+            to: (Some(parent), Placement::After(item)),
+        };
+        assert_eq!(
+            nest.inverse(),
+            Change::Reparent {
+                group,
+                from: (Some(parent), Placement::After(item)),
+                to: (None, Placement::First),
+            },
+            "undo takes it out to where it was"
+        );
+        assert_eq!(nest.inverse().inverse(), nest);
+        let made = Change::Group {
+            group: Group::new(ListId::generate(), snipdeck_core::Name::new("G").unwrap()),
+            members: vec![item],
+            children: vec![child],
+        };
+        let Change::Ungroup {
+            children, members, ..
+        } = made.inverse()
+        else {
+            panic!("the inverse of Group is Ungroup");
+        };
+        assert_eq!((children, members), (vec![child], vec![item]));
+        assert_eq!(made.inverse().inverse(), made);
+    }
 }

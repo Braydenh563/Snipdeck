@@ -82,8 +82,8 @@ fn panel(w: u32, dark: bool, scale: f32, title: &str, selected: bool) -> Harness
     let mut rows = fixture::sample_rows();
     rows.truncate(2);
     rows.insert(0, header(title, 2, false));
-    rows[1].depth = 1;
-    rows[2].depth = 1;
+    rows[1].grouped = true;
+    rows[2].grouped = true;
     rows[1].set_position = 1;
     rows[2].set_position = 2;
     rows[1].set_size = 2;

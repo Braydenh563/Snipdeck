@@ -1057,6 +1057,10 @@ fn nested_headers_and_items_step_in_by_one_level_and_keep_their_right_edge_at_ev
 }
 
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "one walk: open the menu, open the chooser, measure it, pick, check the report"
+)]
 fn the_nest_chooser_lists_the_places_inside_the_window_and_reports_the_pick() {
     use slint::platform::{PointerEventButton, WindowEvent};
     let mut problems: Vec<String> = Vec::new();
@@ -1175,6 +1179,10 @@ fn the_nest_chooser_lists_the_places_inside_the_window_and_reports_the_pick() {
 }
 
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "one walk: step the cursor and compare each frame with the last"
+)]
 fn arrow_keys_walk_the_nested_rows_in_reading_order_and_draw_the_focus_ring_on_each_in_turn() {
     use slint::platform::{Key, WindowEvent};
     let mut problems: Vec<String> = Vec::new();

@@ -53,6 +53,20 @@ pub(super) enum Surface {
     Main,
 }
 
+/// The group every one of `members` sits in directly, when there is one.
+fn common_group(runs: &[GroupRun], members: &[ItemId]) -> Option<GroupId> {
+    let own = |id: &ItemId| {
+        runs.iter()
+            .find(|r| r.items.contains(id))
+            .map(|r| r.group.id)
+    };
+    let first = members.first().and_then(own)?;
+    members
+        .iter()
+        .all(|id| own(id) == Some(first))
+        .then_some(first)
+}
+
 impl<S, C, K, T> Controller<S, C, K, T>
 where
     S: Library,
@@ -115,17 +129,7 @@ where
         };
         // Rows that all sit in one group make a group nested in it (a mixed selection makes one at
         // the top level, as it always did).
-        let parents: Vec<Option<GroupId>> = members
-            .iter()
-            .map(|id| {
-                runs.iter()
-                    .find(|r| r.items.contains(id))
-                    .map(|r| r.group.id)
-            })
-            .collect();
-        if let Some(Some(parent)) = parents.first().copied()
-            && parents.iter().all(|p| *p == Some(parent))
-        {
+        if let Some(parent) = common_group(&runs, &members) {
             let tree = GroupTree::new(runs.iter().map(|r| &r.group));
             if tree.depth(parent) + 2 > MAX_GROUP_DEPTH {
                 self.show_toast(neutral(ToastMessage::GroupTooDeep));
@@ -754,9 +758,9 @@ where
                 .first()
                 .and_then(|root| runs.iter().find(|r| r.group.id == *root)),
         };
-        let last = holder.and_then(|h| h.run.iter().rev().find(|i| !run.run.contains(i)));
-        let to = match (last, holder) {
-            (Some(last), _) => Placement::After(*last),
+        let tail = holder.and_then(|h| h.run.iter().rev().find(|i| !run.run.contains(i)));
+        let to = match (tail, holder) {
+            (Some(tail), _) => Placement::After(*tail),
             (None, Some(h)) if parent.is_none() => h
                 .run
                 .first()
@@ -932,7 +936,7 @@ where
                     path.pop();
                     path
                 };
-                let (first, last) = match (&target, target_id) {
+                let (head, end) = match (&target, target_id) {
                     (Some(t), _) => (t.run.first().copied(), t.run.last().copied()),
                     (None, Some(id)) => {
                         let path = Self::item_path(&runs, id);
@@ -950,7 +954,7 @@ where
                     }
                     (None, None) => (None, None),
                 };
-                let Some(anchor) = (if down { last } else { first }) else {
+                let Some(anchor) = (if down { end } else { head }) else {
                     return true;
                 };
                 let to = if down {
