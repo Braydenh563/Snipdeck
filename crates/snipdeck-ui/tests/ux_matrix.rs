@@ -4,9 +4,9 @@
 //! visible focus), for as long as it takes to come round to the first stop. Windows are opened at
 //! their own minimum size where they state one. The clock is frozen by the harness.
 //!
-//! Not covered: the screen reader's own announcements (Narrator is Windows-only, see
-//! `tools/windows-test/`), and the Panel, Main window and toast, which `audit_final1.rs` and
-//! `panel_logic.rs` walk with their own fixtures.
+//! Covers the editors, Help, Settings, the tour, the Main window and Panel (each with a toast on screen), the
+//! Picker and the unlock window. Not covered: the screen reader's own announcements (Narrator is Windows-only, see
+//! `tools/windows-test/`).
 
 #![allow(
     clippy::expect_used,
@@ -20,10 +20,17 @@
 use i_slint_backend_testing::{AccessibleRole, ElementQuery};
 use slint::{ComponentHandle, LogicalSize, platform::Key};
 use snipdeck_ui::{
-    BoardEditor, HelpWindow, ItemEditor, ListEditor, OnboardingWindow, SettingsPage, SystemLook,
-    TagManager,
+    BoardEditor, HelpWindow, ItemEditor, ListEditor, MainWindow, OnboardingWindow, PanelWindow,
+    PickerWindow, SettingsPage, SystemLook, TagManager, ToastKind, UnlockWindow,
     testing::{Frame, Harness},
 };
+
+#[path = "support/main_fixture.rs"]
+mod main_fix;
+#[path = "support/panel_fixture.rs"]
+mod panel_fix;
+#[path = "support/picker_fixture.rs"]
+mod picker_fix;
 
 #[path = "support/editor_fixture.rs"]
 mod editor;
@@ -109,10 +116,15 @@ fn snap<C: ComponentHandle>(h: &Harness<C>) -> Option<Frame> {
 }
 
 /// Presses Tab up to `limit` times; every press must change the picture. Returns problems.
-fn tab_walk<C: ComponentHandle>(h: &Harness<C>, scene: &str, limit: usize) -> Vec<String> {
+fn tab_walk<C: ComponentHandle>(
+    h: &Harness<C>,
+    scene: &str,
+    first: u64,
+    limit: usize,
+) -> Vec<String> {
     let w = h.component.window();
     let mut out = Vec::new();
-    let mut last = hash(&h.render_settled());
+    let mut last = first;
     let mut seen: Vec<u64> = Vec::new();
     for press in 1..=limit {
         support::press(w, &support::key(Key::Tab));
@@ -167,10 +179,12 @@ fn run<C: ComponentHandle>(
             let (w, hh) = (mw.max(320.0), mh.max(240.0));
             c.window().set_size(LogicalSize::new(w, hh.max(700.0)));
             let scene = format!("{name} at {scale}x, {look:?}");
+            // Width-driven state (the toolbar's compact modes) is set by `changed` handlers, which run on a frame.
+            let first = hash(&h.render_settled());
             let (n, found) = problems(&h, w, &scene);
             *checked += n;
             all.extend(found);
-            all.extend(tab_walk(&h, &scene, 200));
+            all.extend(tab_walk(&h, &scene, first, 200));
         }
     }
 }
@@ -254,6 +268,66 @@ fn every_window_is_named_sized_and_keyboard_visible_in_every_look() {
             c.set_dark(d);
         },
         |c| (c.get_min_window_width(), c.get_min_window_height()),
+        &mut all,
+        &mut checked,
+    );
+    // The surfaces with their own fixtures: the Main window (with a toast on screen, which is on top of the
+    // list), the Panel, the Picker and the unlock window. Their size is the one they open at.
+    run(
+        "main window",
+        MainWindow::new,
+        |c, d| {
+            let _ = main_fix::populate(c);
+            c.set_toast_text("Deleted 2 items".into());
+            c.set_toast_undo_label("Undo".into());
+            c.set_toast_kind(ToastKind::Neutral);
+            c.set_dark(d);
+        },
+        |_| (1040.0, 700.0),
+        &mut all,
+        &mut checked,
+    );
+    let mut panel_found = Vec::new();
+    run(
+        "panel",
+        PanelWindow::new,
+        |c, d| {
+            panel_fix::populate(c);
+            c.set_toast_text("Deleted 2 items".into());
+            c.set_toast_undo_label("Undo".into());
+            c.set_toast_kind(ToastKind::Neutral);
+            c.set_dark(d);
+        },
+        |_| (320.0, 700.0),
+        &mut panel_found,
+        &mut checked,
+    );
+    // The list tabs scroll sideways behind chevrons when they do not fit (panel tests cover the chevrons), so a tab
+    // that starts inside the strip and ends past the edge is the design; every other element must still fit.
+    all.extend(
+        panel_found
+            .into_iter()
+            .filter(|p| !p.contains(": Tab \"") || !p.contains(" ends at ")),
+    );
+    run(
+        "picker",
+        PickerWindow::new,
+        |c, d| {
+            picker_fix::populate(c);
+            c.set_dark(d);
+        },
+        |c| (c.get_min_window_width(), c.get_min_window_height()),
+        &mut all,
+        &mut checked,
+    );
+    run(
+        "unlock window",
+        UnlockWindow::new,
+        |c, d| {
+            c.set_hello_available(true);
+            c.set_dark(d);
+        },
+        |_| (380.0, 320.0),
         &mut all,
         &mut checked,
     );

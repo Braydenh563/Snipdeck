@@ -624,8 +624,10 @@ export component PanelWindow inherits Window {
     // The Menu switcher (spec 3) names the list in the header: "Board · List" (Recent while that view is open).
     // "New" is icon-only below 300px and with the Menu switcher, which needs the room for "Board · List" (6+ characters each).
     // How far the header's boxes and glyphs follow the Windows text size: the header is 40 at 100 % and grows with its text,
-    // but 32px boxes with the glyph at the full 2.25 would not fit it, so they stop at 1.25 (audit 5).
-    property <float> chrome-k: min(SystemLook.text-scale, 1.25);
+    // but 32px boxes with the glyph at the full 2.25 would not fit it, so they stop at 1.25 (audit 5), and at 1.0 from 2.0:
+    // the board name keeps six characters of that text size (155px at 2.25), and four 40px boxes beside it push the
+    // close button past the 320px edge (the keyboard sweep in ux_matrix measures it).
+    property <float> chrome-k: SystemLook.text-scale >= 2.0 ? 1.0 : min(SystemLook.text-scale, 1.25);
     // One glyph scale for the header's icons (the row actions and the eye use the same cap): the glyphs follow the text size
     // to 1.75 inside their boxes (audit 2, item 4).
     property <float> glyph-k: min(SystemLook.text-scale, 1.75);

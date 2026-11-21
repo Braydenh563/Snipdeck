@@ -1120,6 +1120,8 @@ export component MainWindow inherits Window {
     }
 
     root-scope := FocusScope {
+        // A key scope, not a control: Tab skips it (a stop here drew no ring).
+        focus-on-tab-navigation: false;
         capture-key-pressed(event) => {
             // An IME composition gets every key, Esc included (it cancels the composition).
             if (search.composing) {
