@@ -625,6 +625,9 @@ export component MainWindow inherits Window {
     property <bool> commands-compact: false;
     property <bool> view-compact: false;
     property <bool> toolbar-toggles: true;
+    // Undo and Redo leave the toolbar (Ctrl+Z, Ctrl+Y and the Commands palette stay) when the room is so small that the
+    // search field would be squeezed to nothing: a field narrower than its icon cannot take the keyboard.
+    property <bool> toolbar-history: true;
     // The heading row's Filter and Sort buttons drop their words (the tooltip keeps them) when the row is too narrow for both.
     property <bool> heading-compact: false;
     property <length> caption-inset: SystemLook.caption-inset;
@@ -718,6 +721,7 @@ export component MainWindow inherits Window {
         root.commands-compact = room < 658px;
         root.view-compact = room < 608px;
         root.toolbar-toggles = room >= 574px;
+        root.toolbar-history = room >= 340px;
         root.heading-compact = room < 380px;
     }
     // The Colour block needs room above the list. Set from `changed height` (not bound to `root.height`: the
@@ -1630,7 +1634,9 @@ export component MainWindow inherits Window {
                         spacing: Space.s2;
                         Rectangle {
                             horizontal-stretch: 1;
-                            min-width: 0px;
+                            // Room for the icon, the clear button and a few letters: below it the input has no width and
+                            // Tab skips the field and everything after it.
+                            min-width: 56px * SystemLook.text-scale;
                             // The same width whatever is typed: the field's own preferred width follows its text.
                             preferred-width: 360px * SystemLook.text-scale;
                             max-width: 360px * SystemLook.text-scale;
@@ -1679,36 +1685,39 @@ export component MainWindow inherits Window {
                                         background: Theme.border-subtle;
                                     }
                                 }
-                                HorizontalLayout {
-                                    spacing: Space.s1;
-                                    undo-button := IconButton {
-                                        scaled: true;
-                                        side-override: root.ctl-h;
-                                        icon: Icons.arrow-counter-clockwise;
-                                        tooltip: root.undo-tip;
-                                        own-tooltip: true;
-                                        enabled: root.can-undo;
-                                        clicked => { root.undo-requested(); }
+                                if root.toolbar-history: HorizontalLayout {
+                                    spacing: 0px;
+                                    HorizontalLayout {
+                                        spacing: Space.s1;
+                                        undo-button := IconButton {
+                                            scaled: true;
+                                            side-override: root.ctl-h;
+                                            icon: Icons.arrow-counter-clockwise;
+                                            tooltip: root.undo-tip;
+                                            own-tooltip: true;
+                                            enabled: root.can-undo;
+                                            clicked => { root.undo-requested(); }
+                                        }
+                                        redo-button := IconButton {
+                                            scaled: true;
+                                            side-override: root.ctl-h;
+                                            icon: Icons.arrow-clockwise;
+                                            tooltip: root.redo-tip;
+                                            own-tooltip: true;
+                                            enabled: root.can-redo;
+                                            clicked => { root.redo-requested(); }
+                                        }
                                     }
-                                    redo-button := IconButton {
-                                        scaled: true;
-                                        side-override: root.ctl-h;
-                                        icon: Icons.arrow-clockwise;
-                                        tooltip: root.redo-tip;
-                                        own-tooltip: true;
-                                        enabled: root.can-redo;
-                                        clicked => { root.redo-requested(); }
-                                    }
-                                }
-                                Rectangle {
-                                    width: Space.s3;
-                                    height: root.ctl-h;
                                     Rectangle {
-                                        width: 1px;
-                                        height: root.ctl-h * 0.6;
-                                        x: (parent.width - self.width) / 2;
-                                        y: (parent.height - self.height) / 2;
-                                        background: Theme.border-subtle;
+                                        width: Space.s3;
+                                        height: root.ctl-h;
+                                        Rectangle {
+                                            width: 1px;
+                                            height: root.ctl-h * 0.6;
+                                            x: (parent.width - self.width) / 2;
+                                            y: (parent.height - self.height) / 2;
+                                            background: Theme.border-subtle;
+                                        }
                                     }
                                 }
                                 commands-button := ToolbarButton {

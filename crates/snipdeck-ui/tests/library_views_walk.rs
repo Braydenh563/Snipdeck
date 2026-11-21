@@ -828,10 +828,16 @@ fn focused_stop(window: &slint::Window) -> Option<(String, f32, f32)> {
 #[test]
 fn tab_reaches_filter_sort_every_chip_and_clear_in_reading_order_and_scrolls_a_chip_into_view() {
     let mut problems: Vec<String> = Vec::new();
-    // At text scale 2.25 in a window under about 1600 px, Tab leaves the sidebar and never reaches the content area at
-    // all (Search, the toolbar, Filter, the rows): a defect of the top toolbar that predates the Filter and Sort buttons
-    // (measured: 800 and 1040 px; 1600 px is fine). It is reported in the handover, not covered here.
-    for (width, scale) in [(1040_u32, 1.0_f32), (640, 1.0), (640, 1.5), (1600, 2.25)] {
+    // At 2.25 the toolbar once squeezed the search field to nothing and Tab skipped everything after the sidebar.
+    for (width, scale) in [
+        (1040_u32, 1.0_f32),
+        (640, 1.0),
+        (640, 1.5),
+        (800, 2.25),
+        (1040, 2.25),
+        (1100, 2.25),
+        (1600, 2.25),
+    ] {
         let h = main_with_filter(width, scale, false, false);
         let _ = h.render_settled();
         let w = h.component.window();
