@@ -1858,6 +1858,12 @@ msgstr "Nichts zu speichern. Kopiere zuerst etwas Text."
 msgid "Nothing to undo"
 msgstr "Nichts zum Rückgängigmachen"
 
+msgid "Nothing used recently matches “{}”."
+msgstr "Unter den zuletzt verwendeten passt nichts zu “{}”."
+
+msgid "Nothing used yet"
+msgstr "Noch nichts verwendet"
+
 msgid "Nothing was added. Folders, and files or pictures that are empty, too large or unreadable, are skipped."
 msgstr "Nichts wurde hinzugefügt. Ordner sowie leere, zu große oder nicht lesbare Dateien und Bilder werden übersprungen."
 
@@ -2812,6 +2818,9 @@ msgstr "Snipdeck: Snippets suchen"
 
 msgid "Snippets"
 msgstr "Textbausteine"
+
+msgid "Snippets you paste show up here."
+msgstr "Eingefügte Snippets erscheinen hier."
 
 msgid "Some files were left out: together they are over 64 MB."
 msgstr "Einige Dateien wurden ausgelassen: Zusammen sind sie größer als 64 MB."

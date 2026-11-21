@@ -1852,6 +1852,12 @@ msgstr "没有可保存的内容。请先复制一些文本。"
 msgid "Nothing to undo"
 msgstr "没有可撤销的操作"
 
+msgid "Nothing used recently matches “{}”."
+msgstr "最近使用的内容中没有与“{}”匹配的项。"
+
+msgid "Nothing used yet"
+msgstr "尚未使用过任何片段"
+
 msgid "Nothing was added. Folders, and files or pictures that are empty, too large or unreadable, are skipped."
 msgstr "未添加任何内容。文件夹，以及为空、太大或无法读取的文件或图片会被跳过。"
 
@@ -2804,6 +2810,9 @@ msgstr "Snipdeck：搜索片段"
 
 msgid "Snippets"
 msgstr "片段"
+
+msgid "Snippets you paste show up here."
+msgstr "你粘贴过的片段会显示在这里。"
 
 msgid "Some files were left out: together they are over 64 MB."
 msgstr "部分文件被忽略：它们加起来超过 64 MB。"

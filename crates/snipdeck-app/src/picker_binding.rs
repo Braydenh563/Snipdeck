@@ -342,6 +342,7 @@ fn scope_of(scope: ui::PickerScope) -> Scope {
         ui::PickerScope::Board => Scope::Board,
         ui::PickerScope::List => Scope::List,
         ui::PickerScope::Pinned => Scope::Pinned,
+        ui::PickerScope::Recent => Scope::Recent,
     }
 }
 
@@ -351,6 +352,7 @@ const fn scope_in(scope: Scope) -> ui::PickerScope {
         Scope::Board => ui::PickerScope::Board,
         Scope::List => ui::PickerScope::List,
         Scope::Pinned => ui::PickerScope::Pinned,
+        Scope::Recent => ui::PickerScope::Recent,
     }
 }
 

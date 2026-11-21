@@ -1858,6 +1858,12 @@ msgstr "Nada a salvar. Copie algum texto primeiro."
 msgid "Nothing to undo"
 msgstr "Nada para desfazer"
 
+msgid "Nothing used recently matches “{}”."
+msgstr "Nada usado recentemente corresponde a “{}”."
+
+msgid "Nothing used yet"
+msgstr "Nada usado ainda"
+
 msgid "Nothing was added. Folders, and files or pictures that are empty, too large or unreadable, are skipped."
 msgstr "Nada foi adicionado. Pastas e arquivos ou imagens vazios, grandes demais ou ilegíveis são ignorados."
 
@@ -2812,6 +2818,9 @@ msgstr "Snipdeck: pesquisar trechos"
 
 msgid "Snippets"
 msgstr "Trechos"
+
+msgid "Snippets you paste show up here."
+msgstr "Os trechos que você colar aparecerão aqui."
 
 msgid "Some files were left out: together they are over 64 MB."
 msgstr "Alguns arquivos foram deixados de fora: juntos, passam de 64 MB."

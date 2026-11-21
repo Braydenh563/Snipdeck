@@ -29,6 +29,8 @@ pub enum Scope {
     List,
     /// Pinned items, on any board.
     Pinned,
+    /// Items that have been used at least once, most recent first when nothing is typed.
+    Recent,
 }
 
 /// One result row.
@@ -185,6 +187,7 @@ impl PickerModel {
             Scope::Board => Some(self.board_of(place).id) == self.board,
             Scope::List => Some(self.list_of(place).id) == self.list,
             Scope::Pinned => self.item(place).pinned,
+            Scope::Recent => self.item(place).last_used_at.is_some(),
         }
     }
 
@@ -455,6 +458,24 @@ mod tests {
         m.set_query("home");
         m.set_scope(Scope::Pinned);
         assert_eq!(titles(&m), ["Home address"]);
+    }
+
+    #[test]
+    fn the_recent_scope_holds_only_items_that_were_used_latest_first() {
+        let (_, mut m) = model();
+        m.set_scope(Scope::Recent);
+        let used = m.rows().len();
+        assert!(used > 0, "the demo library has used items");
+        assert!(used < 30, "not every item has been used");
+        let all = {
+            m.set_scope(Scope::All);
+            m.rows().len()
+        };
+        assert!(used < all);
+        // A query narrows inside the scope.
+        m.set_scope(Scope::Recent);
+        m.set_query("zzzz-nothing");
+        assert!(m.rows().is_empty(), "no match, no rows");
     }
 
     #[test]

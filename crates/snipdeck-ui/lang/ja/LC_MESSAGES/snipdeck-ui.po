@@ -1852,6 +1852,12 @@ msgstr "保存するものがありません。先にテキストをコピーし
 msgid "Nothing to undo"
 msgstr "元に戻す操作はありません"
 
+msgid "Nothing used recently matches “{}”."
+msgstr "最近使ったものに「{}」に一致するものはありません。"
+
+msgid "Nothing used yet"
+msgstr "まだ使ったスニペットはありません"
+
 msgid "Nothing was added. Folders, and files or pictures that are empty, too large or unreadable, are skipped."
 msgstr "何も追加されませんでした。フォルダー、および空・大きすぎる・読み取れないファイルや画像はスキップされます。"
 
@@ -2804,6 +2810,9 @@ msgstr "Snipdeck: スニペットを検索"
 
 msgid "Snippets"
 msgstr "スニペット"
+
+msgid "Snippets you paste show up here."
+msgstr "貼り付けたスニペットがここに表示されます。"
 
 msgid "Some files were left out: together they are over 64 MB."
 msgstr "一部のファイルを除外しました。合計が 64 MB を超えています。"

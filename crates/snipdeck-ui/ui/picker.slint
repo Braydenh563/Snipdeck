@@ -9,7 +9,7 @@
 //   type            filters; a printable key typed while another control has focus moves into the search
 //   Up / Down       move the selection (PageUp / PageDown a page); Enter uses it, Shift+Enter copies only
 //   Alt+1-9         use the Nth row, whatever the search holds (bare digits are always search text)
-//   Tab             next scope (All, This board, This list, Pinned), Shift+Tab previous
+//   Tab             next scope (All, This board, This list, Pinned, Recent), Shift+Tab previous
 //   Ctrl+E          asks the host to edit the selected snippet
 //   Menu, Shift+F10 on a colour row: "Paste as" (the colour in each format; Enter pastes, Shift+Enter copies, Esc back)
 //   Ctrl+O          on a colour row: open it in the Panel's Colours tab
@@ -57,7 +57,7 @@ export struct PickerRow {
 }
 
 // What the search covers. Tab cycles through these in order.
-export enum PickerScope { all, board, list, pinned }
+export enum PickerScope { all, board, list, pinned, recent }
 
 // One footer hint: the key caps and what they do. The caps speak their own name; the text is read as it is.
 component Hint inherits HorizontalLayout {
@@ -264,11 +264,11 @@ export component PickerWindow inherits Window {
     }
 
     pure function scope-index(s: PickerScope) -> int {
-        return s == PickerScope.all ? 0 : s == PickerScope.board ? 1 : s == PickerScope.list ? 2 : 3;
+        return s == PickerScope.all ? 0 : s == PickerScope.board ? 1 : s == PickerScope.list ? 2 : s == PickerScope.pinned ? 3 : 4;
     }
 
     pure function scope-at(i: int) -> PickerScope {
-        return i == 0 ? PickerScope.all : i == 1 ? PickerScope.board : i == 2 ? PickerScope.list : PickerScope.pinned;
+        return i == 0 ? PickerScope.all : i == 1 ? PickerScope.board : i == 2 ? PickerScope.list : i == 3 ? PickerScope.pinned : PickerScope.recent;
     }
 
     // Rows are all `row-h` tall, so the selected row's place is known without the row existing yet.
@@ -357,7 +357,7 @@ export component PickerWindow inherits Window {
     }
 
     function cycle-scope(dir: int) {
-        root.pick-scope(root.scope-at(mod(root.scope-index(root.scope) + dir + 4, 4)));
+        root.pick-scope(root.scope-at(mod(root.scope-index(root.scope) + dir + 5, 5)));
     }
 
     // Moves a typed character into the search field when another control has focus.
@@ -531,6 +531,11 @@ export component PickerWindow inherits Window {
                         selected: root.scope == PickerScope.pinned;
                         clicked => { root.pick-scope(PickerScope.pinned); }
                     }
+                    Tag {
+                        text: @tr("Recent");
+                        selected: root.scope == PickerScope.recent;
+                        clicked => { root.pick-scope(PickerScope.recent); }
+                    }
                     // The results were cut at the limit: say so instead of ending the list silently.
                     if root.result-limit > 0: Text {
                         horizontal-stretch: 1;
@@ -630,12 +635,15 @@ export component PickerWindow inherits Window {
                     height: parent.height;
                     kind: root.searching ? EmptyStateKind.search : root.scope == PickerScope.pinned ? EmptyStateKind.board : EmptyStateKind.list;
                     heading: root.searching ? @tr("No matches")
-                        : root.scope == PickerScope.pinned ? @tr("Nothing pinned yet") : @tr("No snippets yet");
+                        : root.scope == PickerScope.pinned ? @tr("Nothing pinned yet")
+                        : root.scope == PickerScope.recent ? @tr("Nothing used yet") : @tr("No snippets yet");
                     body: root.searching
                         ? (root.scope == PickerScope.all ? @tr("Nothing matches “{}”.", root.query)
                             : root.scope == PickerScope.board ? @tr("Nothing on this board matches “{}”.", root.query)
+                            : root.scope == PickerScope.recent ? @tr("Nothing used recently matches “{}”.", root.query)
                             : @tr("Nothing pinned matches “{}”.", root.query))
                         : root.scope == PickerScope.pinned ? @tr("Pin a snippet from the Panel to find it here.")
+                        : root.scope == PickerScope.recent ? @tr("Snippets you paste show up here.")
                         : @tr("Copy something, then save it from the Panel.");
                     // The one step that fixes the empty state: widen a search that found nothing in a narrow scope,
                     // or go where snippets are made.
