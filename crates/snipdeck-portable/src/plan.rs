@@ -156,8 +156,8 @@ pub(crate) struct PlanList {
     pub sort: Sort,
     pub created_at: Timestamp,
     pub updated_at: Timestamp,
-    /// Name and collapsed flag of each group; items point at them by index.
-    pub groups: Vec<(Name, bool)>,
+    /// Name, collapsed flag and colour of each group; items point at them by index.
+    pub groups: Vec<(Name, bool, Option<ListAccent>)>,
     pub items: Vec<PlanItem>,
 }
 
@@ -448,10 +448,11 @@ fn write(
                 report.items_added += 1;
             }
             // Items skipped as duplicates leave their group short; one left empty is not made.
-            for ((name, collapsed), ids) in plan_list.groups.iter().zip(&members) {
+            for ((name, collapsed, colour), ids) in plan_list.groups.iter().zip(&members) {
                 if !ids.is_empty() {
                     let mut group = Group::new(list.id, name.clone());
                     group.collapsed = *collapsed;
+                    group.colour = *colour;
                     lib.create_group(&group, ids)?;
                 }
             }

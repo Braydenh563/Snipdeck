@@ -12,7 +12,7 @@ use std::io::Cursor;
 
 use common::*;
 use serde_json::json;
-use snipdeck_core::Group;
+use snipdeck_core::{Group, ListAccent};
 use snipdeck_portable::{BoardLayout, ExportOptions, ImportOptions, import_archive};
 use snipdeck_store::{BoardRepo, GroupRepo, ItemRepo, ListRepo, Store, TrashRepo, Trashable};
 
@@ -100,6 +100,62 @@ fn groups_round_trip_through_export() {
     )
     .unwrap();
     assert_eq!(shape(&third), expected());
+}
+
+/// The colours of the first list's groups, top to bottom.
+fn colours(s: &Store) -> Vec<Option<ListAccent>> {
+    let board = &s.boards().unwrap()[0];
+    let list = &s.lists(board.id).unwrap()[0];
+    s.groups_of(list.id)
+        .unwrap()
+        .into_iter()
+        .map(|r| r.group.colour)
+        .collect()
+}
+
+#[test]
+fn a_groups_colour_round_trips_and_an_unknown_key_is_refused() {
+    let mut s = grouped();
+    let b = s.boards().unwrap()[0].id;
+    let l = s.lists(b).unwrap()[0].id;
+    let mut pair = s.groups_of(l).unwrap().remove(0).group;
+    pair.colour = Some(ListAccent::Rose);
+    s.update_group(&pair).unwrap();
+    let bytes = export_bytes(&s, &ExportOptions::default());
+    let mut fresh = store();
+    import_archive(
+        &mut fresh,
+        Cursor::new(&bytes),
+        "b",
+        at(200),
+        &keep_boards(),
+    )
+    .unwrap();
+    assert_eq!(colours(&fresh), [Some(ListAccent::Rose), None]);
+
+    // An archive without the key (1.2 and older) imports with no colour.
+    let plain = export_bytes(&grouped(), &ExportOptions::default());
+    let items = edit_json(&plain, "items.json", |doc| {
+        let first = &doc["boards"][0]["lists"][0]["groups"][0];
+        assert_eq!(first.get("colour"), None, "no colour is not written");
+    });
+    let mut other = store();
+    import_archive(
+        &mut other,
+        Cursor::new(&items),
+        "b",
+        at(200),
+        &keep_boards(),
+    )
+    .unwrap();
+    assert_eq!(colours(&other), [None, None]);
+
+    let bad = edit_json(&bytes, "items.json", |doc| {
+        doc["boards"][0]["lists"][0]["groups"][0]["colour"] = json!("pink");
+    });
+    let mut s2 = store();
+    assert!(import_archive(&mut s2, Cursor::new(&bad), "b", at(1), &keep_boards()).is_err());
+    assert_eq!(counts(&s2).2, 0, "nothing was written");
 }
 
 #[test]

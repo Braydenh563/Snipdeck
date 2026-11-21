@@ -602,8 +602,13 @@ impl<R: Read + Seek> Builder<'_, R> {
             let id: GroupId = parse_id(&group.id, "group")?;
             unique(&mut self.seen_groups, id, "group")?;
             self.group_index.insert(id, list.groups.len());
+            let colour = group
+                .colour
+                .as_deref()
+                .map(|c| parse_key::<ListAccent>(c, "group colour"))
+                .transpose()?;
             list.groups
-                .push((parse_name(&group.name, "group")?, group.collapsed));
+                .push((parse_name(&group.name, "group")?, group.collapsed, colour));
         }
         for item in &dto.items {
             let item_id: ItemId = parse_id(&item.id, "item")?;

@@ -119,6 +119,9 @@ pub(crate) struct GroupDto {
     pub name: String,
     #[serde(default)]
     pub collapsed: bool,
+    /// Added in 1.3: one of the nine list accent keys.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub colour: Option<String>,
 }
 
 thread_local! {

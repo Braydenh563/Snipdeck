@@ -426,6 +426,7 @@ fn group_dtos(
             id: run.group.id.to_string(),
             name: run.group.name.to_string(),
             collapsed: run.group.collapsed,
+            colour: run.group.colour.map(|c| c.key().to_owned()),
         })
         .collect()
 }
