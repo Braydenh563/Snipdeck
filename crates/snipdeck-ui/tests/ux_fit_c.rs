@@ -109,7 +109,14 @@ fn problems(root: &impl ElementRoot, w: f32, h: f32, footer: &[&str], scene: &st
             for o in els.iter().skip(i + 1).filter(|o| is_footer(o)) {
                 let dx = (e.x + e.w).min(o.x + o.w) - e.x.max(o.x);
                 let dy = (e.y + e.h).min(o.y + o.h) - e.y.max(o.y);
-                if dx > 1.0 && dy > 1.0 {
+                // A button and the label inside it share a name and nest: that is not an overlap.
+                let nested = |a: &El, b: &El| {
+                    b.x >= a.x - 0.5
+                        && b.y >= a.y - 0.5
+                        && b.x + b.w <= a.x + a.w + 0.5
+                        && b.y + b.h <= a.y + a.h + 0.5
+                };
+                if dx > 1.0 && dy > 1.0 && !nested(e, o) && !nested(o, e) {
                     out.push(format!(
                         "{scene}: footer {:?} overlaps {:?} by {dx:.0}x{dy:.0}",
                         e.name, o.name

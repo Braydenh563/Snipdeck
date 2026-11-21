@@ -3385,7 +3385,7 @@ msgstr "剪贴板历史记录"
 msgid "Windows clipboard history is turned off. Turn it on in Windows Settings > System > Clipboard, copy some text, then try again."
 msgstr "剪贴板历史记录已关闭。请在 Windows 设置 > 系统 > 剪贴板 中将其开启，复制一些文本，然后重试。"
 
-msgid "Windows did not let Snipdeck read the clipboard history on this PC."
+msgid "Windows did not let Snipdeck read Windows clipboard history on this PC."
 msgstr "Windows 不允许 Snipdeck 读取这台电脑上的剪贴板历史记录。"
 
 msgid "Windows doesn't allow {} as a shortcut."

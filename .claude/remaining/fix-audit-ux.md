@@ -1,6 +1,6 @@
 # fix-audit-ux remaining work
 Branch claude/fix-audit-ux. Decisions are in DESIGN.md (chords, names, confirm/undo, "Not done" list at the end).
-PAUSED by owner request (usage limit). Do not resume until told.
+RESUMED on coordinator request. Batch C gating in progress (see Gate status).
 
 ## Done and pushed (gate green through 9b7163c)
 - UX-1..4, 21 (tests/ux_keys.rs), 5, 19, 22, 25, 26, 27, 6 (batch B), 7..13, 23, 24, 28, 30, 31, 32, 33, 36, 39
@@ -15,3 +15,9 @@ PAUSED by owner request (usage limit). Do not resume until told.
 4. Final report to session_01NKjURuyvhApCqnss7v9Php: head SHA, gate lines, per-finding status
 ## Blocked / not done
 - UX-40 (no inert modal in Slint 1.18); Windows-only items (high contrast, Narrator) unverified
+
+## Gate status (batch C, head after this commit)
+- pass: hc_contrast, wording_lint (reworded 'read Windows clipboard history' in 6 .po + settings_window test), ux_fit_c tag-manager footer
+- FAIL ux_fit_c: list/board editor and tour step 3 'across the footer' (a11y bounds ignore scroll clipping; both screens scroll above the footer, so likely test artifact; I did not drop the check because that weakens it - needs owner call: add a scrolls flag, or measure the viewport)
+- FAIL ux_matrix: tag manager and settings Tab 1 and onboarding Tab 7..80 'changed nothing on screen' (focus not moving or focus ring invisible; not yet diagnosed); list editor 'no name' fixed in the test by setting icon-names (unrun)
+- NOT RUN: primitives_logic tag test, toast punctuation, editors_logic, main_window_logic, app tests (toast_texts, settings_window, tour, onboarding, doctor), clippy, codemap, gate

@@ -193,6 +193,8 @@ fn every_window_is_named_sized_and_keyboard_visible_in_every_look() {
         ListEditor::new,
         |c, d| {
             editor::list_editor_existing(c);
+            // The app supplies the icon names; without them every icon cell is unnamed.
+            c.set_icon_names(editor::strings(&["Briefcase"; 24]));
             c.set_dark(d);
         },
         |c| (c.get_min_window_width(), c.get_min_window_height()),

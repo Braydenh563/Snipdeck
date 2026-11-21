@@ -3391,7 +3391,7 @@ msgstr "Historique du Presse-papiers"
 msgid "Windows clipboard history is turned off. Turn it on in Windows Settings > System > Clipboard, copy some text, then try again."
 msgstr "L'Historique du Presse-papiers est désactivé. Activez-le dans Paramètres Windows > Système > Presse-papiers, copiez du texte, puis réessayez."
 
-msgid "Windows did not let Snipdeck read the clipboard history on this PC."
+msgid "Windows did not let Snipdeck read Windows clipboard history on this PC."
 msgstr "Windows n'a pas permis à Snipdeck de lire l'Historique du Presse-papiers sur ce PC."
 
 msgid "Windows doesn't allow {} as a shortcut."

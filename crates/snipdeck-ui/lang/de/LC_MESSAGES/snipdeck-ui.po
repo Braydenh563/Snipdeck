@@ -3391,7 +3391,7 @@ msgstr "Zwischenablageverlauf"
 msgid "Windows clipboard history is turned off. Turn it on in Windows Settings > System > Clipboard, copy some text, then try again."
 msgstr "Der Zwischenablageverlauf ist ausgeschaltet. Schalte ihn unter Windows-Einstellungen > System > Zwischenablage ein, kopiere etwas Text und versuche es dann erneut."
 
-msgid "Windows did not let Snipdeck read the clipboard history on this PC."
+msgid "Windows did not let Snipdeck read Windows clipboard history on this PC."
 msgstr "Windows hat Snipdeck nicht erlaubt, den Zwischenablageverlauf auf diesem PC zu lesen."
 
 msgid "Windows doesn't allow {} as a shortcut."

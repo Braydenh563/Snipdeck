@@ -3385,7 +3385,7 @@ msgstr "クリップボードの履歴"
 msgid "Windows clipboard history is turned off. Turn it on in Windows Settings > System > Clipboard, copy some text, then try again."
 msgstr "クリップボードの履歴はオフになっています。Windows の設定 > システム > クリップボード でオンにして、テキストをコピーしてから、もう一度お試しください。"
 
-msgid "Windows did not let Snipdeck read the clipboard history on this PC."
+msgid "Windows did not let Snipdeck read Windows clipboard history on this PC."
 msgstr "Windows により、この PC で Snipdeck がクリップボードの履歴を読み取ることが許可されていません。"
 
 msgid "Windows doesn't allow {} as a shortcut."

@@ -4515,7 +4515,7 @@ msgid "Windows clipboard history is turned off. Turn it on in Windows Settings >
 msgstr ""
 
 #: ui/import_texts.slint:149
-msgid "Windows did not let Snipdeck read the clipboard history on this PC."
+msgid "Windows did not let Snipdeck read Windows clipboard history on this PC."
 msgstr ""
 
 #: ui/form_texts.slint:169

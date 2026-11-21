@@ -2608,11 +2608,11 @@ fn a_history_that_is_off_empty_or_refused_says_so_without_an_error_toast() {
             ),
             (
                 Some(HistoryRead::AccessDenied),
-                "Windows did not let Snipdeck read the clipboard history on this PC.",
+                "Windows did not let Snipdeck read Windows clipboard history on this PC.",
             ),
             (
                 Some(HistoryRead::Unsupported),
-                "Windows did not let Snipdeck read the clipboard history on this PC.",
+                "Windows did not let Snipdeck read Windows clipboard history on this PC.",
             ),
         ];
         for (read, sentence) in cases {

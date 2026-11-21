@@ -3391,7 +3391,7 @@ msgstr "Historial del Portapapeles"
 msgid "Windows clipboard history is turned off. Turn it on in Windows Settings > System > Clipboard, copy some text, then try again."
 msgstr "El Historial del Portapapeles está desactivado. Actívalo en Configuración de Windows > Sistema > Portapapeles, copia algo de texto y vuelve a intentarlo."
 
-msgid "Windows did not let Snipdeck read the clipboard history on this PC."
+msgid "Windows did not let Snipdeck read Windows clipboard history on this PC."
 msgstr "Windows no permitió que Snipdeck leyera el Historial del Portapapeles en este PC."
 
 msgid "Windows doesn't allow {} as a shortcut."

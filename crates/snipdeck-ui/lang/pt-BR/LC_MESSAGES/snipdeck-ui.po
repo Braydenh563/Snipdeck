@@ -3391,7 +3391,7 @@ msgstr "Histórico da Área de Transferência"
 msgid "Windows clipboard history is turned off. Turn it on in Windows Settings > System > Clipboard, copy some text, then try again."
 msgstr "O Histórico da Área de Transferência está desativado. Ative-o em Configurações do Windows > Sistema > Área de Transferência, copie algum texto e tente novamente."
 
-msgid "Windows did not let Snipdeck read the clipboard history on this PC."
+msgid "Windows did not let Snipdeck read Windows clipboard history on this PC."
 msgstr "O Windows não permitiu que o Snipdeck lesse o Histórico da Área de Transferência neste PC."
 
 msgid "Windows doesn't allow {} as a shortcut."
