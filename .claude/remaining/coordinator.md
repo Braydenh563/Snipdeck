@@ -24,3 +24,9 @@ Told to push WIP, update remaining file, and wait: main pt4 session_01NKjURuzGHc
 Done, awaiting review+merge: data 7d3c212 (claude/fix-audit-data), perf 923f2ba (claude/fix-audit-perf).
 CodeQL alert 98: keyring.rs:500 hard-coded password in the NFC test.
 Pause confirmed: platform 1a037fa (WIP, merged rounds not gated together; disk tight); panel ac77643 (WIP after gated d58fff5). Panel still lists 21, 27, 43 and the Import/Export/Back up/Empty Trash palette commands as post-1.0 in SPEC: on resume, tell it again to un-defer them.
+
+## Resumed 2026-11-21 07:30 UTC
+All six resumed. CodeQL 98 fix 027abc90 (random stem, code points); gate33 running, pushes if green (log in scratchpad gate33.log).
+extras fa4963d: 15/15 done except owner CI edits EXTRAS-2/13; auditing main.rs 260-870 + strings.
+library 4b0dcca WIP: LIBRARY-1..56 code in; told to do 43/48 (not post-1.0); 29/30 accepted post-1.0.
+Next: review+merge data 7d3c212 then perf 923f2ba into PR #5.
