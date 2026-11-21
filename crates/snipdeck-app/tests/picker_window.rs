@@ -518,6 +518,8 @@ fn tab_cycles_the_scope() {
             snipdeck_app::picker::Scope::Board
         );
         press(w.window(), &key(Key::Tab));
+        assert_eq!(w.get_scope(), snipdeck_ui::PickerScope::List);
+        press(w.window(), &key(Key::Tab));
         assert_eq!(w.get_scope(), snipdeck_ui::PickerScope::Pinned);
     });
 }
