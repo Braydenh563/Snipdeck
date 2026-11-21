@@ -99,6 +99,7 @@ duplicates; **an importer assigns new ids** to everything it creates.
 |---|---|---|---|
 | tag | `name` | string | 1 to 100 characters after trimming, no control characters. Tags whose names are equal ignoring case are the same tag. |
 | tag | `colour` | string or absent | Added in 1.3. One of the eight item colour keys (`blue teal green amber orange red violet slate`). An unknown key is malformed. |
+| tag | `parent` | string or absent | Added in 1.3. The `id` of the tag this one is nested under; it must be a tag in the same file and the chain must not loop (either is malformed). The export writes every ancestor of a tag in use, so a chain is whole. On import a tag that already exists keeps its place; only a tag the import creates takes the parent. A reader of 1.2 or older ignores the field and sees a flat tag. |
 | board | `accent`, `icon` | string or absent | Added in 1.3. The same keys as a list's `accent` and `icon`. |
 | board, list | `name` | string | Same rule. |
 | board, list, item | `created_at`, `updated_at` | RFC 3339 string | Between the years 1677 and 2262 (storage limit). Fractional seconds allowed, offsets other than `Z` allowed. |

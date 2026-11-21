@@ -75,6 +75,9 @@ pub(crate) struct TagDto {
     /// Added in 1.3: one of the eight item colour keys.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub colour: Option<String>,
+    /// Added in 1.3: the id (in this file) of the tag this one is nested under.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

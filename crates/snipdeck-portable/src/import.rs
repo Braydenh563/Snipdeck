@@ -415,10 +415,11 @@ fn build_plan<R: Read + Seek>(
         seen_items: HashSet::new(),
         truncated: 0,
     };
-    let (tags, tag_colours) = builder.read_tags(&doc.tags)?;
+    let (tags, tag_colours, tag_parents) = builder.read_tags(&doc.tags)?;
     let mut plan = Plan {
         tags,
         tag_colours,
+        tag_parents,
         boards: Vec::new(),
     };
 
@@ -539,11 +540,19 @@ struct Builder<'a, R: Read + Seek> {
 
 impl<R: Read + Seek> Builder<'_, R> {
     /// Tags: ids unique, names valid. Tags whose names are equal ignoring case merge into one.
-    fn read_tags(&mut self, tags: &[TagDto]) -> Result<(Vec<Name>, Vec<Option<ItemLabel>>)> {
+    #[expect(
+        clippy::type_complexity,
+        reason = "the three parallel columns of the plan's tags"
+    )]
+    fn read_tags(
+        &mut self,
+        tags: &[TagDto],
+    ) -> Result<(Vec<Name>, Vec<Option<ItemLabel>>, Vec<Option<usize>>)> {
         let mut seen = HashSet::new();
         let mut names: Vec<Name> = Vec::new();
         let mut colours: Vec<Option<ItemLabel>> = Vec::new();
         let mut by_key: HashMap<String, usize> = HashMap::new();
+        let mut wanted_parents: Vec<(usize, TagId)> = Vec::new();
         for tag in tags {
             let id: TagId = parse_id(&tag.id, "tag")?;
             unique(&mut seen, id, "tag")?;
@@ -562,9 +571,41 @@ impl<R: Read + Seek> Builder<'_, R> {
             if colours[index].is_none() {
                 colours[index] = colour;
             }
+            if let Some(parent) = &tag.parent {
+                wanted_parents.push((index, parse_id(parent, "tag parent")?));
+            }
             self.tag_index.insert(id, index);
         }
-        Ok((names, colours))
+        // Parents by the index of the tag they became (two tags that merged keep the first
+        // parent either names). A parent the file does not hold, or a loop, is refused.
+        let mut parents: Vec<Option<usize>> = vec![None; names.len()];
+        for (index, parent) in wanted_parents {
+            let Some(&parent_index) = self.tag_index.get(&parent) else {
+                return Err(Error::malformed(
+                    ITEMS,
+                    "a tag is nested under a tag the file does not hold".to_owned(),
+                ));
+            };
+            if parents[index].is_none() && parent_index != index {
+                parents[index] = Some(parent_index);
+            }
+        }
+        for start in 0..names.len() {
+            let mut at = parents[start];
+            for _ in 0..=names.len() {
+                match at {
+                    Some(i) if i == start => {
+                        return Err(Error::malformed(
+                            ITEMS,
+                            "the tags are nested in a loop".to_owned(),
+                        ));
+                    }
+                    Some(i) => at = parents[i],
+                    None => break,
+                }
+            }
+        }
+        Ok((names, colours, parents))
     }
 
     /// One list. `prefix` is the archive board's name when boards are being merged into one.

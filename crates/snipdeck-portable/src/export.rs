@@ -163,18 +163,34 @@ fn name_the_item(error: Error, title: &str) -> Error {
     }
 }
 
-/// The tags some written item uses, in name order.
-fn tag_dtos(
-    used: &BTreeSet<TagId>,
-    names: &HashMap<TagId, (String, Option<String>)>,
-) -> Vec<TagDto> {
-    let mut tags: Vec<TagDto> = used
+/// What a tag is written with.
+struct TagFacts {
+    name: String,
+    colour: Option<String>,
+    parent: Option<TagId>,
+}
+
+/// The tags some written item uses, and the tags above them, in name order.
+fn tag_dtos(used: &BTreeSet<TagId>, names: &HashMap<TagId, TagFacts>) -> Vec<TagDto> {
+    // The tags above a used tag come too, so that the nesting survives.
+    let mut written: BTreeSet<TagId> = BTreeSet::new();
+    for id in used {
+        let mut at = Some(*id);
+        while let Some(current) = at {
+            if !names.contains_key(&current) || !written.insert(current) {
+                break;
+            }
+            at = names.get(&current).and_then(|t| t.parent);
+        }
+    }
+    let mut tags: Vec<TagDto> = written
         .iter()
         .filter_map(|id| {
-            names.get(id).map(|(name, colour)| TagDto {
+            names.get(id).map(|facts| TagDto {
                 id: id.to_string(),
-                name: name.clone(),
-                colour: colour.clone(),
+                name: facts.name.clone(),
+                colour: facts.colour.clone(),
+                parent: facts.parent.map(|p| p.to_string()),
             })
         })
         .collect();
@@ -184,14 +200,18 @@ fn tag_dtos(
 
 impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
     fn build_doc(&mut self) -> Result<ItemsDoc> {
-        let tag_names: HashMap<TagId, (String, Option<String>)> = self
+        let tag_names: HashMap<TagId, TagFacts> = self
             .lib
             .tags()?
             .into_iter()
             .map(|t| {
                 (
                     t.id,
-                    (t.name.to_string(), t.colour.map(|c| c.key().to_owned())),
+                    TagFacts {
+                        name: t.name.to_string(),
+                        colour: t.colour.map(|c| c.key().to_owned()),
+                        parent: t.parent,
+                    },
                 )
             })
             .collect();

@@ -192,6 +192,8 @@ pub(crate) struct Plan {
     pub tags: Vec<Name>,
     /// The colour of each tag, by the same index; a tag past the end has none.
     pub tag_colours: Vec<Option<ItemLabel>>,
+    /// The tag each tag is nested under, as an index into `tags`; a tag past the end is top-level.
+    pub tag_parents: Vec<Option<usize>>,
     pub boards: Vec<PlanBoard>,
 }
 
@@ -364,32 +366,55 @@ fn write(
     fetch: &mut dyn FnMut(&AssetRef) -> Result<Vec<u8>>,
     report: &mut ImportReport,
 ) -> Result<()> {
-    // Only tags that a kept item uses are created; existing tags are reused by name.
-    let used: HashSet<usize> = plan
+    // Only tags that a kept item uses, and the tags above them, are created; existing tags are
+    // reused by name and keep their place.
+    let mut used: HashSet<usize> = plan
         .boards
         .iter()
         .flat_map(|b| &b.lists)
         .flat_map(|l| &l.items)
         .flat_map(|i| i.tags.iter().copied())
         .collect();
+    let parent_of = |index: usize| plan.tag_parents.get(index).copied().flatten();
+    for start in used.clone() {
+        let mut at = parent_of(start);
+        while let Some(index) = at {
+            if !used.insert(index) {
+                break;
+            }
+            at = parent_of(index);
+        }
+    }
     let mut by_key: HashMap<String, TagId> = lib
         .tags()?
         .into_iter()
         .map(|t| (name_key(t.name.as_str()), t.id))
         .collect();
     let mut tag_ids: HashMap<usize, TagId> = HashMap::new();
-    for (index, name) in plan
-        .tags
-        .iter()
-        .enumerate()
-        .filter(|(i, _)| used.contains(i))
-    {
+    let mut order: Vec<usize> = used.iter().copied().collect();
+    // A parent is created before its children: fewer ancestors first.
+    let depth = |index: usize| {
+        let mut n = 0;
+        let mut at = parent_of(index);
+        while let Some(p) = at {
+            n += 1;
+            if n > 64 {
+                break;
+            }
+            at = parent_of(p);
+        }
+        n
+    };
+    order.sort_by_key(|i| (depth(*i), *i));
+    for index in order {
+        let name = &plan.tags[index];
         let key = name_key(name.as_str());
         let id = if let Some(id) = by_key.get(&key) {
             *id
         } else {
             let mut tag = Tag::new(name.clone());
             tag.colour = plan.tag_colours.get(index).copied().flatten();
+            tag.parent = parent_of(index).and_then(|p| tag_ids.get(&p).copied());
             lib.insert_tag(&tag)?;
             by_key.insert(key, tag.id);
             report.tags_added += 1;
@@ -595,6 +620,7 @@ mod tests {
         };
         Plan {
             tag_colours: Vec::new(),
+            tag_parents: Vec::new(),
             tags: vec![name("existing"), name("fresh")],
             boards: vec![board("First", vec![list_a]), board("Second", vec![list_b])],
         }
@@ -713,6 +739,7 @@ mod tests {
         list.items = vec![item("t", Source::Bytes(b"t".to_vec()), &[0, 1, 2])];
         let mut plan = Plan {
             tag_colours: Vec::new(),
+            tag_parents: Vec::new(),
             tags: vec![name("Straße"), name("STRASSE"), name("e\u{301}cole")],
             boards: vec![PlanBoard {
                 accent: None,
