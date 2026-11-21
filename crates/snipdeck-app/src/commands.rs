@@ -659,7 +659,7 @@ mod tests {
             matching_places(&labels, "").is_empty(),
             "nothing without a query"
         );
-        assert!(matching_places(&labels, "   ").is_empty());
+        assert_eq!(matching_places(&labels, "   "), Vec::<usize>::new());
         assert_eq!(matching_places(&labels, "tag urg"), [3]);
         assert_eq!(matching_places(&labels, "go work"), [0, 1, 2]);
         assert_eq!(matching_places(&labels, "wörk"), [0, 1, 2], "accents fold");
@@ -927,7 +927,7 @@ mod tests {
             ["Réglages"],
             "an accented name is found without the accent"
         );
-        assert!(entries(&texts(), &ctx(&hotkeys), "zzq").is_empty());
+        assert_eq!(entries(&texts(), &ctx(&hotkeys), "zzq").len(), 0);
     }
 
     #[test]
