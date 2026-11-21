@@ -127,7 +127,7 @@ pub enum CopyError {
 }
 
 /// The day and the (hour, minute) of a manual backup.
-type When = (Date, (i8, i8));
+type When = (Date, (i8, i8, i8));
 
 /// Copies the backup `file` (just written, so it exists) into `folder` under the same name, then
 /// keeps only the newest `keep` copies there (at least 1). `today` is the day the backup was made:
@@ -349,11 +349,11 @@ mod tests {
 
     #[test]
     fn a_manual_backup_is_copied_and_pruned_apart_from_the_daily_ones() {
-        let manual = "/data/backups/snipdeck-backup-20261116-0930.snipdeck";
+        let manual = "/data/backups/snipdeck-backup-20261116-093000.snipdeck";
         let mut names = vec!["snipdeck-backup-20261115.snipdeck".to_owned()];
         // Ten older manual copies: with the new one that is one over the newest ten.
         for day in 6..16 {
-            names.push(format!("snipdeck-backup-202611{day:02}-0800.snipdeck"));
+            names.push(format!("snipdeck-backup-202611{day:02}-080000.snipdeck"));
         }
         let refs: Vec<&str> = names.iter().map(String::as_str).collect();
         let fs = FakeFs::with(&refs);
@@ -364,8 +364,8 @@ mod tests {
         assert_eq!(report.pruned, 1, "only the oldest manual copy goes");
         let left = fs.names();
         assert!(left.contains(&"snipdeck-backup-20261115.snipdeck".to_owned()));
-        assert!(left.contains(&"snipdeck-backup-20261116-0930.snipdeck".to_owned()));
-        assert!(!left.contains(&"snipdeck-backup-20261106-0800.snipdeck".to_owned()));
+        assert!(left.contains(&"snipdeck-backup-20261116-093000.snipdeck".to_owned()));
+        assert!(!left.contains(&"snipdeck-backup-20261106-080000.snipdeck".to_owned()));
         assert_eq!(left.len(), 11);
     }
 

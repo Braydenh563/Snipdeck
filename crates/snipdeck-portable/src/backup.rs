@@ -6,7 +6,7 @@
 //! nothing else with the outside world, so tests need only a temporary directory.
 //!
 //! * **Names**: the daily file is `snipdeck-backup-YYYYMMDD.snipdeck`, the local date. A manual
-//!   backup is its own file, `snipdeck-backup-YYYYMMDD-HHMM.snipdeck`; it never replaces a
+//!   backup is its own file, `snipdeck-backup-YYYYMMDD-HHMMSS.snipdeck`; it never replaces a
 //!   daily one and does not count against the daily rotation.
 //! * **Atomic**: written as `<name>.part` and renamed when complete, so a crash never leaves a
 //!   half-written backup that looks real.
@@ -97,8 +97,8 @@ pub enum BackupOutcome {
 pub struct BackupFile {
     /// The local date in the file name.
     pub date: Date,
-    /// The local time (hour, minute) of a manual backup; `None` for a daily one.
-    pub time: Option<(i8, i8)>,
+    /// The local time (hour, minute, second) of a manual backup; `None` for a daily one.
+    pub time: Option<(i8, i8, i8)>,
     /// Whether it was made by "Back up now".
     pub manual: bool,
     /// The file.
@@ -131,15 +131,16 @@ pub fn file_name(date: Date) -> String {
     )
 }
 
-/// The file name of a manual backup, `snipdeck-backup-YYYYMMDD-HHMM.snipdeck`.
+/// The file name of a manual backup, `snipdeck-backup-YYYYMMDD-HHMMSS.snipdeck`.
 pub fn manual_file_name(now: &Zoned) -> String {
     format!(
-        "{PREFIX}{:04}{:02}{:02}-{:02}{:02}{EXTENSION}",
+        "{PREFIX}{:04}{:02}{:02}-{:02}{:02}{:02}{EXTENSION}",
         now.year(),
         now.month(),
         now.day(),
         now.hour(),
-        now.minute()
+        now.minute(),
+        now.second()
     )
 }
 
@@ -151,14 +152,14 @@ pub fn parse_file_name(name: &str) -> Option<Date> {
     }
 }
 
-/// The date, and for a manual backup its time (hour, minute), in a backup file name: `None` if
+/// The date, and for a manual backup its time (hour, minute, second), in a backup file name: `None` if
 /// `name` is neither a daily nor a manual backup's name.
-pub fn parse_backup_name(name: &str) -> Option<(Date, Option<(i8, i8)>)> {
+pub fn parse_backup_name(name: &str) -> Option<(Date, Option<(i8, i8, i8)>)> {
     parse_any(name)
 }
 
 /// The date, and for a manual backup the time, in a backup file name.
-fn parse_any(name: &str) -> Option<(Date, Option<(i8, i8)>)> {
+fn parse_any(name: &str) -> Option<(Date, Option<(i8, i8, i8)>)> {
     let stem = name.strip_prefix(PREFIX)?.strip_suffix(EXTENSION)?;
     let (digits, time) = match stem.split_once('-') {
         Some((d, t)) => (d, Some(t)),
@@ -174,15 +175,16 @@ fn parse_any(name: &str) -> Option<(Date, Option<(i8, i8)>)> {
     let time = match time {
         None => None,
         Some(t) => {
-            if t.len() != 4 || !t.bytes().all(|b| b.is_ascii_digit()) {
+            if t.len() != 6 || !t.bytes().all(|b| b.is_ascii_digit()) {
                 return None;
             }
             let hour: i8 = t[..2].parse().ok()?;
-            let minute: i8 = t[2..].parse().ok()?;
-            if hour > 23 || minute > 59 {
+            let minute: i8 = t[2..4].parse().ok()?;
+            let second: i8 = t[4..].parse().ok()?;
+            if hour > 23 || minute > 59 || second > 59 {
                 return None;
             }
-            Some((hour, minute))
+            Some((hour, minute, second))
         }
     };
     Some((date, time))
@@ -232,7 +234,7 @@ pub fn run_if_due<L: Library>(
     })
 }
 
-/// Writes a manual backup, `snipdeck-backup-YYYYMMDD-HHMM.snipdeck`: a file of its own that
+/// Writes a manual backup, `snipdeck-backup-YYYYMMDD-HHMMSS.snipdeck`: a file of its own that
 /// never replaces a daily backup and does not count against the daily rotation. Only the
 /// newest [`MANUAL_KEPT`] manual backups are kept.
 ///

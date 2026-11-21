@@ -52,7 +52,7 @@ fn a_manual_backup_is_its_own_file_and_leaves_the_daily_one_alone() {
         panic!("a manual backup is made")
     };
     assert!(
-        path.ends_with("snipdeck-backup-20261116-1745.snipdeck"),
+        path.ends_with("snipdeck-backup-20261116-174500.snipdeck"),
         "{path:?}"
     );
     assert_eq!(
@@ -64,6 +64,52 @@ fn a_manual_backup_is_its_own_file_and_leaves_the_daily_one_alone() {
     assert_eq!(listed.len(), 2);
     assert_eq!(listed.iter().filter(|b| b.manual).count(), 1);
     assert!(listed[0].manual, "newest first");
+}
+
+#[test]
+fn two_manual_backups_in_the_same_minute_are_two_files() {
+    let s = sample_store();
+    let dir = tempfile::tempdir().unwrap();
+    let at = |sec: i8| {
+        date(2026, 11, 16)
+            .at(17, 45, sec, 0)
+            .to_zoned(TimeZone::fixed(Offset::from_hours(2).unwrap()))
+            .unwrap()
+    };
+    let BackupOutcome::Created { path: first, .. } =
+        run_manual(&s, dir.path(), &at(5), None).unwrap()
+    else {
+        panic!("a manual backup is made")
+    };
+    let kept = fs::read(&first).unwrap();
+    let BackupOutcome::Created { path: second, .. } =
+        run_manual(&s, dir.path(), &at(40), None).unwrap()
+    else {
+        panic!("a second manual backup is made")
+    };
+    assert_ne!(
+        first, second,
+        "the second press does not reuse the first file"
+    );
+    assert_eq!(
+        fs::read(&first).unwrap(),
+        kept,
+        "the first copy is untouched"
+    );
+    assert_eq!(
+        names(dir.path()),
+        [
+            "snipdeck-backup-20261116-174505.snipdeck",
+            "snipdeck-backup-20261116-174540.snipdeck"
+        ]
+    );
+    let listed = list_backups(dir.path()).unwrap();
+    assert!(
+        listed[0]
+            .path
+            .ends_with("snipdeck-backup-20261116-174540.snipdeck"),
+        "newest first"
+    );
 }
 
 #[test]
