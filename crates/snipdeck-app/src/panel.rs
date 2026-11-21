@@ -1046,6 +1046,7 @@ mod tests {
             app: app.into(),
             title: "New message".into(),
             elevated: false,
+            window: 0,
             focus,
         }
     }

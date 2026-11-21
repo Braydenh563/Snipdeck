@@ -138,6 +138,8 @@ pub struct FakeKeyboard {
     pub sent: Vec<Vec<KeyEvent>>,
     /// Make `send` fail.
     pub fail: bool,
+    /// Make `send` take only this many events, then fail like Windows does with a part.
+    pub accept_only: Option<usize>,
 }
 
 impl Keyboard for FakeKeyboard {
@@ -147,6 +149,12 @@ impl Keyboard for FakeKeyboard {
     fn send(&mut self, events: &[KeyEvent]) -> Result<(), Error> {
         if self.fail {
             return Err(Error::Input("blocked".into()));
+        }
+        if let Some(sent) = self.accept_only {
+            return Err(Error::PartialInput {
+                sent,
+                of: events.len(),
+            });
         }
         self.sent.push(events.to_vec());
         Ok(())

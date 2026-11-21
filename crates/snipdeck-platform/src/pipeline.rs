@@ -125,6 +125,14 @@ pub enum Error {
     /// Windows refused the injected input.
     #[error("key injection failed: {0}")]
     Input(String),
+    /// Windows accepted only part of the key events: the first `sent` of `of` went out.
+    #[error("Windows accepted {sent} of {of} key events")]
+    PartialInput {
+        /// How many events reached the window.
+        sent: usize,
+        /// How many were sent.
+        of: usize,
+    },
     /// The use was called off before any key went out (the user typed on or switched window).
     #[error("the use was called off")]
     Superseded,
@@ -338,12 +346,15 @@ fn paste_begin<C: Clipboard, K: Keyboard, T: Timing>(
     }
     let mut events = crate::keys::backspaces(erase);
     events.extend(paste_sequence(env.keyboard.held_modifiers(), key));
-    if env.keyboard.send(&events).is_err() {
+    if let Err(error) = env.keyboard.send(&events) {
         // The item is still on the clipboard from the transient write. Writing it again would
         // overwrite anything the user copied meanwhile and drop the privacy markers.
-        return Ok(Began::Done(UseOutcome::CopiedInstead(
-            PasteFailure::TargetUnavailable,
-        )));
+        // Part of the keys with Backspaces among them: say so, the code may be half erased.
+        let failure = match error {
+            Error::PartialInput { sent, .. } if erase > 0 && sent > 0 => PasteFailure::PartlySent,
+            _ => PasteFailure::TargetUnavailable,
+        };
+        return Ok(Began::Done(UseOutcome::CopiedInstead(failure)));
     }
     Ok(Began::Waiting(Waiting {
         written: Some(written),
@@ -691,6 +702,21 @@ mod tests {
             Ok(UseOutcome::CopiedInstead(PasteFailure::TargetUnavailable))
         );
         assert_eq!(w.clipboard.log, ["snapshot", "transient:2"]);
+    }
+
+    #[test]
+    fn part_of_an_erase_reaching_the_target_is_reported_as_partly_sent() {
+        let mut w = World::new();
+        w.keyboard.accept_only = Some(2);
+        assert_eq!(
+            w.run_erasing(UseMode::Paste, &PASTE, 3),
+            Ok(UseOutcome::CopiedInstead(PasteFailure::PartlySent))
+        );
+        // No erase asked: nothing of the user's text can be gone.
+        assert_eq!(
+            w.run(UseMode::Paste, &PASTE),
+            Ok(UseOutcome::CopiedInstead(PasteFailure::TargetUnavailable))
+        );
     }
 
     #[test]

@@ -566,6 +566,9 @@ msgstr "コピーしました"
 msgid "Copied. Nothing in {} can take text right now."
 msgstr "コピーしました。{}は今テキストを受け付けられません。"
 
+msgid "Copied. Only part of the keys went out, so some typed text may be gone."
+msgstr "コピーしました。キー入力の一部しか送られなかったため、入力したテキストの一部が消えている可能性があります。"
+
 msgid "Copied. Pasting into {} is turned off."
 msgstr "コピーしました。{}への貼り付けはオフになっています。"
 

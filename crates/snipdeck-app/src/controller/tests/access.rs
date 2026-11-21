@@ -367,6 +367,7 @@ mod after_the_eyedropper {
             app: "notepad.exe".into(),
             title: "Untitled".into(),
             elevated: false,
+            window: 0,
             focus: Focus::Caret,
         }
     }

@@ -29,6 +29,9 @@ export global ToastTexts {
     pure public function copied-target-gone() -> string {
         return @tr("Copied. The window you were using went away.");
     }
+    pure public function copied-partly-sent() -> string {
+        return @tr("Copied. Only part of the keys went out, so some typed text may be gone.");
+    }
     pure public function clipboard-busy() -> string {
         return @tr("Couldn't reach the clipboard. Another app may be using it.");
     }

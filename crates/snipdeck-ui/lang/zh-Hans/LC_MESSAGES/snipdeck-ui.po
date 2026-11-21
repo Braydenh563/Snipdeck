@@ -566,6 +566,9 @@ msgstr "已复制"
 msgid "Copied. Nothing in {} can take text right now."
 msgstr "已复制。{} 当前无法接收文本。"
 
+msgid "Copied. Only part of the keys went out, so some typed text may be gone."
+msgstr "已复制。只发送了部分按键，所以已输入的部分文字可能被删除。"
+
 msgid "Copied. Pasting into {} is turned off."
 msgstr "已复制。已关闭粘贴到 {} 的功能。"
 

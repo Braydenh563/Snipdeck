@@ -34,4 +34,7 @@ pub enum PasteFailure {
     TargetElevated,
     /// The target went away or did not accept the paste.
     TargetUnavailable,
+    /// Windows took only part of the keys: some of a typed trigger's Backspaces may have reached
+    /// the target, and nothing was pasted.
+    PartlySent,
 }

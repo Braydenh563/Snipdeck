@@ -174,6 +174,7 @@ pub struct FillSubmission {
 pub(crate) struct FillErase {
     pub(super) chars: usize,
     pub(super) app: Option<String>,
+    pub(super) window: usize,
 }
 
 /// How a use ended.

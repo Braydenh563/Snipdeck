@@ -428,6 +428,7 @@ impl TargetTracker {
             title: window_title(hwnd),
             elevated,
             focus,
+            window: hwnd.0 as usize,
         })
     }
 

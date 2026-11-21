@@ -567,6 +567,9 @@ msgstr "Copiado"
 msgid "Copied. Nothing in {} can take text right now."
 msgstr "Copiado. Nada em {} pode receber texto agora."
 
+msgid "Copied. Only part of the keys went out, so some typed text may be gone."
+msgstr "Copiado. Só parte das teclas foi enviada, então parte do texto digitado pode ter sumido."
+
 msgid "Copied. Pasting into {} is turned off."
 msgstr "Copiado. Colar em {} está desativado."
 

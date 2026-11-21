@@ -621,6 +621,7 @@ fn a_program_rule_in_settings_decides_the_paste_key() {
         app: "wt.exe".into(),
         title: "PowerShell".into(),
         elevated: false,
+        window: 0,
         focus: Focus::Caret,
     };
     let rule = || ProgramRule {
@@ -1116,6 +1117,23 @@ fn a_fill_form_confirmed_in_another_app_erases_nothing() {
 }
 
 #[test]
+fn a_fill_form_confirmed_in_another_window_of_the_same_app_erases_nothing() {
+    let mut w = typing_world(3, ";hi");
+    let mut here = outlook();
+    here.window = 0x10;
+    w.targets.set(Some(here.clone()));
+    let fired = typed(&w, ";hi");
+    w.ctl.expand_typed(&Typed::new(fired, false, || true));
+    // The same program, another document: the typed code is not there to erase.
+    here.window = 0x20;
+    w.targets.set(Some(here));
+    w.ctl.submit_fill(&["Sam".to_owned()]);
+    for batch in backspaces_sent(&mut w) {
+        assert!(!batch.starts_with(&snipdeck_platform::keys::backspaces(1)));
+    }
+}
+
+#[test]
 fn a_key_after_the_fire_erases_nothing() {
     let mut w = typing_world(1, ";two");
     let fired = typed(&w, ";two");
@@ -1540,6 +1558,7 @@ fn a_called_off_sensitive_files_paste_still_deletes_its_temp_files_on_the_timer(
         Some(Erasing {
             chars: 2,
             app: None,
+            window: 0,
             fresh: Some(&stale),
         }),
     );

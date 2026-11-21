@@ -31,6 +31,8 @@ pub(super) struct Erasing<'a> {
     pub(super) chars: usize,
     /// The app the trigger was typed into: the paste only goes while it is still in front.
     pub(super) app: Option<String>,
+    /// The window of that app (`0` when unknown): another document of the same app gets nothing.
+    pub(super) window: usize,
     /// `false` once a key was typed after the trigger (none for a confirmed fill form, whose own
     /// keystrokes the hook also sees).
     pub(super) fresh: Option<&'a dyn Fn() -> bool>,
@@ -272,6 +274,7 @@ where
         let erase = submission.erase.map(|e| Erasing {
             chars: e.chars,
             app: e.app,
+            window: e.window,
             fresh: None,
         });
         self.run_use_erasing(
@@ -670,7 +673,10 @@ where
         let target = &self.target;
         let proceed = || {
             erase.as_ref().is_none_or(|e| {
-                e.fresh.is_none_or(|fresh| fresh()) && target.current().map(|t| t.app) == e.app
+                e.fresh.is_none_or(|fresh| fresh())
+                    && target
+                        .current()
+                        .is_some_and(|t| Some(t.app) == e.app && t.window == e.window)
             })
         };
         // Where the clipboard stood before the use: a paste puts the user's earlier clipboard
@@ -714,6 +720,7 @@ where
                         self.fill_erase = erase.filter(|e| e.chars > 0).map(|e| FillErase {
                             chars: e.chars,
                             app: e.app,
+                            window: e.window,
                         });
                         UseResult::NeedsAnswers
                     }

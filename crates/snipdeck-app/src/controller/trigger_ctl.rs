@@ -234,6 +234,7 @@ where
         let erase = Erasing {
             chars: fired.chars,
             app: self.model.target().map(|t| t.app.clone()),
+            window: self.model.target().map_or(0, |t| t.window),
             fresh: Some(&fresh),
         };
         match self.run_use_erasing(

@@ -75,10 +75,14 @@ impl Keyboard for WinKeyboard {
             .collect();
         // Best effort: the sequence already failed, so a failure here changes nothing.
         let _ = inject(&stuck);
-        Err(Error::Input(format!(
-            "Windows accepted {accepted} of {} key events",
-            sequence.len()
-        )))
+        Err(if accepted == 0 {
+            Error::Input("Windows accepted no key events".into())
+        } else {
+            Error::PartialInput {
+                sent: accepted,
+                of: sequence.len(),
+            }
+        })
     }
 }
 

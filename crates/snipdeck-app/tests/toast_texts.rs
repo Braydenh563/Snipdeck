@@ -34,6 +34,7 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::CopiedNothingFocused { .. } => 3,
         ToastMessage::CopiedExcluded { .. } => 4,
         ToastMessage::CopiedTargetGone => 5,
+        ToastMessage::CopiedPartlySent => 114,
         ToastMessage::ClipboardBusy => 6,
         ToastMessage::TemplateBroken => 7,
         ToastMessage::Locked => 8,
@@ -144,7 +145,7 @@ const fn position(message: &ToastMessage) -> usize {
     }
 }
 
-const VARIANTS: usize = 114;
+const VARIANTS: usize = 115;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -163,6 +164,7 @@ fn samples() -> Vec<ToastMessage> {
         M::CopiedNothingFocused { app: s("Outlook") },
         M::CopiedExcluded { app: s("Outlook") },
         M::CopiedTargetGone,
+        M::CopiedPartlySent,
         M::ClipboardBusy,
         M::TemplateBroken,
         M::Locked,

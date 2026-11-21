@@ -69,6 +69,8 @@ pub struct Target {
     pub elevated: bool,
     /// What focus was found inside the Target.
     pub focus: Focus,
+    /// The window's handle (`0` when unknown): two windows of one program differ here.
+    pub window: usize,
 }
 
 // The title may be private (a document name, a page title): never print it.
@@ -79,6 +81,7 @@ impl std::fmt::Debug for Target {
             .field("title_len", &self.title.len())
             .field("elevated", &self.elevated)
             .field("focus", &self.focus)
+            .field("window", &self.window)
             .finish()
     }
 }
@@ -179,6 +182,7 @@ mod tests {
             title: "Untitled".into(),
             elevated,
             focus,
+            window: 0,
         }
     }
 

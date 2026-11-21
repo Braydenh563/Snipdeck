@@ -235,6 +235,7 @@ where
         ToastMessage::CopiedNothingFocused { app } => t.invoke_copied_nothing_focused(app.into()),
         ToastMessage::CopiedExcluded { app } => t.invoke_copied_excluded(app.into()),
         ToastMessage::CopiedTargetGone => t.invoke_copied_target_gone(),
+        ToastMessage::CopiedPartlySent => t.invoke_copied_partly_sent(),
         ToastMessage::ClipboardBusy => t.invoke_clipboard_busy(),
         ToastMessage::TemplateBroken => t.invoke_template_broken(),
         ToastMessage::Locked => t.invoke_locked(),
