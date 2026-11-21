@@ -297,6 +297,9 @@ where
                 .iter()
                 .map(|t| crate::binding::label_index(t.colour)),
         ));
+        window.set_depths(model(screen.tags.iter().map(|t| to_i32(t.depth))));
+        window.set_paths(model(screen.tags.iter().map(|t| t.path.as_str().into())));
+        window.set_own_counts(model(screen.tags.iter().map(|t| to_i32(t.own_count))));
         window.set_dark(screen.dark);
         apply_look(&window, screen);
     }
@@ -347,6 +350,22 @@ where
                     w.set_merge_into(SharedString::new());
                 }
             }
+        });
+        let (core, weak) = (Rc::clone(self), w.as_weak());
+        w.on_nest_requested(move |i| {
+            crate::trace!("callback tags nest_requested ({i})");
+            let screen = core.controller.borrow_mut().main_screen();
+            let places = nest_places(&screen.tags, index(i));
+            if let Some(w) = weak.upgrade() {
+                w.set_nest_labels(model(places.iter().map(|p| p.0.as_str().into())));
+                w.set_nest_targets(model(places.iter().map(|p| p.1)));
+                w.set_nest_index(i);
+            }
+        });
+        let core = Rc::clone(self);
+        w.on_nest_chosen(move |i, under| {
+            crate::trace!("callback tags nest_chosen ({i}, {under})");
+            core.act(|ctl| ctl.main_nest_tag(index(i), usize::try_from(under).ok()));
         });
         let core = Rc::clone(self);
         w.on_delete_confirmed(move |i| {
@@ -1360,6 +1379,7 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
             icon: slint::Image::default(),
             checked: false,
         })));
+        window.set_tag_depths(model(screen.tags.iter().map(|t| to_i32(t.depth))));
     }
     if differs(&|p| p.tag_choices == screen.tag_choices) {
         window.set_tag_choices(model(screen.tag_choices.iter().map(|t| ui::ChoiceEntry {
@@ -1897,6 +1917,41 @@ mod tests {
     use super::*;
 
     #[test]
+    fn a_tag_is_offered_every_place_but_itself_its_own_tags_and_where_it_already_is() {
+        let tag = |path: &str, depth: usize| crate::main_window::SideTag {
+            id: snipdeck_core::TagId::generate(),
+            name: path.rsplit('/').next().unwrap_or(path).to_owned(),
+            count: 0,
+            colour: None,
+            own_count: 0,
+            depth,
+            path: path.to_owned(),
+        };
+        // a, a/b, a/b/c, a/d, e
+        let tags = [
+            tag("a", 0),
+            tag("a/b", 1),
+            tag("a/b/c", 2),
+            tag("a/d", 1),
+            tag("e", 0),
+        ];
+        let labels = |at: usize| -> Vec<(String, i32)> { nest_places(&tags, at) };
+        let owned = |v: &[(&str, i32)]| -> Vec<(String, i32)> {
+            v.iter().map(|(l, i)| ((*l).to_owned(), *i)).collect()
+        };
+        // a: not itself or its three nested tags; it is at the top already.
+        assert_eq!(labels(0), owned(&[("e", 4)]));
+        // a/b: top level, not a (its parent), not itself or a/b/c.
+        assert_eq!(labels(1), owned(&[("", -1), ("a/d", 3), ("e", 4)]));
+        // e: not itself.
+        assert_eq!(
+            labels(4),
+            owned(&[("a", 0), ("a/b", 1), ("a/b/c", 2), ("a/d", 3)])
+        );
+        assert_eq!(labels(9), owned(&[]));
+    }
+
+    #[test]
     fn accent_and_sort_indexes_round_trip_in_the_editors_order() {
         assert_eq!(accent_index(None), -1);
         assert_eq!(accent_of(-1), None);
@@ -2042,4 +2097,30 @@ mod tests {
             crate::binding::MASKED_PREVIEW
         );
     }
+}
+
+/// Where tag `at` of `tags` (in sidebar order) can go, as `(label, row)`: the top level (row -1)
+/// when it is nested now, then every tag it is not already under, other than itself and the tags
+/// nested under it (which follow it in the order, deeper than it).
+#[must_use]
+pub(crate) fn nest_places(tags: &[crate::main_window::SideTag], at: usize) -> Vec<(String, i32)> {
+    let Some(own) = tags.get(at) else {
+        return Vec::new();
+    };
+    let mut places = Vec::new();
+    if own.depth > 0 {
+        places.push((String::new(), -1));
+    }
+    let mut below_end = at + 1;
+    while tags.get(below_end).is_some_and(|t| t.depth > own.depth) {
+        below_end += 1;
+    }
+    let parent = tags[..at].iter().rposition(|t| t.depth + 1 == own.depth);
+    for (i, t) in tags.iter().enumerate() {
+        if i == at || (at < i && i < below_end) || Some(i) == parent {
+            continue;
+        }
+        places.push((t.path.clone(), to_i32(i)));
+    }
+    places
 }

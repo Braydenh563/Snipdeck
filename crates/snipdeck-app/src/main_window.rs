@@ -239,6 +239,8 @@ pub struct SideTag {
     pub count: usize,
     /// Its colour (one of the eight item colours), if it has one.
     pub colour: Option<ItemLabel>,
+    /// How many items carry it itself (`count` also counts the tags nested under it).
+    pub own_count: usize,
     /// How many tags it is nested under (0 at the top).
     pub depth: usize,
     /// Its path with the names above it (`work/invoices`).
@@ -343,6 +345,7 @@ pub struct MainModel {
     tags: Vec<Tag>,
     tree: TagTree,
     tag_counts: HashMap<TagId, usize>,
+    own_counts: HashMap<TagId, usize>,
     items: Vec<Item>,
     /// The groups of each list of the open board.
     groups: HashMap<ListId, Vec<GroupRun>>,
@@ -424,6 +427,7 @@ impl MainModel {
             tags: Vec::new(),
             tree: TagTree::default(),
             tag_counts: HashMap::new(),
+            own_counts: HashMap::new(),
             items: Vec::new(),
             groups: HashMap::new(),
             list_labels: HashMap::new(),
@@ -534,11 +538,13 @@ impl MainModel {
         };
         let mut list_counts: HashMap<ListId, usize> = HashMap::new();
         let mut tag_counts: HashMap<TagId, usize> = HashMap::new();
+        let mut own_counts: HashMap<TagId, usize> = HashMap::new();
         for item in &items {
             *list_counts.entry(item.list_id).or_default() += 1;
             // A tag counts the items under it too, each item once.
             let mut counted: HashSet<TagId> = HashSet::new();
             for tag in &item.tags {
+                *own_counts.entry(*tag).or_default() += 1;
                 counted.insert(*tag);
                 counted.extend(tree.ancestors(*tag));
             }
@@ -553,6 +559,7 @@ impl MainModel {
         self.tags = tags;
         self.tree = tree;
         self.tag_counts = tag_counts;
+        self.own_counts = own_counts;
         self.items = items;
         self.groups = groups;
         self.list_labels = list_labels;
@@ -659,6 +666,7 @@ impl MainModel {
                 name: t.name.as_str().to_owned(),
                 count: self.tag_counts.get(&t.id).copied().unwrap_or(0),
                 colour: t.colour,
+                own_count: self.own_counts.get(&t.id).copied().unwrap_or(0),
                 depth: self.tree.depth(t.id),
                 path: self.tree.path(t.id),
             })

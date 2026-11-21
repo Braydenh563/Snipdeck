@@ -302,6 +302,8 @@ export component MainWindow inherits Window {
     in property <int> board-delete-count;
     in property <[ChoiceEntry]> lists;
     in property <[ChoiceEntry]> tags;
+    // How many tags each of `tags` is nested under (the sidebar indents it by that many steps).
+    in property <[int]> tag-depths;
     // Tags with a tick for those on the selected items (the host refreshes it on `item-action(tag, ...)`).
     in property <[ChoiceEntry]> tag-choices;
     in property <int> count-all: -1;
@@ -1540,6 +1542,7 @@ export component MainWindow inherits Window {
                                         label: entry.label;
                                         count: entry.count;
                                         mark-color: entry.color;
+                                        indent: i < root.tag-depths.length ? min(root.tag-depths[i], 4) : 0;
                                         rail: root.narrow;
                                         selected: root.nav-selected == 4 + root.n-lists + i;
                                         keyboard-focusable: false;

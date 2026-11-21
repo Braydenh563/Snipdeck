@@ -321,6 +321,37 @@ fn a_rename_that_clashes_can_merge_the_tag_into_the_other_and_undo_splits_them()
 }
 
 #[test]
+fn a_tag_stands_for_the_tags_nested_under_it_in_its_view_its_count_the_filter_and_search() {
+    let mut ctl = tagged();
+    // a carries Thanks and Out of office; b carries Thanks and Home address.
+    assert_eq!(ctl.main_screen().tags[0].count, 2);
+    ctl.main_nest_tag(1, Some(0));
+    let screen = ctl.main_screen();
+    assert_eq!(
+        screen.tags[0].count, 3,
+        "a counts what is under it, each item once"
+    );
+    assert_eq!(screen.tags[1].count, 2);
+    ctl.main_open(Section::Tag(screen.tags[0].id));
+    assert_eq!(titles(&ctl.main_screen()).len(), 3);
+    ctl.main_open(Section::Tag(screen.tags[1].id));
+    assert_eq!(titles(&ctl.main_screen()).len(), 2);
+    ctl.main_open(Section::All);
+    ctl.main_toggle_filter_tag(0);
+    let filtered = titles(&ctl.main_screen());
+    assert_eq!(filtered.len(), 3, "{filtered:?}");
+    ctl.main_clear_filter();
+    ctl.main_set_query("tag:a");
+    assert_eq!(titles(&ctl.main_screen()).len(), 3);
+    ctl.main_set_query("tag:a/b");
+    let found = titles(&ctl.main_screen());
+    assert_eq!(found.len(), 2, "{found:?}");
+    assert!(found.contains(&"Home address".to_owned()), "{found:?}");
+    ctl.main_set_query("tag:b");
+    assert_eq!(titles(&ctl.main_screen()).len(), 2);
+}
+
+#[test]
 fn a_board_keeps_the_colour_and_icon_its_editor_gave_it() {
     let mut ctl = rig_on(demo::store(now()).unwrap());
     ctl.main_board_menu_open();

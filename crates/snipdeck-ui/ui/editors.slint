@@ -2228,6 +2228,16 @@ export component TagManager inherits Window {
     in property <bool> dark: false;
     // label = name, count = items with the tag.
     in property <[ChoiceEntry]> tags;
+    // Each row's nesting: how many tags it is under, its path (`work/invoices`) and how many items carry it itself
+    // (`count` also counts the tags nested under it).
+    in property <[int]> depths;
+    in property <[string]> paths;
+    in property <[int]> own-counts;
+    // The tag-nesting dialog: the row it is for (-1 closed), and the places it offers (the host fills them on
+    // `nest-requested`): a label each, and the row it stands for (-1 is the top level).
+    in-out property <int> nest-index: -1;
+    in property <[string]> nest-labels;
+    in property <[int]> nest-targets;
     // From the host after `rename-requested` ("A tag with that name exists").
     in property <string> rename-error;
     // Each row's colour: -1 none, else the index into the eight item colours (the order of `ItemLabel`).
@@ -2247,6 +2257,10 @@ export component TagManager inherits Window {
 
     callback rename-requested(index: int, name: string);
     callback delete-confirmed(index: int);
+    // The person asked to nest tag `index`: the host fills `nest-labels` and `nest-targets`, then sets `nest-index`.
+    callback nest-requested(index: int);
+    // Nest tag `index` under row `under` (-1: back to the top level).
+    callback nest-chosen(index: int, under: int);
     // Colour tag `index` (accent -1 takes the colour off).
     callback colour-chosen(index: int, accent: int);
     // Merge tag `index` into the tag called `into`.
@@ -2283,7 +2297,7 @@ export component TagManager inherits Window {
             return reject;
         }
         key-pressed(event) => {
-            if (event.text == Key.Escape && root.delete-index < 0 && root.colour-index < 0 && root.merge-into == "") {
+            if (event.text == Key.Escape && root.delete-index < 0 && root.colour-index < 0 && root.nest-index < 0 && root.merge-into == "") {
                 if (root.editing >= 0) {
                     root.editing = -1;
                     // The field is gone: keep the keys (a second Esc closes the page).
@@ -2301,7 +2315,7 @@ export component TagManager inherits Window {
             spacing: Space.s3;
 
             intro := Text {
-                text: @tr("Rename or delete tags. Deleting a tag removes it from its items; the items stay.");
+                text: @tr("Rename, nest or delete tags. Deleting a tag removes it from its items; the items stay, and the tags nested under it move up a level.");
                 color: Theme.text-secondary;
                 font-family: Fonts.sans;
                 font-size: Type.sm;
@@ -2337,7 +2351,7 @@ export component TagManager inherits Window {
                     for tag[i] in root.tags: Rectangle {
                         height: root.row-h;
                         accessible-role: list-item;
-                        accessible-label: tag.label;
+                        accessible-label: i < root.paths.length ? root.paths[i] : tag.label;
                         accessible-description: @tr("{n} item" | "{n} items" % tag.count);
 
                         Rectangle {
@@ -2346,7 +2360,7 @@ export component TagManager inherits Window {
                             background: Theme.border-subtle;
                         }
                         HorizontalLayout {
-                            padding-left: Space.s3;
+                            padding-left: Space.s3 + Space.s4 * (i < root.depths.length ? min(root.depths[i], 4) : 0);
                             padding-right: Space.s2;
                             spacing: Space.s2;
                             if root.editing != i && i < root.colours.length && root.colours[i] >= 0: Rectangle {
@@ -2401,6 +2415,15 @@ export component TagManager inherits Window {
                                             root.begin-rename(i);
                                         }
                                     }
+                                }
+                            }
+                            VerticalLayout {
+                                alignment: center;
+                                IconButton {
+                                    icon: Icons.arrow-elbow-down-right;
+                                    tooltip: @tr("Nest tag {} under another", tag.label);
+                                    own-tooltip: true;
+                                    clicked => { root.nest-requested(i); }
                                 }
                             }
                             VerticalLayout {
@@ -2468,6 +2491,34 @@ export component TagManager inherits Window {
         }
     }
 
+    // Where one tag goes: under another tag, or back to the top level. The tags nested under it go with it.
+    Dialog {
+        open: root.nest-index >= 0;
+        title: @tr("Nest tag {} under", root.nest-index >= 0 && root.nest-index < root.tags.length ? root.tags[root.nest-index].label : "");
+        body: @tr("Pick the tag it goes under. Its own nested tags go with it. Esc closes.");
+        fill: true;
+        dismissed => { root.nest-index = -1; }
+        closed => { scope.focus(); }
+        nest-list := ListView {
+            horizontal-stretch: 1;
+            height: min(root.nest-labels.length, 6) * root.row-h;
+            accessible-role: list;
+            accessible-label: @tr("Tags");
+            for label[k] in root.nest-labels: Rectangle {
+                height: root.row-h;
+                Button {
+                    width: parent.width;
+                    text: label == "" ? @tr("Top level (not nested)") : label;
+                    clicked => {
+                        let i = root.nest-index;
+                        root.nest-index = -1;
+                        root.nest-chosen(i, k < root.nest-targets.length ? root.nest-targets[k] : -1);
+                    }
+                }
+            }
+        }
+    }
+
     // A rename that met an existing name: merge instead.
     Dialog {
         open: root.merge-into != "" && root.editing >= 0;
@@ -2490,7 +2541,7 @@ export component TagManager inherits Window {
         open: root.delete-index >= 0;
         variant: DialogVariant.destructive;
         title: @tr("Delete this tag?");
-        body: @tr("It is removed from {n} item. The item stays." | "It is removed from {n} items. The items stay." % (root.delete-index >= 0 && root.delete-index < root.tags.length ? root.tags[root.delete-index].count : 0));
+        body: @tr("It is removed from {n} item. The item stays." | "It is removed from {n} items. The items stay." % (root.delete-index >= 0 && root.delete-index < root.own-counts.length ? root.own-counts[root.delete-index] : 0));
         dismissed => { root.delete-index = -1; }
         closed => { scope.focus(); }
         Button {
@@ -2509,5 +2560,5 @@ export component TagManager inherits Window {
     }
 
     // The window's tooltip layer: last, so no sibling paints over a tooltip and no container clips it.
-    TipLayer { suppressed: root.delete-index >= 0 || root.colour-index >= 0 || root.merge-into != ""; }
+    TipLayer { suppressed: root.delete-index >= 0 || root.colour-index >= 0 || root.nest-index >= 0 || root.merge-into != ""; }
 }

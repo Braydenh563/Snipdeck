@@ -176,13 +176,23 @@ impl TagTree {
         names.join("/")
     }
 
-    /// The paths a search matches an item carrying `id` by: its own and every ancestor's, so
-    /// `tag:work` finds an item tagged `work/invoices` and `tag:work/inv` finds it by the path.
+    /// The names a search matches an item carrying `id` by: its own path and name and those of
+    /// every tag above it, so `tag:work` finds an item tagged `work/invoices`, `tag:invoices`
+    /// finds it by its own name and `tag:work/inv` by the path.
     #[must_use]
     pub fn search_paths(&self, id: TagId) -> Vec<String> {
-        let mut paths = vec![self.path(id)];
-        paths.extend(self.ancestors(id).map(|a| self.path(a)));
-        paths
+        let mut out: Vec<String> = Vec::new();
+        for tag in std::iter::once(id).chain(self.ancestors(id)) {
+            let Some((name, _)) = self.tags.get(&tag) else {
+                continue;
+            };
+            for text in [self.path(tag), name.as_str().to_owned()] {
+                if !out.contains(&text) {
+                    out.push(text);
+                }
+            }
+        }
+        out
     }
 }
 
@@ -216,7 +226,13 @@ mod tests {
         assert!(!tree.is_under(work.id, paid.id));
         assert_eq!(
             tree.search_paths(paid.id),
-            vec!["work/invoices/paid", "work/invoices", "work"]
+            vec![
+                "work/invoices/paid",
+                "paid",
+                "work/invoices",
+                "invoices",
+                "work"
+            ]
         );
         assert_eq!(tree.children(work.id), vec![invoices.id]);
     }

@@ -22,8 +22,8 @@ export component SidebarItem inherits Rectangle {
     // colour would not keep 3:1 against the row); the app decides, it knows the theme's rows.
     in property <color> mark-color;
     in property <bool> selected: false;
-    // Nested rows (lists under a board) indent by one step.
-    in property <bool> indented: false;
+    // Nested rows (lists under a board, tags under a tag) indent by one step per level.
+    in property <int> indent: 0;
     in property <bool> rail: false;
     in property <bool> keyboard-focusable: true;
     in property <bool> show-focus: false;
@@ -59,7 +59,7 @@ export component SidebarItem inherits Rectangle {
     animate background { duration: Motion.instant; easing: Motion.out; }
 
     HorizontalLayout {
-        padding-left: root.rail ? 0px : Space.s2 + (root.indented ? Space.s4 : 0px);
+        padding-left: root.rail ? 0px : Space.s2 + (Space.s4 * root.indent);
         padding-right: root.rail ? 0px : Space.s2;
         spacing: Space.s2;
 

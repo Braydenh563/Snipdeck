@@ -205,7 +205,7 @@ export component DeckScaleGallery inherits Window {
             BoardSwitcher { board-name: "Work"; }
         }
         SidebarItem { kind: SidebarItemKind.board; label: "Work"; count: 41; selected: true; }
-        SidebarItem { kind: SidebarItemKind.list; label: "Email replies"; count: 18; indented: true; mark-color: Palette.dark ? Primitives.teal-400 : Primitives.teal-600; }
+        SidebarItem { kind: SidebarItemKind.list; label: "Email replies"; count: 18; indent: 1; mark-color: Palette.dark ? Primitives.teal-400 : Primitives.teal-600; }
         PinnedStrip {
             items: [{ title: "Thanks, received" }, { title: "Home address" }];
         }
@@ -330,9 +330,9 @@ export component DeckPartsGallery inherits Window {
             }
             SidebarItem { kind: SidebarItemKind.system; label: "Pinned"; icon: Icons.push-pin; count: 7; }
             SidebarItem { kind: SidebarItemKind.board; label: "Work"; count: 41; selected: true; }
-            SidebarItem { kind: SidebarItemKind.list; label: "Email replies"; count: 18; indented: true; mark-color: Palette.dark ? Primitives.teal-400 : Primitives.teal-600; }
-            SidebarItem { kind: SidebarItemKind.list; label: "Addresses"; count: 6; indented: true; selected: true; mark-color: Palette.dark ? Primitives.amber-400 : Primitives.amber-600; }
-            SidebarItem { kind: SidebarItemKind.list; label: "A list with a very long name that elides"; count: 1234; indented: true; mark-color: Palette.dark ? Primitives.violet-400 : Primitives.violet-600; }
+            SidebarItem { kind: SidebarItemKind.list; label: "Email replies"; count: 18; indent: 1; mark-color: Palette.dark ? Primitives.teal-400 : Primitives.teal-600; }
+            SidebarItem { kind: SidebarItemKind.list; label: "Addresses"; count: 6; indent: 1; selected: true; mark-color: Palette.dark ? Primitives.amber-400 : Primitives.amber-600; }
+            SidebarItem { kind: SidebarItemKind.list; label: "A list with a very long name that elides"; count: 1234; indent: 1; mark-color: Palette.dark ? Primitives.violet-400 : Primitives.violet-600; }
             SidebarItem { kind: SidebarItemKind.board; label: "Personal"; count: 9; }
             SidebarItem { kind: SidebarItemKind.tag; label: "invoice"; count: 3; }
             SidebarItem { kind: SidebarItemKind.system; label: "Trash"; icon: Icons.trash; }
