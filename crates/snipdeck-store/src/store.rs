@@ -429,6 +429,7 @@ impl Store {
     /// secure delete being on (database and index), encrypted items holding only envelopes,
     /// valid board, list and tag names, and tag keys that do not clash.
     pub fn check_integrity(&self) -> Result<Vec<String>> {
+        const FTS_CHECK: &str = "INSERT INTO item_fts (item_fts) VALUES ('integrity-check')";
         let mut problems = Vec::new();
         let conn = &self.conn;
 
@@ -445,7 +446,6 @@ impl Store {
             problems.push(format!("dangling reference from table `{}`", row?));
         }
         drop(stmt);
-        const FTS_CHECK: &str = "INSERT INTO item_fts (item_fts) VALUES ('integrity-check')";
         if let Err(e) = conn.execute(FTS_CHECK, []) {
             // FTS5 runs its check as an INSERT, which a read-only handle (the Help window's)
             // cannot do. The check changes nothing, so run it on a short-lived writable
