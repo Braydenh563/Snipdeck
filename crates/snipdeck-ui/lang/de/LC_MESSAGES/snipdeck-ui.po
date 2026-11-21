@@ -1347,9 +1347,6 @@ msgstr "Gehört. Dieses Tastenkürzel funktioniert."
 msgid "Heart"
 msgstr "Herz"
 
-msgid "Hello"
-msgstr "Windows Hello"
-
 msgid "Help"
 msgstr "Hilfe"
 
@@ -4494,3 +4491,15 @@ msgstr "{}: {} wurde nicht als Kürzel übernommen, weil es nach einem Trennzeic
 
 msgid "≈ {}, not an exact colour name. Nothing copied. Click the Name row to switch to {}."
 msgstr "≈ {}, kein exakter Farbname. Nichts kopiert. Klicken Sie auf die Zeile „Name“, um zu {} zu wechseln."
+
+msgctxt "shortcut row"
+msgid "Hello"
+msgstr "Windows Hello"
+
+msgctxt "shortcut row"
+msgid "Trigger"
+msgstr "Kürzel"
+
+msgctxt "shortcut row"
+msgid "Type"
+msgstr "Tippen"

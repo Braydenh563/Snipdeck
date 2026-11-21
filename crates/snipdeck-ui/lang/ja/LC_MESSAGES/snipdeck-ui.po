@@ -1346,9 +1346,6 @@ msgstr "聞こえました。このショートカットは使えます。"
 msgid "Heart"
 msgstr "ハート"
 
-msgid "Hello"
-msgstr "Windows Hello"
-
 msgid "Help"
 msgstr "ヘルプ"
 
@@ -4467,3 +4464,15 @@ msgstr "{}：{} は区切り文字の後で動作するもので、Snipdeck の�
 
 msgid "≈ {}, not an exact colour name. Nothing copied. Click the Name row to switch to {}."
 msgstr "≈ {}、正確な色名ではありません。何もコピーしませんでした。「名前」行をクリックすると {} に切り替わります。"
+
+msgctxt "shortcut row"
+msgid "Hello"
+msgstr "Windows Hello"
+
+msgctxt "shortcut row"
+msgid "Trigger"
+msgstr "トリガー"
+
+msgctxt "shortcut row"
+msgid "Type"
+msgstr "入力"

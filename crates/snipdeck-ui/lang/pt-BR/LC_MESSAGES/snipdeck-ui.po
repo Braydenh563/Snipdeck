@@ -1347,9 +1347,6 @@ msgstr "Ouvi. Este atalho funciona."
 msgid "Heart"
 msgstr "Coração"
 
-msgid "Hello"
-msgstr "Windows Hello"
-
 msgid "Help"
 msgstr "Ajuda"
 
@@ -4494,3 +4491,15 @@ msgstr "{}: {} não foi mantido como gatilho, porque dispara depois de um separa
 
 msgid "≈ {}, not an exact colour name. Nothing copied. Click the Name row to switch to {}."
 msgstr "≈ {}, não é um nome de cor exato. Nada foi copiado. Clique na linha Nome para mudar para {}."
+
+msgctxt "shortcut row"
+msgid "Hello"
+msgstr "Windows Hello"
+
+msgctxt "shortcut row"
+msgid "Trigger"
+msgstr "Gatilho"
+
+msgctxt "shortcut row"
+msgid "Type"
+msgstr "Digitar"

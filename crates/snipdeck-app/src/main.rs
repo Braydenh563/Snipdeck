@@ -579,8 +579,8 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
             snipdeck_app::warn!("cannot open the welcome tour: {e}");
         }
     }
-    // The backup, the Trash purge (the "Days in the Trash" setting, SPEC 5.7a) and the weekly check start 2 s after the
-    // first show and repeat every 6 h. Not in the demo, which has no data folder.
+    // The backup, the Trash purge (the "Days in the Trash" setting, SPEC 5.7a) and the weekly check
+    // start 2 s after the first show and repeat every 6 h. Not in the demo, which has no data folder.
     let _maintenance_timers = settings_folder.map(|folder| {
         start_maintenance(
             Maintenance::new(folder, Box::new(host::SystemClock)),

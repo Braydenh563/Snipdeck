@@ -1346,9 +1346,6 @@ msgstr "收到了。此快捷键可用。"
 msgid "Heart"
 msgstr "心形"
 
-msgid "Hello"
-msgstr "Windows Hello"
-
 msgid "Help"
 msgstr "帮助"
 
@@ -4467,3 +4464,15 @@ msgstr "{}：{} 未保留为触发词，因为它在分隔符之后触发，而 
 
 msgid "≈ {}, not an exact colour name. Nothing copied. Click the Name row to switch to {}."
 msgstr "≈ {}，不是精确的颜色名称。未复制任何内容。点击“名称”行可切换为 {}。"
+
+msgctxt "shortcut row"
+msgid "Hello"
+msgstr "Windows Hello"
+
+msgctxt "shortcut row"
+msgid "Trigger"
+msgstr "触发词"
+
+msgctxt "shortcut row"
+msgid "Type"
+msgstr "输入"

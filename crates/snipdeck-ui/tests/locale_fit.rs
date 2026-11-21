@@ -12,7 +12,8 @@ use i_slint_backend_testing::ElementQuery;
 use slint::ComponentHandle;
 use snipdeck_ui::testing::Harness;
 use snipdeck_ui::{
-    HelpWindow, MainWindow, OnboardingWindow, PanelWindow, SettingsPage, SystemLook,
+    HelpWindow, MainWindow, NameTexts, OnboardingWindow, PanelWindow, SettingsPage, ShortcutGroup,
+    ShortcutLineData, SystemLook,
 };
 
 /// The language tags that have a bundled catalogue (English is the source language, `""`).
@@ -79,14 +80,28 @@ fn fit<C: ComponentHandle>(
     outside(&h, width as f32)
 }
 
-/// English is the design: what it already lets stick out (a scrolled strip, a track) is the
-/// baseline, and a language fails when it makes more elements stick out than English does.
-#[test]
-fn a_language_does_not_push_more_past_the_window_edge_than_english_does() {
-    let _english = EnglishAgain;
-    let mut problems: Vec<String> = Vec::new();
-    // `(surface name, runner)`: each runner opens its surface in the current language.
-    let surfaces: Vec<(&str, Run)> = vec![
+/// A row on the Help window's Shortcuts tab for each spoken phrase the app can show.
+fn fill_shortcuts(c: &HelpWindow) {
+    let names = c.global::<NameTexts<'_>>();
+    let lines: Vec<ShortcutLineData> = (0..17)
+        .map(|i| ShortcutLineData {
+            title: "Item".into(),
+            keys: slint::ModelRc::default(),
+            spoken: names.invoke_phrase(i),
+            plain: false,
+        })
+        .collect();
+    let group = ShortcutGroup {
+        title: "Main window".into(),
+        note: "".into(),
+        lines: slint::ModelRc::new(slint::VecModel::from(lines)),
+    };
+    c.set_shortcut_groups(slint::ModelRc::new(slint::VecModel::from(vec![group])));
+}
+
+/// `(surface name, runner)`: each runner opens its surface in the current language.
+fn surfaces() -> Vec<(&'static str, Run)> {
+    vec![
         (
             "Panel",
             Box::new(|v| {
@@ -144,6 +159,24 @@ fn a_language_does_not_push_more_past_the_window_edge_than_english_does() {
             }),
         ),
         (
+            // The Shortcuts tab with a row for each spoken phrase the app can show (the host builds
+            // the rows; the words are the interface's own), so the longest wording of a language is seen.
+            "Help shortcuts",
+            Box::new(|v| {
+                fit(
+                    HelpWindow::new,
+                    (420, 360),
+                    |s| 270.0 * s,
+                    v,
+                    |c, v| {
+                        c.global::<SystemLook<'_>>().set_text_scale(v);
+                        fill_shortcuts(c);
+                        c.set_tab(2);
+                    },
+                )
+            }),
+        ),
+        (
             "Welcome",
             Box::new(|v| {
                 fit(
@@ -157,7 +190,16 @@ fn a_language_does_not_push_more_past_the_window_edge_than_english_does() {
                 )
             }),
         ),
-    ];
+    ]
+}
+
+/// English is the design: what it already lets stick out (a scrolled strip, a track) is the
+/// baseline, and a language fails when it makes more elements stick out than English does.
+#[test]
+fn a_language_does_not_push_more_past_the_window_edge_than_english_does() {
+    let _english = EnglishAgain;
+    let mut problems: Vec<String> = Vec::new();
+    let surfaces = surfaces();
     let mut baseline: std::collections::BTreeMap<(usize, usize), usize> =
         std::collections::BTreeMap::default();
     for lang in LANGUAGES {

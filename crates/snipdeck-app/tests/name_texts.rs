@@ -96,10 +96,28 @@ fn a_new_library_is_worded_in_the_selected_language() {
         // The template card keeps its placeholders, whatever the language.
         assert!(german.cards[2].1.contains("{date}") && german.cards[2].1.contains("{time}"));
         assert_ne!(key_words(&window), KeyWords::english());
-        // Every phrase of a shortcut row is worded in German, none left as the English.
-        let (german, english) = (key_words(&window), KeyWords::english());
-        for (g, e) in german.phrases.iter().zip(&english.phrases) {
-            assert_ne!(g, e, "{e:?} is not translated");
+        slint::select_bundled_translation("").expect("untranslated");
+    });
+}
+
+/// Phrases a language words the same as the English on purpose, as `(language, English)`.
+const SAME_BY_DESIGN: [(&str, &str); 0] = [];
+
+#[test]
+fn every_shortcut_phrase_is_worded_in_every_bundled_language() {
+    on_ui_thread(|| {
+        let window = PanelWindow::new().expect("window");
+        let english = KeyWords::english();
+        for tag in ["de", "es", "fr", "ja", "pt-BR", "zh-Hans"] {
+            snipdeck_app::language::apply(tag).expect("bundled language");
+            let words = key_words(&window);
+            assert_eq!(words.phrases.len(), english.phrases.len(), "{tag}");
+            for (said, e) in words.phrases.iter().zip(&english.phrases) {
+                assert!(!said.is_empty(), "{tag}: {e:?} is empty");
+                if !SAME_BY_DESIGN.contains(&(tag, e.as_str())) {
+                    assert_ne!(said, e, "{tag}: {e:?} is not translated");
+                }
+            }
         }
         slint::select_bundled_translation("").expect("untranslated");
     });

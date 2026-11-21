@@ -1347,9 +1347,6 @@ msgstr "Entendu. Ce raccourci fonctionne."
 msgid "Heart"
 msgstr "Cœur"
 
-msgid "Hello"
-msgstr "Windows Hello"
-
 msgid "Help"
 msgstr "Aide"
 
@@ -4494,3 +4491,15 @@ msgstr "{} : {} n’a pas été conservé comme déclencheur, car il se déclenc
 
 msgid "≈ {}, not an exact colour name. Nothing copied. Click the Name row to switch to {}."
 msgstr "≈ {}, pas un nom de couleur exact. Rien n'a été copié. Cliquez sur la ligne Nom pour passer à {}."
+
+msgctxt "shortcut row"
+msgid "Hello"
+msgstr "Windows Hello"
+
+msgctxt "shortcut row"
+msgid "Trigger"
+msgstr "Déclencheur"
+
+msgctxt "shortcut row"
+msgid "Type"
+msgstr "Saisir"

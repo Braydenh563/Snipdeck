@@ -9364,7 +9364,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/tests/main_window.rs` | 51 |
 | `crates/snipdeck-app/tests/master_password.rs` | 92 |
 | `crates/snipdeck-app/tests/menu_form_texts.rs` | 3 |
-| `crates/snipdeck-app/tests/name_texts.rs` | 3 |
+| `crates/snipdeck-app/tests/name_texts.rs` | 4 |
 | `crates/snipdeck-app/tests/panel_window.rs` | 93 |
 | `crates/snipdeck-app/tests/picker_window.rs` | 20 |
 | `crates/snipdeck-app/tests/rebuild.rs` | 7 |

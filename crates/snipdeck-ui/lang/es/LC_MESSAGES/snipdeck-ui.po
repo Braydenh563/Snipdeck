@@ -1347,9 +1347,6 @@ msgstr "Lo oí. Este atajo funciona."
 msgid "Heart"
 msgstr "Corazón"
 
-msgid "Hello"
-msgstr "Windows Hello"
-
 msgid "Help"
 msgstr "Ayuda"
 
@@ -4494,3 +4491,15 @@ msgstr "{}: {} no se conservó como activador porque se activa tras un separador
 
 msgid "≈ {}, not an exact colour name. Nothing copied. Click the Name row to switch to {}."
 msgstr "≈ {}, no es un nombre de color exacto. No se copió nada. Haz clic en la fila Nombre para cambiar a {}."
+
+msgctxt "shortcut row"
+msgid "Hello"
+msgstr "Windows Hello"
+
+msgctxt "shortcut row"
+msgid "Trigger"
+msgstr "Activador"
+
+msgctxt "shortcut row"
+msgid "Type"
+msgstr "Escribir"
