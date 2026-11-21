@@ -200,7 +200,20 @@ mod imp {
         hook: TypingHook,
         tab: Arc<std::sync::atomic::AtomicU64>,
         updates: std::sync::mpsc::Sender<Update>,
+        /// Wakes the worker, which blocks on the hook's channel, to read `updates`.
+        wake: std::sync::mpsc::SyncSender<snipdeck_platform::typing::TypedEvent>,
         worker: std::thread::JoinHandle<()>,
+    }
+
+    impl Running {
+        /// Queues `update` for the worker and wakes it (the channel may be full of keys: then it
+        /// is awake anyway and reads the update before the next).
+        fn send(&self, update: Update) {
+            let _ = self.updates.send(update);
+            let _ = self
+                .wake
+                .try_send(snipdeck_platform::typing::TypedEvent::Wake);
+        }
     }
 
     impl WinTyping {
@@ -260,10 +273,12 @@ mod imp {
                     );
                 })
                 .map_err(|e| format!("typing worker: {e}"))?;
+            let wake = hook.waker();
             Ok(Running {
                 hook,
                 tab,
                 updates,
+                wake,
                 worker,
             })
         }
@@ -290,8 +305,10 @@ mod imp {
                 // Unhooking drops the event sender, which ends the worker. It is not joined: it
                 // may be inside the password probe (which can block on the other app), and this
                 // runs on the UI thread. A late result it still delivers meets the settings gate.
+                // The worker ends when the hook's sender and our wake clone are both gone.
                 running.hook.stop();
                 drop(running.updates);
+                drop(running.wake);
                 drop(running.worker);
             }
             true
@@ -299,7 +316,7 @@ mod imp {
 
         fn set_triggers(&mut self, matcher: Matcher, candidates: Vec<Candidate>) {
             if let Some(running) = &self.running {
-                let _ = running.updates.send(Update::List(TypingList {
+                running.send(Update::List(TypingList {
                     matcher: matcher.clone(),
                     candidates: candidates.clone(),
                 }));
@@ -344,7 +361,7 @@ mod imp {
 
         fn not_expanded(&mut self, fired: snipdeck_core::Fired) {
             if let Some(running) = &self.running {
-                let _ = running.updates.send(Update::NotExpanded(fired));
+                running.send(Update::NotExpanded(fired));
             }
         }
     }

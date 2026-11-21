@@ -14,7 +14,8 @@ use std::time::Duration;
 use snipdeck_core::{Candidate, Fired, ItemId, Matcher, Trigger, prefix_of};
 use snipdeck_platform::typing::TypedEvent;
 
-/// How often the worker looks for a new trigger list while no key arrives.
+/// How often the worker looks at a shown hint's age while no key arrives. With no hint it does not
+/// wake at all: an update from the app comes with a [`TypedEvent::Wake`].
 const POLL: Duration = Duration::from_millis(100);
 
 /// Polls without any key before a shown hint comes down by itself (5 s): the user went on
@@ -147,7 +148,7 @@ pub struct Env {
     pub generation: u64,
     /// The hints made so far.
     pub hints: AtomicU64,
-    /// How often the worker looks around while no key arrives.
+    /// How often the worker looks at a shown hint's age while no key arrives.
     pub poll: Duration,
     /// Polls without a key before a shown hint comes down.
     pub idle_polls: u32,
@@ -289,6 +290,8 @@ impl Typist {
                 self.reset();
                 None
             }
+            // Not a key (the worker loop answers it before the typist sees it).
+            TypedEvent::Wake => None,
             // The text a hint inserts is not known: start over, with a boundary needed.
             TypedEvent::Tab(_) => {
                 self.inserted();
@@ -327,7 +330,14 @@ pub fn run(
                 Update::NotExpanded(fired) => typist.not_expanded(&fired),
             }
         }
-        match events.recv_timeout(env.poll) {
+        // Nothing to time while no hint shows: block until a key or a wake (the app queued an update).
+        let next = if hint.is_some() {
+            events.recv_timeout(env.poll)
+        } else {
+            events.recv().map_err(|_| RecvTimeoutError::Disconnected)
+        };
+        match next {
+            Ok(TypedEvent::Wake) => {}
             Ok(event) => {
                 idle = 0;
                 consumed += 1;
@@ -591,6 +601,19 @@ mod tests {
         assert_eq!((got[0].fired.item, got[0].fired.chars), (item, 4));
         assert!(got[0].password);
         assert!(got[0].still_current());
+    }
+
+    #[test]
+    fn a_wake_is_no_key_it_neither_breaks_a_trigger_nor_makes_the_expansion_stale() {
+        let item = item_id(1);
+        let (keys, events) = Keys::new();
+        keys.type_text(";si");
+        // The app woke the worker (a new list is queued): the hook did not count it.
+        keys.tx.send(TypedEvent::Wake).expect("wake");
+        keys.type_text("g");
+        let (got, _) = deliver_all(keys, &events, item, ";sig", || false);
+        assert_eq!(got.len(), 1, "the trigger still fires");
+        assert!(got[0].still_current(), "a wake is not a key typed after it");
     }
 
     #[test]

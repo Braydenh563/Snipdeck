@@ -82,6 +82,7 @@ thread_local! {
 /// A running hook. Dropping it stops it.
 #[derive(Debug)]
 pub struct TypingHook {
+    wake: SyncSender<TypedEvent>,
     sent: Arc<AtomicU64>,
     lost: Arc<AtomicU64>,
     tab: Arc<AtomicU64>,
@@ -98,6 +99,7 @@ impl TypingHook {
     /// could not start.
     pub fn start() -> Result<(Self, Receiver<TypedEvent>), Error> {
         let (events, receiver) = mpsc::sync_channel(CHANNEL_SLOTS);
+        let wake = events.clone();
         let (ready_tx, ready) = mpsc::channel();
         let sent = Arc::new(AtomicU64::new(0));
         let hook_sent = Arc::clone(&sent);
@@ -112,6 +114,7 @@ impl TypingHook {
         match ready.recv_timeout(Duration::from_secs(5)) {
             Ok(Ok(thread_id)) => Ok((
                 Self {
+                    wake,
                     sent,
                     lost,
                     tab,
@@ -140,6 +143,13 @@ impl TypingHook {
     #[must_use]
     pub fn lost(&self) -> Arc<AtomicU64> {
         Arc::clone(&self.lost)
+    }
+
+    /// A sender for [`TypedEvent::Wake`]: wakes the consumer so it reads what the app queued for it.
+    /// The consumer ends when the hook is stopped AND every clone is dropped.
+    #[must_use]
+    pub fn waker(&self) -> SyncSender<TypedEvent> {
+        self.wake.clone()
     }
 
     /// The flag that tells the hook a suggestion hint is up: the hint's number, 0 for none. While

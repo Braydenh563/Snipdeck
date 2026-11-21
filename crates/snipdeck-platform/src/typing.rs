@@ -105,6 +105,9 @@ pub enum TypedEvent {
     Tab(u64),
     /// The typing context is gone (focus moved, caret jumped, an IME composes): forget everything.
     Reset,
+    /// No key: the app put something on the worker's update channel and wakes it to look (it blocks
+    /// on this channel while nothing is pending, instead of polling). Never sent by the hook.
+    Wake,
 }
 
 // A character is a typed secret candidate: never print it.
@@ -115,6 +118,7 @@ impl std::fmt::Debug for TypedEvent {
             Self::Backspace => f.write_str("Backspace"),
             Self::Tab(_) => f.write_str("Tab"),
             Self::Reset => f.write_str("Reset"),
+            Self::Wake => f.write_str("Wake"),
         }
     }
 }
@@ -242,6 +246,7 @@ impl TypeBuffer {
             TypedEvent::Char(c) => self.push(c),
             TypedEvent::Backspace => self.len = self.len.saturating_sub(1),
             TypedEvent::Reset | TypedEvent::Tab(_) => self.reset(),
+            TypedEvent::Wake => {}
         }
         if self.len < BUFFER_CHARS {
             self.chars[self.len..].zeroize();
