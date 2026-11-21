@@ -30,3 +30,5 @@ All six resumed. CodeQL 98 fix 027abc90 (random stem, code points); gate33 runni
 extras fa4963d: 15/15 done except owner CI edits EXTRAS-2/13; auditing main.rs 260-870 + strings.
 library 4b0dcca WIP: LIBRARY-1..56 code in; told to do 43/48 (not post-1.0); 29/30 accepted post-1.0.
 Next: review+merge data 7d3c212 then perf 923f2ba into PR #5.
+Owner 2026-11-21: "dont stop and make sure no work is missed, I want absolutely everything done so that all I will have to do is test it myself". So: no post-1.0 deferrals except accepted ones (rope viewer, image editor, extra formats); after merges, a completeness sweep of every audit ID against the code before the final gate.
+Reviewers running on data (a1db682..7d3c212, branch claude/fable2-last) and perf (923f2ba).

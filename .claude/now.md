@@ -97,6 +97,7 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - 2026-11-12: Colour tool UI and the editor preview toggle are built by cloud worker sessions (branches claude/colour-tool, claude/editor-preview), merged into PR #5 by the coordinator. Reason: this machine fits one snipdeck_ui compile at a time, so local parallel builds OOM; the local colour workflow wf_8676d216-bbf is superseded and not resumed.
 
 ## Inbox
+- 2026-11-21 (owner, verbatim): "dont stop and make sure no work is missed, I want absolutely everything done so that all I will have to do is test it myself"
 - 2026-11-16 owner: "I removed the key from github and Ive just made a developers account on the partner centre" -> SNIPDECK_LICENCE_PUBLIC_KEY secret removed (done); next owner steps: reserve name, set MSIX_* repo variables.
 - 2026-11-16 owner: name reserved (Store ID 9N358S63JBHH), MSIX_IDENTITY_NAME/PUBLISHER/PUBLISHER_DISPLAY_NAME repo variables set (verified from screenshot). Done.
 - 2026-11-16 owner: "i like option 1 but ive mever heard of that or used azure" (option 1 = auto-submit releases to the Store from GitHub Actions via Store Developer CLI). Plan: after the first manual Store submission; I draft the workflow + step-by-step Entra setup doc, owner commits the workflow and adds secrets.
