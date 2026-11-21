@@ -11,7 +11,7 @@ use crate::{
     index_cache::IndexCache,
     search_mark::{self, Marks},
 };
-use snipdeck_core::{BoardId, Item, ItemId, ItemKind, ListAccent, ListId, search::SearchIndex};
+use snipdeck_core::{BoardId, Item, ItemId, ItemKind, ListAccent, ListId};
 use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, TagRepo};
 
 /// How many results the Picker shows (the window scrolls past nine).
@@ -64,8 +64,8 @@ struct Place {
 pub struct PickerModel {
     /// Every live item, in library order (board, list, manual order).
     places: Vec<Place>,
-    index: Rc<SearchIndex>,
-    suggest: Rc<crate::search_suggest::Index>,
+    /// The library snapshot: its index and suggestions are built on first use.
+    snapshot: Rc<crate::index_cache::Snapshot>,
     /// The board the Panel showed when the Picker opened (the "This board" scope).
     board: Option<BoardId>,
     query: String,
@@ -105,7 +105,7 @@ impl PickerModel {
         let snapshot = cache.snapshot(store)?;
         let mut by_list: HashMap<ListId, Vec<&Item>> = HashMap::new();
         for item in &snapshot.all {
-            by_list.entry(item.list_id).or_default().push(item);
+            by_list.entry(item.list_id).or_default().push(&**item);
         }
         let mut places = Vec::new();
         for (b, lists) in &snapshot.boards {
@@ -121,11 +121,9 @@ impl PickerModel {
                 }
             }
         }
-        let index = Rc::clone(&snapshot.index);
         let mut model = Self {
             places,
-            index,
-            suggest: Rc::clone(&snapshot.suggest),
+            snapshot,
             board,
             query: String::new(),
             scope: Scope::All,
@@ -166,7 +164,8 @@ impl PickerModel {
             });
             all
         } else {
-            self.index
+            self.snapshot
+                .index()
                 .query(&self.query, self.places.len())
                 .iter()
                 .filter_map(|hit| {
@@ -187,7 +186,7 @@ impl PickerModel {
     /// The names the search suggestions are made of.
     #[must_use]
     pub fn suggest_index(&self) -> Rc<crate::search_suggest::Index> {
-        Rc::clone(&self.suggest)
+        self.snapshot.suggest()
     }
 
     /// Sets the search text; the selection returns to the first row.

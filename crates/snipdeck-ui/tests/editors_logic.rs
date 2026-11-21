@@ -806,6 +806,18 @@ ui_tests! {
         assert_eq!(take(&log), ["cancel"]);
     }
 
+    // PERF-17: the liveness timer wakes ten times a second while a tooltip rests, and the owner answers each
+    // ping, so the tooltip stays. (Cost per wake-up, measured once with a wall clock: docs/PERF.md.)
+    fn a_resting_tooltip_stays_up_across_many_liveness_wake_ups() {
+        let (ui, _log) = item_editor();
+        hover_rest(&ui, &find(&ui, "Save", AccessibleRole::Button));
+        assert_eq!(tips(&ui), 1);
+        for _ in 0..100 {
+            i_slint_backend_testing::mock_elapsed_time(std::time::Duration::from_millis(100));
+        }
+        assert_eq!(tips(&ui), 1, "the owner answers, so the tooltip stays");
+    }
+
     fn save_names_its_shortcut_in_a_tooltip() {
         let (ui, _log) = item_editor();
         let save = find(&ui, "Save", AccessibleRole::Button);

@@ -16,29 +16,115 @@
 //! The cache is a cheap handle (clones share one state), so the controller owns one and hands
 //! a clone to each model it loads.
 
-use std::cell::RefCell;
+use std::cell::{Cell, OnceCell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use crate::search_suggest::Index;
-use snipdeck_core::{Board, Item, ItemId, List, search::SearchIndex};
+use snipdeck_core::{Board, Item, ItemId, List, Tag, search::SearchIndex};
 use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, RecentEntry, RecentRepo, TagRepo};
 
 /// What the Panel and the Picker read from the library on every load, kept together: every
 /// live item, every board with its lists, and the search index over the items.
 #[derive(Debug, Default)]
 pub struct Snapshot {
-    /// Every live item, in library order.
-    pub all: Vec<Item>,
+    /// Every live item, in library order. Shared: a patch replaces the one item written and
+    /// copies the other pointers, never the items.
+    pub all: Vec<Rc<Item>>,
+    /// Where each item sits in [`Snapshot::all`] (the order never changes by a patch).
+    positions: Rc<HashMap<ItemId, usize>>,
+    /// The pinned items, in library order, so the pinned strip reads no other item.
+    pub pinned: Rc<Vec<Rc<Item>>>,
     /// Every board with its lists, in order.
     pub boards: Vec<(Board, Vec<List>)>,
-    /// The search index over [`Snapshot::all`].
-    pub index: Rc<SearchIndex>,
-    /// The names the search suggestions are made of, built with the index.
-    pub suggest: Rc<Index>,
+    /// Every tag, for the names the index and the suggestions are made of.
+    tags: Rc<Vec<Tag>>,
+    /// The search index over [`Snapshot::all`] and the names the suggestions are made of: built
+    /// on first use (the first search keystroke or suggestion), not when the library is read,
+    /// so the first frame waits for neither.
+    search: OnceCell<Search>,
+    /// Counts the builds of `search` (shared with the cache, for tests and the notes).
+    builds: Rc<Cell<usize>>,
     /// The items that keep HTML or RTF next to their text (the Panel's "Formatted" mark).
     /// Sensitive items are left out: their content is never read for a list.
     pub rich: Rc<HashSet<ItemId>>,
+}
+
+/// What a search needs: the index over the items, and the names the suggestions are made of.
+#[derive(Debug)]
+struct Search {
+    index: Rc<SearchIndex>,
+    suggest: Rc<Index>,
+}
+
+impl Snapshot {
+    fn search(&self) -> &Search {
+        self.search.get_or_init(|| {
+            let started = std::time::Instant::now();
+            let tag_names: HashMap<_, _> = self
+                .tags
+                .iter()
+                .map(|t| (t.id, t.name.as_str().to_owned()))
+                .collect();
+            let mut index = SearchIndex::default();
+            for item in &self.all {
+                index.upsert_with_tags(
+                    item,
+                    item.tags
+                        .iter()
+                        .filter_map(|t| tag_names.get(t).map(String::as_str)),
+                );
+            }
+            let suggest = suggest_of(&self.all, &self.tags, &self.boards);
+            self.builds.set(self.builds.get() + 1);
+            crate::trace!(
+                "index build {} us for {} items",
+                started.elapsed().as_micros(),
+                self.all.len()
+            );
+            Search {
+                index: Rc::new(index),
+                suggest: Rc::new(suggest),
+            }
+        })
+    }
+
+    /// The search index over every item, built on first use.
+    #[must_use]
+    pub fn index(&self) -> Rc<SearchIndex> {
+        Rc::clone(&self.search().index)
+    }
+
+    /// The names the search suggestions are made of, built with the index on first use.
+    #[must_use]
+    pub fn suggest(&self) -> Rc<Index> {
+        Rc::clone(&self.search().suggest)
+    }
+
+    /// Item `id`, by one hash lookup.
+    #[must_use]
+    pub fn item(&self, id: ItemId) -> Option<&Rc<Item>> {
+        self.positions.get(&id).and_then(|&at| self.all.get(at))
+    }
+}
+
+/// The names the search suggestions are made of: item titles, tags, and list names.
+fn suggest_of(all: &[Rc<Item>], tags: &[Tag], boards: &[(Board, Vec<List>)]) -> Index {
+    Index::build(
+        all.iter().map(|i| &**i),
+        tags.iter().map(|t| t.name.as_str()),
+        boards
+            .iter()
+            .flat_map(|(_, lists)| lists.iter().map(|l| l.name.as_str())),
+    )
+}
+
+fn positions_of(all: &[Rc<Item>]) -> HashMap<ItemId, usize> {
+    all.iter().enumerate().map(|(at, i)| (i.id, at)).collect()
+}
+
+fn pinned_of(all: &[Rc<Item>]) -> Vec<Rc<Item>> {
+    all.iter().filter(|i| i.pinned).cloned().collect()
 }
 
 /// A change the controller announced, so the next snapshot patches those items alone.
@@ -51,6 +137,10 @@ enum Hint {
         id: ItemId,
         from: (u64, u64),
         to: (u64, u64),
+        /// Whether the title, tags or formats may have changed (an editor save). A pin, a
+        /// move or a colour change leave them alone, so the suggestions and the rich set
+        /// are kept.
+        content: bool,
     },
 }
 
@@ -61,9 +151,10 @@ struct State {
     read_at: Option<(u64, u64)>,
     /// The `change_counter` the index was built at.
     built_at: Option<u64>,
-    suggest: Rc<Index>,
     snapshot: Rc<Snapshot>,
     rebuilds: usize,
+    /// Builds of the search index, shared with every snapshot.
+    builds: Rc<Cell<usize>>,
     /// How many times one item was patched into the snapshot instead of a re-read.
     patches: usize,
     /// What the controller said it just changed (see [`Hint`]); trusted only when the store's
@@ -107,82 +198,58 @@ impl IndexCache {
         if let Some(patched) = self.patched(store, at) {
             return Ok(patched);
         }
-        let all = store.all_items()?;
-        // A counted use moves only the usage counter: the boards and lists are what they were.
-        let kept_boards = {
+        let all: Vec<Rc<Item>> = store.all_items()?.into_iter().map(Rc::new).collect();
+        // A counted use moves only the usage counter: the boards, lists, tags and rich set are
+        // what they were.
+        let kept = {
             let state = self.0.borrow();
-            (state.built_at == Some(counter)).then(|| state.snapshot.boards.clone())
+            (state.built_at == Some(counter)).then(|| Rc::clone(&state.snapshot))
         };
-        let boards = if let Some(boards) = kept_boards {
-            boards
+        let (boards, tags, rich) = if let Some(old) = &kept {
+            (
+                old.boards.clone(),
+                Rc::clone(&old.tags),
+                Rc::clone(&old.rich),
+            )
         } else {
             let mut boards = Vec::new();
             for b in store.boards()? {
                 let lists = store.lists(b.id)?;
                 boards.push((b, lists));
             }
-            boards
+            (
+                boards,
+                Rc::new(store.tags()?),
+                Rc::new(store.rich_item_ids()?.into_iter().collect()),
+            )
         };
-        let reuse = {
-            let state = self.0.borrow();
-            (state.built_at == Some(counter)).then(|| Rc::clone(&state.snapshot.index))
-        };
-        let rich = {
-            let state = self.0.borrow();
-            match (state.built_at == Some(counter)).then(|| Rc::clone(&state.snapshot.rich)) {
-                Some(rich) => rich,
-                None => Rc::new(store.rich_item_ids()?.into_iter().collect()),
+        // The index is kept when it was built: a counted use changes only the tie-breakers (use
+        // count, last use), brought up to date here, copying the index only when one changed.
+        let search = OnceCell::new();
+        if let Some(prev) = kept.as_ref().and_then(|old| old.search.get()) {
+            let mut index = Rc::clone(&prev.index);
+            if !index.usage_is_current(all.iter().map(|i| &**i)) {
+                Rc::make_mut(&mut index).refresh_usage(all.iter().map(|i| &**i));
             }
-        };
-        let (index, suggest, built) = if let Some(mut index) = reuse {
-            // A counted use changes only the tie-breakers (use count, last use): bring them up
-            // to date, copying the index only when one did change.
-            if !index.usage_is_current(&all) {
-                Rc::make_mut(&mut index).refresh_usage(&all);
-            }
-            (index, Rc::clone(&self.0.borrow().suggest), false)
-        } else {
-            let started = std::time::Instant::now();
-            let tags = store.tags()?;
-            let tag_names: HashMap<_, _> = tags
-                .iter()
-                .map(|t| (t.id, t.name.as_str().to_owned()))
-                .collect();
-            let mut index = SearchIndex::default();
-            for item in &all {
-                index.upsert_with_tags(
-                    item,
-                    item.tags
-                        .iter()
-                        .filter_map(|t| tag_names.get(t).map(String::as_str)),
-                );
-            }
-            let suggest = Index::build(
-                &all,
-                tags.iter().map(|t| t.name.as_str()),
-                boards
-                    .iter()
-                    .flat_map(|(_, lists)| lists.iter().map(|l| l.name.as_str())),
-            );
-            crate::trace!(
-                "index build {} us for {} items",
-                started.elapsed().as_micros(),
-                all.len()
-            );
-            (Rc::new(index), Rc::new(suggest), true)
-        };
+            let _ = search.set(Search {
+                index,
+                suggest: Rc::clone(&prev.suggest),
+            });
+        }
         let mut state = self.0.borrow_mut();
-        state.suggest = Rc::clone(&suggest);
         state.snapshot = Rc::new(Snapshot {
+            positions: Rc::new(positions_of(&all)),
+            pinned: Rc::new(pinned_of(&all)),
             all,
             boards,
-            index,
-            suggest,
+            tags,
+            search,
+            builds: Rc::clone(&state.builds),
             rich,
         });
         state.read_at = Some(at);
         state.built_at = Some(counter);
-        state.rebuilds += usize::from(built);
+        state.rebuilds += usize::from(kept.is_none());
         Ok(Rc::clone(&state.snapshot))
     }
 
@@ -207,10 +274,36 @@ impl IndexCache {
         id: ItemId,
         write: impl FnOnce(&mut S) -> R,
     ) -> R {
+        self.edit_one(store, id, true, write)
+    }
+
+    /// Like [`IndexCache::edit_item`] for a write that leaves the item's title, tags and
+    /// formats alone (a pin, a move, a colour): the suggestions and the rich set are kept.
+    pub fn edit_item_meta<S: ItemRepo, R>(
+        &self,
+        store: &mut S,
+        id: ItemId,
+        write: impl FnOnce(&mut S) -> R,
+    ) -> R {
+        self.edit_one(store, id, false, write)
+    }
+
+    fn edit_one<S: ItemRepo, R>(
+        &self,
+        store: &mut S,
+        id: ItemId,
+        content: bool,
+        write: impl FnOnce(&mut S) -> R,
+    ) -> R {
         let from = (store.change_counter(), store.usage_counter());
         let out = write(store);
         let to = (store.change_counter(), store.usage_counter());
-        self.0.borrow_mut().hint = Some(Hint::Edited { id, from, to });
+        self.0.borrow_mut().hint = Some(Hint::Edited {
+            id,
+            from,
+            to,
+            content,
+        });
         out
     }
 
@@ -234,56 +327,89 @@ impl IndexCache {
         if built_at != Some(read_changes) {
             return None;
         }
-        let (ids, edited) = match hint? {
+        let (ids, edited, content) = match hint? {
             Hint::Used(ids) if at.0 == read_changes && at.1 == read_uses + ids.len() as u64 => {
-                (ids, false)
+                (ids, false, false)
             }
-            Hint::Edited { id, from, to } if from == (read_changes, read_uses) && to == at => {
-                (vec![id], true)
-            }
+            Hint::Edited {
+                id,
+                from,
+                to,
+                content,
+            } if from == (read_changes, read_uses) && to == at => (vec![id], true, content),
             _ => return None,
         };
+        // Pointers only: the items themselves are shared with the snapshot before this one.
         let mut all = old.all.clone();
-        let mut index = Rc::clone(&old.index);
-        let mut tags = Vec::new();
-        if edited {
-            tags = store.tags().ok()?;
-        }
-        for id in ids {
-            let position = all.iter().position(|i| i.id == id)?;
-            let item = store.item(id).ok()?;
-            if edited {
-                Rc::make_mut(&mut index).upsert_with_tags(
-                    &item,
-                    item.tags
-                        .iter()
-                        .filter_map(|t| tags.iter().find(|x| x.id == *t).map(|x| x.name.as_str())),
-                );
-            } else if !index.usage_is_current(std::iter::once(&item)) {
-                Rc::make_mut(&mut index).refresh_usage(std::iter::once(&item));
-            }
-            all[position] = item;
-        }
-        let (suggest, rich) = if edited {
-            let rich: HashSet<ItemId> = store.rich_item_ids().ok()?.into_iter().collect();
-            let suggest = Index::build(
-                &all,
-                tags.iter().map(|t| t.name.as_str()),
-                old.boards
-                    .iter()
-                    .flat_map(|(_, lists)| lists.iter().map(|l| l.name.as_str())),
-            );
-            (Rc::new(suggest), Rc::new(rich))
+        // Nothing is patched into an index nobody has built yet: it is built from these items.
+        let mut search = old
+            .search
+            .get()
+            .map(|s| (Rc::clone(&s.index), Rc::clone(&s.suggest)));
+        let tags = if edited {
+            Rc::new(store.tags().ok()?)
         } else {
-            (Rc::clone(&old.suggest), Rc::clone(&old.rich))
+            Rc::clone(&old.tags)
         };
+        let mut names_changed = false;
+        let mut pin_touched = false;
+        for id in ids {
+            let position = *old.positions.get(&id)?;
+            let item = store.item(id).ok()?;
+            let before = &old.all[position];
+            // A move to another list puts the item last there with a new rank: the positions
+            // (and so All and the pinned strip) are wrong, so the library is read again.
+            if before.list_id != item.list_id {
+                return None;
+            }
+            names_changed |= before.title != item.title
+                || before.tags != item.tags
+                || before.sensitive != item.sensitive;
+            pin_touched |= before.pinned || item.pinned;
+            if let Some((index, _)) = search.as_mut() {
+                if edited {
+                    Rc::make_mut(index).upsert_with_tags(
+                        &item,
+                        item.tags.iter().filter_map(|t| {
+                            tags.iter().find(|x| x.id == *t).map(|x| x.name.as_str())
+                        }),
+                    );
+                } else if !index.usage_is_current(std::iter::once(&item)) {
+                    Rc::make_mut(index).refresh_usage(std::iter::once(&item));
+                }
+            }
+            all[position] = Rc::new(item);
+        }
+        let rich = if content {
+            let rich: HashSet<ItemId> = store.rich_item_ids().ok()?.into_iter().collect();
+            Rc::new(rich)
+        } else {
+            Rc::clone(&old.rich)
+        };
+        if let Some((_, suggest)) = search.as_mut()
+            && edited
+            && names_changed
+        {
+            *suggest = Rc::new(suggest_of(&all, &tags, &old.boards));
+        }
+        let pinned = if pin_touched {
+            Rc::new(pinned_of(&all))
+        } else {
+            Rc::clone(&old.pinned)
+        };
+        let cell = OnceCell::new();
+        if let Some((index, suggest)) = search {
+            let _ = cell.set(Search { index, suggest });
+        }
         let mut state = self.0.borrow_mut();
-        state.suggest = Rc::clone(&suggest);
         state.snapshot = Rc::new(Snapshot {
+            positions: Rc::clone(&old.positions),
+            pinned,
             all,
             boards: old.boards.clone(),
-            index,
-            suggest,
+            tags,
+            search: cell,
+            builds: Rc::clone(&state.builds),
             rich,
         });
         state.read_at = Some(at);
@@ -331,7 +457,27 @@ impl IndexCache {
         self.0.borrow().patches
     }
 
-    /// How many times the index was built (for tests and the performance notes).
+    /// Whether the search index of the current snapshot is built.
+    #[must_use]
+    pub fn search_ready(&self) -> bool {
+        self.0.borrow().snapshot.search.get().is_some()
+    }
+
+    /// Builds the search index and suggestions of the current snapshot now (idle time after
+    /// the first frame), so the first keystroke does not.
+    pub fn warm(&self) {
+        let snapshot = Rc::clone(&self.0.borrow().snapshot);
+        let _ = snapshot.search();
+    }
+
+    /// How many times the search index was built (on first use after a read; for tests and the
+    /// performance notes).
+    #[must_use]
+    pub fn index_builds(&self) -> usize {
+        self.0.borrow().builds.get()
+    }
+
+    /// How many times the whole library was read again (for tests and the performance notes).
     #[must_use]
     pub fn rebuilds(&self) -> usize {
         self.0.borrow().rebuilds
@@ -387,23 +533,20 @@ mod tests {
         assert_eq!(first.boards[0].1.len(), 1);
     }
 
-    // A25 smoke check: a 2000-item library is read and indexed once, and quickly. It uses the real
-    // clock on purpose: the claim is about elapsed time (the index build is not deferred because it
-    // stays well under 50 ms), so a fixed clock would measure nothing. The bound is a generous 2 s
-    // so a slow or loaded CI machine does not flake; a real regression is orders of magnitude.
+    // A25 smoke check: a 2000-item library is read and indexed exactly once. Counted, not timed:
+    // elapsed time belongs to the ignored probe in `tests/budget.rs`.
     #[test]
-    fn building_the_index_of_two_thousand_items_is_cheap() {
+    fn two_thousand_items_are_read_and_indexed_once() {
         let (mut s, l) = seeded();
         for n in 0..2000 {
             add(&mut s, l, &format!("snippet number {n}"));
         }
         let cache = IndexCache::new();
-        let started = std::time::Instant::now();
         let snapshot = cache.snapshot(&s).unwrap();
-        let took = started.elapsed();
-        assert_eq!(snapshot.index.len(), 2000);
+        assert_eq!(snapshot.index().len(), 2000);
         assert_eq!(cache.rebuilds(), 1);
-        assert!(took < std::time::Duration::from_secs(2), "{took:?}");
+        assert!(Rc::ptr_eq(&snapshot, &cache.snapshot(&s).unwrap()));
+        assert_eq!(cache.rebuilds(), 1);
     }
 
     #[test]
@@ -423,17 +566,13 @@ mod tests {
                 .unwrap();
         }
         let cache = IndexCache::new();
-        let started = std::time::Instant::now();
         let snapshot = cache.snapshot(&s).unwrap();
-        let took = started.elapsed();
-        assert_eq!(snapshot.index.len(), 10_000);
+        assert_eq!(snapshot.index().len(), 10_000);
         assert_eq!(
             snapshot.rich.len(),
             100,
             "only the items with an HTML or RTF format"
         );
-        // Generous: a debug build on a loaded machine. The old path read every format's bytes.
-        assert!(took < std::time::Duration::from_secs(20), "{took:?}");
 
         // A use and a single-item edit patch that item; neither rebuilds the index or re-reads
         // the library (counted, not timed).
@@ -449,8 +588,76 @@ mod tests {
             .unwrap();
         let edited = cache.snapshot(&s).unwrap();
         assert_eq!(edited.all[5_000].title, "renamed");
-        assert_eq!(edited.index.len(), 10_000);
+        assert_eq!(edited.index().len(), 10_000);
         assert_eq!((cache.rebuilds(), cache.patches()), (1, 2));
+    }
+
+    /// How many items two snapshots hold as the very same allocation.
+    fn shared_items(a: &Snapshot, b: &Snapshot) -> usize {
+        a.all
+            .iter()
+            .zip(&b.all)
+            .filter(|(x, y)| Rc::ptr_eq(x, y))
+            .count()
+    }
+
+    // PERF-1/2/16: a pin (or a use) of one item among 10,000 patches that item alone: no rebuild,
+    // no copy of the other items, the suggestions and the rich set are the same allocations.
+    #[test]
+    fn a_pin_among_ten_thousand_items_copies_one_item_and_rebuilds_nothing() {
+        let (mut s, l) = seeded();
+        s.transaction::<_, snipdeck_store::Error>(|tx| {
+            for n in 0..10_000 {
+                let item = Item::new(l, format!("item {n}"), ItemKind::Text, at());
+                let body = Content::Inline(Inline::new(b"body".to_vec()).unwrap());
+                tx.insert_item(
+                    &item,
+                    &Formats::new(vec![Format::Text(body)]).unwrap(),
+                    Placement::Last,
+                )?;
+            }
+            Ok(())
+        })
+        .unwrap();
+        let cache = IndexCache::new();
+        let first = cache.snapshot(&s).unwrap();
+        // The suggestions are built on first use: use them once so the pin has some to keep.
+        let kept_suggest = first.suggest();
+        assert_eq!(first.pinned.len(), 0, "nothing is pinned yet");
+        let id = first.all[7_000].id;
+
+        let mut item = s.item(id).unwrap();
+        item.pinned = true;
+        cache
+            .edit_item_meta(&mut s, id, |s| s.update_item(&item, None))
+            .unwrap();
+        let pinned = cache.snapshot(&s).unwrap();
+        assert_eq!((cache.rebuilds(), cache.patches()), (1, 1));
+        assert_eq!(shared_items(&first, &pinned), 9_999, "one item was copied");
+        assert!(pinned.item(id).unwrap().pinned);
+        assert!(
+            !first.item(id).unwrap().pinned,
+            "the old snapshot is intact"
+        );
+        assert_eq!(pinned.pinned.len(), 1);
+        assert!(
+            Rc::ptr_eq(&kept_suggest, &pinned.suggest()),
+            "titles did not change"
+        );
+        assert!(
+            Rc::ptr_eq(&first.rich, &pinned.rich),
+            "formats did not change"
+        );
+        assert!(Rc::ptr_eq(&first.positions, &pinned.positions));
+
+        // A counted use is the same: one item copied, the pinned list is kept as it was.
+        s.record_use(id, at()).unwrap();
+        cache.note_use(id);
+        let used = cache.snapshot(&s).unwrap();
+        assert_eq!(cache.patches(), 2);
+        assert_eq!(shared_items(&pinned, &used), 9_999);
+        assert_eq!(used.item(id).unwrap().use_count, 1);
+        assert_eq!(used.pinned[0].use_count, 1);
     }
 
     #[test]
@@ -459,10 +666,10 @@ mod tests {
         add(&mut s, l, "alpha");
         let cache = IndexCache::new();
         let before = cache.snapshot(&s).unwrap();
-        assert_eq!(before.index.len(), 1);
+        assert_eq!(before.index().len(), 1);
         add(&mut s, l, "beta");
         let after = cache.snapshot(&s).unwrap();
-        assert_eq!(after.index.len(), 2);
+        assert_eq!(after.index().len(), 2);
         assert_eq!(cache.rebuilds(), 2);
         // A tag write alone also invalidates (tag names are searchable).
         s.insert_tag(&Tag::new(Name::new("t").unwrap())).unwrap();
@@ -490,8 +697,16 @@ mod tests {
         // Nothing searched changed, so the index is not rebuilt; its tie-breakers (use count and
         // last use) are brought up to date, and the snapshot the Panel still holds keeps its own.
         assert_eq!(cache.rebuilds(), 1);
-        assert!(after_use.index.usage_is_current(&after_use.all));
-        assert!(!first.index.usage_is_current(&after_use.all));
+        assert!(
+            after_use
+                .index()
+                .usage_is_current(after_use.all.iter().map(|i| &**i))
+        );
+        assert!(
+            !first
+                .index()
+                .usage_is_current(after_use.all.iter().map(|i| &**i))
+        );
     }
 
     #[test]
@@ -510,7 +725,7 @@ mod tests {
         let after = cache.snapshot(&s).unwrap();
         assert_eq!((cache.rebuilds(), cache.patches()), (1, 1));
         assert_eq!(after.all[1].title, "gamma");
-        assert_eq!(after.index.len(), 2);
+        assert_eq!(after.index().len(), 2);
         assert_eq!(
             first.all[1].title, "beta",
             "the earlier snapshot is untouched"
@@ -521,8 +736,69 @@ mod tests {
         cache.note_use(id);
         add(&mut s, l, "delta");
         let full = cache.snapshot(&s).unwrap();
-        assert_eq!(full.index.len(), 3);
+        assert_eq!(full.index().len(), 3);
         assert_eq!((cache.rebuilds(), cache.patches()), (2, 1));
+    }
+
+    /// An editor save that moves the item to another list puts it at the end of that list with
+    /// a new rank, so the positions of the snapshot are wrong: the snapshot is read again.
+    #[test]
+    fn an_edit_that_changes_the_list_rereads_the_library() {
+        let (mut s, l) = seeded();
+        let board = s.boards().unwrap()[0].id;
+        let other = List::new(board, Name::new("Other").unwrap(), at());
+        s.insert_list(&other, Placement::Last).unwrap();
+        add(&mut s, l, "alpha");
+        add(&mut s, l, "beta");
+        add(&mut s, other.id, "gamma");
+        let cache = IndexCache::new();
+        let first = cache.snapshot(&s).unwrap();
+        let id = first.all[0].id;
+        let mut item = s.item(id).unwrap();
+        item.list_id = other.id;
+        cache
+            .edit_item(&mut s, id, |s| s.update_item(&item, None))
+            .unwrap();
+        let after = cache.snapshot(&s).unwrap();
+        assert_eq!(
+            (cache.rebuilds(), cache.patches()),
+            (2, 0),
+            "a list change is read again, not patched"
+        );
+        let titles: Vec<&str> = after.all.iter().map(|i| i.title.as_str()).collect();
+        assert_eq!(
+            titles,
+            ["beta", "gamma", "alpha"],
+            "the item sits last in its new list"
+        );
+    }
+
+    /// A list renamed after the snapshot was read and before an edit is hinted: the suggestions
+    /// follow the new name because the counters no longer explain the hint.
+    #[test]
+    fn a_renamed_list_is_read_again_even_with_an_edit_hint() {
+        let (mut s, l) = seeded();
+        add(&mut s, l, "alpha");
+        let cache = IndexCache::new();
+        let first = cache.snapshot(&s).unwrap();
+        let _ = first.suggest();
+        let board = s.boards().unwrap()[0].id;
+        let mut list = s.lists(board).unwrap().remove(0);
+        list.name = Name::new("Renamed").unwrap();
+        s.update_list(&list).unwrap();
+        let id = first.all[0].id;
+        let mut item = s.item(id).unwrap();
+        item.title = "beta".to_owned();
+        cache
+            .edit_item(&mut s, id, |s| s.update_item(&item, None))
+            .unwrap();
+        let after = cache.snapshot(&s).unwrap();
+        assert_eq!(
+            cache.patches(),
+            0,
+            "the rename is not explained by the hint"
+        );
+        assert_eq!(after.boards[0].1[0].name.as_str(), "Renamed");
     }
 
     /// A store that counts how often the Recent list is read.
@@ -633,5 +909,47 @@ mod tests {
         assert_eq!(cache.rebuilds(), 2);
         PickerModel::load_cached(&s, panel.board(), &cache).unwrap();
         assert_eq!(cache.rebuilds(), 2, "the Picker reuses the Panel's rebuild");
+    }
+
+    #[test]
+    fn the_index_is_built_on_first_use_and_a_patch_before_it_builds_nothing() {
+        let (mut s, l) = seeded();
+        for n in 0..50 {
+            let item = Item::new(l, format!("item {n}"), ItemKind::Text, at());
+            let body = Content::Inline(Inline::new(b"body".to_vec()).unwrap());
+            s.insert_item(
+                &item,
+                &Formats::new(vec![Format::Text(body)]).unwrap(),
+                Placement::Last,
+            )
+            .unwrap();
+        }
+        let cache = IndexCache::new();
+        let first = cache.snapshot(&s).unwrap();
+        assert_eq!(first.all.len(), 50, "the items are there at once");
+        assert_eq!(
+            cache.index_builds(),
+            0,
+            "reading the library builds no index"
+        );
+        let id = first.all[3].id;
+        let mut item = s.item(id).unwrap();
+        item.pinned = true;
+        cache
+            .edit_item_meta(&mut s, id, |s| s.update_item(&item, None))
+            .unwrap();
+        let pinned = cache.snapshot(&s).unwrap();
+        assert_eq!((cache.rebuilds(), cache.patches()), (1, 1));
+        assert_eq!(
+            cache.index_builds(),
+            0,
+            "a patch before the first search builds none"
+        );
+        assert_eq!(pinned.index().len(), 50);
+        let _ = pinned.suggest();
+        assert_eq!(cache.index_builds(), 1, "the first search builds it once");
+        let _ = pinned.index();
+        let _ = cache.snapshot(&s).unwrap().index();
+        assert_eq!(cache.index_builds(), 1, "and it is kept");
     }
 }

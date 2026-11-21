@@ -7,6 +7,7 @@
 
 use std::{
     cell::{Cell, RefCell},
+    collections::HashMap,
     rc::{Rc, Weak},
 };
 
@@ -37,6 +38,7 @@ use crate::{
 };
 
 mod colours;
+mod lazy_rows;
 
 type ProblemsFn = dyn Fn(&[HotkeyProblem]);
 type FrameFn = dyn Fn(&Monitor, Rect);
@@ -47,6 +49,39 @@ thread_local! {
     /// and the Main window read the same library and share one toast. Weak: a window that is
     /// gone drops out.
     static REDRAW: RefCell<Vec<Weak<dyn Fn()>>> = const { RefCell::new(Vec::new()) };
+}
+
+thread_local! {
+    /// For the windows that can draw only their toast: their toast-only redraw, by the address of
+    /// the window's full redraw (the key in `REDRAW`). A window without one is redrawn whole.
+    static TOAST_REDRAW: RefCell<HashMap<usize, Weak<dyn Fn()>>> = RefCell::new(HashMap::new());
+}
+
+fn redraw_key(redraw: &Rc<dyn Fn()>) -> usize {
+    Rc::as_ptr(redraw).cast::<()>() as usize
+}
+
+/// Gives the window whose full redraw is `redraw` a cheaper redraw for a toast tick: it runs
+/// `toast_only`, which draws only if the toast changed.
+pub(crate) fn register_toast_redraw(redraw: &Rc<dyn Fn()>, toast_only: &Rc<dyn Fn()>) {
+    TOAST_REDRAW.with(|all| {
+        let mut all = all.borrow_mut();
+        all.retain(|_, w| w.strong_count() > 0);
+        all.insert(redraw_key(redraw), Rc::downgrade(toast_only));
+    });
+}
+
+/// Redraws the windows after a toast tick: a window with a toast-only redraw runs that (it
+/// draws only when its toast differs from the one it shows), every other window is redrawn
+/// whole, as [`redraw_all`] does. Call without a controller borrow held.
+pub(crate) fn redraw_toast() {
+    let all: Vec<Rc<dyn Fn()>> =
+        REDRAW.with(|all| all.borrow().iter().filter_map(Weak::upgrade).collect());
+    for redraw in all {
+        let cheap =
+            TOAST_REDRAW.with(|t| t.borrow().get(&redraw_key(&redraw)).and_then(Weak::upgrade));
+        (cheap.as_ref().unwrap_or(&redraw))();
+    }
 }
 
 /// Adds a window's redraw to the set [`redraw_all`] runs.
@@ -73,7 +108,8 @@ pub fn redraw_from_any_thread() {
     let _ = slint::invoke_from_event_loop(redraw_all);
 }
 
-/// Runs the timer chain of toast `seq`: each tick advances the toast and redraws the windows.
+/// Runs the timer chain of toast `seq`: each tick advances the toast and redraws the windows
+/// that show it.
 pub(crate) fn arm_toast<S, C, K, T>(
     controller: Weak<RefCell<Controller<S, C, K, T>>>,
     seq: u64,
@@ -89,7 +125,7 @@ pub(crate) fn arm_toast<S, C, K, T>(
             return;
         };
         let next = strong.borrow_mut().toast_tick(seq);
-        redraw_all();
+        redraw_toast();
         if let Some(next) = next {
             arm_toast(controller, seq, next);
         }
@@ -281,14 +317,21 @@ struct Core<S, C, K, T> {
     shown: RefCell<Option<View>>,
     /// Redraws this window (registered with [`register_redraw`]).
     redraw: Rc<dyn Fn()>,
+    /// Redraws the window when only the toast changed (registered with
+    /// [`register_toast_redraw`](crate::binding::register_toast_redraw)).
+    toast_redraw: Rc<dyn Fn()>,
     /// A timer is waiting to write changed settings.
     settings_timer: Cell<bool>,
     /// A timer is waiting to clear a copied sensitive item off the clipboard.
     clipboard_timer: Cell<bool>,
     /// A timer is waiting for the idle lock of the master password.
     idle_timer: Cell<bool>,
+    /// A single-shot that builds the search index after a frame, while the Panel waits.
+    warm_timer: slint::Timer,
     /// Sends the dock its ticks while a hover or leave delay runs.
     dock_timer: slint::Timer,
+    /// Set once the Panel has been shown: from then on a hidden Panel is not drawn.
+    been_shown: std::cell::Cell<bool>,
     drag_timer: slint::Timer,
     /// Looks at the clipboard while "Take screenshot" waits for its picture.
     screen_clip_timer: slint::Timer,
@@ -312,6 +355,7 @@ where
     ) -> Rc<Self> {
         let core = Rc::new_cyclic(|weak: &Weak<Self>| {
             let weak = weak.clone();
+            let toast_weak = weak.clone();
             Self {
                 controller: Rc::clone(controller),
                 window: window.as_weak(),
@@ -320,6 +364,11 @@ where
                 host,
                 on_effect,
                 shown: RefCell::new(None),
+                toast_redraw: Rc::new(move || {
+                    if let Some(core) = toast_weak.upgrade() {
+                        core.toast_changed();
+                    }
+                }),
                 redraw: Rc::new(move || {
                     if let Some(core) = weak.upgrade() {
                         core.sync();
@@ -328,13 +377,16 @@ where
                 settings_timer: Cell::new(false),
                 clipboard_timer: Cell::new(false),
                 idle_timer: Cell::new(false),
+                warm_timer: slint::Timer::default(),
                 dock_timer: slint::Timer::default(),
+                been_shown: std::cell::Cell::new(false),
                 drag_timer: slint::Timer::default(),
                 screen_clip_timer: slint::Timer::default(),
                 colours: colours::Glue::default(),
             }
         });
         register_redraw(&core.redraw);
+        register_toast_redraw(&core.redraw, &core.toast_redraw);
         core
     }
 
@@ -490,6 +542,7 @@ where
                 Effect::ShowPanel => {
                     // A failure to show leaves the Panel hidden; the next hotkey tries again.
                     window.window().set_minimized(false);
+                    self.been_shown.set(true);
                     let shown = window.show();
                     crate::trace!(
                         "show panel: {shown:?}, visible now {}",
@@ -498,6 +551,7 @@ where
                     // A hidden Panel comes back where it was in the stack, behind the app in
                     // use; and one that is "shown" already (a second Open Panel) may be buried.
                     crate::native_window::raise(&window);
+                    redraw_all();
                     repaint_whole(&window);
                     // Shown on purpose (the hotkey, the tray, a second launch): the user types
                     // next, so the Panel takes the keyboard. A dock-hover reveal never comes
@@ -573,6 +627,19 @@ where
         });
     }
 
+    /// A toast tick: draws only if the toast differs from the one the window shows.
+    fn toast_changed(self: &Rc<Self>) {
+        let now = self.controller.borrow().toast_view();
+        let same = self
+            .shown
+            .borrow()
+            .as_ref()
+            .is_some_and(|view| view.toast == now);
+        if !same {
+            self.sync();
+        }
+    }
+
     /// Copies the controller's view into the window and keeps the toast timer running.
     fn sync(self: &Rc<Self>) {
         let Some(window) = self.window.upgrade() else {
@@ -585,7 +652,12 @@ where
             self.apply(&picked);
         }
         let view = self.controller.borrow().view();
-        render(&window, self.shown.borrow().as_ref(), &view);
+        // A hidden Panel is not drawn: showing it draws (see `Effect::ShowPanel`).
+        let visible = window.window().is_visible() || !self.been_shown.get();
+        // A view equal to the one shown draws nothing (one comparison instead of one per field).
+        if visible && self.shown.borrow().as_ref() != Some(&view) {
+            render(&window, self.shown.borrow().as_ref(), &view);
+        }
         // A new group's name follows the language the window is in now.
         self.controller
             .borrow_mut()
@@ -609,10 +681,33 @@ where
                 crate::controller::TOAST_ENTER,
             );
         }
-        *self.shown.borrow_mut() = Some(view);
+        if visible {
+            *self.shown.borrow_mut() = Some(view);
+        }
         self.arm_settings();
         self.arm_clipboard_clear();
         self.arm_idle_lock();
+        self.arm_warm();
+    }
+
+    /// Builds the search index shortly after a frame when it is not built (the library was read
+    /// again), so the first keystroke finds it ready. Runs only while the Panel is on screen.
+    fn arm_warm(self: &Rc<Self>) {
+        if self.warm_timer.running() || self.controller.borrow().search_ready() {
+            return;
+        }
+        let core = Rc::downgrade(self);
+        self.warm_timer.start(
+            slint::TimerMode::SingleShot,
+            std::time::Duration::from_millis(60),
+            move || {
+                if let Some(core) = core.upgrade()
+                    && let Ok(ctl) = core.controller.try_borrow()
+                {
+                    ctl.warm_search();
+                }
+            },
+        );
     }
 
     /// Runs the dock's timer while the Panel is docked, may tuck and is on screen, and only
@@ -1565,7 +1660,7 @@ fn render_recent(window: &ui::PanelWindow, previous: Option<&View>, view: &View)
             app: r.app.as_str().into(),
             age_minutes: i32::try_from(r.age_minutes).unwrap_or(i32::MAX),
             kind: crate::binding::recent_kind(r.kind),
-            image: crate::binding::recent_thumb(r.thumb.as_ref()),
+            image: crate::binding::recent_thumb(r.id, r.thumb.as_ref()),
         })));
         window.set_recent_targets(model(targets.iter().map(|t| ui::ChoiceEntry {
             label: t.label.as_str().into(),
@@ -1696,51 +1791,22 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
         })));
     }
     if differs(&|p| {
-        p.rows == view.rows
+        (Rc::ptr_eq(&p.rows, &view.rows) || p.rows == view.rows)
             && p.dark == view.dark
             && p.stack.as_ref().map(|s| &s.items) == view.stack.as_ref().map(|s| &s.items)
     }) {
         let marked = view.stack.as_ref().map_or(&[][..], |s| s.items.as_slice());
-        let rows = view
-            .rows
-            .iter()
-            .enumerate()
-            .map(|(i, r)| {
-                let mut row = panel_row(r, view.dark);
-                // Collapsed "Deleted · Undo" rows do not take a number: the live rows count 1, 2, 3.
-                // Neither do group headers.
-                row.ghosts_before = to_i32(
-                    view.rows[..i]
-                        .iter()
-                        .filter(|x| x.deleted_pending || x.header.is_some())
-                        .count(),
-                );
-                // A group's items count off under their header: "2 of 5".
-                if r.grouped {
-                    let before = view.rows[..i]
-                        .iter()
-                        .rev()
-                        .take_while(|x| x.grouped)
-                        .count();
-                    let header = view.rows[..i - before]
-                        .last()
-                        .and_then(|x| x.header.as_ref());
-                    row.set_position = to_i32(before + 1);
-                    row.set_size = header.map_or(0, |h| to_i32(h.count));
-                }
-                row.stack_position = marked
-                    .iter()
-                    .position(|id| *id == r.id)
-                    .map_or(0, |at| to_i32(at + 1));
-                // The one sensitive row held revealed: the controller put its text in the preview.
-                if view.revealed == Some(i) {
-                    row.preview = r.preview.as_str().into();
-                }
-                row
-            })
-            .collect();
-        if let Some(fresh) = refreshed_model(&window.get_rows(), rows) {
-            window.set_rows(fresh);
+        let extra = lazy_rows::extras(&view.rows, marked);
+        let current = window.get_rows();
+        if let Some(lazy) = current.as_any().downcast_ref::<lazy_rows::LazyRows>() {
+            lazy.update(Rc::clone(&view.rows), extra, view.dark, view.revealed);
+        } else {
+            window.set_rows(ModelRc::new(lazy_rows::LazyRows::new(
+                Rc::clone(&view.rows),
+                extra,
+                view.dark,
+                view.revealed,
+            )));
         }
         // Where the live row for Alt+1 to Alt+9 sits among the rows shown (ghosts are stepped over).
         let quick: Vec<i32> = view
@@ -2011,11 +2077,20 @@ pub(crate) fn refreshed_model<T: Clone + PartialEq + 'static>(
         tail += 1;
     }
     let (old_mid, new_mid) = (old - head - tail, new - head - tail);
+    if old_mid.abs_diff(new_mid) > BULK_ROWS {
+        // Many rows come or go (a long list replaced by a short one): one reset instead of one
+        // notification per row removed.
+        vec.set_vec(rows);
+        return None;
+    }
     let shared = old_mid.min(new_mid);
     let mut rows = rows.into_iter().skip(head);
     for i in 0..shared {
         if let Some(row) = rows.next() {
-            vec.set_row_data(head + i, row);
+            // An unchanged row is not set again: each set notifies the view.
+            if vec.row_data(head + i).as_ref() != Some(&row) {
+                vec.set_row_data(head + i, row);
+            }
         }
     }
     // Deleted rows go from the back, added ones go in after the rows just set.
@@ -2027,6 +2102,9 @@ pub(crate) fn refreshed_model<T: Clone + PartialEq + 'static>(
     }
     None
 }
+
+/// More rows than this added or removed at once are replaced in one reset.
+const BULK_ROWS: usize = 16;
 
 pub(crate) fn to_i32(n: usize) -> i32 {
     i32::try_from(n).unwrap_or(i32::MAX)
@@ -2176,15 +2254,46 @@ pub(crate) fn recent_kind(kind: snipdeck_store::RecentKind) -> ui::ItemKind {
     }
 }
 
-/// A Recent picture's thumbnail as an image; empty when it has none.
-pub(crate) fn recent_thumb(thumb: Option<&snipdeck_store::RecentThumb>) -> slint::Image {
-    thumb.map_or_else(slint::Image::default, |t| {
-        slint::Image::from_rgba8(
+thread_local! {
+    /// The image made for each Recent entry's thumbnail, by entry id (a thumbnail never changes
+    /// once captured): a Recent change builds an image only for an entry not seen before.
+    static THUMBS: RefCell<HashMap<i64, slint::Image>> = RefCell::new(HashMap::new());
+    /// How many images [`recent_thumb`] has built (for tests).
+    static THUMBS_BUILT: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// The most thumbnails kept: the inbox holds fewer entries than this, so only a long session
+/// of copies reaches it, and the cache then starts over.
+const THUMBS_KEPT: usize = 512;
+
+/// A Recent picture's thumbnail as an image; empty when it has none. Built once per entry `id`.
+pub(crate) fn recent_thumb(id: i64, thumb: Option<&snipdeck_store::RecentThumb>) -> slint::Image {
+    let Some(t) = thumb else {
+        return slint::Image::default();
+    };
+    THUMBS.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        if let Some(image) = cache.get(&id) {
+            return image.clone();
+        }
+        if cache.len() >= THUMBS_KEPT {
+            cache.clear();
+        }
+        THUMBS_BUILT.with(|n| n.set(n.get() + 1));
+        let image = slint::Image::from_rgba8(
             slint::SharedPixelBuffer::<slint::Rgba8Pixel>::clone_from_slice(
                 &t.rgba, t.width, t.height,
             ),
-        )
+        );
+        cache.insert(id, image.clone());
+        image
     })
+}
+
+/// Thumbnail images built so far on this thread (for tests).
+#[cfg(test)]
+pub(crate) fn thumbs_built() -> usize {
+    THUMBS_BUILT.with(std::cell::Cell::get)
 }
 
 /// The window's kind for an item: a sensitive item is its own kind whatever it holds.
@@ -2227,6 +2336,59 @@ impl Payload {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_toast_tick_runs_the_toast_redraw_or_else_the_full_one() {
+        use std::{cell::Cell, rc::Rc};
+        super::REDRAW.with(|r| r.borrow_mut().clear());
+        super::TOAST_REDRAW.with(|r| r.borrow_mut().clear());
+        let count = |c: &Rc<Cell<u32>>| {
+            let c = Rc::clone(c);
+            let f: Rc<dyn Fn()> = Rc::new(move || c.set(c.get() + 1));
+            f
+        };
+        let (full_a, toast_a, full_b) = (
+            Rc::new(Cell::new(0_u32)),
+            Rc::new(Cell::new(0_u32)),
+            Rc::new(Cell::new(0_u32)),
+        );
+        // Window A has a toast-only redraw; window B (Help, say) has only the full one.
+        let (redraw_a, toast_only_a, redraw_b) = (count(&full_a), count(&toast_a), count(&full_b));
+        super::register_redraw(&redraw_a);
+        super::register_redraw(&redraw_b);
+        super::register_toast_redraw(&redraw_a, &toast_only_a);
+        super::redraw_toast();
+        assert_eq!(
+            (full_a.get(), toast_a.get(), full_b.get()),
+            (0, 1, 1),
+            "A draws its toast only; B, with no toast-only redraw, is redrawn whole"
+        );
+        drop(toast_only_a);
+        super::redraw_toast();
+        assert_eq!(
+            full_a.get(),
+            1,
+            "a gone toast-only redraw falls back to the full one"
+        );
+        super::REDRAW.with(|r| r.borrow_mut().clear());
+        super::TOAST_REDRAW.with(|r| r.borrow_mut().clear());
+    }
+
+    #[test]
+    fn a_recent_thumbnail_is_built_once_per_entry() {
+        let thumb = snipdeck_store::RecentThumb {
+            width: 2,
+            height: 2,
+            rgba: vec![255; 16],
+        };
+        let before = super::thumbs_built();
+        for _ in 0..50 {
+            let _ = super::recent_thumb(9_001, Some(&thumb));
+        }
+        let _ = super::recent_thumb(9_002, Some(&thumb));
+        let _ = super::recent_thumb(9_003, None);
+        assert_eq!(super::thumbs_built() - before, 2, "one image per entry id");
+    }
+
     #[test]
     fn refreshed_model_adds_and_deletes_rows_in_place() {
         fn ints(m: &ModelRc<i32>) -> Vec<i32> {

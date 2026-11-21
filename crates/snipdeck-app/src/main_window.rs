@@ -292,12 +292,15 @@ pub struct MainModel {
     list_counts: HashMap<ListId, usize>,
     tags: Vec<Tag>,
     tag_counts: HashMap<TagId, usize>,
-    items: Vec<Item>,
+    items: Vec<std::rc::Rc<Item>>,
+    /// The library snapshot Main reads, shared with the Panel and the Picker: one read of the
+    /// library, one search index, one set of suggestions for every window.
+    cache: crate::index_cache::IndexCache,
     /// The groups of each list of the open board.
     groups: HashMap<ListId, Vec<GroupRun>>,
     list_labels: HashMap<ListId, ListLabel>,
-    /// The names the search suggestions are made of, rebuilt by `reload`.
-    suggest: std::rc::Rc<crate::search_suggest::Index>,
+    /// The library snapshot read by `reload`; its suggestions are built on first use.
+    snapshot: std::rc::Rc<crate::index_cache::Snapshot>,
     trash: Vec<TrashEntry>,
     section: Section,
     query: String,
@@ -329,7 +332,14 @@ impl MainModel {
     /// An empty model that loads on the first [`reload`](Self::reload).
     #[must_use]
     pub fn new() -> Self {
+        Self::with_cache(crate::index_cache::IndexCache::new())
+    }
+
+    /// An empty model that reads the library through `cache` (the one the Panel uses).
+    #[must_use]
+    pub fn with_cache(cache: crate::index_cache::IndexCache) -> Self {
         Self {
+            cache,
             stale: true,
             board_menu: false,
             boards: Vec::new(),
@@ -341,7 +351,7 @@ impl MainModel {
             items: Vec::new(),
             groups: HashMap::new(),
             list_labels: HashMap::new(),
-            suggest: std::rc::Rc::default(),
+            snapshot: std::rc::Rc::default(),
             trash: Vec::new(),
             section: Section::All,
             query: String::new(),
@@ -393,35 +403,39 @@ impl MainModel {
     where
         S: BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo + GroupRepo,
     {
-        let boards = store.boards()?;
+        // One read for every window: the cache hands out the snapshot the Panel holds (read
+        // again only when the library was written).
+        let snapshot = self.cache.snapshot(store)?;
+        let boards: Vec<Board> = snapshot.boards.iter().map(|(b, _)| b.clone()).collect();
         let board = self
             .board
             .filter(|id| boards.iter().any(|b| b.id == *id))
             .or_else(|| boards.first().map(|b| b.id));
-        let lists = match board {
-            Some(id) => store.lists(id)?,
-            None => Vec::new(),
-        };
-        let items = store.all_items()?;
+        let lists = board
+            .and_then(|id| snapshot.boards.iter().find(|(b, _)| b.id == id))
+            .map_or_else(Vec::new, |(_, lists)| lists.clone());
+        let items = snapshot.all.clone();
         let groups = lists
             .iter()
             .map(|l| Ok((l.id, store.groups_of(l.id)?)))
             .collect::<snipdeck_store::Result<HashMap<_, _>>>()?;
         let tags = store.tags()?;
         let trash = store.trashed()?;
-        let mut list_labels = HashMap::new();
-        for b in &boards {
-            for l in store.lists(b.id)? {
-                list_labels.insert(
+        let list_labels: HashMap<ListId, ListLabel> = snapshot
+            .boards
+            .iter()
+            .flat_map(|(_, lists)| lists.iter())
+            .map(|l| {
+                (
                     l.id,
                     ListLabel {
                         board: String::new(),
                         name: l.name.as_str().to_owned(),
                         accent: l.accent,
                     },
-                );
-            }
-        }
+                )
+            })
+            .collect();
         let hits = if self.searching() {
             store.search(self.query.trim(), SEARCH_LIMIT)?
         } else {
@@ -446,11 +460,7 @@ impl MainModel {
         self.list_labels = list_labels;
         self.trash = trash;
         self.hits = hits;
-        self.suggest = std::rc::Rc::new(crate::search_suggest::Index::build(
-            &self.items,
-            self.tags.iter().map(|t| t.name.as_str()),
-            self.list_labels.values().map(|l| l.name.as_str()),
-        ));
+        self.snapshot = std::rc::Rc::clone(&snapshot);
         self.section = match self.section {
             Section::List(id) if !self.lists.iter().any(|l| l.id == id) => Section::All,
             Section::Tag(id) if !self.tags.iter().any(|t| t.id == id) => Section::All,
@@ -584,7 +594,7 @@ impl MainModel {
     /// The names the search suggestions are made of.
     #[must_use]
     pub fn suggest_index(&self) -> std::rc::Rc<crate::search_suggest::Index> {
-        std::rc::Rc::clone(&self.suggest)
+        self.snapshot.suggest()
     }
 
     /// The search text.
@@ -715,7 +725,7 @@ impl MainModel {
     /// searching, else the section's items.
     fn unfiltered_items(&self) -> Vec<&Item> {
         if self.searching() {
-            let by_id: HashMap<ItemId, &Item> = self.items.iter().map(|i| (i.id, i)).collect();
+            let by_id: HashMap<ItemId, &Item> = self.items.iter().map(|i| (i.id, &**i)).collect();
             return self
                 .hits
                 .iter()
@@ -723,11 +733,21 @@ impl MainModel {
                 .collect();
         }
         match self.section {
-            Section::All => self.items.iter().collect(),
-            Section::Pinned => self.items.iter().filter(|i| i.pinned).collect(),
+            Section::All => self.items.iter().map(|i| &**i).collect(),
+            Section::Pinned => self
+                .items
+                .iter()
+                .filter(|i| i.pinned)
+                .map(|i| &**i)
+                .collect(),
             Section::Recent | Section::Trash => Vec::new(),
             Section::List(id) => self.list_items(id),
-            Section::Tag(id) => self.items.iter().filter(|i| i.tags.contains(&id)).collect(),
+            Section::Tag(id) => self
+                .items
+                .iter()
+                .filter(|i| i.tags.contains(&id))
+                .map(|i| &**i)
+                .collect(),
         }
     }
 
@@ -768,7 +788,12 @@ impl MainModel {
 
     /// The items of list `id` in the list's own order (manual, most used or recently used).
     fn list_items(&self, id: ListId) -> Vec<&Item> {
-        let mut items: Vec<&Item> = self.items.iter().filter(|i| i.list_id == id).collect();
+        let mut items: Vec<&Item> = self
+            .items
+            .iter()
+            .filter(|i| i.list_id == id)
+            .map(|i| &**i)
+            .collect();
         match self.lists.iter().find(|l| l.id == id).map(|l| l.sort) {
             Some(ListSort::MostUsed) => items.sort_by_key(|i| std::cmp::Reverse(i.use_count)),
             Some(ListSort::RecentlyUsed) => {
@@ -874,7 +899,7 @@ impl MainModel {
     /// The item for `id`, from the loaded library.
     #[must_use]
     pub fn item(&self, id: ItemId) -> Option<&Item> {
-        self.items.iter().find(|i| i.id == id)
+        self.items.iter().find(|i| i.id == id).map(|i| &**i)
     }
 
     /// The loaded items in `list`, in the list's manual order.

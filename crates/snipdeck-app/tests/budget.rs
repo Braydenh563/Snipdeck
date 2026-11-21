@@ -120,7 +120,7 @@ fn a_cached_panel_load_does_no_index_work() {
 fn search_finds_its_item_in_a_large_library() {
     let store = library(2_000);
     let cache = IndexCache::new();
-    let index = std::rc::Rc::clone(&cache.snapshot(&store).unwrap().index);
+    let index = std::rc::Rc::clone(&cache.snapshot(&store).unwrap().index());
     assert_eq!(index.len(), 2_000);
     let hits = index.query("number 1999", 20);
     hits.first().expect("the item is found");
@@ -143,7 +143,7 @@ fn measure_search_and_panel_load_budgets() {
         "panel load, {LIBRARY} items: cold {cold_ms:.1} ms (builds the index), warm {warm_ms:.1} ms (budget {PANEL_BUDGET_MS} ms)"
     );
 
-    let index = std::rc::Rc::clone(&cache.snapshot(&store).unwrap().index);
+    let index = std::rc::Rc::clone(&cache.snapshot(&store).unwrap().index());
     let mut worst: f64 = 0.0;
     for q in [
         "snippet",
@@ -164,4 +164,67 @@ fn measure_search_and_panel_load_budgets() {
     assert!(warm_ms <= PANEL_BUDGET_MS, "warm Panel load over budget");
     assert!(cold_ms <= PANEL_BUDGET_MS, "cold Panel load over budget");
     assert!(worst <= SEARCH_BUDGET_MS, "search over budget");
+}
+
+#[test]
+fn a_pin_and_a_use_patch_the_snapshot_and_rows_are_built_once() {
+    let mut store = library(2_000);
+    let cache = IndexCache::new();
+    let id = cache.snapshot(&store).unwrap().all[1_500].id;
+    let mut item = store.item(id).unwrap();
+    item.pinned = true;
+    cache
+        .edit_item_meta(&mut store, id, |s| s.update_item(&item, None))
+        .unwrap();
+    cache.snapshot(&store).unwrap();
+    assert_eq!((cache.rebuilds(), cache.patches()), (1, 1), "a pin patches");
+    store.record_use(id, at()).unwrap();
+    cache.note_use(id);
+    cache.snapshot(&store).unwrap();
+    assert_eq!((cache.rebuilds(), cache.patches()), (1, 2), "a use patches");
+
+    let model = PanelModel::load_cached(&store, None, None, &cache).unwrap();
+    let _ = model.rows();
+    let _ = model.rows();
+    assert_eq!(
+        model.rows_built(),
+        1,
+        "rows are built once until something changes"
+    );
+}
+
+/// Prints the cold load, a pin patch, a use patch and a row build at 10,000 items.
+#[test]
+#[ignore = "wall-clock measurement: run by hand with --ignored (docs/PERF.md)"]
+fn measure_pin_use_and_rows_at_ten_thousand_items() {
+    let mut store = library(LIBRARY);
+    let cache = IndexCache::new();
+    let watch = Wall;
+    let (_, cold) = watch.measure(|| cache.snapshot(&store).unwrap());
+    let id = cache.snapshot(&store).unwrap().all[LIBRARY / 2].id;
+    let mut item = store.item(id).unwrap();
+    item.pinned = true;
+    let (_, pin_ms) = watch.measure(|| {
+        cache
+            .edit_item_meta(&mut store, id, |s| s.update_item(&item, None))
+            .unwrap();
+        cache.snapshot(&store).unwrap()
+    });
+    let (_, use_ms) = watch.measure(|| {
+        store.record_use(id, at()).unwrap();
+        cache.note_use(id);
+        cache.snapshot(&store).unwrap()
+    });
+    let model = PanelModel::load_cached(&store, None, None, &cache).unwrap();
+    let (rows, rows_ms) = watch.measure(|| model.rows());
+    println!(
+        "{LIBRARY} items: cold snapshot {cold:.1} ms, pin {pin_ms:.2} ms, use {use_ms:.2} ms, rows ({}) {rows_ms:.2} ms; rebuilds {}, patches {}",
+        rows.len(),
+        cache.rebuilds(),
+        cache.patches()
+    );
+    assert!(
+        pin_ms <= PANEL_BUDGET_MS && use_ms <= PANEL_BUDGET_MS,
+        "act over budget"
+    );
 }

@@ -150,7 +150,7 @@ where
 
     /// [`Controller::recent_entries`] without copying: read from the store only when it was
     /// written since the last call.
-    fn recent_shared(&self) -> std::rc::Rc<Vec<RecentEntry>> {
+    pub(super) fn recent_shared(&self) -> std::rc::Rc<Vec<RecentEntry>> {
         if !self.settings.recent_history || self.library_locked() {
             // Nothing decrypted is kept while the inbox is hidden.
             self.index_cache.forget_recent();
@@ -236,17 +236,12 @@ where
     /// box matches, as of now. Empty while the inbox is off.
     pub(super) fn main_recent_rows(&self) -> Vec<RecentRowView> {
         let now = self.clock.now();
-        self.main_recent_entries()
-            .iter()
-            .map(|e| row_view(e, now))
-            .collect()
-    }
-
-    fn main_recent_entries(&self) -> Vec<RecentEntry> {
         let query = self.main.query();
-        self.recent_entries()
-            .into_iter()
+        // Borrowed from the cache: nothing is cloned but the rows shown.
+        self.recent_shared()
+            .iter()
             .filter(|e| matches_query(&e.text, query))
+            .map(|e| row_view(e, now))
             .collect()
     }
 

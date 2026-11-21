@@ -189,6 +189,8 @@ licence key still load: unknown fields are ignored and a stale `licence.key` fil
 | Search over 10k items (title + 64 chars, 4 threads) | < 16 ms (measured 4–8 ms on a Linux VM) |
 | Installer (excl. OCR pack) | < 15 MB |
 
+Note (PERF-17): the tooltip liveness timer (10 wake-ups a second while a tooltip rests) stays: Slint has no destruction hook, and it measures 0.0025 ms per wake-up (docs/PERF.md).
+
 ## 10. Architecture (summary — see ADRs)
 
 Cargo workspace:

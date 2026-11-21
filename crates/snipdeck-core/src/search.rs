@@ -27,6 +27,7 @@
 
 use std::cmp::Reverse;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use nucleo_matcher::pattern::{AtomKind, CaseMatching, Normalization, Pattern};
 use nucleo_matcher::{Config, Matcher, Utf32Str};
@@ -89,8 +90,10 @@ enum Tier {
 /// An in-memory index over a board's items for the Panel and Picker.
 #[derive(Debug, Default, Clone)]
 pub struct SearchIndex {
-    entries: Vec<Entry>,
-    positions: HashMap<ItemId, usize>,
+    /// Shared entries: cloning the index copies pointers, and a patch replaces one entry.
+    entries: Vec<Arc<Entry>>,
+    /// Shared too: it changes only when an item is added or removed, not on an edit.
+    positions: Arc<HashMap<ItemId, usize>>,
 }
 
 fn last_used_of(item: &Item) -> i64 {
@@ -155,10 +158,10 @@ impl SearchIndex {
             .get(&item.id)
             .and_then(|&at| self.entries.get_mut(at));
         if let Some(slot) = known {
-            *slot = entry;
+            *slot = Arc::new(entry);
         } else {
-            self.positions.insert(item.id, self.entries.len());
-            self.entries.push(entry);
+            Arc::make_mut(&mut self.positions).insert(item.id, self.entries.len());
+            self.entries.push(Arc::new(entry));
         }
     }
 
@@ -188,6 +191,7 @@ impl SearchIndex {
             };
             let last_used = last_used_of(item);
             if entry.use_count != item.use_count || entry.last_used != last_used {
+                let entry = Arc::make_mut(entry);
                 entry.use_count = item.use_count;
                 entry.last_used = last_used;
                 changed = true;
@@ -198,12 +202,13 @@ impl SearchIndex {
 
     /// Drops `id` from the index. Returns whether it was there.
     pub fn remove(&mut self, id: ItemId) -> bool {
-        let Some(at) = self.positions.remove(&id) else {
+        let Some(at) = Arc::make_mut(&mut self.positions).remove(&id) else {
             return false;
         };
         self.entries.remove(at);
+        let positions = Arc::make_mut(&mut self.positions);
         for entry in self.entries.iter().skip(at) {
-            if let Some(position) = self.positions.get_mut(&entry.id) {
+            if let Some(position) = positions.get_mut(&entry.id) {
                 *position -= 1;
             }
         }
@@ -339,7 +344,7 @@ impl SearchIndex {
 
 /// Scores `entries` (which start at index `first` of the whole index) and returns
 /// `(index, score)` for those that match.
-fn score_chunk(entries: &[Entry], first: usize, pattern: &Pattern) -> Vec<(usize, u32)> {
+fn score_chunk(entries: &[Arc<Entry>], first: usize, pattern: &Pattern) -> Vec<(usize, u32)> {
     let mut matcher = Matcher::new(Config::DEFAULT);
     let mut buf = Vec::new();
     let mut score = |text: &str| {

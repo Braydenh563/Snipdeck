@@ -129,8 +129,13 @@ struct MainCore<S, C, K, T> {
     editors: RefCell<Editors>,
     /// The Tag manager window, made the first time it is asked for.
     tag_manager: RefCell<Option<ui::TagManager>>,
+    /// Set once the window has been on screen: from then on a hidden Main is not drawn.
+    been_shown: std::cell::Cell<bool>,
     /// Redraws this window (registered with `binding::register_redraw`).
     redraw: Rc<dyn Fn()>,
+    /// Redraws the window when only the toast changed (registered with
+    /// [`register_toast_redraw`](crate::binding::register_toast_redraw)).
+    toast_redraw: Rc<dyn Fn()>,
 }
 
 /// A bound Main window. Dropping it does not unbind the window; the window's callbacks keep
@@ -245,12 +250,29 @@ where
         self.act(|ctl| ctl.run_command(command, cursor));
     }
 
+    /// A toast tick: draws only if the toast differs from the one the window shows.
+    fn toast_changed(self: &Rc<Self>) {
+        let now = self.controller.borrow().toast_view();
+        let same = self
+            .shown
+            .borrow()
+            .as_ref()
+            .is_some_and(|screen| screen.toast == now);
+        if !same {
+            self.sync();
+        }
+    }
+
     /// Copies the controller's screen into the window and the editors, and keeps the toast
     /// timer running.
     fn sync(self: &Rc<Self>) {
         let Some(window) = self.window.upgrade() else {
             return;
         };
+        // Nothing is drawn for a window nobody can see: the show path draws once it is visible.
+        if !self.anything_visible(&window) {
+            return;
+        }
         let screen = self.controller.borrow_mut().main_screen();
         render(&window, self.shown.borrow().as_ref(), &screen);
         if let Some(toast) = &screen.toast
@@ -265,6 +287,29 @@ where
         self.sync_editors(&screen);
         self.sync_tag_manager(&screen, false);
         *self.shown.borrow_mut() = Some(screen);
+    }
+
+    /// Whether Main, its Tag manager or one of its editors is on screen.
+    fn anything_visible(&self, window: &ui::MainWindow) -> bool {
+        let editors = self.editors.borrow();
+        if window.window().is_visible() {
+            self.been_shown.set(true);
+            return true;
+        }
+        !self.been_shown.get()
+            || self
+                .tag_manager
+                .borrow()
+                .as_ref()
+                .is_some_and(|w| w.window().is_visible())
+            || editors
+                .list
+                .as_ref()
+                .is_some_and(|w| w.window().is_visible())
+            || editors
+                .board
+                .as_ref()
+                .is_some_and(|w| w.window().is_visible())
     }
 
     /// Copies the tags into the Tag manager if it exists, so a delete, an Undo or a rename made
@@ -551,12 +596,19 @@ where
     pub fn bind_main(this: &Rc<RefCell<Self>>, window: &ui::MainWindow) -> MainBinding<S, C, K, T> {
         let core = Rc::new_cyclic(|weak: &Weak<MainCore<S, C, K, T>>| {
             let weak = weak.clone();
+            let toast_weak = weak.clone();
             MainCore {
                 controller: Rc::clone(this),
                 window: window.as_weak(),
                 shown: RefCell::new(None),
                 editors: RefCell::new(Editors::default()),
                 tag_manager: RefCell::new(None),
+                been_shown: std::cell::Cell::new(false),
+                toast_redraw: Rc::new(move || {
+                    if let Some(core) = toast_weak.upgrade() {
+                        core.toast_changed();
+                    }
+                }),
                 redraw: Rc::new(move || {
                     if let Some(core) = weak.upgrade() {
                         core.sync();
@@ -565,6 +617,7 @@ where
             }
         });
         register_redraw(&core.redraw);
+        crate::binding::register_toast_redraw(&core.redraw, &core.toast_redraw);
         // The OS draws the title bar and its caption buttons until the client-area chrome of
         // ADR-0008 exists, so the toolbar reserves nothing for them.
         window.global::<ui::SystemLook<'_>>().set_caption_inset(0.0);
@@ -1034,8 +1087,8 @@ impl MainUi {
                     return Ok(());
                 };
                 // Reading the library again: it may have changed while the window was closed.
-                binding.redraw();
                 window.show()?;
+                binding.redraw();
                 if !placed.replace(true) {
                     // Where the user left it (then cut to the screen below); only once, as a
                     // hidden window keeps its place.
@@ -1244,7 +1297,7 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
             app: r.app.as_str().into(),
             age_minutes: i32::try_from(r.age_minutes).unwrap_or(i32::MAX),
             kind: crate::binding::recent_kind(r.kind),
-            image: crate::binding::recent_thumb(r.thumb.as_ref()),
+            image: crate::binding::recent_thumb(r.id, r.thumb.as_ref()),
         })));
     }
     if differs(&|p| p.recent_targets == screen.recent_targets && p.dark == screen.dark) {

@@ -1247,6 +1247,9 @@ struct SettingsCore<C, K, T> {
     shown: RefCell<Option<PageView>>,
     /// Redraws this window (registered with `binding::register_redraw`).
     redraw: Rc<dyn Fn()>,
+    /// Redraws the window when only the toast changed (registered with
+    /// [`register_toast_redraw`](crate::binding::register_toast_redraw)).
+    toast_redraw: Rc<dyn Fn()>,
     /// A timer is waiting to write changed settings.
     save_timer: Rc<Cell<bool>>,
     /// Whether Windows holds the start-up entry, read when the page opens and after the toggle
@@ -1364,6 +1367,19 @@ where
         let mut state = self.state.borrow_mut();
         state.backups = found;
         state.last_backup_items = items;
+    }
+
+    /// A toast tick: draws only if the toast differs from the one the window shows.
+    fn toast_changed(self: &Rc<Self>) {
+        let now = self.controller.borrow().settings_toast();
+        let same = self
+            .shown
+            .borrow()
+            .as_ref()
+            .is_some_and(|view| view.toast == now);
+        if !same {
+            (self.redraw)();
+        }
     }
 
     /// Copies the controller's state into the window and keeps the toast and save timers running.
@@ -2048,6 +2064,7 @@ where
     ) -> SettingsBinding<C, K, T> {
         let core = Rc::new_cyclic(|weak: &Weak<SettingsCore<C, K, T>>| {
             let weak = weak.clone();
+            let toast_weak = weak.clone();
             SettingsCore {
                 controller: Rc::clone(this),
                 window: window.as_weak(),
@@ -2055,6 +2072,11 @@ where
                 host,
                 state: RefCell::new(PageState::default()),
                 shown: RefCell::new(None),
+                toast_redraw: Rc::new(move || {
+                    if let Some(core) = toast_weak.upgrade() {
+                        core.toast_changed();
+                    }
+                }),
                 redraw: Rc::new(move || {
                     if let Some(core) = weak.upgrade() {
                         core.show_busy();
@@ -2067,6 +2089,7 @@ where
             }
         });
         register_redraw(&core.redraw);
+        crate::binding::register_toast_redraw(&core.redraw, &core.toast_redraw);
         let follow = window.invoke_follow_windows_text();
         window.set_languages(model(
             std::iter::once(follow).chain(LANGUAGE_NAMES.iter().map(|n| SharedString::from(*n))),

@@ -301,11 +301,11 @@ where
 
     /// The row of item `id` in the list or the pinned strip.
     fn menu_row(&self, id: ItemId) -> Option<crate::panel::Row> {
-        self.model
-            .rows()
-            .into_iter()
-            .chain(self.model.pinned())
+        let rows = self.model.rows();
+        rows.iter()
             .find(|r| r.id == id)
+            .cloned()
+            .or_else(|| self.model.pinned().into_iter().find(|r| r.id == id))
     }
 
     /// The rows of the item menu for `id`.
@@ -378,7 +378,7 @@ where
         let rows = if in_strip {
             self.model.pinned()
         } else {
-            self.model.rows()
+            self.model.rows().to_vec()
         };
         if let Some(row) = rows.get(index).filter(|r| !r.deleted_pending) {
             self.menu_targets = if in_strip {
@@ -638,16 +638,18 @@ where
     fn set_item_pinned(&mut self, id: ItemId, pin: bool) {
         let now = self.clock.now();
         let mut changes = Vec::new();
-        let done = self.index_cache.edit_item(&mut self.store, id, |store| {
-            store.atomically(|b| {
-                changes.clear();
-                let before = b.item(id)?;
-                let mut item = before.clone();
-                item.pinned = pin;
-                item.updated_at = now;
-                super::history_ctl::update_recorded(b, &before, &item, &mut changes)
-            })
-        });
+        let done = self
+            .index_cache
+            .edit_item_meta(&mut self.store, id, |store| {
+                store.atomically(|b| {
+                    changes.clear();
+                    let before = b.item(id)?;
+                    let mut item = before.clone();
+                    item.pinned = pin;
+                    item.updated_at = now;
+                    super::history_ctl::update_recorded(b, &before, &item, &mut changes)
+                })
+            });
         match done {
             Ok(()) => {
                 self.record_step(crate::history::Action::Pin, changes);

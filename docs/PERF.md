@@ -24,9 +24,19 @@ The Panel and the Picker search the whole library through one `SearchIndex`
 * **Hit:** the counter is unchanged since the last build, so a Panel load, a Panel refresh,
   a list or board switch and a Picker open all share the same `Rc<SearchIndex>`. The tags are
   not even read.
-* **Miss:** any write, for example a counted use, an edit, a tag rename or a trash. The next
-  load builds a new index. A rolled-back write also moves the counter, which costs one
-  needless rebuild and is never stale.
+* **Patch:** a counted use, a pin, a move or a colour change made through
+  `IndexCache::note_use` / `edit_item` / `edit_item_meta` is not a miss. The snapshot is patched:
+  items are shared (`Rc<Item>`, index entries `Arc<Entry>`), so a patch copies pointers and
+  one item. The suggestions are rebuilt only if a title, tag or sensitive flag changed, the
+  rich set only if content changed, the pinned list only if the item was or is pinned.
+* **Miss:** any other write (an import, a tag rename, a trash, a write made without a hint)
+  builds a new index on the next load. A rolled-back write also moves the counter, which costs
+  one needless rebuild and is never stale.
+* **Main:** the Main window reads boards, lists and items through the same cache, not its own
+  copy. A hidden (shown once, then hidden) Panel or Main is not drawn; showing draws once.
+* **Lazy index:** reading the library builds no search index. `Snapshot::index()` / `suggest()` build it on first use, and the Panel builds it 60 ms after a frame that finds it unbuilt (`arm_warm`), so the first keystroke finds it ready. A patch made before the index exists builds nothing.
+* **Recent:** a thumbnail image is built once per entry id (`recent_thumb`).
+* **Rows:** `PanelModel::rows()` is cached until the query, the marks or the ghosts change.
 * **Owner:** the `Controller` owns the cache and gives a handle to each model it loads.
 * **Per board:** there is no separate index per board. The shared index covers the library
   and a board's results are the hits in its lists, which is a filter, not a rebuild.
@@ -65,3 +75,19 @@ searches 0.8 to 12 ms, the slowest being a query that matches one item deep in t
 
 **UNVERIFIED:** no Windows size or RAM figure has been recorded yet. The owner runs the two
 steps above on Windows and writes the numbers here.
+
+## Probe (10,000 items)
+
+`measure_pin_use_and_rows_at_ten_thousand_items` in `crates/snipdeck-app/tests/budget.rs`
+(same command as above) prints the cold snapshot, a pin patch, a use patch and a row build.
+Windows figures: **UNVERIFIED** (the owner runs the probe and the size and RAM steps on Windows).
+
+## PERF-17: the tooltip liveness timer (deferred, with numbers)
+
+`tip-host.slint` wakes a 100 ms timer only while a tooltip is wanted and watched (the pointer
+rests on a control with a tooltip), 10 wake-ups a second, and not at all otherwise. Slint has no
+destruction hook, so a control an `if` removes cannot give its tooltip back; the ping/answer
+round is the only way to notice it, and an event-driven version would leave that tooltip stuck.
+Measured (a one-off wall-clock run of `a_resting_tooltip_stays_up_across_many_liveness_wake_ups`, optimised build, item editor,
+Linux VM, mock clock): **0.0025 ms per wake-up**, so about 0.025 ms of work a second (0.0025% of
+one core). Not changed. Windows wake-up cost and the Panel's larger widget count: UNVERIFIED.

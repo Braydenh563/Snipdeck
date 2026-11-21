@@ -624,6 +624,17 @@ where
         Ok(provider)
     }
 
+    /// Whether the search index is built (see [`crate::index_cache::IndexCache::search_ready`]).
+    #[must_use]
+    pub fn search_ready(&self) -> bool {
+        self.index_cache.search_ready()
+    }
+
+    /// Builds the search index in idle time (see [`crate::index_cache::IndexCache::warm`]).
+    pub fn warm_search(&self) {
+        self.index_cache.warm();
+    }
+
     // ---- The idle lock -------------------------------------------------------------------------
 
     /// The idle time before a master password locks the library again (the setting).
