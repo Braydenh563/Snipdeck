@@ -141,7 +141,7 @@ fn rebuilding_restores_the_backup_recovers_newer_items_and_keeps_the_damaged_fol
     else {
         panic!("a rebuilt toast");
     };
-    assert!(restored > 0 && restored <= backed_up);
+    assert_eq!(restored, backed_up, "every backed-up item came back");
     assert_eq!(
         recovered, 1,
         "only the newer item came from the damaged file"
@@ -406,8 +406,11 @@ fn a_library_that_cannot_be_opened_is_set_aside_and_rebuild_finds_the_backups() 
     // The real proof: Rebuild from backup restores the newest backup into the fresh library.
     let mut ctl = start_with(store);
     assert!(ctl.rebuild_from_backup(dir.path(), &newest_backup(dir.path())));
-    assert_ne!(titles(&ctl).len(), 0, "the backup was restored");
-    assert!(titles(&ctl).len() <= backed_up);
+    assert_eq!(
+        titles(&ctl).len(),
+        backed_up,
+        "the backup was restored, all of it"
+    );
     assert_eq!(
         damaged_files(dir.path()).len(),
         2,

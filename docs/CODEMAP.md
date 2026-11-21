@@ -1359,13 +1359,14 @@ show_undo_toast | crates/snipdeck-app/src/controller/toast_ctl.rs:104
 show_saved_toast | crates/snipdeck-app/src/controller/toast_ctl.rs:116
 show_saved_toast_made | crates/snipdeck-app/src/controller/toast_ctl.rs:122
 toast_dismiss | crates/snipdeck-app/src/controller/toast_ctl.rs:138
-toast_edit | crates/snipdeck-app/src/controller/toast_ctl.rs:145
-toast_action | crates/snipdeck-app/src/controller/toast_ctl.rs:158
-claim_toast_timer | crates/snipdeck-app/src/controller/toast_ctl.rs:187
-report_hotkey_problems | crates/snipdeck-app/src/controller/toast_ctl.rs:198
-toast_tick | crates/snipdeck-app/src/controller/toast_ctl.rs:228
-toast_hover | crates/snipdeck-app/src/controller/toast_ctl.rs:274
-report_maintenance | crates/snipdeck-app/src/controller/toast_ctl.rs:282
+clear_toast | crates/snipdeck-app/src/controller/toast_ctl.rs:146
+toast_edit | crates/snipdeck-app/src/controller/toast_ctl.rs:153
+toast_action | crates/snipdeck-app/src/controller/toast_ctl.rs:166
+claim_toast_timer | crates/snipdeck-app/src/controller/toast_ctl.rs:194
+report_hotkey_problems | crates/snipdeck-app/src/controller/toast_ctl.rs:205
+toast_tick | crates/snipdeck-app/src/controller/toast_ctl.rs:235
+toast_hover | crates/snipdeck-app/src/controller/toast_ctl.rs:279
+report_maintenance | crates/snipdeck-app/src/controller/toast_ctl.rs:287
 
 ### crates/snipdeck-app/src/controller/trigger_ctl.rs
 
@@ -8933,7 +8934,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/src/controller/tests/recent.rs` | 35 |
 | `crates/snipdeck-app/src/controller/tests/screen_clip.rs` | 10 |
 | `crates/snipdeck-app/src/controller/tests/symbols.rs` | 31 |
-| `crates/snipdeck-app/src/controller/tests/toasts.rs` | 45 |
+| `crates/snipdeck-app/src/controller/tests/toasts.rs` | 50 |
 | `crates/snipdeck-app/src/controller/tests/tray.rs` | 30 |
 | `crates/snipdeck-app/src/controller/tests/use_paste.rs` | 79 |
 | `crates/snipdeck-app/src/crash.rs` (inline) | 11 |

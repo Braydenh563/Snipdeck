@@ -136,6 +136,14 @@ where
 
     /// The toast's ×: the toast goes now, and its Undo with it.
     pub fn toast_dismiss(&mut self) {
+        if self.toast.is_some() {
+            self.clear_toast();
+        }
+    }
+
+    /// Takes the toast on screen away with its Undo, then shows the next queued one. Every path
+    /// that ends a toast goes through here, so the queue never stalls.
+    pub(crate) fn clear_toast(&mut self) {
         self.toast = None;
         self.undo = None;
         self.show_next_queued();
@@ -149,7 +157,7 @@ where
         if self.toast.as_ref().is_none_or(|t| t.seq != undo.seq) {
             return Vec::new();
         }
-        self.toast = None;
+        self.clear_toast();
         undo.adds.map(Effect::EditItem).into_iter().collect()
     }
 
@@ -163,8 +171,7 @@ where
         {
             let opened = self.log_opener.as_ref().is_some_and(|open| open().is_ok());
             if opened {
-                self.toast = None;
-                self.undo = None;
+                self.clear_toast();
             } else {
                 self.show_toast(Toast {
                     kind: ToastKind::Danger,
@@ -260,10 +267,8 @@ where
                 Some(TOAST_EXIT)
             }
             ToastPhase::Exit => {
-                self.toast = None;
-                self.undo = None;
                 // The next one has its own timer, armed when the windows redraw.
-                self.show_next_queued();
+                self.clear_toast();
                 None
             }
         }

@@ -181,7 +181,7 @@ export global ToastTexts {
     }
     pure public function library-set-aside(folder: string, backup: bool) -> string {
         if backup {
-            return @tr("Your library couldn't be opened, so it was moved aside to {}. Settings > Rebuild from backup restores your newest backup.", folder);
+            return @tr("Your library couldn't be opened, so it was moved aside to {} in your Snipdeck data folder. Settings > Rebuild from backup restores your newest backup.", folder);
         }
         return @tr("Your library couldn't be opened, so it was moved aside to {} in your Snipdeck data folder. There is no backup to restore from yet.", folder);
     }

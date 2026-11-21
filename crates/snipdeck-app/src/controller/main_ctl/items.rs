@@ -413,7 +413,7 @@ where
                     self.update_settings(|s| s.colour_save_list = None);
                 }
             }
-            self.toast = None;
+            self.clear_toast();
             if done.is_err() {
                 self.show_toast(failed());
                 self.refresh_logged("a failed undo");

@@ -797,9 +797,71 @@ fn an_identical_consecutive_message_is_queued_once() {
 fn show_toast_still_replaces_the_one_on_screen() {
     let mut w = world();
     w.ctl.queue_toast(toast(ToastMessage::SettingsDamaged));
+    w.ctl.queue_toast(toast(ToastMessage::SettingsUnreadable));
     w.ctl.show_toast(Toast {
         kind: ToastKind::Neutral,
         message: ToastMessage::Copied,
     });
     assert_eq!(on_screen(&w), Some(ToastMessage::Copied));
+    // The queue is left alone: the replaced toast is not requeued, the waiting one stays.
+    run_out(&mut w);
+    assert_eq!(on_screen(&w), Some(ToastMessage::SettingsUnreadable));
+    run_out(&mut w);
+    assert_eq!(on_screen(&w), None);
+}
+
+#[test]
+fn dismissing_with_nothing_on_screen_leaves_the_queue_alone() {
+    let mut w = world();
+    w.ctl.queue_toast(toast(ToastMessage::SettingsDamaged));
+    run_out(&mut w);
+    assert_eq!(on_screen(&w), None);
+    w.ctl.toast_dismiss();
+    assert_eq!(on_screen(&w), None);
+    w.ctl.queue_toast(toast(ToastMessage::SettingsUnreadable));
+    w.ctl.queue_toast(toast(ToastMessage::ClipboardWatchFailed));
+    w.ctl.toast_dismiss(); // the first one goes, the second shows
+    w.ctl.toast_dismiss(); // the second goes, nothing is left
+    assert_eq!(on_screen(&w), None);
+    w.ctl.toast_dismiss();
+    assert_eq!(on_screen(&w), None);
+}
+
+#[test]
+fn editing_from_a_toast_brings_the_next_queued_one() {
+    let mut w = world();
+    let id = w.ctl.view().rows[0].id;
+    w.ctl.show_saved_toast(toast(ToastMessage::Copied), id);
+    w.ctl.queue_toast(toast(ToastMessage::SettingsDamaged));
+    assert_eq!(w.ctl.toast_edit(), [Effect::EditItem(id)]);
+    assert_eq!(on_screen(&w), Some(ToastMessage::SettingsDamaged));
+}
+
+#[test]
+fn opening_the_log_from_the_crash_toast_brings_the_next_queued_one() {
+    let mut w = world();
+    w.ctl.set_log_opener(Box::new(|| Ok(())));
+    w.ctl.queue_toast(toast(ToastMessage::CrashedLastTime));
+    w.ctl.queue_toast(toast(ToastMessage::SettingsDamaged));
+    w.ctl.toast_action();
+    assert_eq!(on_screen(&w), Some(ToastMessage::SettingsDamaged));
+}
+
+#[test]
+fn undoing_an_add_brings_the_next_queued_one() {
+    let mut w = world();
+    let id = w.ctl.view().rows[0].id;
+    w.ctl.show_saved_toast(toast(ToastMessage::Copied), id);
+    w.ctl.queue_toast(toast(ToastMessage::SettingsDamaged));
+    w.ctl.toast_action();
+    assert_eq!(on_screen(&w), Some(ToastMessage::SettingsDamaged));
+}
+
+#[test]
+fn ending_a_drag_brings_the_next_queued_one() {
+    let mut w = world();
+    w.ctl.drop_hover(Origin::Panel, Some(w.links_list));
+    w.ctl.queue_toast(toast(ToastMessage::SettingsDamaged));
+    w.ctl.drop_end();
+    assert_eq!(on_screen(&w), Some(ToastMessage::SettingsDamaged));
 }

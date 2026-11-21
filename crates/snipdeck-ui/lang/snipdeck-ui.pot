@@ -4682,12 +4682,12 @@ msgstr ""
 msgid "Your Windows Hello PIN, face or fingerprint changed. Unlock with your password once to set Windows Hello up again."
 msgstr ""
 
-#: ui/toast_texts.slint:186
-msgid "Your library couldn't be opened, so it was moved aside to {} in your Snipdeck data folder. There is no backup to restore from yet."
+#: ui/toast_texts.slint:184
+msgid "Your library couldn't be opened, so it was moved aside to {} in your Snipdeck data folder. Settings > Rebuild from backup restores your newest backup."
 msgstr ""
 
-#: ui/toast_texts.slint:184
-msgid "Your library couldn't be opened, so it was moved aside to {}. Settings > Rebuild from backup restores your newest backup."
+#: ui/toast_texts.slint:186
+msgid "Your library couldn't be opened, so it was moved aside to {} in your Snipdeck data folder. There is no backup to restore from yet."
 msgstr ""
 
 #: ui/settings.slint:1297
