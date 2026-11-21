@@ -135,7 +135,7 @@ where
             .collect()
     }
 
-    /// A matcher over the triggers of the live items that may expand (see [`Self::expandable_triggers`]).
+    /// A matcher over the triggers of the live items that may expand (see `expandable_triggers`).
     pub fn trigger_matcher(&self) -> Matcher {
         let all = self.store.triggers().unwrap_or_default();
         Matcher::new(
