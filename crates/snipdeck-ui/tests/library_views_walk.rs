@@ -511,10 +511,8 @@ fn saturated_in(frame: &snipdeck_ui::testing::Frame, b: &Boxed) -> usize {
     for y in (b.y as u32)..((b.y + b.h) as u32) {
         for x in (b.x as u32)..((b.x + b.w) as u32) {
             let p = frame.pixel(x, y);
-            let (hi, lo) = (
-                p.iter().max().copied().unwrap(),
-                p.iter().min().copied().unwrap(),
-            );
+            let hi = p[0].max(p[1]).max(p[2]);
+            let lo = p[0].min(p[1]).min(p[2]);
             if hi - lo >= 60 {
                 n += 1;
             }
@@ -559,6 +557,10 @@ fn a_coloured_group_shows_a_dot_and_says_its_colour_and_a_plain_one_shows_none()
 }
 
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "one walk: open the dialog, measure it, pick, check the report"
+)]
 fn the_group_menu_opens_a_colour_dialog_that_offers_ten_choices_inside_its_card_and_reports_the_pick()
  {
     use slint::platform::{PointerEventButton, WindowEvent};

@@ -218,6 +218,8 @@ the right of the sidebar header (or `Ctrl+B`) folds the sidebar to a narrow rail
   - **Fold or unfold a group.** Click the header, or press `Left` to fold and `Right` to unfold. `Enter` toggles it
     (in the Panel `Space` does too). A folded group hides its items and stays folded.
   - **Rename.** Press `F2` on the header, press `Ctrl+G` on it with nothing selected, or choose **Rename group**.
+  - **Colour (Main window).** Choose **Group colour…** from the header's menu and pick one of nine colours, or none.
+    The colour shows as a dot before the name and is read out with it; `Ctrl+Z` takes it back.
   - **Ungroup or delete.** **Ungroup** dissolves the group and keeps its items. **Delete group** (or `Delete`
     on the header) moves the group and its items to the Trash, and `Ctrl+Z` brings them all back in one step. A
     folded group asks first and names how many items it hides.
