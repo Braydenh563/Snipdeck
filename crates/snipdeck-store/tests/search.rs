@@ -68,7 +68,7 @@ fn words_match_anywhere_in_a_word_and_all_words_are_required() {
     assert_eq!(titles_found(&s, "quart"), ["Quarterly report"]);
     assert_eq!(titles_found(&s, "ature"), ["Email signature"], "mid-word");
     assert_eq!(titles_found(&s, "terly port"), ["Quarterly report"]);
-    assert_eq!(titles_found(&s, "quarterly zebra").len(), 0)
+    assert_eq!(titles_found(&s, "quarterly zebra").len(), 0);
     assert_eq!(titles_found(&s, "\"revenue fig\""), ["Quarterly report"]);
     assert!(
         titles_found(&s, "\"figures revenue\"").is_empty(),
@@ -291,7 +291,7 @@ fn no_user_input_produces_a_syntax_error() {
 fn an_empty_query_finds_nothing() {
     let (mut s, l) = setup();
     item(&mut s, l.id, "x", "y");
-    assert_eq!(found(&s, "").len(), 0)
-    assert_eq!(found(&s, "   ").len(), 0)
-    assert_eq!(found(&s, "!!!").len(), 0)
+    assert_eq!(found(&s, "").len(), 0);
+    assert_eq!(found(&s, "   ").len(), 0);
+    assert_eq!(found(&s, "!!!").len(), 0);
 }

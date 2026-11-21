@@ -548,7 +548,7 @@ fn marks_stay_inside_the_text() {
     for (text, q) in [("0\u{11CA9}$", "$"), ("ß", "ss"), ("ﬁ", "i"), ("Ǆ", "dz")] {
         let count = text.chars().count();
         let ranges = locate(text, &Query::parse(q), true);
-        assert_ne!(ranges.len(), 0, "{text} {q}")
+        assert_ne!(ranges.len(), 0, "{text} {q}");
         assert!(
             ranges.iter().all(|r| r.start < r.end && r.end <= count),
             "{ranges:?}"

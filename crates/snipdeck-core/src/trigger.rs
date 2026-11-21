@@ -890,7 +890,7 @@ mod tests {
             opt("sig", TriggerEnd::Delimiter, CaseMode::Exact),
             1,
         )]);
-        assert_eq!(feed_all(&mut m, "sig").len(), 0, "not yet: it waits")
+        assert_eq!(feed_all(&mut m, "sig").len(), 0, "not yet: it waits");
         let fired = feed_all(&mut m, " ");
         assert_eq!(fired.len(), 1);
         assert_eq!(fired[0].item, id(1));
@@ -947,7 +947,7 @@ mod tests {
             opt(";sig", TriggerEnd::Immediate, CaseMode::Exact),
             1,
         )]);
-        assert_eq!(feed_all(&mut m, ";SIG").len(), 0)
+        assert_eq!(feed_all(&mut m, ";SIG").len(), 0);
     }
 
     #[test]

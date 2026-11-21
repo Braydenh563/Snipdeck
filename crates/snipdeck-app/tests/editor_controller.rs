@@ -1841,7 +1841,7 @@ fn open_in_browser_opens_only_web_mail_and_phone_links() {
         if allowed {
             assert_eq!(*opened.borrow(), [text.to_owned()], "{title} opens");
         } else {
-            assert_eq!(opened.borrow().len(), 0, "{title} is not opened")
+            assert_eq!(opened.borrow().len(), 0, "{title} is not opened");
             assert_eq!(toast(&r.ctl), ToastMessage::LinkNotOpened, "{title}");
         }
     }
@@ -1865,7 +1865,7 @@ fn open_in_browser_does_nothing_for_other_kinds() {
         .position(|row| row.title == "plain")
         .expect("row");
     r.ctl.main_action(MainAction::OpenLink, row);
-    assert_eq!(opened.borrow().len(), 0)
+    assert_eq!(opened.borrow().len(), 0);
 }
 
 /// Saves a new text item with `code` and `options` as its trigger.
@@ -2055,7 +2055,7 @@ fn a_new_item_with_text_that_is_already_saved_asks_before_saving_a_copy() {
     let found = view(&r.ctl).duplicate.expect("the notice");
     assert_eq!(found.item, first);
     assert_eq!(found.title, "Address");
-    assert_ne!(found.list_name.len(), 0)
+    assert_ne!(found.list_name.len(), 0);
     assert_eq!(count(&r), before, "nothing was written");
 
     // An edit takes the notice away; different text saves without asking.

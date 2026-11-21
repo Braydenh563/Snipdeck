@@ -423,7 +423,7 @@ mod tests {
     #[test]
     fn filters_and_words_that_only_look_like_filters() {
         let q = Query::parse("tag:Billing list:\"Email replies\" kind:LINK is:pinned -tag:old");
-        assert_eq!(q.terms.len(), 0, "{q:?}")
+        assert_eq!(q.terms.len(), 0, "{q:?}");
         assert_eq!(
             q.filters,
             [
@@ -460,7 +460,7 @@ mod tests {
             ],
             "a filter being typed (`tag:`) is ignored"
         );
-        assert_eq!(q.filters.len(), 0)
+        assert_eq!(q.filters.len(), 0);
     }
 
     #[test]

@@ -1070,14 +1070,14 @@ mod tests {
         let copy = World::request(id, UseMode::Copy, Route::Copy(CopyReason::NoTarget));
         w.run(&copy).expect("used");
         assert_eq!(written_text(&w), ["AnnLee"]);
-        assert_eq!(edit_keys(&w).len(), 0)
+        assert_eq!(edit_keys(&w).len(), 0);
         // A copy route with a paste mode is the same: there is nowhere to press a key.
         let mut w = World::new();
         let id = w.add(ItemKind::Template, false, "Ann{key:tab}Lee");
         let routed = World::request(id, UseMode::Paste, Route::Copy(CopyReason::NoTarget));
         w.run(&routed).expect("used");
         assert_eq!(written_text(&w), ["AnnLee"]);
-        assert_eq!(edit_keys(&w).len(), 0)
+        assert_eq!(edit_keys(&w).len(), 0);
     }
 
     #[test]
@@ -1093,7 +1093,7 @@ mod tests {
             "{:?}",
             used.outcome
         );
-        assert_eq!(edit_keys(&w).len(), 0)
+        assert_eq!(edit_keys(&w).len(), 0);
     }
 
     #[test]
@@ -1117,7 +1117,7 @@ mod tests {
             w.run(&World::request(id, UseMode::Paste, PASTE)),
             Err(UseError::Template(_))
         ));
-        assert_eq!(w.clipboard.written.len(), 0)
+        assert_eq!(w.clipboard.written.len(), 0);
 
         // Two items with one title are ambiguous, not silently the first.
         let mut w = World::new();

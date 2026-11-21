@@ -162,7 +162,7 @@ fn a_deleted_tag_can_be_linked_back_to_live_and_trashed_items() {
     want.sort();
     assert_eq!(linked, want, "the Trash's item counts too");
     s.delete_tag(tag.id).unwrap();
-    assert_eq!(s.tag_items(tag.id).unwrap().len(), 0)
+    assert_eq!(s.tag_items(tag.id).unwrap().len(), 0);
     s.insert_tag(&tag).unwrap();
     s.link_tag(
         tag.id,

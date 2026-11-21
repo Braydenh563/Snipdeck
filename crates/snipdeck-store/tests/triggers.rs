@@ -261,7 +261,7 @@ fn a_delimiter_code_is_not_reported_as_hiding_a_longer_one() {
             Some(&with(";sig", TriggerEnd::Delimiter, CaseMode::Exact)),
         )
         .unwrap();
-    assert_eq!(clash.len(), 0, "{clash:?}")
+    assert_eq!(clash.len(), 0, "{clash:?}");
     let clash = s.set_trigger(c, Some(&trig(";sig"))).unwrap();
     assert_eq!(clash, [trig(";signature")]);
 }
