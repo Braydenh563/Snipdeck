@@ -386,7 +386,7 @@ mod tests {
         assert_eq!(t.register(2, chord("Ctrl+Alt+J")), Ok(()));
         t.clear();
         assert!(t.raw.held.is_empty());
-        assert!(t.ids().is_empty());
+        assert_eq!(t.ids().len(), 0);
     }
 
     #[test]

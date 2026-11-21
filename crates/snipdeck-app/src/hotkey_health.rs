@@ -105,6 +105,6 @@ mod tests {
         let offered = alternatives(&hotkeys, &mut |c| c != "Ctrl+Shift+G");
         assert_eq!(offered, ["Ctrl+Shift+H", "Ctrl+Shift+F9"]);
         // Nothing free: nothing offered, and no panic.
-        assert!(alternatives(&hotkeys, &mut |_| false).is_empty());
+        assert_eq!(alternatives(&hotkeys, &mut |_| false).len(), 0);
     }
 }

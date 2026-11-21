@@ -826,7 +826,7 @@ mod tests {
             taken: vec!["Ctrl+Shift+G".into()],
             ..FakeHotkeys::default()
         };
-        assert!(register_all(&mut backend, &hotkeys).is_empty());
+        assert_eq!(register_all(&mut backend, &hotkeys).len(), 0);
         let before = backend.registered.clone();
         let chord = |t: &str| t.parse::<Chord>().unwrap();
         assert_eq!(backend.probe(chord("Ctrl+Shift+H")), Ok(()));

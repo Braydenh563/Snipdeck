@@ -252,8 +252,8 @@ mod tests {
         assert_eq!(units[units.len() - 2..], [0, 0]);
         assert_eq!(decode_multi(&units), l);
         assert_eq!(encode_multi(&[]), [0, 0]);
-        assert!(decode_multi(&[0, 0]).is_empty());
-        assert!(decode_multi(&[]).is_empty());
+        assert_eq!(decode_multi(&[0, 0]).len(), 0);
+        assert_eq!(decode_multi(&[]).len(), 0);
     }
 
     #[test]
