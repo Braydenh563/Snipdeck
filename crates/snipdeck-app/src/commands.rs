@@ -193,6 +193,8 @@ impl Command {
         Self::DeleteGroup,
         Self::MoveGroupUp,
         Self::MoveGroupDown,
+        Self::ColourGroup,
+        Self::NestGroup,
         Self::HidePanel,
         Self::LetPanelClose,
         Self::Undo,
@@ -207,8 +209,6 @@ impl Command {
         Self::ExportLibrary,
         Self::BackUpNow,
         Self::EmptyTrash,
-        Self::ColourGroup,
-        Self::NestGroup,
     ];
 
     /// The command with palette id `id`.

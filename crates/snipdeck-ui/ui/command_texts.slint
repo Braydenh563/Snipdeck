@@ -60,6 +60,8 @@ export global CommandTexts {
         { label: @tr("Delete group"), words: @tr("remove trash discard section items") },
         { label: @tr("Move the group up"), words: @tr("reorder earlier raise section") },
         { label: @tr("Move the group down"), words: @tr("reorder later lower section") },
+        { label: MenuTexts.group-colour(), words: @tr("colour color dot tint hue accent section") },
+        { label: MenuTexts.group-nest(), words: @tr("nest under inside child sub subgroup indent parent move out top level section") },
         { label: @tr("Hide Panel"), words: @tr("close toggle deck stow") },
         { label: @tr("Close Panel when I click away"), words: @tr("keep open pin always on top stay hide blur") },
         { label: @tr("Undo"), words: @tr("back revert step history") },
@@ -74,8 +76,6 @@ export global CommandTexts {
         { label: @tr("Export library"), words: @tr("save file download copy out") },
         { label: @tr("Back up now"), words: @tr("backup copy save safe") },
         { label: @tr("Empty Trash"), words: @tr("delete everything bin permanently") },
-        { label: MenuTexts.group-colour(), words: @tr("colour color dot tint hue accent section") },
-        { label: MenuTexts.group-nest(), words: @tr("nest under inside child sub subgroup indent parent move out top level section") },
     ];
     // Why a listed command cannot run now (shown dimmed on its row).
     out property <string> hint-symbols-off: @tr("Turn on the Symbols tab in Settings");

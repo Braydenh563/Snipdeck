@@ -448,7 +448,7 @@ fn the_checks_wait_on_a_worker_and_the_window_says_so() {
         assert_eq!(r.ui.get_checks().row_count(), 0);
         held.release();
         assert!(!r.ui.get_checking());
-        assert_eq!(r.ui.get_checks().row_count(), 7);
+        assert_eq!(r.ui.get_checks().row_count(), 8);
         let first = r.ui.get_checks().row_data(0).expect("row");
         assert_eq!(first.label, "Data folder");
         assert_eq!(first.detail, "Writable, with room to spare.");
@@ -464,7 +464,7 @@ fn the_check_rows_follow_the_selected_translation() {
         drop(Store::open(dir.path()).expect("store"));
         let r = rig_with_folder(dir.path());
         r.binding.refresh();
-        assert_eq!(r.ui.get_checks().row_count(), 7);
+        assert_eq!(r.ui.get_checks().row_count(), 8);
         slint::select_bundled_translation("de").expect("de is bundled");
         r.binding.refresh();
         let tray = r.ui.get_checks().row_data(5).expect("row");
