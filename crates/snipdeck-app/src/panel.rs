@@ -941,9 +941,9 @@ const KNOWN_APPS: &[(&str, &str)] = &[
 ];
 
 /// `OUTLOOK.EXE` becomes `Outlook`, `WINWORD.EXE` `Word`, `WindowsTerminal.exe` `Windows
-/// Terminal`; `notepad++.exe` becomes `Notepad++`. The program's own display name (the version
-/// resource's `FileDescription`) would be better still but needs Windows to read, so it is
-/// post-1.0 (`docs/SPEC.md`).
+/// Terminal`; `notepad++.exe` becomes `Notepad++`. The names above are listed by hand; any other
+/// program says its own name through its version resource's `FileDescription` (read on Windows,
+/// see `snipdeck_platform::app_names`), and only one that gives none is named from its file name.
 #[must_use]
 pub fn friendly_app_name(exe: &str) -> String {
     let file = exe.rsplit(['\\', '/']).next().unwrap_or(exe);
@@ -956,6 +956,9 @@ pub fn friendly_app_name(exe: &str) -> String {
     let lower = stem.to_lowercase();
     if let Some((_, known)) = KNOWN_APPS.iter().find(|(key, _)| *key == lower) {
         return (*known).to_owned();
+    }
+    if let Some(described) = snipdeck_platform::app_names::lookup(exe) {
+        return described;
     }
     let mixed = stem.chars().any(char::is_lowercase) && stem.chars().any(char::is_uppercase);
     if mixed {
@@ -1406,6 +1409,24 @@ mod tests {
         ] {
             assert_eq!(friendly_app_name(exe), name, "{exe}");
         }
+    }
+
+    #[test]
+    fn a_programs_own_name_beats_the_one_made_from_its_file_name() {
+        // Not in the table: before the platform has read it, the name is made from the file.
+        assert_eq!(friendly_app_name("zzacmetool.exe"), "Zzacmetool");
+        snipdeck_platform::app_names::remember(r"C:\Acme\ZzAcmeTool.exe", "Acme Toolbox 2");
+        assert_eq!(friendly_app_name("zzacmetool.exe"), "Acme Toolbox 2");
+        assert_eq!(
+            friendly_app_name(r"D:\other\ZZACMETOOL.EXE"),
+            "Acme Toolbox 2"
+        );
+        // The hand-written names stay first: a Store app's host says nothing about the app.
+        snipdeck_platform::app_names::remember(
+            "ApplicationFrameHost.exe",
+            "Application Frame Host",
+        );
+        assert_eq!(friendly_app_name("ApplicationFrameHost.exe"), "Windows app");
     }
 
     fn five(f: &mut Fixture) -> Vec<ItemId> {

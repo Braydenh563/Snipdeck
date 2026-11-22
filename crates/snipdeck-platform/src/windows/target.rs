@@ -423,8 +423,17 @@ impl TargetTracker {
             None if elevated => Focus::None,
             None => self.automation_focus(),
         };
+        // The program's own name, read once per executable (the first time it is the target).
+        let path = process_exe_path(pid);
+        if let Some(path) = &path {
+            super::app_description::remember_description(path);
+        }
+        let app = path
+            .as_deref()
+            .and_then(win_logic::exe_file_name)
+            .map_or_else(|| UNKNOWN_APP.to_owned(), str::to_owned);
         Some(Target {
-            app: process_exe_name(pid).unwrap_or_else(|| UNKNOWN_APP.to_owned()),
+            app,
             title: window_title(hwnd),
             elevated,
             focus,
@@ -752,6 +761,12 @@ fn window_title(hwnd: HWND) -> String {
 
 /// The executable file name of process `pid`, for example `notepad.exe`.
 fn process_exe_name(pid: u32) -> Option<String> {
+    let path = process_exe_path(pid)?;
+    win_logic::exe_file_name(&path).map(str::to_owned)
+}
+
+/// The full path of the executable of process `pid`.
+fn process_exe_path(pid: u32) -> Option<String> {
     let process = open_process(pid)?;
     // Paths can reach 32 767 units; a Vec avoids a large stack array.
     let mut buffer = vec![0u16; 32_768];
@@ -767,8 +782,9 @@ fn process_exe_name(pid: u32) -> Option<String> {
         )
     }
     .ok()?;
-    let path = String::from_utf16_lossy(buffer.get(..usize::try_from(length).ok()?)?);
-    win_logic::exe_file_name(&path).map(str::to_owned)
+    Some(String::from_utf16_lossy(
+        buffer.get(..usize::try_from(length).ok()?)?,
+    ))
 }
 
 /// The executable file name (lower case) of the process that owns window `hwnd`, for the
