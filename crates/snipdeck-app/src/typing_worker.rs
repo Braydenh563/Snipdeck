@@ -51,7 +51,7 @@ pub struct Typed {
     /// Which item and how many characters were typed.
     pub fired: Fired,
     /// The focused element is a password box (or could not be told).
-    pub password: bool,
+    pub in_password_box: bool,
     fresh: Box<dyn Fn() -> bool + Send + Sync>,
     window: Option<(isize, Foreground)>,
 }
@@ -61,12 +61,12 @@ impl Typed {
     #[must_use]
     pub fn new(
         fired: Fired,
-        password: bool,
+        in_password_box: bool,
         fresh: impl Fn() -> bool + Send + Sync + 'static,
     ) -> Self {
         Self {
             fired,
-            password,
+            in_password_box,
             fresh: Box::new(fresh),
             window: None,
         }
@@ -99,7 +99,7 @@ impl std::fmt::Debug for Typed {
         f.debug_struct("Typed")
             .field("item", &self.fired.item)
             .field("chars", &self.fired.chars)
-            .field("password", &self.password)
+            .field("in_password_box", &self.in_password_box)
             .finish_non_exhaustive()
     }
 }
@@ -593,7 +593,7 @@ mod tests {
         let (got, _) = deliver_all(keys, &events, item, ";sig", || true);
         assert_eq!(got.len(), 1);
         assert_eq!((got[0].fired.item, got[0].fired.chars), (item, 4));
-        assert!(got[0].password);
+        assert!(got[0].in_password_box);
         assert!(got[0].still_current());
     }
 

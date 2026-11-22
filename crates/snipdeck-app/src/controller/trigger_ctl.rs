@@ -184,7 +184,7 @@ where
     fn typed_allowed(&self, enabled: bool, typed: &Typed) -> bool {
         let fired = &typed.fired;
         if !enabled
-            || typed.password
+            || typed.in_password_box
             || !typed.same_window()
             || self.own_window_active
             || self.picker.is_some()
