@@ -296,10 +296,14 @@ fn item_editor_long_values_and_the_inline_limit() {
         .set_title_error("Titles can't be longer than 200 characters.".into());
     let frame = render(&h);
     let pager = |label: &str| {
-        i_slint_backend_testing::ElementHandle::find_by_accessible_label(&h.component, label).count()
+        i_slint_backend_testing::ElementHandle::find_by_accessible_label(&h.component, label)
+            .count()
     };
     assert_eq!(pager("Part 1 of 0"), 0, "a large text always has parts");
-    assert!(pager("Part 1 of 2") > 0, "the pager names the part and the count");
+    assert!(
+        pager("Part 1 of 2") > 0,
+        "the pager names the part and the count"
+    );
     assert_golden("item-editor-long-light", &frame);
 }
 
