@@ -581,6 +581,9 @@ where
                 slot.last_draft = Some(draft);
                 false
             }
+            // Encoded past the drafts file cap (control characters escape to six bytes): no
+            // draft, as for a text over DRAFT_TEXT_MAX_BYTES, and nothing to warn about.
+            Err(e) if e.kind() == std::io::ErrorKind::InvalidInput => false,
             Err(e) => {
                 crate::trace!("draft not written: {e}");
                 if slot.draft_failed_told {

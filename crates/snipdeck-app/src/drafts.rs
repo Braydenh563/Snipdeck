@@ -179,16 +179,18 @@ impl Drafts {
     /// The draft is over the size `load` reads back (256 KiB), or the folder or file
     /// could not be written.
     pub fn save(&self, key: DraftKey, draft: &Draft) -> io::Result<()> {
-        fs::create_dir_all(&self.dir)?;
         let bytes = serde_json::to_vec(draft).map_err(io::Error::other)?;
         // A file `load` would refuse is never written: it could not be offered after a crash, and
-        // would only sit on the disk.
+        // would only sit on the disk. Checked on the encoded size, since JSON escapes can make a
+        // text under `DRAFT_TEXT_MAX_BYTES` six times longer. The caller treats this kind
+        // (`InvalidInput`) as "too big for a draft", not as a failed write.
         if bytes.len() as u64 > MAX_FILE_BYTES {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 "the draft is too big to keep",
             ));
         }
+        fs::create_dir_all(&self.dir)?;
         let path = self.path(key);
         let side = path.with_extension("json.tmp");
         // Flushed to disk before the rename can make it visible, as the settings file is.

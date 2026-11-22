@@ -1196,6 +1196,43 @@ fn a_text_too_big_for_a_draft_gets_no_draft() {
     assert!(!dir.path().join("drafts").exists());
 }
 
+#[test]
+fn a_text_that_escapes_past_the_draft_file_cap_gets_no_draft_and_no_warning() {
+    // Control characters are written as `\u0001` (six bytes each) in the draft file, so a text
+    // under DRAFT_TEXT_MAX_BYTES can still encode past the file cap: it is treated like a text too
+    // big for a draft, not as a failed write.
+    let mut store = Store::open_in_memory().expect("store");
+    let board = snipdeck_core::Board::new(snipdeck_core::Name::new("B").expect("name"), now());
+    snipdeck_store::BoardRepo::insert_board(&mut store, &board, Placement::Last).expect("board");
+    let l = snipdeck_core::List::new(
+        board.id,
+        snipdeck_core::Name::new("L").expect("name"),
+        now(),
+    );
+    store.insert_list(&l, Placement::Last).expect("list");
+    let control = "\u{1}".repeat(DRAFT_TEXT_MAX_BYTES - 16);
+    let item = Item::new(l.id, "Control".into(), ItemKind::Text, now());
+    let content = store.put(control.into_bytes()).expect("put");
+    store
+        .insert_item(
+            &item,
+            &Formats::new(vec![Format::Text(content)]).expect("formats"),
+            Placement::Last,
+        )
+        .expect("insert");
+    let dir = tempfile::tempdir().expect("dir");
+    let provider = SharedProvider::new();
+    let (mut ctl, _) = controller(store, dir.path(), &provider, true);
+    ctl.open_item_editor(item.id);
+    let v = view(&ctl);
+    assert!(!ctl.item_editor_autosave(&EditorInput {
+        title: "typed".into(),
+        ..v.fields
+    }));
+    assert!(view(&ctl).banner.is_none(), "no draft-not-saved banner");
+    assert!(!dir.path().join("drafts").exists());
+}
+
 // ---- Drafts ------------------------------------------------------------------------------------
 
 fn draft_files(dir: &Path) -> Vec<String> {
