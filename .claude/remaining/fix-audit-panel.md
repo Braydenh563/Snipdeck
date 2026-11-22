@@ -8,7 +8,7 @@ Also pushed: 15 (FileDescription names via `snipdeck_platform::app_names`), 10k 
 ## Next
 1. (done) Cold Panel load fixed: 25-34 ms vs 50 ms.
 2. (done)
-3. Group colour + nesting indent: BLOCKED until the coordinator sends the head of PR #5 branch `claude/compassionate-pascal-pod8ux` (merge it into this branch first).
+3. (done in code, pending gate/push) Merged origin/claude/merge-library; Panel group colour dot + nesting indent (`Row.depth`, `PanelRow.group-colour/depth`).
 4. `retro`.
 
 ## Not done

@@ -68,11 +68,18 @@ pub struct Row {
     pub formatted: bool,
     /// The row is a group's header, not an item (its `id` is the group's, never an item's).
     pub header: Option<GroupHeader>,
-    /// The item is a member of a group shown above it: the card is indented.
-    pub grouped: bool,
+    /// How many groups the row sits in (a header: how many it is nested in): the Panel indents
+    /// by it. 0: at the top level.
+    pub depth: usize,
 }
 
 impl Row {
+    /// The item is a member of a group shown above it.
+    #[must_use]
+    pub fn grouped(&self) -> bool {
+        self.header.is_none() && self.depth > 0
+    }
+
     /// An item row a click can use, edit or mark: not a header, not "Deleted · Undo".
     #[must_use]
     pub fn is_item(&self) -> bool {
@@ -530,7 +537,7 @@ impl PanelModel {
             rows.push(header);
             for (member, tag) in mine {
                 let mut row = self.row(member, number, true, *tag);
-                row.grouped = true;
+                row.depth = 1;
                 rows.push(row);
                 number += 1;
             }
@@ -557,7 +564,7 @@ impl PanelModel {
                 continue;
             }
             let mut row = self.row(item, number, false, None);
-            row.grouped = step.depth > 0;
+            row.depth = step.depth;
             rows.push(row);
             number += 1;
         }
@@ -590,7 +597,7 @@ impl PanelModel {
                 colour: run.group.colour,
                 depth,
             }),
-            grouped: false,
+            depth,
         }
     }
 
@@ -800,7 +807,7 @@ impl PanelModel {
             deleted_pending: false,
             formatted: self.all.rich.contains(&item.id),
             header: None,
-            grouped: false,
+            depth: 0,
         }
     }
 

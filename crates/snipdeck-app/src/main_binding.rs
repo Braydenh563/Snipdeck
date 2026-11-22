@@ -2015,7 +2015,7 @@ where
 
 /// The editor's colour index: -1 for none, else the position in [`ListAccent::ALL`] (the order of
 /// the window's `ListHue`).
-fn accent_index(accent: Option<ListAccent>) -> i32 {
+pub(crate) fn accent_index(accent: Option<ListAccent>) -> i32 {
     accent
         .and_then(|a| ListAccent::ALL.iter().position(|x| *x == a))
         .map_or(-1, to_i32)

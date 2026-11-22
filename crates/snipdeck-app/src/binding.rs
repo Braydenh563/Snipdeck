@@ -2356,7 +2356,8 @@ pub fn panel_row(row: &Row, dark: bool, label_name: &dyn Fn(ItemLabel) -> String
         is_header: row.header.is_some(),
         group_count: row.header.as_ref().map_or(0, |h| to_i32(h.count)),
         group_collapsed: row.header.as_ref().is_some_and(|h| h.collapsed),
-        grouped: row.grouped,
+        group_colour: crate::main_binding::accent_index(row.header.as_ref().and_then(|h| h.colour)),
+        depth: i32::try_from(row.depth).unwrap_or(i32::MAX),
         set_position: 0,
         set_size: 0,
     }
@@ -2606,7 +2607,7 @@ mod tests {
             deleted_pending: false,
             formatted: false,
             header: None,
-            grouped: false,
+            depth: 0,
         }
     }
 
@@ -2618,6 +2619,33 @@ mod tests {
         assert_eq!(mapped.kind, ui::ItemKind::Sensitive);
         assert_eq!(mapped.masked_preview.as_str(), MASKED_PREVIEW);
         assert_eq!(mapped.preview.as_str(), "");
+    }
+
+    #[test]
+    fn a_group_header_carries_its_colour_and_every_row_its_nesting_depth() {
+        use crate::panel::GroupHeader;
+        let header = |colour, depth| {
+            let mut r = row(ItemKind::Text, false, "");
+            r.depth = depth;
+            r.header = Some(GroupHeader {
+                group: snipdeck_core::GroupId::generate(),
+                name: "Replies".into(),
+                count: 1,
+                collapsed: false,
+                colour,
+                depth,
+            });
+            r
+        };
+        let none = |r: &Row| panel_row(r, false, &|_| String::new());
+        let teal = none(&header(Some(ListAccent::Teal), 1));
+        assert_eq!((teal.group_colour, teal.depth), (1, 1));
+        assert_eq!(none(&header(None, 0)).group_colour, -1);
+        let mut member = row(ItemKind::Text, false, "x");
+        member.depth = 2;
+        let member = none(&member);
+        assert_eq!((member.group_colour, member.depth), (-1, 2));
+        assert_eq!(none(&row(ItemKind::Text, false, "x")).depth, 0);
     }
 
     #[test]

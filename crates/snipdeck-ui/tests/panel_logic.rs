@@ -928,11 +928,12 @@ ui_tests! {
                 title: "Replies".into(),
                 is_header: true,
                 group_count: 2,
+                group_colour: -1,
                 ..Default::default()
             },
         );
-        rs[1].grouped = true;
-        rs[2].grouped = true;
+        rs[1].depth = 1;
+        rs[2].depth = 1;
         fixture::set_rows(&ui, rs);
         let _ = rows(&ui);
         wait(1000);

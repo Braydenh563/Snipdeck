@@ -29,7 +29,7 @@
 // one after 500ms, and swaps it instantly while the pointer moves between controls.
 import { TipHost, TipLayer } from "components/tip-host.slint";
 import { ListView } from "std-widgets.slint";
-import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook, Palette } from "theme.slint";
+import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook, Palette, ListHue, ListAccent } from "theme.slint";
 import { Icons } from "icons.slint";
 import { Icon } from "components/icon.slint";
 import { GroupHeader } from "components/group-header.slint";
@@ -94,8 +94,10 @@ export struct PanelRow {
     is-header: bool,
     group-count: int,
     group-collapsed: bool,
-    // The item sits under a group's header: the card is indented.
-    grouped: bool,
+    // The group's colour: -1 none, else 0 to 8 in the order of `ListHue` (the host's `ListAccent`).
+    group-colour: int,
+    // How many groups the row sits in (a header: how many it is nested in): the row is indented by it.
+    depth: int,
     // Its place among the group's items (1 = first) and how many the group has; 0 = not in a group.
     set-position: int,
     set-size: int,
@@ -224,8 +226,17 @@ export component PanelWindow inherits Window {
     callback group-rename-ended();
     // The name a new group starts with.
     public pure function group-default-name() -> string { return @tr("Group"); }
-    public pure function group-announcement(name: string, count: int) -> string {
+    property <[ListHue]> group-hues: [ListHue.blue, ListHue.teal, ListHue.green, ListHue.amber, ListHue.orange, ListHue.red, ListHue.rose, ListHue.violet, ListHue.slate];
+    property <[string]> group-colour-names: [
+        @tr("Blue"), @tr("Teal"), @tr("Green"), @tr("Amber"), @tr("Orange"),
+        @tr("Red"), @tr("Rose"), @tr("Violet"), @tr("Slate"),
+    ];
+    public pure function group-announcement(name: string, count: int, colour: int) -> string {
         // Folded or open is spoken from the header's expanded state, so the label does not repeat it.
+        // The colour is spoken too: the dot is never the only cue.
+        if (colour >= 0 && colour < root.group-colour-names.length) {
+            return @tr("group {}, {}, {} item" | "group {}, {}, {} items" % count, name, root.group-colour-names[colour], count);
+        }
         return @tr("group {}, {} item" | "group {}, {} items" % count, name, count);
     }
     // The Recent inbox (SPEC 5.6): `recent-available` while clipboard history is on shows the clock tab at the far left
@@ -2299,14 +2310,16 @@ export component PanelWindow inherits Window {
 
                                             // A group's header takes the place of a card.
                                             if item.is-header: GroupHeader {
-                                                x: 0px;
+                                                x: item.depth * Space.s3;
                                                 y: 0px;
-                                                width: parent.width;
+                                                width: parent.width - self.x;
                                                 height: root.ghost-h;
                                                 name: item.title;
                                                 collapsed: item.group-collapsed;
                                                 count-text: @tr("{} item" | "{} items" % item.group-count, item.group-count);
-                                                a11y-label: root.group-announcement(item.title, item.group-count);
+                                                a11y-label: root.group-announcement(item.title, item.group-count, item.group-colour);
+                                                dot: item.group-colour >= 0 && item.group-colour < root.group-hues.length ? ListAccent.color(root.group-hues[item.group-colour]) : transparent;
+                                                has-dot: item.group-colour >= 0;
                                                 rename-label: @tr("Group name");
                                                 selected: i == root.sel;
                                                 rename-request: root.rename-row == i ? root.rename-seq : 0;
@@ -2332,7 +2345,7 @@ export component PanelWindow inherits Window {
                                             }
 
                                             card := ItemCard {
-                                                x: item.grouped ? Space.s3 : 0px;
+                                                x: item.depth * Space.s3;
                                                 y: 0px;
                                                 width: parent.width - self.x;
                                                 height: item.deleted-pending ? root.ghost-h : self.preferred-height;
