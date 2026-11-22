@@ -2,10 +2,10 @@
 
 ## Done
 Pushed (head 0650c7c, gate green): 1-14, 16-18, 19 (dead keys + Caps Lock), 20-39, 40 (Paste as JSON/quote/code, Picker F3 preview), 41-45, 2 and 23 (Recent/tag Picker scopes), 22 (documented).
-Also pushed: 15 (FileDescription names via `snipdeck_platform::app_names`), 10k probe (cold Panel load 89-121 ms vs 50 ms budget: open finding, see docs/PERF.md).
+Also pushed: 15 (FileDescription names via `snipdeck_platform::app_names`), 10k probe (cold Panel load fixed afterwards, see docs/PERF.md).
 
 ## Next
-1. Cold Panel load over budget (coordinator decides on a fix).
+1. (done) Cold Panel load fixed: 25-34 ms vs 50 ms.
 2. (done)
 3. Group colour + nesting indent: BLOCKED until the coordinator sends the head of PR #5 branch `claude/compassionate-pascal-pod8ux` (merge it into this branch first).
 4. `retro`.

@@ -391,11 +391,11 @@ impl PanelModel {
         self.items.iter().map(|i| i.id).collect()
     }
 
-    /// The names the search suggestions are made of (shared with the Picker's, built with the
-    /// search index).
+    /// The names the search suggestions are made of (shared with the Picker's, built the first
+    /// time they are asked for).
     #[must_use]
     pub fn suggest_index(&self) -> Rc<crate::search_suggest::Index> {
-        Rc::clone(&self.all.suggest)
+        self.all.suggest()
     }
 
     /// Sets the search text; the selection returns to the first row.

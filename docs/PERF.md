@@ -62,15 +62,19 @@ Run on a 4-core Linux VM (optimised test profile, 2026-11-22, three to five runs
 | Command palette filter, worst of six queries | 0.24 ms | 16 ms |
 | Search (index only), five queries | 0.7 to 4.1 ms | 16 ms |
 | Panel load, warm | 0.7 to 1.7 ms | 50 ms |
-| **Panel load, cold (builds the index)** | **89 to 121 ms** | **50 ms: over** |
+| Panel load, cold (builds the index) | 25 to 34 ms | 50 ms |
 
-The cold load is the open finding: it is about twice its budget on this seed (the earlier
-26 ms figure, 2026-10-19, was a simpler library). Where it goes, from the phase line the probe
-prints: reading all 10,000 items with their tags about 55 ms, the typing-suggestion index about
-25 ms, the search index about 9 ms. It is paid once per start and after a write that is not an
-edit or a use (`IndexCache`), not on every open. The Picker's open budget holds because it
-opens on the warm index. Not changed here: a fix would read items faster (`fetch` in
-`snipdeck-store/src/items.rs`) or build the suggestion index off the load path.
+The cold load was over budget (89 to 121 ms on this seed) and is fixed. It was reading all
+10,000 items with their tags (about 55 ms: a sort of every row, and three look-ups per tag
+link), the typing-suggestion index (about 25 ms) and the search index (about 9 ms). Now the
+suggestion index is built on first use (`Snapshot::suggest`), not on load, and `all_items`
+reads in library order through the three rank indexes (no sort) with one scan of the tag links
+(`fetch_all` in `snipdeck-store/src/items.rs`), about 20 to 32 ms. The cold load is paid once
+per start and after a write that is not an edit or a use (`IndexCache`). The first typing
+suggestion pays the 25 ms build, once per snapshot.
+
+The Picker's worst key varies between runs on the shared container (9 to 45 ms in five runs)
+and its path (`set_query`) was not touched, so that probe needs a quiet machine to judge.
 
 ## Release size and idle RAM
 

@@ -80,7 +80,6 @@ pub struct PickerModel {
     /// Positions in `places` with nothing typed (used last first, then most used): sorted once.
     recent_order: Vec<usize>,
     index: Rc<SearchIndex>,
-    suggest: Rc<crate::search_suggest::Index>,
     /// The board the Panel showed when the Picker opened (the "This board" scope).
     board: Option<BoardId>,
     /// The list the Panel showed when the Picker opened (the "This list" scope).
@@ -173,7 +172,6 @@ impl PickerModel {
             places,
             positions,
             recent_order,
-            suggest: Rc::clone(&snapshot.suggest),
             snapshot,
             index,
             board,
@@ -270,7 +268,7 @@ impl PickerModel {
     /// The names the search suggestions are made of.
     #[must_use]
     pub fn suggest_index(&self) -> Rc<crate::search_suggest::Index> {
-        Rc::clone(&self.suggest)
+        self.snapshot.suggest()
     }
 
     /// Sets the search text; the selection returns to the first row.

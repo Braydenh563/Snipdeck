@@ -19,7 +19,7 @@ use snipdeck_core::{
     BlobRef, Content, FileEntry, Format, FormatKind, Formats, INLINE_LIMIT, Item, ItemId, ItemKind,
     ListId, Placement, Tag, Timestamp,
 };
-use snipdeck_store::{BlobStore, Error, ItemRepo, Store, TagRepo};
+use snipdeck_store::{BlobStore, Error, ItemRepo, Store, TagRepo, TrashRepo, Trashable};
 
 fn setup() -> (Store, snipdeck_core::List) {
     let mut s = store();
@@ -334,6 +334,45 @@ fn all_items_follow_board_then_list_then_item_order() {
         .map(|i| i.title)
         .collect();
     assert_eq!(titles, ["b1-l1b-1", "b1-l1b-2", "b1-l1a-1", "b2-l2-1"]);
+}
+
+#[test]
+fn all_items_carry_their_tags_and_leave_out_what_is_in_the_trash() {
+    let mut s = store();
+    let b1 = board(&mut s, "b1");
+    let b2 = board(&mut s, "b2");
+    let (l1, l2, gone) = (
+        list(&mut s, b1.id, "l1"),
+        list(&mut s, b2.id, "l2"),
+        list(&mut s, b2.id, "gone"),
+    );
+    let (red, blue) = (Tag::new(name("red")), Tag::new(name("blue")));
+    s.insert_tag(&red).unwrap();
+    s.insert_tag(&blue).unwrap();
+    let tagged = |s: &mut Store, list: ListId, title: &str, tags: &[&Tag]| {
+        let mut it = item(s, list, title, "x");
+        it.tags = tags.iter().map(|t| t.id).collect();
+        s.update_item(&it, None).unwrap();
+        it
+    };
+    let first = tagged(&mut s, l1.id, "first", &[&red, &blue]);
+    let plain = tagged(&mut s, l1.id, "plain", &[]);
+    let trashed = tagged(&mut s, l2.id, "trashed", &[&red]);
+    let in_gone = tagged(&mut s, gone.id, "in a trashed list", &[&blue]);
+    let last = tagged(&mut s, l2.id, "last", &[&blue]);
+    s.trash(Trashable::Item(trashed.id), at(10)).unwrap();
+    s.trash(Trashable::List(gone.id), at(11)).unwrap();
+    let all = s.all_items().unwrap();
+    assert_eq!(all, [first.clone(), plain, last.clone()]);
+    assert_eq!(all[0].tags, BTreeSet::from([red.id, blue.id]));
+    assert_eq!(all[2].tags, BTreeSet::from([blue.id]));
+    assert!(all.iter().all(|i| i.id != in_gone.id));
+    // The same items, in the same order, as reading list by list.
+    let by_list: Vec<_> = [l1.id, l2.id]
+        .into_iter()
+        .flat_map(|l| s.items(l).unwrap())
+        .collect();
+    assert_eq!(all, by_list);
 }
 
 #[test]

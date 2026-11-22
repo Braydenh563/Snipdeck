@@ -16,7 +16,7 @@
 //! The cache is a cheap handle (clones share one state), so the controller owns one and hands
 //! a clone to each model it loads.
 
-use std::cell::RefCell;
+use std::cell::{OnceCell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
@@ -34,11 +34,37 @@ pub struct Snapshot {
     pub boards: Vec<(Board, Vec<List>)>,
     /// The search index over [`Snapshot::all`].
     pub index: Rc<SearchIndex>,
-    /// The names the search suggestions are made of, built with the index.
-    pub suggest: Rc<Index>,
+    /// The tag names the search suggestions are made of (the item titles and list names are
+    /// read from the snapshot itself).
+    suggest_tags: Vec<String>,
+    /// The suggestions, built the first time something asks (see [`Snapshot::suggest`]): they
+    /// are only used while typing in a search box, so opening the Panel does not pay for them.
+    suggest_cell: OnceCell<Rc<Index>>,
     /// The items that keep HTML or RTF next to their text (the Panel's "Formatted" mark).
     /// Sensitive items are left out: their content is never read for a list.
     pub rich: Rc<HashSet<ItemId>>,
+}
+
+impl Snapshot {
+    /// The names the search suggestions are made of, built on the first call and shared after.
+    #[must_use]
+    pub fn suggest(&self) -> Rc<Index> {
+        Rc::clone(self.suggest_cell.get_or_init(|| {
+            Rc::new(Index::build(
+                &self.all,
+                self.suggest_tags.iter().map(String::as_str),
+                self.boards
+                    .iter()
+                    .flat_map(|(_, lists)| lists.iter().map(|l| l.name.as_str())),
+            ))
+        }))
+    }
+
+    /// Whether [`Snapshot::suggest`] has built the suggestions yet.
+    #[must_use]
+    pub fn suggest_built(&self) -> bool {
+        self.suggest_cell.get().is_some()
+    }
 }
 
 /// A change the controller announced, so the next snapshot patches those items alone.
@@ -61,7 +87,6 @@ struct State {
     read_at: Option<(u64, u64)>,
     /// The `change_counter` the index was built at.
     built_at: Option<u64>,
-    suggest: Rc<Index>,
     snapshot: Rc<Snapshot>,
     rebuilds: usize,
     /// How many times one item was patched into the snapshot instead of a re-read.
@@ -125,7 +150,14 @@ impl IndexCache {
         };
         let reuse = {
             let state = self.0.borrow();
-            (state.built_at == Some(counter)).then(|| Rc::clone(&state.snapshot.index))
+            (state.built_at == Some(counter)).then(|| {
+                let old = &state.snapshot;
+                (
+                    Rc::clone(&old.index),
+                    old.suggest_cell.get().cloned(),
+                    old.suggest_tags.clone(),
+                )
+            })
         };
         let rich = {
             let state = self.0.borrow();
@@ -134,50 +166,50 @@ impl IndexCache {
                 None => Rc::new(store.rich_item_ids()?.into_iter().collect()),
             }
         };
-        let (index, suggest, built) = if let Some(mut index) = reuse {
-            // A counted use changes only the tie-breakers (use count, last use): bring them up
-            // to date, copying the index only when one did change.
-            if !index.usage_is_current(&all) {
-                Rc::make_mut(&mut index).refresh_usage(&all);
-            }
-            (index, Rc::clone(&self.0.borrow().suggest), false)
-        } else {
-            let started = std::time::Instant::now();
-            let tags = store.tags()?;
-            let tag_names: HashMap<_, _> = tags
-                .iter()
-                .map(|t| (t.id, t.name.as_str().to_owned()))
-                .collect();
-            let mut index = SearchIndex::default();
-            for item in &all {
-                index.upsert_with_tags(
-                    item,
-                    item.tags
-                        .iter()
-                        .filter_map(|t| tag_names.get(t).map(String::as_str)),
-                );
-            }
-            let suggest = Index::build(
-                &all,
-                tags.iter().map(|t| t.name.as_str()),
-                boards
+        let (index, suggest_cell, suggest_tags, built) =
+            if let Some((mut index, suggest, suggest_tags)) = reuse {
+                // A counted use changes only the tie-breakers (use count, last use): bring them
+                // up to date, copying the index only when one did change.
+                if !index.usage_is_current(&all) {
+                    Rc::make_mut(&mut index).refresh_usage(&all);
+                }
+                (
+                    index,
+                    suggest.map_or_else(OnceCell::new, OnceCell::from),
+                    suggest_tags,
+                    false,
+                )
+            } else {
+                let started = std::time::Instant::now();
+                let tags = store.tags()?;
+                let tag_names: HashMap<_, _> = tags
                     .iter()
-                    .flat_map(|(_, lists)| lists.iter().map(|l| l.name.as_str())),
-            );
-            crate::trace!(
-                "index build {} us for {} items",
-                started.elapsed().as_micros(),
-                all.len()
-            );
-            (Rc::new(index), Rc::new(suggest), true)
-        };
+                    .map(|t| (t.id, t.name.as_str().to_owned()))
+                    .collect();
+                let mut index = SearchIndex::default();
+                for item in &all {
+                    index.upsert_with_tags(
+                        item,
+                        item.tags
+                            .iter()
+                            .filter_map(|t| tag_names.get(t).map(String::as_str)),
+                    );
+                }
+                crate::trace!(
+                    "index build {} us for {} items",
+                    started.elapsed().as_micros(),
+                    all.len()
+                );
+                let suggest_tags = tags.iter().map(|t| t.name.as_str().to_owned()).collect();
+                (Rc::new(index), OnceCell::new(), suggest_tags, true)
+            };
         let mut state = self.0.borrow_mut();
-        state.suggest = Rc::clone(&suggest);
         state.snapshot = Rc::new(Snapshot {
             all,
             boards,
             index,
-            suggest,
+            suggest_tags,
+            suggest_cell,
             rich,
         });
         state.read_at = Some(at);
@@ -264,26 +296,28 @@ impl IndexCache {
             }
             all[position] = item;
         }
-        let (suggest, rich) = if edited {
+        // An edit may change a title or a tag, so its suggestions are built again, when asked.
+        let (suggest_tags, suggest_cell, rich) = if edited {
             let rich: HashSet<ItemId> = store.rich_item_ids().ok()?.into_iter().collect();
-            let suggest = Index::build(
-                &all,
-                tags.iter().map(|t| t.name.as_str()),
-                old.boards
-                    .iter()
-                    .flat_map(|(_, lists)| lists.iter().map(|l| l.name.as_str())),
-            );
-            (Rc::new(suggest), Rc::new(rich))
+            let names = tags.iter().map(|t| t.name.as_str().to_owned()).collect();
+            (names, OnceCell::new(), Rc::new(rich))
         } else {
-            (Rc::clone(&old.suggest), Rc::clone(&old.rich))
+            (
+                old.suggest_tags.clone(),
+                old.suggest_cell
+                    .get()
+                    .cloned()
+                    .map_or_else(OnceCell::new, OnceCell::from),
+                Rc::clone(&old.rich),
+            )
         };
         let mut state = self.0.borrow_mut();
-        state.suggest = Rc::clone(&suggest);
         state.snapshot = Rc::new(Snapshot {
             all,
             boards: old.boards.clone(),
             index,
-            suggest,
+            suggest_tags,
+            suggest_cell,
             rich,
         });
         state.read_at = Some(at);
@@ -385,6 +419,32 @@ mod tests {
         assert_eq!(first.all.len(), 1);
         assert_eq!(first.boards.len(), 1);
         assert_eq!(first.boards[0].1.len(), 1);
+    }
+
+    #[test]
+    fn the_suggestions_are_built_when_asked_not_when_the_snapshot_is_read() {
+        let (mut s, l) = seeded();
+        add(&mut s, l, "Invoice reminder");
+        let cache = IndexCache::new();
+        let first = cache.snapshot(&s).unwrap();
+        assert!(!first.suggest_built(), "reading the library builds none");
+        let suggest = first.suggest();
+        assert!(first.suggest_built());
+        assert!(Rc::ptr_eq(&suggest, &first.suggest()), "built once");
+        // A counted use keeps the built suggestions; an edit makes new ones, again only when asked.
+        let id = first.all[0].id;
+        cache.note_use(id);
+        s.record_use(id, at()).unwrap();
+        let used = cache.snapshot(&s).unwrap();
+        assert!(used.suggest_built(), "a use changes no name");
+        assert!(Rc::ptr_eq(&suggest, &used.suggest()));
+        add(&mut s, l, "Zebra");
+        let more = cache.snapshot(&s).unwrap();
+        assert!(!more.suggest_built());
+        assert!(
+            !crate::search_suggest::suggest("zeb", 3, &more.suggest()).is_empty(),
+            "the new title is suggested"
+        );
     }
 
     // A25 smoke check: a 2000-item library is read and indexed once, and quickly. It uses the real
