@@ -1418,7 +1418,7 @@ fn export_saves_a_new_file_in_documents_each_time_and_opens_the_folder() {
         let first = files(&documents);
         assert_eq!(first.len(), 1);
         assert!(first[0].starts_with("Snipdeck-library-") && first[0].ends_with(".snipdeck"));
-        assert_eq!(r.ui.get_toast_text(), format!("Saved {}.", first[0]));
+        assert_eq!(r.ui.get_toast_text(), format!("Saved {}", first[0]));
         assert_eq!(*r.host.opened.borrow(), std::slice::from_ref(&documents));
         r.ui.invoke_export_requested();
         assert_eq!(
