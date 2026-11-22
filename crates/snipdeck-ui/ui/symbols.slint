@@ -267,7 +267,7 @@ export component SymbolsView inherits Rectangle {
             height: Space.hit;
             clip: true;
             Flickable {
-                viewport-width: textstrip.preferred-width;
+                content-width: textstrip.preferred-width;
                 interactive: true;
                 textstrip := HorizontalLayout {
                     padding-left: Space.s2;
