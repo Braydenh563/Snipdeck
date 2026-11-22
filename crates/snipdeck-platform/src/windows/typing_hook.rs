@@ -211,7 +211,10 @@ fn run(
             lost,
             tab,
             foreground: 0,
-            classifier: Classifier::new(),
+            // SAFETY: no preconditions; bit 0 is the toggle state, read once as the starting point.
+            classifier: Classifier::with_caps(
+                unsafe { GetKeyState(i32::from(VK_CAPITAL.0)) } & 1 != 0,
+            ),
             dropped: false,
         });
     });
@@ -334,7 +337,8 @@ fn handle(info: &KBDLLHOOKSTRUCT) -> bool {
     }
     // SAFETY: no preconditions.
     let foreground = unsafe { GetForegroundWindow() };
-    let stroke = stroke_of(info, foreground);
+    let caps = HOOKED.with(|state| state.borrow().as_ref().is_some_and(|h| h.classifier.caps()));
+    let stroke = stroke_of(info, foreground, caps);
     let plain_tab = typing::is_plain_tab(stroke) && !async_down(VK_SHIFT.0);
     HOOKED.with(|state| {
         let mut guard = state.borrow_mut();
@@ -386,7 +390,11 @@ fn async_down(vk: u16) -> bool {
     (unsafe { GetAsyncKeyState(i32::from(vk)) }) < 0
 }
 
-fn stroke_of(info: &KBDLLHOOKSTRUCT, foreground: windows::Win32::Foundation::HWND) -> Stroke {
+fn stroke_of(
+    info: &KBDLLHOOKSTRUCT,
+    foreground: windows::Win32::Foundation::HWND,
+    caps: bool,
+) -> Stroke {
     let vk = u16::try_from(info.vkCode).unwrap_or(0);
     let shift = async_down(VK_SHIFT.0);
     let ctrl = async_down(VK_CONTROL.0);
@@ -403,8 +411,9 @@ fn stroke_of(info: &KBDLLHOOKSTRUCT, foreground: windows::Win32::Foundation::HWN
     if alt {
         state[usize::from(VK_MENU.0)] = 0x80;
     }
-    // SAFETY: no preconditions; bit 0 is the toggle state.
-    if unsafe { GetKeyState(i32::from(VK_CAPITAL.0)) } & 1 != 0 {
+    // Counted by the classifier from the presses the hook sees: the hook thread has no message
+    // queue of its own, so the system's toggle state read here can be stale.
+    if caps {
         state[usize::from(VK_CAPITAL.0)] = 0x01;
     }
     // Only a key that may type text is translated; the rest are classified by `vk` alone.
@@ -446,7 +455,11 @@ fn translate(
         )
     };
     let translation = match written {
-        n if n < 0 => Translation::Dead,
+        n if n < 0 => Translation::Dead(
+            char::decode_utf16(out[..1].iter().copied())
+                .next()
+                .and_then(Result::ok),
+        ),
         0 => Translation::Nothing,
         n => {
             let units = &out[..usize::try_from(n).unwrap_or(0).min(out.len())];
