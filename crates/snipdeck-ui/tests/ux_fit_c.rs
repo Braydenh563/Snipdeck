@@ -197,9 +197,18 @@ fn tag_manager_footer_clears_the_rows_at_its_minimum_size() {
                 .take(2)
                 .collect::<Vec<_>>(),
         )));
+        // The minimum height follows the width (the intro wraps), so settle the way the window does: at the
+        // minimum size, until that size stops changing.
         settle(&ui, s, 0.0, 0.0);
-        let (w, h) = (ui.get_min_window_width(), ui.get_min_window_height());
-        settle(&ui, s, w, h);
+        let (mut w, mut h) = (0.0, 0.0);
+        for _ in 0..4 {
+            let next = (ui.get_min_window_width(), ui.get_min_window_height());
+            if next == (w, h) {
+                break;
+            }
+            (w, h) = next;
+            settle(&ui, s, w, h);
+        }
         let scene = format!("tag manager {lang:?} {s}x at {w}x{h}");
         let footer = ["Close", "Schließen", "Fermer", "Cerrar", "Fechar", "閉じる"];
         problems(&ui, w, h, &footer, &scene)
