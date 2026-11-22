@@ -2052,6 +2052,9 @@ msgstr "Nenhuma correspondência em todos os quadros"
 msgid "No matches in {}"
 msgstr "Nenhuma correspondência em {}"
 
+msgid "No messages yet."
+msgstr "Ainda não há mensagens."
+
 msgid "No programs yet."
 msgstr "Nenhum programa ainda."
 

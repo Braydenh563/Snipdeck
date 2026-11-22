@@ -2052,6 +2052,9 @@ msgstr "Aucun résultat dans tous les tableaux"
 msgid "No matches in {}"
 msgstr "Aucun résultat dans {}"
 
+msgid "No messages yet."
+msgstr "Aucun message pour le moment."
+
 msgid "No programs yet."
 msgstr "Aucun programme pour le moment."
 

@@ -390,7 +390,7 @@ msgstr ""
 msgid "Asks you to pick one of the options"
 msgstr ""
 
-#: ui/master_password.slint:300
+#: ui/master_password.slint:302
 msgid "At least {} characters. A few unrelated words make a good password."
 msgstr ""
 
@@ -556,7 +556,7 @@ msgstr ""
 msgid "Camera"
 msgstr ""
 
-#: ui/components/hotkey_health.slint:39 ui/components/quick-add.slint:183 ui/editors.slint:1584 ui/editors.slint:1994 ui/editors.slint:2415 ui/editors.slint:2438 ui/help.slint:547 ui/main_window.slint:3421 ui/master_password.slint:343 ui/master_password.slint:488 ui/settings.slint:1287 ui/settings.slint:1321 ui/settings.slint:1951 ui/settings.slint:2025 ui/template_fill.slint:337
+#: ui/components/hotkey_health.slint:39 ui/components/quick-add.slint:183 ui/editors.slint:1584 ui/editors.slint:1994 ui/editors.slint:2415 ui/editors.slint:2438 ui/help.slint:547 ui/main_window.slint:3436 ui/master_password.slint:345 ui/master_password.slint:490 ui/settings.slint:1287 ui/settings.slint:1321 ui/settings.slint:1951 ui/settings.slint:2025 ui/template_fill.slint:337
 msgid "Cancel"
 msgstr ""
 
@@ -564,7 +564,7 @@ msgstr ""
 msgid "Cancel the test of {}"
 msgstr ""
 
-#: ui/master_password.slint:136
+#: ui/master_password.slint:138
 msgid "Caps Lock is on."
 msgstr ""
 
@@ -576,11 +576,11 @@ msgstr ""
 msgid "Cards"
 msgstr ""
 
-#: ui/master_password.slint:171
+#: ui/master_password.slint:173
 msgid "Change master password"
 msgstr ""
 
-#: ui/master_password.slint:181
+#: ui/master_password.slint:183
 msgid "Change password"
 msgstr ""
 
@@ -760,7 +760,7 @@ msgstr ""
 msgid "Clipboard clear time"
 msgstr ""
 
-#: ui/editors.slint:2398 ui/panel.slint:1925 ui/picker.slint:685 ui/settings.slint:1951 ui/shortcut_texts.slint:115 ui/shortcut_texts.slint:119 ui/template_fill.slint:204
+#: ui/editors.slint:2398 ui/main_window.slint:3418 ui/panel.slint:1925 ui/picker.slint:685 ui/settings.slint:1951 ui/shortcut_texts.slint:115 ui/shortcut_texts.slint:119 ui/template_fill.slint:204
 msgid "Close"
 msgstr ""
 
@@ -1260,7 +1260,7 @@ msgstr ""
 msgid "Ctrl+V"
 msgstr ""
 
-#: ui/master_password.slint:276 ui/master_password.slint:277
+#: ui/master_password.slint:278 ui/master_password.slint:279
 msgid "Current password"
 msgstr ""
 
@@ -1564,11 +1564,11 @@ msgstr ""
 msgid "Enter creates “{}” in {}"
 msgstr ""
 
-#: ui/master_password.slint:445
+#: ui/master_password.slint:447
 msgid "Enter your master password to use the sensitive items in your library. Your other items are always available."
 msgstr ""
 
-#: ui/master_password.slint:95
+#: ui/master_password.slint:97
 msgid "Enter your password."
 msgstr ""
 
@@ -1884,7 +1884,7 @@ msgstr ""
 msgid "Hide Panel ({})"
 msgstr ""
 
-#: ui/master_password.slint:132
+#: ui/master_password.slint:134
 msgid "Hide password"
 msgstr ""
 
@@ -1976,7 +1976,7 @@ msgstr ""
 msgid "Icons can't be added to a list yet"
 msgstr ""
 
-#: ui/master_password.slint:153
+#: ui/master_password.slint:155
 msgid "If you forget this password, your sensitive items can never be opened again. Snipdeck cannot reset it and keeps no recovery key. Your other items are not affected."
 msgstr ""
 
@@ -2368,7 +2368,7 @@ msgstr ""
 msgid "Mark an item Sensitive to hide it until you reveal it."
 msgstr ""
 
-#: ui/master_password.slint:457 ui/master_password.slint:458 ui/settings.slint:530 ui/settings.slint:1396
+#: ui/master_password.slint:459 ui/master_password.slint:460 ui/settings.slint:530 ui/settings.slint:1396
 msgid "Master password"
 msgstr ""
 
@@ -2612,7 +2612,7 @@ msgstr ""
 msgid "New note"
 msgstr ""
 
-#: ui/master_password.slint:290 ui/master_password.slint:291
+#: ui/master_password.slint:292 ui/master_password.slint:293
 msgid "New password"
 msgstr ""
 
@@ -2726,6 +2726,10 @@ msgstr ""
 
 #: ui/main_window.slint:3088
 msgid "No matches in {}"
+msgstr ""
+
+#: ui/main_window.slint:3411
+msgid "No messages yet."
 msgstr ""
 
 #: ui/settings.slint:1353
@@ -3552,7 +3556,7 @@ msgstr ""
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr ""
 
-#: ui/main_window.slint:3259
+#: ui/main_window.slint:3259 ui/main_window.slint:3410
 msgid "Recent messages"
 msgstr ""
 
@@ -3624,11 +3628,11 @@ msgstr ""
 msgid "Remove from recents"
 msgstr ""
 
-#: ui/master_password.slint:174
+#: ui/master_password.slint:176
 msgid "Remove master password"
 msgstr ""
 
-#: ui/master_password.slint:184
+#: ui/master_password.slint:186
 msgid "Remove password"
 msgstr ""
 
@@ -3664,7 +3668,7 @@ msgstr ""
 msgid "Rename tag {}"
 msgstr ""
 
-#: ui/master_password.slint:313 ui/master_password.slint:314
+#: ui/master_password.slint:315 ui/master_password.slint:316
 msgid "Repeat the new password"
 msgstr ""
 
@@ -3866,7 +3870,7 @@ msgstr ""
 msgid "Saving changed text removes the formatting."
 msgstr ""
 
-#: ui/master_password.slint:162
+#: ui/master_password.slint:164
 msgid "Saving…"
 msgstr ""
 
@@ -4014,11 +4018,11 @@ msgstr ""
 msgid "Sensitive items in a backup or export can only be restored by this Windows account on this PC. On another PC, or after Windows is reinstalled, they are skipped. Keep your own copy of anything sensitive you cannot lose."
 msgstr ""
 
-#: ui/master_password.slint:176
+#: ui/master_password.slint:178
 msgid "Set master password"
 msgstr ""
 
-#: ui/master_password.slint:186
+#: ui/master_password.slint:188
 msgid "Set password"
 msgstr ""
 
@@ -4130,7 +4134,7 @@ msgstr ""
 msgid "Show or hide the sidebar"
 msgstr ""
 
-#: ui/master_password.slint:132
+#: ui/master_password.slint:134
 msgid "Show password"
 msgstr ""
 
@@ -4190,7 +4194,7 @@ msgstr ""
 msgid "Snipdeck can’t keep a file with that name. Rename the file and try again."
 msgstr ""
 
-#: ui/master_password.slint:110 ui/settings.slint:1399
+#: ui/master_password.slint:112 ui/settings.slint:1399
 msgid "Snipdeck can’t protect a key on this PC, so a master password is not available."
 msgstr ""
 
@@ -4366,19 +4370,19 @@ msgstr ""
 msgid "Step {} of {}"
 msgstr ""
 
-#: ui/master_password.slint:144
+#: ui/master_password.slint:146
 msgid "Strength: fair"
 msgstr ""
 
-#: ui/master_password.slint:147
+#: ui/master_password.slint:149
 msgid "Strength: good"
 msgstr ""
 
-#: ui/master_password.slint:149
+#: ui/master_password.slint:151
 msgid "Strength: strong"
 msgstr ""
 
-#: ui/master_password.slint:141
+#: ui/master_password.slint:143
 msgid "Strength: weak"
 msgstr ""
 
@@ -4586,7 +4590,7 @@ msgstr ""
 msgid "That list was deleted. Choose another list."
 msgstr ""
 
-#: ui/master_password.slint:98
+#: ui/master_password.slint:100
 msgid "That password is not right. Try again."
 msgstr ""
 
@@ -4666,7 +4670,7 @@ msgstr ""
 msgid "The key opens the encrypted items in exports you saved earlier. If you forget it, those items can never be opened again."
 msgstr ""
 
-#: ui/master_password.slint:113
+#: ui/master_password.slint:115
 msgid "The library could not be unlocked or changed. Nothing was changed."
 msgstr ""
 
@@ -4728,7 +4732,7 @@ msgstr ""
 msgid "The time now"
 msgstr ""
 
-#: ui/master_password.slint:107
+#: ui/master_password.slint:109
 msgid "The two passwords are not the same."
 msgstr ""
 
@@ -4908,7 +4912,7 @@ msgstr ""
 msgid "Today’s date"
 msgstr ""
 
-#: ui/master_password.slint:101
+#: ui/master_password.slint:103
 msgid "Too many wrong passwords. Wait a few seconds and try again."
 msgstr ""
 
@@ -5060,11 +5064,11 @@ msgstr ""
 msgid "Ungroup (the group’s menu)"
 msgstr ""
 
-#: ui/main_window.slint:2844 ui/master_password.slint:493 ui/panel.slint:2504
+#: ui/main_window.slint:2844 ui/master_password.slint:495 ui/panel.slint:2504
 msgid "Unlock"
 msgstr ""
 
-#: ui/master_password.slint:368 ui/master_password.slint:434
+#: ui/master_password.slint:370 ui/master_password.slint:436
 msgid "Unlock Snipdeck"
 msgstr ""
 
@@ -5072,7 +5076,7 @@ msgstr ""
 msgid "Unlock window"
 msgstr ""
 
-#: ui/master_password.slint:470 ui/name_texts.slint:76 ui/settings.slint:530 ui/settings.slint:1397 ui/settings.slint:1445 ui/settings.slint:1448
+#: ui/master_password.slint:472 ui/name_texts.slint:76 ui/settings.slint:530 ui/settings.slint:1397 ui/settings.slint:1445 ui/settings.slint:1448
 msgid "Unlock with Windows Hello"
 msgstr ""
 
@@ -5096,11 +5100,11 @@ msgstr ""
 msgid "Unlock your library to use this item"
 msgstr ""
 
-#: ui/master_password.slint:436
+#: ui/master_password.slint:438
 msgid "Unlock your sensitive items"
 msgstr ""
 
-#: ui/master_password.slint:166
+#: ui/master_password.slint:168
 msgid "Unlocking…"
 msgstr ""
 
@@ -5136,7 +5140,7 @@ msgstr ""
 msgid "Use as other colour"
 msgstr ""
 
-#: ui/master_password.slint:104
+#: ui/master_password.slint:106
 msgid "Use at least {} characters."
 msgstr ""
 
@@ -5304,7 +5308,7 @@ msgstr ""
 msgid "Windows"
 msgstr ""
 
-#: ui/master_password.slint:125
+#: ui/master_password.slint:127
 msgid "Windows Hello did not unlock Snipdeck. Use your master password."
 msgstr ""
 
@@ -5312,11 +5316,11 @@ msgstr ""
 msgid "Windows Hello didn't work, so it was not turned on"
 msgstr ""
 
-#: ui/master_password.slint:119 ui/toast_texts.slint:60
+#: ui/master_password.slint:121 ui/toast_texts.slint:60
 msgid "Windows Hello didn’t work, so it was turned off. You can turn it on again in Settings."
 msgstr ""
 
-#: ui/master_password.slint:122
+#: ui/master_password.slint:124
 msgid "Windows Hello was cancelled. Use your master password."
 msgstr ""
 
@@ -5400,7 +5404,7 @@ msgstr ""
 msgid "Yes"
 msgstr ""
 
-#: ui/master_password.slint:116
+#: ui/master_password.slint:118
 msgid "Your Windows Hello PIN, face or fingerprint changed. Unlock with your password once to set Windows Hello up again."
 msgstr ""
 
@@ -5452,7 +5456,7 @@ msgstr ""
 msgid "Your organisation's policy keeps Snipdeck from starting with Windows"
 msgstr ""
 
-#: ui/master_password.slint:157
+#: ui/master_password.slint:159
 msgid "Your sensitive items will be protected by Windows alone."
 msgstr ""
 

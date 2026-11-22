@@ -2045,6 +2045,9 @@ msgstr "所有看板中均无匹配项"
 msgid "No matches in {}"
 msgstr "在 {} 中没有匹配项"
 
+msgid "No messages yet."
+msgstr "还没有消息。"
+
 msgid "No programs yet."
 msgstr "还没有程序。"
 

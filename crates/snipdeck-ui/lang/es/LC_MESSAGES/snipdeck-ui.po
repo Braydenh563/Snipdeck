@@ -2052,6 +2052,9 @@ msgstr "Sin coincidencias en todos los tableros"
 msgid "No matches in {}"
 msgstr "Sin coincidencias en {}"
 
+msgid "No messages yet."
+msgstr "Aún no hay mensajes."
+
 msgid "No programs yet."
 msgstr "Aún no hay programas."
 

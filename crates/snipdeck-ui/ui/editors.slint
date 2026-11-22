@@ -2153,15 +2153,15 @@ export component BoardEditor inherits Window {
 export component TagManager inherits Window {
     title: @tr("Tags");
     background: Theme.bg-app;
-    // The smallest window shows the intro, two rows and the Close row; both grow with the text size. Each row holds
+    // The smallest window shows the intro, the New tag row, two rows and the Close row; both grow with the text size. Each row holds
     // the name, its count and the two buttons.
     out property <length> min-window-width: max(360px, 2 * Space.s4 + Space.s3 + 3 * Space.s2 + 2 * Space.hit * SystemLook.text-scale + 14 * Type.base);
-    out property <length> min-window-height: 2 * Space.s4 + 2 * Space.s3 + intro.preferred-height + 2 * root.row-h + 2px + close-row.preferred-height;
+    out property <length> min-window-height: 2 * Space.s4 + 3 * Space.s3 + intro.preferred-height + new-row.preferred-height + 2 * root.row-h + 2px + close-row.preferred-height;
     min-width: root.min-window-width;
     min-height: root.min-window-height;
     preferred-width: max(440px, root.min-window-width);
     // Fits its content (the intro, one row per tag, the Close row), at most 520px; a long list scrolls.
-    out property <length> wanted-height: min(max(520px, root.min-window-height), max(root.min-window-height, 2 * Space.s4 + 2 * Space.s3 + intro.preferred-height + new-row.preferred-height + Space.s3 + max(root.tags.length, 2) * root.row-h + 2px + close-row.preferred-height));
+    out property <length> wanted-height: min(max(520px, root.min-window-height), max(root.min-window-height, 2 * Space.s4 + 3 * Space.s3 + intro.preferred-height + new-row.preferred-height + max(root.tags.length, 2) * root.row-h + 2px + close-row.preferred-height));
     preferred-height: root.wanted-height;
 
     in property <bool> dark: false;

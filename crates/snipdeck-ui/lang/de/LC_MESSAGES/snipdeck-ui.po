@@ -2052,6 +2052,9 @@ msgstr "Keine Treffer in allen Boards"
 msgid "No matches in {}"
 msgstr "Keine Treffer in {}"
 
+msgid "No messages yet."
+msgstr "Noch keine Meldungen."
+
 msgid "No programs yet."
 msgstr "Noch keine Programme."
 

@@ -724,7 +724,7 @@ export component MainWindow inherits Window {
     property <int> confirm-kind: 0;
     property <int> confirm-target: 0;
     property <bool> confirm-shown: false;
-    property <bool> overlay-open: root.recent-menu-open || root.recent-save-open || root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.view-menu-open || root.sort-menu-open || root.chooser-open || root.board-menu-open || root.confirm-shown || root.palette-open;
+    property <bool> overlay-open: root.recent-menu-open || root.recent-save-open || root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.view-menu-open || root.sort-menu-open || root.chooser-open || root.board-menu-open || root.confirm-shown || root.recent-messages-open || root.palette-open;
 
     init => {
         Palette.dark = root.dark;
@@ -3402,6 +3402,21 @@ export component MainWindow inherits Window {
         dismissed => {
             root.palette-open = false;
             root.restore-focus();
+        }
+    }
+
+    // Help > Recent messages: the last toasts, newest first (MAIN-43).
+    recent-messages := Dialog {
+        title: @tr("Recent messages");
+        body: root.recent-messages-text == "" ? @tr("No messages yet.") : root.recent-messages-text;
+        open: root.recent-messages-open;
+        dismissed => { root.recent-messages-open = false; }
+        accepted => { root.recent-messages-open = false; }
+        closed => { root.restore-focus(); }
+        Button {
+            variant: ButtonVariant.primary;
+            text: @tr("Close");
+            clicked => { root.recent-messages-open = false; }
         }
     }
 

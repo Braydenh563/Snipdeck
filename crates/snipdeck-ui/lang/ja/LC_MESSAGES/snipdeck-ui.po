@@ -2045,6 +2045,9 @@ msgstr "すべてのボードに一致する項目はありません"
 msgid "No matches in {}"
 msgstr "{} に一致するものはありません"
 
+msgid "No messages yet."
+msgstr "メッセージはまだありません。"
+
 msgid "No programs yet."
 msgstr "まだプログラムがありません。"
 
