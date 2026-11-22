@@ -602,7 +602,7 @@ mod tests {
         assert_eq!(m.tag_name(), "beta", "and back");
         // A query narrows inside the tag.
         m.set_query("zzzz-nothing");
-        assert!(m.rows().is_empty());
+        assert!(m.rows().is_empty(), "no row matches");
     }
 
     #[test]

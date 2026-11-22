@@ -396,7 +396,7 @@ where
     /// Backspace was the very next key after the expansion of `typed`: the expansion goes and the
     /// typed code comes back (Espanso, `TextExpander` and Beeftext do the same). The user's own
     /// Backspace has erased one character already. Only for the last expansion, within
-    /// [`UNDO_WINDOW_SECS`], in the window it went into, with no key typed since. Returns whether
+    /// 8 seconds, in the window it went into, with no key typed since. Returns whether
     /// the code was typed back. **Unverified on Windows** (S1: the key counts are the unknown).
     pub fn undo_expansion(&mut self, typed: &Typed) -> bool {
         let Some(last) = self.last_expansion.take() else {

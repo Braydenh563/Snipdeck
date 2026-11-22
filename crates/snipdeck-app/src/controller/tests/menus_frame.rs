@@ -471,7 +471,11 @@ fn a_group_head_opens_its_rows_in_place_folds_the_other_and_keeps_the_menu_open(
 #[test]
 fn the_rows_of_a_group_know_their_group_and_the_rest_have_none() {
     let grouped: Vec<_> = APP_MENU.iter().filter_map(|e| e.group()).collect();
-    assert_eq!(grouped.len(), 7, "Dock, Keep on top, Reset; four Help rows");
+    assert_eq!(
+        grouped.len(),
+        9,
+        "Dock, Keep on top, Reset, Move, Resize; four Help rows"
+    );
     assert!(
         APP_MENU
             .iter()
