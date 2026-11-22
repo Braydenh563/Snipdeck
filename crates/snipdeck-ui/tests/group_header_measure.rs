@@ -97,7 +97,9 @@ fn panel(w: u32, dark: bool, scale: f32, title: &str, selected: bool) -> Harness
 }
 
 fn handle(h: &Harness<PanelWindow>, name: &str, count: i32) -> ElementHandle {
-    let label = h.component.invoke_group_announcement(name.into(), count, -1);
+    let label = h
+        .component
+        .invoke_group_announcement(name.into(), count, -1);
     ElementHandle::find_by_accessible_label(&h.component, &label)
         .find(|e| e.accessible_role() == Some(AccessibleRole::Button))
         .unwrap_or_else(|| panic!("no header {label:?}"))
@@ -325,7 +327,10 @@ fn a_coloured_header_names_its_colour_and_draws_its_dot_and_a_nested_one_is_inde
     let outer = handle_labelled(&h, "group Replies, Teal, 2 items");
     let inner = handle(&h, "Inner", 1);
     let step = inner.absolute_position().x - outer.absolute_position().x;
-    assert!((step - 12.0).abs() < 0.5, "a nested header is one step in: {step}");
+    assert!(
+        (step - 12.0).abs() < 0.5,
+        "a nested header is one step in: {step}"
+    );
     assert!(
         (outer.size().width - inner.size().width - 12.0).abs() < 0.5,
         "and keeps its right edge"
