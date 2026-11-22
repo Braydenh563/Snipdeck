@@ -162,7 +162,7 @@ impl ClipboardText for snipdeck_platform::windows::clipboard::WinClipboard {
             return Vec::new();
         };
         let mut texts: Vec<String> = entries.into_iter().map(|e| e.text).collect();
-        if texts.first().is_some() && texts.first() == current.as_ref() {
+        if !texts.is_empty() && texts.first() == current.as_ref() {
             texts.remove(0);
         }
         texts
