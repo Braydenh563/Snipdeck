@@ -13,7 +13,8 @@ use snipdeck_platform::{
 
 use super::{
     CLIPBOARD_CLEAR_ATTEMPTS, CLIPBOARD_CLEAR_RETRY, ClipboardDigest, Controller, FillSubmission,
-    Library, PendingClear, REFOCUS_WAIT, StackView, UseResult, failed, neutral, views::FillErase,
+    Library, PendingClear, REFOCUS_WAIT, StackView, UseResult, failed, neutral,
+    views::{FillErase, PICKER_DETAIL_CHARS, PickerDetail},
 };
 use crate::{
     capture::{self, Captured},
@@ -211,6 +212,39 @@ where
             picker.next_tag(dir);
             self.picker_tag = picker.tag();
         }
+    }
+
+    /// F3 in the Picker: opens or closes the preview pane.
+    pub fn picker_toggle_detail(&mut self) {
+        self.picker_detail = !self.picker_detail;
+    }
+
+    /// The preview pane for the selected row: the whole text (cut at `PICKER_DETAIL_CHARS`),
+    /// or a mask for a sensitive item. `None` while the pane is closed or no row is selected.
+    pub(super) fn picker_detail_view(&self, picker: &PickerModel) -> Option<PickerDetail> {
+        if !self.picker_detail {
+            return None;
+        }
+        let id = picker.item_at(picker.selected())?;
+        let item = self.store.item(id).ok()?;
+        if item.sensitive {
+            return Some(PickerDetail {
+                text: String::new(),
+                hidden: true,
+            });
+        }
+        let text = crate::usecase::item_text(&self.store, id)
+            .ok()
+            .flatten()
+            .unwrap_or_default();
+        let mut shown: String = text.chars().take(PICKER_DETAIL_CHARS).collect();
+        if text.chars().nth(PICKER_DETAIL_CHARS).is_some() {
+            shown.push('…');
+        }
+        Some(PickerDetail {
+            text: shown,
+            hidden: false,
+        })
     }
 
     /// The Picker's keyboard selection moved by `delta` rows.

@@ -1,5 +1,6 @@
 //! Searching, tabs, the board menu, the toggle hotkey and the Picker.
 
+use super::use_paste::make_sensitive;
 use super::*;
 use crate::controller::BoardMenuEntry;
 
@@ -428,4 +429,47 @@ fn the_pickers_tag_scope_steps_through_tags_and_opens_on_the_last_one() {
         "beta",
         "no step outside the tag scope"
     );
+}
+
+#[test]
+fn the_picker_preview_shows_the_whole_text_of_the_selected_row_and_never_a_secret() {
+    let mut w = world();
+    let long = "line one\n".repeat(200);
+    let list = w.links_list;
+    let long_id = add(&mut w.ctl.store, list, ItemKind::Text, "Long note", &long);
+    w.ctl.open_picker();
+    assert!(
+        w.ctl.view().picker.expect("picker").detail.is_none(),
+        "closed until asked"
+    );
+    w.ctl.picker_query("Long note");
+    w.ctl.picker_toggle_detail();
+    let detail = w
+        .ctl
+        .view()
+        .picker
+        .expect("picker")
+        .detail
+        .expect("the preview is open");
+    assert!(!detail.hidden);
+    assert!(
+        detail.text.starts_with("line one\nline one") && detail.text.chars().count() > 200,
+        "more than the 200-character list preview: {}",
+        detail.text.chars().count()
+    );
+    assert!(detail.text.ends_with('…'), "a very long text is cut short");
+    // A short text is shown whole, and the preview follows the selection.
+    w.ctl.picker_query("Two");
+    let detail = w.ctl.view().picker.expect("picker").detail.expect("open");
+    assert_eq!(detail.text, "second");
+    // A sensitive item shows nothing of itself.
+    w.ctl.close_picker();
+    make_sensitive(&mut w, long_id);
+    w.ctl.open_picker();
+    w.ctl.picker_query("Long note");
+    let detail = w.ctl.view().picker.expect("picker").detail.expect("open");
+    assert!(detail.hidden && detail.text.is_empty());
+    // Asking again closes it; it stays as it was left for the next summon.
+    w.ctl.picker_toggle_detail();
+    assert!(w.ctl.view().picker.expect("picker").detail.is_none());
 }

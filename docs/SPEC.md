@@ -87,6 +87,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 - **Placement:** the Picker setting chooses the side of the caret: Below (default), Above, Right or Left. Below and Above leave a one-line gap, so the caret's line and the neighbouring line stay visible; Right and Left sit beside the caret, top-aligned, and may cover the rest of that line. A side without room flips to the opposite one, and the window is clamped to the monitor's work area. A mouse anchor behaves like Below.
 - Fuzzy search across all boards (title, content, tags); `Tab` cycles the scope (all, this board, this list, pinned, recent = items used before, tag = one tag, `Ctrl+Tab` steps to the next); `Alt+1`–`Alt+9` quick use (digits without `Alt` are search text).
 - `Enter` paste, `Shift+Enter` copy, `Ctrl+E` edit, `Esc` dismiss and restore focus.
+- **Preview (PANEL-40):** `F3` opens a pane under the list with the selected item's whole text (cut at 1500 characters with `…`; a sensitive item shows a note and no text); it follows the selection and stays as it was left. **Paste as…** (item menus in the Panel, Main window and the Picker's colour rows) lists Plain text, UPPERCASE, lowercase, Title Case, Trimmed, slug-like-this, JSON string (a quoted, escaped literal), Markdown quote (`> ` on every line) and Markdown code block (a fence longer than any backtick run inside).
 
 ### 5.3 Main window (3-pane)
 - **Sidebar**: Search, Recent inbox, Pinned, Boards ▸ Lists, Tags, Trash (30-day).

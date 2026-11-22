@@ -1098,6 +1098,9 @@ msgstr "Als Text exportieren"
 msgid "Export library"
 msgstr "Bibliothek exportieren"
 
+msgid "F3"
+msgstr "F3"
+
 msgid "Fields"
 msgstr "Felder"
 
@@ -1836,6 +1839,9 @@ msgstr "Kein Ziel:"
 
 msgid "No target: click copies"
 msgstr "Kein Ziel: Klick kopiert"
+
+msgid "No text to show"
+msgstr "Kein Text zum Anzeigen"
 
 msgid "Not a colour. Try {}"
 msgstr "Keine Farbe. Probiere {}"
@@ -2674,6 +2680,9 @@ msgstr "Vertrauliche Einträge lassen sich nicht eintippen, deshalb haben sie ke
 
 msgid "Sensitive items in a backup or export can only be restored by this Windows account on this PC. On another PC, or after Windows is reinstalled, they are skipped. Keep your own copy of anything sensitive you cannot lose."
 msgstr "Vertrauliche Elemente in einer Sicherung oder einem Export können nur von diesem Windows-Konto auf diesem PC wiederhergestellt werden. Auf einem anderen PC oder nach einer Neuinstallation von Windows werden sie übersprungen. Bewahren Sie von allem Vertraulichen, das Sie nicht verlieren dürfen, eine eigene Kopie auf."
+
+msgid "Sensitive: the text is not shown here"
+msgstr "Vertraulich: Der Text wird hier nicht angezeigt"
 
 msgid "Set master password"
 msgstr "Hauptpasswort festlegen"

@@ -1097,6 +1097,9 @@ msgstr "テキストとしてエクスポート"
 msgid "Export library"
 msgstr "ライブラリをエクスポート"
 
+msgid "F3"
+msgstr "F3"
+
 msgid "Fields"
 msgstr "入力欄"
 
@@ -1830,6 +1833,9 @@ msgstr "貼り付け先なし:"
 
 msgid "No target: click copies"
 msgstr "貼り付け先なし: クリックでコピー"
+
+msgid "No text to show"
+msgstr "表示するテキストがありません"
 
 msgid "Not a colour. Try {}"
 msgstr "色ではありません。{} を試してください"
@@ -2666,6 +2672,9 @@ msgstr "機密項目は入力による挿入ができないため、トリガー
 
 msgid "Sensitive items in a backup or export can only be restored by this Windows account on this PC. On another PC, or after Windows is reinstalled, they are skipped. Keep your own copy of anything sensitive you cannot lose."
 msgstr "バックアップまたはエクスポートに含まれる機密項目は、この PC のこの Windows アカウントでのみ復元できます。別の PC や Windows の再インストール後は、スキップされます。失いたくない機密情報は、ご自身でコピーを保管してください。"
+
+msgid "Sensitive: the text is not shown here"
+msgstr "機密：テキストはここには表示されません"
 
 msgid "Set master password"
 msgstr "マスターパスワードを設定"

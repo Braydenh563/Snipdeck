@@ -144,6 +144,13 @@ export component PickerWindow inherits Window {
     callback dismissed();
     // F1: the user guide.
     callback help-requested();
+    // F3: opens or closes the preview pane of the selected row.
+    callback detail-toggled();
+    // The preview pane: open when the controller shows it; its text is the selected item's whole text (cut), or empty
+    // with `detail-hidden` for a sensitive item.
+    in property <bool> detail-open: false;
+    in property <string> detail-text;
+    in property <bool> detail-hidden: false;
     // The empty state's "Open Snipdeck": close the Picker and show the Panel, where snippets are made.
     callback open-requested();
     // "Paste as" opens for colour row `index`: the host fills `colour-choices` before this returns.
@@ -214,6 +221,8 @@ export component PickerWindow inherits Window {
     property <length> list-h: min(root.rows.length, root.max-rows) * root.row-h;
     property <length> empty-h: Space.s12 * 4 * SystemLook.text-scale;
     property <length> body-h: root.rows.length == 0 ? root.empty-h : root.list-h + 2 * Space.s1;
+    // Six lines of small text and their padding.
+    property <length> detail-h: 6 * Type.line-sm + 2 * Space.s2;
     property <int> page-rows: max(1, min(root.rows.length, root.max-rows) - 1);
 
     // The footer drops its secondary hints (Copy, Scope) when the window is narrow for the text size; the use and
@@ -453,6 +462,10 @@ export component PickerWindow inherits Window {
                 root.help-requested();
                 return accept;
             }
+            if (event.text == Key.F3) {
+                root.detail-toggled();
+                return accept;
+            }
             if (event.text == Key.Escape) {
                 root.close-requested();
                 return accept;
@@ -685,6 +698,33 @@ export component PickerWindow inherits Window {
                 }
             }
 
+            // ---- Preview of the selected row (F3) ------------------------------------------------------
+            Rectangle {
+                height: root.detail-open && root.sel >= 0 ? root.detail-h : 0px;
+                clip: true;
+
+                Rectangle {
+                    y: 0;
+                    height: 1px;
+                    background: Theme.border-subtle;
+                }
+                Text {
+                    x: Space.s3;
+                    y: Space.s2;
+                    width: parent.width - 2 * Space.s3;
+                    height: parent.height - 2 * Space.s2;
+                    wrap: word-wrap;
+                    overflow: elide;
+                    vertical-alignment: top;
+                    text: root.detail-hidden ? @tr("Sensitive: the text is not shown here") : (root.detail-text == "" ? @tr("No text to show") : root.detail-text);
+                    color: Theme.text-secondary;
+                    font-size: Type.sm;
+                    font-family: Fonts.sans;
+                    accessible-role: text;
+                    accessible-label: @tr("Preview");
+                }
+            }
+
             // ---- Footer: what each key does -----------------------------------------------------------
             Rectangle {
                 height: max(Space.s8, Type.line-sm + Space.s3);
@@ -723,6 +763,12 @@ export component PickerWindow inherits Window {
                         keys: ["Alt", "1-9"];
                         key-label: @tr("Alt 1 to 9");
                         text: @tr("Use result N");
+                    }
+                    // Only where it fits beside the Close hint; the window's usual width has no room for it.
+                    if root.width >= 640px * root.text-scale: Hint {
+                        keys: ["F3"];
+                        key-label: @tr("F3");
+                        text: @tr("Preview");
                     }
                     if !root.narrow: Hint {
                         keys: ["Tab"];

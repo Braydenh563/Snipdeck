@@ -57,6 +57,7 @@ fn start() -> (PickerWindow, Log) {
     hook!(on_close_requested, || "close".to_string());
     hook!(on_open_requested, || "open".to_string());
     hook!(on_dismissed, || "dismissed".to_string());
+    hook!(on_detail_toggled, || "detail".to_string());
     (ui, log)
 }
 
@@ -177,6 +178,21 @@ ui_tests! {
         press(ui.window(), &key(Key::Escape));
         assert_eq!(take(&log), ["close"], "Esc dismisses; it does not clear first");
         assert_eq!(ui.get_query(), "ab", "the host decides what a re-summon shows");
+    }
+
+    fn f3_asks_for_the_preview_and_the_pane_adds_its_height_when_the_controller_opens_it() {
+        let (ui, log) = start();
+        press(ui.window(), &key(Key::F3));
+        assert_eq!(take(&log), ["detail"]);
+        let closed = ui.get_content_height();
+        ui.set_detail_text("the whole text of the item".into());
+        ui.set_detail_open(true);
+        settle();
+        let open = ui.get_content_height();
+        assert!(open > closed + 40.0, "the pane has its own height: {closed} -> {open}");
+        ui.set_detail_open(false);
+        settle();
+        assert!((ui.get_content_height() - closed).abs() < 0.5, "and gives it back");
     }
 
     fn losing_the_keyboard_to_another_window_dismisses_without_the_escape_close() {

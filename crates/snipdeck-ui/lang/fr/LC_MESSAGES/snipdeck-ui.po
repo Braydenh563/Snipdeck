@@ -1098,6 +1098,9 @@ msgstr "Exporter en texte"
 msgid "Export library"
 msgstr "Exporter la bibliothèque"
 
+msgid "F3"
+msgstr "F3"
+
 msgid "Fields"
 msgstr "Champs"
 
@@ -1836,6 +1839,9 @@ msgstr "Aucune cible :"
 
 msgid "No target: click copies"
 msgstr "Aucune cible : le clic copie"
+
+msgid "No text to show"
+msgstr "Aucun texte à afficher"
 
 msgid "Not a colour. Try {}"
 msgstr "Ce n'est pas une couleur. Essayez {}"
@@ -2674,6 +2680,9 @@ msgstr "Les éléments sensibles ne peuvent pas être saisis, ils n’ont donc p
 
 msgid "Sensitive items in a backup or export can only be restored by this Windows account on this PC. On another PC, or after Windows is reinstalled, they are skipped. Keep your own copy of anything sensitive you cannot lose."
 msgstr "Les éléments sensibles d'une sauvegarde ou d'un export ne peuvent être restaurés que par ce compte Windows sur ce PC. Sur un autre PC, ou après une réinstallation de Windows, ils sont ignorés. Gardez votre propre copie de tout ce qui est sensible et que vous ne pouvez pas perdre."
+
+msgid "Sensitive: the text is not shown here"
+msgstr "Confidentiel : le texte n’est pas affiché ici"
 
 msgid "Set master password"
 msgstr "Définir le mot de passe principal"

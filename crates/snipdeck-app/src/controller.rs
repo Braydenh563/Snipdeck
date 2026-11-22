@@ -61,8 +61,8 @@ pub use symbol_ctl::{IconExport, IconSave, SaveOutcome, SymbolChoice, SymbolMenu
 pub use trigger_ctl::{HintOutcome, SkipReason, TypedOutcome};
 pub use views::{
     BoardDeleteView, ChooseEntry, ChooseLabel, ChooseMenu, ClearListView, Effect, FillSubmission,
-    FillView, ListDeleteView, PickerView, SettingsAction, StackView, ToastPhase, ToastView,
-    UseResult, View,
+    FillView, ListDeleteView, PickerDetail, PickerView, SettingsAction, StackView, ToastPhase,
+    ToastView, UseResult, View,
 };
 
 use crate::{
@@ -240,6 +240,8 @@ pub struct Controller<S, C: Clipboard, K, T> {
     picker: Option<PickerModel>,
     /// The scope the Picker was left on; the next summon starts there.
     picker_scope: crate::picker::Scope,
+    /// The Picker's preview pane is open (F3); it stays as the user left it.
+    picker_detail: bool,
     /// The tag the Picker's tag scope covered last, so it opens on it again.
     picker_tag: Option<snipdeck_core::TagId>,
     /// The template fill form, while it is open.
@@ -541,6 +543,7 @@ where
             toast_seq: 0,
             picker: None,
             picker_scope: crate::picker::Scope::default(),
+            picker_detail: false,
             picker_tag: None,
             fill: None,
             fill_erase: None,
@@ -767,6 +770,7 @@ where
                 query: p.query().to_owned(),
                 selected: p.selected(),
                 footer: self.model.footer(),
+                detail: self.picker_detail_view(p),
             }),
             fill: self.fill_view(),
             recent: self.recent_view(),

@@ -1097,6 +1097,9 @@ msgstr "导出为文本"
 msgid "Export library"
 msgstr "导出资料库"
 
+msgid "F3"
+msgstr "F3"
+
 msgid "Fields"
 msgstr "字段"
 
@@ -1830,6 +1833,9 @@ msgstr "无目标："
 
 msgid "No target: click copies"
 msgstr "无目标：点击为复制"
+
+msgid "No text to show"
+msgstr "没有可显示的文本"
 
 msgid "Not a colour. Try {}"
 msgstr "不是颜色。试试 {}"
@@ -2666,6 +2672,9 @@ msgstr "敏感项目无法通过键入插入，因此没有触发词。"
 
 msgid "Sensitive items in a backup or export can only be restored by this Windows account on this PC. On another PC, or after Windows is reinstalled, they are skipped. Keep your own copy of anything sensitive you cannot lose."
 msgstr "备份或导出中的敏感项目只能由此电脑上的这个 Windows 账户恢复。在另一台电脑上，或重新安装 Windows 后，这些项目会被跳过。请自行保留无法丢失的敏感内容的副本。"
+
+msgid "Sensitive: the text is not shown here"
+msgstr "敏感：此处不显示文本"
 
 msgid "Set master password"
 msgstr "设置主密码"

@@ -140,7 +140,22 @@ pub struct PickerView {
     pub selected: usize,
     /// Where Enter goes ("Paste" or "Copy" in the window's footer).
     pub footer: Footer,
+    /// The preview pane of the selected row, while it is open.
+    pub detail: Option<PickerDetail>,
 }
+
+/// What the Picker's preview pane shows (F3).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PickerDetail {
+    /// The item's text, cut at [`PICKER_DETAIL_CHARS`] with a `…`; empty for a sensitive item
+    /// and for one without text.
+    pub text: String,
+    /// The item is sensitive: the pane shows a mask, never the text.
+    pub hidden: bool,
+}
+
+/// The most characters of an item the preview pane reads.
+pub const PICKER_DETAIL_CHARS: usize = 1500;
 
 /// The template fill form's content.
 #[derive(Debug, Clone, PartialEq, Eq)]

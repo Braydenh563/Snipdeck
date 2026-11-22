@@ -191,7 +191,11 @@ mod tests {
             (Title, "cafe\u{301} au lait", "Café Au Lait"),
             (Slug, "", ""),
             (Json, "plain", "\"plain\""),
-            (Json, "a \"b\" \\ c\r\nd\te", "\"a \\\"b\\\" \\\\ c\\r\\nd\\te\""),
+            (
+                Json,
+                "a \"b\" \\ c\r\nd\te",
+                "\"a \\\"b\\\" \\\\ c\\r\\nd\\te\"",
+            ),
             (Json, "bell\u{7} é 👋", "\"bell\\u0007 é 👋\""),
             (Json, "", "\"\""),
             (Quote, "one", "> one"),

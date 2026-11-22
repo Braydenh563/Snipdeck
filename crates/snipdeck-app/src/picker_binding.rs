@@ -237,6 +237,8 @@ where
         wire!(on_dismissed, |core| core.act(Controller::dismiss_picker));
         wire!(on_open_requested, |core| core
             .act(Controller::picker_open_panel));
+        wire!(on_detail_toggled, |core| core
+            .act(Controller::picker_toggle_detail));
         wire!(on_help_requested, |core| core
             .act(|ctl| ctl.main_open_help(HelpTopic::Guide)));
         wire!(on_colour_chosen, |core, row, format, copy| core
@@ -461,6 +463,19 @@ fn render(
     } else {
         0
     });
+    let (open, text, hidden) = picker
+        .detail
+        .as_ref()
+        .map_or((false, "", false), |d| (true, d.text.as_str(), d.hidden));
+    if window.get_detail_open() != open {
+        window.set_detail_open(open);
+    }
+    if window.get_detail_text() != text {
+        window.set_detail_text(text.into());
+    }
+    if window.get_detail_hidden() != hidden {
+        window.set_detail_hidden(hidden);
+    }
     let selected = crate::binding::to_i32(picker.selected);
     if window.get_selected_index() != selected {
         window.set_selected_index(selected);

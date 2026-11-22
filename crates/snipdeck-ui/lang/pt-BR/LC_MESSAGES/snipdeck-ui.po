@@ -1098,6 +1098,9 @@ msgstr "Exportar como texto"
 msgid "Export library"
 msgstr "Exportar a biblioteca"
 
+msgid "F3"
+msgstr "F3"
+
 msgid "Fields"
 msgstr "Campos"
 
@@ -1836,6 +1839,9 @@ msgstr "Sem destino:"
 
 msgid "No target: click copies"
 msgstr "Sem destino: o clique copia"
+
+msgid "No text to show"
+msgstr "Nenhum texto para mostrar"
 
 msgid "Not a colour. Try {}"
 msgstr "Não é uma cor. Tente {}"
@@ -2674,6 +2680,9 @@ msgstr "Itens sensíveis não podem ser digitados, então não têm gatilho."
 
 msgid "Sensitive items in a backup or export can only be restored by this Windows account on this PC. On another PC, or after Windows is reinstalled, they are skipped. Keep your own copy of anything sensitive you cannot lose."
 msgstr "Itens confidenciais em um backup ou uma exportação só podem ser restaurados por esta conta do Windows neste PC. Em outro PC, ou depois de reinstalar o Windows, eles são ignorados. Guarde sua própria cópia de tudo o que for confidencial e que você não possa perder."
+
+msgid "Sensitive: the text is not shown here"
+msgstr "Confidencial: o texto não é exibido aqui"
 
 msgid "Set master password"
 msgstr "Definir senha mestra"
