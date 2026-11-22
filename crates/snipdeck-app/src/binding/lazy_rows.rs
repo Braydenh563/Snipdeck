@@ -9,7 +9,7 @@
 use std::{any::Any, cell::Cell, cell::RefCell, collections::HashMap, rc::Rc};
 
 use slint::{Model, ModelNotify, ModelTracker};
-use snipdeck_core::ItemId;
+use snipdeck_core::{ItemId, ItemLabel};
 use snipdeck_ui as ui;
 
 use crate::panel::{GroupHeader, Row};
@@ -87,6 +87,8 @@ pub struct LazyRows {
     state: RefCell<State>,
     notify: ModelNotify,
     built: Cell<usize>,
+    /// The colour labels' names, in the order of `ItemLabel::ALL`, in the language selected now.
+    label_names: RefCell<Vec<String>>,
 }
 
 impl LazyRows {
@@ -100,6 +102,15 @@ impl LazyRows {
             }),
             notify: ModelNotify::default(),
             built: Cell::new(0),
+            label_names: RefCell::new(Vec::new()),
+        }
+    }
+
+    /// Takes the label names; the rows are built again when they changed (another language).
+    pub fn set_label_names(&self, names: Vec<String>) {
+        if *self.label_names.borrow() != names {
+            *self.label_names.borrow_mut() = names;
+            self.notify.reset();
         }
     }
 
@@ -177,7 +188,14 @@ impl Model for LazyRows {
         let r = state.rows.get(row)?;
         let extra = state.extra.get(row)?;
         self.built.set(self.built.get() + 1);
-        let mut out = super::panel_row(r, state.dark);
+        let names = self.label_names.borrow();
+        let mut out = super::panel_row(r, state.dark, &|l| {
+            ItemLabel::ALL
+                .iter()
+                .position(|x| *x == l)
+                .and_then(|i| names.get(i).cloned())
+                .unwrap_or_default()
+        });
         out.ghosts_before = extra.ghosts_before;
         out.set_position = extra.set_position;
         out.set_size = extra.set_size;

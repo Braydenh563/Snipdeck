@@ -277,8 +277,6 @@ export component PanelWindow inherits Window {
     // from a menu in the header instead of a tab row.
     in property <bool> search-always: false;
     in property <bool> lists-in-menu: false;
-    // True while the app is loading: skeleton rows replace the empty state.
-    in property <bool> loading: false;
     // The sensitive row held revealed by the app (-1 = none).
     in property <int> revealed-index: -1;
     // The window that will receive a paste: empty means a click copies. `target-title` is its caption.
@@ -1811,7 +1809,7 @@ export component PanelWindow inherits Window {
                             size: IconButtonSize.sm;
                             side-override: Space.s8 * root.chrome-k;
                             glyph-scale: root.glyph-k;
-                            tooltip: @tr("Keep panel on top");
+                            tooltip: @tr("Keep Panel on top");
                             active: root.on-top;
                             accessible-checkable: true;
                             accessible-checked: root.on-top;
@@ -1839,7 +1837,7 @@ export component PanelWindow inherits Window {
                             size: IconButtonSize.sm;
                             side-override: Space.s8 * root.chrome-k;
                             glyph-scale: root.glyph-k;
-                            tooltip: @tr("Close panel (Esc)");
+                            tooltip: @tr("Close Panel (Esc)");
                             y: (parent.height - self.height) / 2;
                             clicked => { root.close-requested(); }
                             changed has-hover => { root.tip-set(self.tooltip, self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.has-hover || self.has-focus); }
@@ -1866,14 +1864,14 @@ export component PanelWindow inherits Window {
                             size: ButtonSize.sm;
                             variant: root.select-mode ? ButtonVariant.primary : ButtonVariant.secondary;
                             text: @tr("Select");
-                            a11y-label: @tr("Select snippets");
+                            a11y-label: @tr("Select items");
                             clicked => { root.select-mode-changed(true); }
                         }
                         Button {
                             size: ButtonSize.sm;
                             variant: root.delete-mode ? ButtonVariant.primary : ButtonVariant.secondary;
                             text: @tr("Delete");
-                            a11y-label: @tr("Delete snippets");
+                            a11y-label: @tr("Delete items");
                             clicked => { root.delete-mode-changed(true); }
                         }
                         if root.delete-mode: Button {
@@ -1912,8 +1910,8 @@ export component PanelWindow inherits Window {
                         height: self.box-height;
                         min-box-h: Space.s8 + Space.s1;
                         clearable: root.search-always;
-                        placeholder: @tr("Search snippets");
-                        label: @tr("Search snippets");
+                        placeholder: @tr("Search items");
+                        label: @tr("Search items");
                         clear-label: @tr("Clear search");
                         release-on-blur: true;
                         edited(text) => {
@@ -2081,7 +2079,7 @@ export component PanelWindow inherits Window {
                     items: root.pinned;
                     more-label: @tr("+{} more", root.pinned.length - 2);
                     accessible-role: AccessibleRole.list;
-                    accessible-label: @tr("Pinned snippets");
+                    accessible-label: @tr("Pinned items");
                     use(i) => { root.pinned-used(i); }
                     copy(i) => { root.pinned-copied(i); }
                     context-menu-requested(i, x, y) => {
@@ -2112,7 +2110,7 @@ export component PanelWindow inherits Window {
                         height: parent.height - quick.box-h - Space.s1;
                         vertical-scrollbar-policy: ScrollBarPolicy.always-off;
                         horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
-                        accessible-label: @tr("Snippets");
+                        accessible-label: @tr("Items");
                         visible: root.rows.length > 0 && !root.list-hidden;
                         scrolled => { root.follow-sel = false; }
 
@@ -2412,7 +2410,7 @@ export component PanelWindow inherits Window {
                     // The "+ New item" row: directly under the last item (or at the bottom of a short or empty list).
                     quick := QuickAdd {
                         // An empty list shows its empty state's two create actions instead; "New note" opens the box.
-                        visible: !root.list-hidden && !root.loading && !root.searching && !root.no-lists && (root.rows.length > 0 || self.expanded);
+                        visible: !root.list-hidden && !root.searching && !root.no-lists && (root.rows.length > 0 || self.expanded);
                         x: Space.s2;
                         width: parent.width - 2 * Space.s2;
                         y: min(parent.height - self.box-h - Space.s1, root.rows.length == 0 ? parent.height : list.content-height + Space.s1);
@@ -2590,32 +2588,19 @@ export component PanelWindow inherits Window {
                         }
                     }
 
-                    if root.loading: VerticalLayout {
-                        x: Space.s2;
-                        y: Space.s1;
-                        width: parent.width - 2 * Space.s2;
-                        alignment: start;
-                        for n in [0, 1, 2, 3, 4, 5]: Skeleton {
-                            kind: SkeletonKind.row;
-                            // The layout's row height (spec 2.7).
-                            height: root.layout-row-h + root.row-gap;
-                            label: n == 0 ? @tr("Loading") : "";
-                        }
-                    }
-
-                    if root.rows.length == 0 && !root.loading && !root.list-hidden && !(quick.expanded && !root.no-lists && !root.searching): EmptyState {
+                    if root.rows.length == 0 && !root.list-hidden && !(quick.expanded && !root.no-lists && !root.searching): EmptyState {
                         quiet: true;
                         x: Space.s2;
                         width: parent.width - 2 * Space.s2;
                         height: parent.height;
                         kind: root.no-lists ? EmptyStateKind.board : root.searching ? EmptyStateKind.search : EmptyStateKind.list;
                         heading: root.no-lists ? @tr("No lists yet")
-                            : root.searching ? @tr("Nothing matches “{}”", root.query) : @tr("This list is empty");
-                        body: root.no-lists ? @tr("Lists hold your snippets.")
+                            : root.searching ? @tr("Nothing matches “{}”.", root.query) : @tr("This list is empty");
+                        body: root.no-lists ? @tr("Lists hold your items.")
                             : root.searching ? @tr("Searched every board and list.")
                             : @tr("Copy something, then save it here.");
                         action-text: root.no-lists ? @tr("New list") : root.searching ? @tr("Create “{}”", root.query) : @tr("Save from clipboard");
-                        caption: root.searching && !root.no-lists ? @tr("Adds a text snippet to {}", root.add-list-name) : "";
+                        caption: root.searching && !root.no-lists ? @tr("Adds a text item to {}", root.add-list-name) : "";
                         secondary-text: root.no-lists ? "" : root.searching ? @tr("Clear search") : @tr("New note");
                         action => {
                             if (root.no-lists) {
@@ -3072,7 +3057,7 @@ export component PanelWindow inherits Window {
             y: max(Space.s2, min(root.pinned-menu-y - Space.s1, root.height - self.height - Space.s2 - Space.menu-clear));
             menu-max-h: root.height - 2 * Space.s2 - Space.menu-clear;
             entries: root.pinned-more-entries;
-            label: @tr("More pinned snippets");
+            label: @tr("More pinned items");
             icons: false;
             init => { self.focus-menu(); }
             activated(i) => {

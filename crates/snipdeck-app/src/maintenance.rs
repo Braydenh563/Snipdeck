@@ -28,7 +28,6 @@ use std::{
 
 use jiff::{Zoned, tz::TimeZone};
 use serde::{Deserialize, Serialize};
-use snipdeck_core::Timestamp;
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_portable::backup::BackupOutcome;
 use snipdeck_store::Store;
@@ -39,7 +38,6 @@ use crate::{
     crash,
     failure::Cause,
     host::{ClipboardText, Clock},
-    main_window::TRASH_DAYS,
     toast::{Toast, ToastKind, ToastMessage},
 };
 
@@ -178,7 +176,7 @@ pub trait Jobs {
     /// # Errors
     ///
     /// A message for the log.
-    fn purge_trash(&mut self, cutoff: Timestamp) -> Result<usize, String>;
+    fn purge_trash(&mut self) -> Result<usize, String>;
 
     /// Sweeps blob files nothing uses (leftovers of interrupted writes) older than
     /// [`GC_GRACE`]; returns how many files went.
@@ -294,7 +292,8 @@ pub enum MaintenanceOutcome {
     IntegrityProblems(Vec<String>),
     /// The integrity check could not run.
     IntegrityFailed(String),
-    /// The last run ended in a crash the user has not been told about.
+    /// A crash report the user has not been told about: the last run's, or a worker thread's
+    /// panic this run (the name dates from when only the first was reported).
     CrashedLastTime,
 }
 
@@ -377,7 +376,6 @@ pub struct Maintenance {
     data_dir: PathBuf,
     clock: Box<dyn Clock>,
     state: State,
-    crash_checked: bool,
     /// A worker is writing the daily backup.
     backup_running: bool,
 }
@@ -401,7 +399,6 @@ impl Maintenance {
             data_dir,
             clock,
             state,
-            crash_checked: false,
             backup_running: false,
         }
     }
@@ -413,7 +410,7 @@ impl Maintenance {
     }
 
     /// Runs what is due, saves when something succeeded, and returns what happened. The first
-    /// call also looks for a crash report the user has not been told about. A failed job leaves
+    /// call and every later one look for a crash report the user has not been told about. A failed job leaves
     /// its last-run time alone, so the next tick tries it again.
     pub fn tick(&mut self, jobs: &mut dyn Jobs) -> Vec<MaintenanceOutcome> {
         let now = self.clock.now();
@@ -425,15 +422,14 @@ impl Maintenance {
         // from the clock now.
         jobs.prune_recent();
 
-        if !self.crash_checked {
-            self.crash_checked = true;
-            if let Some(newest) =
-                crash::unacknowledged(&self.data_dir, self.state.crash_acknowledged.as_deref())
-            {
-                self.state.crash_acknowledged = Some(newest);
-                outcomes.push(MaintenanceOutcome::CrashedLastTime);
-                changed = true;
-            }
+        // Every tick: a worker thread's panic leaves a report while the app runs on, and is
+        // told about at once, not at the next start. A report already announced is not again.
+        if let Some(newest) =
+            crash::unacknowledged(&self.data_dir, self.state.crash_acknowledged.as_deref())
+        {
+            self.state.crash_acknowledged = Some(newest);
+            outcomes.push(MaintenanceOutcome::CrashedLastTime);
+            changed = true;
         }
 
         if !self.backup_running && is_due(self.state.last_backup, seconds, INTERVAL) {
@@ -441,10 +437,9 @@ impl Maintenance {
             changed |= self.take_backup(seconds, result, &mut outcomes);
         }
 
-        let jumped = self
-            .state
-            .last_seen
-            .is_some_and(|seen| seconds.saturating_sub(seen) > i64::from(TRASH_DAYS) * 86_400);
+        let jumped = self.state.last_seen.is_some_and(|seen| {
+            seconds.saturating_sub(seen) > i64::from(crate::settings::TRASH_DAYS_DEFAULT) * 86_400
+        });
         if jumped {
             self.state.purge_not_before = Some(seconds.saturating_add(86_400));
             outcomes.push(MaintenanceOutcome::TrashPurgeHeld);
@@ -460,7 +455,7 @@ impl Maintenance {
             self.state.last_seen = Some(seconds);
         }
         if !held && is_due(self.state.last_purge, seconds, INTERVAL) {
-            match jobs.purge_trash(trash_cutoff(now)) {
+            match jobs.purge_trash() {
                 Ok(count) => {
                     self.state.last_purge = Some(seconds);
                     changed = true;
@@ -561,14 +556,6 @@ impl Maintenance {
     }
 }
 
-/// Trash entries older than [`TRASH_DAYS`] days at `now` are expired.
-fn trash_cutoff(now: Timestamp) -> Timestamp {
-    let seconds = now
-        .as_second()
-        .saturating_sub(i64::from(TRASH_DAYS) * 86_400);
-    Timestamp::from_second(seconds).unwrap_or(Timestamp::MIN)
-}
-
 /// The message of a deferred backup.
 const LOCKED_MESSAGE: &str = "library locked, backup deferred";
 /// The message of a backup deferred behind another archive.
@@ -620,8 +607,8 @@ where
         }
     }
 
-    /// The controller cuts at its own clock's `now - TRASH_DAYS`, the same moment as `_cutoff`.
-    fn purge_trash(&mut self, _cutoff: Timestamp) -> Result<usize, String> {
+    /// The controller cuts at its own clock's `now` minus the `trash_days` setting.
+    fn purge_trash(&mut self) -> Result<usize, String> {
         self.controller
             .purge_expired_trash()
             .map_err(|e| e.to_string())
@@ -721,6 +708,7 @@ pub fn spawn_backup<C, K, T>(
 mod tests {
     use super::*;
     use crate::host::FixedClock;
+    use snipdeck_core::Timestamp;
 
     const HOUR: i64 = 3600;
     const DAY: i64 = 86_400;
@@ -780,7 +768,7 @@ mod tests {
     #[derive(Default)]
     struct FakeJobs {
         backups: Vec<Timestamp>,
-        purges: Vec<Timestamp>,
+        purges: usize,
         checks: usize,
         sweeps: usize,
         prunes: usize,
@@ -801,8 +789,8 @@ mod tests {
                     skipped: None,
                 }))
         }
-        fn purge_trash(&mut self, cutoff: Timestamp) -> Result<usize, String> {
-            self.purges.push(cutoff);
+        fn purge_trash(&mut self) -> Result<usize, String> {
+            self.purges += 1;
             self.purge_result.clone().unwrap_or(Ok(0))
         }
         fn gc_blobs(&mut self) -> Result<usize, String> {
@@ -889,22 +877,22 @@ mod tests {
         let (mut m, clock) = rig(dir.path());
         let mut jobs = FakeJobs::default();
         m.tick(&mut jobs);
-        assert_eq!(jobs.purges.len(), 1);
+        assert_eq!(jobs.purges, 1);
 
         // The clock leaps a year ahead: nothing is purged, and the person is not told of
         // a purge that did not happen.
         clock.set(at(t0() + 365 * DAY));
         let out = m.tick(&mut jobs);
         assert!(out.contains(&MaintenanceOutcome::TrashPurgeHeld), "{out:?}");
-        assert_eq!(jobs.purges.len(), 1, "no purge on the jump");
+        assert_eq!(jobs.purges, 1, "no purge on the jump");
         clock.set(at(t0() + 365 * DAY + 12 * HOUR));
         m.tick(&mut jobs);
-        assert_eq!(jobs.purges.len(), 1, "still held half a day later");
+        assert_eq!(jobs.purges, 1, "still held half a day later");
 
         // A day later the clock has kept its date: the purge runs.
         clock.set(at(t0() + 366 * DAY + HOUR));
         m.tick(&mut jobs);
-        assert_eq!(jobs.purges.len(), 2);
+        assert_eq!(jobs.purges, 2);
     }
 
     #[test]
@@ -918,21 +906,16 @@ mod tests {
         let mut jobs = FakeJobs::default();
         let out = m.tick(&mut jobs);
         assert!(out.contains(&MaintenanceOutcome::TrashPurgeHeld));
-        assert_eq!(jobs.purges, []);
+        assert_eq!(jobs.purges, 0);
     }
 
     #[test]
-    fn the_purge_cuts_at_exactly_thirty_days_before_now() {
+    fn the_purge_runs_on_the_first_tick_and_then_every_six_hours() {
         let dir = tempfile::tempdir().unwrap();
         let (mut m, _clock) = rig(dir.path());
         let mut jobs = FakeJobs::default();
         m.tick(&mut jobs);
-        assert_eq!(jobs.purges, [at(t0() - 30 * DAY)]);
-        assert_eq!(
-            jobs.purges[0].to_string(),
-            "2026-09-18T09:00:00Z",
-            "30 days before 2026-10-18"
-        );
+        assert_eq!(jobs.purges, 1);
     }
 
     #[test]
@@ -944,11 +927,11 @@ mod tests {
 
         clock.set(at(t0() + 6 * HOUR - 1));
         assert!(m.tick(&mut jobs).is_empty(), "one second early");
-        assert_eq!((jobs.backups.len(), jobs.purges.len()), (1, 1));
+        assert_eq!((jobs.backups.len(), jobs.purges), (1, 1));
 
         clock.set(at(t0() + 6 * HOUR));
         let out = m.tick(&mut jobs);
-        assert_eq!((jobs.backups.len(), jobs.purges.len()), (2, 2), "{out:?}");
+        assert_eq!((jobs.backups.len(), jobs.purges), (2, 2), "{out:?}");
         assert_eq!(jobs.backups[1], at(t0() + 6 * HOUR));
         assert_eq!(jobs.checks, 1, "the integrity check is weekly");
     }
@@ -1051,12 +1034,7 @@ mod tests {
         jobs.integrity_result = None;
         m.tick(&mut jobs);
         assert_eq!(
-            (
-                jobs.backups.len(),
-                jobs.purges.len(),
-                jobs.sweeps,
-                jobs.checks
-            ),
+            (jobs.backups.len(), jobs.purges, jobs.sweeps, jobs.checks),
             (2, 2, 2, 2)
         );
     }
@@ -1252,7 +1230,7 @@ mod tests {
     }
 
     #[test]
-    fn a_report_written_while_running_is_not_announced_until_the_next_start() {
+    fn a_report_written_while_running_is_announced_on_the_next_tick_once() {
         let dir = tempfile::tempdir().unwrap();
         let (mut m, clock) = rig(dir.path());
         let mut jobs = FakeJobs::default();
@@ -1266,8 +1244,15 @@ mod tests {
         crash::write_report(dir.path(), &clock.now().to_zoned(TimeZone::UTC), &report).unwrap();
         clock.set(at(t0() + 6 * HOUR));
         assert!(
+            m.tick(&mut jobs)
+                .contains(&MaintenanceOutcome::CrashedLastTime),
+            "a worker thread's panic is told about while the app still runs"
+        );
+        clock.set(at(t0() + 7 * HOUR));
+        assert!(
             !m.tick(&mut jobs)
-                .contains(&MaintenanceOutcome::CrashedLastTime)
+                .contains(&MaintenanceOutcome::CrashedLastTime),
+            "and only once"
         );
     }
 }

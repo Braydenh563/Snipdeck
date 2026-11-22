@@ -890,6 +890,7 @@ struct PageView {
     dock_hover_delay: i32,
     dock_leave_delay: i32,
     backups_keep: i32,
+    trash_days: i32,
     clipboard_clear_secs: i32,
     recent_max_entries: i32,
     recent_max_days: i32,
@@ -1176,6 +1177,7 @@ where
         dock_hover_delay: i32::try_from(settings.dock.hover_delay_ms).unwrap_or(150),
         dock_leave_delay: i32::try_from(settings.dock.leave_delay_ms).unwrap_or(400),
         backups_keep: i32::try_from(settings.backups_keep).unwrap_or(7),
+        trash_days: i32::try_from(settings.trash_days).unwrap_or(30),
         clipboard_clear_secs: i32::try_from(settings.clipboard_clear_secs).unwrap_or(30),
         recent_max_entries: i32::try_from(settings.recent_max_entries).unwrap_or(200),
         recent_max_days: i32::try_from(settings.recent_max_days).unwrap_or(7),
@@ -2220,14 +2222,18 @@ where
                     .copied()
                     .unwrap_or_default();
             })));
-        wire!(on_language_chosen, |core, i| core.act(|ctl| ctl
-            .update_settings(|s| {
-                s.language = usize::try_from(i - 1)
-                    .ok()
-                    .and_then(|at| LANGUAGE_TAGS.get(at))
-                    .map(|tag| (*tag).to_owned())
-                    .unwrap_or_default();
-            })));
+        wire!(on_language_chosen, |core, i| {
+            let tag = usize::try_from(i - 1)
+                .ok()
+                .and_then(|at| LANGUAGE_TAGS.get(at))
+                .map(|tag| (*tag).to_owned())
+                .unwrap_or_default();
+            // A named language applies at once; "Follow Windows" waits for the next start.
+            if let Err(e) = crate::language::apply(&tag) {
+                crate::warn!("{e}");
+            }
+            core.act(|ctl| ctl.update_settings(|s| s.language = tag));
+        });
         wire!(on_autostart_toggled, |core, on| core.autostart_toggled(on));
         wire!(on_hello_unlock_toggled, |core, on| core.hello_toggled(on));
         wire!(on_close_to_tray_toggled, |core, on| core
@@ -2283,6 +2289,10 @@ where
             .backup_folder_choose());
         wire!(on_backup_folder_reset_requested, |core| core
             .backup_folder_chosen(""));
+        wire!(on_trash_days_chosen, |core, n| core
+            .act(|ctl| ctl.update_settings(
+                |s| s.trash_days = u32::try_from(n).unwrap_or(0).max(1)
+            )));
         wire!(on_clipboard_clear_secs_chosen, |core, n| core.act(|ctl| {
             ctl.update_settings(|s| s.clipboard_clear_secs = u32::try_from(n).unwrap_or(0).max(1));
         }));
@@ -2324,6 +2334,20 @@ where
             .act(Controller::request_unlock));
         window.on_master_strength(|password| crate::master_password::strength(&password).level());
         window.set_master_min_length(to_i32(crate::master_password::MIN_LEN));
+        {
+            use crate::settings as s;
+            window.set_panel_width_min(crate::binding::limit(*s::PANEL_WIDTH.start()));
+            window.set_panel_width_max(crate::binding::limit(*s::PANEL_WIDTH.end()));
+            window.set_dock_hover_delay_max(crate::binding::limit(*s::HOVER_DELAY_MS.end()));
+            window.set_dock_leave_delay_max(crate::binding::limit(*s::LEAVE_DELAY_MS.end()));
+            window.set_backups_keep_min(crate::binding::limit(*s::BACKUPS_KEEP.start()));
+            window.set_backups_keep_max(crate::binding::limit(*s::BACKUPS_KEEP.end()));
+            window.set_trash_days_min(crate::binding::limit(*s::TRASH_DAYS.start()));
+            window.set_trash_days_max(crate::binding::limit(*s::TRASH_DAYS.end()));
+            window.set_clipboard_clear_secs_max(crate::binding::limit(
+                *s::CLIPBOARD_CLEAR_SECS.end(),
+            ));
+        }
         wire!(on_support_requested, |core| core.open_support());
         wire!(on_backup_now_requested, |core| core.backup_now());
         wire!(on_backup_restore_requested, |core, i| core
@@ -2531,6 +2555,9 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     }
     if differs(&|p| p.backups_keep == view.backups_keep) {
         window.set_backups_keep(view.backups_keep);
+    }
+    if differs(&|p| p.trash_days == view.trash_days) {
+        window.set_trash_days(view.trash_days);
     }
     if differs(&|p| p.clipboard_clear_secs == view.clipboard_clear_secs) {
         window.set_clipboard_clear_secs(view.clipboard_clear_secs);
@@ -2839,7 +2866,7 @@ mod tests {
         );
         assert_eq!(
             program_refusal_text(&page, &ProgramRefusal::HasPath),
-            "Use just the program's file name, like notepad.exe."
+            "Use just the program’s file name, like notepad.exe."
         );
     }
 

@@ -185,16 +185,6 @@ fn main_window_empty_states() {
 }
 
 #[test]
-fn main_window_loading_in_rows_and_tiles() {
-    let h = window(SIZE, false);
-    fixture::set_rows(&h.component, Vec::new());
-    h.component.set_loading(true);
-    assert_golden("main-loading-light", &render(&h));
-    h.component.set_view(MainView::Tile);
-    assert_golden("main-loading-tile-light", &render(&h));
-}
-
-#[test]
 fn main_window_long_titles_in_every_view() {
     for (view, name) in [
         (MainView::Compact, "main-awkward-compact-light"),

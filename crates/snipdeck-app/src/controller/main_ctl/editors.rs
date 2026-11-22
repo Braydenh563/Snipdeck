@@ -36,7 +36,7 @@ where
                 kind: EditorKind::List,
                 is_new: true,
                 name: crate::starter::numbered_name(
-                    &self.new_list_base,
+                    &self.starter.new_list,
                     self.main.lists().iter().map(|l| l.name.as_str()),
                 ),
                 accent: None,
@@ -160,7 +160,7 @@ where
                 kind: EditorKind::Board,
                 is_new: true,
                 name: crate::starter::numbered_name(
-                    &self.new_board_base,
+                    &self.starter.new_board,
                     self.main.boards().iter().map(|b| b.name.as_str()),
                 ),
                 accent: None,

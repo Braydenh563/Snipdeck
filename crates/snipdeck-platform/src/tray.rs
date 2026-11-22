@@ -437,7 +437,7 @@ impl TrayModel {
         self.wanted = false;
     }
 
-    /// Whether the icon should be in the notification area.
+    /// Whether the icon should be in the notification area (the retry timer stops when not).
     #[must_use]
     pub fn is_wanted(&self) -> bool {
         self.wanted

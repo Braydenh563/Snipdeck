@@ -330,7 +330,7 @@ ui_tests! {
 
     fn the_trigger_field_speaks_its_helper_then_the_warning_and_the_error_wins() {
         const HELPER: &str =
-            "Type this in any app to insert the snippet. Turn it on in Settings, under Typing.";
+            "Type this in any app to insert the item. Turn it on in Settings, under Typing.";
         const ONE_CHAR: &str = "A one-character trigger fires every time you type it, even inside words. Two or more characters are safer.";
         let (ui, _log) = item_editor();
         ui.set_trigger("".into());
@@ -354,7 +354,7 @@ ui_tests! {
         settle();
         let reason = find(
             &ui,
-            "Sensitive items can't be typed in, so they have no trigger.",
+            "Sensitive items can’t be typed in, so they have no trigger.",
             AccessibleRole::Text,
         );
         assert!(reason.accessible_label().is_some(), "the reason is a text node");
@@ -673,12 +673,12 @@ ui_tests! {
         let (ui, _log) = item_editor();
         assert!(missing(&ui, "Restored the changes you had not saved.", AccessibleRole::Text));
         ui.set_restored(true);
-        ui.set_banner("Snipdeck couldn't save this item. Nothing was changed.".into());
+        ui.set_banner("Snipdeck couldn’t save this item. Nothing was changed.".into());
         ui.set_privacy_error("Unlock your library to save this item.".into());
         settle();
         let _ = find(&ui, "Restored the changes you had not saved.", AccessibleRole::Text);
         // Both problems are on screen as text the user can read.
-        let _ = find(&ui, "Snipdeck couldn't save this item. Nothing was changed.", AccessibleRole::Text);
+        let _ = find(&ui, "Snipdeck couldn’t save this item. Nothing was changed.", AccessibleRole::Text);
         ui.invoke_mark_dirty();
         assert!(ui.get_dirty());
         ui.invoke_mark_clean();
@@ -1024,6 +1024,10 @@ ui_tests! {
             dialog.accessible_description().as_deref(),
             Some("24 items will move to Trash with it. You can restore them for 30 days.")
         );
+        ui.set_trash_days(90);
+        settle();
+        assert!(find(&ui, "Delete this list?", AccessibleRole::Groupbox)
+            .accessible_description().unwrap().ends_with("for 90 days."));
         ui.set_item_count(1);
         settle();
         assert!(find(&ui, "Delete this list?", AccessibleRole::Groupbox)

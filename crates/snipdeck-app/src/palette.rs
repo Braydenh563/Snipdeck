@@ -116,8 +116,6 @@ mod tests {
             let key = label.key();
             assert!(palette.contains(&key), "{key}");
             let _hue: ListAccent = key.parse().expect("a list hue with the label key");
-            let name = crate::wording::item_label_name(*label);
-            assert_eq!(name.to_lowercase(), key, "one name per hue");
         }
         assert!(!labels.contains(&"rose"));
         // Accents: six presets under the palette's keys; their stored ids stay the kebab names.

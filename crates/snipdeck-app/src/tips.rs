@@ -1,4 +1,4 @@
-//! The Tips tab of the Help window: ten cards, each with a picture and a "Try it" that runs one
+//! The Tips tab of the Help window: one card per feature, each with a picture and a "Try it" that runs one
 //! [`Command`]. Slint-free and pure. The words (title, two lines, the button and the picture's
 //! description) live in the UI crate's `TipTexts` global in the order of [`TIPS`], so they are
 //! translated there; the pictures are drawn in the UI crate's `tip_art.slint`

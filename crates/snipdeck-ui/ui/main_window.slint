@@ -348,8 +348,6 @@ export component MainWindow inherits Window {
     in property <[LabelChipEntry]> label-chips;
     in property <int> label-filter: -1;
     in property <int> selected-count: 0;
-    // True while the app loads: skeletons replace the empty state.
-    in property <bool> loading: false;
     // The label of the card's use button and the menu's first entry ("Use"; "Copy" while nothing can be pasted into).
     in property <string> use-label: @tr("Use");
     // The use label copies (no paste target), so a card hides its separate Copy icon while the label shows.
@@ -406,7 +404,7 @@ export component MainWindow inherits Window {
     // The box is open: it owns the typing keys (/, Ctrl+Z) like the search field does.
     property <bool> quick-open: false;
     // The box sits above the rows of an open list (not in a search, the Trash or a system view).
-    property <bool> quick-add-shown: root.section == MainSection.list && !root.searching && !root.loading;
+    property <bool> quick-add-shown: root.section == MainSection.list && !root.searching;
     // Ctrl+N: the quick-add box when a list is open, else the item editor.
     // The box owns the typing keys only while it is on screen.
     property <bool> quick-typing: root.quick-open && root.quick-add-shown;
@@ -930,9 +928,9 @@ export component MainWindow inherits Window {
     property <string> confirm-body: root.confirm-kind == 1
         ? @tr("The list and its {n} item move to the Trash. You can restore them for {} days." | "The list and its {n} items move to the Trash. You can restore them for {} days." % root.lists[root.confirm-target].count, root.trash-days)
         : root.confirm-kind == 2 ? @tr("The tag is removed from its items. The items themselves stay.")
-        : root.confirm-kind == 3 ? @tr("Everything in the Trash is deleted for good. This can't be undone.")
-        : root.confirm-kind == 5 ? @tr("The {n} recent copy is removed. This can't be undone." | "All {n} recent copies are removed. This can't be undone." % root.count-recent)
-        : @tr("The selected item is deleted for good. This can't be undone." | "The selected items are deleted for good. This can't be undone." % (root.multi ? root.selected-count : 1));
+        : root.confirm-kind == 3 ? @tr("Everything in the Trash is deleted for good. This can’t be undone.")
+        : root.confirm-kind == 5 ? @tr("The {n} recent copy is removed. This can’t be undone." | "All {n} recent copies are removed. This can’t be undone." % root.count-recent)
+        : @tr("The selected item is deleted for good. This can’t be undone." | "The selected items are deleted for good. This can’t be undone." % (root.multi ? root.selected-count : 1));
     property <string> confirm-ok: root.confirm-kind == 1 ? @tr("Delete list")
         : root.confirm-kind == 2 ? @tr("Delete tag")
         : root.confirm-kind == 3 ? @tr("Empty Trash")
@@ -2716,30 +2714,6 @@ export component MainWindow inherits Window {
                         }
                     }
 
-                    if root.loading && !root.tile: VerticalLayout {
-                        x: root.pad;
-                        y: Space.s1;
-                        width: parent.width - 2 * root.pad;
-                        alignment: start;
-                        for n in [0, 1, 2, 3, 4, 5, 6, 7]: Skeleton {
-                            kind: SkeletonKind.row;
-                            label: n == 0 ? @tr("Loading") : "";
-                        }
-                    }
-                    if root.loading && root.tile: HorizontalLayout {
-                        x: root.pad;
-                        y: Space.s1;
-                        width: parent.width - 2 * root.pad;
-                        height: 120px * SystemLook.text-scale;
-                        spacing: root.tile-gap;
-                        alignment: start;
-                        for n in [0, 1, 2]: Skeleton {
-                            kind: SkeletonKind.tile;
-                            width: (parent.width - 2 * root.tile-gap) / 3;
-                            label: n == 0 ? @tr("Loading") : "";
-                        }
-                    }
-
                     // ---- The Recent inbox: a read-only list of what was copied, with Copy, Save to… and Remove ----
                     if root.recent-shown: VerticalLayout {
                         x: root.pad;
@@ -2828,7 +2802,7 @@ export component MainWindow inherits Window {
                         }
                     }
 
-                    if root.rows.length == 0 && !root.loading && !root.recent-shown: EmptyState {
+                    if root.rows.length == 0 && !root.recent-shown: EmptyState {
                         quiet: true;
                         x: root.pad;
                         width: parent.width - 2 * root.pad;

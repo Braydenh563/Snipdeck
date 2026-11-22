@@ -19,7 +19,7 @@ use zip::result::ZipError;
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
-use crate::error::{Error, Result};
+use crate::error::{Error, Result, TOTAL_SIZE};
 use crate::limits::Limits;
 
 pub(crate) const MANIFEST: &str = "manifest.json";
@@ -416,7 +416,7 @@ impl Scan {
         self.total = self.total.saturating_add(facts.size);
         if self.total > limits.max_total_bytes {
             return Err(Error::LimitExceeded {
-                what: "total uncompressed size",
+                what: TOTAL_SIZE,
                 limit: limits.max_total_bytes,
             });
         }
@@ -490,7 +490,7 @@ impl<W: Write + Seek> ArchiveWriter<W> {
         }
         if self.total.saturating_add(size) > self.limits.max_total_bytes {
             return Err(Error::LimitExceeded {
-                what: "total uncompressed size",
+                what: TOTAL_SIZE,
                 limit: self.limits.max_total_bytes,
             });
         }

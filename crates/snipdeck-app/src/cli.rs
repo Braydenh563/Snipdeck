@@ -30,6 +30,10 @@ pub struct Args {
     /// What the shell asked for: a `.snipdeck` file to open or a `snipdeck:` address. Acted on by
     /// the running instance (handed over), or by this one when it is the first.
     pub request: Option<Request>,
+    /// Write a backup of the library to this file and exit.
+    pub backup: Option<PathBuf>,
+    /// Print the version and exit.
+    pub version: bool,
     /// Print the usage and exit.
     pub help: bool,
 }
@@ -40,7 +44,7 @@ pub enum ArgError {
     /// A flag Snipdeck does not know.
     #[error("unknown option `{0}`")]
     Unknown(String),
-    /// A flag that needs a value came last.
+    /// A flag that needs a value came last, or the next word is another option.
     #[error("`{0}` needs a value")]
     MissingValue(&'static str),
     /// A file or address that is not something Snipdeck opens (or a second one).
@@ -53,15 +57,18 @@ pub enum ArgError {
 
 /// The text of `--help`.
 pub const USAGE: &str = "\
-Usage: snipdeck-app [options]
+Usage: snipdeck [options]
 
   --demo                 run on a seeded in-memory library (nothing is saved)
   --screenshot <file>    render the demo Panel to a PNG and exit (implies --demo)
-  --dark                 use the dark theme
+  --dark                 use the dark theme for this run (the saved theme is not changed)
   --hidden               start with the Panel hidden
   --data-dir <folder>    keep the library in <folder>
   --check-db             check the library for damage and exit (0 healthy, 1 problems, 2 not run)
   --troubleshoot         print the Troubleshoot report and exit (close Snipdeck first)
+  --backup <file>        write a backup of the library to <file> and exit (sensitive items are
+                         left out; close Snipdeck first or not, it only reads)
+  --version              print the version and exit
   --quit                 ask the running Snipdeck to quit, as the tray's Quit does, and exit (0
                          whether or not one was running; Windows only)
   --help                 show this text
@@ -76,6 +83,18 @@ exit code, start it like this:
                    $LASTEXITCODE is not set; use (Start-Process ... -PassThru -Wait).ExitCode
   To a file:       snipdeck.exe --check-db > result.txt   (works as it is)
 ";
+
+/// The value of `flag`: the next word, which must not be another option (`--data-dir --hidden`
+/// is a missing folder, not a folder named `--hidden`).
+fn value(
+    args: &mut impl Iterator<Item = OsString>,
+    flag: &'static str,
+) -> Result<PathBuf, ArgError> {
+    match args.next() {
+        Some(v) if !v.to_str().is_some_and(|t| t.starts_with("--")) => Ok(v.into()),
+        _ => Err(ArgError::MissingValue(flag)),
+    }
+}
 
 /// Parses the arguments after the program name.
 ///
@@ -102,13 +121,11 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, ArgError>
             "--troubleshoot" => parsed.troubleshoot = true,
             "--quit" => parsed.quit = true,
             "--help" | "-h" => parsed.help = true,
-            "--data-dir" => {
-                let value = args.next().ok_or(ArgError::MissingValue("--data-dir"))?;
-                parsed.data_dir = Some(value.into());
-            }
+            "--version" | "-V" => parsed.version = true,
+            "--data-dir" => parsed.data_dir = Some(value(&mut args, "--data-dir")?),
+            "--backup" => parsed.backup = Some(value(&mut args, "--backup")?),
             "--screenshot" => {
-                let value = args.next().ok_or(ArgError::MissingValue("--screenshot"))?;
-                parsed.screenshot = Some(value.into());
+                parsed.screenshot = Some(value(&mut args, "--screenshot")?);
                 parsed.demo = true;
             }
             other if !other.starts_with('-') && !other.is_empty() => {
@@ -256,6 +273,27 @@ mod tests {
         assert!(parse_all(&["--quit"]).expect("args").quit);
         assert!(!parse_all(&[]).expect("args").quit);
         assert!(USAGE.contains("--quit"));
+    }
+
+    #[test]
+    fn a_value_that_is_another_option_is_a_missing_value() {
+        for flag in ["--data-dir", "--backup", "--screenshot"] {
+            assert_eq!(
+                parse_all(&[flag, "--hidden"]),
+                Err(ArgError::MissingValue(flag)),
+                "{flag}"
+            );
+            assert_eq!(parse_all(&[flag]), Err(ArgError::MissingValue(flag)));
+        }
+    }
+
+    #[test]
+    fn version_and_backup_are_read_and_the_usage_names_the_installed_program() {
+        let args = parse_all(&["--version", "--backup", "out.snipdeck"]).expect("args");
+        assert!(args.version);
+        assert_eq!(args.backup, Some(PathBuf::from("out.snipdeck")));
+        assert!(USAGE.contains("Usage: snipdeck [options]"));
+        assert!(USAGE.contains("--version") && USAGE.contains("--backup"));
     }
 
     #[test]

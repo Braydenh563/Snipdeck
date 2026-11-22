@@ -658,7 +658,7 @@ fn a_hello_turned_off_for_failing_says_why_in_the_unlock_window() {
         assert!(!r.ctl.borrow().settings().hello_unlock);
         assert!(has_text(
             &r.ui,
-            "Windows Hello didn't work, so it was turned off. You can turn it on again in Settings."
+            "Windows Hello didn’t work, so it was turned off. You can turn it on again in Settings."
         ));
         assert!(hello_button(&r.ui).is_none());
     });
@@ -799,7 +799,7 @@ fn the_turned_off_line_shows_once_and_not_every_time_the_window_opens() {
             r.ctl.borrow_mut().lock_now();
             reopen(&r);
         }
-        let line = "Windows Hello didn't work, so it was turned off. You can turn it on again in Settings.";
+        let line = "Windows Hello didn’t work, so it was turned off. You can turn it on again in Settings.";
         assert!(has_text(&r.ui, line), "said when the window opens");
         r.ctl.borrow_mut().lock_now();
         reopen(&r);

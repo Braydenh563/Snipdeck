@@ -452,7 +452,7 @@ fn what_a_toast_carries_reaches_its_sentence() {
         );
         assert_eq!(
             said(ToastMessage::CopiedElevated { app: String::new() }),
-            "Copied. That app runs as administrator, so Snipdeck can't paste into it."
+            "Copied. That app runs as administrator, so Snipdeck can’t paste into it."
         );
         assert_eq!(
             said(ToastMessage::ItemsTrashed { count: 1 }),
@@ -582,7 +582,7 @@ fn what_a_toast_carries_reaches_its_sentence() {
         );
         assert_eq!(
             said(ToastMessage::TypingUnavailable),
-            "Couldn't start typing triggers. Nothing will be expanded or suggested."
+            "Couldn’t start typing triggers. Nothing will be expanded or suggested."
         );
         assert_eq!(said(ToastMessage::DockSet(None)), "Panel floats again");
         assert_eq!(
@@ -631,7 +631,7 @@ fn a_failure_toast_names_its_cause_and_ends_with_what_to_do() {
         let said = |m: ToastMessage| toast_text(&ui, &m);
         assert_eq!(
             said(ToastMessage::DailyBackupFailed(Cause::Other)),
-            "Couldn't make today's backup. Use Back up now in Settings to try again; if it keeps failing, open the data folder from Settings and check that it can be written to."
+            "Couldn’t make today’s backup. Use Back up now in Settings to try again; if it keeps failing, open the data folder from Settings and check that it can be written to."
         );
         // DATA-35: an unknown cause never blames the disk.
         for m in [
@@ -644,7 +644,7 @@ fn a_failure_toast_names_its_cause_and_ends_with_what_to_do() {
         }
         assert_eq!(
             said(ToastMessage::UseFailed(Cause::DiskFull)),
-            "Couldn't use this item: the disk is full. Free up some space, then try again."
+            "Couldn’t use this item: the disk is full. Free up some space, then try again."
         );
         let causes = [
             Cause::Other,
@@ -668,7 +668,7 @@ fn a_failure_toast_names_its_cause_and_ends_with_what_to_do() {
             let mut texts = Vec::new();
             for cause in causes {
                 let text = said(make(cause));
-                assert!(text.starts_with("Couldn't "), "{text}");
+                assert!(text.starts_with("Couldn’t "), "{text}");
                 assert!(
                     text.ends_with('.') && !text.ends_with(".."),
                     "ends with the action: {text}"
@@ -689,7 +689,7 @@ fn a_failure_toast_names_its_cause_and_ends_with_what_to_do() {
             );
         }
         assert!(
-            said(ToastMessage::ImportFailed(Cause::NotArchive)).contains("isn't a file Snipdeck")
+            said(ToastMessage::ImportFailed(Cause::NotArchive)).contains("isn’t a file Snipdeck")
         );
         assert!(said(ToastMessage::ImportFailed(Cause::TooNew)).contains("newer Snipdeck"));
     });

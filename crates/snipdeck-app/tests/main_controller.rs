@@ -697,12 +697,27 @@ fn the_trash_keeps_things_thirty_days_by_the_injected_clock() {
     assert_eq!(ctl.main_screen().counts.trash, 0);
 }
 
+#[test]
+fn the_trash_keeps_things_for_the_days_the_setting_says() {
+    let (mut ctl, clock) = rig();
+    ctl.update_settings(|s| s.trash_days = 7);
+    ctl.main_action(MainAction::Delete, 0);
+    clock.set("2026-10-24T10:29:00Z".parse().unwrap()); // 6 days and a bit later
+    assert_eq!(ctl.purge_expired_trash().expect("purge"), 0);
+    clock.set("2026-10-24T10:31:00Z".parse().unwrap()); // past 7 days
+    assert_eq!(ctl.purge_expired_trash().expect("purge"), 1);
+}
+
 // ---- Lists ----------------------------------------------------------------------------------
 
 #[test]
 fn the_new_list_and_new_board_names_start_from_the_words_the_window_layer_gave() {
     let mut ctl = seeded();
-    ctl.set_new_name_bases("Neue Liste", "Neues Board");
+    ctl.set_starter_words(&snipdeck_app::starter::StarterWords {
+        new_list: "Neue Liste".into(),
+        new_board: "Neues Board".into(),
+        ..snipdeck_app::starter::StarterWords::english()
+    });
     ctl.main_new_list();
     assert_eq!(
         ctl.main_screen().editor.expect("editor").name,
@@ -1017,11 +1032,8 @@ fn the_list_menu_edits_the_list_it_was_opened_on() {
     let editor = ctl.main_screen().editor.expect("editor");
     assert_eq!(editor.name, "Code");
     assert!(!editor.is_new && editor.can_delete);
-    ctl.main_editor_save("Snippets", None, None, ListSort::Manual);
-    assert_eq!(
-        ctl.view().tabs[tab_index(&ctl, "Snippets")].name,
-        "Snippets"
-    );
+    ctl.main_editor_save("Items", None, None, ListSort::Manual);
+    assert_eq!(ctl.view().tabs[tab_index(&ctl, "Items")].name, "Items");
 }
 
 #[test]

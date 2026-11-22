@@ -1393,7 +1393,7 @@ fn trigger_clash_shows_an_error() {
         assert!(r.editor_shown(), "refused: the editor stays");
         assert_eq!(
             ed.get_trigger_error().as_str(),
-            "Another snippet already uses this trigger."
+            "Another item already uses this trigger."
         );
         // A different code saves.
         ed.set_trigger(";sig2".into());

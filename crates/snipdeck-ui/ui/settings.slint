@@ -336,6 +336,9 @@ export component SettingsPage inherits Window {
     in property <int> backups-removed: 0;
     callback backup-folder-choose-requested();
     callback backup-folder-reset-requested();
+    in property <int> trash-days: 30;
+    in property <int> trash-days-min: 1;
+    in property <int> trash-days-max: 365;
     // Seconds before a copied sensitive item is cleared from the clipboard (5 to 600).
     in property <int> clipboard-clear-secs: 30;
     in property <int> clipboard-clear-secs-max: 600;
@@ -466,6 +469,7 @@ export component SettingsPage inherits Window {
     callback dock-hover-delay-chosen(ms: int);
     callback dock-leave-delay-chosen(ms: int);
     callback backups-keep-chosen(count: int);
+    callback trash-days-chosen(days: int);
     callback clipboard-clear-secs-chosen(secs: int);
     callback paste-rule-added(name: string);
     callback paste-rule-chosen(index: int, choice: int);
@@ -522,9 +526,9 @@ export component SettingsPage inherits Window {
     // Titles of section 5 (Programs), for the search. A test checks that every row title is in here.
     property <string> keys-5: @tr("Programs") + " " + @tr("never paste excluded apps");
     // Titles of section 6 (Typing), for the search. A test checks that every row title is in here.
-    property <string> keys-6: @tr("Typing") + " " + @tr("Expand abbreviations as I type") + " " + @tr("Suggest snippets as I type") + " " + @tr("trigger triggers text expansion autocomplete shortcode");
+    property <string> keys-6: @tr("Typing") + " " + @tr("Expand abbreviations as I type") + " " + @tr("Suggest items as I type") + " " + @tr("trigger triggers text expansion autocomplete shortcode");
     // Titles of section 7 (Backups and your data), for the search. A test checks that every row title is in here.
-    property <string> keys-7: @tr("Backups and your data") + " " + @tr("Backups to keep") + " " + @tr("Backup folder") + " " + @tr("Export library") + " " + @tr("Import") + " " + @tr("Erase library") + " " + @tr("Also forget the encryption key");
+    property <string> keys-7: @tr("Backups and your data") + " " + @tr("Backups to keep") + " " + @tr("Days in the Trash") + " " + @tr("Backup folder") + " " + @tr("Export library") + " " + @tr("Import") + " " + @tr("Erase library") + " " + @tr("Also forget the encryption key");
     // Titles of section 8 (Support), for the search. A test checks that every row title is in here.
     property <string> keys-8: @tr("Support") + " " + @tr("Support Snipdeck") + " " + @tr("donate donation coffee tip");
     property <string> keys-all: root.keys-0 + " " + root.keys-1 + " " + root.keys-2 + " " + root.keys-3 + " " + root.keys-4 + " " + root.keys-5 + " " + root.keys-6 + " " + root.keys-7 + " " + root.keys-8;
@@ -771,7 +775,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Language");
-                        description: @tr("Takes effect the next time Snipdeck starts.");
+                        description: @tr("Applies at once. Follow Windows takes effect the next time Snipdeck starts.");
                         SelectField {
                             width: 200px * SystemLook.text-scale;
                             label: @tr("Language");
@@ -1318,7 +1322,7 @@ export component SettingsPage inherits Window {
                         accessible-role: none;
                     }
                     Text {
-                        text: @tr("Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe.");
+                        text: @tr("Nothing you copy in these programs reaches the Recent inbox. Use the program’s file name, for example keepass.exe.");
                         color: Theme.text-secondary;
                         font-family: Fonts.sans;
                         font-size: Type.sm;
@@ -1374,14 +1378,14 @@ export component SettingsPage inherits Window {
                         title: @tr("Master password");
                         search-also: @tr("Unlock with Windows Hello");
                         description: root.master-state == 0
-                            ? @tr("Snipdeck can't protect a key on this PC, so a master password is not available.")
+                            ? @tr("Snipdeck can’t protect a key on this PC, so a master password is not available.")
                             : root.master-state == 3
-                            ? @tr("Snipdeck couldn't read your encryption key, so the master password can't be set or changed right now. Restart Snipdeck to try again.")
+                            ? @tr("Snipdeck couldn’t read your encryption key, so the master password can’t be set or changed right now. Restart Snipdeck to try again.")
                             : root.master-state == 2
                             ? (root.master-locked
                                 ? @tr("A master password is on and your sensitive items are locked.")
                                 : @tr("A master password is on. Snipdeck asks for it when you first use a sensitive item and again after {} minutes without use.", root.master-idle-minutes))
-                            : @tr("Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. On Windows, you can then also unlock with Windows Hello.", root.master-idle-minutes);
+                            : @tr("Adds a password on top of Windows’ own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. On Windows, you can then also unlock with Windows Hello.", root.master-idle-minutes);
                         HorizontalLayout {
                             spacing: Space.s2;
                             if root.master-state != 2: Button {
@@ -1466,7 +1470,7 @@ export component SettingsPage inherits Window {
                     search-text: root.keys-5;
                     located(y) => { page.scroll-to(y - body.absolute-position.y); }
                     Text {
-                        text: @tr("The key Snipdeck presses to paste into each program. Most programs use Ctrl+V; some terminals need another key. Choose Never paste to copy instead. Use the program's file name, for example notepad.exe.");
+                        text: @tr("The key Snipdeck presses to paste into each program. Most programs use Ctrl+V; some terminals need another key. Choose Never paste to copy instead. Use the program’s file name, for example notepad.exe.");
                         color: Theme.text-secondary;
                         font-family: Fonts.sans;
                         font-size: Type.sm;
@@ -1499,7 +1503,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Expand abbreviations as I type");
-                        description: @tr("When you type an item's trigger in another program, Snipdeck replaces it with the item's text. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items.");
+                        description: @tr("When you type an item’s trigger in another program, Snipdeck replaces it with the item’s text. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items.");
                         Toggle {
                             a11y-label: @tr("Expand abbreviations as I type");
                             a11y-description: root.typing-available ? "" : @tr("Typing triggers work on Windows only.");
@@ -1512,10 +1516,10 @@ export component SettingsPage inherits Window {
                         }
                     }
                     SettingRow {
-                        title: @tr("Suggest snippets as I type");
+                        title: @tr("Suggest items as I type");
                         description: @tr("After you type the first two characters of a trigger, a small hint at the text cursor offers the item. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows.");
                         Toggle {
-                            a11y-label: @tr("Suggest snippets as I type");
+                            a11y-label: @tr("Suggest items as I type");
                             a11y-description: root.typing-available ? "" : @tr("Typing triggers work on Windows only.");
                             enabled: root.typing-available;
                             checked <=> root.suggest-triggers;
@@ -1561,6 +1565,23 @@ export component SettingsPage inherits Window {
                             step: 1;
                             value: root.backups-keep;
                             stepped(v) => { root.backups-keep-chosen(v); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Days in the Trash");
+                        description: @tr("Deleted items can be restored until then, and are removed after.");
+                        NumberStepper {
+                            label: @tr("Days in the Trash");
+                            decrease-label: @tr("Keep deleted items for fewer days");
+                            increase-label: @tr("Keep deleted items for more days");
+                            min: root.trash-days-min;
+                            max: root.trash-days-max;
+                            step: 1;
+                            value: root.trash-days;
+                            stepped(v) => { root.trash-days-chosen(v); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }

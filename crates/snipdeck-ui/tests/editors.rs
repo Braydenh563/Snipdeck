@@ -258,7 +258,7 @@ fn item_editor_new_file_with_a_path_problem_a_banner_and_a_restored_draft() {
         .set_source_error("There is no file at that path.".into());
     h.component.set_restored(true);
     h.component.set_banner(
-        "Snipdeck couldn't write to your library. Check that the disk has room.".into(),
+        "Snipdeck couldn’t write to your library. Check that the disk has room.".into(),
     );
     h.component.set_list_names(fixture::list_names());
     h.component.set_tags(fixture::tag_model(Vec::new()));
@@ -710,7 +710,6 @@ fn help_about_light_and_dark() {
     let h = Harness::new(HelpWindow::new, HELP.0, HELP.1);
     fixture::help(&h.component);
     h.component.set_tab(1);
-    h.component.set_has_notices(true);
     assert_golden("help-about-light", &render(&h));
     drop(h);
 

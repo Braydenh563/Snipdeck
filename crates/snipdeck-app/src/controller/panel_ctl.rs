@@ -144,11 +144,11 @@ where
         self.show_toast(neutral(ToastMessage::PanelOnTop(on_top)));
     }
 
-    /// Sets the words a new list's and a new board's editor name starts from ("New list" gives
-    /// "New list 1"), translated by the window layer: the controller has no `@tr`.
-    pub fn set_new_name_bases(&mut self, list: &str, board: &str) {
-        list.clone_into(&mut self.new_list_base);
-        board.clone_into(&mut self.new_board_base);
+    /// Sets the words a new library starts with and a new list's and a new board's editor name
+    /// starts from ("New list" gives "New list 1"), translated by the window layer: the
+    /// controller has no `@tr`.
+    pub fn set_starter_words(&mut self, words: &crate::starter::StarterWords) {
+        self.starter.clone_from(words);
     }
 
     /// A regular Snipdeck window (Main, Settings, an editor, Help) gained or lost the focus
@@ -529,7 +529,8 @@ where
     pub fn add_list(&mut self) {
         let now = self.clock.now();
         self.main.mark_stale();
-        let added = crate::starter::add_list(&mut self.store, self.model.board(), now);
+        let added =
+            crate::starter::add_list(&mut self.store, self.model.board(), &self.starter, now);
         let shown = added.and_then(|(board, list)| {
             self.model.select_board(&self.store, board)?;
             self.model.select_list(&self.store, list)

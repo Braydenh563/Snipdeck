@@ -142,7 +142,7 @@ fn every_template_problem_has_words_in_english_and_follows_the_translation() {
             &EditorProblem::Template(TemplateProblem::Parse(K::EmptyOption)),
         );
         assert!(
-            !wrapped.contains("template can't be read") && !wrapped.contains("is empty"),
+            !wrapped.contains("template can’t be read") && !wrapped.contains("is empty"),
             "no English sentence is left: {wrapped}"
         );
         slint::select_bundled_translation("").expect("back to the source language");

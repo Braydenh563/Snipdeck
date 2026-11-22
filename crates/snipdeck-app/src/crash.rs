@@ -80,6 +80,13 @@ impl Report {
             self.location.as_deref().unwrap_or("unknown")
         );
         let _ = writeln!(text, "message: {}", self.message);
+        // Addresses in the backtrace are absolute (ASLR moves the exe). This one is a known
+        // function: subtract its address in the symbols (the release's PDB) to get the offset.
+        let _ = writeln!(
+            text,
+            "anchor: crash::install is at {:#x}",
+            install as fn(fn() -> Timestamp) as usize
+        );
         let _ = writeln!(text, "\nbacktrace:\n{}", self.backtrace);
         text
     }
@@ -174,10 +181,28 @@ pub fn unacknowledged(data_dir: &Path, acknowledged: Option<&str>) -> Option<Str
     newest(data_dir).filter(|name| acknowledged.is_none_or(|seen| name.as_str() > seen))
 }
 
-/// Tells the hook where to write. Call it once the data folder is known.
+/// Panics that happened before the data folder was known, written when it is.
+static EARLY: Mutex<Vec<(Timestamp, Report)>> = Mutex::new(Vec::new());
+
+/// Tells the hook where to write, and writes the panics that came before. Call it once the data
+/// folder is known.
 pub fn set_data_dir(data_dir: &Path) {
     if let Ok(mut slot) = DATA_DIR.lock() {
         *slot = Some(data_dir.to_path_buf());
+    }
+    let early = EARLY.lock().map(|mut v| std::mem::take(&mut *v));
+    for (at, report) in early.unwrap_or_default() {
+        let _ = write_report(data_dir, &at.to_zoned(TimeZone::system()), &report);
+    }
+}
+
+/// Writes `report` into `dir` when the data folder is known, else keeps it for
+/// [`set_data_dir`]. Never blocks: a hook must not hang on a lock.
+fn record(dir: Option<&Path>, at: Timestamp, report: Report) {
+    if let Some(dir) = dir {
+        let _ = write_report(dir, &at.to_zoned(TimeZone::system()), &report);
+    } else if let Ok(mut early) = EARLY.try_lock() {
+        early.push((at, report));
     }
 }
 
@@ -195,24 +220,46 @@ pub fn install(now: fn() -> Timestamp) {
     drop(std::panic::take_hook());
     std::panic::set_hook(Box::new(move |info| {
         let report = report_of(info);
-        if let Some(dir) = data_dir() {
-            let _ = write_report(&dir, &now().to_zoned(TimeZone::system()), &report);
-        }
         #[allow(clippy::print_stderr, reason = "the panic hook's only way to speak")]
         {
             eprintln!("{}", Report::stderr_line(&report));
         }
+        record(data_dir().as_deref(), now(), report);
     }));
 }
 
+/// Messages the standard library builds at run time that hold no user text: the part before the
+/// first `: ` of a failed `unwrap`, or a bounds failure (which has only numbers after it).
+const SAFE_PREFIXES: [&str; 6] = [
+    "called `Result::unwrap()` on an `Err` value",
+    "called `Result::expect_err()` on an `Ok` value",
+    "index out of bounds",
+    "range end index",
+    "range start index",
+    "slice index starts at",
+];
+
+/// The part of a run-time panic message that is known to carry no text of the user's.
+fn safe_part(text: &str) -> Option<&str> {
+    let head = text.split(": ").next().unwrap_or(text);
+    SAFE_PREFIXES
+        .iter()
+        .any(|p| head.starts_with(p))
+        .then_some(head)
+}
+
 /// The message to write for a panic payload. A `&'static str` is a literal in the source and
-/// safe; a `String` is built at run time (a slice panic quotes the text it sliced), so only its
-/// size is written.
+/// safe. A `String` is built at run time (a slice panic quotes the text it sliced, an `unwrap`
+/// prints the error's `Debug`), so only the standard library's own wording ([`SAFE_PREFIXES`])
+/// and the size are written.
 fn message_of(payload: &(dyn std::any::Any + Send)) -> String {
     if let Some(text) = payload.downcast_ref::<&'static str>() {
         text.chars().take(MAX_MESSAGE).collect()
     } else if let Some(text) = payload.downcast_ref::<String>() {
-        format!("(message omitted, {} bytes)", text.len())
+        match safe_part(text) {
+            Some(head) => format!("{head} (rest omitted, {} bytes)", text.len()),
+            None => format!("(message omitted, {} bytes)", text.len()),
+        }
     } else {
         "(no message)".to_owned()
     }
@@ -226,8 +273,34 @@ fn report_of(info: &std::panic::PanicHookInfo<'_>) -> Report {
             .location()
             .map(|l| format!("{}:{}:{}", l.file(), l.line(), l.column())),
         thread: std::thread::current().name().map(str::to_owned),
-        backtrace: std::backtrace::Backtrace::force_capture().to_string(),
+        backtrace: format!("{:#}", std::backtrace::Backtrace::force_capture()),
     }
+}
+
+/// The report for a native crash (an access violation, a heap corruption): the process is dying
+/// without a panic, so there is no message or place, only the operating system's code and the
+/// faulting address (subtract the anchor line's address to find the function in the PDB).
+#[must_use]
+pub fn native_report(code: u32, address: usize) -> Report {
+    Report {
+        message: format!(
+            "native exception {code:#010x} ({}) at address {address:#x}",
+            snipdeck_platform::win_logic::exception_name(code)
+        ),
+        location: None,
+        thread: std::thread::current().name().map(str::to_owned),
+        backtrace: format!("{:#}", std::backtrace::Backtrace::force_capture()),
+    }
+}
+
+/// What the Windows exception filter calls when a native crash ends the process: writes the
+/// report (or queues it, before the data folder is known) like a panic's.
+pub fn on_native_exception(code: u32, address: usize) {
+    record(
+        data_dir().as_deref(),
+        Timestamp::now(),
+        native_report(code, address),
+    );
 }
 
 /// Opens the reports folder in the file manager (what "Open the log?" does).
@@ -262,6 +335,61 @@ mod tests {
             thread: Some("main".to_owned()),
             backtrace: "frame".to_owned(),
         }
+    }
+
+    #[test]
+    fn a_native_crash_report_names_the_code_and_the_address() {
+        let report = native_report(0xC000_0005, 0x7ff6_1234);
+        assert_eq!(
+            report.message,
+            "native exception 0xc0000005 (access violation) at address 0x7ff61234"
+        );
+        assert!(report.location.is_none());
+        let text = report.render(&zoned(start()));
+        assert!(text.contains("access violation"), "{text}");
+        assert!(text.contains("anchor: crash::install is at 0x"), "{text}");
+    }
+
+    #[test]
+    fn an_unwrap_or_bounds_panic_keeps_the_standard_wording_and_drops_the_rest() {
+        let unwrap = String::from(
+            "called `Result::unwrap()` on an `Err` value: Os { path: \"C:\\\\Users\\\\me\" }",
+        );
+        let said = message_of(&unwrap);
+        assert!(said.starts_with("called `Result::unwrap()` on an `Err` value (rest omitted"));
+        assert!(!said.contains("Users"), "{said}");
+        let index = String::from("index out of bounds: the len is 3 but the index is 5");
+        assert!(message_of(&index).starts_with("index out of bounds (rest omitted"));
+        // A message the app built, or a slice panic that quotes text, stays out.
+        let quoted =
+            String::from("byte index 1 is not a char boundary; it is inside 'x' of `secret`");
+        assert_eq!(
+            message_of(&quoted),
+            format!("(message omitted, {} bytes)", quoted.len())
+        );
+        let own = String::from("failed to open My Passwords: denied");
+        assert!(message_of(&own).starts_with("(message omitted"));
+    }
+
+    #[test]
+    fn a_panic_before_the_data_folder_is_known_is_written_when_it_is() {
+        let dir = tempfile::tempdir().unwrap();
+        record(None, start(), report("early"));
+        assert_eq!(report_names(dir.path()), Vec::<String>::new());
+        set_data_dir(dir.path());
+        let names = report_names(dir.path());
+        assert_eq!(names.len(), 1, "{names:?}");
+        let text = fs::read_to_string(logs_dir(dir.path()).join(&names[0])).unwrap();
+        assert!(text.contains("message: early"));
+        assert!(text.contains("anchor: crash::install is at 0x"));
+        // Once the folder is known a report goes straight to it.
+        record(
+            Some(dir.path()),
+            "2026-10-18T09:31:00Z".parse().unwrap(),
+            report("later"),
+        );
+        assert_eq!(report_names(dir.path()).len(), 2);
+        *DATA_DIR.lock().unwrap() = None;
     }
 
     #[test]

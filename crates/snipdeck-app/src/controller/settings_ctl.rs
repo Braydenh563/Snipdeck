@@ -901,7 +901,7 @@ where
                 {
                     erased = false;
                 }
-                let _ = starter::ensure_board(&mut fresh, self.clock.now());
+                let _ = starter::ensure_board(&mut fresh, &self.starter, self.clock.now());
                 self.store = fresh;
             }
             // The running library stays the empty one in memory until Snipdeck restarts.
