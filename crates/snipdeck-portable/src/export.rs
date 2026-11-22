@@ -196,6 +196,41 @@ fn name_the_item(error: Error, title: &str) -> Error {
     }
 }
 
+/// What a tag is written with.
+struct TagFacts {
+    name: String,
+    colour: Option<String>,
+    parent: Option<TagId>,
+}
+
+/// The tags some written item uses, and the tags above them, in name order.
+fn tag_dtos(used: &BTreeSet<TagId>, names: &HashMap<TagId, TagFacts>) -> Vec<TagDto> {
+    // The tags above a used tag come too, so that the nesting survives.
+    let mut written: BTreeSet<TagId> = BTreeSet::new();
+    for id in used {
+        let mut at = Some(*id);
+        while let Some(current) = at {
+            if !names.contains_key(&current) || !written.insert(current) {
+                break;
+            }
+            at = names.get(&current).and_then(|t| t.parent);
+        }
+    }
+    let mut tags: Vec<TagDto> = written
+        .iter()
+        .filter_map(|id| {
+            names.get(id).map(|facts| TagDto {
+                id: id.to_string(),
+                name: facts.name.clone(),
+                colour: facts.colour.clone(),
+                parent: facts.parent.map(|p| p.to_string()),
+            })
+        })
+        .collect();
+    tags.sort_by_key(|t| t.name.to_lowercase());
+    tags
+}
+
 impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
     /// One item as it is written, or `None` when it is left out (sensitive and not kept, or
     /// unreadable and named in the report).
@@ -238,6 +273,7 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
             self.report.sensitive_encrypted += 1;
         }
         used_tags.extend(item.tags.iter().copied());
+        let (trigger_fires, trigger_case) = option_keys(triggers.get(&item.id));
         let dto = ItemDto {
             id: item.id.to_string(),
             title: item.title.clone(),
@@ -247,6 +283,8 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
             always_plain: item.always_plain,
             label: item.label.map(|l| l.key().to_owned()),
             trigger: triggers.get(&item.id).map(ToString::to_string),
+            trigger_fires,
+            trigger_case,
             group: group_of.get(&item.id).map(|g| {
                 written_groups.insert(*g);
                 g.to_string()
@@ -265,11 +303,20 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
     }
 
     fn build_doc(&mut self) -> Result<ItemsDoc> {
-        let tag_names: HashMap<TagId, String> = self
+        let tag_names: HashMap<TagId, TagFacts> = self
             .lib
             .tags()?
             .into_iter()
-            .map(|t| (t.id, t.name.to_string()))
+            .map(|t| {
+                (
+                    t.id,
+                    TagFacts {
+                        name: t.name.to_string(),
+                        colour: t.colour.map(|c| c.key().to_owned()),
+                        parent: t.parent,
+                    },
+                )
+            })
             .collect();
         let mut used_tags: BTreeSet<TagId> = BTreeSet::new();
         let mut boards = Vec::new();
@@ -301,7 +348,7 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
                     icon: list.icon.map(|i| i.key().to_owned()),
                     groups: group_dtos(&runs, &written_groups),
                     view: list.view.key().to_owned(),
-                    sort: list.sort.key().to_owned(),
+                    sort: list.sort.key(),
                     created_at: list.created_at.to_string(),
                     updated_at: list.updated_at.to_string(),
                     items,
@@ -311,6 +358,8 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
             boards.push(BoardDto {
                 id: board.id.to_string(),
                 name: board.name.to_string(),
+                accent: board.accent.map(|a| a.key().to_owned()),
+                icon: board.icon.map(|i| i.key().to_owned()),
                 created_at: board.created_at.to_string(),
                 updated_at: board.updated_at.to_string(),
                 lists,
@@ -321,17 +370,9 @@ impl<L: Library, W: Write + Seek> Exporter<'_, L, W> {
         if self.options.every_tag {
             used_tags.extend(tag_names.keys().copied());
         }
-        // Tags in name order: those some written item uses (every tag for a backup).
-        let mut tags: Vec<TagDto> = used_tags
-            .iter()
-            .filter_map(|id| {
-                tag_names.get(id).map(|name| TagDto {
-                    id: id.to_string(),
-                    name: name.clone(),
-                })
-            })
-            .collect();
-        tags.sort_by_key(|t| t.name.to_lowercase());
+        // Tags in name order: those some written item uses (every tag for a backup), with the
+        // tags above them.
+        let tags = tag_dtos(&used_tags, &tag_names);
         self.report.tags = tags.len();
         Ok(ItemsDoc { tags, boards })
     }
@@ -499,12 +540,23 @@ fn group_dtos(
     runs: &[snipdeck_store::GroupRun],
     written: &std::collections::HashSet<snipdeck_core::GroupId>,
 ) -> Vec<GroupDto> {
+    // A group is written when it or a group nested in it has a written member.
+    let mut kept: std::collections::HashSet<snipdeck_core::GroupId> = written.clone();
+    for run in runs.iter().rev() {
+        if kept.contains(&run.group.id)
+            && let Some(parent) = run.group.parent
+        {
+            kept.insert(parent);
+        }
+    }
     runs.iter()
-        .filter(|run| written.contains(&run.group.id))
+        .filter(|run| kept.contains(&run.group.id))
         .map(|run| GroupDto {
             id: run.group.id.to_string(),
             name: run.group.name.to_string(),
             collapsed: run.group.collapsed,
+            colour: run.group.colour.map(|c| c.key().to_owned()),
+            parent: run.group.parent.map(|p| p.to_string()),
         })
         .collect()
 }
@@ -527,4 +579,17 @@ fn group_map(
     runs.iter()
         .flat_map(|run| run.items.iter().map(|id| (*id, run.group.id)))
         .collect()
+}
+
+/// The keys of a trigger's options, for `trigger_fires` and `trigger_case`. Only what differs from
+/// the default is written.
+fn option_keys(trigger: Option<&snipdeck_core::Trigger>) -> (Option<String>, Option<String>) {
+    let options = trigger
+        .map(snipdeck_core::Trigger::options)
+        .unwrap_or_default();
+    let fires =
+        (options.end != snipdeck_core::TriggerEnd::default()).then(|| options.end.key().to_owned());
+    let case =
+        (options.case != snipdeck_core::CaseMode::default()).then(|| options.case.key().to_owned());
+    (fires, case)
 }

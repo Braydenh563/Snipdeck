@@ -36,17 +36,9 @@ mod lists;
 pub enum TagRenameError {
     /// The new name is not a valid name (blank, too long, a control character).
     Name(NameError),
-    /// Another tag already has that name (compared ignoring case): a new tag is refused.
+    /// Another tag already has that name (compared ignoring case): a rename is refused (the
+    /// Tag manager offers the merge) and so is a new tag.
     Exists,
-    /// Renaming would give the tag another tag's name: the two merge once the user confirms.
-    /// `into` is that other tag (an index of [`MainScreen::tags`](crate::controller::MainScreen::tags)),
-    /// `count` how many items the renamed tag has.
-    Merge {
-        /// The tag that keeps the name.
-        into: usize,
-        /// Items of the renamed tag, which carry `into` afterwards.
-        count: usize,
-    },
     /// The library could not be written; a toast says so.
     Failed,
 }
@@ -72,6 +64,8 @@ pub enum MainAction {
     Tag,
     /// Open the *Paste as…* chooser for the item.
     PasteAs,
+    /// Open a Link item's address in the browser (only http, https, mailto and tel; `link_open`).
+    OpenLink,
     /// Move the targets to the Trash, with an Undo toast.
     Delete,
     /// Bring the targets back from the Trash.
@@ -114,6 +108,15 @@ pub enum BoardMenuEntry {
     },
 }
 
+/// One criterion of the view filter, as a chip: the tag's name for a tag, else empty.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FilterChip {
+    /// What it filters by.
+    pub term: crate::main_window::FilterTerm,
+    /// The tag's name (empty for the other criteria, whose words the window owns).
+    pub name: String,
+}
+
 /// A tag in the *Tags* chooser.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TagChoice {
@@ -123,6 +126,17 @@ pub struct TagChoice {
     pub count: usize,
     /// Every item the chooser acts on carries it.
     pub checked: bool,
+}
+
+/// One entry of the *Nest under…* chooser.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NestChoice {
+    /// The group's name; `None` is the top level.
+    pub name: Option<String>,
+    /// How many groups it is nested in.
+    pub depth: usize,
+    /// How many items it holds.
+    pub count: usize,
 }
 
 /// Everything the Main window shows, as plain data.
@@ -163,6 +177,10 @@ pub struct MainScreen {
     pub tags: Vec<SideTag>,
     /// The *Tags* chooser's entries.
     pub tag_choices: Vec<TagChoice>,
+    /// The group the window asks to delete, with how many items go with it.
+    pub group_delete: Option<(String, usize)>,
+    /// The *Nest under…* chooser's entries.
+    pub nest_choices: Vec<NestChoice>,
     /// The numbers beside the system views.
     pub counts: Counts,
     /// The Recent inbox is on (its entries are listed in the Panel's clock tab).
@@ -196,8 +214,16 @@ pub struct MainScreen {
     pub cursor: usize,
     /// Rows can be dragged into a new place: the open list is in manual order and no search is running.
     pub reorderable: bool,
-    /// The sort of the open list (manual when no list is open).
-    pub list_sort: snipdeck_core::ListSort,
+    /// The sort of the open section (manual where it has none).
+    pub sort: snipdeck_core::Sort,
+    /// The section has a sort to choose: not the Recent inbox, the Trash or a search.
+    pub sortable: bool,
+    /// The criteria of the view filter, as the chips show them (each with the tag's name).
+    pub filter_chips: Vec<FilterChip>,
+    /// The chosen tags must all be on an item (else any one is enough).
+    pub filter_match_all: bool,
+    /// The tags the filter's Tags chooser offers, the chosen ones checked.
+    pub filter_tag_choices: Vec<TagChoice>,
     /// The open list sorts itself and no search runs: a drop is refused but offers manual order.
     pub reorder_offer: bool,
     /// The sidebar's width in logical pixels at 100 % text size (a setting; 200 to 320).
@@ -311,6 +337,8 @@ where
             move_targets: self.main.move_targets(),
             tags: self.main.side_tags(),
             tag_choices: self.tag_choices(),
+            group_delete: self.group_delete_view(),
+            nest_choices: self.nest_choices(),
             counts: Counts {
                 recent: self.recent_shared().len(),
                 ..self.main.counts()
@@ -341,14 +369,12 @@ where
             cursor: self.main.cursor(),
             reorderable: self.main.reorderable(),
             reorder_offer: !self.main.searching()
-                && self
-                    .main
-                    .open_list()
-                    .is_some_and(|l| l.sort != snipdeck_core::ListSort::Manual),
-            list_sort: self
-                .main
-                .open_list()
-                .map_or(snipdeck_core::ListSort::Manual, |l| l.sort),
+                && self.main.open_list().is_some_and(|l| !l.sort.is_manual()),
+            sort: self.main.sort(),
+            sortable: self.main.sortable(),
+            filter_chips: self.filter_chips(),
+            filter_match_all: self.main.filter().tag_match == snipdeck_core::TagMatch::All,
+            filter_tag_choices: self.filter_tag_choices(),
             selected_count: self.main.selected_count(),
             rows,
             rename_row,
@@ -374,6 +400,40 @@ where
             self.main.mark_fresh();
             self.show_toast(failed());
         }
+    }
+
+    fn filter_chips(&self) -> Vec<FilterChip> {
+        self.main
+            .filter_terms()
+            .into_iter()
+            .map(|term| FilterChip {
+                name: match term {
+                    crate::main_window::FilterTerm::Tag(id) => self
+                        .main
+                        .tags()
+                        .iter()
+                        .find(|t| t.id == id)
+                        .map(|t| t.name.as_str().to_owned())
+                        .unwrap_or_default(),
+                    _ => String::new(),
+                },
+                term,
+            })
+            .collect()
+    }
+
+    /// The tags of the filter's Tags chooser: every tag, the chosen ones checked.
+    fn filter_tag_choices(&self) -> Vec<TagChoice> {
+        self.main
+            .tags()
+            .iter()
+            .zip(self.main.side_tags())
+            .map(|(tag, side)| TagChoice {
+                name: side.name,
+                count: side.count,
+                checked: self.main.filter().tags.contains(&tag.id),
+            })
+            .collect()
     }
 
     fn tag_choices(&self) -> Vec<TagChoice> {
@@ -443,6 +503,41 @@ where
     pub fn main_set_label_filter(&mut self, label: Option<ItemLabel>) {
         self.main_fresh();
         self.main.set_label_filter(label);
+        self.revealed = None;
+    }
+
+    /// A criterion of the Filter menu (or its chip) was toggled.
+    pub fn main_toggle_filter(&mut self, term: crate::main_window::FilterTerm) {
+        self.main_fresh();
+        self.main.toggle_filter(term);
+        self.revealed = None;
+    }
+
+    /// The Tags chooser of the filter toggled the tag at `index` (the sidebar's tag order).
+    pub fn main_toggle_filter_tag(&mut self, index: usize) {
+        self.main_fresh();
+        if let Some(tag) = self.main.tags().get(index).map(|t| t.id) {
+            self.main_toggle_filter(crate::main_window::FilterTerm::Tag(tag));
+        }
+    }
+
+    /// The Filter menu's "Match all tags" switch.
+    pub fn main_set_filter_match_all(&mut self, all: bool) {
+        self.main_fresh();
+        self.main.edit_filter(|f| {
+            f.tag_match = if all {
+                snipdeck_core::TagMatch::All
+            } else {
+                snipdeck_core::TagMatch::Any
+            };
+        });
+    }
+
+    /// "Clear filters": every criterion goes, the colour label included.
+    pub fn main_clear_filter(&mut self) {
+        self.main_fresh();
+        self.main
+            .edit_filter(|f| *f = snipdeck_core::ViewFilter::none());
         self.revealed = None;
     }
 

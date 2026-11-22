@@ -98,19 +98,24 @@ duplicates; **an importer assigns new ids** to everything it creates.
 | Record | Field | Type | Notes |
 |---|---|---|---|
 | tag | `name` | string | 1 to 100 characters after trimming, no control characters. Tags whose names are equal ignoring case are the same tag. |
+| tag | `colour` | string or absent | Added in 1.3. One of the eight item colour keys (`blue teal green amber orange red violet slate`). An unknown key is malformed. |
+| tag | `parent` | string or absent | Added in 1.3. The `id` of the tag this one is nested under; it must be a tag in the same file and the chain must not loop (either is malformed). The export writes every ancestor of a tag in use, so a chain is whole. On import a tag that already exists keeps its place; only a tag the import creates takes the parent. A reader of 1.2 or older ignores the field and sees a flat tag. |
+| board | `accent`, `icon` | string or absent | Added in 1.3. The same keys as a list's `accent` and `icon`. |
 | board, list | `name` | string | Same rule. |
 | board, list, item | `created_at`, `updated_at` | RFC 3339 string | Between the years 1677 and 2262 (storage limit). Fractional seconds allowed, offsets other than `Z` allowed. |
 | list | `accent` | string or absent | `blue teal green amber orange red rose violet slate`. |
 | list | `icon` | string or absent | Added in 1.1. One of the 24 icon keys: `folder star heart briefcase house user envelope-simple chat-circle phone calendar-blank shopping-cart credit-card code terminal-window book-open lightbulb flag bookmark-simple globe map-pin camera music-note wrench rocket-launch`. |
-| list | `groups` | array or absent | Added in 1.2. Objects `{id, name, collapsed}` (`id` a UUID unique in the archive, `name` as other names, `collapsed` bool, default false). Only groups with a written member are listed. |
+| list | `groups` | array or absent | Added in 1.2. Objects `{id, name, collapsed, colour, parent}` (`id` a UUID unique in the archive, `name` as other names, `collapsed` bool, default false, `colour` optional: one of the nine list accent keys, added in 1.3; an unknown key is malformed; `parent` optional, added in 1.3: the `id` of the group this one is nested in). A `parent` must name a group of the same list that is listed before this one, and the chain may be at most three groups deep (a loop, a group the list does not hold or a deeper chain is malformed). Only groups with a written member are listed, and so is every ancestor of one, so a chain is whole. An item's `group` is its innermost group, and a group's members, nested groups included, are contiguous in `items` order. A reader of 1.2 or older ignores `parent` and sees flat groups; an archive without it imports flat. |
 | list | `view` | string | `compact` or `comfortable`. |
-| list | `sort` | string | `manual`, `most-used` or `recently-used`. |
+| list | `sort` | string | A sort key, optionally followed by `-reversed`: `manual`, `name`, `created`, `modified`, `most-used` or `recently-used` (the last four keys were added in 1.3, as was `-reversed`; `manual` cannot be reversed). A reader of 1.2 or older refuses a list with a word it does not know. |
 | item | `title` | string | May be empty. |
 | item | `kind` | string | `text template code link image file`. Describes content; sensitivity is separate. |
 | item | `pinned`, `sensitive`, `always_plain` | boolean, default `false` | |
 | item | `label` | string or absent | Added in 1.1. The colour label: `blue teal green amber orange red violet slate`. |
-| item | `group` | string or absent | Added in 1.2. The `id` of one of its list's `groups`; an unknown id is malformed. A group's members are contiguous in `items` order. |
+| item | `group` | string or absent | Added in 1.2. The `id` of one of its list's `groups`; an unknown id is malformed. A group's members, those of the groups nested in it included, are contiguous in `items` order. |
 | item | `trigger` | string or absent | Added in 1.2. The typed trigger: 1 to 32 characters, no whitespace or control characters, case counts. At most one per item, never on a sensitive item. If another item in the library (or earlier in the archive) already has it, the importer keeps that owner and imports this item without it, with a note. |
+| item | `trigger_fires` | string or absent | Added in 1.2. When the trigger fires: `immediate` (on its last character, the default) or `delimiter` (when a space, Enter, Tab or punctuation follows it; the delimiter is typed again after the text). An unknown value reads as `immediate`. |
+| item | `trigger_case` | string or absent | Added in 1.2. How the trigger reads case: `exact` (the default), `ignore` (any case fires it) or `adapt` (any case fires it and the text follows the case typed). An unknown value reads as `exact`. With `ignore` or `adapt`, two codes that differ only by case count as one. |
 | item | `use_count` | integer 0 to 4 294 967 295, default 0 | |
 | item | `last_used_at` | RFC 3339 string or absent | |
 | item | `source_app` | string or absent | The app the content was captured from. |

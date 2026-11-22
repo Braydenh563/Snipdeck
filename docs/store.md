@@ -29,7 +29,7 @@ table is `STRICT`. `rank` is a sparse integer, unique within the parent.
 | `item_files` | `idx`, `name`, `inline_bytes`, `blob_hash`, `len` | PK `(item_id, idx)`; composite FK `(item_id, 'files')` to `item_formats`, cascade, so file rows cannot outlive or precede their format |
 | `tags` | `name`, `name_key` | `name_key` unique: the name decomposed, case-folded (upper then lower case, so `ß` = `SS`) and recomposed to NFC (`tags::name_key`; v2) |
 | `item_tags` | | PK `(item_id, tag_id)`; both FKs cascade; index on `tag_id` |
-| `item_fts` | FTS5 `title`, `body` | `unicode61 remove_diacritics 2`; rowid = `items.seq`; trigger `items_fts_delete`; FTS5 `secure-delete` on (v2) |
+| `item_fts` | FTS5 `title`, `body`, both folded (`search::fold`) | `trigram` tokenizer (v11; `unicode61 remove_diacritics 2` before); rowid = `items.seq`; trigger `items_fts_delete`; FTS5 `secure-delete` on (v2) |
 | `recent_entries` (v3, v5) | `hash` (unique; keyed BLAKE3 once a key exists), `text`, `source_app` (BLOBs; envelopes when `encrypted = 1`), `copied_at`, `encrypted` | Not an item, not in the FTS; text and source app are `SNENC2` envelopes bound to the row hash, so a ciphertext moved to another row fails to open. Rows kept before a key exists (or by v4) are plain, `encrypted = 0`, and are sealed the first time a key is available (`create_key_ring` / `unlock_key_ring`; with a master password that is the first unlock). Locked: reads and writes fail with `EncryptionLocked`; delete, clear and prune need no key. The v5 migration rebuilds the table, keeps every row, and scrubs `recent_entries` from the `.pre-vN.bak` it writes |
 | `key_ring` (v2) | `id` (always 1), `record` | At most one row: the `SNKEY1` key record ([crypto.md](crypto.md)); `CHECK` that it starts with `SNKEY1` |
 
@@ -80,21 +80,28 @@ parent is (reads join up to the board).
 
 ### Search
 
-`ItemRepo::search` runs FTS5 over the item title and the `text` format (blob-stored text is
-read and indexed too). The index row is written by the item repository in the same transaction
+`ItemRepo::search` answers one part of a search: for each word of a parsed
+`search::Query`, the live items whose title or `text` format holds it (blob-stored text is read
+and indexed too). Ranking, the other fields (tags, list name, trigger) and the operators are the
+shared in-memory `SearchIndex`'s work, the same on the Panel, the Picker and Main
+(`core/src/search.rs`). The index row is written by the item repository in the same transaction
 as the item (the text may live in a blob file, which a trigger cannot read); only the delete
 is a trigger, so purges and cascades never leave ghost rows. Trashed items stay in the index and
 are filtered at query time, which makes restore free. Sensitive items are indexed by
 **title only** (the `ItemRepo::search` contract), never their content, encrypted or not; the
 title is not encrypted either ([crypto.md](crypto.md#limits-and-non-goals)). An edit that changes
 only metadata updates the title column and never reads the content; making an item sensitive
-removes its body from the index (FTS5 `secure-delete` removes the tokens, not just a tombstone). User input is turned
-into `"word"*` phrases (see `fts::match_expression`), so it cannot cause an FTS syntax error;
-all words must match and the last-typed prefix works. Ranking is `bm25` with the title weighted
-10 to 1.
+removes its body from the index (FTS5 `secure-delete` removes the tokens, not just a tombstone).
 
-Known limit: `unicode61` treats a run of CJK characters as one word, so Japanese and Chinese
-match from the start of a run only. Revisit with a `trigram` index or a segmenter.
+Both columns hold **folded** text (`search::fold`: NFKC, lower case, Latin diacritics removed,
+`ß` to `ss`), the folding the query gets, and the tokenizer is `trigram` (v11), so any run of
+three or more characters is found: mid-word ("ature" in "Signature"), inside a Japanese or
+Chinese sentence, and symbols ("C++"). A word is one quoted FTS5 string (quotes doubled), so no
+input is a syntax error. One or two characters of a script written without spaces (CJK, kana,
+Hangul, Thai) are found with `LIKE` (`%` and `_` escaped); shorter Latin words are not looked up
+in the content (`Term::searches_body`) and match the in-memory fields only. Tag, list and trigger
+names are not in FTS: the in-memory index holds them and is rebuilt whenever `change_counter`
+moves, so a tag rename or a move has no second write path to keep in step.
 
 ### Blobs
 
@@ -161,6 +168,15 @@ pages may still hold deleted content. A v2 database cannot be opened by a v1 bui
 (`SchemaTooNew`); downgrade by restoring the backup. External SQLite tools older than 3.42
 cannot read the FTS index once `secure-delete` is on. Tested on the real v1 fixture
 (`tests/fixture.rs`, `the_v1_fixture_migrates_to_v2_...`).
+
+### Version 10 (trigram search over folded text)
+`fts::rebuild_v11` reads every `item_fts` row (the text that was indexed, so a sensitive item's
+body is already empty and no content is read), drops the table, creates it again with the
+`trigram` tokenizer and `secure-delete` on, and writes each row back folded. The
+`items_fts_delete` trigger names the table and keeps working. `check_integrity` compares the
+indexed title with the folded item title. Tested in `migrations.rs`
+(`v11_rebuilds_the_search_index_over_folded_text`) and on the real v1 fixture (`tests/fixture.rs`,
+`the_fixtures_search_index_and_trash_work`).
 
 To add a migration:
 

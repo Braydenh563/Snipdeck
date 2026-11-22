@@ -8,6 +8,7 @@
 use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 
 use rusqlite::{Connection, Transaction};
+use snipdeck_core::search::{BodyMatches, Query};
 use snipdeck_core::{
     Board, BoardId, Content, Formats, Group, GroupId, Item, ItemId, List, ListId, Name, Placement,
     Tag, TagId, Timestamp, Trigger,
@@ -489,8 +490,8 @@ macro_rules! repo_impls {
                 done
             }
 
-            fn search(&self, query: &str, limit: usize) -> Result<Vec<ItemId>> {
-                items::search(self.reader().conn, query, limit)
+            fn search(&self, query: &Query) -> Result<BodyMatches> {
+                items::search(self.reader().conn, query)
             }
         }
 
@@ -501,6 +502,24 @@ macro_rules! repo_impls {
 
             fn create_group(&mut self, group: &Group, members: &[ItemId]) -> Result<()> {
                 self.writer(|cx| groups::create_group(cx, group, members))
+            }
+
+            fn restore_group(
+                &mut self,
+                group: &Group,
+                members: &[ItemId],
+                children: &[GroupId],
+            ) -> Result<()> {
+                self.writer(|cx| groups::restore_group(cx, group, members, children))
+            }
+
+            fn reparent_group(
+                &mut self,
+                id: GroupId,
+                parent: Option<GroupId>,
+                at: Placement<ItemId>,
+            ) -> Result<()> {
+                self.writer(|cx| groups::reparent_group(cx, id, parent, at))
             }
 
             fn update_group(&mut self, group: &Group) -> Result<()> {
@@ -570,6 +589,18 @@ macro_rules! repo_impls {
             fn merge_tag(&mut self, from: TagId, into: TagId) -> Result<usize> {
                 self.writer(|cx| tags::merge_tag(cx, from, into))
             }
+
+            fn tag_items(&self, id: TagId) -> Result<Vec<ItemId>> {
+                tags::tag_items(self.reader().conn, id)
+            }
+
+            fn link_tag(&mut self, id: TagId, items: &[ItemId]) -> Result<()> {
+                self.writer(|cx| tags::link_tag(cx, id, items))
+            }
+
+            fn unlink_tag(&mut self, id: TagId, items: &[ItemId]) -> Result<()> {
+                self.writer(|cx| tags::unlink_tag(cx, id, items))
+            }
         }
 
         impl TrashRepo for $ty {
@@ -592,6 +623,10 @@ macro_rules! repo_impls {
 
             fn purge_entry(&mut self, target: Trashable) -> Result<()> {
                 self.writer(|cx| trash::purge_entry(cx, target))
+            }
+
+            fn is_stored(&self, target: Trashable) -> Result<bool> {
+                trash::is_stored(self.reader().conn, target)
             }
         }
     };

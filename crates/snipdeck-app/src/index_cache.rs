@@ -21,8 +21,77 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use crate::search_suggest::Index;
-use snipdeck_core::{Board, Item, ItemId, List, Tag, search::SearchIndex};
-use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, RecentEntry, RecentRepo, TagRepo};
+use snipdeck_core::search::{Names, SearchIndex};
+use snipdeck_core::{Board, Item, ItemId, List, ListId, Tag, TagId};
+use snipdeck_store::{
+    BoardRepo, ItemRepo, ListRepo, RecentEntry, RecentRepo, TagRepo, TriggerRepo,
+};
+
+/// The names, besides its own fields, that the search index matches an item by: the names of
+/// its tags, the name of its list and its trigger. Every surface builds its index with these,
+/// so a query finds the same items in the Panel, the Picker and Main.
+#[derive(Debug, Default)]
+pub(crate) struct SearchNames {
+    /// Each tag's own path (`work/invoices`) and its ancestors' paths, so `tag:work` finds an
+    /// item carrying a tag nested under `work`.
+    tags: HashMap<TagId, Vec<String>>,
+    lists: HashMap<ListId, String>,
+    triggers: HashMap<ItemId, String>,
+}
+
+impl SearchNames {
+    /// Reads the tag names and triggers; `lists` are the lists the items can be in.
+    pub(crate) fn read<'a, S: TagRepo + TriggerRepo>(
+        store: &S,
+        lists: impl IntoIterator<Item = &'a List>,
+    ) -> snipdeck_store::Result<Self> {
+        let tags = store.tags()?;
+        let tree = snipdeck_core::TagTree::new(&tags);
+        Ok(Self {
+            tags: tags
+                .iter()
+                .map(|t| (t.id, tree.search_paths(t.id)))
+                .collect(),
+            lists: lists
+                .into_iter()
+                .map(|l| (l.id, l.name.as_str().to_owned()))
+                .collect(),
+            triggers: store
+                .triggers()?
+                .into_iter()
+                .map(|(trigger, item)| (item, trigger.as_str().to_owned()))
+                .collect(),
+        })
+    }
+
+    /// Adds `item` to `index`, or replaces its entry, with its names.
+    pub(crate) fn upsert(&self, index: &mut SearchIndex, item: &Item) {
+        let tags: Vec<&str> = item
+            .tags
+            .iter()
+            .filter_map(|t| self.tags.get(t))
+            .flatten()
+            .map(String::as_str)
+            .collect();
+        index.upsert(
+            item,
+            Names {
+                tags: &tags,
+                list: self.lists.get(&item.list_id).map_or("", String::as_str),
+                trigger: self.triggers.get(&item.id).map(String::as_str),
+            },
+        );
+    }
+
+    /// An index over `items`, in their order.
+    pub(crate) fn index<'a>(&self, items: impl IntoIterator<Item = &'a Item>) -> SearchIndex {
+        let mut index = SearchIndex::default();
+        for item in items {
+            self.upsert(&mut index, item);
+        }
+        index
+    }
+}
 
 /// What the Panel and the Picker read from the library on every load, kept together: every
 /// live item, every board with its lists, and the search index over the items.
@@ -37,8 +106,10 @@ pub struct Snapshot {
     pub pinned: Rc<Vec<Rc<Item>>>,
     /// Every board with its lists, in order.
     pub boards: Vec<(Board, Vec<List>)>,
-    /// Every tag, for the names the index and the suggestions are made of.
+    /// Every tag, for the names the suggestions are made of.
     tags: Rc<Vec<Tag>>,
+    /// The names the index matches an item by (tag paths, list names, triggers).
+    names: Rc<SearchNames>,
     /// The search index over [`Snapshot::all`] and the names the suggestions are made of: built
     /// on first use (the first search keystroke or suggestion), not when the library is read,
     /// so the first frame waits for neither.
@@ -61,20 +132,7 @@ impl Snapshot {
     fn search(&self) -> &Search {
         self.search.get_or_init(|| {
             let started = std::time::Instant::now();
-            let tag_names: HashMap<_, _> = self
-                .tags
-                .iter()
-                .map(|t| (t.id, t.name.as_str().to_owned()))
-                .collect();
-            let mut index = SearchIndex::default();
-            for item in &self.all {
-                index.upsert_with_tags(
-                    item,
-                    item.tags
-                        .iter()
-                        .filter_map(|t| tag_names.get(t).map(String::as_str)),
-                );
-            }
+            let index = self.names.index(self.all.iter().map(|i| &**i));
             let suggest = suggest_of(&self.all, &self.tags, &self.boards);
             self.builds.set(self.builds.get() + 1);
             crate::trace!(
@@ -185,7 +243,7 @@ impl IndexCache {
     /// Any store error while reading.
     pub fn snapshot<S>(&self, store: &S) -> snipdeck_store::Result<Rc<Snapshot>>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + TriggerRepo,
     {
         let counter = store.change_counter();
         let at = (counter, store.usage_counter());
@@ -205,10 +263,11 @@ impl IndexCache {
             let state = self.0.borrow();
             (state.built_at == Some(counter)).then(|| Rc::clone(&state.snapshot))
         };
-        let (boards, tags, rich) = if let Some(old) = &kept {
+        let (boards, tags, names, rich) = if let Some(old) = &kept {
             (
                 old.boards.clone(),
                 Rc::clone(&old.tags),
+                Rc::clone(&old.names),
                 Rc::clone(&old.rich),
             )
         } else {
@@ -217,9 +276,11 @@ impl IndexCache {
                 let lists = store.lists(b.id)?;
                 boards.push((b, lists));
             }
+            let names = SearchNames::read(store, boards.iter().flat_map(|(_, lists)| lists))?;
             (
                 boards,
                 Rc::new(store.tags()?),
+                Rc::new(names),
                 Rc::new(store.rich_item_ids()?.into_iter().collect()),
             )
         };
@@ -243,6 +304,7 @@ impl IndexCache {
             all,
             boards,
             tags,
+            names,
             search,
             builds: Rc::clone(&state.builds),
             rich,
@@ -312,7 +374,7 @@ impl IndexCache {
     /// caller then reads everything).
     fn patched<S>(&self, store: &S, at: (u64, u64)) -> Option<Rc<Snapshot>>
     where
-        S: ItemRepo + TagRepo,
+        S: ItemRepo + TagRepo + TriggerRepo,
     {
         let (hint, read_at, built_at, old) = {
             let mut state = self.0.borrow_mut();
@@ -346,10 +408,12 @@ impl IndexCache {
             .search
             .get()
             .map(|s| (Rc::clone(&s.index), Rc::clone(&s.suggest)));
-        let tags = if edited {
-            Rc::new(store.tags().ok()?)
+        let (tags, names) = if edited {
+            let names =
+                SearchNames::read(store, old.boards.iter().flat_map(|(_, lists)| lists)).ok()?;
+            (Rc::new(store.tags().ok()?), Rc::new(names))
         } else {
-            Rc::clone(&old.tags)
+            (Rc::clone(&old.tags), Rc::clone(&old.names))
         };
         let mut names_changed = false;
         let mut pin_touched = false;
@@ -368,12 +432,7 @@ impl IndexCache {
             pin_touched |= before.pinned || item.pinned;
             if let Some((index, _)) = search.as_mut() {
                 if edited {
-                    Rc::make_mut(index).upsert_with_tags(
-                        &item,
-                        item.tags.iter().filter_map(|t| {
-                            tags.iter().find(|x| x.id == *t).map(|x| x.name.as_str())
-                        }),
-                    );
+                    names.upsert(Rc::make_mut(index), &item);
                 } else if !index.usage_is_current(std::iter::once(&item)) {
                     Rc::make_mut(index).refresh_usage(std::iter::once(&item));
                 }
@@ -408,6 +467,7 @@ impl IndexCache {
             all,
             boards: old.boards.clone(),
             tags,
+            names,
             search: cell,
             builds: Rc::clone(&state.builds),
             rich,

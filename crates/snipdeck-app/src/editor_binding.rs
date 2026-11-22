@@ -21,6 +21,7 @@ use slint::{
     CloseRequestResponse, ComponentHandle, Model, SharedPixelBuffer, SharedString,
     winit_030::WinitWindowAccessor,
 };
+use snipdeck_core::{CaseMode, TriggerEnd, text_tools};
 use snipdeck_platform::{
     file_dialog::PickKind,
     pipeline::{Clipboard, Keyboard, Timing},
@@ -39,6 +40,11 @@ use crate::{
 
 /// The editor's width, logical pixels (the window's preferred width in editors.slint).
 const EDITOR_WIDTH: f32 = 560.0;
+
+/// The index of `value` in `all` (0 when it is not there), for a choice list.
+fn position<T: PartialEq>(all: &[T], value: &T) -> i32 {
+    to_i32(all.iter().position(|v| v == value).unwrap_or(0))
+}
 
 /// Records `now` as the shown state of More options; true when it differs from the last one.
 fn more_changed(last: &Cell<bool>, now: bool) -> bool {
@@ -193,6 +199,11 @@ where
             view.reduced_motion,
         );
         window.set_dark(view.dark);
+        let [choice, limits, escapes, transforms] = wording::template_help_texts(&window);
+        window.set_choice_help(choice.into());
+        window.set_limits_help(limits.into());
+        window.set_escapes_help(escapes.into());
+        window.set_transforms_help(transforms.into());
         let fresh = view.seq != self.seq.get();
         {
             let mut shown = self.tags_shown.borrow_mut();
@@ -354,9 +365,82 @@ where
             ))
         });
         let core = Rc::downgrade(self);
+        let weak = w.as_weak();
+        w.on_save_anyway_requested(move || {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            if let Some(w) = weak.upgrade() {
+                let input = read_input(&w);
+                core.act(|ctl| ctl.item_editor_save_anyway(&input));
+            }
+        });
+        let core = Rc::downgrade(self);
+        w.on_open_duplicate_requested(move || {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            core.act(Controller::item_editor_open_duplicate);
+        });
+        let core = Rc::downgrade(self);
         w.on_paste_requested(move || {
             core.upgrade()
                 .is_some_and(|core| core.act(Controller::refuse_pasted_image))
+        });
+    }
+
+    /// The Trigger field and its two choices (when it fires, which letter case it takes).
+    fn wire_trigger(self: &Rc<Self>, w: &ui::ItemEditor) {
+        let core = Rc::downgrade(self);
+        let weak = w.as_weak();
+        w.on_trigger_edited(move |text| {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            core.controller
+                .borrow_mut()
+                .item_editor_set_trigger(text.as_str());
+            if let Some(w) = weak.upgrade() {
+                core.show_trigger_notes(&w);
+            }
+        });
+        let core = Rc::downgrade(self);
+        let weak = w.as_weak();
+        w.on_trigger_end_chosen(move |index| {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            if let Some(end) = usize::try_from(index)
+                .ok()
+                .and_then(|i| TriggerEnd::ALL.get(i).copied())
+            {
+                core.controller
+                    .borrow_mut()
+                    .item_editor_set_trigger_end(end);
+            }
+            if let Some(w) = weak.upgrade() {
+                w.set_trigger_end_index(index);
+                core.show_trigger_notes(&w);
+            }
+        });
+        let core = Rc::downgrade(self);
+        let weak = w.as_weak();
+        w.on_trigger_case_chosen(move |index| {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            if let Some(case) = usize::try_from(index)
+                .ok()
+                .and_then(|i| CaseMode::ALL.get(i).copied())
+            {
+                core.controller
+                    .borrow_mut()
+                    .item_editor_set_trigger_case(case);
+            }
+            if let Some(w) = weak.upgrade() {
+                w.set_trigger_case_index(index);
+                core.show_trigger_notes(&w);
+            }
         });
     }
 
@@ -400,6 +484,7 @@ where
             core.act(Controller::item_editor_delete);
         });
         self.wire_content(w);
+        wire_text_tools(w);
         let core = Rc::downgrade(self);
         let weak = w.as_weak();
         w.on_more_toggled(move |open| {
@@ -411,15 +496,7 @@ where
             }
             core.act(|ctl| ctl.set_editor_more_open(open));
         });
-        let core = Rc::downgrade(self);
-        w.on_trigger_edited(move |text| {
-            let Some(core) = core.upgrade() else {
-                return;
-            };
-            core.controller
-                .borrow_mut()
-                .item_editor_set_trigger(text.as_str());
-        });
+        self.wire_trigger(w);
         let core = Rc::downgrade(self);
         w.on_edited(move || {
             let Some(core) = core.upgrade() else {
@@ -463,6 +540,19 @@ where
 
     /// Preview was switched on: the card, the sample result and the link are built from the fields
     /// as they are now (nothing is saved) and put into the window.
+    /// Shows what is wrong with the trigger as it stands, as it is typed (before Save).
+    fn show_trigger_notes(&self, w: &ui::ItemEditor) {
+        let (problem, note) = self.controller.borrow().item_editor_trigger_notes();
+        let text = |p: &Option<EditorProblem>| -> SharedString {
+            p.as_ref()
+                .map(|problem| wording::editor_problem_text(w, problem))
+                .unwrap_or_default()
+                .into()
+        };
+        w.set_trigger_error(text(&problem));
+        w.set_trigger_warning(text(&note));
+    }
+
     fn show_preview(&self, w: &ui::ItemEditor) {
         let input = read_input(w);
         let new_id = w.get_preview_new_id();
@@ -511,6 +601,45 @@ where
             });
         picker.pick(kind, native_window::handle_of(w.window()), Box::new(back));
     }
+}
+
+/// The text tools change the whole text in the window (the controller sees it at the next save, as it sees typing);
+/// the counts and the line numbers are answers for the window's bindings.
+fn wire_text_tools(w: &ui::ItemEditor) {
+    w.on_match_count(|text, find, match_case| {
+        to_i32(text_tools::count_matches(
+            text.as_str(),
+            find.as_str(),
+            match_case,
+        ))
+    });
+    w.on_numbered(|text| text_tools::line_numbers(text.as_str()).into());
+    let weak = w.as_weak();
+    w.on_transform_requested(move |i| {
+        let Some(w) = weak.upgrade() else {
+            return;
+        };
+        if let Some(tool) = usize::try_from(i)
+            .ok()
+            .and_then(|i| text_tools::Transform::ALL.get(i))
+        {
+            let text = tool.apply(w.get_content().as_str());
+            w.set_content(text.into());
+        }
+    });
+    let weak = w.as_weak();
+    w.on_replace_all_requested(move |find, with, match_case| {
+        let Some(w) = weak.upgrade() else {
+            return;
+        };
+        let (text, _) = text_tools::replace_all(
+            w.get_content().as_str(),
+            find.as_str(),
+            with.as_str(),
+            match_case,
+        );
+        w.set_content(text.into());
+    });
 }
 
 /// A placeholder chip inserts its token at the caret, then the caret goes after it.
@@ -600,11 +729,22 @@ fn apply_state(w: &ui::ItemEditor, view: &ItemEditorView) {
             .unwrap_or_default()
             .into()
     };
+    w.set_title_max(to_i32(crate::item_editor::TITLE_MAX_CHARS));
     w.set_title_error(text(&view.title_problem));
     w.set_content_error(text(&view.content_problem));
     w.set_source_error(text(&view.source_problem));
     w.set_privacy_error(text(&view.privacy_problem));
     w.set_trigger_error(text(&view.trigger_problem));
+    w.set_trigger_warning(text(&view.trigger_note));
+    w.set_duplicate_body(
+        view.duplicate
+            .as_ref()
+            .map(|d| wording::duplicate_text(w, d))
+            .unwrap_or_default()
+            .into(),
+    );
+    w.set_trigger_end_index(position(&TriggerEnd::ALL, &view.trigger_options.end));
+    w.set_trigger_case_index(position(&CaseMode::ALL, &view.trigger_options.case));
     w.set_banner(text(&view.banner));
     w.set_can_browse(view.can_browse);
     w.set_restored(view.restored);
@@ -687,6 +827,7 @@ fn fill(w: &ui::ItemEditor, view: &ItemEditorView) {
     }
     w.set_discard_open(false);
     w.set_tags_open(false);
+    w.invoke_reset_tools();
     // A fresh editor opens on the form.
     w.set_preview_on(false);
     w.invoke_mark_clean();

@@ -11,7 +11,7 @@ use std::sync::{
 };
 use std::time::Duration;
 
-use snipdeck_core::{Candidate, Fired, ItemId, Matcher, Trigger, prefix_of};
+use snipdeck_core::{Candidate, CaseShape, Fired, ItemId, Matcher, Trigger, prefix_of};
 use snipdeck_platform::typing::TypedEvent;
 
 /// How often the worker looks for a new trigger list while no key arrives.
@@ -420,6 +420,8 @@ fn accept_hint(
         item: h.item,
         trigger: h.trigger,
         chars: h.chars,
+        delimiter: None,
+        shape: CaseShape::AsIs,
     };
     deliver(Out::Accept(
         Typed::new(fired, false, fresh).in_window(h.window, Arc::clone(&env.foreground)),
@@ -474,6 +476,8 @@ fn follow_hint(
             item,
             trigger: trigger.clone(),
             chars,
+            delimiter: None,
+            shape: CaseShape::AsIs,
         };
         // The hint is only for showing; accepting is decided at the `Tab`.
         let typed =

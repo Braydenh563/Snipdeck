@@ -21,6 +21,9 @@ use support::on_ui_thread;
 #[path = "support/editor_fixture.rs"]
 mod fixture;
 
+/// The placeholders the editor help lists (`editors.slint`, the `placeholders` model).
+const PLACEHOLDERS: usize = 19;
+
 fn settle() {
     slint::platform::update_timers_and_animations();
 }
@@ -106,14 +109,14 @@ ui_tests! {
     fn the_help_text_starts_at_one_x_on_every_row() {
         for width in [560.0, 420.0] {
             let r = rows(&editor(width, 1.0));
-            assert_eq!(r.help.len(), 11, "one help text per placeholder");
+            assert_eq!(r.help.len(), PLACEHOLDERS, "one help text per placeholder");
             assert!(all_equal(r.help.iter().map(|h| h.0)), "width={width}: help x {:?}", r.help);
         }
     }
 
     fn the_chips_share_one_left_edge_and_are_24px_tall() {
         let r = rows(&editor(560.0, 1.0));
-        assert_eq!(r.chips.len(), 11, "one chip per placeholder");
+        assert_eq!(r.chips.len(), PLACEHOLDERS, "one chip per placeholder");
         assert!(all_equal(r.chips.iter().copied()), "chip x {:?}", r.chips);
         for (_, chip_h) in &r.chip_boxes {
             assert!((chip_h - 24.0).abs() < 0.5, "chip height {chip_h}");

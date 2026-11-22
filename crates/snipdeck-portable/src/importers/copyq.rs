@@ -160,6 +160,8 @@ pub(crate) fn decode_copyq_bytes(
         let mut list = PlanList::new(board_name(&list_name, "CopyQ")?, now);
         list.items = items;
         plan.boards.push(PlanBoard {
+            accent: None,
+            icon: None,
             name: board_name(
                 options
                     .board_name

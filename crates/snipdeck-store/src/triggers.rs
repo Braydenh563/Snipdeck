@@ -10,7 +10,7 @@
 //! rebuilds `items` or `lists` has nothing to recreate.
 
 use rusqlite::{Connection, OptionalExtension, params};
-use snipdeck_core::{ItemId, Trigger};
+use snipdeck_core::{CaseMode, ItemId, Trigger, TriggerEnd, TriggerOptions};
 
 use crate::Error;
 use crate::Result;
@@ -22,8 +22,13 @@ const LIVE: &str = "item_id IN (SELECT i.id FROM items i
        JOIN lists l ON l.id = i.list_id JOIN boards b ON b.id = l.board_id
       WHERE i.deleted_at IS NULL AND l.deleted_at IS NULL AND b.deleted_at IS NULL)";
 
-fn stored(text: &str) -> Result<Trigger> {
-    Ok(Trigger::new(text)?)
+fn stored(text: &str, fires: &str, case: &str) -> Result<Trigger> {
+    // An unknown key (a newer build wrote it) reads as the default: the code still works.
+    let options = TriggerOptions {
+        end: TriggerEnd::from_key(fires).unwrap_or_default(),
+        case: CaseMode::from_key(case).unwrap_or_default(),
+    };
+    Ok(Trigger::new(text)?.with_options(options))
 }
 
 /// Every trigger of a live item and its item, sorted by trigger. A row that does not read
@@ -31,15 +36,20 @@ fn stored(text: &str) -> Result<Trigger> {
 /// export.
 pub(crate) fn triggers(conn: &Connection) -> Result<Vec<(Trigger, ItemId)>> {
     let mut stmt = conn.prepare_cached(&format!(
-        "SELECT trigger, item_id FROM triggers WHERE {LIVE} ORDER BY trigger"
+        "SELECT trigger, item_id, fires, case_mode FROM triggers WHERE {LIVE} ORDER BY trigger"
     ))?;
     let rows = stmt.query_map([], |r| {
-        Ok((r.get::<_, String>(0)?, r.get::<_, Vec<u8>>(1)?))
+        Ok((
+            r.get::<_, String>(0)?,
+            r.get::<_, Vec<u8>>(1)?,
+            r.get::<_, String>(2)?,
+            r.get::<_, String>(3)?,
+        ))
     })?;
     let mut out = Vec::new();
     for row in rows {
-        let (text, item) = row?;
-        match (stored(&text), id_from(&item)) {
+        let (text, item, fires, case) = row?;
+        match (stored(&text, &fires, &case), id_from(&item)) {
             (Ok(trigger), Ok(item)) => out.push((trigger, item)),
             _ => skip_bad_row(),
         }
@@ -58,12 +68,18 @@ fn skip_bad_row() {
 pub(crate) fn trigger_of(conn: &Connection, item: ItemId) -> Result<Option<Trigger>> {
     require_item(conn, item)?;
     conn.query_row(
-        "SELECT trigger FROM triggers WHERE item_id = ?1",
+        "SELECT trigger, fires, case_mode FROM triggers WHERE item_id = ?1",
         [id_bytes(item)],
-        |r| r.get::<_, String>(0),
+        |r| {
+            Ok((
+                r.get::<_, String>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, String>(2)?,
+            ))
+        },
     )
     .optional()?
-    .map(|text| stored(&text))
+    .map(|(text, fires, case)| stored(&text, &fires, &case))
     .transpose()
 }
 
@@ -84,9 +100,12 @@ pub(crate) fn free_item(conn: &Connection, item: [u8; 16]) -> Result<()> {
     Ok(())
 }
 
-/// Sets or clears the item's code. Returns the codes of other live items that this one is a
-/// prefix of or has as a prefix: typing the longer one fires the shorter first, so the longer
-/// one can never be reached.
+/// Sets or clears the item's code. Returns the codes of other live items that this one shadows
+/// or is shadowed by: typing the longer one fires the shorter first (when that fires without a
+/// delimiter), so the longer one can never be reached.
+///
+/// A code another live item has under the case rules of the two (`;Sig` against `;sig` when one
+/// of them ignores case) is refused as taken; a trashed holder's claim gives way.
 pub(crate) fn set_trigger(
     cx: &mut Ctx<'_>,
     item: ItemId,
@@ -108,24 +127,30 @@ pub(crate) fn set_trigger(
     }
     // Both checks run after the delete: the caller's transaction (a savepoint here) rolls the
     // delete back when this fails, so a refused change keeps the old trigger.
-    if trigger_holder(conn, trigger)?.is_some() {
-        return Err(Error::TriggerTaken(trigger.as_str().to_owned()));
+    let live = triggers(conn)?;
+    if let Some((other, _)) = live.iter().find(|(other, _)| other.same_code(trigger)) {
+        return Err(Error::TriggerTaken(other.as_str().to_owned()));
     }
     // A trashed item's claim to the code gives way.
+    let all: Vec<String> = {
+        let mut stmt = conn.prepare_cached("SELECT trigger FROM triggers")?;
+        stmt.query_map([], |r| r.get::<_, String>(0))?
+            .collect::<std::result::Result<_, _>>()?
+    };
+    for text in all {
+        if Trigger::new(&text).is_ok_and(|t| t.same_code(trigger)) {
+            conn.execute("DELETE FROM triggers WHERE trigger = ?1", [&text])?;
+        }
+    }
+    let options = trigger.options();
     conn.execute(
-        "DELETE FROM triggers WHERE trigger = ?1",
-        [trigger.as_str()],
+        "INSERT INTO triggers (trigger, item_id, fires, case_mode) VALUES (?1, ?2, ?3, ?4)",
+        params![trigger.as_str(), id, options.end.key(), options.case.key()],
     )?;
-    conn.execute(
-        "INSERT INTO triggers (trigger, item_id) VALUES (?1, ?2)",
-        params![trigger.as_str(), id],
-    )?;
-    Ok(triggers(conn)?
+    Ok(live
         .into_iter()
         .filter(|(other, owner)| {
-            *owner != item
-                && (other.as_str().starts_with(trigger.as_str())
-                    || trigger.as_str().starts_with(other.as_str()))
+            *owner != item && (trigger.shadows(other) || other.shadows(trigger))
         })
         .map(|(other, _)| other)
         .collect())

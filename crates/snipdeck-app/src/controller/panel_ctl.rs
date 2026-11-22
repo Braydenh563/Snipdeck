@@ -151,6 +151,12 @@ where
         self.starter.clone_from(words);
     }
 
+    /// Sets how a duplicate is titled: `format` holds `{title}` where the original's title goes
+    /// ("{title} copy"), translated by the window layer.
+    pub fn set_copy_title(&mut self, format: &str) {
+        format.clone_into(&mut self.copy_title);
+    }
+
     /// A regular Snipdeck window (Main, Settings, an editor, Help) gained or lost the focus
     /// (`active`: one of them has it now). While one has it a pinned Panel is not topmost, so
     /// that window can cover it; once the focus is in another app the Panel is topmost again.
@@ -176,7 +182,9 @@ where
 
     /// The search text changed.
     pub fn set_query(&mut self, query: &str) {
-        self.model.set_query(query);
+        if self.model.set_query(&self.store, query).is_err() {
+            self.show_toast(failed());
+        }
     }
 
     /// The keyboard selection moved by `delta` rows.
@@ -326,7 +334,7 @@ where
             return;
         }
         if let Some(list) = self.model.list()
-            && list.sort != snipdeck_core::ListSort::Manual
+            && !list.sort.is_manual()
         {
             let id = list.id;
             self.offer_manual_order(id);

@@ -164,7 +164,7 @@ pub enum ListMenuEntry {
     Separator,
     /// "Sort by": the list orders itself so. The Panel's `Menu` has no sub-menus, so the three
     /// orders are three rows under a line; the open list's own is checked.
-    SortBy(snipdeck_core::ListSort),
+    SortBy(snipdeck_core::Sort),
     /// "Copy as CSS variables": the list's colours as a `:root` block (disabled while it holds none).
     CopyCss,
 }
@@ -174,9 +174,9 @@ pub const LIST_MENU: [ListMenuEntry; 8] = [
     ListMenuEntry::Edit,
     ListMenuEntry::Delete,
     ListMenuEntry::Separator,
-    ListMenuEntry::SortBy(snipdeck_core::ListSort::Manual),
-    ListMenuEntry::SortBy(snipdeck_core::ListSort::MostUsed),
-    ListMenuEntry::SortBy(snipdeck_core::ListSort::RecentlyUsed),
+    ListMenuEntry::SortBy(snipdeck_core::Sort::MANUAL),
+    ListMenuEntry::SortBy(snipdeck_core::Sort::MOST_USED),
+    ListMenuEntry::SortBy(snipdeck_core::Sort::RECENTLY_USED),
     ListMenuEntry::Separator,
     ListMenuEntry::CopyCss,
 ];

@@ -16,7 +16,7 @@ use std::io::{Cursor, Read, Write};
 
 use snipdeck_core::{
     Board, BoardId, Content, FileEntry, Format, Formats, Inline, Item, ItemId, ItemKind, List,
-    ListAccent, ListId, ListSort, ListView, Name, Placement, Tag, TagId, Timestamp,
+    ListAccent, ListId, ListView, Name, Placement, Sort, Tag, TagId, Timestamp,
 };
 use snipdeck_portable::{ExportOptions, ImportReport, export_to_writer};
 use snipdeck_store::{BlobStore, BoardRepo, ItemRepo, ListRepo, Store, TagRepo};
@@ -94,7 +94,7 @@ pub fn sample_store() -> Store {
     replies.accent = Some(ListAccent::Blue);
     replies.icon = Some(snipdeck_core::ListIcon::Briefcase);
     replies.view = ListView::Compact;
-    replies.sort = ListSort::MostUsed;
+    replies.sort = Sort::MOST_USED;
     s.insert_list(&replies, Placement::Last).unwrap();
     let files = list(&mut s, work.id, "Files");
     let empty = list(&mut s, work.id, "Empty");

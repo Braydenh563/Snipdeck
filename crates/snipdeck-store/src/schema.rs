@@ -222,10 +222,90 @@ CREATE TABLE triggers (
 ) STRICT, WITHOUT ROWID;
 ";
 
+/// Version 11: the search index moves to the `trigram` tokenizer over folded text. The table
+/// is rebuilt from its own rows by [`crate::fts::rebuild_v11`]; the delete trigger refers to
+/// the table by name and keeps working.
+pub(crate) const V11: &str = "";
+
+/// Version 12: when a trigger fires (`immediate`, or at a `delimiter`) and how it reads case
+/// (`exact`, `ignore` or `adapt`). Every existing code keeps `immediate` and `exact`.
+pub(crate) const V12: &str = r"
+ALTER TABLE triggers ADD COLUMN fires TEXT NOT NULL DEFAULT 'immediate'
+    CHECK (fires IN ('immediate', 'delimiter'));
+ALTER TABLE triggers ADD COLUMN case_mode TEXT NOT NULL DEFAULT 'exact'
+    CHECK (case_mode IN ('exact', 'ignore', 'adapt'));
+";
+
+/// Version 13: one sort for every view, a tag's colour, and a board's accent and icon.
+///
+/// `lists.list_sort` loses its closed `CHECK` (the three words it listed are now two of a
+/// longer, growing set; `snipdeck-core` reads the word and refuses an unknown one), which SQLite
+/// can only do by rebuilding the table. The words `manual`, `most-used` and `recently-used`
+/// keep their meaning. A tag's colour is one of the eight item colours; a board takes the same
+/// accents and icons as a list.
+pub(crate) const V13: &str = r"
+CREATE TABLE lists_new (
+    id         BLOB    NOT NULL PRIMARY KEY CHECK (length(id) = 16),
+    board_id   BLOB    NOT NULL REFERENCES boards (id) ON DELETE CASCADE,
+    name       TEXT    NOT NULL CHECK (length(name) > 0),
+    accent     TEXT    CHECK (accent IS NULL OR accent IN
+                   ('blue', 'teal', 'green', 'amber', 'orange', 'red', 'rose', 'violet', 'slate')),
+    list_view  TEXT    NOT NULL CHECK (list_view IN ('compact', 'comfortable')),
+    list_sort  TEXT    NOT NULL CHECK (length(list_sort) BETWEEN 1 AND 40),
+    rank       INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    deleted_at INTEGER,
+    icon       TEXT    CHECK (icon IS NULL OR icon IN
+        ('folder', 'star', 'heart', 'briefcase', 'house', 'user', 'envelope-simple', 'chat-circle', 'phone', 'calendar-blank', 'shopping-cart', 'credit-card', 'code', 'terminal-window', 'book-open', 'lightbulb', 'flag', 'bookmark-simple', 'globe', 'map-pin', 'camera', 'music-note', 'wrench', 'rocket-launch')),
+    UNIQUE (board_id, rank)
+) STRICT;
+INSERT INTO lists_new (id, board_id, name, accent, list_view, list_sort, rank, created_at,
+                       updated_at, deleted_at, icon)
+    SELECT id, board_id, name, accent, list_view, list_sort, rank, created_at,
+           updated_at, deleted_at, icon FROM lists;
+DROP TABLE lists;
+ALTER TABLE lists_new RENAME TO lists;
+CREATE INDEX lists_trashed ON lists (deleted_at) WHERE deleted_at IS NOT NULL;
+
+ALTER TABLE tags ADD COLUMN colour TEXT
+    CHECK (colour IS NULL OR colour IN
+        ('blue', 'teal', 'green', 'amber', 'orange', 'red', 'violet', 'slate'));
+ALTER TABLE boards ADD COLUMN accent TEXT
+    CHECK (accent IS NULL OR accent IN
+        ('blue', 'teal', 'green', 'amber', 'orange', 'red', 'rose', 'violet', 'slate'));
+ALTER TABLE boards ADD COLUMN icon TEXT
+    CHECK (icon IS NULL OR icon IN
+        ('folder', 'star', 'heart', 'briefcase', 'house', 'user', 'envelope-simple', 'chat-circle', 'phone', 'calendar-blank', 'shopping-cart', 'credit-card', 'code', 'terminal-window', 'book-open', 'lightbulb', 'flag', 'bookmark-simple', 'globe', 'map-pin', 'camera', 'music-note', 'wrench', 'rocket-launch'));
+";
+
+/// Version 14: a group's colour, one of the nine list accents (the header shows it as a dot).
+pub(crate) const V14: &str = r"
+ALTER TABLE item_groups ADD COLUMN colour TEXT
+    CHECK (colour IS NULL OR colour IN
+        ('blue', 'teal', 'green', 'amber', 'orange', 'red', 'rose', 'violet', 'slate'));
+";
+
+/// Version 15: a tag can be nested under another (`tags.parent`). The repository code keeps the
+/// parent a stored tag and the tree free of loops, and takes the children of a deleted tag to
+/// its own parent; the column has no foreign key so that an older build's table can be rebuilt.
+pub(crate) const V15: &str = r"
+ALTER TABLE tags ADD COLUMN parent BLOB CHECK (parent IS NULL OR parent <> id);
+CREATE INDEX tags_by_parent ON tags(parent);
+";
+
+/// Version 16: a group can be nested inside another group of the same list
+/// (`item_groups.parent`). The repository code keeps the nesting to the list and the depth
+/// within `MAX_GROUP_DEPTH`; deleting a group takes its children to its own parent.
+pub(crate) const V16: &str = r"
+ALTER TABLE item_groups ADD COLUMN parent BLOB CHECK (parent IS NULL OR parent <> id);
+CREATE INDEX item_groups_by_parent ON item_groups(parent);
+";
+
 #[cfg(test)]
 mod tests {
     use rusqlite::{Connection, params};
-    use snipdeck_core::{FormatKind, ItemKind, ListAccent, ListSort, ListView};
+    use snipdeck_core::{FormatKind, ItemKind, ListAccent, ListView};
 
     fn db() -> Connection {
         let conn = Connection::open_in_memory().unwrap();
@@ -322,10 +402,11 @@ mod tests {
             )
             .unwrap();
         }
-        for (i, sort) in ListSort::ALL.iter().enumerate() {
+        // Version 1 knows three sort words; the later ones are checked by the version-13 migration.
+        for (i, sort) in ["manual", "most-used", "recently-used"].iter().enumerate() {
             conn.execute(
                 "UPDATE lists SET list_sort = ?1 WHERE id = ?2",
-                params![sort.key(), id(20 + u8::try_from(i).unwrap())],
+                params![sort, id(20 + u8::try_from(i).unwrap())],
             )
             .unwrap();
         }

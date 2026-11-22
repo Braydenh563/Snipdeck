@@ -13,8 +13,8 @@ export global TemplateTexts {
     pure public function unterminated(open: string, doubled: string) -> string {
         return @tr("{} is never closed; write {} for a literal {}", open, doubled, open);
     }
-    pure public function empty-placeholder(empty: string) -> string {
-        return @tr("empty placeholder {}", empty);
+    pure public function empty-placeholder(empty: string, open: string, close: string) -> string {
+        return @tr("empty placeholder {}; to write a literal brace, write {} (and {} to close it)", empty, open, close);
     }
     pure public function empty-name(example: string) -> string {
         return @tr("the prompt needs a name, e.g. {}", example);
@@ -32,13 +32,13 @@ export global TemplateTexts {
         return @tr("a choice needs options, e.g. {}", example);
     }
     pure public function empty-option() -> string {
-        return @tr("a choice option is empty");
+        return @tr("a choice needs an option with text, and at most one empty option");
     }
     pure public function duplicate-option(option: string) -> string {
         return @tr("the choice option {} is listed twice", option);
     }
-    pure public function too-many-parts(example: string) -> string {
-        return @tr("a prompt takes a name and one more part: {}", example);
+    pure public function too-many-parts(example: string, escaped: string) -> string {
+        return @tr("a prompt takes a name and one more part: {}; write {} for a literal bar", example, escaped);
     }
     pure public function duplicate-cursor(cursor: string) -> string {
         return @tr("only one {} is allowed", cursor);
@@ -65,7 +65,7 @@ export global TemplateTexts {
         return @tr("{} is used for two different prompts; use the same kind and options each time, or pick another name", name);
     }
     pure public function too-many-prompts(max: int) -> string {
-        return @tr("a template can ask for at most {} different fields, choices, dates or sections", max);
+        return @tr("a template can ask for at most {} different fields, choices, numbers, dates or sections", max);
     }
     pure public function bad-offset(plus: string, minus: string) -> string {
         return @tr("an offset is a sign, a number and a unit, like {} or {}", plus, minus);
@@ -106,5 +106,64 @@ export global TemplateTexts {
     }
     pure public function unknown-format-specifier(specifier: string, supported: string) -> string {
         return @tr("unknown date format {}; supported: {}", specifier, supported);
+    }
+    pure public function two-start-options(star: string) -> string {
+        return @tr("only one choice option can start with {}", star);
+    }
+    pure public function unknown-key(found: string, tab: string, enter: string) -> string {
+        return @tr("unknown key {}; use {} or {}", found, tab, enter);
+    }
+    pure public function cursor-before-key(cursor: string, key: string) -> string {
+        return @tr("{} must come after the last {}", cursor, key);
+    }
+    pure public function bad-clipboard-position(example: string, max: int) -> string {
+        return @tr("{} takes a whole number from 1 to {}; 1 is the clipboard now", example, max);
+    }
+    pure public function unknown-transform(found: string, list: string) -> string {
+        return @tr("unknown transform {}; use one of {}", found, list);
+    }
+    pure public function bad-calc(example: string) -> string {
+        return @tr("{} is a sum of numbers and number names; the part after the bar is the decimals, 0 to 10", example);
+    }
+    pure public function calc-unknown-name(name: string, example: string) -> string {
+        return @tr("a calculation uses {}, which is not a {} of this template", name, example);
+    }
+    pure public function value-unknown-name(example: string, name: string) -> string {
+        return @tr("{} repeats an answer, but nothing asks for {}", example, name);
+    }
+    pure public function snippet-not-found(name: string) -> string {
+        return @tr("no snippet is titled {}", name);
+    }
+    pure public function snippet-ambiguous(name: string) -> string {
+        return @tr("more than one snippet is titled {}; rename one", name);
+    }
+    pure public function snippet-unusable(name: string) -> string {
+        return @tr("{} has no text a template can use (a picture, files or a Sensitive item)", name);
+    }
+    pure public function snippet-cycle(name: string) -> string {
+        return @tr("{} contains itself", name);
+    }
+    pure public function snippet-too-much(depth: int, count: int) -> string {
+        return @tr("snippets can be nested {} deep and used {} times in one template", depth, count);
+    }
+    pure public function snippet-unavailable(name: string) -> string {
+        return @tr("{} cannot be looked up here", name);
+    }
+    pure public function in-snippet(name: string, inner: string) -> string {
+        return @tr("in the snippet {}: {}", name, inner);
+    }
+    // The help under the placeholder chips of the item editor; Rust passes the limits and the lists, so the text
+    // always says what the engine does.
+    pure public function limits-help(prompts: int, offsets: int, depth: int) -> string {
+        return @tr("A template can ask for up to {} different answers (fields, choices, numbers, dates and sections), a date can have up to {} offsets, and snippets can be nested {} deep.", prompts, offsets, depth);
+    }
+    pure public function escapes-help(text: string, inside: string) -> string {
+        return @tr("In the text, write {} for a literal brace. Inside a placeholder, write {} for a literal bar or brace.", text, inside);
+    }
+    pure public function transforms-help(list: string, example: string) -> string {
+        return @tr("After a bar a placeholder can change its text: {}, for example {}.", list, example);
+    }
+    pure public function choice-help(star: string) -> string {
+        return @tr("In a choice, put {} before the option to start on; an empty option is the \"none\" choice.", star);
     }
 }

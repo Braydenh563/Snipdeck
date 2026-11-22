@@ -22,7 +22,7 @@ use std::str::FromStr;
 use snipdeck_core::Content;
 use snipdeck_core::{
     BlobRef, BoardId, FileEntry, Format, FormatKind, Formats, GroupId, Inline, ItemId, ItemKind,
-    ItemLabel, ListAccent, ListIcon, ListId, ListSort, ListView, Name, TagId, Timestamp, Trigger,
+    ItemLabel, ListAccent, ListIcon, ListId, ListView, Name, TagId, Timestamp, Trigger,
 };
 use snipdeck_store::crypto::{DataKey, Slot, decrypt_payload};
 use snipdeck_store::name_key;
@@ -37,8 +37,8 @@ use crate::error::{Error, Result};
 use crate::importers::truncate_chars;
 use crate::limits::{Limits, TEXT_LIMIT};
 use crate::plan::{
-    AssetRef, ContentHasher, Library, Plan, PlanBoard, PlanFile, PlanFormat, PlanItem, PlanList,
-    Source,
+    AssetRef, ContentHasher, Library, Plan, PlanBoard, PlanFile, PlanFormat, PlanGroup, PlanItem,
+    PlanList, Source,
 };
 use crate::report::{ImportReport, Note, Warning};
 
@@ -362,7 +362,7 @@ struct Built {
 }
 
 /// The longest item title an archive may bring, in characters; longer ones are cut.
-const TITLE_CHARS: usize = 1000;
+const TITLE_CHARS: usize = snipdeck_core::Item::TITLE_MAX_CHARS;
 /// The longest `source_app` an archive may bring, in characters; longer ones are cut.
 const SOURCE_APP_CHARS: usize = 256;
 
@@ -404,6 +404,27 @@ fn parse_time(text: &str, what: &str) -> Result<Timestamp> {
 
 fn parse_name(text: &str, what: &str) -> Result<Name> {
     Name::new(text).map_err(|e| Error::malformed(ITEMS, format!("{what} name: {e}")))
+}
+
+/// The options an item's trigger was written with. A key this build does not know reads as the
+/// default, so an archive from a newer one still imports.
+fn trigger_options(dto: &ItemDto) -> snipdeck_core::TriggerOptions {
+    snipdeck_core::TriggerOptions {
+        end: dto
+            .trigger_fires
+            .as_deref()
+            .and_then(snipdeck_core::TriggerEnd::from_key)
+            .unwrap_or_default(),
+        case: dto
+            .trigger_case
+            .as_deref()
+            .and_then(snipdeck_core::CaseMode::from_key)
+            .unwrap_or_default(),
+    }
+}
+
+fn invalid_trigger(id: ItemId, e: &snipdeck_core::Error) -> Error {
+    Error::malformed(ITEMS, format!("item {id} has an invalid trigger: {e}"))
 }
 
 fn parse_key<T: FromStr<Err = snipdeck_core::Error>>(text: &str, what: &str) -> Result<T> {
@@ -461,9 +482,11 @@ fn build_plan<R: Read + Seek>(
         seen_items: HashSet::new(),
         truncated: 0,
     };
-    let tags = builder.read_tags(&doc.tags)?;
+    let (tags, tag_colours, tag_parents) = builder.read_tags(&doc.tags)?;
     let mut plan = Plan {
         tags,
+        tag_colours,
+        tag_parents,
         boards: Vec::new(),
         reuse_existing: false,
     };
@@ -472,6 +495,8 @@ fn build_plan<R: Read + Seek>(
     let multi = doc.boards.len() > 1;
     if !keep_boards {
         plan.boards.push(PlanBoard {
+            accent: None,
+            icon: None,
             name: single_board,
             created_at: now,
             updated_at: now,
@@ -492,8 +517,20 @@ fn build_plan<R: Read + Seek>(
             lists.push(builder.list(list, prefix)?);
         }
         if keep_boards {
+            let accent = board
+                .accent
+                .as_deref()
+                .map(|a| parse_key::<ListAccent>(a, "board accent"))
+                .transpose()?;
+            let icon = board
+                .icon
+                .as_deref()
+                .map(|i| parse_key::<ListIcon>(i, "board icon"))
+                .transpose()?;
             plan.boards.push(PlanBoard {
                 name,
+                accent,
+                icon,
                 created_at,
                 updated_at,
                 lists,
@@ -600,21 +637,113 @@ struct Builder<'a, R: Read + Seek> {
 
 impl<R: Read + Seek> Builder<'_, R> {
     /// Tags: ids unique, names valid. Tags whose names are equal ignoring case merge into one.
-    fn read_tags(&mut self, tags: &[TagDto]) -> Result<Vec<Name>> {
+    #[expect(
+        clippy::type_complexity,
+        reason = "the three parallel columns of the plan's tags"
+    )]
+    fn read_tags(
+        &mut self,
+        tags: &[TagDto],
+    ) -> Result<(Vec<Name>, Vec<Option<ItemLabel>>, Vec<Option<usize>>)> {
         let mut seen = HashSet::new();
         let mut names: Vec<Name> = Vec::new();
+        let mut colours: Vec<Option<ItemLabel>> = Vec::new();
         let mut by_key: HashMap<String, usize> = HashMap::new();
+        let mut wanted_parents: Vec<(usize, TagId)> = Vec::new();
         for tag in tags {
             let id: TagId = parse_id(&tag.id, "tag")?;
             unique(&mut seen, id, "tag")?;
             let name = parse_name(&tag.name, "tag")?;
+            let colour = tag
+                .colour
+                .as_deref()
+                .map(|c| parse_key::<ItemLabel>(c, "tag colour"))
+                .transpose()?;
             let index = *by_key.entry(name_key(name.as_str())).or_insert_with(|| {
                 names.push(name.clone());
+                colours.push(None);
                 names.len() - 1
             });
+            // Two tags that merge keep the first colour any of them names.
+            if colours[index].is_none() {
+                colours[index] = colour;
+            }
+            if let Some(parent) = &tag.parent {
+                wanted_parents.push((index, parse_id(parent, "tag parent")?));
+            }
             self.tag_index.insert(id, index);
         }
-        Ok(names)
+        // Parents by the index of the tag they became (two tags that merged keep the first
+        // parent either names). A parent the file does not hold, or a loop, is refused.
+        let mut parents: Vec<Option<usize>> = vec![None; names.len()];
+        for (index, parent) in wanted_parents {
+            let Some(&parent_index) = self.tag_index.get(&parent) else {
+                return Err(Error::malformed(
+                    ITEMS,
+                    "a tag is nested under a tag the file does not hold".to_owned(),
+                ));
+            };
+            if parents[index].is_none() && parent_index != index {
+                parents[index] = Some(parent_index);
+            }
+        }
+        for start in 0..names.len() {
+            let mut at = parents[start];
+            for _ in 0..=names.len() {
+                match at {
+                    Some(i) if i == start => {
+                        return Err(Error::malformed(
+                            ITEMS,
+                            "the tags are nested in a loop".to_owned(),
+                        ));
+                    }
+                    Some(i) => at = parents[i],
+                    None => break,
+                }
+            }
+        }
+        Ok((names, colours, parents))
+    }
+
+    /// The nesting of a list's groups (1.3). A parent the list does not hold, a loop, a parent
+    /// listed after its child and a nesting deeper than `MAX_GROUP_DEPTH` levels are refused;
+    /// an archive without the field has flat groups.
+    fn read_group_parents(&self, dto: &ListDto, list: &mut PlanList) -> Result<()> {
+        for (index, group) in dto.groups.iter().enumerate() {
+            let Some(parent) = &group.parent else {
+                continue;
+            };
+            let parent: GroupId = parse_id(parent, "group parent")?;
+            let Some(&at) = self.group_index.get(&parent) else {
+                return Err(Error::malformed(
+                    ITEMS,
+                    "a group is nested in a group the list does not hold".to_owned(),
+                ));
+            };
+            if at >= index {
+                return Err(Error::malformed(
+                    ITEMS,
+                    "the groups are nested in a loop or listed before the group they are in"
+                        .to_owned(),
+                ));
+            }
+            list.groups[index].parent = Some(at);
+        }
+        for index in 0..list.groups.len() {
+            let mut depth = 1;
+            let mut at = list.groups[index].parent;
+            while let Some(up) = at {
+                depth += 1;
+                at = list.groups[up].parent;
+            }
+            if depth > snipdeck_core::MAX_GROUP_DEPTH {
+                return Err(Error::malformed(
+                    ITEMS,
+                    "the groups are nested deeper than three levels".to_owned(),
+                ));
+            }
+        }
+        Ok(())
     }
 
     /// One list. `prefix` is the archive board's name when boards are being merged into one.
@@ -638,15 +767,33 @@ impl<R: Read + Seek> Builder<'_, R> {
             .map(|i| parse_key::<ListIcon>(i, "list icon"))
             .transpose()?;
         list.view = parse_key::<ListView>(&dto.view, "list view")?;
-        list.sort = parse_key::<ListSort>(&dto.sort, "list sort")?;
+        list.sort = snipdeck_core::Sort::from_key(&dto.sort).map_err(|_| {
+            Error::malformed(
+                ITEMS,
+                format!(
+                    "`{}` is not a known list sort",
+                    crate::error::display_name(&dto.sort)
+                ),
+            )
+        })?;
         self.group_index.clear();
         for group in &dto.groups {
             let id: GroupId = parse_id(&group.id, "group")?;
             unique(&mut self.seen_groups, id, "group")?;
             self.group_index.insert(id, list.groups.len());
-            list.groups
-                .push((parse_name(&group.name, "group")?, group.collapsed));
+            let colour = group
+                .colour
+                .as_deref()
+                .map(|c| parse_key::<ListAccent>(c, "group colour"))
+                .transpose()?;
+            list.groups.push(PlanGroup {
+                name: parse_name(&group.name, "group")?,
+                collapsed: group.collapsed,
+                colour,
+                parent: None,
+            });
         }
+        self.read_group_parents(dto, &mut list)?;
         for item in &dto.items {
             let item_id: ItemId = parse_id(&item.id, "item")?;
             unique(&mut self.seen_items, item_id, "item")?;
@@ -723,9 +870,9 @@ impl<R: Read + Seek> Builder<'_, R> {
                 .trigger
                 .as_deref()
                 .map(|t| {
-                    Trigger::new(t).map_err(|e| {
-                        Error::malformed(ITEMS, format!("item {id} has an invalid trigger: {e}"))
-                    })
+                    Trigger::new(t)
+                        .map(|t| t.with_options(trigger_options(dto)))
+                        .map_err(|e| invalid_trigger(id, &e))
                 })
                 .transpose()?,
             group: dto

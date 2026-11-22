@@ -1,7 +1,7 @@
 //! Lists and boards: creating, moving, renaming, reordering and deleting.
 
 use super::super::{group_ctl::Surface, history_ctl::move_recorded};
-use snipdeck_core::{BoardId, ItemId, ListId, ListSort, Placement};
+use snipdeck_core::{BoardId, ItemId, ListId, Placement, Sort};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::Trashable;
 
@@ -9,11 +9,13 @@ use super::super::{
     Controller, Effect, HelpTopic, Library, Toast, ToastKind, ToastMessage, failed,
 };
 use super::{BoardMenuEntry, neutral_toast};
+use crate::main_window::MainModel;
 use crate::{
     failure::Cause,
+    history::{Action, Change, Record},
     host::ClipboardText,
     list_text,
-    main_window::{Key, Section, reorder, reorder_many},
+    main_window::{Key, Section, place_of, reorder, reorder_many},
     usecase,
 };
 
@@ -69,7 +71,7 @@ where
                     .date();
                 let path = list_text::path(folder, &name, date);
                 std::fs::create_dir_all(folder).map_err(|e| Cause::of_io(&e))?;
-                std::fs::write(&path, list_text::render(&name, &entries))
+                std::fs::write(&path, list_text::render(&name, &entries, cfg!(windows)))
                     .map_err(|e| Cause::of_io(&e))?;
                 Ok((path, entries.len(), items.len()))
             });
@@ -110,8 +112,8 @@ where
         match self.store.trash(Trashable::List(id), now) {
             Ok(()) => {
                 let step = self.record_step(
-                    crate::history::Action::Delete,
-                    vec![crate::history::Change::Trash(vec![Trashable::List(id)])],
+                    Action::Delete,
+                    vec![Change::Trash(vec![Trashable::List(id)])],
                 );
                 self.show_undo_toast(neutral_toast(ToastMessage::ListTrashed { name }), step);
                 self.library_changed();
@@ -131,6 +133,16 @@ where
             return;
         };
         let done = self.store.move_list(order[index], board, placement);
+        if done.is_ok() {
+            self.record_step(
+                Action::Reorder,
+                vec![Change::MoveList {
+                    id: order[index],
+                    from: (board, place_of(&order, index)),
+                    to: (board, placement),
+                }],
+            );
+        }
         self.finish(&done, None);
         if done.is_ok() {
             // The same words as an item move: where it went (MAIN-12).
@@ -187,26 +199,40 @@ where
         }
     }
 
-    /// The heading's "Sort" menu: the open list orders itself by `sort`. The same field the List
-    /// editor edits.
-    pub fn main_set_list_sort(&mut self, sort: ListSort) {
+    /// The toolbar's "Sort" menu: the open section orders itself by `sort`. A list keeps its sort
+    /// in the library (the same field the List editor edits); All items, Pinned and a tag's view
+    /// keep theirs in the settings, one per section.
+    pub fn main_set_sort(&mut self, sort: Sort) {
         self.main_fresh();
         if let Some(id) = self.main.open_list().map(|l| l.id) {
             self.set_list_sort(id, sort);
+        } else if let Some(key) = MainModel::sort_key(self.main.section()) {
+            self.update_settings(|s| s.set_section_sort(&key, sort));
+            self.main.set_section_sorts(self.settings.section_sorts());
+            self.main.set_cursor(0);
         }
     }
 
     /// Writes list `id`'s sort (the heading's menu, the Panel's list menu and the "Switch" toast
     /// all end here); a toast says it was saved. Nothing happens when it already has that sort.
-    pub(in crate::controller) fn set_list_sort(&mut self, id: ListId, sort: ListSort) {
+    pub(in crate::controller) fn set_list_sort(&mut self, id: ListId, sort: Sort) {
         let now = self.clock.now();
-        let done = self.store.list(id).and_then(|mut list| {
-            if list.sort == sort {
+        let done = self.store.list(id).and_then(|before| {
+            if before.sort == sort {
                 return Ok(false);
             }
+            let mut list = before.clone();
             list.sort = sort;
             list.updated_at = now;
-            self.store.update_list(&list).map(|()| true)
+            self.store.update_list(&list)?;
+            self.record_step(
+                Action::List,
+                vec![Change::Rewrite {
+                    before: Record::List(before),
+                    after: Record::List(list),
+                }],
+            );
+            Ok(true)
         });
         match done {
             Ok(true) => {
@@ -254,7 +280,7 @@ where
         if !self.main.reorderable() {
             if !self.main.searching()
                 && let Some(list) = self.main.open_list()
-                && list.sort != ListSort::Manual
+                && !list.sort.is_manual()
             {
                 let id = list.id;
                 self.offer_manual_order(id);
@@ -483,6 +509,16 @@ where
             return;
         };
         let done = self.store.move_board(order[from], placement);
+        if done.is_ok() {
+            self.record_step(
+                Action::Reorder,
+                vec![Change::MoveBoard {
+                    id: order[from],
+                    from: place_of(&order, from),
+                    to: placement,
+                }],
+            );
+        }
         self.finish(&done, None);
         if done.is_ok() {
             self.announce_placed(to + 1, order.len());

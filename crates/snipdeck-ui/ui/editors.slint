@@ -14,7 +14,7 @@
 // Colour names and kind order are the host's mapping to its enums; they are listed next to each property.
 import { TipHost, TipLayer } from "components/tip-host.slint";
 import { ListView } from "std-widgets.slint";
-import { Theme, Type, Space, Radius, Motion, Fonts, Palette, ListHue, HueNames, SystemLook } from "theme.slint";
+import { Theme, Type, Space, Radius, Motion, Fonts, Palette, ListHue, HueNames, ListAccent, SystemLook } from "theme.slint";
 import { Icons } from "icons.slint";
 import { ListIcons } from "list-icons.slint";
 import { Icon } from "components/icon.slint";
@@ -31,7 +31,8 @@ import { Dialog, DialogVariant } from "components/dialog.slint";
 import { Chooser, ChoiceEntry } from "components/chooser.slint";
 import { OverlayScrollbar } from "components/scrollbar.slint";
 import { StateColor } from "components/state-color.slint";
-import { FormField, FormScroll, Segmented, SelectField } from "components/form.slint";
+import { FormField, FormScroll, SelectField } from "components/form.slint";
+import { ColourPicker, NoColour } from "components/colour-picker.slint";
 
 // An information strip: icon plus text, never colour alone.
 component Notice inherits Rectangle {
@@ -216,127 +217,6 @@ component PlaceholderRow inherits VerticalLayout {
     }
 }
 
-// The cell of the colour picker that means "no colour". Same size and states as `Swatch`.
-component NoColour inherits Rectangle {
-    in property <string> label;
-    in property <bool> selected: false;
-    in property <bool> show-focus: false;
-    callback clicked();
-
-    width: Space.hit * SystemLook.text-scale;
-    height: Space.hit * SystemLook.text-scale;
-    accessible-role: radio-button;
-    accessible-label: root.label;
-    accessible-checkable: true;
-    accessible-checked: root.selected;
-    accessible-action-default => { root.clicked(); }
-
-    Rectangle {
-        border-width: root.selected ? 2px : 0px;
-        border-color: Theme.text-primary;
-        border-radius: Radius.lg;
-        background: transparent;
-    }
-    Rectangle {
-        x: (parent.width - self.width) / 2;
-        y: (parent.height - self.height) / 2;
-        width: (touch.has-hover || touch.pressed ? 22px : 20px) * SystemLook.text-scale;
-        height: self.width;
-        border-radius: Radius.sm;
-        border-width: 1px;
-        border-color: Theme.border-strong;
-        background: touch.pressed ? Theme.bg-sunken : transparent;
-        animate width { duration: Motion.instant; easing: Motion.out; }
-        Icon {
-            source: Icons.x;
-            size: 12px * SystemLook.text-scale;
-            tint: Theme.text-secondary;
-            x: (parent.width - self.width) / 2;
-            y: (parent.height - self.height) / 2;
-        }
-    }
-    Rectangle {
-        x: -4px;
-        y: -4px;
-        width: parent.width + 8px;
-        height: parent.height + 8px;
-        border-width: root.show-focus ? 2px : 0px;
-        border-color: Theme.focus-ring;
-        border-radius: Radius.lg + 2px;
-        background: transparent;
-    }
-    touch := TouchArea {
-        clicked => { root.clicked(); }
-    }
-}
-
-// "No colour" and a set of hues as one radio group: one tab stop, Left / Right / Home / End choose. Used for a list's
-// colour (the nine list hues) and an item's colour label (eight of them).
-// `accent` is -1 for none, else the index into `hues`; `names` are the spoken colour names in that order.
-component ColourPicker inherits Rectangle {
-    in property <[ListHue]> hues;
-    in property <int> accent: -1;
-    in property <string> label;
-    in property <string> none-label;
-    in property <[string]> names;
-    callback chosen(accent: int);
-    out property <bool> has-focus: scope.has-focus;
-
-    function move(to: int) {
-        if (to >= -1 && to < root.hues.length && to != root.accent) {
-            root.chosen(to);
-        }
-    }
-
-    height: Space.hit * SystemLook.text-scale;
-    forward-focus: scope;
-    accessible-role: radio-group;
-    accessible-label: root.label;
-
-    HorizontalLayout {
-        // The targets grow with the text size and the window cannot get wider than its minimum, so the gap shrinks
-        // by the same factor: nine targets at 2.25x still end inside the window (final-audit-2 re-audit).
-        spacing: Space.s1 / SystemLook.text-scale;
-        alignment: start;
-        NoColour {
-            label: root.none-label;
-            selected: root.accent == -1;
-            show-focus: scope.has-focus && root.accent == -1;
-            clicked => { root.move(-1); }
-        }
-        for h[i] in root.hues: Swatch {
-            hue: h;
-            label: root.names[i];
-            selected: i == root.accent;
-            keyboard-focusable: false;
-            show-focus: scope.has-focus && i == root.accent;
-            clicked => { root.move(i); }
-        }
-    }
-
-    scope := FocusScope {
-        focus-on-click: false;
-        key-pressed(event) => {
-            if (event.text == Key.RightArrow || event.text == Key.DownArrow) {
-                root.move(root.accent + 1);
-                return accept;
-            }
-            if (event.text == Key.LeftArrow || event.text == Key.UpArrow) {
-                root.move(root.accent - 1);
-                return accept;
-            }
-            if (event.text == Key.Home) {
-                root.move(-1);
-                return accept;
-            }
-            if (event.text == Key.End) {
-                root.move(root.hues.length - 1);
-                return accept;
-            }
-            return reject;
-        }
-    }
-}
 
 // Kinds the user may switch between: Text, Code, Link, Template (0 to 3). A NEW item may also be an Image or a File
 // (4, 5): it asks for the path of the file (typed or, where the host can, chosen with `browse-requested`). An item
@@ -789,6 +669,9 @@ export component ItemEditor inherits Window {
     in property <int> tags-on: 0;
     // From the host: a title or content problem only the store or the parser knows ("Link needs a scheme").
     in property <string> title-error;
+    // The longest title, in characters (one limit everywhere a title is made); the host sets it.
+    in property <int> title-max: 200;
+    out property <string> title-count: @tr("{} of {} characters", root.item-title.character-count, root.title-max);
     in property <string> content-error;
     // The text is over one part (16 KB, SPEC §5.4): the field shows `parts[part-index]` and the host keeps the rest, so a
     // keystroke never re-shapes more than a part. `content-size` is the whole text's size ("2.4 MB"). The host puts the
@@ -815,13 +698,19 @@ export component ItemEditor inherits Window {
     in-out property <string> trigger;
     in property <string> trigger-error;
     callback trigger-edited(text: string);
-    // The note under the Trigger field. One character is allowed but fires on every typing of it,
-    // inside words included, so it gets a warning instead.
-    out property <string> trigger-warning: root.trigger.character-count == 1
-        ? @tr("A one-character trigger fires every time you type it, even inside words. Two or more characters are safer.")
-        : "";
+    // The note under the Trigger field (a code that fires inside words, or hides another snippet's), worded by the controller.
+    in property <string> trigger-warning;
+    // When the trigger fires (0 as soon as it is typed, 1 at a space or punctuation) and how it reads case (0 exactly, 1 ignoring case, 2 ignoring case and following what was typed).
+    in property <int> trigger-end-index: 0;
+    in property <int> trigger-case-index: 0;
+    callback trigger-end-chosen(index: int);
+    callback trigger-case-chosen(index: int);
     out property <string> trigger-helper: @tr("Type this in any app to insert the item. Turn it on in Settings, under Typing.");
     in property <string> banner;
+    // The text of a new item is already saved: the dialog asks "Open it" or "Save anyway". Empty: no dialog.
+    in property <string> duplicate-body;
+    callback open-duplicate-requested();
+    callback save-anyway-requested();
     // The fields hold an unsaved draft from an earlier session.
     in property <bool> restored: false;
     // The item keeps HTML or RTF next to its text (rich paste): changed text loses it, and "Remove formatting" drops it alone.
@@ -876,6 +765,45 @@ export component ItemEditor inherits Window {
     // A placeholder chip was chosen: the host inserts `token` into `content` at the caret (a UTF-8 byte
     // offset) and calls `place-caret` with the offset after it.
     callback placeholder-chosen(token: string, caret: int);
+
+    // Text tools (the Content field's disclosure): they change `content` as a whole, by what the host answers.
+    in-out property <bool> tools-open: false;
+    in-out property <string> find-text;
+    in-out property <string> replace-text;
+    in-out property <bool> match-case: false;
+    // Line numbers, and the font toggle: a Code item starts monospace and the toggle turns that off.
+    in-out property <bool> line-numbers: false;
+    in-out property <bool> mono-flip: false;
+    // The text before the last tool ran, so one press of Undo brings it back (any typing forgets it).
+    in-out property <string> tool-backup;
+    in-out property <bool> has-backup: false;
+    // The host applies the change to `content`: the transform at `index` of the list, or Replace all.
+    callback transform-requested(index: int);
+    callback replace-all-requested(find: string, with: string, match-case: bool);
+    // Answers for bindings: how many times `find` is in `text`, and the line numbers of `text` ("1\n2\n3").
+    pure callback match-count(text: string, find: string, match-case: bool) -> int;
+    pure callback numbered(text: string) -> string;
+    public function reset-tools() {
+        root.tools-open = false;
+        root.find-text = "";
+        root.replace-text = "";
+        root.match-case = false;
+        root.line-numbers = false;
+        root.mono-flip = false;
+        root.tool-backup = "";
+        root.has-backup = false;
+    }
+    // After a tool: keep what it replaced for Undo and count the form as edited, unless nothing changed.
+    function tool-ran() {
+        if (root.content != root.tool-backup) {
+            root.has-backup = true;
+            root.touch();
+        } else {
+            root.has-backup = false;
+        }
+    }
+    property <int> found: root.find-text == "" ? 0 : root.match-count(root.content, root.find-text, root.match-case);
+    property <[string]> transform-options: [@tr("UPPER CASE"), @tr("lower case"), @tr("Title Case"), @tr("Trim spaces and blank lines"), @tr("Remove repeated lines"), @tr("Sort lines A to Z")];
     public function place-caret(offset: int) {
         content-field.focus();
         content-field.set-cursor(offset);
@@ -958,18 +886,32 @@ export component ItemEditor inherits Window {
     property <string> source-shown-error: root.source-error != "" ? root.source-error
         : (root.show-errors && root.source-missing) ? @tr("Choose a file, or cancel.") : "";
     property <[PlaceholderHelp]> placeholders: [
-        { token: "{date}", help: @tr("Today’s date") },
+        { token: "{date}", help: @tr("Today’s date, in your regional format") },
         { token: "{time}", help: @tr("The time now") },
         { token: "{datetime:FORMAT}", help: @tr("Date and time in a format you choose") },
         { token: "{uuid}", help: @tr("A new random ID each time") },
         { token: "{clipboard}", help: @tr("What is on the clipboard") },
+        { token: "{clipboard:2}", help: @tr("The clipboard before the latest copy (2 to 25)") },
+        { token: "{selection}", help: @tr("The text selected in the app you paste into") },
         { token: "{cursor}", help: @tr("Where the text cursor lands after pasting") },
+        { token: "{key:tab}", help: @tr("Presses Tab here, to move between the fields of a form") },
+        { token: "{key:enter}", help: @tr("Presses Enter here") },
         { token: "{field:Name}", help: @tr("Asks for a value each time") },
         { token: "{choice:Name|a|b}", help: @tr("Asks you to pick one of the options") },
         { token: "{multiline:Name|default}", help: @tr("Asks for text over several lines") },
+        { token: "{number:Name}", help: @tr("Asks for a number") },
+        { token: "{calc:Qty*Price|2}", help: @tr("A sum of numbers and number names, with 2 decimals") },
         { token: "{pickdate:Name|FORMAT}", help: @tr("Asks for a date, today if left empty") },
         { token: "{optional:Name}...{/optional}", help: @tr("A tick box; the text inside is pasted only when ticked") },
+        { token: "{value:Name|upper}", help: @tr("An answer again, with a transform") },
+        { token: "{snippet:Title}", help: @tr("The text of another snippet") },
     ];
+
+    // The limits, the escapes, the choice default and the transform list, in words (from the engine's own constants).
+    in property <string> limits-help;
+    in property <string> escapes-help;
+    in property <string> transforms-help;
+    in property <string> choice-help;
 
     // The longest token (by text), whose chip sets the width of the placeholder chip column.
     property <string> widest-token: "{optional:Name}...{/optional}";
@@ -1163,13 +1105,20 @@ export component ItemEditor inherits Window {
                                 single-line: root.kind-index == 2;
                                 min-lines: 6;
                                 max-lines: 14;
-                                monospace: root.kind-index == 1;
+                                monospace: (root.kind-index == 1) != root.mono-flip;
+                                line-numbers: root.line-numbers;
+                                gutter: root.line-numbers ? root.numbered(root.content) : "";
                                 error: root.content-shown-error;
                                 text <=> root.content;
                                 private-copy: root.sensitive;
                                 private-copied(t, a, b) => { root.private-copied(t, a, b); }
                                 private-cut(t, a, b) => { return root.private-cut(t, a, b); }
-                                edited(t) => { root.content-changed = true; root.touch(); root.content-edited(); }
+                                edited(t) => {
+                                    root.content-changed = true;
+                                    root.has-backup = false;
+                                    root.touch();
+                                    root.content-edited();
+                                }
                                 changed has-focus => {
                                     if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                                 }
@@ -1209,6 +1158,118 @@ export component ItemEditor inherits Window {
                                     text: @tr("Next part");
                                     enabled: root.part-index + 1 < root.parts.length;
                                     clicked => { root.part-requested(root.part-index + 1); }
+                                }
+                            }
+                            if root.text-kind && root.kind-index != 2 && !root.content-large: VerticalLayout {
+                                spacing: 0px;
+                                tools-row := DisclosureRow {
+                                    text: @tr("Text tools");
+                                    summary: @tr("Find and replace, change the text, font, line numbers");
+                                    open: root.tools-open;
+                                    a11y-label: root.tools-open ? @tr("Hide the text tools") : @tr("Show the text tools");
+                                    clicked => { root.tools-open = !root.tools-open; }
+                                    changed has-focus => {
+                                        if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                    }
+                                }
+                                if root.tools-open: VerticalLayout {
+                                    spacing: Space.s3;
+                                    padding-top: Space.s2;
+                                    Toggle {
+                                        text: @tr("Monospace font");
+                                        checked: (root.kind-index == 1) != root.mono-flip;
+                                        toggled(v) => { root.mono-flip = v != (root.kind-index == 1); }
+                                        changed has-focus => {
+                                            if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                        }
+                                    }
+                                    Toggle {
+                                        text: @tr("Line numbers");
+                                        accessible-description: @tr("Lines stop wrapping, so a number is one line.");
+                                        checked <=> root.line-numbers;
+                                        changed has-focus => {
+                                            if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                        }
+                                    }
+                                    FormField {
+                                        label: @tr("Change the text");
+                                        SelectField {
+                                            label: @tr("Change the text");
+                                            placeholder: @tr("Choose a change");
+                                            options: root.transform-options;
+                                            current: -1;
+                                            chosen(i) => {
+                                                root.tool-backup = root.content;
+                                                root.transform-requested(i);
+                                                root.tool-ran();
+                                            }
+                                            changed has-focus => {
+                                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                            }
+                                        }
+                                    }
+                                    FormField {
+                                        label: @tr("Find");
+                                        TextField {
+                                            label: @tr("Find");
+                                            text <=> root.find-text;
+                                            changed has-focus => {
+                                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                            }
+                                        }
+                                    }
+                                    FormField {
+                                        label: @tr("Replace with");
+                                        TextField {
+                                            label: @tr("Replace with");
+                                            text <=> root.replace-text;
+                                            changed has-focus => {
+                                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                            }
+                                        }
+                                    }
+                                    Toggle {
+                                        text: @tr("Match case");
+                                        checked <=> root.match-case;
+                                        changed has-focus => {
+                                            if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                        }
+                                    }
+                                    HorizontalLayout {
+                                        spacing: Space.s3;
+                                        alignment: start;
+                                        Button {
+                                            text: @tr("Replace all");
+                                            enabled: root.found > 0;
+                                            clicked => {
+                                                root.tool-backup = root.content;
+                                                root.replace-all-requested(root.find-text, root.replace-text, root.match-case);
+                                                root.tool-ran();
+                                            }
+                                            changed has-focus => {
+                                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                            }
+                                        }
+                                        if root.has-backup: Button {
+                                            text: @tr("Undo the change");
+                                            clicked => {
+                                                root.content = root.tool-backup;
+                                                root.has-backup = false;
+                                                root.touch();
+                                            }
+                                            changed has-focus => {
+                                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                            }
+                                        }
+                                        Text {
+                                            text: root.find-text == "" ? "" : root.found == 0 ? @tr("No matches") : @tr("{n} match" | "{n} matches" % root.found);
+                                            color: Theme.text-secondary;
+                                            font-family: Fonts.sans;
+                                            font-size: Type.sm;
+                                            vertical-alignment: center;
+                                            accessible-role: AccessibleRole.text;
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1328,6 +1389,14 @@ export component ItemEditor inherits Window {
                             }
                             chip-focused(y, h) => { root.reveal-field(y, h); }
                         }
+                        for line in [root.choice-help, root.limits-help, root.escapes-help, root.transforms-help]: Text {
+                            text: line;
+                            color: Theme.text-secondary;
+                            font-family: Fonts.sans;
+                            font-size: Type.sm;
+                            wrap: word-wrap;
+                            accessible-role: none;
+                        }
                     }
 
                     FormField {
@@ -1375,9 +1444,11 @@ export component ItemEditor inherits Window {
                             alignment: start;
                     FormField {
                         label: @tr("Title");
+                        helper: root.title-count;
                         title-field := TextField {
                             label: @tr("Title");
                             placeholder: @tr("Optional: the first line of the text is used");
+                            description: root.title-count;
                             error: root.title-error;
                             text <=> root.item-title;
                             edited(t) => { root.touch(); }
@@ -1387,7 +1458,6 @@ export component ItemEditor inherits Window {
                             }
                         }
                     }
-
                     FormField {
                         label: @tr("Colour label");
                         ColourPicker {
@@ -1542,6 +1612,36 @@ export component ItemEditor inherits Window {
                             }
                         }
                     }
+                    if !root.sensitive && root.trigger != "": FormField {
+                        label: @tr("Trigger fires");
+                        trigger-end-field := SelectField {
+                            label: @tr("Trigger fires");
+                            options: [@tr("As soon as it is typed"), @tr("When a space or punctuation follows")];
+                            current: root.trigger-end-index;
+                            chosen(i) => {
+                                root.touch();
+                                root.trigger-end-chosen(i);
+                            }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    if !root.sensitive && root.trigger != "": FormField {
+                        label: @tr("Trigger and letter case");
+                        trigger-case-field := SelectField {
+                            label: @tr("Trigger and letter case");
+                            options: [@tr("Match case exactly"), @tr("Ignore case"), @tr("Ignore case and follow what I typed")];
+                            current: root.trigger-case-index;
+                            chosen(i) => {
+                                root.touch();
+                                root.trigger-case-chosen(i);
+                            }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
                         }
                     }
                     }
@@ -1595,8 +1695,29 @@ export component ItemEditor inherits Window {
         }
     }
 
+    Dialog {
+        open: root.duplicate-body != "";
+        title: @tr("Already saved");
+        body: root.duplicate-body;
+        dismissed => { root.edited(); }
+        closed => { scope.focus(); }
+        Button {
+            text: @tr("Keep editing");
+            clicked => { root.edited(); }
+        }
+        Button {
+            text: @tr("Open it");
+            clicked => { root.open-duplicate-requested(); }
+        }
+        Button {
+            text: @tr("Save anyway");
+            variant: ButtonVariant.primary;
+            clicked => { root.save-anyway-requested(); }
+        }
+    }
+
     // The window's tooltip layer: last, so no sibling paints over a tooltip and no container clips it.
-    TipLayer { suppressed: root.discard-open || root.tags-open; }
+    TipLayer { suppressed: root.discard-open || root.duplicate-body != "" || root.tags-open; }
 }
 
 // ---- List and board editors ----------------------------------------------------------------------
@@ -1610,10 +1731,11 @@ component IconCell inherits Rectangle {
     in property <string> label;
     in property <bool> selected: false;
     in property <bool> show-focus: false;
+    in property <length> cell: Space.hit * SystemLook.text-scale;
     callback clicked();
 
-    width: Space.hit * SystemLook.text-scale;
-    height: Space.hit * SystemLook.text-scale;
+    width: root.cell;
+    height: root.cell;
     accessible-role: radio-button;
     accessible-label: root.label;
     accessible-checkable: true;
@@ -1629,13 +1751,13 @@ component IconCell inherits Rectangle {
     Rectangle {
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
-        width: 22px * SystemLook.text-scale;
-        height: 22px * SystemLook.text-scale;
+        width: root.cell * 22 / 28;
+        height: root.cell * 22 / 28;
         border-radius: Radius.sm;
         background: touch.pressed ? Theme.bg-sunken : touch.has-hover ? Theme.bg-hover : root.selected ? Theme.bg-selected : transparent;
         Icon {
             source: root.source;
-            size: 16px * SystemLook.text-scale;
+            size: root.cell * 16 / 28;
             tint: root.selected ? Theme.text-on-selected : Theme.text-secondary;
             x: (parent.width - self.width) / 2;
             y: (parent.height - self.height) / 2;
@@ -1673,7 +1795,19 @@ component IconPicker inherits Rectangle {
         }
     }
 
-    height: 3 * Space.hit * SystemLook.text-scale + 2 * Space.s1;
+    // As the colour picker: the cells give way (to no less than the 28 px hit target) when nine of them do not fit the
+    // row at the text size in use. Set from `changed` handlers; the row's width comes from a layout that reads its height.
+    property <length> cell: Space.hit * SystemLook.text-scale;
+    property <float> text-scale: SystemLook.text-scale;
+    function refit() {
+        if (root.width > 0px) {
+            root.cell = max(Space.hit, min(Space.hit * root.text-scale, (root.width - (root.columns - 1) * Space.s1) / root.columns));
+        }
+    }
+    init => { root.refit(); }
+    changed width => { root.refit(); }
+    changed text-scale => { root.refit(); }
+    height: 3 * root.cell + 2 * Space.s1;
     forward-focus: scope;
     accessible-role: radio-group;
     accessible-label: root.label;
@@ -1687,15 +1821,17 @@ component IconPicker inherits Rectangle {
             for col in root.columns: Rectangle {
                 // 0 is "no icon"; 1 to 24 are the icons.
                 property <int> cell: row * root.columns + col;
-                width: Space.hit * SystemLook.text-scale;
-                height: Space.hit * SystemLook.text-scale;
+                width: root.cell;
+                height: root.cell;
                 if cell == 0: NoColour {
+                    cell: root.cell;
                     label: root.none-label;
                     selected: root.icon == -1;
                     show-focus: scope.has-focus && root.icon == -1;
                     clicked => { root.move(-1); }
                 }
                 if cell > 0 && cell <= root.total: IconCell {
+                    cell: root.cell;
                     source: ListIcons.all[cell - 1];
                     label: root.names[cell - 1];
                     selected: cell - 1 == root.icon;
@@ -1953,9 +2089,9 @@ component EntityEditorBody inherits Rectangle {
                     }
                     if root.show-sort: FormField {
                         label: @tr("Sort items by");
-                        Segmented {
+                        SelectField {
                             label: @tr("Sort items by");
-                            options: [@tr("Manual"), @tr("Most used"), @tr("Recently used")];
+                            options: [@tr("Manual"), @tr("Name"), @tr("Created"), @tr("Modified"), @tr("Most used"), @tr("Recently used")];
                             current: root.sort-index;
                             chosen(i) => {
                                 root.sort-index = i;
@@ -2114,6 +2250,8 @@ export component BoardEditor inherits Window {
     in-out property <string> name <=> body.name;
     in property <string> name-error <=> body.name-error;
     in-out property <int> accent <=> body.accent;
+    in-out property <int> icon-index <=> body.icon-index;
+    in property <[string]> icon-names <=> body.icon-names;
     in-out property <int> sort-index <=> body.sort-index;
     in property <bool> show-colour <=> body.show-colour;
     in property <bool> show-sort <=> body.show-sort;
@@ -2138,6 +2276,7 @@ export component BoardEditor inherits Window {
     public function focus-name() { body.focus-name(); }
 
     body := EntityEditorBody {
+        show-icon: true;
         name-label: @tr("Board name");
         name-placeholder: @tr("For example, Work");
         missing-name-text: @tr("Give the board a name.");
@@ -2173,32 +2312,57 @@ export component TagManager inherits Window {
     in property <bool> dark: false;
     // label = name, count = items with the tag.
     in property <[ChoiceEntry]> tags;
+    // Each row's nesting: how many tags it is under, its path (`work/invoices`) and how many items carry it itself
+    // (`count` also counts the tags nested under it).
+    in property <[int]> depths;
+    in property <[string]> paths;
+    in property <[int]> own-counts;
+    // The tag-nesting dialog: the row it is for (-1 closed), and the places it offers (the host fills them on
+    // `nest-requested`): a label each, and the row it stands for (-1 is the top level).
+    in-out property <int> nest-index: -1;
+    in property <[string]> nest-labels;
+    in property <[int]> nest-targets;
     // From the host after `rename-requested` ("A tag with that name exists").
     in property <string> rename-error;
+    // Each row's colour: -1 none, else the index into the eight item colours (the order of `ItemLabel`).
+    in property <[int]> colours;
+    // The colour names, in that order (spoken, and the picker's tooltips).
+    in property <[string]> colour-names: [@tr("Blue"), @tr("Teal"), @tr("Green"), @tr("Amber"), @tr("Orange"), @tr("Red"), @tr("Violet"), @tr("Slate")];
+    // The name of the tag a rename met ("A tag with that name exists"): the host sets it with `rename-error`, and the
+    // page offers to merge the tag being renamed into it. Empty: no offer.
+    in-out property <string> merge-into;
     // The row being renamed, or -1.
     in-out property <int> editing: -1;
+    // The row whose colour the dialog sets, or -1 (dialog closed).
+    in-out property <int> colour-index: -1;
     in-out property <string> rename-text;
     // The row whose deletion the dialog asks about, or -1 (dialog closed).
     in-out property <int> delete-index: -1;
-    // The tag being renamed onto another tag's name (`merge-from`) and that other tag (`merge-into`), both rows of
-    // `tags`, or -1 (dialog closed). `merge-count` = items the renamed tag has.
-    in-out property <int> merge-from: -1;
-    in-out property <int> merge-into: -1;
-    in-out property <int> merge-count: 0;
     // The "New tag" field and the reason the host refused its text.
     in-out property <string> new-text;
     in property <string> new-error;
 
     callback rename-requested(index: int, name: string);
     callback create-requested(name: string);
-    callback merge-confirmed(from: int, into: int);
     callback delete-confirmed(index: int);
+    // The person asked to nest tag `index`: the host fills `nest-labels` and `nest-targets`, then sets `nest-index`.
+    callback nest-requested(index: int);
+    // Nest tag `index` under row `under` (-1: back to the top level).
+    callback nest-chosen(index: int, under: int);
+    // Colour tag `index` (accent -1 takes the colour off).
+    callback colour-chosen(index: int, accent: int);
+    // Merge tag `index` into the tag called `into`.
+    callback merge-confirmed(index: int, into: string);
     callback close-requested();
 
-    public function finish-rename() { root.editing = -1; }
+    public function finish-rename() {
+        root.editing = -1;
+        root.merge-into = "";
+    }
     public function finish-create() { root.new-text = ""; }
 
     property <length> row-h: max(Space.hit + Space.s2, Type.line-base + Space.s3);
+    property <[ListHue]> hues: [ListHue.blue, ListHue.teal, ListHue.green, ListHue.amber, ListHue.orange, ListHue.red, ListHue.violet, ListHue.slate];
 
     function begin-rename(i: int) {
         root.rename-text = root.tags[i].label;
@@ -2227,7 +2391,7 @@ export component TagManager inherits Window {
             return reject;
         }
         key-pressed(event) => {
-            if (event.text == Key.Escape && root.delete-index < 0 && root.merge-from < 0) {
+            if (event.text == Key.Escape && root.delete-index < 0 && root.colour-index < 0 && root.nest-index < 0 && root.merge-into == "") {
                 if (root.editing >= 0) {
                     root.editing = -1;
                     // The field is gone: keep the keys (a second Esc closes the page).
@@ -2245,7 +2409,7 @@ export component TagManager inherits Window {
             spacing: Space.s3;
 
             intro := Text {
-                text: @tr("Add, rename, merge or delete tags. A new name another tag already has merges the two. Deleting a tag removes it from its items; the items stay.");
+                text: @tr("Add, rename, nest, merge or delete tags. Renaming to a name another tag has offers to merge the two. Deleting a tag removes it from its items; the items stay, and the tags nested under it move up a level.");
                 color: Theme.text-secondary;
                 font-family: Fonts.sans;
                 font-size: Type.sm;
@@ -2301,7 +2465,7 @@ export component TagManager inherits Window {
                     for tag[i] in root.tags: Rectangle {
                         height: root.row-h;
                         accessible-role: list-item;
-                        accessible-label: tag.label;
+                        accessible-label: i < root.paths.length ? root.paths[i] : tag.label;
                         accessible-description: @tr("{n} item" | "{n} items" % tag.count);
 
                         Rectangle {
@@ -2310,9 +2474,17 @@ export component TagManager inherits Window {
                             background: Theme.border-subtle;
                         }
                         HorizontalLayout {
-                            padding-left: Space.s3;
+                            padding-left: Space.s3 + Space.s4 * (i < root.depths.length ? min(root.depths[i], 4) : 0);
                             padding-right: Space.s2;
                             spacing: Space.s2;
+                            if root.editing != i && i < root.colours.length && root.colours[i] >= 0: Rectangle {
+                                width: Space.s3;
+                                height: Space.s3;
+                                y: (parent.height - self.height) / 2;
+                                border-radius: self.width / 2;
+                                background: ListAccent.color(root.hues[root.colours[i]]);
+                                accessible-role: none;
+                            }
                             if root.editing != i: Text {
                                 horizontal-stretch: 1;
                                 min-width: 0px;
@@ -2362,6 +2534,24 @@ export component TagManager inherits Window {
                             VerticalLayout {
                                 alignment: center;
                                 IconButton {
+                                    icon: Icons.arrow-elbow-down-right;
+                                    tooltip: @tr("Nest tag {} under another", tag.label);
+                                    own-tooltip: true;
+                                    clicked => { root.nest-requested(i); }
+                                }
+                            }
+                            VerticalLayout {
+                                alignment: center;
+                                IconButton {
+                                    icon: Icons.palette;
+                                    tooltip: @tr("Colour of tag {}", tag.label);
+                                    own-tooltip: true;
+                                    clicked => { root.colour-index = i; }
+                                }
+                            }
+                            VerticalLayout {
+                                alignment: center;
+                                IconButton {
                                     icon: Icons.trash;
                                     tooltip: @tr("Delete tag {}", tag.label);
                                     own-tooltip: true;
@@ -2392,13 +2582,82 @@ export component TagManager inherits Window {
         }
     }
 
+    // The colour of one tag: the eight item colours, applied as they are picked.
+    Dialog {
+        open: root.colour-index >= 0;
+        title: @tr("Colour of tag {}", root.colour-index >= 0 && root.colour-index < root.tags.length ? root.tags[root.colour-index].label : "");
+        body: @tr("Pick a colour: it shows as a dot beside the tag. Esc closes.");
+        fill: true;
+        dismissed => { root.colour-index = -1; }
+        closed => { scope.focus(); }
+        ColourPicker {
+            horizontal-stretch: 1;
+            hues: root.hues;
+            label: @tr("Tag colour");
+            none-label: @tr("No colour");
+            names: root.colour-names;
+            accent: root.colour-index >= 0 && root.colour-index < root.colours.length ? root.colours[root.colour-index] : -1;
+            chosen(a) => {
+                let i = root.colour-index;
+                root.colour-index = -1;
+                root.colour-chosen(i, a);
+            }
+        }
+    }
+
+    // Where one tag goes: under another tag, or back to the top level. The tags nested under it go with it.
+    Dialog {
+        open: root.nest-index >= 0;
+        title: @tr("Nest tag {} under", root.nest-index >= 0 && root.nest-index < root.tags.length ? root.tags[root.nest-index].label : "");
+        body: @tr("Pick the tag it goes under. Its own nested tags go with it. Esc closes.");
+        fill: true;
+        dismissed => { root.nest-index = -1; }
+        closed => { scope.focus(); }
+        nest-list := ListView {
+            horizontal-stretch: 1;
+            height: min(root.nest-labels.length, 6) * root.row-h;
+            accessible-role: list;
+            accessible-label: @tr("Tags");
+            for label[k] in root.nest-labels: Rectangle {
+                height: root.row-h;
+                Button {
+                    width: parent.width;
+                    text: label == "" ? @tr("Top level (not nested)") : label;
+                    clicked => {
+                        let i = root.nest-index;
+                        root.nest-index = -1;
+                        root.nest-chosen(i, k < root.nest-targets.length ? root.nest-targets[k] : -1);
+                    }
+                }
+            }
+        }
+    }
+
+    // A rename that met an existing name: merge instead.
+    Dialog {
+        open: root.merge-into != "" && root.editing >= 0;
+        title: @tr("Merge into “{}”?", root.merge-into);
+        body: @tr("Every item tagged “{}” gets “{}” and “{}” is deleted. You can undo it.", root.editing >= 0 && root.editing < root.tags.length ? root.tags[root.editing].label : "", root.merge-into, root.editing >= 0 && root.editing < root.tags.length ? root.tags[root.editing].label : "");
+        dismissed => { root.merge-into = ""; }
+        closed => { scope.focus(); }
+        Button {
+            text: @tr("Cancel");
+            clicked => { root.merge-into = ""; }
+        }
+        Button {
+            text: @tr("Merge");
+            variant: ButtonVariant.primary;
+            clicked => { root.merge-confirmed(root.editing, root.merge-into); }
+        }
+    }
+
     cancel-dlg-4 := Dialog {
         open: root.delete-index >= 0;
         variant: DialogVariant.destructive;
         title: @tr("Delete this tag?");
-        body: (root.delete-index >= 0 && root.delete-index < root.tags.length && root.tags[root.delete-index].count == 0)
+        body: (root.delete-index >= 0 && root.delete-index < root.own-counts.length && root.own-counts[root.delete-index] == 0)
             ? @tr("No item uses this tag.")
-            : @tr("It is removed from {n} item. The item stays." | "It is removed from {n} items. The items stay." % (root.delete-index >= 0 && root.delete-index < root.tags.length ? root.tags[root.delete-index].count : 0));
+            : @tr("It is removed from {n} item. The item stays." | "It is removed from {n} items. The items stay." % (root.delete-index >= 0 && root.delete-index < root.own-counts.length ? root.own-counts[root.delete-index] : 0));
         dismissed => { root.delete-index = -1; }
         closed => { scope.focus(); }
         Button {
@@ -2417,30 +2676,6 @@ export component TagManager inherits Window {
         }
     }
 
-    Dialog {
-        open: root.merge-from >= 0;
-        title: @tr("Merge these tags?");
-        body: (root.merge-from >= 0 && root.merge-from < root.tags.length && root.merge-into >= 0 && root.merge-into < root.tags.length)
-            ? @tr("{n} item will carry \"{}\" instead of \"{}\"." | "{n} items will carry \"{}\" instead of \"{}\"." % root.merge-count, root.tags[root.merge-into].label, root.tags[root.merge-from].label)
-            : "";
-        dismissed => { root.merge-from = -1; }
-        closed => { scope.focus(); }
-        Button {
-            text: @tr("Cancel");
-            clicked => { root.merge-from = -1; }
-        }
-        Button {
-            text: @tr("Merge tags");
-            variant: ButtonVariant.primary;
-            clicked => {
-                let from = root.merge-from;
-                let into = root.merge-into;
-                root.merge-from = -1;
-                root.merge-confirmed(from, into);
-            }
-        }
-    }
-
     // The window's tooltip layer: last, so no sibling paints over a tooltip and no container clips it.
-    TipLayer { suppressed: root.delete-index >= 0 || root.merge-from >= 0; }
+    TipLayer { suppressed: root.delete-index >= 0 || root.colour-index >= 0 || root.nest-index >= 0 || root.merge-into != ""; }
 }

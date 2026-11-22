@@ -2,8 +2,8 @@
 //! `#[path]`-included, so each test binary compiles its own copy.
 #![allow(dead_code, reason = "each test binary uses a subset of the fixtures")]
 
-use slint::{ModelRc, SharedString, VecModel};
-use snipdeck_ui::{FormField, TemplateFieldKind, TemplateFillWindow};
+use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
+use snipdeck_ui::{CalendarWords, FormField, TemplateFieldKind, TemplateFillWindow};
 
 pub fn text(label: &str, value: &str, required: bool) -> FormField {
     FormField {
@@ -11,6 +11,7 @@ pub fn text(label: &str, value: &str, required: bool) -> FormField {
         kind: TemplateFieldKind::Text,
         value: value.into(),
         required,
+        enabled: true,
         ..Default::default()
     }
 }
@@ -26,6 +27,7 @@ pub fn choice(label: &str, options: &[&str], index: i32) -> FormField {
                 .collect::<Vec<_>>(),
         )),
         choice_index: index,
+        enabled: true,
         ..Default::default()
     }
 }
@@ -35,6 +37,7 @@ pub fn date(label: &str) -> FormField {
         label: label.into(),
         kind: TemplateFieldKind::Date,
         placeholder: "YYYY-MM-DD".into(),
+        enabled: true,
         ..Default::default()
     }
 }
@@ -44,6 +47,7 @@ pub fn multiline(label: &str) -> FormField {
         label: label.into(),
         kind: TemplateFieldKind::Multiline,
         placeholder: "Anything to add".into(),
+        enabled: true,
         ..Default::default()
     }
 }
@@ -74,4 +78,36 @@ pub fn populate(ui: &TemplateFillWindow) {
     ui.set_template_title("Invoice reminder".into());
     set_fields(ui, fields());
     ui.set_preview(PREVIEW.into());
+    set_calendar(ui);
+}
+
+/// The words and today's date the host gives the month grid (today is 2026-10-17, fixed).
+pub fn set_calendar(ui: &TemplateFillWindow) {
+    let words = |list: &[&str]| {
+        ModelRc::new(VecModel::from(
+            list.iter()
+                .map(|w| SharedString::from(*w))
+                .collect::<Vec<_>>(),
+        ))
+    };
+    let g = ui.global::<CalendarWords<'_>>();
+    g.set_month_names(words(&[
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+    ]));
+    g.set_weekday_names(words(&["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]));
+    g.set_week_starts_sunday(false);
+    g.set_today_year(2026);
+    g.set_today_month(10);
+    g.set_today_day(17);
 }

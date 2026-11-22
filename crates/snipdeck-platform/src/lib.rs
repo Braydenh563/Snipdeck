@@ -35,6 +35,7 @@ pub mod keys;
 pub mod paint_record;
 pub mod payload;
 pub mod pipeline;
+pub mod regional;
 pub mod route;
 pub mod startup_task;
 pub mod system_look;

@@ -7,22 +7,66 @@
 //! items*, *Pinned* and the *Trash* span every board, the lists in the sidebar belong to the
 //! open board, and a search covers every board through the store's full-text index (SPEC §5.1).
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
+use snipdeck_core::search::{Hit, Query, SearchIndex};
 use snipdeck_core::{
     Board, BoardId, GroupId, Item, ItemId, ItemKind, ItemLabel, List, ListAccent, ListIcon, ListId,
-    ListSort, Placement, Tag, TagId,
+    Placement, Sort, Tag, TagId, TagTree, ViewFilter,
 };
 use snipdeck_store::{
     BoardRepo, GroupRepo, GroupRun, ItemRepo, ListRepo, TagRepo, TrashEntry, TrashRepo, Trashable,
+    TriggerRepo,
 };
 
+use crate::group_walk::GroupWalk;
 use crate::panel::{GroupHeader, ListLabel};
 use crate::search_mark::{self, Marks};
 use crate::settings::RowDensity;
 
 /// How many search results the Main window shows.
 const SEARCH_LIMIT: usize = 200;
+
+/// The best [`SEARCH_LIMIT`] matches of `query`: `index` for the names and the start of the
+/// content, the store's full-text index for the rest of it.
+fn search<S: ItemRepo>(
+    store: &S,
+    index: &SearchIndex,
+    query: &str,
+) -> snipdeck_store::Result<Vec<Hit>> {
+    let query = Query::parse(query);
+    let body = store.search(&query)?;
+    Ok(index.query(&query, &body, SEARCH_LIMIT))
+}
+/// One criterion of the view filter: a chip in the toolbar and a row of the Filter menu.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FilterTerm {
+    /// Items of this kind (several kinds are alternatives).
+    Kind(ItemKind),
+    /// Items with a typed trigger.
+    HasTrigger,
+    /// Sensitive items.
+    Sensitive,
+    /// Items with no tag.
+    Untagged,
+    /// Items with this tag (several tags are any or all, by the filter's match).
+    Tag(TagId),
+}
+
+/// Whether a trash entry answers `query`: every wanted word is in its title or its preview and
+/// no excluded one is (the same word matching as the search marks; filters need data a trash
+/// entry does not carry and are not applied).
+fn trash_matches(entry: &TrashEntry, query: &Query) -> bool {
+    let found = |term: &snipdeck_core::search::Term| {
+        !snipdeck_core::search::find(&entry.label, term, true).is_empty()
+            || entry
+                .preview
+                .lines()
+                .any(|line| !snipdeck_core::search::find(line, term, false).is_empty())
+    };
+    query.terms.iter().all(|t| found(t) != t.negated)
+}
+
 /// The preview of a trashed list.
 pub const LIST_NOTE: &str = "List";
 /// The preview of a trashed board.
@@ -126,10 +170,6 @@ pub enum SelectMode {
 }
 
 /// One row of the item area.
-#[expect(
-    clippy::struct_excessive_bools,
-    reason = "independent display flags of one row, as in the window's own row struct"
-)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Row {
     /// What it stands for.
@@ -150,13 +190,13 @@ pub struct Row {
     pub label: Option<ItemLabel>,
     /// In the selection.
     pub selected: bool,
-    /// While searching: where the query matched (shared-look spec decision 3). The search hits
-    /// carry ids only, so there is no tag hit here.
+    /// While searching: where the query matched (shared-look spec decision 3), the matched tag
+    /// included when the title and preview do not show the match.
     pub marks: Marks,
     /// The row is a group's header, not an item: `title` is its name.
     pub header: Option<GroupHeader>,
-    /// The item sits under a group's header: the card is indented.
-    pub grouped: bool,
+    /// How many groups the item sits in (0: not in one): the card is indented by one step each.
+    pub depth: usize,
     /// An image item: when it last changed, which the thumbnail cache is keyed with.
     pub image_stamp: Option<snipdeck_core::Timestamp>,
     /// An image item: its thumbnail, once decoded (MAIN-21).
@@ -249,6 +289,14 @@ pub struct SideTag {
     pub name: String,
     /// How many items carry it.
     pub count: usize,
+    /// Its colour (one of the eight item colours), if it has one.
+    pub colour: Option<ItemLabel>,
+    /// How many items carry it itself (`count` also counts the tags nested under it).
+    pub own_count: usize,
+    /// How many tags it is nested under (0 at the top).
+    pub depth: usize,
+    /// Its path with the names above it (`work/invoices`).
+    pub path: String,
 }
 
 /// The numbers next to the system views.
@@ -325,7 +373,7 @@ pub struct EditorView {
     /// A list's icon.
     pub icon: Option<ListIcon>,
     /// A list's item order.
-    pub sort: ListSort,
+    pub sort: Sort,
     /// The boards a list can live on, in board order (empty for a board editor).
     pub boards: Vec<(BoardId, String)>,
     /// The chosen board: a position in `boards`.
@@ -351,8 +399,11 @@ pub struct MainModel {
     board: Option<BoardId>,
     lists: Vec<List>,
     list_counts: HashMap<ListId, usize>,
+    /// The tags in sidebar order (each with the tags nested under it right after it).
     tags: Vec<Tag>,
+    tree: TagTree,
     tag_counts: HashMap<TagId, usize>,
+    own_counts: HashMap<TagId, usize>,
     items: Vec<std::rc::Rc<Item>>,
     /// The library snapshot Main reads, shared with the Panel and the Picker: one read of the
     /// library, one search index, one set of suggestions for every window.
@@ -373,9 +424,18 @@ pub struct MainModel {
     trash: Vec<TrashEntry>,
     section: Section,
     query: String,
-    hits: Vec<ItemId>,
+    /// The matches of the search (the snapshot's shared index, the same matcher as the Panel
+    /// and the Picker).
+    hits: Vec<Hit>,
     view: ViewMode,
-    label_filter: Option<ItemLabel>,
+    /// What the open view is narrowed to (colour, tags, kind, trigger, sensitive); every section
+    /// shares it and a section change clears it.
+    filter: ViewFilter,
+    /// The items that have a typed trigger, for the filter.
+    triggered: HashSet<ItemId>,
+    /// The sort of each section that has none of its own in the library (All items, Pinned and
+    /// each tag), by [`MainModel::sort_key`]; the controller loads it from the settings.
+    sorts: BTreeMap<String, Sort>,
     selected: HashSet<Key>,
     anchor: Option<Key>,
     cursor: usize,
@@ -392,17 +452,111 @@ impl Default for MainModel {
 /// Where a row's source lives, so the list of rows can be kept between redraws.
 #[derive(Debug, Clone, Copy)]
 enum Slot {
-    Item(usize),
+    /// An item (its place among the items) and how many groups it sits in.
+    Item(usize, usize),
     Trashed(usize),
-    Header(ListId, usize),
+    /// A group's header (its list, the run's place among the list's groups) and its depth.
+    Header(ListId, usize, usize),
 }
 
 /// A row's source, before it becomes text.
 enum Entry<'a> {
-    Item(&'a Item),
+    /// An item, with how many groups it sits in.
+    Item(&'a Item, usize),
     Trashed(&'a TrashEntry),
-    /// A group's header above its members.
-    Header(&'a GroupRun),
+    /// A group's header above its members, with how many groups it is nested in.
+    Header(&'a GroupRun, usize),
+}
+
+/// The row of a group's header.
+fn header_row(run: &GroupRun, depth: usize) -> Row {
+    Row {
+        key: Key::Group(run.group.id),
+        kind: ItemKind::Text,
+        sensitive: false,
+        title: run.group.name.as_str().to_owned(),
+        preview: String::new(),
+        list: None,
+        pinned: false,
+        label: None,
+        selected: false,
+        marks: Marks::default(),
+        header: Some(GroupHeader {
+            group: run.group.id,
+            name: run.group.name.as_str().to_owned(),
+            count: run.run.len(),
+            collapsed: run.group.collapsed,
+            colour: run.group.colour,
+            depth,
+        }),
+        depth: 0,
+        image_stamp: None,
+        thumb: None,
+    }
+}
+
+/// `tags` in sidebar order (each tag followed by the tags nested under it) with their nesting.
+fn in_walk_order(mut tags: Vec<Tag>) -> (Vec<Tag>, TagTree) {
+    let tree = TagTree::new(&tags);
+    let order: HashMap<TagId, usize> = tree
+        .walk()
+        .into_iter()
+        .enumerate()
+        .map(|(i, t)| (t, i))
+        .collect();
+    tags.sort_by_key(|t| order.get(&t.id).copied().unwrap_or(usize::MAX));
+    (tags, tree)
+}
+
+/// What each list is called in a hit from another board: the board's name (empty while there
+/// is one board, MAIN-1), the list's name and its accent.
+fn list_labels_of(boards: &[(Board, Vec<List>)]) -> HashMap<ListId, ListLabel> {
+    boards
+        .iter()
+        .flat_map(|(b, lists)| lists.iter().map(move |l| (b, l)))
+        .map(|(b, l)| {
+            (
+                l.id,
+                ListLabel {
+                    board: if boards.len() > 1 {
+                        b.name.as_str().to_owned()
+                    } else {
+                        String::new()
+                    },
+                    name: l.name.as_str().to_owned(),
+                    accent: l.accent,
+                },
+            )
+        })
+        .collect()
+}
+
+/// How many items are in each list, carry each tag or any tag under it (each item once), and
+/// carry each tag itself.
+fn counts(
+    items: &[std::rc::Rc<Item>],
+    tree: &TagTree,
+) -> (
+    HashMap<ListId, usize>,
+    HashMap<TagId, usize>,
+    HashMap<TagId, usize>,
+) {
+    let mut list_counts: HashMap<ListId, usize> = HashMap::new();
+    let mut tag_counts: HashMap<TagId, usize> = HashMap::new();
+    let mut own_counts: HashMap<TagId, usize> = HashMap::new();
+    for item in items {
+        *list_counts.entry(item.list_id).or_default() += 1;
+        let mut counted: HashSet<TagId> = HashSet::new();
+        for tag in &item.tags {
+            *own_counts.entry(*tag).or_default() += 1;
+            counted.insert(*tag);
+            counted.extend(tree.ancestors(*tag));
+        }
+        for tag in counted {
+            *tag_counts.entry(tag).or_default() += 1;
+        }
+    }
+    (list_counts, tag_counts, own_counts)
 }
 
 impl MainModel {
@@ -424,7 +578,9 @@ impl MainModel {
             lists: Vec::new(),
             list_counts: HashMap::new(),
             tags: Vec::new(),
+            tree: TagTree::default(),
             tag_counts: HashMap::new(),
+            own_counts: HashMap::new(),
             items: Vec::new(),
             groups: HashMap::new(),
             group_index: HashMap::new(),
@@ -438,7 +594,9 @@ impl MainModel {
             query: String::new(),
             hits: Vec::new(),
             view: ViewMode::Comfortable,
-            label_filter: None,
+            filter: ViewFilter::none(),
+            triggered: HashSet::new(),
+            sorts: BTreeMap::new(),
             selected: HashSet::new(),
             anchor: None,
             cursor: 0,
@@ -482,7 +640,7 @@ impl MainModel {
     /// Any store error; the model is left as it was.
     pub fn reload<S>(&mut self, store: &S) -> snipdeck_store::Result<()>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo + GroupRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo + GroupRepo + TriggerRepo,
     {
         // One read for every window: the cache hands out the snapshot the Panel holds (read
         // again only when the library was written).
@@ -500,52 +658,33 @@ impl MainModel {
             .iter()
             .map(|l| Ok((l.id, store.groups_of(l.id)?)))
             .collect::<snipdeck_store::Result<HashMap<_, _>>>()?;
-        let tags = store.tags()?;
+        let (tags, tree) = in_walk_order(store.tags()?);
+        let triggered = store
+            .triggers()?
+            .into_iter()
+            .map(|(_, item)| item)
+            .collect();
         let trash = store.trashed()?;
         let board_lists: Vec<(BoardId, Vec<List>)> = snapshot
             .boards
             .iter()
             .map(|(b, lists)| (b.id, lists.clone()))
             .collect();
-        let list_labels: HashMap<ListId, ListLabel> = snapshot
-            .boards
-            .iter()
-            .flat_map(|(b, lists)| lists.iter().map(move |l| (b, l)))
-            .map(|(b, l)| {
-                (
-                    l.id,
-                    ListLabel {
-                        // A hit from another board says which one (MAIN-1); with one board the name adds nothing.
-                        board: if boards.len() > 1 {
-                            b.name.as_str().to_owned()
-                        } else {
-                            String::new()
-                        },
-                        name: l.name.as_str().to_owned(),
-                        accent: l.accent,
-                    },
-                )
-            })
-            .collect();
+        let list_labels = list_labels_of(&snapshot.boards);
         let hits = if self.searching() {
-            store.search(self.query.trim(), SEARCH_LIMIT)?
+            search(store, &snapshot.index(), &self.query)?
         } else {
             Vec::new()
         };
-        let mut list_counts: HashMap<ListId, usize> = HashMap::new();
-        let mut tag_counts: HashMap<TagId, usize> = HashMap::new();
-        for item in &items {
-            *list_counts.entry(item.list_id).or_default() += 1;
-            for tag in &item.tags {
-                *tag_counts.entry(*tag).or_default() += 1;
-            }
-        }
+        let (list_counts, tag_counts, own_counts) = counts(&items, &tree);
         self.boards = boards;
         self.board = board;
         self.lists = lists;
         self.list_counts = list_counts;
         self.tags = tags;
+        self.tree = tree;
         self.tag_counts = tag_counts;
+        self.own_counts = own_counts;
         self.items = items;
         self.group_index = groups
             .iter()
@@ -560,6 +699,7 @@ impl MainModel {
         self.list_labels = list_labels;
         self.board_lists = board_lists;
         self.trash = trash;
+        self.triggered = triggered;
         self.hits = hits;
         self.snapshot = std::rc::Rc::clone(&snapshot);
         self.section = match self.section {
@@ -567,6 +707,16 @@ impl MainModel {
             Section::Tag(id) if !self.tags.iter().any(|t| t.id == id) => Section::All,
             other => other,
         };
+        let gone: Vec<TagId> = self
+            .filter
+            .tags
+            .iter()
+            .filter(|t| !self.tags.iter().any(|known| known.id == **t))
+            .copied()
+            .collect();
+        for tag in gone {
+            self.filter.forget_tag(tag);
+        }
         let keys: HashSet<Key> = self.keys().into_iter().collect();
         self.selected.retain(|k| keys.contains(k));
         // A chooser outlives its rows leaving the view (untagging in a tag's view), not the
@@ -688,8 +838,18 @@ impl MainModel {
                 id: t.id,
                 name: t.name.as_str().to_owned(),
                 count: self.tag_counts.get(&t.id).copied().unwrap_or(0),
+                colour: t.colour,
+                own_count: self.own_counts.get(&t.id).copied().unwrap_or(0),
+                depth: self.tree.depth(t.id),
+                path: self.tree.path(t.id),
             })
             .collect()
+    }
+
+    /// The nesting of the tags.
+    #[must_use]
+    pub fn tag_tree(&self) -> &TagTree {
+        &self.tree
     }
 
     /// The tags.
@@ -805,13 +965,13 @@ impl MainModel {
         slots
             .iter()
             .filter_map(|slot| match *slot {
-                Slot::Item(at) => self.items.get(at).map(|item| Entry::Item(item)),
+                Slot::Item(at, depth) => self.items.get(at).map(|item| Entry::Item(item, depth)),
                 Slot::Trashed(at) => self.trash.get(at).map(Entry::Trashed),
-                Slot::Header(list, at) => self
+                Slot::Header(list, at, depth) => self
                     .groups
                     .get(&list)
                     .and_then(|runs| runs.get(at))
-                    .map(Entry::Header),
+                    .map(|run| Entry::Header(run, depth)),
             })
             .collect()
     }
@@ -830,16 +990,15 @@ impl MainModel {
 
     fn build_slots(&self) -> Vec<Slot> {
         if self.section == Section::Trash {
-            let needle = self.query.trim().to_lowercase();
+            let query = Query::parse(&self.query);
             return self
                 .trash
                 .iter()
                 .enumerate()
-                .filter(|(_, t)| needle.is_empty() || t.label.to_lowercase().contains(&needle))
+                .filter(|(_, t)| trash_matches(t, &query))
                 .map(|(at, _)| Slot::Trashed(at))
                 .collect();
         }
-        let wanted = self.label_filter;
         let by_id: HashMap<ItemId, usize> = self
             .items
             .iter()
@@ -849,36 +1008,48 @@ impl MainModel {
         let items = self
             .unfiltered_items()
             .into_iter()
-            .filter(|i| wanted.is_none() || i.label == wanted)
+            .filter(|i| {
+                self.filter
+                    .matches(i, self.triggered.contains(&i.id), &self.tree)
+            })
             .filter_map(|i| by_id.get(&i.id).copied().map(|at| (at, i)));
+        let Section::List(list) = self.section else {
+            return items.map(|(at, _)| Slot::Item(at, 0)).collect();
+        };
         if !self.shows_groups() {
-            return items.map(|(at, _)| Slot::Item(at)).collect();
+            return items.map(|(at, _)| Slot::Item(at, 0)).collect();
         }
-        // A group is a run of the manual order: its header goes above the first member, and a folded group
-        // shows the header only.
+        // A group is a run of the list's blocks: its header goes above the first member (a nested
+        // group's below its parent's), and a folded group shows the header only, with the groups
+        // nested in it hidden too.
+        let run_at: HashMap<GroupId, usize> = self
+            .open_groups()
+            .iter()
+            .enumerate()
+            .map(|(at, run)| (run.group.id, at))
+            .collect();
         let mut slots = Vec::new();
-        let mut open: Option<GroupId> = None;
+        let mut walk = GroupWalk::new(self.open_groups());
         for (at, item) in items {
-            let run = self.group_of(item.id);
-            if let Some(_) = run.filter(|r| open != Some(r.group.id))
-                && let Section::List(list) = self.section
-                && let Some(run_at) = self.group_index.get(&item.id).map(|g| g.1)
-            {
-                slots.push(Slot::Header(list, run_at));
+            let step = walk.step(item.id);
+            for (run, depth) in step.headers {
+                if let Some(&run_at) = run_at.get(&run.group.id) {
+                    slots.push(Slot::Header(list, run_at, depth));
+                }
             }
-            open = run.map(|r| r.group.id);
-            if run.is_none_or(|r| !r.group.collapsed) {
-                slots.push(Slot::Item(at));
+            if !step.hidden {
+                slots.push(Slot::Item(at, step.depth));
             }
         }
         slots
     }
 
-    /// Whether the rows carry group headers: the open section is one list in manual order, with no search and no
-    /// colour filter (a filter would cut a group's run).
+    /// Whether the rows carry group headers: the open section is one list, under any sort (the
+    /// sort orders the rows inside each block), with no search and no filter (a filter would cut
+    /// a group's run).
     #[must_use]
     pub fn shows_groups(&self) -> bool {
-        self.label_filter.is_none() && self.reorderable()
+        !self.searching() && self.filter.is_none() && matches!(self.section, Section::List(_))
     }
 
     /// The open list's groups (none when it shows none).
@@ -890,6 +1061,15 @@ impl MainModel {
             }
             _ => &[],
         }
+    }
+
+    /// Every group of the open list, folded or not (a folded one has no rows to find it by).
+    pub fn all_groups(&self) -> impl Iterator<Item = &GroupRun> {
+        match self.section {
+            Section::List(id) => self.groups.get(&id).map_or(&[][..], Vec::as_slice),
+            _ => &[],
+        }
+        .iter()
     }
 
     /// The group whose header is row `index`.
@@ -922,10 +1102,10 @@ impl MainModel {
             return self
                 .hits
                 .iter()
-                .filter_map(|id| by_id.get(id).copied())
+                .filter_map(|hit| by_id.get(&hit.id).copied())
                 .collect();
         }
-        match self.section {
+        let mut items: Vec<&Item> = match self.section {
             Section::All => self.items.iter().map(|i| &**i).collect(),
             Section::Pinned => self
                 .items
@@ -933,15 +1113,19 @@ impl MainModel {
                 .filter(|i| i.pinned)
                 .map(|i| &**i)
                 .collect(),
-            Section::Recent | Section::Trash => Vec::new(),
-            Section::List(id) => self.list_items(id),
+            Section::Recent | Section::Trash => return Vec::new(),
+            Section::List(id) => return self.list_items(id),
             Section::Tag(id) => self
                 .items
                 .iter()
-                .filter(|i| i.tags.contains(&id))
+                .filter(|i| {
+                    i.tags.contains(&id) || i.tags.iter().any(|own| self.tree.is_under(*own, id))
+                })
                 .map(|i| &**i)
                 .collect(),
-        }
+        };
+        self.sort().apply(&mut items);
+        items
     }
 
     /// The chips of the filter row: one per colour label some item of the open view carries
@@ -957,7 +1141,7 @@ impl MainModel {
             .iter()
             .filter_map(|label| {
                 let count = items.iter().filter(|i| i.label == Some(*label)).count();
-                (count > 0 || self.label_filter == Some(*label)).then_some(LabelChip {
+                (count > 0 || self.filter.label == Some(*label)).then_some(LabelChip {
                     label: *label,
                     count,
                 })
@@ -968,34 +1152,150 @@ impl MainModel {
     /// The colour label the view is filtered by.
     #[must_use]
     pub fn label_filter(&self) -> Option<ItemLabel> {
-        self.label_filter
+        self.filter.label
     }
 
     /// Filters the view by a colour label (`None` shows every item). The selection clears and the
     /// cursor returns to the top.
     pub fn set_label_filter(&mut self, label: Option<ItemLabel>) {
-        self.label_filter = label;
+        self.filter.label = label;
         self.generation += 1;
         self.clear_selection();
         self.cursor = 0;
     }
 
-    /// The items of list `id` in the list's own order (manual, most used or recently used).
+    /// What the open view is narrowed to.
+    #[must_use]
+    pub fn filter(&self) -> &ViewFilter {
+        &self.filter
+    }
+
+    /// Narrows the view: `change` edits the filter. The selection clears and the cursor returns to
+    /// the top, as for any change of what is shown.
+    pub fn edit_filter(&mut self, change: impl FnOnce(&mut ViewFilter)) {
+        change(&mut self.filter);
+        self.generation += 1;
+        self.clear_selection();
+        self.cursor = 0;
+    }
+
+    /// What the filter holds, in the order the chips show it: kinds, then trigger, sensitive,
+    /// untagged and the chosen tags (by the sidebar's tag order).
+    #[must_use]
+    pub fn filter_terms(&self) -> Vec<FilterTerm> {
+        let f = &self.filter;
+        let mut terms: Vec<FilterTerm> = ItemKind::ALL
+            .iter()
+            .filter(|k| f.kinds.contains(k))
+            .map(|k| FilterTerm::Kind(*k))
+            .collect();
+        terms.extend(f.has_trigger.then_some(FilterTerm::HasTrigger));
+        terms.extend(f.sensitive.then_some(FilterTerm::Sensitive));
+        terms.extend(f.untagged.then_some(FilterTerm::Untagged));
+        terms.extend(
+            self.tags
+                .iter()
+                .filter(|t| f.tags.contains(&t.id))
+                .map(|t| FilterTerm::Tag(t.id)),
+        );
+        terms
+    }
+
+    /// Adds `term` to the filter, or takes it off when it is there.
+    pub fn toggle_filter(&mut self, term: FilterTerm) {
+        self.edit_filter(|f| match term {
+            FilterTerm::Kind(kind) => f.toggle_kind(kind),
+            FilterTerm::HasTrigger => f.has_trigger = !f.has_trigger,
+            FilterTerm::Sensitive => f.sensitive = !f.sensitive,
+            FilterTerm::Untagged => f.toggle_untagged(),
+            FilterTerm::Tag(tag) => f.toggle_tag(tag),
+        });
+    }
+
+    /// Whether item `id` has a typed trigger (for the filter's choices).
+    #[must_use]
+    pub fn has_trigger(&self, id: ItemId) -> bool {
+        self.triggered.contains(&id)
+    }
+
+    /// The settings key of `section`'s sort: the sections that have none of their own in the
+    /// library (All items, Pinned and a tag's view). `None` for a list (its sort is part of it),
+    /// the Recent inbox and the Trash.
+    #[must_use]
+    pub fn sort_key(section: Section) -> Option<String> {
+        match section {
+            Section::All => Some("all".to_owned()),
+            Section::Pinned => Some("pinned".to_owned()),
+            Section::Tag(id) => Some(format!("tag:{id}")),
+            Section::List(_) | Section::Recent | Section::Trash => None,
+        }
+    }
+
+    /// Loads the sorts of All items, Pinned and the tag views (see [`sort_key`](Self::sort_key)).
+    pub fn set_section_sorts(&mut self, sorts: BTreeMap<String, Sort>) {
+        self.sorts = sorts;
+        self.generation += 1;
+    }
+
+    /// The open section's sort (manual where it has none).
+    #[must_use]
+    pub fn sort(&self) -> Sort {
+        match self.section {
+            Section::List(id) => self
+                .lists
+                .iter()
+                .find(|l| l.id == id)
+                .map_or(Sort::MANUAL, |l| l.sort),
+            other => Self::sort_key(other)
+                .and_then(|k| self.sorts.get(&k).copied())
+                .unwrap_or(Sort::MANUAL),
+        }
+    }
+
+    /// Whether the open section has a sort to choose (not the Recent inbox or the Trash).
+    #[must_use]
+    pub fn sortable(&self) -> bool {
+        !matches!(self.section, Section::Recent | Section::Trash) && !self.searching()
+    }
+
+    /// The items of list `id` in the list's own order. A group is a block of the manual order and
+    /// stays where it is under any sort: the sort orders the rows inside each block (a group, or a
+    /// run of loose items). With a filter on there are no groups and the whole list is sorted.
     fn list_items(&self, id: ListId) -> Vec<&Item> {
-        let mut items: Vec<&Item> = self
+        let items: Vec<&Item> = self
             .items
             .iter()
             .filter(|i| i.list_id == id)
             .map(|i| &**i)
             .collect();
-        match self.lists.iter().find(|l| l.id == id).map(|l| l.sort) {
-            Some(ListSort::MostUsed) => items.sort_by_key(|i| std::cmp::Reverse(i.use_count)),
-            Some(ListSort::RecentlyUsed) => {
-                items.sort_by_key(|i| std::cmp::Reverse(i.last_used_at));
-            }
-            _ => {}
+        let sort = self
+            .lists
+            .iter()
+            .find(|l| l.id == id)
+            .map_or(Sort::MANUAL, |l| l.sort);
+        if sort.is_manual() {
+            return items;
         }
-        items
+        let runs = self.groups.get(&id).filter(|_| self.filter.is_none());
+        let group_of = |item: &Item| {
+            runs.and_then(|runs| runs.iter().find(|r| r.items.contains(&item.id)))
+                .map(|r| r.group.id)
+        };
+        let mut sorted = Vec::with_capacity(items.len());
+        let mut block: Vec<&Item> = Vec::new();
+        let mut block_group = None;
+        for item in items {
+            let group = group_of(item);
+            if group != block_group {
+                sort.apply(&mut block);
+                sorted.append(&mut block);
+                block_group = group;
+            }
+            block.push(item);
+        }
+        sort.apply(&mut block);
+        sorted.append(&mut block);
+        sorted
     }
 
     /// What the rows stand for, in order.
@@ -1004,9 +1304,9 @@ impl MainModel {
         self.entries()
             .into_iter()
             .map(|e| match e {
-                Entry::Item(i) => Key::Item(i.id),
+                Entry::Item(i, _) => Key::Item(i.id),
                 Entry::Trashed(t) => t.target.into(),
-                Entry::Header(r) => Key::Group(r.group.id),
+                Entry::Header(r, _) => Key::Group(r.group.id),
             })
             .collect()
     }
@@ -1015,17 +1315,28 @@ impl MainModel {
     #[must_use]
     pub fn rows(&self) -> Vec<Row> {
         let mixed = self.searching() || !matches!(self.section, Section::List(_));
+        let hit_tags: HashMap<ItemId, &str> = self
+            .hits
+            .iter()
+            .filter_map(|hit| Some((hit.id, hit.tag.as_deref()?)))
+            .collect();
         self.entries()
             .into_iter()
             .map(|entry| match entry {
-                Entry::Item(item) => {
+                Entry::Item(item, depth) => {
                     let title = if item.title.trim().is_empty() {
                         item.preview.lines().next().unwrap_or_default().to_owned()
                     } else {
                         item.title.clone()
                     };
                     let marks = if self.searching() {
-                        search_mark::marks(&title, &item.preview, item.sensitive, None, &self.query)
+                        search_mark::marks(
+                            &title,
+                            &item.preview,
+                            item.sensitive,
+                            hit_tags.get(&item.id).copied(),
+                            &self.query,
+                        )
                     } else {
                         Marks::default()
                     };
@@ -1043,7 +1354,7 @@ impl MainModel {
                         label: item.label,
                         selected: self.selected.contains(&Key::Item(item.id)),
                         header: None,
-                        grouped: self.group_of(item.id).is_some() && self.shows_groups(),
+                        depth,
                         image_stamp: (item.kind == ItemKind::Image && !item.sensitive)
                             .then_some(item.updated_at),
                         thumb: None,
@@ -1051,48 +1362,46 @@ impl MainModel {
                 }
                 Entry::Trashed(entry) => {
                     let key = Key::from(entry.target);
+                    let preview = match key {
+                        // An untitled item's title is its preview: say it once.
+                        Key::Item(_) if entry.preview == entry.label => String::new(),
+                        Key::Item(_) | Key::Group(_) => entry.preview.clone(),
+                        Key::List(_) => LIST_NOTE.to_owned(),
+                        Key::Board(_) => BOARD_NOTE.to_owned(),
+                    };
+                    let marks = if self.searching() {
+                        search_mark::marks(
+                            &entry.label,
+                            if matches!(key, Key::Item(_)) {
+                                &preview
+                            } else {
+                                ""
+                            },
+                            false,
+                            None,
+                            &self.query,
+                        )
+                    } else {
+                        Marks::default()
+                    };
                     Row {
                         key,
                         kind: ItemKind::Text,
                         sensitive: false,
                         title: entry.label.clone(),
-                        preview: match key {
-                            Key::Item(_) | Key::Group(_) => String::new(),
-                            Key::List(_) => LIST_NOTE.to_owned(),
-                            Key::Board(_) => BOARD_NOTE.to_owned(),
-                        },
+                        preview,
                         list: None,
                         pinned: false,
                         label: None,
                         selected: self.selected.contains(&key),
-                        marks: Marks::default(),
+                        marks,
                         header: None,
-                        grouped: false,
+                        depth: 0,
                         image_stamp: None,
                         thumb: None,
                     }
                 }
-                Entry::Header(run) => Row {
-                    key: Key::Group(run.group.id),
-                    kind: ItemKind::Text,
-                    sensitive: false,
-                    title: run.group.name.as_str().to_owned(),
-                    preview: String::new(),
-                    list: None,
-                    pinned: false,
-                    label: None,
-                    selected: false,
-                    marks: Marks::default(),
-                    header: Some(GroupHeader {
-                        group: run.group.id,
-                        name: run.group.name.as_str().to_owned(),
-                        count: run.items.len(),
-                        collapsed: run.group.collapsed,
-                    }),
-                    grouped: false,
-                    image_stamp: None,
-                    thumb: None,
-                },
+                Entry::Header(run, depth) => header_row(run, depth),
             })
             .collect()
     }
@@ -1114,10 +1423,10 @@ impl MainModel {
     }
 
     /// Whether the row at the cursor can be moved by hand: the open list is in manual order
-    /// and no search is running.
+    /// and no search is running (under a filter a row swaps with the next one shown).
     #[must_use]
     pub fn reorderable(&self) -> bool {
-        !self.searching() && self.open_list().is_some_and(|l| l.sort == ListSort::Manual)
+        !self.searching() && self.open_list().is_some_and(|l| l.sort.is_manual())
     }
 
     // ---- Changing what is shown ----------------------------------------------------------------
@@ -1127,7 +1436,7 @@ impl MainModel {
     pub fn open(&mut self, section: Section) {
         self.section = section;
         self.generation += 1;
-        self.label_filter = None;
+        self.filter = ViewFilter::none();
         self.query.clear();
         self.hits.clear();
         self.clear_selection();
@@ -1142,7 +1451,7 @@ impl MainModel {
     /// Any store error from reading the board's lists.
     pub fn open_board<S>(&mut self, store: &S, id: BoardId) -> snipdeck_store::Result<()>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo + GroupRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo + GroupRepo + TriggerRepo,
     {
         if !self.boards.iter().any(|b| b.id == id) {
             return Ok(());
@@ -1152,8 +1461,8 @@ impl MainModel {
         self.reload(store)
     }
 
-    /// Sets the search text and reads the matches (every board) from the store. The
-    /// selection and cursor start over.
+    /// Sets the search text and finds the matches (every board): the shared index, with the
+    /// store's full-text index for the full content. The selection and cursor start over.
     ///
     /// # Errors
     ///
@@ -1165,7 +1474,7 @@ impl MainModel {
         self.clear_selection();
         self.cursor = 0;
         if self.searching() && self.section != Section::Trash {
-            self.hits = store.search(self.query.trim(), SEARCH_LIMIT)?;
+            self.hits = search(store, &self.snapshot.index(), &self.query)?;
         }
         Ok(())
     }
@@ -1261,6 +1570,15 @@ impl MainModel {
     pub fn chooser(&self) -> &[Key] {
         &self.chooser
     }
+}
+
+/// Where `order[index]` sits now, as a placement: after the one before it, or first.
+#[must_use]
+pub fn place_of<I: Copy>(order: &[I], index: usize) -> Placement<I> {
+    index
+        .checked_sub(1)
+        .and_then(|before| order.get(before))
+        .map_or(Placement::First, |id| Placement::After(*id))
 }
 
 /// Where moving the entry at `from` by `delta` places it among `order`, and its new position.
@@ -1447,7 +1765,7 @@ mod tests {
             .expect("list")
             .clone();
         let mut sorted = code.clone();
-        sorted.sort = ListSort::MostUsed;
+        sorted.sort = Sort::MOST_USED;
         store.update_list(&sorted).expect("update");
         let second = store.items(code.id).expect("items")[1].id;
         store.record_use(second, now()).expect("use");
@@ -1489,7 +1807,7 @@ mod tests {
         let (_, ids, group) = grouped(&mut store, &mut model);
         let rows = model.rows();
         assert_eq!(rows[0].key, Key::Item(ids[0]));
-        assert!(rows[0].header.is_none() && !rows[0].grouped);
+        assert!(rows[0].header.is_none() && rows[0].depth == 0);
         assert_eq!(rows[1].key, Key::Group(group.id));
         let header = rows[1].header.as_ref().expect("header");
         assert_eq!(
@@ -1497,8 +1815,120 @@ mod tests {
             ("Pair", 2, false)
         );
         assert_eq!(rows[2].key, Key::Item(ids[1]));
-        assert!(rows[2].grouped && rows[3].grouped);
+        assert!(rows[2].depth == 1 && rows[3].depth == 1);
         assert_eq!(model.keys().len(), model.rows().len());
+    }
+
+    /// Groups the first three items of the fullest list as Outer, with Inner nested around the
+    /// last two: rows are [Outer, a, Inner, b, c, (rest)].
+    fn nested(
+        store: &mut Store,
+        model: &mut MainModel,
+    ) -> (
+        ListId,
+        Vec<ItemId>,
+        snipdeck_core::Group,
+        snipdeck_core::Group,
+    ) {
+        use snipdeck_store::GroupRepo;
+        let (list, ids) = fullest_list(model, store);
+        let outer = snipdeck_core::Group::new(list, Name::new("Outer").expect("name"));
+        store.create_group(&outer, &ids[0..3]).expect("outer");
+        let inner = snipdeck_core::Group {
+            parent: Some(outer.id),
+            ..snipdeck_core::Group::new(list, Name::new("Inner").expect("name"))
+        };
+        store.create_group(&inner, &ids[1..3]).expect("inner");
+        model.reload(store).expect("reload");
+        model.open(Section::List(list));
+        (list, ids, outer, inner)
+    }
+
+    #[test]
+    fn a_nested_group_shows_its_header_below_its_parents_and_indents_by_depth() {
+        let (mut store, mut model) = loaded();
+        let (_, ids, outer, inner) = nested(&mut store, &mut model);
+        let rows = model.rows();
+        assert_eq!(
+            model.keys()[..5],
+            [
+                Key::Group(outer.id),
+                Key::Item(ids[0]),
+                Key::Group(inner.id),
+                Key::Item(ids[1]),
+                Key::Item(ids[2]),
+            ]
+        );
+        let depth = |r: &Row| r.header.as_ref().map_or(r.depth, |h| h.depth);
+        assert_eq!(
+            rows[..5].iter().map(depth).collect::<Vec<_>>(),
+            [0, 1, 1, 2, 2]
+        );
+        assert_eq!(rows[0].header.as_ref().map(|h| h.count), Some(3));
+        assert_eq!(rows[2].header.as_ref().map(|h| h.count), Some(2));
+        assert_eq!(model.group_of(ids[2]).map(|r| r.group.id), Some(inner.id));
+    }
+
+    #[test]
+    fn folding_a_parent_hides_the_groups_nested_in_it() {
+        use snipdeck_store::GroupRepo;
+        let (mut store, mut model) = loaded();
+        let (list, ids, mut outer, mut inner) = nested(&mut store, &mut model);
+        outer.collapsed = true;
+        store.update_group(&outer).expect("fold");
+        model.reload(&store).expect("reload");
+        model.open(Section::List(list));
+        assert_eq!(model.keys()[..2], [Key::Group(outer.id), model.keys()[1]]);
+        assert!(
+            !model.keys().contains(&Key::Group(inner.id))
+                && !model.keys().contains(&Key::Item(ids[0]))
+                && !model.keys().contains(&Key::Item(ids[2])),
+            "the parent's own members, the nested header and its members are all hidden"
+        );
+        // Unfolded again, a folded child hides only its own members.
+        outer.collapsed = false;
+        inner.collapsed = true;
+        store.update_group(&outer).expect("unfold");
+        store.update_group(&inner).expect("fold child");
+        model.reload(&store).expect("reload");
+        model.open(Section::List(list));
+        assert_eq!(
+            model.keys()[..3],
+            [
+                Key::Group(outer.id),
+                Key::Item(ids[0]),
+                Key::Group(inner.id)
+            ]
+        );
+        assert!(!model.keys().contains(&Key::Item(ids[1])));
+    }
+
+    #[test]
+    fn a_sort_orders_the_rows_inside_each_block_of_a_nested_group() {
+        let (mut store, mut model) = loaded();
+        let (list, ids, _, inner) = nested(&mut store, &mut model);
+        let mut sorted = model
+            .lists()
+            .iter()
+            .find(|l| l.id == list)
+            .expect("list")
+            .clone();
+        sorted.sort = Sort::new(snipdeck_core::SortKey::Name, true);
+        store.update_list(&sorted).expect("sort");
+        model.reload(&store).expect("reload");
+        model.open(Section::List(list));
+        let keys = model.keys();
+        let at = |k: Key| keys.iter().position(|x| *x == k).expect("row");
+        assert!(
+            at(Key::Item(ids[0])) < at(Key::Group(inner.id)),
+            "the parent's member stays above the child"
+        );
+        let (b, c) = (at(Key::Item(ids[1])), at(Key::Item(ids[2])));
+        assert!(
+            at(Key::Group(inner.id)) < b.min(c),
+            "the child's members stay under its header"
+        );
+        assert!(b.abs_diff(c) == 1, "and together");
     }
 
     #[test]
@@ -1520,7 +1950,7 @@ mod tests {
     }
 
     #[test]
-    fn groups_need_manual_order_and_no_search_or_label_filter() {
+    fn groups_need_no_search_or_filter_and_survive_a_sort() {
         let (mut store, mut model) = loaded();
         let (list, _, group) = grouped(&mut store, &mut model);
         model.set_query(&store, "e").expect("search");
@@ -1528,7 +1958,7 @@ mod tests {
             model
                 .rows()
                 .iter()
-                .all(|r| r.header.is_none() && !r.grouped),
+                .all(|r| r.header.is_none() && r.depth == 0),
             "a search is flat"
         );
         model.set_query(&store, "").expect("clear");
@@ -1544,14 +1974,15 @@ mod tests {
             .find(|l| l.id == list)
             .expect("list")
             .clone();
-        sorted.sort = ListSort::MostUsed;
+        sorted.sort = Sort::MOST_USED;
         store.update_list(&sorted).expect("sort");
         model.reload(&store).expect("reload");
         model.open(Section::List(list));
         assert!(
-            !model.keys().contains(&Key::Group(group.id)),
-            "a list that sorts itself shows no groups"
+            model.keys().contains(&Key::Group(group.id)),
+            "a list that sorts itself keeps its group headers (the items sort inside each group)"
         );
+        assert!(!model.reorderable(), "but it cannot be reordered by hand");
     }
 
     #[test]
@@ -1664,7 +2095,14 @@ mod tests {
         model.set_query(&store, "milk").expect("search");
         assert!(!model.search_capped(), "one hit is not a cut");
         let id = store.all_items().expect("items")[0].id;
-        model.hits = vec![id; SEARCH_LIMIT];
+        model.hits = vec![
+            Hit {
+                id,
+                score: 0,
+                tag: None
+            };
+            SEARCH_LIMIT
+        ];
         assert!(model.search_capped());
         model.set_query(&store, "").expect("clear");
         assert!(!model.search_capped(), "no search, no cut");

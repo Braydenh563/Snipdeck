@@ -21,6 +21,7 @@
 //!   sensitive or clearing the flag fails with
 //!   [`Error::EncryptionLocked`](crate::Error::EncryptionLocked).
 
+use snipdeck_core::search::{BodyMatches, Query};
 use snipdeck_core::{
     Board, BoardId, Format, Formats, Group, GroupId, Item, ItemId, List, ListId, Name, Placement,
     Tag, TagId, Timestamp, Trigger,
@@ -73,12 +74,33 @@ pub trait GroupRepo {
     /// The list's groups that have a live member, with those members, top to bottom.
     fn groups_of(&self, list: ListId) -> Result<Vec<GroupRun>>;
 
-    /// Adds `group` (its `list_id` names the list) with `members`, which must be live items
+    /// Adds `group` (its `list_id` names the list, its `parent` the group it is nested in, whose
+    /// own members `members` must then be) with `members`, which must be live items
     /// of that list; they gather directly below the topmost one, keeping list order.
     /// Members of other groups leave them. Fails if `members` is empty.
     fn create_group(&mut self, group: &Group, members: &[ItemId]) -> Result<()>;
 
-    /// Overwrites the group's name and collapsed flag.
+    /// Makes the group again where it was (for undo): `members` become its own members and
+    /// `children` are nested in it again, without moving any row. It may have no member of its
+    /// own. Fails if the result would split a run.
+    fn restore_group(
+        &mut self,
+        group: &Group,
+        members: &[ItemId],
+        children: &[GroupId],
+    ) -> Result<()>;
+
+    /// Nests the group in `parent` (`None`: at the top level) and moves its whole run to `at`,
+    /// corrected to a place inside the parent's run. Fails with `Error::GroupParent` for a
+    /// parent that is the group itself, one of its own, gone, empty, or too deep.
+    fn reparent_group(
+        &mut self,
+        id: GroupId,
+        parent: Option<GroupId>,
+        at: Placement<ItemId>,
+    ) -> Result<()>;
+
+    /// Overwrites the group's name, collapsed flag and colour (not its place in the nesting).
     fn update_group(&mut self, group: &Group) -> Result<()>;
 
     /// Deletes the group: its items stay ungrouped or go to the trash, in one transaction.
@@ -206,9 +228,11 @@ pub trait ItemRepo {
     /// Counts one use at `at`, as [`Item::record_use`] does, without loading the item.
     fn record_use(&mut self, id: ItemId, at: Timestamp) -> Result<()>;
 
-    /// Full-content search (FTS5) over live items, best match first, at most `limit` ids.
-    /// Sensitive items match on their title only.
-    fn search(&self, query: &str, limit: usize) -> Result<Vec<ItemId>>;
+    /// For each term of `query`, the live items whose title or content contains it (the
+    /// full-text index, `None` for a term too short to look up). Sensitive items match on their
+    /// title only. Ranking and the other fields are the shared
+    /// [`SearchIndex`](snipdeck_core::search::SearchIndex)'s work.
+    fn search(&self, query: &Query) -> Result<BodyMatches>;
 }
 
 /// Tags. Tags are not trashed: deleting one removes it from every item.
@@ -233,6 +257,19 @@ pub trait TagRepo {
     /// (once, if it had both), and `from` is deleted. Returns how many items gained `into`.
     /// Merging a tag into itself changes nothing; a missing tag is [`Error::NotFound`](crate::Error::NotFound).
     fn merge_tag(&mut self, from: TagId, into: TagId) -> Result<usize>;
+
+    /// The items that carry tag `id`, live or in the Trash (what [`TagRepo::delete_tag`] would
+    /// unlink), so a deletion can be taken back.
+    fn tag_items(&self, id: TagId) -> Result<Vec<ItemId>>;
+
+    /// Puts tag `id` back on `items` (live or in the Trash). An item that is gone, or already
+    /// has the tag, is skipped; the tag must exist.
+    fn link_tag(&mut self, id: TagId, items: &[ItemId]) -> Result<()>;
+
+    /// Takes tag `id` off `items` (live or in the Trash): the inverse of
+    /// [`TagRepo::link_tag`]. An item that is gone, or does not have the tag, is skipped; the tag
+    /// stays.
+    fn unlink_tag(&mut self, id: TagId, items: &[ItemId]) -> Result<()>;
 }
 
 /// Something that can be put in the trash.
@@ -253,6 +290,9 @@ pub struct TrashEntry {
     pub target: Trashable,
     /// Its name or title when it was trashed.
     pub label: String,
+    /// An item's preview (empty for a list or board, and for a sensitive item, which keeps none),
+    /// so the Trash can be searched by it.
+    pub preview: String,
     /// When it was trashed.
     pub deleted_at: Timestamp,
 }
@@ -286,4 +326,7 @@ pub trait TrashRepo {
     /// [`Error::NotFound`](crate::Error::NotFound) if `target` is not a trash entry (it is
     /// live, inside a trashed parent, or already gone).
     fn purge_entry(&mut self, target: Trashable) -> Result<()>;
+
+    /// Whether `target` is still in the library, live or in the Trash (it is not once purged).
+    fn is_stored(&self, target: Trashable) -> Result<bool>;
 }

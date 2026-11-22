@@ -30,11 +30,25 @@ Features that exist now (user-facing list in `README.md` and `docs/user-guide.md
 - Item editor with Preview (`Ctrl+P`), draft recovery, triggers and typing expansion (Windows).
 - Command palette (`Ctrl+K` or `Ctrl+Shift+P`), sidebar collapse button in the sidebar header (`Ctrl+B`),
   tinted list icons, Settings > Privacy "Clear recent emoji and colours".
+- Library views (`snipdeck_core::{Sort, ViewFilter}`): one Sort for every section (a list's in the library, `All items`,
+  Pinned and each tag's in `Settings::section_sorts`), a toolbar Filter (several tags any/all, untagged, kind, has trigger,
+  sensitive; chips under the toolbar) that the Picker's Pinned scope also uses, group headers kept under any sort,
+  group delete confirmation and "Move group to list", tag colours with Merge on a rename clash, board accent and icon,
+  and Trash search. Store schema V12 to V15 and archive format 1.3 carry them (`docs/format.md`). Group colour is built (Main window dot,
+  menu row, dialog and the palette's "Group colour…"). Nested tags are built (`Tag.parent`, `TagTree` in core, V14, portable `parent`,
+  sidebar tree, Tag manager "Nest under" dialog, undoable nest/merge/delete). Nested GROUPS are built (V15 `item_groups.parent`, `MAX_GROUP_DEPTH` 3, `GroupTree` in core, store `reparent_group`/`restore_group`, portable `parent`, shared `GroupWalk` in `snipdeck-app/src/group_walk.rs`, Main window indent, "Nest under…" in the header menu and the palette, subtree-aware ungroup/delete/move, one undo step each; see SPEC Groups). The Panel lists nested groups flat (headers and fold work, no indent yet); Ctrl+G on rows from several groups still makes a top-level group.
 - Recent copies, with a first-run question; nothing is kept until the owner of the PC says yes.
 - Master password with optional Windows Hello unlock; Sensitive items encrypted on disk.
 - Import from `.snipdeck`, Ditto, CopyQ, Espanso, Beeftext, TextExpander, PhraseExpress, Windows clipboard
   history and folders of text files; export and daily backups.
 - Seven languages (en, es, de, fr, pt-BR, ja, zh-Hans); catalogues are checked by `scripts/i18n.py`.
+
+Not built yet (SPEC 5.4, library audit 29 and 30): the rope viewer for text of 16 KB to 5 MB (such text opens as a
+read-only prefix, so find and the text tools do not reach it), the image editor (crop, rotate, resize, redact),
+decoding JPEG/WebP/GIF/BMP to a stored PNG, and Replace on an existing Image or File item. Reason: each is a large
+feature of its own (a virtualised text widget, an image pipeline, new crates) and was outside the time boxes of the
+audit fixes. Built since: find/replace, whole-text changes, the monospace switch and line numbers for text of 16 KB
+or less (the editor's Text tools row; `snipdeck_core::text_tools` holds the logic).
 
 ## Crate map
 

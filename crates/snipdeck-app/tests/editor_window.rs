@@ -248,6 +248,7 @@ fn new_snippet_in_the_kebab_opens_an_empty_editor_that_saves_text_from_the_keybo
             "nothing is made until it is needed"
         );
         let before = r.item_count();
+        let cursor_title = r.panel.get_rows().row_data(0).expect("row").title;
         menu(&r, "New item");
         let ed = r.ed();
         assert!(ed.get_is_new());
@@ -275,8 +276,13 @@ fn new_snippet_in_the_kebab_opens_an_empty_editor_that_saves_text_from_the_keybo
         assert_eq!(r.item_count(), before + 1);
         let id = r.id("Sign-off");
         assert_eq!(r.text(id), "Kind regards,");
+        // A new item goes after the row the cursor was on.
         assert_eq!(
             r.panel.get_rows().row_data(0).expect("row").title,
+            cursor_title
+        );
+        assert_eq!(
+            r.panel.get_rows().row_data(1).expect("row").title,
             "Sign-off"
         );
         assert!(
@@ -624,7 +630,7 @@ fn a_link_without_a_scheme_is_refused_inline_and_a_good_one_saves() {
         let ed = r.ed();
         click(ed.window(), &find(&ed, "Link", AccessibleRole::RadioButton));
         assert_eq!(ed.get_kind_index(), 2);
-        ed.set_content("example.com/page".into());
+        ed.set_content("example".into());
         ed.set_item_title("Page".into());
         settle();
         save(&ed);
@@ -652,6 +658,22 @@ fn a_link_without_a_scheme_is_refused_inline_and_a_good_one_saves() {
             r.ctl.borrow().store().item(id).expect("item").kind,
             ItemKind::Link
         );
+    });
+}
+
+#[test]
+fn a_link_that_reads_as_a_web_host_is_saved_with_https() {
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        ed.set_kind_index(2);
+        ed.set_content("example.com/page".into());
+        ed.set_item_title("Page".into());
+        settle();
+        save(&ed);
+        assert!(!r.editor_shown(), "a host needs no scheme typed");
+        assert_eq!(r.text(r.id("Page")), "https://example.com/page");
     });
 }
 
@@ -1054,7 +1076,7 @@ fn a_save_refused_while_previewing_goes_back_to_the_form_and_shows_why() {
 
         // The host's check: a link with no scheme passes the window and is refused by Save.
         ed.set_kind_index(2);
-        ed.set_content("docs.example.com".into());
+        ed.set_content("docs".into());
         chord(ed.window(), &[Key::Control], "p");
         settle();
         assert!(ed.get_preview_on());
@@ -1301,7 +1323,7 @@ fn with_both_a_text_and_a_title_refused_the_text_gets_the_keyboard_first() {
         menu(&r, "New item");
         let ed = r.ed();
         ed.set_kind_index(2);
-        ed.set_content("docs.example.com".into());
+        ed.set_content("docs".into());
         ed.set_item_title("t".repeat(500).into());
         preview_on(&ed);
         save(&ed);
@@ -1311,7 +1333,7 @@ fn with_both_a_text_and_a_title_refused_the_text_gets_the_keyboard_first() {
         type_text(ed.window(), "x");
         assert_eq!(
             ed.get_content().len(),
-            "docs.example.com".len() + 1,
+            "docs".len() + 1,
             "the letter went into the text, the first error in reading order"
         );
         assert_eq!(ed.get_item_title().len(), 500);
@@ -1404,30 +1426,49 @@ fn trigger_clash_shows_an_error() {
 }
 
 #[test]
-fn a_one_character_trigger_gets_a_warning_under_the_field() {
+fn a_trigger_that_would_fire_inside_words_is_refused_and_a_lone_symbol_warned_under_the_field() {
     on_ui_thread(|| {
         let r = rig();
         menu(&r, "New item");
         let ed = r.ed();
         // Tall enough that every field is on screen (off-screen ones are not in the tree).
         ed.window().set_size(slint::PhysicalSize::new(900, 2400));
+        assert_eq!(ed.get_trigger_error().to_string(), "", "no error at first");
         assert_eq!(
             ed.get_trigger_warning().to_string(),
             "",
             "no warning at first"
         );
+        // Fewer than three letters or digits fires inside ordinary words: refused, before Save.
+        for code in ["a", "sg", "12"] {
+            ed.set_trigger(code.into());
+            ed.invoke_trigger_edited(code.into());
+            settle();
+            let error = ed.get_trigger_error().to_string();
+            assert!(error.contains("fewer than 3"), "{code}: {error}");
+        }
+        // Announced, not only drawn: a text element carrying the error is in the tree.
+        let _ = find(&ed, &ed.get_trigger_error(), AccessibleRole::Text);
+        // A lone symbol is allowed but warned about, under the field; no error.
         ed.set_trigger(";".into());
+        ed.invoke_trigger_edited(";".into());
         settle();
+        assert_eq!(ed.get_trigger_error().to_string(), "");
         let warning = ed.get_trigger_warning().to_string();
         assert!(warning.contains("one-character"), "{warning}");
-        // Announced, not only drawn: a text element carrying the warning is in the tree.
         let _ = find(&ed, &warning, AccessibleRole::Text);
-        ed.set_trigger(";s".into());
-        settle();
-        assert_eq!(ed.get_trigger_warning().to_string(), "", "two do not");
+        // A symbol with a letter, and three letters, are safe: neither error nor warning.
+        for code in [";s", "sig"] {
+            ed.set_trigger(code.into());
+            ed.invoke_trigger_edited(code.into());
+            settle();
+            assert_eq!(ed.get_trigger_error().to_string(), "", "{code}");
+            assert_eq!(ed.get_trigger_warning().to_string(), "", "{code}");
+        }
         ed.set_trigger("".into());
+        ed.invoke_trigger_edited("".into());
         settle();
-        assert_eq!(ed.get_trigger_warning().to_string(), "", "none either");
+        assert_eq!(ed.get_trigger_error().to_string(), "", "none either");
     });
 }
 

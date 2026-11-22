@@ -7,8 +7,8 @@ use std::collections::BTreeMap;
 use snipdeck_core::{
     ItemId, Timestamp, UseMode,
     template::{
-        Locale, Prompt, PromptKind, RenderContext, TOGGLE_ON, Template, TimeZone, parse_pick_date,
-        transform::Transform,
+        Locale, Prompt, PromptKind, RenderContext, TOGGLE_ON, Template, TimeZone, parse_number,
+        parse_pick_date, transform::Transform,
     },
 };
 
@@ -21,7 +21,10 @@ pub enum FieldKind {
     Choice,
     /// Free text over several lines (`{multiline:Name|default}`).
     Multiline,
-    /// A day typed as `YYYY-MM-DD` (`{pickdate:Name|FORMAT}`); left empty it is today.
+    /// A number (`{number:Name|default}`), typed with `.` or `,` as the decimal mark.
+    Number,
+    /// A day typed in the locale's order or as `YYYY-MM-DD` (`{pickdate:Name|FORMAT}`); left
+    /// empty it is today.
     Date,
     /// A tick box (`{optional:Name}...{/optional}`): its value is [`TOGGLE_ON`] or empty.
     Toggle,
@@ -32,8 +35,10 @@ pub enum FieldKind {
 pub enum Missing {
     /// A required field is empty (only whitespace counts as empty).
     Empty,
-    /// A date field holds something that is not a real `YYYY-MM-DD` day.
+    /// A date field holds something that is not a real day in the locale's order or ISO.
     BadDate,
+    /// A number field holds something that is not a number.
+    BadNumber,
 }
 
 /// One field of the form.
@@ -51,6 +56,9 @@ pub struct Field {
     pub choice_index: usize,
     /// A text field the template gave no default for: it must not be left empty.
     pub required: bool,
+    /// Whether the answer matters now: `false` for a field inside an `{optional}` section the
+    /// answers leave unticked. The form disables it and never holds the submit for it.
+    pub enabled: bool,
 }
 
 /// A template waiting for the user's answers.
@@ -62,21 +70,67 @@ pub struct FillModel {
     template: Template,
     fields: Vec<Field>,
     transform: Option<Transform>,
+    locale: Locale,
+    selection: Option<String>,
 }
 
 impl FillModel {
     /// The form for `template`, which belongs to item `item` (shown as `title`) and will be
-    /// used with `mode` once the form is submitted.
+    /// used with `mode` once the form is submitted. `locale` is how dates are typed and shown.
     #[must_use]
-    pub fn new(item: ItemId, mode: UseMode, title: String, template: Template) -> Self {
+    pub fn new(
+        item: ItemId,
+        mode: UseMode,
+        title: String,
+        template: Template,
+        locale: Locale,
+    ) -> Self {
         let fields = template.prompts().into_iter().map(field_of).collect();
-        Self {
+        let mut model = Self {
             item,
             mode,
             title,
             template,
             fields,
             transform: None,
+            locale,
+            selection: None,
+        };
+        model.refresh_enabled();
+        model
+    }
+
+    /// The text that was selected in the Target when the use began, for `{selection}` in the
+    /// preview and the paste.
+    #[must_use]
+    pub fn with_selection(mut self, selection: Option<String>) -> Self {
+        self.selection = selection;
+        self
+    }
+
+    /// The selection captured before the form opened.
+    #[must_use]
+    pub fn selection(&self) -> Option<&str> {
+        self.selection.as_deref()
+    }
+
+    /// How dates are typed in this form.
+    #[must_use]
+    pub fn locale(&self) -> Locale {
+        self.locale
+    }
+
+    /// The date format as letters (`DD/MM/YYYY`), the hint of a date field.
+    #[must_use]
+    pub fn date_hint(&self) -> String {
+        self.locale.date.hint()
+    }
+
+    /// Recomputes which fields matter after an answer changed.
+    fn refresh_enabled(&mut self) {
+        let active = self.template.active_prompts(&self.answers());
+        for (field, on) in self.fields.iter_mut().zip(active) {
+            field.enabled = on;
         }
     }
 
@@ -133,11 +187,50 @@ impl FillModel {
             FieldKind::Toggle => {
                 let ticked = if value == TOGGLE_ON { TOGGLE_ON } else { "" };
                 ticked.clone_into(&mut field.value);
+                self.refresh_enabled();
                 return;
             }
-            FieldKind::Text | FieldKind::Multiline | FieldKind::Date => {}
+            FieldKind::Text | FieldKind::Multiline | FieldKind::Number | FieldKind::Date => {}
         }
         value.clone_into(&mut field.value);
+        self.refresh_enabled();
+    }
+
+    /// The day field `index` holds, as (year, month, day), if it is a date field with a real
+    /// day typed in: the month grid marks it.
+    #[must_use]
+    pub fn date_parts(&self, index: usize) -> Option<(i32, i32, i32)> {
+        let field = self
+            .fields
+            .get(index)
+            .filter(|f| f.kind == FieldKind::Date)?;
+        let date = parse_pick_date(field.value.trim(), self.locale.date)?;
+        Some((
+            i32::from(date.year()),
+            i32::from(date.month()),
+            i32::from(date.day()),
+        ))
+    }
+
+    /// A day was picked in the month grid of date field `index`: the field now holds it in the
+    /// locale's date order, which is returned. `None` (nothing changes) for a field that is not
+    /// a date or a day that does not exist.
+    pub fn pick_date(&mut self, index: usize, year: i32, month: i32, day: i32) -> Option<String> {
+        if self.fields.get(index)?.kind != FieldKind::Date {
+            return None;
+        }
+        let date = jiff::civil::Date::new(
+            i16::try_from(year).ok()?,
+            i8::try_from(month).ok()?,
+            i8::try_from(day).ok()?,
+        )
+        .ok()?;
+        let text = self
+            .locale
+            .date
+            .write(date.year(), date.month(), date.day());
+        self.set_value(index, &text);
+        Some(text)
     }
 
     /// Sets every field from `values`, in field order (what the window sends on submit).
@@ -148,23 +241,40 @@ impl FillModel {
         }
     }
 
-    /// The first field that stops the form, and why: a required field left empty, or a
-    /// date that is not a real day (an empty date is fine: it means today).
+    /// Every field that stops the form, and why, in field order. A field the answers switch
+    /// off (inside an unticked `{optional}`) never stops it.
+    #[must_use]
+    pub fn missing(&self) -> Vec<(usize, Missing)> {
+        self.fields
+            .iter()
+            .enumerate()
+            .filter(|(_, f)| f.enabled)
+            .filter_map(|(i, f)| {
+                let value = f.value.trim();
+                let why = if f.required && value.is_empty() {
+                    Missing::Empty
+                } else if f.kind == FieldKind::Date
+                    && !value.is_empty()
+                    && parse_pick_date(value, self.locale.date).is_none()
+                {
+                    Missing::BadDate
+                } else if f.kind == FieldKind::Number
+                    && !value.is_empty()
+                    && parse_number(value).is_none()
+                {
+                    Missing::BadNumber
+                } else {
+                    return None;
+                };
+                Some((i, why))
+            })
+            .collect()
+    }
+
+    /// The first field that stops the form, and why (see [`missing`](Self::missing)).
     #[must_use]
     pub fn first_missing(&self) -> Option<(usize, Missing)> {
-        self.fields.iter().enumerate().find_map(|(i, f)| {
-            let value = f.value.trim();
-            if f.required && value.is_empty() {
-                Some((i, Missing::Empty))
-            } else if f.kind == FieldKind::Date
-                && !value.is_empty()
-                && parse_pick_date(value).is_none()
-            {
-                Some((i, Missing::BadDate))
-            } else {
-                None
-            }
-        })
+        self.missing().into_iter().next()
     }
 
     /// The answers by prompt name, for [`crate::usecase::UseRequest::answers`].
@@ -180,13 +290,16 @@ impl FillModel {
     /// is empty in it). Each `{uuid}` shows as [`preview_uuid`], which the window replaces with
     /// a translated "(new ID)": the real one is drawn when the paste happens.
     #[must_use]
-    pub fn preview(&self, now: Timestamp, tz: &TimeZone, locale: Locale) -> String {
+    pub fn preview(&self, now: Timestamp, tz: &TimeZone) -> String {
         let answers = self.answers();
         let uuids = vec![PREVIEW_UUID_BYTES; self.template.uuid_count()];
-        let ctx = RenderContext::new(now, &answers)
+        let mut ctx = RenderContext::new(now, &answers)
             .with_tz(tz.clone())
-            .with_locale(locale)
+            .with_locale(self.locale)
             .with_uuids(&uuids);
+        if let Some(selection) = &self.selection {
+            ctx = ctx.with_selection(selection);
+        }
         self.template.render(&ctx).text
     }
 }
@@ -202,30 +315,27 @@ pub fn preview_uuid() -> String {
 }
 
 fn field_of(prompt: Prompt) -> Field {
+    let text_like = |kind, default: Option<String>| Field {
+        label: prompt.name.clone(),
+        kind,
+        required: default.is_none(),
+        value: default.unwrap_or_default(),
+        options: Vec::new(),
+        choice_index: 0,
+        enabled: true,
+    };
     match prompt.kind {
-        PromptKind::Field { default } => Field {
-            label: prompt.name,
-            kind: FieldKind::Text,
-            required: default.is_none(),
-            value: default.unwrap_or_default(),
-            options: Vec::new(),
-            choice_index: 0,
-        },
-        PromptKind::Choice { options } => Field {
+        PromptKind::Field { default } => text_like(FieldKind::Text, default),
+        PromptKind::Multiline { default } => text_like(FieldKind::Multiline, default),
+        PromptKind::Number { default } => text_like(FieldKind::Number, default),
+        PromptKind::Choice { options, default } => Field {
             label: prompt.name,
             kind: FieldKind::Choice,
-            value: options.first().cloned().unwrap_or_default(),
+            value: options.get(default).cloned().unwrap_or_default(),
             options,
-            choice_index: 0,
+            choice_index: default,
             required: false,
-        },
-        PromptKind::Multiline { default } => Field {
-            label: prompt.name,
-            kind: FieldKind::Multiline,
-            required: default.is_none(),
-            value: default.unwrap_or_default(),
-            options: Vec::new(),
-            choice_index: 0,
+            enabled: true,
         },
         PromptKind::Date => blank(prompt.name, FieldKind::Date),
         PromptKind::Toggle => blank(prompt.name, FieldKind::Toggle),
@@ -241,6 +351,7 @@ fn blank(label: String, kind: FieldKind) -> Field {
         options: Vec::new(),
         choice_index: 0,
         required: false,
+        enabled: true,
     }
 }
 
@@ -258,11 +369,22 @@ mod tests {
             UseMode::Paste,
             "Reminder".into(),
             Template::parse(src).expect("template"),
+            Locale::for_tag("en"),
+        )
+    }
+
+    fn form_in(src: &str, tag: &str) -> FillModel {
+        FillModel::new(
+            ItemId::generate(),
+            UseMode::Paste,
+            "Reminder".into(),
+            Template::parse(src).expect("template"),
+            Locale::for_tag(tag),
         )
     }
 
     fn preview(m: &FillModel) -> String {
-        m.preview(now(), &TimeZone::UTC, Locale::for_tag("en"))
+        m.preview(now(), &TimeZone::UTC)
     }
 
     #[test]
@@ -411,5 +533,144 @@ mod tests {
         m.set_value(0, "yes please");
         assert_eq!(m.fields()[0].value, "");
         assert_eq!(preview(&m), "Hi.");
+    }
+
+    #[test]
+    fn library_13_an_empty_default_makes_any_text_field_optional() {
+        let m = form("{field:CC|} {multiline:Note|} {number:Qty|} {pickdate:Due|%F}");
+        assert!(m.fields().iter().all(|f| !f.required), "{:?}", m.fields());
+        assert_eq!(m.first_missing(), None);
+        assert_eq!(preview(&m), "   2026-10-18");
+        // Without the bar they are still required.
+        let m = form("{field:CC} {multiline:Note} {number:Qty}");
+        assert_eq!(m.missing().len(), 3);
+    }
+
+    #[test]
+    fn library_14_a_required_field_in_an_unticked_section_does_not_stop_the_form() {
+        let mut m = form("Hi {field:Name}{optional:Why}, because {field:Reason}{/optional}.");
+        assert_eq!(m.fields().len(), 3);
+        assert_eq!(
+            m.fields().iter().map(|f| f.enabled).collect::<Vec<_>>(),
+            [true, true, false],
+            "the Reason field is off while Why is unticked"
+        );
+        m.set_value(0, "Ada");
+        assert_eq!(m.first_missing(), None, "Reason is off, so not missing");
+        m.set_value(1, TOGGLE_ON);
+        assert!(m.fields()[2].enabled);
+        assert_eq!(m.first_missing(), Some((2, Missing::Empty)));
+        m.set_value(2, "tea");
+        assert_eq!(m.first_missing(), None);
+        assert_eq!(preview(&m), "Hi Ada, because tea.");
+        // Unticked again: the answer stays typed but is off, and nothing is missing.
+        m.set_value(2, "");
+        m.set_value(1, "");
+        assert!(!m.fields()[2].enabled);
+        assert_eq!(m.first_missing(), None);
+    }
+
+    #[test]
+    fn library_14_every_missing_field_is_listed_not_only_the_first() {
+        let m = form("{field:A} {field:B|x} {field:C}");
+        assert_eq!(m.missing(), [(0, Missing::Empty), (2, Missing::Empty)]);
+    }
+
+    #[test]
+    fn library_18_a_date_is_typed_in_the_locales_order_with_its_hint() {
+        let mut de = form_in("{pickdate:Due|%F}", "de");
+        assert_eq!(de.date_hint(), "DD.MM.YYYY");
+        de.set_value(0, "17.10.2026");
+        assert_eq!(de.first_missing(), None);
+        assert_eq!(preview(&de), "2026-10-17");
+        de.set_value(0, "30.02.2026");
+        assert_eq!(de.first_missing(), Some((0, Missing::BadDate)));
+        // ISO is accepted in every locale.
+        de.set_value(0, "2026-10-17");
+        assert_eq!(de.first_missing(), None);
+
+        let mut us = form_in("{pickdate:Due|%F}", "en-US");
+        assert_eq!(us.date_hint(), "MM/DD/YYYY");
+        us.set_value(0, "10/17/2026");
+        assert_eq!(preview(&us), "2026-10-17");
+        us.set_value(0, "17/10/2026");
+        assert_eq!(us.first_missing(), Some((0, Missing::BadDate)));
+    }
+
+    #[test]
+    fn library_20_prompt_names_that_differ_in_case_or_spaces_are_one_field() {
+        let mut m = form("{field:Name} and {field: name } and {field:NAME}");
+        assert_eq!(m.fields().len(), 1);
+        m.set_value(0, "Ada");
+        assert_eq!(preview(&m), "Ada and Ada and Ada");
+    }
+
+    #[test]
+    fn library_21_sixty_four_prompts_make_sixty_four_fields() {
+        let src: String = (1..=64)
+            .map(|i| ["{field:F", &i.to_string(), "} "].concat())
+            .collect();
+        let mut m = form(&src);
+        assert_eq!(m.fields().len(), 64);
+        let values: Vec<String> = (0..64)
+            .map(|i| if i == 63 { String::new() } else { "x".into() })
+            .collect();
+        m.set_values(&values);
+        assert_eq!(m.first_missing(), Some((63, Missing::Empty)));
+    }
+
+    #[test]
+    fn library_22_a_starred_choice_starts_there_and_none_is_selectable() {
+        let mut m = form("{choice:Size|S|*M|L} {choice:Tone||warm}");
+        let f = m.fields();
+        assert_eq!((f[0].value.as_str(), f[0].choice_index), ("M", 1));
+        assert_eq!((f[1].value.as_str(), f[1].choice_index), ("", 0));
+        assert_eq!(f[1].options, ["", "warm"]);
+        m.set_value(1, "warm");
+        assert_eq!(m.fields()[1].choice_index, 1);
+        m.set_value(1, "");
+        assert_eq!(m.fields()[1].choice_index, 0, "the none option is a choice");
+        assert_eq!(preview(&m), "M ");
+    }
+
+    #[test]
+    fn library_23_a_number_field_accepts_either_decimal_mark_and_rejects_text() {
+        let mut m = form("{number:Qty|2} x {number:Price}");
+        assert_eq!(m.fields()[0].kind, FieldKind::Number);
+        assert_eq!(m.fields()[0].value, "2");
+        assert!(!m.fields()[0].required && m.fields()[1].required);
+        m.set_value(1, "3,5");
+        assert_eq!(m.first_missing(), None);
+        m.set_value(1, "three");
+        assert_eq!(m.first_missing(), Some((1, Missing::BadNumber)));
+    }
+
+    #[test]
+    fn library_23_the_selection_shows_in_the_preview() {
+        let m = form("Re: {selection|upper}").with_selection(Some("topic".into()));
+        assert_eq!(preview(&m), "Re: TOPIC");
+        assert_eq!(m.selection(), Some("topic"));
+    }
+
+    #[test]
+    fn library_18_a_picked_day_is_written_in_the_locales_order_and_marked_again() {
+        let mut de = form_in("{pickdate:Due|%F}", "de");
+        assert_eq!(de.date_parts(0), None);
+        assert_eq!(de.pick_date(0, 2026, 10, 7).as_deref(), Some("07.10.2026"));
+        assert_eq!(de.fields()[0].value, "07.10.2026");
+        assert_eq!(de.date_parts(0), Some((2026, 10, 7)));
+        assert_eq!(de.pick_date(0, 2026, 2, 30), None, "not a day");
+        assert_eq!(de.fields()[0].value, "07.10.2026");
+        let mut us = form_in("{pickdate:Due|%F} {field:Name}", "en-US");
+        assert_eq!(us.pick_date(0, 2026, 10, 7).as_deref(), Some("10/07/2026"));
+        assert_eq!(
+            us.pick_date(1, 2026, 10, 7),
+            None,
+            "a text field is not a date"
+        );
+        assert_eq!(us.date_parts(1), None);
+        // What is typed and not a day marks nothing.
+        us.set_value(0, "31/31/2026");
+        assert_eq!(us.date_parts(0), None);
     }
 }

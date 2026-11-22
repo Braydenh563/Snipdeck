@@ -59,6 +59,10 @@ export component TextField inherits VerticalLayout {
     in property <bool> clearable: false;
     // Code and other text that must line up: IBM Plex Mono instead of the UI family.
     in property <bool> monospace: false;
+    // Multi line only: a column of line numbers (`gutter`, "1\n2\n3", one per line) left of the text, which stops
+    // wrapping so a number is the number of one line; a long line scrolls sideways with the caret.
+    in property <bool> line-numbers: false;
+    in property <string> gutter;
     // Accessible name of the clear button.
     in property <string> clear-label;
     // Forced visual states for galleries and screenshots. Real hover, focus and composition set them by themselves.
@@ -145,6 +149,7 @@ export component TextField inherits VerticalLayout {
         }
     }
 
+    property <bool> unwrapped: root.single-line || root.line-numbers;
     property <length> line-h: Type.line-base;
     property <length> pad-y: Space.s1;
     property <length> caret-w: Space.s0-5;
@@ -234,6 +239,24 @@ export component TextField inherits VerticalLayout {
                         y: ((root.single-line ? parent.height : root.line-h) - self.height) / 2;
                     }
                 }
+                // The line numbers scroll with the text: same font and size as the input, so each row lines up.
+                if root.line-numbers && !root.single-line: Rectangle {
+                    width: gutter-text.preferred-width + Space.s1;
+                    gutter-text := Text {
+                        x: 0px;
+                        y: flick.content-y;
+                        width: parent.width - Space.s1;
+                        text: root.gutter;
+                        color: Theme.text-secondary;
+                        font-family: root.monospace ? Fonts.mono : Fonts.sans;
+                        font-size: Type.base;
+                        font-weight: Type.regular;
+                        horizontal-alignment: right;
+                        vertical-alignment: top;
+                        wrap: no-wrap;
+                        accessible-role: none;
+                    }
+                }
                 viewport := Rectangle {
                     horizontal-stretch: 1;
                     min-width: 0px;
@@ -277,7 +300,7 @@ export component TextField inherits VerticalLayout {
                             width: parent.width;
                             height: parent.height;
                             interactive: false;
-                            content-width: root.single-line ? max(self.width, input.preferred-width + root.caret-w) : self.width;
+                            content-width: root.unwrapped ? max(self.width, input.preferred-width + root.caret-w) : self.width;
                             content-height: root.single-line ? self.height : max(self.height, input.preferred-height);
 
                             input := TextInput {
@@ -286,7 +309,7 @@ export component TextField inherits VerticalLayout {
                                 width: flick.content-width;
                                 height: root.single-line ? flick.height : max(flick.height, self.preferred-height);
                                 single-line: root.single-line;
-                                wrap: root.single-line ? TextWrap.no-wrap : TextWrap.word-wrap;
+                                wrap: root.unwrapped ? TextWrap.no-wrap : TextWrap.word-wrap;
                                 vertical-alignment: root.single-line ? TextVerticalAlignment.center : TextVerticalAlignment.top;
                                 enabled: root.enabled;
                                 read-only: root.read-only;

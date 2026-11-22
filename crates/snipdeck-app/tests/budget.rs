@@ -11,6 +11,7 @@
 )]
 
 use snipdeck_app::{index_cache::IndexCache, panel::PanelModel};
+use snipdeck_core::search::{BodyMatches, Query};
 use snipdeck_core::{
     Board, Content, Format, Formats, Inline, Item, ItemKind, List, Name, Placement, Timestamp,
 };
@@ -122,7 +123,7 @@ fn search_finds_its_item_in_a_large_library() {
     let cache = IndexCache::new();
     let index = std::rc::Rc::clone(&cache.snapshot(&store).unwrap().index());
     assert_eq!(index.len(), 2_000);
-    let hits = index.query("number 1999", 20);
+    let hits = index.query(&Query::parse("number 1999"), &BodyMatches::default(), 20);
     hits.first().expect("the item is found");
 }
 
@@ -152,7 +153,8 @@ fn measure_search_and_panel_load_budgets() {
         "dear customer",
         "zzz",
     ] {
-        let (hits, ms) = watch.measure(|| index.query(q, 50));
+        let (hits, ms) =
+            watch.measure(|| index.query(&Query::parse(q), &BodyMatches::default(), 50));
         println!(
             "search {q:?}: {ms:.2} ms, {} hits (budget {SEARCH_BUDGET_MS} ms)",
             hits.len()

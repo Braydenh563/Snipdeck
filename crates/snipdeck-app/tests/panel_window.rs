@@ -1102,7 +1102,13 @@ fn the_paste_as_row_has_its_name_and_the_second_level_takes_arrows_enter_and_esc
                 "lowercase",
                 "Title Case",
                 "Trimmed",
-                "slug-like-this"
+                "slug-like-this",
+                "Sentence case",
+                "camelCase",
+                "snake_case",
+                "URL-encoded",
+                "First word",
+                "Last word"
             ]
         );
         let _ = element(&r.ui, "UPPERCASE", AccessibleRole::ListItem);

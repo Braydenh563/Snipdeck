@@ -464,6 +464,7 @@ export component PickerWindow inherits Window {
                     expanded: suggest.open;
                     placeholder: @tr("Search all items");
                     label: @tr("Search all items");
+                    description: @tr("Words match anywhere in a title or body. \"Quotes\" match a phrase, -word excludes, and tag:, list:, kind: or is:pinned filter.");
                     clear-label: @tr("Clear search");
                     edited(text) => {
                         root.reset-results();

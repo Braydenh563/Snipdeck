@@ -1912,6 +1912,7 @@ export component PanelWindow inherits Window {
                         clearable: root.search-always;
                         placeholder: @tr("Search items");
                         label: @tr("Search items");
+                        description: @tr("Words match anywhere in a title or body. \"Quotes\" match a phrase, -word excludes, and tag:, list:, kind: or is:pinned filter.");
                         clear-label: @tr("Clear search");
                         release-on-blur: true;
                         edited(text) => {

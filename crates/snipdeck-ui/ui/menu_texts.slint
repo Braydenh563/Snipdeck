@@ -81,6 +81,24 @@ export global MenuTexts {
     pure public function paste-as-slug() -> string {
         return @tr("slug-like-this");
     }
+    pure public function paste-as-sentence() -> string {
+        return @tr("Sentence case");
+    }
+    pure public function paste-as-camel() -> string {
+        return @tr("camelCase");
+    }
+    pure public function paste-as-snake() -> string {
+        return @tr("snake_case");
+    }
+    pure public function paste-as-urlencode() -> string {
+        return @tr("URL-encoded");
+    }
+    pure public function paste-as-firstword() -> string {
+        return @tr("First word");
+    }
+    pure public function paste-as-lastword() -> string {
+        return @tr("Last word");
+    }
     pure public function item-move-to() -> string {
         return @tr("Move to…");
     }
@@ -150,6 +168,9 @@ export global MenuTexts {
     pure public function item-copy() -> string {
         return @tr("Copy");
     }
+    pure public function item-open-in-browser() -> string {
+        return @tr("Open in browser");
+    }
     pure public function item-edit() -> string {
         return @tr("Edit…");
     }
@@ -174,6 +195,9 @@ export global MenuTexts {
     pure public function group-rename() -> string {
         return @tr("Rename group");
     }
+    pure public function group-colour() -> string {
+        return @tr("Group colour…");
+    }
     pure public function group-fold() -> string {
         return @tr("Fold group");
     }
@@ -188,6 +212,15 @@ export global MenuTexts {
     }
     pure public function group-ungroup() -> string {
         return @tr("Ungroup");
+    }
+    pure public function group-move() -> string {
+        return @tr("Move group to list…");
+    }
+    pure public function group-nest() -> string {
+        return @tr("Nest under…");
+    }
+    pure public function group-nest-top() -> string {
+        return @tr("Top level");
     }
     pure public function group-delete() -> string {
         return @tr("Delete group");

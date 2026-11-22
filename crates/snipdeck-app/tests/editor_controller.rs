@@ -26,14 +26,14 @@ use snipdeck_app::{
     toast::{ToastKind, ToastMessage},
 };
 use snipdeck_core::{
-    Content, Format, FormatKind, Formats, Inline, Item, ItemId, ItemKind, ItemLabel, Placement,
-    Timestamp,
+    CaseMode, Content, Format, FormatKind, Formats, Inline, Item, ItemId, ItemKind, ItemLabel,
+    Placement, Timestamp, TriggerEnd, TriggerOptions,
 };
 use snipdeck_platform::{
     file_dialog::{FakeFilePicker, PickKind},
     testing::{FakeClipboard, FakeKeyboard, FakeTiming},
 };
-use snipdeck_store::{BlobStore, ItemRepo, ListRepo, Store, TagRepo, TriggerRepo};
+use snipdeck_store::{BlobStore, BoardRepo, ItemRepo, ListRepo, Store, TagRepo, TriggerRepo};
 
 #[path = "support/mod.rs"]
 mod support;
@@ -533,7 +533,7 @@ fn fields_that_fail_the_checks_stay_open_with_the_reason() {
         Some(EditorProblem::ContentEmpty)
     );
     assert_eq!(
-        save(&mut r, ItemKind::Link, "", "example.com").content_problem,
+        save(&mut r, ItemKind::Link, "", "example").content_problem,
         Some(EditorProblem::LinkNeedsScheme)
     );
     assert_eq!(
@@ -753,13 +753,107 @@ fn editing_text_drops_formatting_after_the_notice() {
 }
 
 #[test]
-fn remove_formatting_keeps_text() {
+fn remove_formatting_waits_for_save_and_is_one_undo_step() {
     let (mut ctl, id) = rich_item_open();
     ctl.item_editor_remove_formatting();
     assert!(ctl.item_editor_open(), "the editor stays open");
     assert!(!view(&ctl).formatted, "the notice and the action go");
+    assert_eq!(
+        kinds_of(&ctl, id),
+        [FormatKind::Text, FormatKind::Html, FormatKind::Rtf],
+        "nothing is stored until Save"
+    );
+    let v = view(&ctl);
+    ctl.item_editor_save(&v.fields);
+    assert!(!ctl.item_editor_open());
     assert_eq!(kinds_of(&ctl, id), [FormatKind::Text]);
     assert_eq!(text_of(&ctl, id), "bold");
+    ctl.undo();
+    assert_eq!(
+        kinds_of(&ctl, id),
+        [FormatKind::Text, FormatKind::Html, FormatKind::Rtf],
+        "one Undo brings the formatting back"
+    );
+    ctl.redo();
+    assert_eq!(
+        kinds_of(&ctl, id),
+        [FormatKind::Text],
+        "and Redo drops it again"
+    );
+}
+
+#[test]
+fn cancelling_after_remove_formatting_keeps_the_formatting() {
+    let (mut ctl, id) = rich_item_open();
+    ctl.item_editor_remove_formatting();
+    ctl.item_editor_cancel();
+    assert_eq!(
+        kinds_of(&ctl, id),
+        [FormatKind::Text, FormatKind::Html, FormatKind::Rtf]
+    );
+    ctl.open_item_editor(id);
+    assert!(view(&ctl).formatted, "the notice is back on the next open");
+}
+
+#[test]
+fn a_sensitive_text_edit_is_a_step_that_undo_explains_instead_of_undoing_something_older() {
+    let data = tempfile::tempdir().expect("dir");
+    let provider = SharedProvider::new();
+    let mut ctl = on_disk(&provider, true, data.path());
+    let id = save_sensitive(&mut ctl, "Vault code", SECRET);
+    // An older step the barrier must not hide or undo.
+    ctl.open_item_editor(id);
+    let v = view(&ctl);
+    ctl.item_editor_save(&typed(&v, "Vault code", "another-secret-99"));
+    assert_eq!(text_of(&ctl, id), "another-secret-99");
+    ctl.undo();
+    assert_eq!(toast(&ctl), ToastMessage::UndoStopped);
+    assert_eq!(
+        text_of(&ctl, id),
+        "another-secret-99",
+        "the text stays: it was not kept"
+    );
+    assert!(
+        ctl.store().item(id).is_ok(),
+        "and nothing older was undone: the item is still there"
+    );
+    assert_no_plaintext(data.path(), &[b"another-secret-99"]);
+}
+
+#[test]
+fn an_edit_applies_only_the_fields_the_person_changed() {
+    let dir = tempfile::tempdir().expect("dir");
+    let provider = SharedProvider::new();
+    let mut store = demo::store(now()).expect("demo");
+    let tag = snipdeck_core::Tag::new(snipdeck_core::Name::new("late").expect("name"));
+    store.insert_tag(&tag).expect("tag");
+    let (mut ctl, _) = controller(store, dir.path(), &provider, true);
+    let id = id_of(&ctl, "Office");
+    ctl.open_item_editor(id);
+    let v = view(&ctl);
+    // Meanwhile the item gets a tag in the Main window.
+    let screen = ctl.main_screen();
+    let at = screen
+        .rows
+        .iter()
+        .position(|r| r.title == "Office")
+        .expect("row");
+    ctl.main_action(MainAction::Tag, at);
+    let index = ctl
+        .main_screen()
+        .tags
+        .iter()
+        .position(|t| t.id == tag.id)
+        .expect("tag row");
+    ctl.main_toggle_tag(index, true);
+    assert!(ctl.store().item(id).expect("item").tags.contains(&tag.id));
+    ctl.item_editor_save(&typed(&v, "Office 2", &v.fields.content));
+    let item = ctl.store().item(id).expect("item");
+    assert_eq!(item.title, "Office 2");
+    assert!(
+        item.tags.contains(&tag.id),
+        "the tag added meanwhile is not taken off"
+    );
 }
 
 #[test]
@@ -1783,4 +1877,322 @@ fn the_always_paste_as_plain_text_switch_is_saved_and_reopens_as_it_was() {
         ..v.fields
     });
     assert!(!ctl.store().item(id).expect("item").always_plain);
+}
+
+// ---- Links (LIBRARY-31, LIBRARY-56) ---------------------------------------------------------
+
+#[test]
+fn a_link_without_a_scheme_is_saved_with_https() {
+    let mut r = rig();
+    for (typed_text, saved) in [
+        ("www.example.com", "https://www.example.com"),
+        ("example.com/path", "https://example.com/path"),
+        ("mailto:me@example.com", "mailto:me@example.com"),
+    ] {
+        let id = save_new(&mut r.ctl, ItemKind::Link, typed_text, typed_text);
+        assert_eq!(text_of(&r.ctl, id), saved, "{typed_text}");
+    }
+}
+
+#[test]
+fn open_in_browser_opens_only_web_mail_and_phone_links() {
+    let mut r = rig();
+    let opened: Rc<RefCell<Vec<String>>> = Rc::default();
+    let log = Rc::clone(&opened);
+    r.ctl.set_link_opener(Rc::new(move |target: &str| {
+        log.borrow_mut().push(target.to_owned());
+        Ok(())
+    }));
+    let cases = [
+        ("web", "https://example.com/a", true),
+        ("mail", "mailto:me@example.com", true),
+        ("file", "file:///C:/Windows/System32/calc.exe", false),
+        ("script", "javascript://x%0Aalert(1)", false),
+        ("ftp", "ftp://host/file", false),
+    ];
+    for (title, text, _) in cases {
+        save_new(&mut r.ctl, ItemKind::Link, title, text);
+    }
+    r.ctl.main_open(snipdeck_app::main_window::Section::All);
+    for (title, text, allowed) in cases {
+        let screen = r.ctl.main_screen();
+        let row = screen
+            .rows
+            .iter()
+            .position(|row| row.title == title)
+            .expect("row");
+        opened.borrow_mut().clear();
+        r.ctl.main_action(MainAction::OpenLink, row);
+        if allowed {
+            assert_eq!(*opened.borrow(), [text.to_owned()], "{title} opens");
+        } else {
+            assert_eq!(opened.borrow().len(), 0, "{title} is not opened");
+            assert_eq!(toast(&r.ctl), ToastMessage::LinkNotOpened, "{title}");
+        }
+    }
+}
+
+#[test]
+fn open_in_browser_does_nothing_for_other_kinds() {
+    let mut r = rig();
+    let opened: Rc<RefCell<Vec<String>>> = Rc::default();
+    let log = Rc::clone(&opened);
+    r.ctl.set_link_opener(Rc::new(move |target: &str| {
+        log.borrow_mut().push(target.to_owned());
+        Ok(())
+    }));
+    save_new(&mut r.ctl, ItemKind::Text, "plain", "https://example.com");
+    r.ctl.main_open(snipdeck_app::main_window::Section::All);
+    let screen = r.ctl.main_screen();
+    let row = screen
+        .rows
+        .iter()
+        .position(|row| row.title == "plain")
+        .expect("row");
+    r.ctl.main_action(MainAction::OpenLink, row);
+    assert_eq!(opened.borrow().len(), 0);
+}
+
+/// Saves a new text item with `code` and `options` as its trigger.
+fn save_with_trigger(
+    ctl: &mut Ctl,
+    title: &str,
+    code: &str,
+    end: TriggerEnd,
+    case: CaseMode,
+) -> ItemId {
+    ctl.open_new_item(Origin::Main);
+    ctl.item_editor_set_trigger(code);
+    ctl.item_editor_set_trigger_end(end);
+    ctl.item_editor_set_trigger_case(case);
+    let v = view(ctl);
+    ctl.item_editor_save(&typed(&v, title, "body"));
+    assert!(
+        !ctl.item_editor_open(),
+        "saved {title}: {:?}",
+        ctl.item_editor_view().map(|v| v.trigger_problem)
+    );
+    item_titled(ctl, title)
+}
+
+fn item_titled(ctl: &Ctl, title: &str) -> ItemId {
+    let list = ctl.store().boards().expect("boards").remove(0);
+    let list = ctl.store().lists(list.id).expect("lists").remove(0);
+    ctl.store()
+        .items(list.id)
+        .expect("items")
+        .into_iter()
+        .find(|i| i.title == title)
+        .unwrap_or_else(|| panic!("no item {title}"))
+        .id
+}
+
+#[test]
+fn a_short_letters_only_trigger_is_refused_before_save_unless_it_waits_for_a_delimiter() {
+    let mut r = rig();
+    r.ctl.open_new_item(Origin::Main);
+    r.ctl.item_editor_set_trigger("ab");
+    assert_eq!(
+        r.ctl.item_editor_trigger_notes(),
+        (Some(EditorProblem::TriggerTooShort), None),
+        "told while typing, before Save"
+    );
+    assert_eq!(
+        view(&r.ctl).trigger_problem,
+        Some(EditorProblem::TriggerTooShort)
+    );
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "Two", "2"));
+    assert!(r.ctl.item_editor_open(), "Save refuses it");
+    assert_eq!(r.ctl.store().triggers().expect("all").len(), 0);
+    // Three letters, a symbol in front, or a delimiter each make it safe.
+    for safe in ["abc", ";a", ",,", "a1b"] {
+        r.ctl.item_editor_set_trigger(safe);
+        assert_eq!(r.ctl.item_editor_trigger_notes(), (None, None), "{safe}");
+    }
+    r.ctl.item_editor_set_trigger("ab");
+    r.ctl.item_editor_set_trigger_end(TriggerEnd::Delimiter);
+    assert_eq!(r.ctl.item_editor_trigger_notes(), (None, None));
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "Two", "2"));
+    assert!(!r.ctl.item_editor_open(), "saved");
+    let stored = r.ctl.store().triggers().expect("all");
+    assert_eq!(stored.len(), 1);
+    assert_eq!(stored[0].0.options().end, TriggerEnd::Delimiter);
+}
+
+#[test]
+fn a_prefix_clash_names_the_other_snippet_before_save() {
+    let mut r = rig();
+    save_with_trigger(
+        &mut r.ctl,
+        "Signature",
+        ";sig",
+        TriggerEnd::Immediate,
+        CaseMode::Exact,
+    );
+    r.ctl.open_new_item(Origin::Main);
+    r.ctl.item_editor_set_trigger(";signature");
+    assert_eq!(
+        r.ctl.item_editor_trigger_notes(),
+        (
+            None,
+            Some(EditorProblem::TriggerHidden {
+                title: "Signature".to_owned()
+            })
+        ),
+        "the shorter code of Signature fires first"
+    );
+    assert_eq!(
+        view(&r.ctl).trigger_note,
+        Some(EditorProblem::TriggerHidden {
+            title: "Signature".to_owned()
+        })
+    );
+    // The other code fires the moment it is typed, so waiting for a delimiter does not help.
+    r.ctl.item_editor_set_trigger_end(TriggerEnd::Delimiter);
+    assert!(r.ctl.item_editor_trigger_notes().1.is_some());
+    r.ctl.item_editor_set_trigger_end(TriggerEnd::Immediate);
+    r.ctl.item_editor_set_trigger(";si");
+    assert_eq!(
+        r.ctl.item_editor_trigger_notes().1,
+        Some(EditorProblem::TriggerHides {
+            title: "Signature".to_owned()
+        }),
+        "this one would hide Signature's"
+    );
+    // A warning does not stop Save.
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "Small", "x"));
+    assert!(!r.ctl.item_editor_open());
+}
+
+#[test]
+fn a_triggers_options_are_saved_and_come_back_in_the_editor() {
+    let mut r = rig();
+    let id = save_with_trigger(
+        &mut r.ctl,
+        "Regards",
+        "brb",
+        TriggerEnd::Delimiter,
+        CaseMode::Adapt,
+    );
+    r.ctl.open_item_editor(id);
+    assert_eq!(
+        view(&r.ctl).trigger_options,
+        TriggerOptions {
+            end: TriggerEnd::Delimiter,
+            case: CaseMode::Adapt
+        }
+    );
+    // Changing only the options is a change of the trigger.
+    r.ctl.item_editor_set_trigger_case(CaseMode::Ignore);
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "Regards", "body"));
+    let held = r
+        .ctl
+        .store()
+        .trigger_of(id)
+        .expect("trigger")
+        .expect("some");
+    assert_eq!(held.options().case, CaseMode::Ignore);
+}
+
+#[test]
+fn a_code_that_differs_only_by_case_is_taken_when_one_ignores_case() {
+    let mut r = rig();
+    save_with_trigger(
+        &mut r.ctl,
+        "First",
+        ";sig",
+        TriggerEnd::Immediate,
+        CaseMode::Ignore,
+    );
+    r.ctl.open_new_item(Origin::Main);
+    r.ctl.item_editor_set_trigger(";SIG");
+    let v = view(&r.ctl);
+    r.ctl.item_editor_save(&typed(&v, "Second", "2"));
+    assert!(r.ctl.item_editor_open());
+    assert_eq!(
+        view(&r.ctl).trigger_problem,
+        Some(EditorProblem::TriggerTaken)
+    );
+}
+
+#[test]
+fn a_new_item_with_text_that_is_already_saved_asks_before_saving_a_copy() {
+    let mut r = rig();
+    let first = save_new(
+        &mut r.ctl,
+        ItemKind::Text,
+        "Address",
+        "12 Elm Street\nTownsville",
+    );
+    let count = |r: &Rig| r.ctl.store().all_items().expect("items").len();
+    let before = count(&r);
+
+    // The same text, differing by blanks at the ends: not saved, and the editor says where it is.
+    r.ctl.open_new_item(Origin::Main);
+    let v = view(&r.ctl);
+    r.ctl
+        .item_editor_save(&typed(&v, "Copy", "  12 Elm Street\nTownsville \n"));
+    assert!(r.ctl.item_editor_open(), "waits for the answer");
+    let found = view(&r.ctl).duplicate.expect("the notice");
+    assert_eq!(found.item, first);
+    assert_eq!(found.title, "Address");
+    assert_ne!(found.list_name.len(), 0);
+    assert_eq!(count(&r), before, "nothing was written");
+
+    // An edit takes the notice away; different text saves without asking.
+    r.ctl.item_editor_edited();
+    assert_eq!(view(&r.ctl).duplicate, None);
+    let v = view(&r.ctl);
+    r.ctl
+        .item_editor_save(&typed(&v, "Other", "somewhere else"));
+    assert!(!r.ctl.item_editor_open());
+    assert_eq!(count(&r), before + 1);
+
+    // "Save anyway" makes the copy.
+    r.ctl.open_new_item(Origin::Main);
+    let v = view(&r.ctl);
+    let input = typed(&v, "Copy", "12 Elm Street\nTownsville");
+    r.ctl.item_editor_save(&input);
+    assert!(view(&r.ctl).duplicate.is_some());
+    r.ctl.item_editor_save_anyway(&input);
+    assert!(!r.ctl.item_editor_open());
+    assert_eq!(count(&r), before + 2);
+
+    // "Open it" drops the new item and opens the saved one.
+    r.ctl.open_new_item(Origin::Main);
+    let v = view(&r.ctl);
+    r.ctl
+        .item_editor_save(&typed(&v, "Copy", "12 Elm Street\nTownsville"));
+    assert!(r.ctl.item_editor_open_duplicate());
+    // Two saved items now hold that text; the editor shows one of them, not the new item.
+    assert!(["Address", "Copy"].contains(&view(&r.ctl).fields.title.as_str()));
+    assert_eq!(count(&r), before + 2);
+}
+
+#[test]
+fn a_sensitive_text_is_never_compared_with_the_others() {
+    let mut r = rig();
+    save_new(&mut r.ctl, ItemKind::Text, "Plain", "hunter2");
+    r.ctl.open_new_item(Origin::Main);
+    let v = view(&r.ctl);
+    let input = EditorInput {
+        sensitive: true,
+        ..typed(&v, "Secret", "hunter2")
+    };
+    let before = r.ctl.store().all_items().expect("items").len();
+    r.ctl.item_editor_save(&input);
+    assert_eq!(
+        r.ctl.item_editor_view().and_then(|v| v.duplicate),
+        None,
+        "a match would tell that a secret equals a plain item"
+    );
+    assert_eq!(
+        r.ctl.store().all_items().expect("items").len(),
+        before + 1,
+        "saved without asking"
+    );
 }

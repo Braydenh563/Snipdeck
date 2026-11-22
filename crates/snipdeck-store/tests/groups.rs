@@ -12,7 +12,7 @@
 mod common;
 
 use common::*;
-use snipdeck_core::{Group, ItemId, ListId, Placement};
+use snipdeck_core::{Group, ItemId, ListAccent, ListId, Placement};
 use snipdeck_store::{
     BoardRepo, GroupDelete, GroupEnd, GroupRepo, ItemRepo, ListRepo, Store, TrashRepo, Trashable,
 };
@@ -43,7 +43,7 @@ fn v8_keeps_items_and_adds_no_groups() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(dir.path().join("snipdeck.db"), FIXTURE_V7).unwrap();
     let s = Store::open(dir.path()).unwrap();
-    assert_eq!(s.schema_version().unwrap(), 10);
+    assert_eq!(s.schema_version().unwrap(), snipdeck_store::SCHEMA_VERSION);
     assert!(dir.path().join("snipdeck.db.pre-v7.bak").exists());
     let board = s.boards().unwrap().remove(0);
     let list = s.lists(board.id).unwrap().remove(0);
@@ -190,6 +190,28 @@ fn renaming_collapsing_and_joining() {
     let other = list(&mut s, bid, "Other");
     let stray = item(&mut s, other.id, "Z", "Z").id;
     assert!(s.create_group(&Group::new(l, name("X")), &[stray]).is_err());
+}
+
+#[test]
+fn a_group_keeps_a_colour_until_it_is_cleared() {
+    let mut s = store();
+    let (l, ids) = five(&mut s);
+    let mut g = Group::new(l, name("Greetings"));
+    assert_eq!(g.colour, None, "a new group has no colour");
+    g.colour = Some(ListAccent::Teal);
+    s.create_group(&g, &ids[..2]).unwrap();
+    assert_eq!(
+        s.groups_of(l).unwrap()[0].group.colour,
+        Some(ListAccent::Teal)
+    );
+
+    g.colour = Some(ListAccent::Rose);
+    s.update_group(&g).unwrap();
+    assert_eq!(s.groups_of(l).unwrap()[0].group, g);
+
+    g.colour = None;
+    s.update_group(&g).unwrap();
+    assert_eq!(s.groups_of(l).unwrap()[0].group.colour, None);
 }
 
 #[test]
