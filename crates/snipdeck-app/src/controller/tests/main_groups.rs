@@ -476,12 +476,6 @@ fn deleting_a_folded_group_trashes_its_hidden_members_and_undo_restores_them() {
     w.ctl.main_group_collapse(0, Some(true)); // [Group*] Three Greeting
     w.ctl.main_group_delete(0);
     assert_eq!(
-        w.ctl.main_screen().group_delete,
-        Some(("Group".to_owned(), 2)),
-        "a folded group hides what it deletes: the window asks, with the count"
-    );
-    w.ctl.main_group_delete_confirm();
-    assert_eq!(
         titles(&mut w),
         ["Three", "Greeting"],
         "the folded members went too"

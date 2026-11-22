@@ -1,3 +1,4 @@
+import { ListNav } from "list-nav.slint";
 import { Theme, Type, Radius, Space, Motion, Fonts, SystemLook } from "../theme.slint";
 import { Icons } from "../icons.slint";
 import { SearchField } from "text_field.slint";
@@ -61,7 +62,7 @@ component PaletteItem inherits Rectangle {
         y: (parent.height - Type.line-base) / 2;
         width: max(0px, min(m-match.preferred-width, label-text.width - m-before.preferred-width));
         height: Type.line-base;
-        border-radius: 3px;
+        border-radius: Radius.xs;
         background: Theme.search-mark;
     }
 
@@ -130,6 +131,14 @@ export component CommandPalette inherits Rectangle {
     // is not nudged to show all of it, which would creep while a wheel or touchpad scroll passes rows under it.
     property <bool> by-pointer: false;
 
+    // PageUp / PageDown move by the rows the list shows less one, and stop at the ends (the arrows wrap).
+    property <int> page-rows: ListNav.page(floor(Space.s12 * 6 * SystemLook.text-scale / root.row-h));
+    function page(dir: int) {
+        root.by-pointer = false;
+        if (root.rows.length > 0) {
+            root.current = min(max(root.cur + dir * root.page-rows, 0), root.rows.length - 1);
+        }
+    }
     function move(delta: int) {
         root.by-pointer = false;
         if (root.rows.length > 0) {
@@ -171,6 +180,23 @@ export component CommandPalette inherits Rectangle {
                 }
                 if (event.text == Key.UpArrow) {
                     root.move(-1);
+                    return accept;
+                }
+                if (event.text == Key.PageDown && !field.composing) {
+                    root.page(1);
+                    return accept;
+                }
+                if (event.text == Key.PageUp && !field.composing) {
+                    root.page(-1);
+                    return accept;
+                }
+                // Home and End are the field's own (the caret); with Ctrl they go to the first and last command.
+                if (event.text == Key.Home && event.modifiers.control && !field.composing) {
+                    root.page(-root.rows.length);
+                    return accept;
+                }
+                if (event.text == Key.End && event.modifiers.control && !field.composing) {
+                    root.page(root.rows.length);
                     return accept;
                 }
                 if (event.text == Key.Return && root.cur >= 0 && !field.composing) {

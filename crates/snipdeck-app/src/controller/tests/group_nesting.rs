@@ -217,16 +217,10 @@ fn ungrouping_the_inner_group_leaves_its_items_in_the_outer_one() {
 }
 
 #[test]
-fn deleting_the_outer_group_asks_with_the_count_of_its_whole_branch_and_undo_restores_all() {
+fn deleting_the_outer_group_acts_at_once_on_its_whole_branch_and_undo_restores_all() {
     let mut w = open_replies();
     nested(&mut w);
     w.ctl.main_group_delete(0);
-    assert_eq!(
-        w.ctl.main_screen().group_delete,
-        Some(("Outer".to_owned(), 3)),
-        "a branch of groups asks first, counting the nested items too"
-    );
-    w.ctl.main_group_delete_confirm();
     assert_eq!(
         titles(&mut w),
         ["Greeting"],
@@ -252,7 +246,6 @@ fn deleting_the_inner_group_needs_no_question() {
     let mut w = open_replies();
     nested(&mut w);
     w.ctl.main_group_delete(1);
-    assert_eq!(w.ctl.main_screen().group_delete, None);
     assert_eq!(titles(&mut w), ["Outer", "Three", "Greeting"]);
 }
 

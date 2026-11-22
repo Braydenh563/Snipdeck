@@ -1063,7 +1063,7 @@ fn select_or_delete_row() -> usize {
     APP_MENU
         .iter()
         .position(|e| *e == AppMenuEntry::SelectOrDelete)
-        .expect("a Select or delete row in the Panel menu")
+        .expect("a Select items row in the Panel menu")
 }
 
 #[test]
@@ -1160,32 +1160,13 @@ fn esc_leaves_delete_mode() {
 }
 
 #[test]
-fn clear_list_asks_once_with_the_count() {
+fn clear_list_acts_at_once_and_undoes_whole() {
     let mut w = world();
     w.ctl.panel_delete_mode(true);
-    w.ctl.panel_open_clear_list();
-    let ask = w.ctl.view().clear_list.expect("the confirmation asks");
-    assert_eq!(ask.count, 4);
-    assert_eq!(ask.name, "Replies");
-    assert_eq!(
-        w.ctl.view().rows.len(),
-        4,
-        "nothing is deleted before the answer"
-    );
-    w.ctl.cancel_clear_list();
-    assert!(w.ctl.view().clear_list.is_none());
-    assert_eq!(w.ctl.view().rows.len(), 4);
-}
-
-#[test]
-fn clear_list_is_one_step_and_undoes_whole() {
-    let mut w = world();
-    w.ctl.panel_delete_mode(true);
-    w.ctl.panel_open_clear_list();
     w.ctl.panel_clear_list();
     let view = w.ctl.view();
-    assert!(view.clear_list.is_none());
-    assert_eq!(view.rows.len(), 0);
+    assert_eq!(view.rows.len(), 0, "no dialog: the items are gone at once");
+    assert!(!view.delete_mode, "Delete mode ends");
     let toast = view.toast.expect("an Undo toast");
     assert_eq!(toast.message, ToastMessage::ItemsTrashed { count: 4 });
     assert!(toast.undo, "the toast offers Undo");
@@ -1198,14 +1179,14 @@ fn clear_list_is_one_step_and_undoes_whole() {
 }
 
 #[test]
-fn clear_list_on_an_empty_list_asks_nothing() {
+fn clear_list_on_an_empty_list_does_nothing() {
     let mut w = world();
     w.ctl.select_tab(1);
     w.ctl.panel_mark_all();
     w.ctl.bulk_delete();
     w.ctl.panel_delete_mode(true);
-    w.ctl.panel_open_clear_list();
-    assert!(w.ctl.view().clear_list.is_none());
+    w.ctl.panel_clear_list();
+    assert_eq!(w.ctl.view().rows.len(), 0);
 }
 
 #[test]

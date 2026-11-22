@@ -1,0 +1,14 @@
+// The words of dialogs that two windows ask in the same way. Deleting a tag has no Trash entry, so it is asked first
+// in the Main window and in the Tag manager alike, with the tag's name and the number of items that lose it (UX-18).
+export global DialogTexts {
+    pure public function tag-delete-title(name: string) -> string {
+        return @tr("Delete tag “{}”?", name);
+    }
+    pure public function tag-delete-body(count: int) -> string {
+        if (count == 0) { return @tr("No item uses this tag."); }
+        return @tr("It is removed from {n} item. The item stays." | "It is removed from {n} items. The items stay." % count);
+    }
+    pure public function tag-delete-ok() -> string {
+        return @tr("Delete tag");
+    }
+}

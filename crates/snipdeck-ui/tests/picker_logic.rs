@@ -12,7 +12,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use i_slint_backend_testing::{AccessibleRole, ElementHandle, ElementQuery, ElementRoot};
-use slint::{ComponentHandle, platform::Key};
+use slint::{ComponentHandle, Model, platform::Key};
 use snipdeck_ui::{PickerScope, PickerWindow};
 
 #[path = "support/mod.rs"]
@@ -52,6 +52,7 @@ fn start() -> (PickerWindow, Log) {
     hook!(on_edit_requested, |i| format!("edit:{i}"));
     hook!(on_close_requested, || "close".to_string());
     hook!(on_dismissed, || "dismissed".to_string());
+    hook!(on_reveal_requested, |i, on| format!("reveal:{i}:{on}"));
     (ui, log)
 }
 
@@ -592,6 +593,63 @@ ui_tests! {
             .expect("sensitive row");
         let label = secret.accessible_label().unwrap().to_string();
         assert!(!label.contains("hunter2"), "masked: {label}");
+    }
+
+    // UX-26: the Picker reveals a hidden item the way Main and the Panel do, while Space is held.
+    fn holding_space_on_a_hidden_row_asks_the_host_to_reveal_it_until_released() {
+        let (ui, log) = start();
+        let at = i32::try_from(
+            ui.get_rows()
+                .iter()
+                .position(|r| r.title == "Server password")
+                .expect("sensitive row"),
+        )
+        .unwrap();
+        while ui.get_selected_index() < at {
+            press(ui.window(), &key(Key::DownArrow));
+        }
+        take(&log);
+        ui.window().dispatch_event(slint::platform::WindowEvent::KeyPressed { text: " ".into() });
+        ui.window().dispatch_event(slint::platform::WindowEvent::KeyPressed { text: " ".into() });
+        assert_eq!(take(&log), [format!("reveal:{at}:true")], "key repeat asks once");
+        ui.window().dispatch_event(slint::platform::WindowEvent::KeyReleased { text: " ".into() });
+        settle();
+        assert_eq!(take(&log), [format!("reveal:{at}:false")]);
+    }
+
+    fn space_on_a_plain_row_or_in_a_search_stays_text() {
+        let (ui, log) = start();
+        take(&log);
+        press(ui.window(), " ");
+        assert!(!take(&log).iter().any(|l| l.starts_with("reveal")), "row 0 is not hidden");
+        type_text(ui.window(), "ab");
+        settle();
+        take(&log);
+        press(ui.window(), " ");
+        assert!(!take(&log).iter().any(|l| l.starts_with("reveal")), "with a query Space is text");
+    }
+
+    fn a_revealed_row_shows_its_text() {
+        let (ui, _log) = start();
+        let at = i32::try_from(
+            ui.get_rows()
+                .iter()
+                .position(|r| r.title == "Server password")
+                .expect("sensitive row"),
+        )
+        .unwrap();
+        let spoken = |ui: &PickerWindow| {
+            rows(ui)
+                .into_iter()
+                .map(|r| r.accessible_label().map(|l| l.to_string()).unwrap_or_default())
+                .filter(|l| l.starts_with("Server password"))
+                .collect::<Vec<_>>()
+                .join("|")
+        };
+        assert!(!spoken(&ui).contains("hunter2"));
+        ui.set_revealed_index(at);
+        settle();
+        assert!(spoken(&ui).contains("hunter2"), "{}", spoken(&ui));
     }
 
     fn every_target_is_at_least_24px_in_both_directions() {

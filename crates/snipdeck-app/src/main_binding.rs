@@ -387,6 +387,10 @@ where
     }
 
     /// The Tag manager window, made on first use (`None` if the windowing system cannot).
+    #[allow(
+        clippy::too_many_lines,
+        reason = "one flat list of the window's callbacks"
+    )]
     fn tag_manager_window(self: &Rc<Self>) -> Option<ui::TagManager> {
         if let Some(w) = self.tag_manager.borrow().as_ref() {
             return Some(w.clone_strong());
@@ -470,6 +474,8 @@ where
             crate::trace!("callback tags nest_chosen ({i}, {under})");
             core.act(|ctl| ctl.main_nest_tag(index(i), usize::try_from(under).ok()));
         });
+        let help = Rc::clone(self);
+        w.on_help_requested(move || help.act(|ctl| ctl.main_open_help(HelpTopic::Guide)));
         let core = Rc::clone(self);
         w.on_delete_confirmed(move |i| {
             crate::trace!("callback tags delete_confirmed ({i})");
@@ -513,7 +519,6 @@ where
 
     /// Shows, updates or hides the list or board editor to match `screen.editor`.
     fn sync_editors(self: &Rc<Self>, screen: &MainScreen) {
-        let trash_days = crate::binding::limit(self.controller.borrow().settings().trash_days);
         let Some(view) = &screen.editor else {
             let editors = self.editors.borrow();
             if let Some(w) = &editors.list {
@@ -535,7 +540,6 @@ where
                 }
                 apply_look(&window, screen);
                 window.set_dark(screen.dark);
-                window.set_trash_days(trash_days);
                 window.set_name_error(error_text(&window, view));
                 if fresh {
                     fill_list_editor(&window, view);
@@ -559,7 +563,6 @@ where
                 }
                 apply_look(&window, screen);
                 window.set_dark(screen.dark);
-                window.set_trash_days(trash_days);
                 window.set_name_error(error_text(&window, view));
                 if fresh {
                     fill_board_editor(&window, view);
@@ -897,14 +900,6 @@ where
         wire!(on_board_menu_activated, |ctl, i| ctl
             .main_board_menu_activate(index(i)));
         wire!(on_board_menu_dismissed, |ctl| ctl.main_board_menu_close());
-        wire!(on_group_delete_confirmed, |ctl| ctl
-            .main_group_delete_confirm());
-        wire!(on_group_delete_dismissed, |ctl| ctl
-            .main_group_delete_cancel());
-        wire!(on_board_delete_confirmed, |ctl| ctl
-            .main_board_delete_confirm());
-        wire!(on_board_delete_dismissed, |ctl| ctl
-            .main_board_delete_cancel());
         wire!(on_toast_undo, |ctl| ctl.toast_action());
         wire!(on_toast_dismissed, |ctl| ctl.toast_dismiss());
         wire!(on_toast_edit, |ctl| {
@@ -944,6 +939,10 @@ where
                 }
             });
         }
+        window.on_privacy_settings_requested(|| {
+            crate::native_window::note_opener(crate::native_window::Surface::Main);
+            crate::settings_binding::request_open_section(crate::settings_binding::SECTION_PRIVACY);
+        });
         window.on_settings_requested(|| {
             // Settings opens over the Main window the user is in.
             crate::native_window::note_opener(crate::native_window::Surface::Main);
@@ -1500,23 +1499,6 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
         window.set_board_menu_entries(model(entries));
         window.set_board_menu_open(screen.board_menu.is_some());
     }
-    if differs(&|p| p.board_delete == screen.board_delete)
-        || window.get_board_delete_open() != screen.board_delete.is_some()
-    {
-        if let Some(count) = screen.board_delete {
-            window.set_board_delete_count(i32::try_from(count).unwrap_or(i32::MAX));
-        }
-        window.set_board_delete_open(screen.board_delete.is_some());
-    }
-    if differs(&|p| p.group_delete == screen.group_delete)
-        || window.get_group_delete_open() != screen.group_delete.is_some()
-    {
-        if let Some((name, count)) = &screen.group_delete {
-            window.set_group_delete_name(name.as_str().into());
-            window.set_group_delete_count(to_i32(*count));
-        }
-        window.set_group_delete_open(screen.group_delete.is_some());
-    }
     if differs(&|p| p.lists == screen.lists && p.dark == screen.dark) {
         set_side_lists(window, screen);
     }
@@ -1945,11 +1927,9 @@ fn fill_list_editor(window: &ui::ListEditor, view: &EditorView) {
     window.set_board_index(to_i32(view.board_index));
     window.set_show_colour(true);
     window.set_show_sort(true);
-    window.set_item_count(to_i32(view.item_count));
     window.set_can_delete(view.can_delete);
     window.set_delete_hint(hint_text(window, view));
     window.set_discard_open(false);
-    window.set_delete_open(false);
     window.invoke_mark_clean();
 }
 
@@ -1966,11 +1946,9 @@ fn fill_board_editor(window: &ui::BoardEditor, view: &EditorView) {
     window.set_icon_index(icon_index(view.icon));
     window.set_show_colour(true);
     window.set_show_sort(false);
-    window.set_item_count(to_i32(view.item_count));
     window.set_can_delete(view.can_delete);
     window.set_delete_hint(hint_text(window, view));
     window.set_discard_open(false);
-    window.set_delete_open(false);
     window.invoke_mark_clean();
 }
 

@@ -15,6 +15,9 @@ export enum ToastPhase { enter, hold, exit }
 // One action button of the ink toast: label in `toast.action`, a 2px ring while it has the keyboard focus.
 component ToastButton inherits Rectangle {
     in property <string> label;
+    // The host (F6) asks for the keyboard: the counter moves, the button takes the focus.
+    in property <int> focus-request: 0;
+    changed focus-request => { ink-scope.focus(); }
     out property <bool> focused: ink-scope.has-focus;
     callback activated();
     width: ink-action.preferred-width + 2 * Space.s2 + Space.s0-5;
@@ -62,6 +65,8 @@ component ToastButton inherits Rectangle {
 
 // The toast's × (always there): dismisses it early. A 28px square, a 2px ring while it has the keyboard focus.
 component ToastClose inherits Rectangle {
+    in property <int> focus-request: 0;
+    changed focus-request => { close-scope.focus(); }
     out property <bool> focused: close-scope.has-focus;
     callback activated();
     width: Space.hit;
@@ -109,6 +114,8 @@ export component Toast inherits Rectangle {
     in property <string> undo-label;
     // Label of the second action button (Edit), translated by the host. Empty hides the button.
     in property <string> edit-label;
+    // F6 (the host counts presses): the keyboard moves to the toast's first action, the Edit action or the ×.
+    in property <int> focus-request: 0;
     // DESIGN.md §4: the host keeps a toast in `hold` for this long.
     out property <duration> hold-duration: 2500ms;
     callback undo();
@@ -124,6 +131,9 @@ export component Toast inherits Rectangle {
     property <bool> close-focus: false;
     property <bool> undo-focus: false;
     property <bool> edit-focus: false;
+    // The keyboard is on one of the toast's buttons: the host's Esc then drops the toast, not the window.
+    callback keyboard-changed(here: bool);
+    changed button-focus => { root.keyboard-changed(root.button-focus); }
     property <bool> over: area.has-hover || root.button-focus;
     changed over => { root.hover-changed(root.over); }
     property <bool> has-icon: root.kind != ToastKind.neutral;
@@ -135,7 +145,8 @@ export component Toast inherits Rectangle {
     accessible-label: root.text;
     // The icon's meaning, for a screen reader: a warning or a success is said after the message.
     accessible-description: root.kind == ToastKind.danger ? @tr("Warning") : root.kind == ToastKind.success ? @tr("Done") : "";
-    accessible-live-region: polite;
+    // A failure is announced at once (WCAG 4.1.3); everything else waits for the reader to finish.
+    accessible-live-region: root.kind == ToastKind.danger ? assertive : polite;
 
     animate opacity { duration: root.phase == ToastPhase.exit ? Motion.fade : Motion.quick; easing: Motion.out; }
 
@@ -203,11 +214,13 @@ export component Toast inherits Rectangle {
             // Each button's wrapper takes the layout's full height so the button inside centres on the message (a layout ignores `y`).
             if root.undo-label != "": undo-button := ToastButton {
                 label: root.undo-label;
+                focus-request: root.focus-request;
                 activated => { root.undo(); }
                 changed focused => { root.undo-focus = self.focused; }
             }
             if root.edit-label != "": edit-button := ToastButton {
                 label: root.edit-label;
+                focus-request: root.undo-label == "" ? root.focus-request : 0;
                 activated => { root.edit(); }
                 changed focused => { root.edit-focus = self.focused; }
             }
@@ -215,6 +228,7 @@ export component Toast inherits Rectangle {
                 width: Space.hit;
                 ToastClose {
                     y: (parent.height - self.height) / 2;
+                    focus-request: root.undo-label == "" && root.edit-label == "" ? root.focus-request : 0;
                     activated => { root.dismissed(); }
                     changed focused => { root.close-focus = self.focused; }
                 }

@@ -40,6 +40,7 @@ import { ColourPicker } from "components/colour-picker.slint";
 import { Chooser, ChoiceEntry } from "components/chooser.slint";
 import { ColourBlock, ColourFormatCell } from "components/colour_block.slint";
 import { MenuTexts } from "menu_texts.slint";
+import { DialogTexts } from "dialog_texts.slint";
 import { GroupHeader } from "components/group-header.slint";
 import { LabelChip } from "components/label-chip.slint";
 import { QuickAdd } from "components/quick-add.slint";
@@ -145,6 +146,9 @@ component ToolbarButton inherits Rectangle {
     forward-focus: scope;
     accessible-role: button;
     accessible-label: root.tooltip;
+    // A button with a caret opens a menu, and `active` is then "the menu is open".
+    accessible-expandable: root.caret;
+    accessible-expanded: root.caret && root.active;
     accessible-action-default => { root.clicked(); }
     animate background { duration: Motion.instant; easing: Motion.out; }
 
@@ -321,10 +325,6 @@ export component MainWindow inherits Window {
     in property <string> board-name;
     in property <bool> board-menu-open: false;
     in property <[MenuEntry]> board-menu-entries;
-    // The board menu's "Delete board…" confirmation (O52): the host sets `board-delete-open` after that row, and
-    // nothing else opens (no board editor). `board-delete-count` is how many items go with the open board.
-    in property <bool> board-delete-open: false;
-    in property <int> board-delete-count;
     in property <[ChoiceEntry]> lists;
     // The Move to list chooser: the open board's lists, then the other boards' (named with their board).
     in property <[ChoiceEntry]> move-choices;
@@ -373,6 +373,10 @@ export component MainWindow inherits Window {
     in property <ToastPhase> toast-phase: ToastPhase.hold;
     in property <string> toast-undo-label;
     in property <string> toast-edit-label;
+    // F6 counts here: each press moves the keyboard to the toast's action (see Toast.focus-request).
+    property <int> toast-focus-ticks: 0;
+    property <bool> toast-keys: false;
+    changed toast-text => { if (root.toast-text == "") { root.toast-keys = false; } }
 
     // ---- State both ways ----------------------------------------------------------------------
     in-out property <MainSection> section: MainSection.all;
@@ -468,6 +472,8 @@ export component MainWindow inherits Window {
     callback tag-toggled(int, bool);
     callback reveal-requested(int, bool);
     callback settings-requested();
+    // The Recent empty state's "Open Settings": Settings at the Privacy section, where the Recent switch is.
+    callback privacy-settings-requested();
     // Ctrl+W: close the window like its X button does.
     callback close-requested();
     // "Show Panel": the toolbar button and the Help menu's last entry (the Panel may have been closed).
@@ -533,14 +539,6 @@ export component MainWindow inherits Window {
     callback board-menu-requested();
     callback board-menu-activated(int);
     callback board-menu-dismissed();
-    // The board delete confirmation: "Delete board", or Cancel / Esc / a click on the scrim.
-    // A folded group hides the rows its deletion trashes: the host asks first (`group-delete-open`), with the group's
-    // name and how many items go with it.
-    in property <bool> group-delete-open: false;
-    in property <string> group-delete-name;
-    in property <int> group-delete-count;
-    callback group-delete-confirmed();
-    callback group-delete-dismissed();
     // A header's menu row "Group colour…" opens a small dialog with the nine hues; the choice goes to the host
     // (`group-colour-chosen(row, hue)`, hue -1 for none) and the dialog closes.
     callback group-colour-chosen(int, int);
@@ -556,8 +554,6 @@ export component MainWindow inherits Window {
         @tr("Blue"), @tr("Teal"), @tr("Green"), @tr("Amber"), @tr("Orange"),
         @tr("Red"), @tr("Rose"), @tr("Violet"), @tr("Slate"),
     ];
-    callback board-delete-confirmed();
-    callback board-delete-dismissed();
     callback toast-undo();
     callback toast-edit();
     callback toast-dismissed();
@@ -782,7 +778,7 @@ export component MainWindow inherits Window {
     property <int> confirm-kind: 0;
     property <int> confirm-target: 0;
     property <bool> confirm-shown: false;
-    property <bool> overlay-open: root.recent-menu-open || root.recent-save-open || root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.view-menu-open || root.sort-menu-open || root.filter-menu-open || root.chooser-open || root.board-menu-open || root.confirm-shown || root.board-delete-open || root.group-delete-open || root.group-colour-row >= 0 || root.palette-open || root.recent-messages-open;
+    property <bool> overlay-open: root.recent-menu-open || root.recent-save-open || root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.view-menu-open || root.sort-menu-open || root.filter-menu-open || root.chooser-open || root.board-menu-open || root.confirm-shown || root.group-colour-row >= 0 || root.palette-open || root.recent-messages-open;
 
     init => {
         Palette.dark = root.dark;
@@ -944,7 +940,7 @@ export component MainWindow inherits Window {
     property <[MenuEntry]> nav-entries: root.nav-section(root.nav-menu-flat) == MainSection.list ? [
         { text: @tr("Edit list…"), icon: Icons.pencil-simple },
         { text: @tr("Export as text"), icon: Icons.copy },
-        { text: @tr("Delete list…"), icon: Icons.trash, destructive: true },
+        { text: @tr("Delete list"), icon: Icons.trash, destructive: true },
     ] : root.nav-section(root.nav-menu-flat) == MainSection.tag ? [
         { text: @tr("Manage tags…"), icon: Icons.tag },
         { text: @tr("Delete tag…"), icon: Icons.trash, destructive: true },
@@ -963,7 +959,7 @@ export component MainWindow inherits Window {
             } else if (i == 1) {
                 root.list-export-requested(index);
             } else {
-                root.ask(1, index);
+                root.list-delete-confirmed(index);
             }
         } else if (s == MainSection.tag) {
             if (i == 0) {
@@ -982,28 +978,22 @@ export component MainWindow inherits Window {
         root.confirm-target = target;
         root.confirm-shown = true;
     }
-    property <string> confirm-title: root.confirm-kind == 1 ? @tr("Delete list “{}”?", root.lists[root.confirm-target].label)
-        : root.confirm-kind == 2 ? @tr("Delete tag “{}”?", root.tags[root.confirm-target].label)
+    property <string> confirm-title: root.confirm-kind == 2 ? DialogTexts.tag-delete-title(root.tags[root.confirm-target].label)
         : root.confirm-kind == 3 ? @tr("Empty the Trash?")
-        : root.confirm-kind == 5 ? @tr("Clear recent history?")
+        : root.confirm-kind == 5 ? @tr("Clear Recent?")
         : @tr("Delete for good?");
-    property <string> confirm-body: root.confirm-kind == 1
-        ? @tr("The list and its {n} item move to the Trash. You can restore them for {} days." | "The list and its {n} items move to the Trash. You can restore them for {} days." % root.lists[root.confirm-target].count, root.trash-days)
-        : root.confirm-kind == 2 ? @tr("The tag is removed from its items. The items themselves stay.")
-        : root.confirm-kind == 3 ? @tr("Everything in the Trash is deleted for good. This can’t be undone.")
-        : root.confirm-kind == 5 ? @tr("The {n} recent copy is removed. This can’t be undone." | "All {n} recent copies are removed. This can’t be undone." % root.count-recent)
-        : @tr("The selected item is deleted for good. This can’t be undone." | "The selected items are deleted for good. This can’t be undone." % (root.multi ? root.selected-count : 1));
-    property <string> confirm-ok: root.confirm-kind == 1 ? @tr("Delete list")
-        : root.confirm-kind == 2 ? @tr("Delete tag")
+    property <string> confirm-body: root.confirm-kind == 2 ? DialogTexts.tag-delete-body(root.tags[root.confirm-target].count)
+        : root.confirm-kind == 3 ? @tr("Everything in the Trash is deleted for good. This can't be undone.")
+        : root.confirm-kind == 5 ? @tr("The {n} entry in Recent is removed. This can't be undone." | "All {n} entries in Recent are removed. This can't be undone." % root.count-recent)
+        : @tr("The selected item is deleted for good. This can't be undone." | "The selected items are deleted for good. This can't be undone." % (root.multi ? root.selected-count : 1));
+    property <string> confirm-ok: root.confirm-kind == 2 ? DialogTexts.tag-delete-ok()
         : root.confirm-kind == 3 ? @tr("Empty Trash")
-        : root.confirm-kind == 5 ? @tr("Clear history") : @tr("Delete for good");
+        : root.confirm-kind == 5 ? @tr("Clear Recent") : @tr("Delete for good");
     function confirmed() {
         let kind = root.confirm-kind;
         let target = root.confirm-target;
         root.confirm-shown = false;
-        if (kind == 1) {
-            root.list-delete-confirmed(target);
-        } else if (kind == 2) {
+        if (kind == 2) {
             root.tag-delete-confirmed(target);
         } else if (kind == 3) {
             root.empty-trash-confirmed();
@@ -1201,21 +1191,21 @@ export component MainWindow inherits Window {
         { text: @tr("Delete for good…"), icon: Icons.trash, destructive: true, shortcut: "Del" },
     ] : [
         { text: root.use-label, icon: Icons.arrow-bend-down-left, shortcut: "Enter", disabled: root.multi },
-        { text: @tr("Copy"), icon: Icons.copy, shortcut: "Shift+Enter", disabled: root.multi },
+        { text: MenuTexts.item-copy(), icon: Icons.copy, shortcut: "Shift+Enter", disabled: root.multi },
         { text: MenuTexts.item-paste-as(), icon: Icons.text-t, disabled: root.multi || root.rows[root.item-menu-index].kind == ItemKind.image || root.rows[root.item-menu-index].kind == ItemKind.file },
         { text: MenuTexts.item-open-in-colours(), icon: Icons.palette, hidden: root.multi || !root.colour-can-open || !root.rows[root.item-menu-index].has-swatch },
         { text: MenuTexts.item-open-in-browser(), icon: Icons.globe, hidden: root.multi || root.rows[root.item-menu-index].kind != ItemKind.link },
         { separator: true },
-        { text: @tr("Edit"), icon: Icons.pencil-simple, shortcut: "Ctrl+E", disabled: root.multi },
-        { text: @tr("Duplicate"), icon: Icons.files, shortcut: "Ctrl+D" },
-        { text: root.rows[root.item-menu-index].pinned && !root.multi ? @tr("Unpin") : @tr("Pin"), icon: Icons.push-pin, shortcut: "Ctrl+P" },
+        { text: MenuTexts.item-edit(), icon: Icons.pencil-simple, shortcut: "Ctrl+E", disabled: root.multi },
+        { text: MenuTexts.item-duplicate(), icon: Icons.files, shortcut: "Ctrl+D" },
+        { text: MenuTexts.item-move-to(), icon: Icons.folder },
+        { text: root.rows[root.item-menu-index].pinned && !root.multi ? MenuTexts.item-unpin() : MenuTexts.item-pin(), icon: Icons.push-pin, shortcut: "Ctrl+P" },
         { text: @tr("Move up"), icon: Icons.caret-up, shortcut: "Alt+Up", disabled: root.multi || !root.rows-reorderable || root.item-menu-index <= 0 },
         { text: @tr("Move down"), icon: Icons.caret-down, shortcut: "Alt+Down", disabled: root.multi || !root.rows-reorderable || root.item-menu-index >= root.rows.length - 1 },
-        { text: @tr("Move to list…"), icon: Icons.folder },
         { text: @tr("Tags…"), icon: Icons.tag },
         { text: MenuTexts.item-group(), icon: Icons.rows, disabled: !root.rows-reorderable || root.label-filter >= 0 },
         { separator: true },
-        { text: @tr("Move to Trash"), icon: Icons.trash, destructive: true, shortcut: "Del" },
+        { text: MenuTexts.item-trash(), icon: Icons.trash, destructive: true, shortcut: "Del" },
     ];
 
     property <[ChoiceEntry]> paste-choices: [
@@ -1268,12 +1258,12 @@ export component MainWindow inherits Window {
         } else if (i == 7) {
             root.act(ItemAction.duplicate, index);
         } else if (i == 8) {
-            root.act(ItemAction.pin, index);
-        } else if (i == 9 || i == 10) {
-            root.cursor = index;
-            root.item-reorder-requested(i == 9 ? -1 : 1);
-        } else if (i == 11) {
             root.act(ItemAction.move, index);
+        } else if (i == 9) {
+            root.act(ItemAction.pin, index);
+        } else if (i == 10 || i == 11) {
+            root.cursor = index;
+            root.item-reorder-requested(i == 10 ? -1 : 1);
         } else if (i == 12) {
             root.act(ItemAction.tag, index);
         } else if (i == 13) {
@@ -1499,6 +1489,16 @@ export component MainWindow inherits Window {
             }
             if (event.text == Key.F1) {
                 root.help-requested(HelpPage.guide);
+                return accept;
+            }
+            // F6 and Esc: the toast's actions are reachable from the keyboard, and Esc on one drops the toast.
+            if (event.text == Key.F6 && root.toast-text != "") {
+                root.toast-focus-ticks += 1;
+                return accept;
+            }
+            if (event.text == Key.Escape && root.toast-text != "" && root.toast-keys) {
+                root.focus-items();
+                root.toast-dismissed();
                 return accept;
             }
             if (event.text == "/" && !search.has-focus && !root.quick-typing && !event.modifiers.control && !event.modifiers.alt) {
@@ -2238,7 +2238,7 @@ export component MainWindow inherits Window {
                             h: root.ctl-h;
                             compact: root.heading-compact;
                             icon: Icons.rows;
-                            label: @tr("Sort: {}", root.sort-name(root.list-sort));
+                            label: @tr("Sort by: {}", root.sort-name(root.list-sort));
                             tooltip: @tr("Sort by: {}", root.sort-name(root.list-sort));
                             caret: true;
                             active: root.sort-menu-open;
@@ -2913,7 +2913,7 @@ export component MainWindow inherits Window {
                             Button {
                                 variant: ButtonVariant.ghost;
                                 icon: Icons.trash;
-                                text: @tr("Clear recent history");
+                                text: @tr("Clear Recent");
                                 clicked => { root.ask(5, 0); }
                             }
                         }
@@ -2922,7 +2922,7 @@ export component MainWindow inherits Window {
                             rlist := ListView {
                                 width: parent.width;
                                 height: parent.height;
-                                accessible-label: @tr("Recent copies");
+                                accessible-label: @tr("Recent");
                                 scrolled => { root.rfollow-cursor = false; }
                                 for entry[i] in root.recent-rows: Rectangle {
                                     property <bool> is-active: i == root.rcur;
@@ -3002,15 +3002,15 @@ export component MainWindow inherits Window {
                             : root.label-filter >= 0 ? @tr("Nothing has this label")
                             : root.section == MainSection.all ? @tr("No items yet")
                             : root.section == MainSection.pinned ? @tr("Nothing pinned")
-                            : root.section == MainSection.recent ? (root.recent-locked ? @tr("Recent copies are locked") : root.recent-on ? @tr("Nothing copied yet") : @tr("No recent items"))
+                            : root.section == MainSection.recent ? (root.recent-locked ? @tr("Recent is locked") : root.recent-on ? @tr("Nothing copied yet") : @tr("No recent items"))
                             : root.in-trash ? @tr("The Trash is empty")
                             : root.section == MainSection.list ? @tr("This list is empty")
                             : @tr("No items with this tag");
                         body: root.searching ? @tr("Nothing matches “{}”.", root.query)
                             : root.label-filter >= 0 ? @tr("No item in this view carries the chosen colour label.")
                             : root.section == MainSection.all ? @tr("Save what you paste often.")
-                            : root.section == MainSection.pinned ? @tr("Pin the items you use most to keep them one click away.")
-                            : root.section == MainSection.recent ? (root.recent-locked ? @tr("Unlock your library to see recent copies. Nothing is collected while it is locked.") : root.recent-on ? @tr("Text you copy appears here, newest first, until you clear it or it is older than {} days.", root.recent-days) : @tr("Turn on clipboard history in Settings to collect what you copy."))
+                            : root.section == MainSection.pinned ? @tr("Pin the snippets you use most to keep them one click away.")
+                            : root.section == MainSection.recent ? (root.recent-locked ? @tr("Unlock your library to see Recent. Nothing is collected while it is locked.") : root.recent-on ? @tr("Text you copy appears here, newest first, until you clear it or it is older than {} days.", root.recent-days) : @tr("Turn on “Keep what you copy in Recent” in Settings."))
                             : root.in-trash ? @tr("Deleted items stay here for {} days before they are removed.", root.trash-days)
                             : root.section == MainSection.list ? @tr("Add an item, or move items here from another list.")
                             : @tr("Tag an item to see it here.");
@@ -3041,7 +3041,7 @@ export component MainWindow inherits Window {
                             } else if (root.section == MainSection.recent && root.recent-locked) {
                                 root.recent-unlock-requested();
                             } else if (root.section == MainSection.recent) {
-                                root.settings-requested();
+                                root.privacy-settings-requested();
                             } else {
                                 root.new-item();
                             }
@@ -3049,6 +3049,8 @@ export component MainWindow inherits Window {
                     }
 
                     if root.toast-text != "": Toast {
+                        focus-request: root.toast-focus-ticks;
+                        keyboard-changed(here) => { root.toast-keys = here; }
                         text: root.toast-text;
                         kind: root.toast-kind;
                         phase: root.toast-phase;
@@ -3109,7 +3111,7 @@ export component MainWindow inherits Window {
                         if !root.in-trash: Button {
                             horizontal-stretch: 0;
                             icon: Icons.folder;
-                            text: @tr("Move");
+                            text: @tr("Move to list…");
                             y: (parent.height - self.height) / 2;
                             clicked => {
                                 root.item-menu-x = self.absolute-position.x;
@@ -3649,26 +3651,6 @@ export component MainWindow inherits Window {
         }
     }
 
-    // The board delete confirmation, the only thing "Delete board…" shows.
-    cancel-dlg-1 := Dialog {
-        title: @tr("Delete board “{}”?", root.board-name);
-        body: @tr("Its lists and {n} item move to the Trash. You can restore them for {} days." | "Its lists and {n} items move to the Trash. You can restore them for {} days." % root.board-delete-count, root.trash-days);
-        variant: DialogVariant.destructive;
-        open: root.board-delete-open;
-        dismissed => { root.board-delete-dismissed(); }
-        closed => { root.restore-focus(); }
-        Button {
-            focus-request: cancel-dlg-1.cancel-focus;
-            text: @tr("Cancel");
-            clicked => { root.board-delete-dismissed(); }
-        }
-        Button {
-            variant: ButtonVariant.danger;
-            text: @tr("Delete board");
-            clicked => { root.board-delete-confirmed(); }
-        }
-    }
-
     // Help > Recent messages: the last toasts, newest first (MAIN-43).
     recent-messages := Dialog {
         title: @tr("Recent messages");
@@ -3681,25 +3663,6 @@ export component MainWindow inherits Window {
             variant: ButtonVariant.primary;
             text: @tr("Close");
             clicked => { root.recent-messages-open = false; }
-        }
-    }
-
-    // A folded group's delete confirmation: the rows it trashes are out of sight.
-    Dialog {
-        title: @tr("Delete group “{}” and its {} items?", root.group-delete-name, root.group-delete-count);
-        body: @tr("The group and its items move to the Trash. You can restore them for {} days.", root.trash-days);
-        variant: DialogVariant.destructive;
-        open: root.group-delete-open;
-        dismissed => { root.group-delete-dismissed(); }
-        closed => { root.restore-focus(); }
-        Button {
-            text: @tr("Cancel");
-            clicked => { root.group-delete-dismissed(); }
-        }
-        Button {
-            variant: ButtonVariant.danger;
-            text: @tr("Delete group");
-            clicked => { root.group-delete-confirmed(); }
         }
     }
 

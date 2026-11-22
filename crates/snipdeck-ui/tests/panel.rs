@@ -339,7 +339,7 @@ fn panel_with_a_group_light_dark_and_cards() {
     }
 }
 
-/// O50: the header (board, search, New, pin, More, close) and the Delete-mode strip (Select | Delete, Clear list…, Done) still fit at text scale 1.5
+/// O50: the header (board, search, New, pin, More, close) and the Delete-mode strip (Select | Delete, Clear list, Done) still fit at text scale 1.5
 /// and 2.0, in a window wide enough for the larger text (the Panel's minimum width grows with the text size).
 #[test]
 fn panel_header_and_strip_at_text_scale_150_and_200() {

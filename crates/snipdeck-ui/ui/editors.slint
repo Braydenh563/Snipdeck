@@ -28,6 +28,7 @@ import { Toggle, Radio } from "components/choice.slint";
 import { Tag } from "components/tag.slint";
 import { Swatch } from "components/swatch.slint";
 import { Dialog, DialogVariant } from "components/dialog.slint";
+import { DialogTexts } from "dialog_texts.slint";
 import { Chooser, ChoiceEntry } from "components/chooser.slint";
 import { OverlayScrollbar } from "components/scrollbar.slint";
 import { StateColor } from "components/state-color.slint";
@@ -216,7 +217,6 @@ component PlaceholderRow inherits VerticalLayout {
         }
     }
 }
-
 
 // Kinds the user may switch between: Text, Code, Link, Template (0 to 3). A NEW item may also be an Image or a File
 // (4, 5): it asks for the path of the file (typed or, where the host can, chosen with `browse-requested`). An item
@@ -633,10 +633,12 @@ export component ItemEditor inherits Window {
     // Grows with the text size: at 225% the footer buttons need about 600 px.
     out property <length> min-window-width: max(420px, 270px * SystemLook.text-scale);
     min-width: root.min-window-width;
-    min-height: 380px;
+    // Grows with the text size too: the tab strip, a few rows and the footer need more room at 225%.
+    out property <length> min-window-height: max(380px, 240px * SystemLook.text-scale);
+    min-height: root.min-window-height;
     preferred-width: max(560px, root.min-window-width);
     // Opens at the height of its form (More options closed), up to 700 px; the form scrolls past that.
-    preferred-height: min(700px, max(380px, form.preferred-height + footer.height + header.height));
+    preferred-height: min(700px, max(root.min-window-height, form.preferred-height + footer.height + header.height));
 
     // The height the window wants for its form as it is now (More options open or closed), up to 700 px.
     // The host sets the window to it on open and on each toggle, cut to the screen's work area.
@@ -874,7 +876,7 @@ export component ItemEditor inherits Window {
     }
     // A refusal that sits under "More options" opens it, so it is never hidden.
     out property <bool> more-shown: root.more-open || root.title-error != "" || root.privacy-error != "" || root.trigger-error != "";
-    property <string> sensitive-base: @tr("Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard a little after you copy it (the time is in Settings).");
+    property <string> sensitive-base: @tr("Hidden in lists until you hold Space, kept out of Recent, and cleared from the clipboard a little after you copy it (the time is in Settings).");
     property <string> sensitive-help: root.text-kind
         ? root.sensitive-base
         : @tr("Only text, code, link and template items can be sensitive.");
@@ -963,12 +965,17 @@ export component ItemEditor inherits Window {
             if (event.text == Key.Escape && TipHost.dismiss()) {
                 return accept;
             }
-            if (event.text == "\n" && event.modifiers.control && !root.discard-open) {
+            if ((event.text == "\n" || event.text == "s" || event.text == "S" || event.text == "\u{13}") && event.modifiers.control && !event.modifiers.alt && !root.discard-open) {
                 root.try-save();
                 return accept;
             }
-            if ((event.text == "p" || event.text == "P" || event.text == "\u{10}") && event.modifiers.control && !event.modifiers.alt && !event.modifiers.shift && !root.discard-open) {
+            // Preview is Alt+P: Ctrl+P pins an item in the Main window and the Panel (one chord, one meaning).
+            if ((event.text == "p" || event.text == "P") && event.modifiers.alt && !event.modifiers.control && !event.modifiers.shift && !root.discard-open) {
                 root.toggle-preview();
+                return accept;
+            }
+            if ((event.text == "w" || event.text == "W" || event.text == "\u{17}") && event.modifiers.control && !event.modifiers.alt && !root.discard-open) {
+                root.request-cancel();
                 return accept;
             }
             if ((event.text == "v" || event.text == "V" || event.text == "\u{16}") && event.modifiers.control && !event.modifiers.alt && root.paste-requested()) {
@@ -1008,7 +1015,7 @@ export component ItemEditor inherits Window {
                         checkable: true;
                         checked: root.preview-on;
                         size: ButtonSize.sm;
-                        tooltip: root.preview-on ? @tr("Back to editing (Ctrl+P)") : @tr("Preview how this item will look (Ctrl+P)");
+                        tooltip: root.preview-on ? @tr("Back to editing (Alt+P)") : @tr("Preview how this item will look (Alt+P)");
                         a11y-label: @tr("Preview");
                         clicked => { root.toggle-preview(); }
                     }
@@ -1786,8 +1793,12 @@ component IconPicker inherits Rectangle {
     callback chosen(icon: int);
     out property <bool> has-focus: scope.has-focus;
 
-    property <int> columns: 9;
+    property <length> cell: Space.hit * SystemLook.text-scale;
+    property <length> gap: Space.s1;
     property <int> total: ListIcons.all.length;
+    // Wrapped by the width the form gives (see ColourPicker): "no icon" is cell 0, the icons are cells 1 to `total`.
+    property <int> columns: max(1, floor((root.width + root.gap) / (root.cell + root.gap)));
+    property <int> rows: ceil((root.total + 1) / root.columns);
 
     function move(to: int) {
         if (to >= -1 && to < root.total && to != root.icon) {
@@ -1795,51 +1806,29 @@ component IconPicker inherits Rectangle {
         }
     }
 
-    // As the colour picker: the cells give way (to no less than the 28 px hit target) when nine of them do not fit the
-    // row at the text size in use. Set from `changed` handlers; the row's width comes from a layout that reads its height.
-    property <length> cell: Space.hit * SystemLook.text-scale;
-    property <float> text-scale: SystemLook.text-scale;
-    function refit() {
-        if (root.width > 0px) {
-            root.cell = max(Space.hit, min(Space.hit * root.text-scale, (root.width - (root.columns - 1) * Space.s1) / root.columns));
-        }
-    }
-    init => { root.refit(); }
-    changed width => { root.refit(); }
-    changed text-scale => { root.refit(); }
-    height: 3 * root.cell + 2 * Space.s1;
+    height: root.rows * root.cell + (root.rows - 1) * root.gap;
     forward-focus: scope;
     accessible-role: radio-group;
     accessible-label: root.label;
 
-    VerticalLayout {
-        spacing: Space.s1;
-        alignment: start;
-        for row in 3: HorizontalLayout {
-            spacing: Space.s1;
-            alignment: start;
-            for col in root.columns: Rectangle {
-                // 0 is "no icon"; 1 to 24 are the icons.
-                property <int> cell: row * root.columns + col;
-                width: root.cell;
-                height: root.cell;
-                if cell == 0: NoColour {
-                    cell: root.cell;
-                    label: root.none-label;
-                    selected: root.icon == -1;
-                    show-focus: scope.has-focus && root.icon == -1;
-                    clicked => { root.move(-1); }
-                }
-                if cell > 0 && cell <= root.total: IconCell {
-                    cell: root.cell;
-                    source: ListIcons.all[cell - 1];
-                    label: root.names[cell - 1];
-                    selected: cell - 1 == root.icon;
-                    show-focus: scope.has-focus && cell - 1 == root.icon;
-                    clicked => { root.move(cell - 1); }
-                }
-            }
-        }
+    NoColour {
+        x: 0px;
+        y: 0px;
+        cell: root.cell;
+        label: root.none-label;
+        selected: root.icon == -1;
+        show-focus: scope.has-focus && root.icon == -1;
+        clicked => { root.move(-1); }
+    }
+    for i in root.total: IconCell {
+        x: mod(i + 1, root.columns) * (root.cell + root.gap);
+        y: floor((i + 1) / root.columns) * (root.cell + root.gap);
+        cell: root.cell;
+        source: ListIcons.all[i];
+        label: root.names[i];
+        selected: i == root.icon;
+        show-focus: scope.has-focus && i == root.icon;
+        clicked => { root.move(i); }
     }
 
     scope := FocusScope {
@@ -1903,9 +1892,6 @@ component EntityEditorBody inherits Rectangle {
     in-out property <int> board-index: 0;
     in property <bool> show-colour: true;
     in property <bool> show-sort: true;
-    // How many items a deletion affects (the confirmation says so).
-    in property <int> item-count: 0;
-    in property <int> trash-days: 30;
     // False when this one cannot be deleted (the last board); `delete-hint` says why.
     in property <bool> can-delete: true;
     in property <string> delete-hint;
@@ -1914,17 +1900,14 @@ component EntityEditorBody inherits Rectangle {
     in property <string> name-placeholder;
     in property <string> missing-name-text;
     in property <string> delete-label;
-    in property <string> delete-title;
-    in property <string> delete-body;
     out property <bool> dirty: false;
     in-out property <bool> discard-open: false;
-    in-out property <bool> delete-open: false;
 
     callback save-requested();
     callback cancel-requested();
     // F1: the user guide.
     callback help-requested();
-    // Sent after the user confirmed in the dialog.
+    // The footer's Delete: the host moves the list or board to the Trash at once, with an Undo toast.
     callback delete-confirmed();
     callback edited();
 
@@ -1965,6 +1948,8 @@ component EntityEditorBody inherits Rectangle {
 
     // The height that shows the whole form and the footer: a host that opens the window sizes it to this.
     out property <length> wanted-height: form.preferred-height + footer.height;
+    // Enough for the footer and two labelled rows of the form; the rest scrolls above the footer.
+    out property <length> min-content-height: footer.height + 2 * Space.s4 + 2 * (Type.line-sm + Space.s1 + Space.hit * SystemLook.text-scale);
 
     // A new list or board starts with a sample name: select it, so typing replaces it. An existing name keeps the caret at its end.
     public function focus-name() {
@@ -1990,8 +1975,12 @@ component EntityEditorBody inherits Rectangle {
             if (event.text == Key.Escape && TipHost.dismiss()) {
                 return accept;
             }
-            if (event.text == "\n" && event.modifiers.control && !root.discard-open && !root.delete-open) {
+            if ((event.text == "\n" || event.text == "s" || event.text == "S" || event.text == "\u{13}") && event.modifiers.control && !event.modifiers.alt && !root.discard-open) {
                 root.try-save();
+                return accept;
+            }
+            if ((event.text == "w" || event.text == "W" || event.text == "\u{17}") && event.modifiers.control && !event.modifiers.alt && !root.discard-open) {
+                root.request-cancel();
                 return accept;
             }
             return reject;
@@ -2001,7 +1990,7 @@ component EntityEditorBody inherits Rectangle {
                 root.help-requested();
                 return accept;
             }
-            if (event.text == Key.Escape && !root.discard-open && !root.delete-open) {
+            if (event.text == Key.Escape && !root.discard-open) {
                 root.request-cancel();
                 return accept;
             }
@@ -2113,7 +2102,7 @@ component EntityEditorBody inherits Rectangle {
                 delete-label: root.delete-label;
                 cancel-label: @tr("Cancel");
                 save-label: @tr("Save");
-                delete => { root.delete-open = true; }
+                delete => { root.delete-confirmed(); }
                 cancel => { root.request-cancel(); }
                 save => { root.try-save(); }
             }
@@ -2141,36 +2130,18 @@ component EntityEditorBody inherits Rectangle {
             }
         }
     }
-
-    cancel-dlg-3 := Dialog {
-        open: root.delete-open;
-        variant: DialogVariant.destructive;
-        title: root.delete-title;
-        body: root.delete-body;
-        dismissed => { root.delete-open = false; }
-        closed => { scope.focus(); }
-        Button {
-            focus-request: cancel-dlg-3.cancel-focus;
-            text: @tr("Cancel");
-            clicked => { root.delete-open = false; }
-        }
-        Button {
-            text: root.delete-label;
-            variant: ButtonVariant.danger;
-            clicked => {
-                root.delete-open = false;
-                root.delete-confirmed();
-            }
-        }
-    }
 }
 
 export component ListEditor inherits Window {
     title: root.is-new ? @tr("New list") : @tr("Edit list");
     background: Theme.bg-app;
-    min-width: 380px;
-    min-height: min(300px, body.wanted-height);
-    preferred-width: 460px;
+    // The smallest window shows the name, a few targets per row and the footer; the colour and icon grids wrap, so
+    // the width needs five targets at the current text size, and the height the footer and a few rows of the form.
+    out property <length> min-window-width: max(380px, 2 * Space.s4 + 6 * (Space.hit * SystemLook.text-scale + Space.s1));
+    out property <length> min-window-height: min(body.wanted-height, max(300px, body.min-content-height));
+    min-width: root.min-window-width;
+    min-height: root.min-window-height;
+    preferred-width: max(460px, root.min-window-width);
     preferred-height: body.wanted-height;
 
     // The height that fits the form as it is now (a new list is shorter than one with a Delete row).
@@ -2193,14 +2164,10 @@ export component ListEditor inherits Window {
     in-out property <int> sort-index <=> body.sort-index;
     in property <bool> show-colour <=> body.show-colour;
     in property <bool> show-sort <=> body.show-sort;
-    // How many items deleting the list affects (the confirmation says so).
-    in property <int> item-count <=> body.item-count;
-    in property <int> trash-days <=> body.trash-days;
     in property <bool> can-delete <=> body.can-delete;
     in property <string> delete-hint <=> body.delete-hint;
     out property <bool> dirty <=> body.dirty;
     in-out property <bool> discard-open <=> body.discard-open;
-    in-out property <bool> delete-open <=> body.delete-open;
 
     callback save-requested();
     callback cancel-requested();
@@ -2218,8 +2185,6 @@ export component ListEditor inherits Window {
         name-placeholder: @tr("For example, Email replies");
         missing-name-text: @tr("Give the list a name.");
         delete-label: @tr("Delete list");
-        delete-title: @tr("Delete this list?");
-        delete-body: @tr("{n} item will move to Trash with it. You can restore them for {} days." | "{n} items will move to Trash with it. You can restore them for {} days." % root.item-count, root.trash-days);
         save-requested => { root.save-requested(); }
         cancel-requested => { root.cancel-requested(); }
         help-requested => { root.help-requested(); }
@@ -2228,7 +2193,7 @@ export component ListEditor inherits Window {
     }
 
     // The window's tooltip layer: last, so no sibling paints over a tooltip and no container clips it.
-    TipLayer { suppressed: root.discard-open || root.delete-open; }
+    TipLayer { suppressed: root.discard-open; }
 }
 
 // Boards carry a name only in the data model today (snipdeck-core `Board`); colour and sort are shown because the
@@ -2236,9 +2201,13 @@ export component ListEditor inherits Window {
 export component BoardEditor inherits Window {
     title: root.is-new ? @tr("New board") : @tr("Edit board");
     background: Theme.bg-app;
-    min-width: 380px;
-    min-height: min(300px, body.wanted-height);
-    preferred-width: 460px;
+    // The smallest window shows the name, a few targets per row and the footer; the colour and icon grids wrap, so
+    // the width needs five targets at the current text size, and the height the footer and a few rows of the form.
+    out property <length> min-window-width: max(380px, 2 * Space.s4 + 6 * (Space.hit * SystemLook.text-scale + Space.s1));
+    out property <length> min-window-height: min(body.wanted-height, max(300px, body.min-content-height));
+    min-width: root.min-window-width;
+    min-height: root.min-window-height;
+    preferred-width: max(460px, root.min-window-width);
     preferred-height: body.wanted-height;
 
     // The height that fits the form as it is now (a new list is shorter than one with a Delete row).
@@ -2255,15 +2224,11 @@ export component BoardEditor inherits Window {
     in-out property <int> sort-index <=> body.sort-index;
     in property <bool> show-colour <=> body.show-colour;
     in property <bool> show-sort <=> body.show-sort;
-    // How many items deleting the board affects (the confirmation says so).
-    in property <int> item-count <=> body.item-count;
-    in property <int> trash-days <=> body.trash-days;
     // False for the last board; `delete-hint` says why.
     in property <bool> can-delete <=> body.can-delete;
     in property <string> delete-hint <=> body.delete-hint;
     out property <bool> dirty <=> body.dirty;
     in-out property <bool> discard-open <=> body.discard-open;
-    in-out property <bool> delete-open <=> body.delete-open;
 
     callback save-requested();
     callback cancel-requested();
@@ -2281,8 +2246,6 @@ export component BoardEditor inherits Window {
         name-placeholder: @tr("For example, Work");
         missing-name-text: @tr("Give the board a name.");
         delete-label: @tr("Delete board");
-        delete-title: @tr("Delete this board?");
-        delete-body: @tr("Its lists and {n} item will move to Trash. You can restore them for {} days." | "Its lists and {n} items will move to Trash. You can restore them for {} days." % root.item-count, root.trash-days);
         save-requested => { root.save-requested(); }
         cancel-requested => { root.cancel-requested(); }
         help-requested => { root.help-requested(); }
@@ -2291,7 +2254,7 @@ export component BoardEditor inherits Window {
     }
 
     // The window's tooltip layer: last, so no sibling paints over a tooltip and no container clips it.
-    TipLayer { suppressed: root.discard-open || root.delete-open; }
+    TipLayer { suppressed: root.discard-open; }
 }
 
 // ---- Tag management ------------------------------------------------------------------------------
@@ -2302,11 +2265,15 @@ export component BoardEditor inherits Window {
 export component TagManager inherits Window {
     title: @tr("Tags");
     background: Theme.bg-app;
-    min-width: 360px;
-    min-height: 280px;
-    preferred-width: 440px;
+    // The smallest window shows the intro, the New tag row, two rows and the Close row; both grow with the text size. Each row holds
+    // the name, its count and the two buttons.
+    out property <length> min-window-width: max(360px, 2 * Space.s4 + Space.s3 + 3 * Space.s2 + 2 * Space.hit * SystemLook.text-scale + 14 * Type.base);
+    out property <length> min-window-height: 2 * Space.s4 + 3 * Space.s3 + intro.preferred-height + new-row.preferred-height + 2 * root.row-h + 2px + close-row.preferred-height;
+    min-width: root.min-window-width;
+    min-height: root.min-window-height;
+    preferred-width: max(440px, root.min-window-width);
     // Fits its content (the intro, one row per tag, the Close row), at most 520px; a long list scrolls.
-    out property <length> wanted-height: min(520px, max(280px, 2 * Space.s4 + 2 * Space.s3 + intro.preferred-height + new-row.preferred-height + Space.s3 + max(root.tags.length, 2) * root.row-h + 2px + close-row.preferred-height));
+    out property <length> wanted-height: min(max(520px, root.min-window-height), max(root.min-window-height, 2 * Space.s4 + 3 * Space.s3 + intro.preferred-height + new-row.preferred-height + max(root.tags.length, 2) * root.row-h + 2px + close-row.preferred-height));
     preferred-height: root.wanted-height;
 
     in property <bool> dark: false;
@@ -2353,6 +2320,8 @@ export component TagManager inherits Window {
     callback colour-chosen(index: int, accent: int);
     // Merge tag `index` into the tag called `into`.
     callback merge-confirmed(index: int, into: string);
+    // F1: the user guide.
+    callback help-requested();
     callback close-requested();
 
     public function finish-rename() {
@@ -2361,7 +2330,7 @@ export component TagManager inherits Window {
     }
     public function finish-create() { root.new-text = ""; }
 
-    property <length> row-h: max(Space.hit + Space.s2, Type.line-base + Space.s3);
+    property <length> row-h: max(Space.hit * SystemLook.text-scale + Space.s2, Type.line-base + Space.s3);
     property <[ListHue]> hues: [ListHue.blue, ListHue.teal, ListHue.green, ListHue.amber, ListHue.orange, ListHue.red, ListHue.violet, ListHue.slate];
 
     function begin-rename(i: int) {
@@ -2379,10 +2348,15 @@ export component TagManager inherits Window {
         }
     }
 
-    init => { Palette.dark = root.dark; }
+    init => {
+        Palette.dark = root.dark;
+        scope.focus();
+    }
     changed dark => { Palette.dark = root.dark; }
 
     scope := FocusScope {
+        // The key scope is not a Tab stop: it has no ring, so a Tab onto it would change nothing on screen.
+        focus-on-tab-navigation: false;
         // Esc first closes a tooltip on screen, and does nothing else on that press, before the rename field sees it.
         capture-key-pressed(event) => {
             if (event.text == Key.Escape && TipHost.dismiss()) {
@@ -2391,6 +2365,14 @@ export component TagManager inherits Window {
             return reject;
         }
         key-pressed(event) => {
+            if (event.text == Key.F1) {
+                root.help-requested();
+                return accept;
+            }
+            if ((event.text == "w" || event.text == "W" || event.text == "\u{17}") && event.modifiers.control && !event.modifiers.alt && root.delete-index < 0 && root.editing < 0 && root.colour-index < 0 && root.nest-index < 0 && root.merge-into == "") {
+                root.close-requested();
+                return accept;
+            }
             if (event.text == Key.Escape && root.delete-index < 0 && root.colour-index < 0 && root.nest-index < 0 && root.merge-into == "") {
                 if (root.editing >= 0) {
                     root.editing = -1;
@@ -2439,6 +2421,8 @@ export component TagManager inherits Window {
 
             Rectangle {
                 vertical-stretch: 1;
+                // Never less than two rows: the Close row below is outside this area, so it cannot be overlapped.
+                min-height: 2 * root.row-h;
                 background: Theme.bg-surface;
                 border-radius: Radius.md;
                 border-width: 1px;
@@ -2654,10 +2638,8 @@ export component TagManager inherits Window {
     cancel-dlg-4 := Dialog {
         open: root.delete-index >= 0;
         variant: DialogVariant.destructive;
-        title: @tr("Delete this tag?");
-        body: (root.delete-index >= 0 && root.delete-index < root.own-counts.length && root.own-counts[root.delete-index] == 0)
-            ? @tr("No item uses this tag.")
-            : @tr("It is removed from {n} item. The item stays." | "It is removed from {n} items. The items stay." % (root.delete-index >= 0 && root.delete-index < root.own-counts.length ? root.own-counts[root.delete-index] : 0));
+        title: DialogTexts.tag-delete-title(root.delete-index >= 0 && root.delete-index < root.tags.length ? root.tags[root.delete-index].label : "");
+        body: DialogTexts.tag-delete-body(root.delete-index >= 0 && root.delete-index < root.own-counts.length ? root.own-counts[root.delete-index] : 0);
         dismissed => { root.delete-index = -1; }
         closed => { scope.focus(); }
         Button {
@@ -2666,7 +2648,7 @@ export component TagManager inherits Window {
             clicked => { root.delete-index = -1; }
         }
         Button {
-            text: @tr("Delete tag");
+            text: DialogTexts.tag-delete-ok();
             variant: ButtonVariant.danger;
             clicked => {
                 let i = root.delete-index;

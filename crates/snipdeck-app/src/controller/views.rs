@@ -127,6 +127,8 @@ pub struct ToastView {
 pub struct PickerView {
     /// The results, best first.
     pub rows: Vec<picker::Entry>,
+    /// The sensitive row held revealed (Space held on it), as an index into `rows`.
+    pub revealed: Option<usize>,
     /// What the search covers.
     pub scope: Scope,
     /// The search text.
@@ -299,8 +301,6 @@ pub struct View {
     pub select_mode: bool,
     /// The header's Delete mode is on (rows show a delete button).
     pub delete_mode: bool,
-    /// The "Clear list…" confirmation while it asks.
-    pub clear_list: Option<ClearListView>,
     /// The rows show their 1 to 9 numbers (the `show_numbers` setting).
     pub show_numbers: bool,
     /// The Symbols tab is offered (the `show_symbols_tab` setting).
@@ -321,11 +321,6 @@ pub struct View {
     pub list_menu_css: bool,
     /// The shown list sorts itself and no search runs: moves are refused but offer manual order.
     pub reorder_offer: bool,
-    /// The list menu's "Delete list…" confirmation while it asks (the Panel draws it; no
-    /// editor opens).
-    pub list_delete: Option<ListDeleteView>,
-    /// The board menu's delete confirmation while it asks.
-    pub board_delete: Option<BoardDeleteView>,
     /// "Pause hotkeys" is on (its menu row is checked).
     pub hotkeys_paused: bool,
     /// The Picker, while it is open.
@@ -371,31 +366,4 @@ pub struct ChooseEntry {
 pub struct ChooseMenu {
     /// The rows, in order.
     pub entries: Vec<ChooseEntry>,
-}
-
-/// The Panel's confirmation before a board goes to the Trash.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BoardDeleteView {
-    /// The board's name.
-    pub name: String,
-    /// How many items move to the Trash with it.
-    pub count: usize,
-}
-
-/// The Panel's confirmation before a list goes to the Trash.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ListDeleteView {
-    /// The list's name.
-    pub name: String,
-    /// How many items move to the Trash with it.
-    pub count: usize,
-}
-
-/// The Panel's confirmation before every item of the shown list goes to the Trash.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ClearListView {
-    /// The list's name.
-    pub name: String,
-    /// How many items move to the Trash.
-    pub count: usize,
 }

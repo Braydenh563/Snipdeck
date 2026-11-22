@@ -378,8 +378,6 @@ pub struct EditorView {
     pub boards: Vec<(BoardId, String)>,
     /// The chosen board: a position in `boards`.
     pub board_index: usize,
-    /// How many items deleting it affects.
-    pub item_count: usize,
     /// Whether it can be deleted.
     pub can_delete: bool,
     /// Why not.

@@ -325,7 +325,65 @@ Chosen by the majority of the existing uses (Main window, command palette, user 
 | `Ctrl+Shift+N` | New list. The full editor is the quick-add box's **More options** button or `Ctrl+Shift+Enter` |
 | `Ctrl+E`, `F2` | Edit the selected item (`F2` on a group header renames the group) |
 
+| `Ctrl+P` | Pin or unpin the selected item (Main window and Panel). Nothing else uses it |
+| `Alt+P` | Preview on or off in the item editor |
+| `Ctrl+Enter`, `Ctrl+S` | Save, in every editor that has a Save button |
+| `Ctrl+W` | Close the window you are in (Main, Panel, Settings, Help, editors, Tag manager). `Esc` also closes the transient ones; it never closes Main |
+| `Ctrl+F` | Focus the search box of the window; in Help it opens the Shortcuts tab and its search |
+| `F1` | The user guide, from every window that has a keyboard focus to give |
+
+Decided 2026-11-16 (UX audit UX-1..4). `Ctrl+P` kept for pin because two windows and the user guide already use it; the editor's Preview moved to `Alt+P`. A test (`help_window.rs`, "a_ctrl_or_alt_chord_has_the_same_title…") fails when the shortcuts list gives one `Ctrl` or `Alt` chord two meanings. `F1` is not wired in the Onboarding and unlock windows: they hold a single question, and Help is one click away in the tray.
+
 The Panel's keep-on-top pin has no chord: use the header button or the palette.
+
+`F6` moves the keyboard to the toast's action (Undo, else Edit, else the x) in Main and the Panel; `Esc` on one drops the toast. Lists, menus, the chooser and the palette take `PageUp`/`PageDown`; menus and the chooser also take type-ahead (a typed prefix, repeated letters cycle). The palette keeps plain `Home`/`End` for its field, so it uses `Ctrl+Home`/`Ctrl+End`.
+
+### Item menu (one definition)
+
+Main and the Panel offer one item menu: Use, Copy, Paste as, Open in Colours, Edit, Duplicate, Move to list, Pin, Move up, Move down, Group, Move to Trash, in that order and with the same words (`controller/item_menu.rs`; `item_menu_parity.rs` checks both). Window-only entries, with the reason:
+- Main only: **Tags...** (the tag chooser lives in Main).
+- Panel only: **Colour** and **Sensitive** (Main sets them in the editor), **Stack** (the paste stack is a Panel feature).
+
+### Hotkey recorder
+
+A key the recorder ignores says why under the prompt: a bare function key, a key with no modifier, or a key that cannot be part of a shortcut. A chord the system or another hotkey already holds is reported by the host's conflict message, not by the recorder.
+
+## Not done (UX audit batch B)
+
+- UX-5, one table: `shortcuts.rs` CATALOGUE is the one table of every key. The Help list reads it, and the user guide's Keyboard reference is held to it in both directions (`every_shortcut_in_the_guides_keyboard_table_is_in_the_list` and `every_shortcut_in_the_list_is_in_the_guides_keyboard_table`), so neither gains a key alone. Slint handlers cannot be generated from Rust: `shortcut_coverage.rs` scans the `.slint` sources for Ctrl-letter handlers and fails when one is missing from the table; special keys are checked by name.
+- UX-6, type-ahead has no row limit: Slint has no loops or recursion, so Menu and Chooser scan with a ladder of pure functions (one row, then 8, 64, 512, 4096, 32768 rows; it stops at the last row, so a short list costs a short scan). `list_nav_logic.rs` types to row 2750 of 3000 in a Menu and row 1500 in a Chooser.
+- UX-6, plain `Home`/`End` and type-ahead in the palette and Picker: the search field owns those keys there, which is the type-ahead. `Ctrl+Home`/`Ctrl+End` jump instead.
+
+### Names (one name per concept)
+
+Decided 2026-11-16 (UX-7..18). Every surface (menus, bars, toasts, tips, tour, Help, user guide, catalogue, all six `.po` files) uses these words, and no surface invents its own verb:
+
+| Concept | Name | Not |
+|---|---|---|
+| Soft delete of an item | **Move to Trash** (toast "Moved to the Trash"; "Moved N items to the Trash") | Delete (for items), "Deleted" |
+| Move an item to another list | **Move to list…** | Move to…, Move |
+| Edit tags of an item | **Tags…** | Tag |
+| Bulk mode | **Select items** | Select or delete…, Select snippets |
+| Sort | **Sort by** | Sort: {}, Sort by: {} |
+| The big window | **Main window** (the title bar says "Snipdeck") | Main, Open Snipdeck, "the window" |
+| Keep the Panel open while you work elsewhere | **Keep Panel open** (on = stays; one polarity everywhere) | Keep panel on top, Panel stays open, Hide when it loses focus |
+| Save the clipboard as an item | **Quick capture** | Save the clipboard as an item |
+| Paste the next item of a stack | **Paste next** | Paste stack, Paste the next item |
+| Typed expansion | **Trigger** (Settings search also finds "abbreviation", "short code", "expand") | code, short code |
+| Recent copies | **Recent** | Recent copies, Recent inbox, clipboard history, recent history |
+| The user's content | **library**; the place on disk is the **data folder** | database, deck |
+
+Ellipsis rule: an entry that needs a further answer from the user before it acts ends in "…" ("Settings…", "Move to list…", "Troubleshoot…"). An entry that only opens a read-only window or does the act at once does not ("User guide", "About Snipdeck", "Copy"). "Edit…" has it because the editor asks for the new text. `wording_lint.rs` holds the whole list of entries with the mark; a new one fails until it is added there on purpose.
+Toast rule: a one-clause toast has no full stop ("Saved", "Library unlocked"); a toast of several sentences ends each in a full stop. `toast_punctuation_follows_the_one_clause_rule` (app crate, `toast_texts.rs`) checks every message.
+
+### Confirm and undo (one rule)
+
+Decided 2026-11-16 (UX-20):
+
+- **Reversible** (the act goes to the Trash, or the old value can be restored): act at once and show **Undo** (`Ctrl+Z`) in a toast. No dialog. This covers items, groups and their items, bulk delete, lists and boards (they go to the Trash with their items).
+- **Irreversible** (the data is gone and no Trash entry holds it): ask first in a dialog that names the thing and the count, with Cancel as the default. This covers Empty Trash, deleting a tag (no Trash entry) and erasing all data.
+- A list, board or group is not asked about because it is empty or large; the size only goes into the toast ("Moved “x” and 200 items to the Trash").
+- This is a convention, held by tests, not by one function: Undo is covered by `clear_list_acts_at_once_and_undoes_whole`, `delete_removes_the_selection_with_an_undo_toast_and_no_confirmation`, `delete_mode_row_undo_restores_it`, `delete_group_trashes_the_header_and_its_items_in_one_undo` and `deleting_a_row_trashes_it_with_an_undo_toast_that_brings_it_back` (app crate, `controller/tests`), and for lists and boards `deleting_a_list_trashes_it_with_its_items_and_undo_restores_it` and `deleting_a_board_trashes_it_at_once_and_undo_restores_it` (`main_controller.rs`); the dialogs by the Empty Trash and tag-delete cases in `main_window_logic.rs`, `main_window.rs` (app) and `the_erase_button_stays_off_until_the_word_is_typed` (`settings_window.rs`). A destructive act that does neither is a bug; add its test next to these.
 
 ## 6. Depth
 
@@ -392,3 +450,9 @@ Layering: window → cards → lifted (drag) → popovers/menus → toasts → c
 4. **Every interactive element:** 24px or larger hit target, visible focus ring, accessible name (AccessKit), keyboard path, and all five states.
 5. **One accent per surface.** List colours only as tab underlines, sidebar marks and mixed-view labels, plus the user-set 4px item label bar. Semantic colour always paired with an icon or text.
 6. **Ink commits, blue selects.** Primary buttons use `ink.*`. `accent.*` is never a button fill.
+
+## Not done (UX audit batch C)
+
+- UX-40, a dialog's content stays reachable behind its scrim: Slint 1.18 has no `inert` and no `aria-modal`, and hiding the content from the accessibility tree would blank the area under the scrim. A screen reader may still read the content behind an open dialog.
+- UX-34, high-contrast pairs on a real desktop: `hc_contrast.rs` proves that every pair in `theme.slint` is WindowText on Window, HighlightText on Highlight or GrayText on Window, and measures at least 4.5:1 for the stock High Contrast Black and White sets. Unverified: that Windows hands the app those colours (`GetSysColor` is Windows-only; run `tools/windows-test/`), and the Windows 11 contrast themes, whose colour values this repository does not carry.
+- UX-37/38/45, screen reader announcements: `ux_matrix.rs` walks the accessible tree and the Tab focus of seven windows at 1x and 2.25x in four looks. Narrator itself is Windows-only and unverified. The Panel, Main window and toast are walked by `audit_final1.rs` and `panel_logic.rs`, not by the table.

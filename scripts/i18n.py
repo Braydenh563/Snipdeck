@@ -47,7 +47,7 @@ GLOSSARY = pathlib.Path(__file__).resolve().parent / "glossary.json"
 TECH_TOKENS = {w.lower() for w in (
     "px ms s kb mb byte ui rgb hsl hsb hex cmyk aa aaa png ctrl shift alt enter insert f v space esc tab "
     "delete microsoft store notepad exe https example com royalblue emoji panel snipdeck kaomoji clip "
-    "markdown json ok windows bytes html rtf camelcase snake case").split()}
+    "markdown json ok windows bytes html rtf camelcase snake case ditto").split()}
 # Cognates that are the right word in one locale although they read like the English source.
 SAME_BY_LOCALE = {
     "ja": {"APCA Lc {}"},

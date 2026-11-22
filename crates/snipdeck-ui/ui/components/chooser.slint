@@ -1,3 +1,4 @@
+import { ListNav } from "list-nav.slint";
 import { Theme, Type, Radius, Space, Motion, Fonts, SystemLook } from "../theme.slint";
 import { Icons } from "../icons.slint";
 import { Icon } from "icon.slint";
@@ -54,6 +55,138 @@ export component Chooser inherits Rectangle {
         }
     }
 
+    // Type-ahead and pages, as in Menu (see `ListNav`).
+    property <string> typed: "";
+    type-timer := Timer {
+        interval: ListNav.pause;
+        running: false;
+        triggered => {
+            self.running = false;
+            root.typed = "";
+        }
+    }
+    // The first row from `from` on (wrapping round once) whose label starts with `p`, or -1. Slint has no loops and no
+    // recursion, so the scan is a ladder: `row-at` tests one row, each `scanN` asks the one below eight times (8, 64, 512, 4096,
+    // 32768 rows). `off` stops it at the last row, so a short list costs a short scan.
+    pure function row-at(from: int, off: int, p: string) -> int {
+        if (off >= root.entries.length) { return -1; }
+        let i = mod(from + off, root.entries.length);
+        return ListNav.starts(root.entries[i].label, p) ? i : -1;
+    }
+    pure function scan8(from: int, off: int, p: string) -> int {
+        if (off >= root.entries.length) { return -1; }
+        let a = root.row-at(from, off + 0, p);
+        if (a >= 0) { return a; }
+        let b = root.row-at(from, off + 1, p);
+        if (b >= 0) { return b; }
+        let c = root.row-at(from, off + 2, p);
+        if (c >= 0) { return c; }
+        let d = root.row-at(from, off + 3, p);
+        if (d >= 0) { return d; }
+        let e = root.row-at(from, off + 4, p);
+        if (e >= 0) { return e; }
+        let f = root.row-at(from, off + 5, p);
+        if (f >= 0) { return f; }
+        let g = root.row-at(from, off + 6, p);
+        if (g >= 0) { return g; }
+        let h = root.row-at(from, off + 7, p);
+        if (h >= 0) { return h; }
+        return -1;
+    }
+    pure function scan64(from: int, off: int, p: string) -> int {
+        if (off >= root.entries.length) { return -1; }
+        let a = root.scan8(from, off + 0, p);
+        if (a >= 0) { return a; }
+        let b = root.scan8(from, off + 8, p);
+        if (b >= 0) { return b; }
+        let c = root.scan8(from, off + 16, p);
+        if (c >= 0) { return c; }
+        let d = root.scan8(from, off + 24, p);
+        if (d >= 0) { return d; }
+        let e = root.scan8(from, off + 32, p);
+        if (e >= 0) { return e; }
+        let f = root.scan8(from, off + 40, p);
+        if (f >= 0) { return f; }
+        let g = root.scan8(from, off + 48, p);
+        if (g >= 0) { return g; }
+        let h = root.scan8(from, off + 56, p);
+        if (h >= 0) { return h; }
+        return -1;
+    }
+    pure function scan512(from: int, off: int, p: string) -> int {
+        if (off >= root.entries.length) { return -1; }
+        let a = root.scan64(from, off + 0, p);
+        if (a >= 0) { return a; }
+        let b = root.scan64(from, off + 64, p);
+        if (b >= 0) { return b; }
+        let c = root.scan64(from, off + 128, p);
+        if (c >= 0) { return c; }
+        let d = root.scan64(from, off + 192, p);
+        if (d >= 0) { return d; }
+        let e = root.scan64(from, off + 256, p);
+        if (e >= 0) { return e; }
+        let f = root.scan64(from, off + 320, p);
+        if (f >= 0) { return f; }
+        let g = root.scan64(from, off + 384, p);
+        if (g >= 0) { return g; }
+        let h = root.scan64(from, off + 448, p);
+        if (h >= 0) { return h; }
+        return -1;
+    }
+    pure function scan4k(from: int, off: int, p: string) -> int {
+        if (off >= root.entries.length) { return -1; }
+        let a = root.scan512(from, off + 0, p);
+        if (a >= 0) { return a; }
+        let b = root.scan512(from, off + 512, p);
+        if (b >= 0) { return b; }
+        let c = root.scan512(from, off + 1024, p);
+        if (c >= 0) { return c; }
+        let d = root.scan512(from, off + 1536, p);
+        if (d >= 0) { return d; }
+        let e = root.scan512(from, off + 2048, p);
+        if (e >= 0) { return e; }
+        let f = root.scan512(from, off + 2560, p);
+        if (f >= 0) { return f; }
+        let g = root.scan512(from, off + 3072, p);
+        if (g >= 0) { return g; }
+        let h = root.scan512(from, off + 3584, p);
+        if (h >= 0) { return h; }
+        return -1;
+    }
+    pure function scan32k(from: int, off: int, p: string) -> int {
+        if (off >= root.entries.length) { return -1; }
+        let a = root.scan4k(from, off + 0, p);
+        if (a >= 0) { return a; }
+        let b = root.scan4k(from, off + 4096, p);
+        if (b >= 0) { return b; }
+        let c = root.scan4k(from, off + 8192, p);
+        if (c >= 0) { return c; }
+        let d = root.scan4k(from, off + 12288, p);
+        if (d >= 0) { return d; }
+        let e = root.scan4k(from, off + 16384, p);
+        if (e >= 0) { return e; }
+        let f = root.scan4k(from, off + 20480, p);
+        if (f >= 0) { return f; }
+        let g = root.scan4k(from, off + 24576, p);
+        if (g >= 0) { return g; }
+        let h = root.scan4k(from, off + 28672, p);
+        if (h >= 0) { return h; }
+        return -1;
+    }
+    pure function first-hit(from: int, p: string) -> int {
+        return root.scan32k(from, 0, p);
+    }
+    function type-ahead(ch: string) {
+        root.typed = root.typed + ch;
+        let hit = root.first-hit(root.typed.character-count == 1 ? root.current + 1 : max(root.current, 0), root.typed);
+        if (hit >= 0) {
+            root.current = hit;
+            root.reveal(hit);
+        }
+        type-timer.running = false;
+        type-timer.running = true;
+    }
+
     min-width: 200px;
     height: 2 * Space.s1 + (root.entries.length == 0 ? root.row-h : min(root.entries.length, root.max-rows) * root.row-h);
     background: Theme.bg-overlay;
@@ -83,6 +216,14 @@ export component Chooser inherits Rectangle {
                 root.move(root.entries.length);
                 return accept;
             }
+            if (event.text == Key.PageDown) {
+                root.move(ListNav.page(root.max-rows));
+                return accept;
+            }
+            if (event.text == Key.PageUp) {
+                root.move(-ListNav.page(root.max-rows));
+                return accept;
+            }
             if ((event.text == Key.Return || event.text == " ") && root.current >= 0 && root.current < root.entries.length) {
                 root.shift = event.modifiers.shift;
                 root.chosen(root.current);
@@ -91,6 +232,10 @@ export component Chooser inherits Rectangle {
             }
             if (event.text == Key.Escape) {
                 root.dismissed();
+                return accept;
+            }
+            if (ListNav.typed-char(event.text) && !event.modifiers.control && !event.modifiers.alt && !event.modifiers.meta) {
+                root.type-ahead(event.text);
                 return accept;
             }
             return reject;

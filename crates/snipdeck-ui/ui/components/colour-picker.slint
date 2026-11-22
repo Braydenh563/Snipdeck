@@ -76,47 +76,38 @@ export component ColourPicker inherits Rectangle {
         }
     }
 
-    // The targets grow with the text size, but never past the room the row has: the cell is the 28 px hit target at
-    // the least, the text-size scaled one at the most, and what the targets (plus gaps) leave of the width between.
-    // Set from `changed` handlers, not bound to `root.width`: the row's width comes from its parent's layout, which
-    // also reads its height, which follows the cell.
-    property <length> gap: Space.s1 / SystemLook.text-scale;
+    // One cell per target ("no colour" and the hues), wrapped by the width the form gives: a larger text size makes
+    // the targets bigger, so fewer fit in a row and the grid grows downwards instead of past the window's edge.
     property <length> cell: Space.hit * SystemLook.text-scale;
-    property <float> text-scale: SystemLook.text-scale;
-    function refit() {
-        if (root.width > 0px) {
-            root.cell = max(Space.hit, min(Space.hit * root.text-scale, (root.width - root.hues.length * root.gap) / (root.hues.length + 1)));
-        }
-    }
-    init => { root.refit(); }
-    changed width => { root.refit(); }
-    changed text-scale => { root.refit(); }
-    height: root.cell;
+    property <length> gap: Space.s1;
+    property <int> count: root.hues.length + 1;
+    property <int> columns: max(1, floor((root.width + root.gap) / (root.cell + root.gap)));
+    property <int> rows: ceil(root.count / root.columns);
+
+    height: root.rows * root.cell + (root.rows - 1) * root.gap;
     forward-focus: scope;
     accessible-role: radio-group;
     accessible-label: root.label;
 
-    HorizontalLayout {
-        // The gap shrinks with the text size as the targets grow, and the targets give way when the row is still too
-        // narrow: every choice ends inside the row at 2.25x.
-        spacing: root.gap;
-        alignment: start;
-        NoColour {
-            cell: root.cell;
-            label: root.none-label;
-            selected: root.accent == -1;
-            show-focus: scope.has-focus && root.accent == -1;
-            clicked => { root.move(-1); }
-        }
-        for h[i] in root.hues: Swatch {
-            cell: root.cell;
-            hue: h;
-            label: root.names[i];
-            selected: i == root.accent;
-            keyboard-focusable: false;
-            show-focus: scope.has-focus && i == root.accent;
-            clicked => { root.move(i); }
-        }
+    NoColour {
+        x: 0px;
+        y: 0px;
+        cell: root.cell;
+        label: root.none-label;
+        selected: root.accent == -1;
+        show-focus: scope.has-focus && root.accent == -1;
+        clicked => { root.move(-1); }
+    }
+    for h[i] in root.hues: Swatch {
+        x: mod(i + 1, root.columns) * (root.cell + root.gap);
+        y: floor((i + 1) / root.columns) * (root.cell + root.gap);
+        cell: root.cell;
+        hue: h;
+        label: root.names[i];
+        selected: i == root.accent;
+        keyboard-focusable: false;
+        show-focus: scope.has-focus && i == root.accent;
+        clicked => { root.move(i); }
     }
 
     scope := FocusScope {

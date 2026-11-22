@@ -1,4 +1,4 @@
-// The welcome tour (V1-PLAN 7a): one regular window, four steps, shown on a first run with an empty library and from
+// The welcome tour (V1-PLAN 7a): one regular window, five steps, shown on a first run with an empty library and from
 // Help. Welcome (what the Panel, the Picker and the shortcuts do, and the one choice to keep what you copy),
 // Shortcuts (the Settings recorders), Panel (one visual choice: floating or docked to the right edge) and Start-up
 // (start with Windows, keep running in the tray). Taskbar, hide-on-blur and the other edges are in Settings.
@@ -14,7 +14,7 @@ import { Toggle } from "components/choice.slint";
 import { HotkeyRecorder } from "components/hotkey_recorder.slint";
 import { HotkeyHealthLine } from "components/hotkey_health.slint";
 import { FieldError } from "components/text_field.slint";
-import { FormScroll, FormSection, SettingRow, Segmented } from "components/form.slint";
+import { FormSection, FormScroll, SettingRow, Segmented } from "components/form.slint";
 import { HotkeySetting } from "settings.slint";
 
 // One thing the welcome step explains: a glyph, a name and a sentence.
@@ -26,6 +26,10 @@ component Feature inherits HorizontalLayout {
     spacing: Space.s4;
     padding-top: Space.s2;
     padding-bottom: Space.s2;
+    // The text column's width, so the two paragraphs report the height they wrap to at that width (a layout asks
+    // its children for their height before it knows their width, and wrapped text would otherwise report one line).
+    property <length> text-w: max(40px, root.width - 40px * SystemLook.text-scale - Space.s4);
+    min-height: root.padding-top + root.padding-bottom + max(40px * SystemLook.text-scale, ttl.preferred-height + Space.s0-5 + dsc.preferred-height);
     accessible-role: groupbox;
     accessible-label: root.title;
     accessible-description: root.description;
@@ -53,7 +57,8 @@ component Feature inherits HorizontalLayout {
         min-width: 0px;
         alignment: start;
         spacing: Space.s0-5;
-        Text {
+        ttl := Text {
+            width: root.text-w;
             text: root.title;
             color: Theme.text-primary;
             font-family: Fonts.sans;
@@ -62,7 +67,8 @@ component Feature inherits HorizontalLayout {
             wrap: word-wrap;
             accessible-role: none;
         }
-        Text {
+        dsc := Text {
+            width: root.text-w;
             text: root.description;
             color: Theme.text-secondary;
             font-family: Fonts.sans;
@@ -189,20 +195,23 @@ component PanelChoice inherits Rectangle {
 export component OnboardingWindow inherits Window {
     title: @tr("Welcome to Snipdeck");
     background: Theme.bg-app;
-    min-width: 420px;
-    min-height: 360px;
-    preferred-width: root.wanted-width;
-    preferred-height: root.wanted-height;
+    // Header, footer and three rows of the step, so the content scrolls inside a window that is never cramped.
+    out property <length> min-window-width: max(420px, 270px * SystemLook.text-scale);
+    out property <length> min-window-height: 2 * Space.s6 + 2 * Space.s4 + head.preferred-height + steps-scroll.min-height + foot.preferred-height;
+    min-width: root.min-window-width;
+    min-height: root.min-window-height;
+    preferred-width: max(root.wanted-width, root.min-window-width);
+    preferred-height: max(root.wanted-height, root.min-window-height);
 
     // The size the window opens at; the host cuts it to the screen before the window exists.
     // Both follow the text size (MAIN-55): the content at the current scale, never less than the old fixed size.
     out property <length> wanted-width: 560px + (SystemLook.text-scale - 1) * 160px;
-    out property <length> wanted-height: max(540px, 2 * Space.s6 + 2 * Space.s4 + head.preferred-height + step-body.preferred-height + foot.preferred-height);
+    out property <length> wanted-height: max(540px, 2 * Space.s6 + 2 * Space.s4 + head.preferred-height + steps.preferred-height + foot.preferred-height);
 
     in property <bool> dark: false;
-    // The step shown, 0 to `step-count - 1`: Welcome, Shortcuts, Panel, Start-up.
+    // The step shown, 0 to `step-count - 1`: Welcome, Shortcuts, Panel, Start-up, Your first snippet.
     in property <int> step: 0;
-    in property <int> step-count: 4;
+    in property <int> step-count: 5;
     // In the order of Settings: show or hide the panel, open the picker, capture, paste next.
     in property <[HotkeySetting]> hotkeys;
     in-out property <bool> autostart: false;
@@ -230,10 +239,10 @@ export component OnboardingWindow inherits Window {
     callback tips-requested();
 
     property <[string]> hotkey-names: [
-        @tr("Show or hide the Panel"),
-        @tr("Open the Picker"),
-        @tr("Save the clipboard as an item"),
-        @tr("Paste the next item"),
+        @tr("Show or hide the panel"),
+        @tr("Open the picker"),
+        @tr("Quick capture"),
+        @tr("Paste next"),
     ];
     property <bool> last: root.step >= root.step-count - 1;
 
@@ -245,6 +254,8 @@ export component OnboardingWindow inherits Window {
     changed dark => { Palette.dark = root.dark; }
 
     scope := FocusScope {
+        // The key scope is not a Tab stop: it has no ring, so a Tab onto it would change nothing on screen.
+        focus-on-tab-navigation: false;
         key-pressed(event) => {
             if (event.text == Key.Escape) {
                 // Esc backs out one step; only the first step has nothing before it, so there it skips.
@@ -276,8 +287,9 @@ export component OnboardingWindow inherits Window {
                 Text {
                     text: root.step == 0 ? @tr("Welcome to Snipdeck")
                         : root.step == 1 ? @tr("Your shortcuts")
-                        : root.step == 2 ? @tr("Where the Panel sits")
-                        : @tr("Start-up");
+                        : root.step == 2 ? @tr("Where the panel sits")
+                        : root.step == 3 ? @tr("Start-up")
+                        : @tr("Your first snippet");
                     color: Theme.text-primary;
                     font-family: Fonts.sans;
                     font-size: Type.xl;
@@ -289,158 +301,186 @@ export component OnboardingWindow inherits Window {
                 }
             }
 
-            // The step's content. Only one exists at a time. It scrolls when the window is smaller than the
-            // content at this text size; the Skip / Back / Next row below stays in view.
-            step-scroll := FormScroll {
+            // The step's content. Only one exists at a time. It scrolls above the footer, so the buttons never overlap
+            // it, whatever the language or the text size.
+            steps-scroll := FormScroll {
                 vertical-stretch: 1;
-                min-height: 0px;
-                content-height: step-body.preferred-height;
+                min-height: 3 * Space.hit * SystemLook.text-scale;
+                content-height: steps.preferred-height;
                 content-width: self.viewport-width;
 
-                step-body := VerticalLayout {
-                x: 0px;
-                width: step-scroll.viewport-width;
-                alignment: start;
-                spacing: Space.s2;
+                steps := VerticalLayout {
+                    x: 0px;
+                    width: steps-scroll.viewport-width;
+                    alignment: start;
+                    spacing: Space.s2;
 
-                if root.step == 0: VerticalLayout {
-                    spacing: Space.s3;
-                    Text {
-                        text: @tr("Snipdeck keeps the text you paste again and again, one shortcut away. The basics:");
-                        color: Theme.text-secondary;
-                        font-family: Fonts.sans;
-                        font-size: Type.base;
-                        wrap: word-wrap;
-                        accessible-role: none;
-                    }
-                    Feature {
-                        glyph: Icons.sidebar-simple;
-                        title: @tr("The Panel");
-                        description: @tr("A strip of your items beside the app you are working in. Click one to paste it there.");
-                    }
-                    Feature {
-                        glyph: Icons.magnifying-glass;
-                        title: @tr("The Picker");
-                        description: @tr("Search every board and paste without opening the window.");
-                    }
-                    Feature {
-                        glyph: Icons.keyboard;
-                        title: @tr("Shortcuts");
-                        description: @tr("Bring up the Panel, open the Picker, save the clipboard or paste the next item from any app.");
-                    }
-                    Feature {
-                        glyph: Icons.folder;
-                        title: @tr("Bring your snippets");
-                        description: @tr("Import from TextExpander, Espanso, Beeftext, PhraseExpress, Ditto or CopyQ in Settings, under Import.");
-                    }
-                    Feature {
-                        glyph: Icons.clock;
-                        title: @tr("Also keep what I copy?");
-                        description: @tr("Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings.", root.recent-max-entries, root.recent-max-days);
-                    }
-                    Segmented {
-                        label: @tr("Also keep what I copy?");
-                        options: [@tr("Yes"), @tr("No")];
-                        current: root.recent-history ? 0 : 1;
-                        chosen(i) => { root.recent-history-toggled(i == 0); }
-                    }
-                }
-
-                if root.step == 1: FormSection {
-                    title: @tr("Shortcuts");
-                    for hk[i] in root.hotkeys: SettingRow {
-                        title: root.hotkey-names[i];
-                        VerticalLayout {
-                            spacing: Space.s1;
-                            HotkeyRecorder {
-                                width: 220px * SystemLook.text-scale;
-                                label: root.hotkey-names[i];
-                                keys: hk.keys;
-                                value: hk.value;
-                                conflict: hk.conflict;
-                                empty-text: @tr("Not set");
-                                recording-text: @tr("Press the new shortcut");
-                                clear-label: @tr("Clear the shortcut for {}", root.hotkey-names[i]);
-                                recorded(combo) => { root.hotkey-recorded(i, combo); }
-                                cleared => { root.hotkey-cleared(i); }
-                            }
-                            HotkeyHealthLine {
-                                width: 220px * SystemLook.text-scale;
-                                name: root.hotkey-names[i];
-                                state: hk.state;
-                                alternatives: hk.alternatives;
-                                test => { root.hotkey-test-requested(i); }
-                                use-chord(chord) => { root.hotkey-recorded(i, chord); }
-                            }
-                        }
-                    }
-                }
-
-                if root.step == 2: VerticalLayout {
-                    spacing: Space.s3;
-                    Text {
-                        text: @tr("Pick how the Panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button.");
-                        color: Theme.text-secondary;
-                        font-family: Fonts.sans;
-                        font-size: Type.base;
-                        wrap: word-wrap;
-                        accessible-role: none;
-                    }
-                    HorizontalLayout {
+                    if root.step == 0: VerticalLayout {
                         spacing: Space.s3;
-                        PanelChoice {
-                            label: @tr("Floating");
-                            hint: @tr("A small window you can drag anywhere.");
-                            docked: false;
-                            selected: root.dock-edge-index == 0;
-                            chosen => { root.dock-edge-chosen(0); }
+                        Text {
+                            text: @tr("Snipdeck keeps the text you paste again and again, one shortcut away. The basics:");
+                            color: Theme.text-secondary;
+                            font-family: Fonts.sans;
+                            font-size: Type.base;
+                            wrap: word-wrap;
+                            accessible-role: none;
                         }
-                        PanelChoice {
-                            label: @tr("Docked to the right");
-                            hint: @tr("At the right edge of the screen. It tucks into a thin tab and slides out when the pointer comes to it.");
-                            docked: true;
-                            selected: root.dock-edge-index == 2;
-                            chosen => { root.dock-edge-chosen(2); }
+                        Feature {
+                            glyph: Icons.sidebar-simple;
+                            title: @tr("The panel");
+                            description: @tr("A strip of your snippets beside the app you are working in. Click one to paste it there.");
+                        }
+                        Feature {
+                            glyph: Icons.magnifying-glass;
+                            title: @tr("The picker");
+                            description: @tr("Search every board and paste without opening the window.");
+                        }
+                        Feature {
+                            glyph: Icons.keyboard;
+                            title: @tr("Shortcuts");
+                            description: @tr("Bring up the panel, open the picker, save the clipboard or paste the next item from any app.");
+                        }
+                        Feature {
+                            glyph: Icons.folder;
+                            title: @tr("Bring your snippets");
+                            description: @tr("Import from TextExpander, Espanso, Beeftext, PhraseExpress, Ditto or CopyQ in Settings, under Import.");
+                        }
+                        Feature {
+                            glyph: Icons.clock;
+                            title: @tr("Also keep what I copy?");
+                            description: @tr("Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings.", root.recent-max-entries, root.recent-max-days);
+                        }
+                        Segmented {
+                            label: @tr("Also keep what I copy?");
+                            options: [@tr("Yes"), @tr("No")];
+                            current: root.recent-history ? 0 : 1;
+                            chosen(i) => { root.recent-history-toggled(i == 0); }
                         }
                     }
-                }
 
-                if root.step == 3: FormSection {
-                    title: @tr("Window behaviour");
-                    SettingRow {
-                        title: @tr("Start with Windows");
-                        description: @tr("Snipdeck waits in the tray so the shortcuts work after you sign in.");
-                        Toggle {
-                            a11y-label: @tr("Start with Windows");
-                            checked <=> root.autostart;
-                            toggled(on) => { root.autostart-toggled(on); }
+                    if root.step == 1: FormSection {
+                        title: @tr("Shortcuts");
+                        for hk[i] in root.hotkeys: SettingRow {
+                            title: root.hotkey-names[i];
+                            VerticalLayout {
+                                spacing: Space.s1;
+                                HotkeyRecorder {
+                                    width: 220px * SystemLook.text-scale;
+                                    label: root.hotkey-names[i];
+                                    keys: hk.keys;
+                                    value: hk.value;
+                                    conflict: hk.conflict;
+                                    empty-text: @tr("Not set");
+                                    recording-text: @tr("Press the new shortcut");
+                                    clear-label: @tr("Clear the shortcut for {}", root.hotkey-names[i]);
+                                    recorded(combo) => { root.hotkey-recorded(i, combo); }
+                                    cleared => { root.hotkey-cleared(i); }
+                                }
+                                HotkeyHealthLine {
+                                    width: 220px * SystemLook.text-scale;
+                                    name: root.hotkey-names[i];
+                                    state: hk.state;
+                                    alternatives: hk.alternatives;
+                                    test => { root.hotkey-test-requested(i); }
+                                    use-chord(chord) => { root.hotkey-recorded(i, chord); }
+                                }
+                            }
                         }
                     }
-                    SettingRow {
-                        title: @tr("Keep running in the tray when the window closes");
-                        description: @tr("Turn this off and closing the Panel or the Main window quits Snipdeck.");
-                        Toggle {
-                            a11y-label: @tr("Keep running in the tray when the window closes");
-                            checked <=> root.close-to-tray;
-                            toggled(on) => { root.close-to-tray-toggled(on); }
-                        }
-                    }
-                    if root.notice != "": FieldError {
-                        text: root.notice;
-                    }
-                }
 
-                if root.step == 3: FormSection {
-                    title: @tr("Tips");
-                    SettingRow {
-                        title: @tr("Short tips");
-                        description: @tr("What Snipdeck can do, with a picture and a button to try each one. You can open them again from Help.");
-                        Button {
-                            text: @tr("See the tips");
-                            clicked => { root.tips-requested(); }
+                    if root.step == 2: VerticalLayout {
+                        spacing: Space.s3;
+                        Text {
+                            text: @tr("Pick how the panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button.");
+                            color: Theme.text-secondary;
+                            font-family: Fonts.sans;
+                            font-size: Type.base;
+                            wrap: word-wrap;
+                            accessible-role: none;
+                        }
+                        HorizontalLayout {
+                            spacing: Space.s3;
+                            PanelChoice {
+                                label: @tr("Floating");
+                                hint: @tr("A small window you can drag anywhere.");
+                                docked: false;
+                                selected: root.dock-edge-index == 0;
+                                chosen => { root.dock-edge-chosen(0); }
+                            }
+                            PanelChoice {
+                                label: @tr("Docked to the right");
+                                hint: @tr("At the right edge of the screen. It tucks into a thin tab and slides out when the pointer comes to it.");
+                                docked: true;
+                                selected: root.dock-edge-index == 2;
+                                chosen => { root.dock-edge-chosen(2); }
+                            }
                         }
                     }
-                }
+
+                    if root.step == 3: FormSection {
+                        title: @tr("Window behaviour");
+                        SettingRow {
+                            title: @tr("Start with Windows");
+                            description: @tr("Snipdeck waits in the tray so the shortcuts work after you sign in.");
+                            Toggle {
+                                a11y-label: @tr("Start with Windows");
+                                checked <=> root.autostart;
+                                toggled(on) => { root.autostart-toggled(on); }
+                            }
+                        }
+                        SettingRow {
+                            title: @tr("Keep running in the tray when the window closes");
+                            description: @tr("Turn this off and closing the Panel or the Main window quits Snipdeck.");
+                            Toggle {
+                                a11y-label: @tr("Keep running in the tray when the window closes");
+                                checked <=> root.close-to-tray;
+                                toggled(on) => { root.close-to-tray-toggled(on); }
+                            }
+                        }
+                        if root.notice != "": FieldError {
+                            text: root.notice;
+                        }
+                    }
+
+                    if root.step == 4: VerticalLayout {
+                        spacing: Space.s3;
+                        Text {
+                            text: @tr("Everything lives in your library. You can add a first snippet in a minute:");
+                            color: Theme.text-secondary;
+                            font-family: Fonts.sans;
+                            font-size: Type.base;
+                            wrap: word-wrap;
+                            accessible-role: none;
+                        }
+                        Feature {
+                            glyph: Icons.squares-four;
+                            title: @tr("Boards and lists");
+                            description: @tr("A board is a set of lists, one for each part of your work. A list holds your snippets.");
+                        }
+                        Feature {
+                            glyph: Icons.tag;
+                            title: @tr("Tags");
+                            description: @tr("Tag a snippet to find it from any list. Manage tags in the Main window.");
+                        }
+                        Feature {
+                            glyph: Icons.plus;
+                            title: @tr("Your first snippet");
+                            description: @tr("Press Ctrl+N in the Main window, or choose New item in the Panel menu, then type or paste your text.");
+                        }
+                    }
+
+                    if root.step == 4: FormSection {
+                        title: @tr("Tips");
+                        SettingRow {
+                            title: @tr("Short tips");
+                            description: @tr("What Snipdeck can do, with a picture and a button to try each one. You can open them again from Help.");
+                            Button {
+                                text: @tr("See the tips");
+                                clicked => { root.tips-requested(); }
+                            }
+                        }
+                    }
+            
                 }
             }
 

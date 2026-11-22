@@ -244,7 +244,7 @@ fn search_problems(c: &Case, case: &str, scale: f32, scene: &str) -> Vec<String>
     let bs = boxes(&c.h);
     // MAIN-53: the bulk bar's Move button keeps room for its label.
     if scene == "multi" {
-        match bs.iter().find(|b| b.0 == "Move") {
+        match bs.iter().find(|b| b.0 == "Move to list…") {
             Some(m) if m.3 >= 48.0 * scale - 0.5 => {}
             Some(m) => {
                 return vec![format!(

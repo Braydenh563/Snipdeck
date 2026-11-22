@@ -121,10 +121,15 @@ export component Button inherits Rectangle {
         }
     }
 
+    // A busy button (`loading`) keeps the keyboard focus, so the user is not thrown out of the form when a job starts and
+    // finds the button where it was when the job ends; it only stops answering.
     scope := FocusScope {
-        enabled: root.active;
+        enabled: root.enabled;
         focus-on-click: false;
         key-pressed(event) => {
+            if (root.loading) {
+                return reject;
+            }
             if (event.text == " " || event.text == "\n") {
                 tip.close();
                 root.clicked();

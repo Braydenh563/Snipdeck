@@ -199,7 +199,7 @@ fn pointer_clicks_on_every_header_control_reach_the_controller() {
         r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
         slint::platform::update_timers_and_animations();
 
-        click(r.window(), &r.button("Keep Panel on top"));
+        click(r.window(), &r.button("Keep Panel open"));
         assert!(
             !r.ctl.borrow().view().on_top,
             "the pin click reached the controller"
@@ -226,7 +226,7 @@ fn pointer_clicks_on_every_header_control_reach_the_controller() {
             "no click on a control starts a window drag"
         );
 
-        click(r.window(), &r.button("Close Panel (Esc)"));
+        click(r.window(), &r.button("Close panel (Esc)"));
         assert!(!r.window().is_visible());
     });
 }
@@ -330,8 +330,7 @@ fn the_first_run_asks_about_recent_and_the_answer_is_kept() {
             "nothing is kept yet"
         );
         assert!(
-            ElementHandle::find_by_accessible_label(&r.ui, "Keep a Recent list of what you copy?")
-                .count()
+            ElementHandle::find_by_accessible_label(&r.ui, "Keep what you copy in Recent?").count()
                 > 0
         );
         r.ui.invoke_recent_question_answered(true);
@@ -496,30 +495,23 @@ fn a_list_menu_request_opens_the_list_menu_and_dismissing_closes_it() {
 }
 
 #[test]
-fn delete_on_the_list_menu_shows_only_the_panel_confirmation() {
-    // O52: Delete asked inside the list editor, which then appeared behind the confirmation.
+fn delete_on_the_list_menu_trashes_at_once_with_undo_and_opens_no_editor() {
+    // O52: Delete asked inside the list editor. UX-20: a list goes to the Trash, so it acts at
+    // once and offers Undo; there is no dialog.
     on_ui_thread(|| {
         let r = rig();
         let lists = r.ui.get_tabs().row_count();
         r.ui.invoke_list_menu_requested(1);
         r.ui.invoke_list_menu_activated(1);
         assert!(!r.ui.get_list_menu_open());
-        assert!(r.ui.get_list_delete_open(), "the Panel asks");
-        assert!(!r.ui.get_list_delete_name().is_empty());
+        assert_eq!(r.ui.get_tabs().row_count(), lists - 1);
         assert!(
             r.ctl.borrow_mut().main_screen().editor.is_none(),
             "no list editor opens"
         );
-        r.ui.invoke_list_delete_dismissed();
-        assert!(!r.ui.get_list_delete_open());
-        assert_eq!(r.ui.get_tabs().row_count(), lists, "Cancel keeps the list");
-
-        r.ui.invoke_list_menu_requested(1);
-        r.ui.invoke_list_menu_activated(1);
-        r.ui.invoke_list_delete_confirmed();
-        assert!(!r.ui.get_list_delete_open());
-        assert_eq!(r.ui.get_tabs().row_count(), lists - 1);
-        assert!(r.ctl.borrow_mut().main_screen().editor.is_none());
+        assert_eq!(r.ui.get_toast_undo_label(), "Undo");
+        r.ui.invoke_toast_undo();
+        assert_eq!(r.ui.get_tabs().row_count(), lists, "Undo restores the list");
     });
 }
 
@@ -746,11 +738,11 @@ fn the_close_button_hides_and_the_pin_button_reaches_the_controller() {
     on_ui_thread(|| {
         let r = rig();
         assert!(r.ctl.borrow().view().on_top);
-        r.button("Keep Panel on top")
+        r.button("Keep Panel open")
             .invoke_accessible_default_action();
         assert!(!r.ctl.borrow().view().on_top);
         assert!(!r.ui.get_on_top());
-        r.button("Close Panel (Esc)")
+        r.button("Close panel (Esc)")
             .invoke_accessible_default_action();
         assert!(!r.window().is_visible());
     });
@@ -966,7 +958,7 @@ fn the_tray_icon_toggles_the_panel_opens_the_menu_actions_and_quits() {
 fn open_panel_in_the_tray_menu_brings_back_a_panel_closed_with_its_button() {
     on_ui_thread(|| {
         let r = rig();
-        r.button("Close Panel (Esc)")
+        r.button("Close panel (Esc)")
             .invoke_accessible_default_action();
         assert!(!r.window().is_visible(), "closed to the tray");
         r.binding.tray(TrayEvent::OpenPanel);
@@ -980,7 +972,7 @@ fn open_panel_in_the_tray_menu_brings_back_a_panel_closed_with_its_button() {
         r.binding.tray(TrayEvent::OpenPanel);
         assert!(r.window().is_visible());
         // The tray's left click brings it back from hidden in the same way.
-        r.button("Close Panel (Esc)")
+        r.button("Close panel (Esc)")
             .invoke_accessible_default_action();
         r.binding.tray(TrayEvent::TogglePanel);
         assert!(r.window().is_visible());
@@ -1001,7 +993,7 @@ fn open_panel_in_the_tray_menu_brings_back_a_panel_closed_with_its_button() {
 fn without_a_tray_icon_the_close_button_quits_instead_of_hiding() {
     on_ui_thread(|| {
         let r = rig_with_tray(false);
-        r.button("Close Panel (Esc)")
+        r.button("Close panel (Esc)")
             .invoke_accessible_default_action();
         assert!(
             r.window().is_visible(),
@@ -1265,11 +1257,11 @@ const MENU_ROWS: [&str; 17] = [
     "Keyboard shortcuts",
     "Commands\u{2026}",
     "Settings\u{2026}",
-    "Open Snipdeck",
+    "Open Main window",
     "New item",
     "Take screenshot",
     "Pause shortcuts",
-    "Select or delete\u{2026}",
+    "Select items",
     "Reset size and position",
     "Troubleshoot\u{2026}",
     "User guide",
@@ -1417,11 +1409,11 @@ fn the_menu_is_still_open_after_the_pointer_moves_into_it_and_away_from_the_butt
         );
 
         // Down into the menu, row by row, then off to the pin button, then over the list.
-        for label in ["Open Snipdeck", "Settings\u{2026}", "Quit"] {
+        for label in ["Open Main window", "Settings\u{2026}", "Quit"] {
             move_to(r.window(), centre(&menu_row(&r, label)));
             assert!(r.ui.get_app_menu_open(), "still open over {label}");
         }
-        move_to(r.window(), centre(&r.button("Keep Panel on top")));
+        move_to(r.window(), centre(&r.button("Keep Panel open")));
         assert!(r.ui.get_app_menu_open(), "still open away from the button");
         assert_eq!(r.ui.get_tooltip_shown(), "", "no tooltip over an open menu");
         move_to(r.window(), slint::LogicalPosition::new(20.0, 300.0));
@@ -1499,7 +1491,7 @@ fn open_snipdeck_help_and_new_snippet_reach_the_host() {
     on_ui_thread(|| {
         let r = rig();
         for label in [
-            "Open Snipdeck",
+            "Open Main window",
             "New item",
             "Troubleshoot\u{2026}",
             "User guide",

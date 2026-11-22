@@ -107,7 +107,7 @@ use Scope::{Anywhere, Editors, Main, Panel, Picker, Unlock};
 
 /// Every shortcut, in the order of `ShortcutTexts.titles` (a test in `tests/help_window.rs` checks the
 /// length) and grouped by scope in the order of [`Scope::ALL`].
-pub const CATALOGUE: [Shortcut; 84] = [
+pub const CATALOGUE: [Shortcut; 99] = [
     // Anywhere in Windows.
     global(HotkeyAction::TogglePanel),
     global(HotkeyAction::Picker),
@@ -136,7 +136,11 @@ pub const CATALOGUE: [Shortcut; 84] = [
     row(Main, "Ctrl+A"),
     row(Main, "Ctrl+Space"),
     row(Main, "Ctrl+Z"),
-    row(Main, "Ctrl+Y"),
+    custom(
+        Main,
+        &["Ctrl", "Y", ALT, "Ctrl", "Shift", "Z"],
+        "Ctrl+Y or Ctrl+Shift+Z",
+    ),
     row(Main, "Ctrl+W"),
     row(Main, "Ctrl+B"),
     custom(
@@ -145,6 +149,11 @@ pub const CATALOGUE: [Shortcut; 84] = [
         "Alt+Up or Alt+Down",
     ),
     custom(Main, &["Space"], "Hold Space"),
+    row(Main, "Ctrl+C"),
+    row(Main, "Ctrl+V"),
+    custom(Main, &["/"], "Slash"),
+    custom(Main, &["Shift", "F10"], "Shift+F10 or the Menu key"),
+    row(Main, "F6"),
     // Groups in the Main window.
     row(Main, "Ctrl+G"),
     custom(
@@ -191,11 +200,23 @@ pub const CATALOGUE: [Shortcut; 84] = [
     row(Panel, "Ctrl+Shift+N"),
     row(Panel, "Ctrl+,"),
     row(Panel, "Ctrl+Z"),
-    row(Panel, "Ctrl+Y"),
+    custom(
+        Panel,
+        &["Ctrl", "Y", ALT, "Ctrl", "Shift", "Z"],
+        "Ctrl+Y or Ctrl+Shift+Z",
+    ),
     row(Panel, "Ctrl+W"),
     row(Panel, "Ctrl+/"),
     row(Panel, "F1"),
     row(Panel, "Esc"),
+    row(Panel, "Ctrl+C"),
+    row(Panel, "Ctrl+V"),
+    row(Panel, "F6"),
+    // The Symbols and Colours tabs.
+    row(Panel, "Ctrl+S"),
+    row(Panel, "Ctrl+Shift+S"),
+    row(Panel, "Ctrl+I"),
+    custom(Panel, &["Ctrl", "C"], "Ctrl+C in the Colours tab"),
     // Groups.
     row(Panel, "Ctrl+G"),
     custom(
@@ -218,11 +239,18 @@ pub const CATALOGUE: [Shortcut; 84] = [
     custom(Picker, &["Alt", "1-9"], "Alt+1 to 9"),
     custom(Picker, &["Tab", ALT, "Shift", "Tab"], "Tab or Shift+Tab"),
     row(Picker, "Ctrl+E"),
+    row(Picker, "Ctrl+O"),
     row(Picker, "Esc"),
     // Editors.
-    row(Editors, "Ctrl+Enter"),
-    row(Editors, "Ctrl+P"),
-    row(Editors, "Esc"),
+    custom(
+        Editors,
+        &["Ctrl", "Enter", ALT, "Ctrl", "S"],
+        "Ctrl+Enter or Ctrl+S",
+    ),
+    row(Editors, "Alt+P"),
+    custom(Editors, &["Esc", ALT, "Ctrl", "W"], "Esc or Ctrl+W"),
+    row(Editors, "Ctrl+Shift+Enter"),
+    row(Editors, "Del"),
     // The unlock window.
     plain(Unlock, "Hello", "Unlock with Windows Hello"),
 ];
@@ -760,6 +788,58 @@ mod tests {
         assert!(
             missing.is_empty(),
             "the guide's keyboard table lists keys the shortcuts list lacks: {missing:#?}"
+        );
+    }
+
+    /// The other direction: every row of the list is in the guide's keyboard table, so the guide and the Help list are
+    /// two views of the one catalogue and neither can gain a key alone.
+    #[test]
+    fn every_shortcut_in_the_list_is_in_the_guides_keyboard_table() {
+        let guide = include_str!("../../../docs/user-guide.md");
+        let table: Vec<(Vec<Scope>, Vec<Vec<String>>, String)> = guide
+            .lines()
+            .skip_while(|l| !l.starts_with("## Keyboard reference"))
+            .skip(1)
+            .take_while(|l| !l.starts_with("## "))
+            .filter(|l| l.starts_with('|'))
+            .skip(2)
+            .map(|line| {
+                let cells: Vec<&str> = line.trim_matches('|').split('|').map(str::trim).collect();
+                let spans: Vec<Vec<String>> =
+                    cells[1].split('`').skip(1).step_by(2).map(atoms).collect();
+                let text = if spans.is_empty() {
+                    vec![atoms(cells[1])]
+                } else {
+                    spans
+                };
+                (guide_scopes(cells[0]), text, line.to_owned())
+            })
+            .collect();
+        let hotkeys = Hotkeys::new_install();
+        let mut missing = Vec::new();
+        for s in CATALOGUE {
+            let (caps, _) = s.keys.resolve(&hotkeys, &KeyWords::english());
+            if caps.is_empty() {
+                continue;
+            }
+            // Each alternative ("Up" or "Down") is looked for on its own, among the keys of one guide row.
+            for alt in caps.split(|c| c == ALT) {
+                let want = atoms(&alt.join(" "));
+                let found = table.iter().any(|(scopes, rows, _)| {
+                    scopes.contains(&s.scope) && {
+                        let have: Vec<&String> = rows.iter().flatten().collect();
+                        want.iter().all(|a| have.contains(&a))
+                    }
+                });
+                if !found {
+                    missing.push(format!("{:?}: {}", s.scope, want.join(" ")));
+                }
+            }
+        }
+        assert_eq!(
+            missing.len(),
+            0,
+            "the list has keys the guide's table lacks: {missing:#?}"
         );
     }
 }

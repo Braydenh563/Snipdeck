@@ -184,7 +184,7 @@ fn a_group_keeps_its_header_under_a_sort_and_sorts_inside() {
 }
 
 #[test]
-fn deleting_a_folded_group_asks_with_the_count_and_cancel_keeps_it() {
+fn deleting_a_folded_group_acts_at_once_and_undo_brings_it_back() {
     let mut ctl = tagged();
     let list = ctl.main_screen().lists[0].id;
     ctl.main_open(Section::List(list));
@@ -194,14 +194,6 @@ fn deleting_a_folded_group_asks_with_the_count_and_cancel_keeps_it() {
     ctl.main_group_collapse(0, Some(true));
     let rows = ctl.main_screen().rows.len();
     ctl.main_group_delete(0);
-    let ask = ctl.main_screen().group_delete.expect("asks first");
-    assert_eq!(ask.1, 2);
-    assert_eq!(ctl.main_screen().rows.len(), rows, "nothing is deleted yet");
-    ctl.main_group_delete_cancel();
-    assert_eq!(ctl.main_screen().group_delete, None);
-    assert_eq!(ctl.main_screen().rows.len(), rows);
-    ctl.main_group_delete(0);
-    ctl.main_group_delete_confirm();
     assert_eq!(ctl.main_screen().rows.len(), rows - 1);
     ctl.undo();
     assert_eq!(ctl.main_screen().rows.len(), rows);
@@ -214,8 +206,11 @@ fn an_unfolded_group_is_deleted_without_asking() {
     ctl.main_open(Section::List(list));
     ctl.main_select(0, SelectMode::Replace);
     ctl.main_group_marked(0);
+    let rows = ctl.main_screen().rows.len();
     ctl.main_group_delete(0);
-    assert_eq!(ctl.main_screen().group_delete, None);
+    assert!(ctl.main_screen().rows.len() < rows, "it acted at once");
+    ctl.undo();
+    assert_eq!(ctl.main_screen().rows.len(), rows);
 }
 
 #[test]

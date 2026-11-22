@@ -27,7 +27,7 @@ Features that exist now (user-facing list in `README.md` and `docs/user-guide.md
   (it has no keyboard chord).
 - Colours tab: picker, saved and recent colours, eyedropper (Windows), formats, contrast, schemes.
 - Six item kinds, templates with fields and date maths, paste as plain text, rich paste (HTML and RTF).
-- Item editor with Preview (`Ctrl+P`), draft recovery, triggers and typing expansion (Windows).
+- Item editor with Preview (`Alt+P`), draft recovery, triggers and typing expansion (Windows).
 - Command palette (`Ctrl+K` or `Ctrl+Shift+P`), sidebar collapse button in the sidebar header (`Ctrl+B`),
   tinted list icons, Settings > Privacy "Clear recent emoji and colours".
 - Library views (`snipdeck_core::{Sort, ViewFilter}`): one Sort for every section (a list's in the library, `All items`,

@@ -819,52 +819,15 @@ where
         self.trash_with_undo(&run.run);
     }
 
-    /// Delete group from the Main window: the same, with the same Undo toast. A folded group
-    /// hides the rows it deletes, so the window asks first, with the count.
+    /// Delete group from the Main window: the same, with the same Undo toast. Nothing asks first:
+    /// the Trash and Undo keep it reversible, even for a folded group or a branch of groups.
     pub fn main_group_delete(&mut self, index: usize) {
         self.main_fresh();
         let Some(run) = self.group_row(Surface::Main, index) else {
             return;
         };
-        // Rows out of sight, or a whole branch of groups: ask first, with the count.
-        let nested = !self.group_children(Surface::Main, run.group.id).is_empty();
-        if (run.group.collapsed || nested) && !run.run.is_empty() {
-            self.group_delete = Some(run.group.id);
-            return;
-        }
         self.trash_with_undo(&run.run);
         self.main_fresh();
-    }
-
-    /// The group the Main window asks about, with how many items go with it (its whole branch).
-    pub(super) fn group_delete_view(&self) -> Option<(String, usize)> {
-        let id = self.group_delete?;
-        self.main
-            .all_groups()
-            .find(|r| r.group.id == id)
-            .map(|r| (r.group.name.as_str().to_owned(), r.run.len()))
-    }
-
-    /// "Delete group" in the confirmation: the group and its items go to the Trash, with Undo.
-    pub fn main_group_delete_confirm(&mut self) {
-        self.main_fresh();
-        let Some(id) = self.group_delete.take() else {
-            return;
-        };
-        let items = self
-            .main
-            .all_groups()
-            .find(|r| r.group.id == id)
-            .map(|r| r.run.clone());
-        if let Some(items) = items {
-            self.trash_with_undo(&items);
-            self.main_fresh();
-        }
-    }
-
-    /// Cancel, Esc or a click on the scrim: the group stays.
-    pub fn main_group_delete_cancel(&mut self) {
-        self.group_delete = None;
     }
 
     /// A drag that involves a header: a header dropped on a row moves the whole group there; an

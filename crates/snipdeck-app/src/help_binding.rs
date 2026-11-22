@@ -508,6 +508,7 @@ where
         let (look, accent, toast): (_, _, Option<ToastView>) = {
             let controller = self.controller.borrow();
             window.set_archive_busy(controller.archive_busy());
+            window.set_archive_busy_op(controller.archive_busy_op());
             self.sync_shortcuts(&window, &controller.settings().hotkeys);
             (
                 controller.settings_look(),

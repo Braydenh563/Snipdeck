@@ -25,7 +25,7 @@ pub const STALE_BACKUP_DAYS: i64 = 3;
 /// The labels of the checks, in the order they are shown.
 pub const LABELS: [&str; 7] = [
     "Data folder",
-    "Database",
+    "Library",
     "Backups",
     "Encryption key",
     "Shortcuts",
@@ -337,7 +337,7 @@ impl std::fmt::Display for Detail {
 pub fn run(host: &dyn DoctorHost) -> Vec<Check> {
     vec![
         data_folder(host),
-        database(host),
+        library(host),
         backups(host),
         encryption(host),
         shortcuts(host),
@@ -379,9 +379,9 @@ fn data_folder(host: &dyn DoctorHost) -> Check {
     }
 }
 
-fn database(host: &dyn DoctorHost) -> Check {
+fn library(host: &dyn DoctorHost) -> Check {
     let label = LABELS[1];
-    // A damaged database can be rebuilt from the newest backup; with none, the folder is the way out.
+    // A damaged library can be rebuilt from the newest backup; with none, the folder is the way out.
     let fix = if host.backup_dates().is_ok_and(|dates| !dates.is_empty()) {
         Fix::RebuildFromBackup
     } else {
@@ -663,13 +663,13 @@ mod tests {
     }
 
     #[test]
-    fn the_database_fails_on_a_finding_or_when_the_check_cannot_run() {
+    fn the_library_fails_on_a_finding_or_when_the_check_cannot_run() {
         let found = only(
             &Fake {
                 integrity: Ok(vec!["row 3 missing".into(), "x".into()]),
                 ..Fake::default()
             },
-            "Database",
+            "Library",
         );
         assert_eq!(found.status, Status::Fail);
         assert!(
@@ -681,13 +681,13 @@ mod tests {
                 integrity: Err("locked".into()),
                 ..Fake::default()
             },
-            "Database",
+            "Library",
         );
         assert_eq!(broken.status, Status::Fail);
     }
 
     #[test]
-    fn a_damaged_database_offers_a_rebuild_with_a_backup_and_the_folder_without() {
+    fn a_damaged_library_offers_a_rebuild_with_a_backup_and_the_folder_without() {
         let damaged = |backups| {
             only(
                 &Fake {
@@ -695,7 +695,7 @@ mod tests {
                     backups,
                     ..Fake::default()
                 },
-                "Database",
+                "Library",
             )
         };
         assert_eq!(
@@ -704,7 +704,7 @@ mod tests {
         );
         assert_eq!(damaged(Ok(Vec::new())).fix, Some(Fix::OpenDataFolder));
         assert_eq!(damaged(Err("x".into())).fix, Some(Fix::OpenDataFolder));
-        assert_eq!(only(&Fake::default(), "Database").fix, None);
+        assert_eq!(only(&Fake::default(), "Library").fix, None);
     }
 
     #[test]
@@ -906,7 +906,7 @@ mod tests {
         assert!(text.contains("Version: 0.1.0") && text.contains("Display scale: 150%"));
         assert!(text.contains("close to tray: on"));
         assert!(text.contains("Recent warnings\n  2026-10-19T10:00:00Z the hotkey"));
-        assert!(text.contains("[Problem] Database"));
+        assert!(text.contains("[Problem] Library"));
         assert!(text.contains("<data folder>\\library.db"));
         // "ann" alone also matches the "cannot" of the error text.
         assert!(

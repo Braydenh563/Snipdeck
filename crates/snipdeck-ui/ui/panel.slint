@@ -294,7 +294,7 @@ export component PanelWindow inherits Window {
     in property <bool> item-menu-open: false;
     in property <[MenuEntry]> item-menu-entries;
     // The context menu of a list tab (right-click, Menu, Shift+F10, F2 or a double-click edits): the host sets
-    // `list-menu-open` on `list-menu-requested`; its rows are fixed here ("Edit list…", "Delete list…", then the three "Sort by" rows).
+    // `list-menu-open` on `list-menu-requested`; its rows are fixed here ("Edit list…", "Delete list", then the three "Sort by" rows).
     in property <bool> list-menu-open: false;
     property <length> list-menu-x: 0px;
     property <length> list-menu-y: 0px;
@@ -305,7 +305,7 @@ export component PanelWindow inherits Window {
     property <image> list-menu-no-icon;
     property <[MenuEntry]> list-menu-entries: [
         { text: @tr("Edit list…"), icon: Icons.pencil-simple },
-        { text: @tr("Delete list…"), icon: Icons.trash, destructive: true },
+        { text: @tr("Delete list"), icon: Icons.trash, destructive: true },
         { separator: true },
         { text: @tr("Sort by: Manual"), icon: root.list-menu-sort == 0 ? Icons.check : root.list-menu-no-icon },
         { text: @tr("Sort by: Most used"), icon: root.list-menu-sort == 1 ? Icons.check : root.list-menu-no-icon },
@@ -313,20 +313,9 @@ export component PanelWindow inherits Window {
         { separator: true },
         { text: @tr("Copy as CSS variables"), icon: Icons.copy, disabled: !root.list-menu-css },
     ];
-    // The list menu's "Delete list…" confirmation (O52): the host sets `list-delete-open` after that row, and nothing
-    // else opens (no list editor). `list-delete-name` and `list-delete-count` fill its words.
-    in property <bool> list-delete-open: false;
-    // The board menu's "Delete board…" confirmation: the same words as the Main window's.
-    in property <bool> board-delete-open: false;
     // The one-time first-run question "Keep a Recent list of what you copy?" (Store policy 10.5: nothing is kept
     // until Yes). The host sets it while the answer is unknown and the welcome tour is not on screen.
     in property <bool> recent-question-open: false;
-    in property <string> board-delete-name;
-    in property <int> board-delete-count;
-    in property <string> list-delete-name;
-    in property <int> list-delete-count;
-    // How long the Trash keeps what is deleted (the Main window says the same).
-    in property <int> trash-days: 30;
     property <length> item-menu-x: 0px;
     property <length> item-menu-y: 0px;
     // Toast: empty text hides it. The app owns its timing (Toast documents the phases).
@@ -335,6 +324,10 @@ export component PanelWindow inherits Window {
     in property <ToastPhase> toast-phase: ToastPhase.hold;
     in property <string> toast-undo-label;
     in property <string> toast-edit-label;
+    // F6 counts here: each press moves the keyboard to the toast's action (see Toast.focus-request).
+    property <int> toast-focus-ticks: 0;
+    property <bool> toast-keys: false;
+    changed toast-text => { if (root.toast-text == "") { root.toast-keys = false; } }
 
     // The edge dock (SPEC 5.1): while `dock-collapsed` the whole window is a `DockHandle`, whose grip is the colour
     // of the list on show (`dock-list-color`, when it has an accent) and runs along the edge it is on.
@@ -447,13 +440,8 @@ export component PanelWindow inherits Window {
             root.focus-typing();
         }
     }
-    // The kebab's "Clear list…" confirmation: the count of items that go to the Trash (one Undo brings them back).
-    in property <bool> clear-list-open: false;
-    in property <string> clear-list-name;
-    in property <int> clear-list-count;
+    // The kebab's "Clear list": every item goes to the Trash at once (one Undo brings them back).
     callback clear-list-requested();
-    callback clear-list-confirmed();
-    callback clear-list-dismissed();
     in property <bool> show-numbers: true;
     callback row-picked(int, bool, bool);
     callback select-all-requested();
@@ -500,13 +488,8 @@ export component PanelWindow inherits Window {
     callback list-menu-activated(int);
     callback list-menu-dismissed();
     callback list-edit-requested(int);
-    // The list delete confirmation: "Delete list", or Cancel / Esc / a click on the scrim.
-    callback board-delete-confirmed();
-    callback board-delete-dismissed();
     // The first-run question was answered: true is Yes. Esc and a click on the scrim answer No.
     callback recent-question-answered(bool);
-    callback list-delete-confirmed();
-    callback list-delete-dismissed();
     // Quick edit of row `index`: Ctrl+E, F2 or the item menu (SPEC 5.1). A double-click does nothing extra: the
     // first click already used the row.
     callback edit-requested(int);
@@ -592,7 +575,7 @@ export component PanelWindow inherits Window {
     // The text of the tooltip on screen (empty = none), for tests and assistive checks.
     // The tooltip on screen ("" for none). A menu, dialog or drag hides it.
     out property <string> tooltip-shown: tips.shown;
-    property <bool> tips-suppressed: root.board-menu-open || root.app-menu-open || root.item-menu-open || root.list-menu-open || root.list-delete-open || root.clear-list-open || root.board-delete-open || root.new-menu-open || root.pinned-menu-open || root.dragging;
+    property <bool> tips-suppressed: root.board-menu-open || root.app-menu-open || root.item-menu-open || root.list-menu-open || root.new-menu-open || root.pinned-menu-open || root.dragging;
 
     // ---- Internals ----------------------------------------------------------------------------
     property <bool> pastes: root.target-name != "";
@@ -641,8 +624,10 @@ export component PanelWindow inherits Window {
     // The Menu switcher (spec 3) names the list in the header: "Board · List" (Recent while that view is open).
     // "New" is icon-only below 300px and with the Menu switcher, which needs the room for "Board · List" (6+ characters each).
     // How far the header's boxes and glyphs follow the Windows text size: the header is 40 at 100 % and grows with its text,
-    // but 32px boxes with the glyph at the full 2.25 would not fit it, so they stop at 1.25 (audit 5).
-    property <float> chrome-k: min(SystemLook.text-scale, 1.25);
+    // but 32px boxes with the glyph at the full 2.25 would not fit it, so they stop at 1.25 (audit 5), and at 1.0 from 2.0:
+    // the board name keeps six characters of that text size (155px at 2.25), and four 40px boxes beside it push the
+    // close button past the 320px edge (the keyboard sweep in ux_matrix measures it).
+    property <float> chrome-k: SystemLook.text-scale >= 2.0 ? 1.0 : min(SystemLook.text-scale, 1.25);
     // One glyph scale for the header's icons (the row actions and the eye use the same cap): the glyphs follow the text size
     // to 1.75 inside their boxes (audit 2, item 4).
     property <float> glyph-k: min(SystemLook.text-scale, 1.75);
@@ -831,22 +816,7 @@ export component PanelWindow inherits Window {
         }
     }
     changed list-menu-open => {
-        if (!root.list-menu-open && !root.list-delete-open) {
-            root.focus-typing();
-        }
-    }
-    changed list-delete-open => {
-        if (!root.list-delete-open) {
-            root.focus-typing();
-        }
-    }
-    changed clear-list-open => {
-        if (!root.clear-list-open) {
-            root.focus-typing();
-        }
-    }
-    changed board-delete-open => {
-        if (!root.board-delete-open) {
+        if (!root.list-menu-open) {
             root.focus-typing();
         }
     }
@@ -856,7 +826,7 @@ export component PanelWindow inherits Window {
         }
     }
     changed board-menu-open => {
-        if (!root.board-menu-open && !root.board-delete-open) {
+        if (!root.board-menu-open) {
             root.focus-typing();
         }
     }
@@ -1248,7 +1218,7 @@ export component PanelWindow inherits Window {
                     }
                     return reject;
                 }
-                if (root.board-menu-open || root.app-menu-open || root.item-menu-open || root.list-menu-open || root.recent-menu-open || root.recent-save-open || root.list-delete-open || root.clear-list-open || root.board-delete-open || root.recent-question-open || root.new-menu-open || root.pinned-menu-open) {
+                if (root.board-menu-open || root.app-menu-open || root.item-menu-open || root.list-menu-open || root.recent-menu-open || root.recent-save-open || root.recent-question-open || root.new-menu-open || root.pinned-menu-open) {
                     // The menu (or the confirmation) owns the keyboard; Esc closes it.
                     if (event.text == Key.Escape) {
                         root.new-menu-open = false;
@@ -1256,15 +1226,6 @@ export component PanelWindow inherits Window {
                             root.recent-question-answered(false);
                         }
                         root.pinned-menu-open = false;
-                        if (root.list-delete-open) {
-                            root.list-delete-dismissed();
-                        }
-                        if (root.clear-list-open) {
-                            root.clear-list-dismissed();
-                        }
-                        if (root.board-delete-open) {
-                            root.board-delete-dismissed();
-                        }
                         root.recent-menu-open = false;
                         root.recent-save-open = false;
                         if (root.item-menu-open) {
@@ -1434,6 +1395,16 @@ export component PanelWindow inherits Window {
                 }
                 if (event.text == Key.F1) {
                     root.help-requested();
+                    return accept;
+                }
+                // F6 and Esc: the toast's actions are reachable from the keyboard, and Esc on one drops the toast.
+                if (event.text == Key.F6 && root.toast-text != "") {
+                    root.toast-focus-ticks += 1;
+                    return accept;
+                }
+                if (event.text == Key.Escape && root.toast-text != "" && root.toast-keys) {
+                    root.focus-typing();
+                    root.toast-dismissed();
                     return accept;
                 }
                 if (root.symbols-open && event.text == Key.Escape) {
@@ -1809,10 +1780,9 @@ export component PanelWindow inherits Window {
                             size: IconButtonSize.sm;
                             side-override: Space.s8 * root.chrome-k;
                             glyph-scale: root.glyph-k;
-                            tooltip: @tr("Keep Panel on top");
+                            tooltip: @tr("Keep Panel open");
                             active: root.on-top;
-                            accessible-checkable: true;
-                            accessible-checked: root.on-top;
+                            toggle: true;
                             y: (parent.height - self.height) / 2;
                             clicked => {
                                 root.on-top = !root.on-top;
@@ -1827,6 +1797,8 @@ export component PanelWindow inherits Window {
                             side-override: Space.s8 * root.chrome-k;
                             glyph-scale: root.glyph-k;
                             tooltip: @tr("More");
+                            has-menu: true;
+                            menu-open: root.app-menu-open;
                             y: (parent.height - self.height) / 2;
                             clicked => { root.app-menu-requested(); }
                             changed has-hover => { root.tip-set(self.tooltip, self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.has-hover || self.has-focus); }
@@ -1837,7 +1809,7 @@ export component PanelWindow inherits Window {
                             size: IconButtonSize.sm;
                             side-override: Space.s8 * root.chrome-k;
                             glyph-scale: root.glyph-k;
-                            tooltip: @tr("Close Panel (Esc)");
+                            tooltip: @tr("Close panel (Esc)");
                             y: (parent.height - self.height) / 2;
                             clicked => { root.close-requested(); }
                             changed has-hover => { root.tip-set(self.tooltip, self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.has-hover || self.has-focus); }
@@ -1852,7 +1824,7 @@ export component PanelWindow inherits Window {
                 if root.strip-shown: Rectangle {
                     height: root.strip-h;
                     accessible-role: AccessibleRole.groupbox;
-                    accessible-label: @tr("Select and delete");
+                    accessible-label: @tr("Select items");
                     HorizontalLayout {
                         padding-left: Space.s2;
                         padding-right: Space.s2;
@@ -1870,14 +1842,14 @@ export component PanelWindow inherits Window {
                         Button {
                             size: ButtonSize.sm;
                             variant: root.delete-mode ? ButtonVariant.primary : ButtonVariant.secondary;
-                            text: @tr("Delete");
-                            a11y-label: @tr("Delete items");
+                            text: @tr("Move to Trash");
+                            a11y-label: @tr("Move to Trash");
                             clicked => { root.delete-mode-changed(true); }
                         }
                         if root.delete-mode: Button {
                             size: ButtonSize.sm;
                             variant: ButtonVariant.ghost;
-                            text: @tr("Clear list…");
+                            text: @tr("Clear list");
                             clicked => { root.clear-list-requested(); }
                         }
                         Rectangle { horizontal-stretch: 1; }
@@ -2350,14 +2322,14 @@ export component PanelWindow inherits Window {
                                                 border-radius: Radius.lg;
                                                 background: Theme.bg-sunken;
                                                 accessible-role: AccessibleRole.groupbox;
-                                                accessible-label: @tr("Deleted “{}”", item.title);
+                                                accessible-label: @tr("Moved “{}” to the Trash", item.title);
                                                 HorizontalLayout {
                                                     padding-left: Space.s3;
                                                     padding-right: Space.s2;
                                                     spacing: Space.s2;
                                                     Text {
                                                         horizontal-stretch: 1;
-                                                        text: @tr("Deleted “{}”", item.title);
+                                                        text: @tr("Moved “{}” to the Trash", item.title);
                                                         font-family: Fonts.sans;
                                                         font-size: Type.sm;
                                                         color: Theme.text-secondary;
@@ -2470,7 +2442,7 @@ export component PanelWindow inherits Window {
                             height: parent.height;
                             vertical-scrollbar-policy: ScrollBarPolicy.always-off;
                             horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
-                            accessible-label: @tr("Recent copies");
+                            accessible-label: @tr("Recent");
                             visible: root.recent-rows.length > 0;
 
                             for entry[i] in root.recent-rows: Rectangle {
@@ -2525,9 +2497,9 @@ export component PanelWindow inherits Window {
                             width: parent.width - 2 * Space.s2;
                             height: parent.height;
                             kind: EmptyStateKind.inbox;
-                            heading: root.recent-locked ? @tr("Recent copies are locked")
+                            heading: root.recent-locked ? @tr("Recent is locked")
                                 : root.recent-paused ? @tr("History is paused") : @tr("Nothing copied yet");
-                            body: root.recent-locked ? @tr("Unlock your library to see recent copies. Nothing is collected while it is locked.")
+                            body: root.recent-locked ? @tr("Unlock your library to see Recent. Nothing is collected while it is locked.")
                                 : root.recent-paused ? @tr("Resume it from the tray icon, then copy some text.")
                                 : @tr("Text you copy shows up here for {} days. Save the useful ones to a list.", root.recent-days);
                             action-text: root.recent-locked ? @tr("Unlock") : "";
@@ -2622,6 +2594,8 @@ export component PanelWindow inherits Window {
                     }
 
                     if root.toast-text != "": Toast {
+                        focus-request: root.toast-focus-ticks;
+                        keyboard-changed(here) => { root.toast-keys = here; }
                         text: root.toast-text;
                         kind: root.toast-kind;
                         phase: root.toast-phase;
@@ -2662,7 +2636,7 @@ export component PanelWindow inherits Window {
                         }
                         IconButton {
                             icon: Icons.folder;
-                            tooltip: @tr("Move to…");
+                            tooltip: @tr("Move to list…");
                             own-tooltip: true;
                             y: (parent.height - self.height) / 2;
                             clicked => { root.bulk-move-requested(); }
@@ -2683,7 +2657,7 @@ export component PanelWindow inherits Window {
                         }
                         IconButton {
                             icon: Icons.trash;
-                            tooltip: @tr("Delete");
+                            tooltip: @tr("Move to Trash");
                             own-tooltip: true;
                             y: (parent.height - self.height) / 2;
                             clicked => { root.bulk-delete-requested(); }
@@ -2876,12 +2850,12 @@ export component PanelWindow inherits Window {
                             background: open-touch.pressed ? Theme.bg-sunken : open-touch.has-hover ? Theme.bg-hover : transparent;
                             forward-focus: open-scope;
                             accessible-role: button;
-                            accessible-label: @tr("Open Snipdeck");
+                            accessible-label: @tr("Open Main window");
                             accessible-action-default => { root.open-requested(); }
                             animate background { duration: Motion.instant; easing: Motion.out; }
                             changed tip-on => {
                                 if (root.narrow) {
-                                    root.tip-set(@tr("Open Snipdeck"), self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.tip-on);
+                                    root.tip-set(@tr("Open Main window"), self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.tip-on);
                                 }
                             }
                             open-row := HorizontalLayout {
@@ -2896,7 +2870,7 @@ export component PanelWindow inherits Window {
                                     y: (parent.height - self.height) / 2;
                                 }
                                 if !root.narrow: Text {
-                                    text: @tr("Open Snipdeck");
+                                    text: @tr("Open Main window");
                                     font-family: Fonts.sans;
                                     font-size: Type.sm;
                                     color: Theme.text-primary;
@@ -3178,68 +3152,10 @@ export component PanelWindow inherits Window {
             dismissed => { root.recent-save-open = false; }
         }
 
-        // ---- The list delete confirmation: over everything but the tooltip and the grips. The only thing "Delete
-        // list…" shows; the list and its items move to the Trash with an Undo toast.
-        cancel-dlg-1 := Dialog {
-            open: root.list-delete-open;
-            variant: DialogVariant.destructive;
-            title: @tr("Delete list “{}”?", root.list-delete-name);
-            body: @tr("The list and its {} items move to the Trash. You can restore them for {} days.", root.list-delete-count, root.trash-days);
-            dismissed => { root.list-delete-dismissed(); }
-            Button {
-                focus-request: cancel-dlg-1.cancel-focus;
-                text: @tr("Cancel");
-                clicked => { root.list-delete-dismissed(); }
-            }
-            Button {
-                variant: ButtonVariant.danger;
-                text: @tr("Delete list");
-                clicked => { root.list-delete-confirmed(); }
-            }
-        }
-
-        // "Clear list…" (the kebab): asks once, with the count; the Undo toast brings every item back in one step.
-        cancel-dlg-2 := Dialog {
-            open: root.clear-list-open;
-            variant: DialogVariant.destructive;
-            title: @tr("Clear list “{}”?", root.clear-list-name);
-            body: @tr("All {n} item moves to the Trash. You can restore it for {} days." | "All {n} items move to the Trash. You can restore them for {} days." % root.clear-list-count, root.trash-days);
-            dismissed => { root.clear-list-dismissed(); }
-            Button {
-                focus-request: cancel-dlg-2.cancel-focus;
-                text: @tr("Cancel");
-                clicked => { root.clear-list-dismissed(); }
-            }
-            Button {
-                variant: ButtonVariant.danger;
-                text: @tr("Clear list");
-                clicked => { root.clear-list-confirmed(); }
-            }
-        }
-
-        // The board delete confirmation: the board, its lists and their items move to the Trash with an Undo toast.
-        cancel-dlg-3 := Dialog {
-            open: root.board-delete-open;
-            variant: DialogVariant.destructive;
-            title: @tr("Delete board “{}”?", root.board-delete-name);
-            body: @tr("Its lists and {} items move to the Trash. You can restore them for {} days.", root.board-delete-count, root.trash-days);
-            dismissed => { root.board-delete-dismissed(); }
-            Button {
-                focus-request: cancel-dlg-3.cancel-focus;
-                text: @tr("Cancel");
-                clicked => { root.board-delete-dismissed(); }
-            }
-            Button {
-                variant: ButtonVariant.danger;
-                text: @tr("Delete board");
-                clicked => { root.board-delete-confirmed(); }
-            }
-        }
-
         // The first-run question about the Recent list: asked once, nothing is kept before Yes.
         Dialog {
             open: root.recent-question-open;
-            title: @tr("Keep a Recent list of what you copy?");
+            title: @tr("Keep what you copy in Recent?");
             body: @tr("Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept.", root.recent-max-entries, root.recent-days);
             dismissed => { root.recent-question-answered(false); }
             Button {

@@ -58,15 +58,15 @@ pub enum ToastMessage {
     ClipboardBusy,
     /// "This template can’t be read. Open it to fix it."
     TemplateBroken,
-    /// "Unlock your library to use this item."
+    /// "Unlock your library to use this item"
     Locked,
-    /// "Library unlocked." (the master password was accepted)
+    /// "Library unlocked" (the master password was accepted)
     Unlocked,
-    /// "Master password set."
+    /// "Master password set"
     MasterPasswordSet,
-    /// "Master password changed."
+    /// "Master password changed"
     MasterPasswordChanged,
-    /// "Master password removed."
+    /// "Master password removed"
     MasterPasswordRemoved,
     /// "Master password changed. Snipdeck couldn't open the library with it just now; ..."
     MasterPasswordChangedNotOpen,
@@ -74,9 +74,9 @@ pub enum ToastMessage {
     MasterPasswordRemovedNotOpen,
     /// "Windows Hello didn’t work, so it was turned off. You can turn it on again in Settings."
     HelloTurnedOff,
-    /// "Windows Hello was not turned on." (the user cancelled the prompt that turns it on)
+    /// "Windows Hello was not turned on" (the user cancelled the prompt that turns it on)
     HelloNotTurnedOn,
-    /// "Windows Hello didn’t work, so it was not turned on." (the prompt that turns it on failed)
+    /// "Windows Hello didn't work, so it was not turned on" (the prompt that turns it on failed)
     HelloEnrolFailed,
     /// "Unlock your library first, so a copy includes your sensitive items."
     UnlockFirst,
@@ -132,7 +132,7 @@ pub enum ToastMessage {
     /// "Nothing was added. Folders, and files or pictures that are empty, too large or
     /// unreadable, are skipped."
     FilesNotAdded,
-    /// "That is too many files to add at once."
+    /// "That is too many files to add at once"
     TooManyFiles,
     /// "Drop to add to {list}" (files dragged over a window).
     DropTo {
@@ -147,7 +147,7 @@ pub enum ToastMessage {
     PasteNotAddedEditorOpen,
     /// "Nothing to save. Copy some text first." (quick capture with no text on the clipboard)
     NothingToSave,
-    /// "That text is too large to save." (quick capture over 5 MB)
+    /// "That text is too large to save" (quick capture over 5 MB)
     TooLargeToSave,
     /// "There is no list to save into. Add a list first."
     NoListToSave,
@@ -202,7 +202,7 @@ pub enum ToastMessage {
     /// A use that failed for a cause the error names: "Couldn't use this item: the disk is full.
     /// Free up some space, then try again."
     UseFailed(Cause),
-    /// "Couldn’t open that window." (the Picker or the fill form could not be shown)
+    /// "Couldn't open that window" (the Picker or the fill form could not be shown)
     WindowNotShown,
     /// "Couldn’t save your settings. Snipdeck will try again."
     SettingsNotSaved,
@@ -399,22 +399,22 @@ pub enum ToastMessage {
     },
     /// "Couldn't export your library: ..."
     ExportFailed(Cause),
-    /// "Your library was erased."
+    /// "Your library was erased"
     LibraryErased,
     /// "Couldn’t erase everything. Quit Snipdeck and try again."
     EraseFailed,
-    /// "Couldn’t open the folder."
+    /// "Couldn't open the folder"
     FolderNotOpened,
-    /// "Couldn’t open the link." (a web page that did not open)
+    /// "Couldn't open the link" (a web page that did not open)
     LinkNotOpened,
-    /// "Couldn’t change the Windows start-up entry."
+    /// "Couldn't change the Windows start-up entry"
     AutostartFailed,
     /// "Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there."
     /// (the Store build; only the user can switch the startup task back on)
     AutostartSwitchedOff,
-    /// "Your organisation’s policy keeps Snipdeck from starting with Windows."
+    /// "Your organisation's policy keeps Snipdeck from starting with Windows"
     AutostartPolicy,
-    /// "Couldn’t open the log folder."
+    /// "Couldn't open the log folder"
     CannotOpenLog,
     /// "Saved. This trigger overlaps the trigger of “{other}”, so one of them may never fire."
     TriggerOverlaps {
@@ -433,14 +433,14 @@ pub enum ToastMessage {
     StorageFailed,
     /// "Couldn’t save this item. Nothing was changed."
     NotSaved,
-    /// "Couldn’t open this item."
+    /// "Couldn't open this item"
     NotOpened,
-    /// "Couldn’t save a draft of what you typed."
+    /// "Couldn't save a draft of what you typed"
     DraftNotSaved,
     /// A move, reorder or other change to the library that the store refused, for a cause the
     /// error names: "Couldn't make that change: the disk is full. ..."
     ChangeFailed(Cause),
-    /// "Couldn’t start the screenshot tool." (Take screenshot)
+    /// "Couldn't start the screenshot tool" (Take screenshot)
     ScreenshotFailed,
     /// "Theme: Dark": the theme was switched from a menu, the palette or Settings.
     ThemeSet(Theme),
@@ -465,7 +465,7 @@ pub enum ToastMessage {
     BoardSaved,
     /// "Removed from Recent".
     RecentDeleted,
-    /// "Recent history cleared".
+    /// "Recent cleared".
     RecentCleared,
     /// "Recently used emoji and colours cleared".
     PickerRecentsCleared,
@@ -478,14 +478,14 @@ pub enum ToastMessage {
     /// "Couldn't refresh the view": the change worked, but the list on screen could not be read
     /// again and may be out of date.
     NotRefreshed,
-    /// "Icons can’t be added to a list yet." (Symbols: Add to list on an icon)
+    /// "Icons can't be added to a list yet" (Symbols: Add to list on an icon)
     IconNotAddable,
     /// "Saved {name}." (Symbols: Save as... wrote the file)
     IconSaved {
         /// The file name written, without its folder.
         name: String,
     },
-    /// "Couldn’t pick a colour from the screen." (the eyedropper failed)
+    /// "Couldn't pick a colour from the screen" (the eyedropper failed)
     EyedropFailed,
     /// "HDR is on for this screen: {hex} is approximate." (a colour picked on an HDR monitor)
     EyedropHdr {
@@ -505,7 +505,7 @@ pub enum ToastMessage {
         /// Whether it was the time limit (else the display changed).
         timed_out: bool,
     },
-    /// "Another app keeps {keys}: use the mouse for those." (fallback hotkeys refused)
+    /// "Another app keeps {keys}: use the mouse for those" (fallback hotkeys refused)
     EyedropKeysBusy {
         /// The keys, as written for the user.
         keys: String,

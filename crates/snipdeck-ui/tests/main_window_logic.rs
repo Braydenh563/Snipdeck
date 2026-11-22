@@ -547,7 +547,7 @@ ui_tests! {
         let dialog = find(&ui, "Delete for good?", AccessibleRole::Groupbox);
         assert_eq!(
             dialog.accessible_description().as_deref(),
-            Some("The selected item is deleted for good. This can’t be undone.")
+            Some("The selected item is deleted for good. This can't be undone.")
         );
         // MAIN-44: the focus starts on Cancel, so Enter is the safe answer, never the destructive one.
         press_key(&ui, Key::Return);
@@ -589,7 +589,7 @@ ui_tests! {
         take(&log);
         press_key(&ui, Key::Menu);
         assert!(ui.get_menu_open());
-        for label in ["Use", "Copy", "Edit", "Duplicate", "Pin", "Move to list…", "Tags…", "Move to Trash"] {
+        for label in ["Use", "Copy", "Edit…", "Duplicate", "Pin", "Move to list…", "Tags…", "Move to Trash"] {
             let _ = find(&ui, label, AccessibleRole::ListItem);
         }
         find(&ui, "Duplicate", AccessibleRole::ListItem).invoke_accessible_default_action();
@@ -610,6 +610,27 @@ ui_tests! {
         settle();
         assert_eq!(take(&log), ["move:1"]);
         assert!(!ui.get_menu_open(), "choosing a list closes it");
+    }
+
+    fn every_item_menu_row_runs_its_own_action() {
+        let (ui, log) = start();
+        for (label, want) in [
+            ("Edit…", "action:Edit:0"),
+            ("Duplicate", "action:Duplicate:0"),
+            ("Move to list…", "action:Move:0"),
+            ("Pin", "action:Pin:0"),
+            ("Tags…", "action:Tag:0"),
+            ("Move to Trash", "action:Delete:0"),
+        ] {
+            press_key(&ui, Key::Menu);
+            take(&log);
+            find(&ui, label, AccessibleRole::ListItem).invoke_accessible_default_action();
+            settle();
+            assert_eq!(take(&log), [want], "{label}");
+            if ui.get_menu_open() {
+                press_key(&ui, Key::Escape);
+            }
+        }
     }
 
     fn paste_as_in_the_item_menu_opens_a_chooser_of_the_six_transforms() {
@@ -1666,14 +1687,14 @@ ui_tests! {
         let flags: Vec<bool> = (0..rows.row_count()).map(|i| rows.row_data(i).unwrap().selected).collect();
         assert_eq!(flags, [false, true, true, true, false, false, false, false]);
         let _ = find(&ui, "3 selected", AccessibleRole::Groupbox);
-        for label in ["Move", "Tag", "Pin", "Move to Trash", "Clear selection"] {
+        for label in ["Move to list…", "Tag", "Pin", "Move to Trash", "Clear selection"] {
             let b = find(&ui, label, AccessibleRole::Button);
             assert!(b.size().height >= MIN_HIT && b.size().width >= MIN_HIT, "{label}");
         }
         // The context menu on several rows disables what only works on one.
         press_key(&ui, Key::Menu);
         assert_eq!(find(&ui, "Use", AccessibleRole::ListItem).accessible_enabled(), Some(false));
-        assert_eq!(find(&ui, "Edit", AccessibleRole::ListItem).accessible_enabled(), Some(false));
+        assert_eq!(find(&ui, "Edit…", AccessibleRole::ListItem).accessible_enabled(), Some(false));
         assert_eq!(find(&ui, "Move to Trash", AccessibleRole::ListItem).accessible_enabled(), Some(true));
         press_key(&ui, Key::Escape);
 
@@ -1693,7 +1714,7 @@ ui_tests! {
             ui.global::<snipdeck_ui::SystemLook<'_>>().set_text_scale(scale);
             ui.set_selected_count(2);
             settle();
-            let button = find(&ui, "Move", AccessibleRole::Button);
+            let button = find(&ui, "Move to list…", AccessibleRole::Button);
             let (bp, bs) = (button.absolute_position(), button.size());
             button.invoke_accessible_default_action();
             settle();
@@ -1723,7 +1744,7 @@ ui_tests! {
         assert_eq!(take(&log), ["clear"]);
         ui.set_section(MainSection::Trash);
         settle();
-        assert!(missing(&ui, "Move", AccessibleRole::Button));
+        assert!(missing(&ui, "Move to list…", AccessibleRole::Button));
         let _ = find(&ui, "Restore", AccessibleRole::Button);
         find(&ui, "Delete for good…", AccessibleRole::Button).invoke_accessible_default_action();
         assert!(ui.get_confirm_open());
@@ -1857,23 +1878,11 @@ ui_tests! {
         assert_eq!(take(&log), ["list-edit:0"]);
         assert!(ui.get_sidebar_focused(), "the keys return to the sidebar");
 
+        // UX-20: a list goes to the Trash, so Delete acts at once and asks nothing.
         press_key(&ui, Key::Menu);
-        find(&ui, "Delete list…", AccessibleRole::ListItem).invoke_accessible_default_action();
+        find(&ui, "Delete list", AccessibleRole::ListItem).invoke_accessible_default_action();
         settle();
-        assert!(ui.get_confirm_open());
-        let dialog = find(&ui, "Delete list “Email replies”?", AccessibleRole::Groupbox);
-        assert_eq!(
-            dialog.accessible_description().as_deref(),
-            Some("The list and its 24 items move to the Trash. You can restore them for 30 days.")
-        );
-        press_key(&ui, Key::Escape);
-        assert!(!ui.get_confirm_open());
-        assert_eq!(take(&log), Vec::<String>::new());
-
-        press_key(&ui, Key::Menu);
-        find(&ui, "Delete list…", AccessibleRole::ListItem).invoke_accessible_default_action();
-        settle();
-        find(&ui, "Delete list", AccessibleRole::Button).invoke_accessible_default_action();
+        assert!(!ui.get_confirm_open(), "no confirmation dialog");
         assert_eq!(take(&log), ["list-delete:0"]);
     }
 
@@ -1942,7 +1951,11 @@ ui_tests! {
         press_key(&ui, Key::Menu);
         find(&ui, "Delete tag…", AccessibleRole::ListItem).invoke_accessible_default_action();
         settle();
-        let _ = find(&ui, "Delete tag “sql”?", AccessibleRole::Groupbox);
+        assert_eq!(
+            find(&ui, "Delete tag “sql”?", AccessibleRole::Groupbox).accessible_description().as_deref(),
+            Some("It is removed from 3 items. The items stay."),
+            "the same words as the Tag manager (UX-18)"
+        );
         find(&ui, "Delete tag", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["tag-delete:2"]);
 
@@ -2747,6 +2760,32 @@ ui_tests! {
         assert_eq!(take(&log), ["copy-selection:0"]);
     }
 
+    // UX-22: F6 moves the keyboard to the toast's first action, Enter uses it (the Edit button was mouse-only).
+    fn f6_moves_the_keyboard_to_the_toast_action() {
+        let (ui, log) = start();
+        press_key(&ui, Key::F6);
+        assert_eq!(take(&log), Vec::<String>::new(), "no toast, nothing to focus");
+        ui.set_toast_text("Added to Replies".into());
+        ui.set_toast_edit_label("Edit".into());
+        settle();
+        take(&log);
+        press_key(&ui, Key::F6);
+        press_key(&ui, Key::Return);
+        assert!(take(&log).contains(&"toast-edit".to_string()), "Enter after F6 used the toast's Edit");
+    }
+
+    // UX-22: Esc on a focused toast action dismisses the toast instead of closing the window.
+    fn escape_on_a_focused_toast_action_dismisses_the_toast() {
+        let (ui, log) = start();
+        ui.set_toast_text("Added to Replies".into());
+        ui.set_toast_edit_label("Edit".into());
+        settle();
+        take(&log);
+        press_key(&ui, Key::F6);
+        press_key(&ui, Key::Escape);
+        assert!(take(&log).contains(&"toast-dismissed".to_string()));
+    }
+
     fn the_toast_has_a_close_button() {
         let (ui, log) = start();
         ui.set_toast_text("Copied".into());
@@ -3093,18 +3132,23 @@ ui_tests! {
         ui.set_section(MainSection::Recent);
         settle();
         take(&log);
-        find(&ui, "Clear recent history", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Clear Recent", AccessibleRole::Button).invoke_accessible_default_action();
         settle();
         assert!(ui.get_confirm_open());
         assert_eq!(take(&log), Vec::<String>::new(), "one click clears nothing");
-        find(&ui, "Clear history", AccessibleRole::Button).invoke_accessible_default_action();
+        // The dialog's button carries the same name as the toolbar's, and comes later in the tree.
+        ElementHandle::find_by_accessible_label(&ui, "Clear Recent")
+            .filter(|e| e.accessible_role() == Some(AccessibleRole::Button))
+            .last()
+            .expect("the dialog's button")
+            .invoke_accessible_default_action();
         assert_eq!(take(&log), ["cleared"]);
 
         ui.set_recent_rows(ModelRc::new(VecModel::from(Vec::<snipdeck_ui::RecentRow>::new())));
         ui.set_recent_locked(true);
         fixture::set_rows(&ui, Vec::new());
         settle();
-        assert!(ElementHandle::find_by_accessible_label(&ui, "Recent copies are locked").next().is_some());
+        assert!(ElementHandle::find_by_accessible_label(&ui, "Recent is locked").next().is_some());
         find(&ui, "Unlock", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["unlock"]);
     }
@@ -3360,7 +3404,7 @@ ui_tests! {
         );
     }
 
-    fn a_bulk_delete_in_the_trash_and_a_board_delete_count_their_items() {
+    fn a_bulk_delete_in_the_trash_counts_its_items() {
         let (ui, _log) = start();
         ui.set_section(MainSection::Trash);
         ui.set_selected_count(3);
@@ -3369,21 +3413,9 @@ ui_tests! {
         let dialog = find(&ui, "Delete for good?", AccessibleRole::Groupbox);
         assert_eq!(
             dialog.accessible_description().as_deref(),
-            Some("The selected items are deleted for good. This can’t be undone.")
+            Some("The selected items are deleted for good. This can't be undone.")
         );
         press_key(&ui, Key::Escape);
-
-        ui.set_board_name("Work".into());
-        for (n, words) in [(1, "and 1 item move"), (3, "and 3 items move")] {
-            ui.set_board_delete_count(n);
-            ui.set_board_delete_open(true);
-            settle();
-            let d = find(&ui, "Delete board “Work”?", AccessibleRole::Groupbox);
-            let text = d.accessible_description().unwrap().to_string();
-            assert!(text.contains(words), "{text:?} says {words:?}");
-            ui.set_board_delete_open(false);
-            settle();
-        }
     }
 
     fn the_new_item_button_creates_and_rests_in_the_trash() {

@@ -46,7 +46,6 @@ where
                 sort: Sort::MANUAL,
                 boards: self.board_choices(),
                 board_index: self.main.board_position().unwrap_or(0),
-                item_count: 0,
                 can_delete: false,
                 delete_hint: None,
                 name_error: None,
@@ -70,12 +69,7 @@ where
         let Some(list) = self.main.lists().get(index).cloned() else {
             return;
         };
-        let count = self
-            .main
-            .side_lists()
-            .get(index)
-            .map_or(0, |side| side.count);
-        self.open_list_editor(&list, count);
+        self.open_list_editor(&list);
     }
 
     /// The Panel's "Edit list…" (or a double-click on a tab): opens the list editor on list `id`
@@ -86,11 +80,10 @@ where
             self.show_toast(failed());
             return;
         };
-        let count = self.store.items(id).map_or(0, |items| items.len());
-        self.open_list_editor(&list, count);
+        self.open_list_editor(&list);
     }
 
-    pub(super) fn open_list_editor(&mut self, list: &snipdeck_core::List, count: usize) {
+    pub(super) fn open_list_editor(&mut self, list: &snipdeck_core::List) {
         let view = EditorView {
             seq: 0,
             kind: EditorKind::List,
@@ -105,7 +98,6 @@ where
                 .board_of_list(list.id)
                 .and_then(|b| self.main.boards().iter().position(|x| x.id == b))
                 .unwrap_or(0),
-            item_count: count,
             can_delete: true,
             delete_hint: None,
             name_error: None,
@@ -128,12 +120,6 @@ where
             return;
         };
         let can_delete = self.main.boards().len() > 1;
-        let item_count = self.store.lists(id).map_or(0, |lists| {
-            lists
-                .iter()
-                .map(|l| self.store.items(l.id).map_or(0, |items| items.len()))
-                .sum()
-        });
         let view = EditorView {
             seq: 0,
             kind: EditorKind::Board,
@@ -144,7 +130,6 @@ where
             sort: Sort::MANUAL,
             boards: Vec::new(),
             board_index: 0,
-            item_count,
             can_delete,
             delete_hint: (!can_delete).then_some(DeleteHint::LastBoard),
             name_error: None,
@@ -170,7 +155,6 @@ where
                 sort: Sort::MANUAL,
                 boards: Vec::new(),
                 board_index: 0,
-                item_count: 0,
                 can_delete: false,
                 delete_hint: None,
                 name_error: None,
@@ -195,7 +179,6 @@ where
             sort: Sort::MANUAL,
             boards: Vec::new(),
             board_index: 0,
-            item_count: self.main.side_lists().iter().map(|l| l.count).sum(),
             can_delete,
             delete_hint: (!can_delete).then_some(DeleteHint::LastBoard),
             name_error: None,
@@ -371,7 +354,7 @@ where
         }
     }
 
-    /// The editor's Delete, after its confirmation: the list or board and what is inside it
+    /// The editor's Delete: the list or board and what is inside it
     /// move to the Trash, with an Undo toast.
     pub fn main_editor_delete(&mut self) {
         self.main_fresh();

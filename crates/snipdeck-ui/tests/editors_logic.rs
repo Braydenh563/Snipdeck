@@ -724,8 +724,8 @@ ui_tests! {
         let toggle = find(&ui, "Sensitive item", AccessibleRole::Switch);
         assert_eq!(toggle.accessible_checked(), Some(false));
         let text = toggle.accessible_description().expect("description").to_string();
-        // It says what the app does: kept out of clipboard history, and (A11, B14) cleared a while after a copy, with the time in Settings.
-        assert!(text.contains("clipboard history"), "{text}");
+        // It says what the app does: kept out of Recent, and (A11, B14) cleared a while after a copy, with the time in Settings.
+        assert!(text.contains("kept out of Recent"), "{text}");
         assert!(text.contains("the time is in Settings"), "{text}");
         toggle.invoke_accessible_default_action();
         assert!(ui.get_sensitive());
@@ -1152,8 +1152,23 @@ ui_tests! {
         press_key(&ui, Key::Tab);
         press_key(&ui, Key::RightArrow);
         assert_eq!(ui.get_icon_index(), 0);
+        // The grid wraps to the window's width: a row is the cells that share Icon 0's top edge.
+        let top = find(&ui, "Icon 0", AccessibleRole::RadioButton).absolute_position().y;
+        let columns = (0..24)
+            .filter(|i| {
+                (find(&ui, &format!("Icon {i}"), AccessibleRole::RadioButton)
+                    .absolute_position()
+                    .y
+                    - top)
+                    .abs()
+                    < 1.0
+            })
+            .count()
+            .try_into()
+            .unwrap_or(i32::MAX)
+            + 1; // the "No icon" cell leads the first row
         press_key(&ui, Key::DownArrow);
-        assert_eq!(ui.get_icon_index(), 9, "Down moves a row");
+        assert_eq!(ui.get_icon_index(), columns, "Down moves a row");
         press_key(&ui, Key::UpArrow);
         assert_eq!(ui.get_icon_index(), 0);
         press_key(&ui, Key::End);
@@ -1194,44 +1209,16 @@ ui_tests! {
         assert!(missing(&ui, "Teal", AccessibleRole::RadioButton));
     }
 
-    fn deleting_a_list_asks_first_and_says_how_many_items_go() {
+    fn deleting_a_list_acts_at_once_without_a_dialog() {
         let (ui, log) = list_editor();
         find(&ui, "Delete list", AccessibleRole::Button).invoke_accessible_default_action();
         settle();
-        assert!(ui.get_delete_open());
-        let dialog = find(&ui, "Delete this list?", AccessibleRole::Groupbox);
-        assert_eq!(
-            dialog.accessible_description().as_deref(),
-            Some("24 items will move to Trash with it. You can restore them for 30 days.")
+        assert_eq!(take(&log), ["delete"], "UX-20: no confirmation, the host trashes it");
+        assert!(
+            missing(&ui, "Delete this list?", AccessibleRole::Groupbox),
+            "no dialog opens"
         );
-        ui.set_trash_days(90);
-        settle();
-        assert!(find(&ui, "Delete this list?", AccessibleRole::Groupbox)
-            .accessible_description().unwrap().ends_with("for 90 days."));
-        ui.set_item_count(1);
-        settle();
-        assert!(find(&ui, "Delete this list?", AccessibleRole::Groupbox)
-            .accessible_description().unwrap().starts_with("1 item will move"));
-        ui.set_item_count(24);
-
-        // MAIN-44: focus starts on Cancel, so Enter answers no and the editor stays; Esc does the same.
-        press_key(&ui, Key::Return);
-        assert!(!ui.get_delete_open());
-        assert_eq!(take(&log), Vec::<String>::new());
-        find(&ui, "Delete list", AccessibleRole::Button).invoke_accessible_default_action();
-        settle();
-        assert!(ui.get_delete_open());
-        press_key(&ui, Key::Escape);
-        assert!(!ui.get_delete_open());
-        assert_eq!(take(&log), Vec::<String>::new());
-
-        find(&ui, "Delete list", AccessibleRole::Button).invoke_accessible_default_action();
-        settle();
-        // The dialog's own confirm button has the same name; it is the last one in tree order.
-        let buttons = all(&ui, "Delete list", AccessibleRole::Button);
-        buttons.last().expect("confirm").invoke_accessible_default_action();
-        assert_eq!(take(&log), ["delete"]);
-        assert!(!ui.get_delete_open());
+        assert_eq!(all(&ui, "Delete list", AccessibleRole::Button).len(), 1);
     }
 
     fn a_board_that_cannot_be_deleted_says_why() {
@@ -1304,7 +1291,10 @@ ui_tests! {
         ui.set_tags(ModelRc::new(VecModel::from(vec![snipdeck_ui::ChoiceEntry::default(); 60])));
         settle();
         let many = ui.get_wanted_height();
-        assert!(none >= 280.0, "never below the minimum: {none}");
+        // The minimum comes from the content (UX-35): the intro, two rows and the Close row.
+        let min = ui.get_min_window_height();
+        assert!(min > 100.0, "a minimum is stated: {min}");
+        assert!(none >= min, "never below the minimum: {none} < {min}");
         assert!(some > none && some < 520.0, "a few tags fit: {none} {some}");
         assert!((many - 520.0).abs() < 0.01, "a long list is capped: {many}");
     }
@@ -1365,7 +1355,7 @@ ui_tests! {
         settle();
         assert_eq!(ui.get_delete_index(), 0);
         assert_eq!(
-            find(&ui, "Delete this tag?", AccessibleRole::Groupbox).accessible_description().as_deref(),
+            find(&ui, "Delete tag “billing”?", AccessibleRole::Groupbox).accessible_description().as_deref(),
             Some("It is removed from 9 items. The items stay.")
         );
         press_key(&ui, Key::Escape);
@@ -1374,6 +1364,11 @@ ui_tests! {
 
         find(&ui, "Delete tag sql", AccessibleRole::Button).invoke_accessible_default_action();
         settle();
+        // The same title and body as the Main window asks for the same tag (UX-18).
+        assert_eq!(
+            find(&ui, "Delete tag “sql”?", AccessibleRole::Groupbox).accessible_description().as_deref(),
+            Some("It is removed from 3 items. The items stay.")
+        );
         let buttons = all(&ui, "Delete tag", AccessibleRole::Button);
         buttons.last().expect("confirm").invoke_accessible_default_action();
         assert_eq!(take(&log), ["delete:2"]);
@@ -1388,7 +1383,7 @@ ui_tests! {
         find(&ui, "Delete tag unused", AccessibleRole::Button).invoke_accessible_default_action();
         settle();
         assert_eq!(
-            find(&ui, "Delete this tag?", AccessibleRole::Groupbox).accessible_description().as_deref(),
+            find(&ui, "Delete tag “unused”?", AccessibleRole::Groupbox).accessible_description().as_deref(),
             Some("No item uses this tag.")
         );
     }
@@ -1414,10 +1409,10 @@ ui_tests! {
     fn shortcut_rows_record_clear_and_show_a_conflict() {
         let (ui, log) = settings();
         let names = [
-            "Show or hide the Panel",
-            "Open the Picker",
-            "Save the clipboard as an item",
-            "Paste the next item",
+            "Show or hide the panel",
+            "Open the picker",
+            "Quick capture",
+            "Paste next",
         ];
         for name in names {
             let _ = find(&ui, name, AccessibleRole::Button);
@@ -1439,7 +1434,7 @@ ui_tests! {
             Some("Another program already uses Ctrl+Alt+K.")
         );
 
-        find(&ui, "Clear the shortcut for Open the Picker", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Clear the shortcut for Open the picker", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["hk-clear:1"]);
         // A shortcut that is not set says so.
         assert_eq!(find(&ui, names[3], AccessibleRole::Button).accessible_value().as_deref(), Some(""));
@@ -1448,9 +1443,9 @@ ui_tests! {
     fn each_set_shortcut_has_a_test_button_and_a_failed_one_offers_its_alternatives() {
         let (ui, log) = settings();
         // Set shortcuts (three of four in the fixture) show "Test"; the empty one shows no health line.
-        find(&ui, "Test Open the Picker", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Test Open the picker", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["hk-test:1"]);
-        assert!(missing(&ui, "Test Paste the next item", AccessibleRole::Button));
+        assert!(missing(&ui, "Test Paste next", AccessibleRole::Button));
 
         // Waiting for the press: the button becomes Cancel and the line says so.
         let mut hotkeys = fixture::hotkeys();
@@ -1461,10 +1456,10 @@ ui_tests! {
         hotkeys[2].alternatives = ModelRc::new(VecModel::from(vec!["Ctrl+Shift+G".into(), "Ctrl+Shift+H".into()]));
         ui.set_hotkeys(ModelRc::new(VecModel::from(hotkeys)));
         settle();
-        find(&ui, "Cancel the test of Open the Picker", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Cancel the test of Open the picker", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["hk-test:1"]);
-        assert!(missing(&ui, "Test Save the clipboard as an item", AccessibleRole::Button));
-        find(&ui, "Use Ctrl+Shift+H for Save the clipboard as an item", AccessibleRole::Button).invoke_accessible_default_action();
+        assert!(missing(&ui, "Test Quick capture", AccessibleRole::Button));
+        find(&ui, "Use Ctrl+Shift+H for Quick capture", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["hk:2:Ctrl+Shift+H"]);
     }
 
@@ -1557,7 +1552,7 @@ ui_tests! {
 
     fn escape_ends_a_recording_first_and_then_closes_the_page() {
         let (ui, log) = settings();
-        find(&ui, "Open the Picker", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Open the picker", AccessibleRole::Button).invoke_accessible_default_action();
         press_key(&ui, Key::Escape);
         assert!(take(&log).is_empty(), "Esc only cancelled the recording");
         press_key(&ui, Key::Escape);
@@ -2021,7 +2016,7 @@ ui_tests! {
     // ---- Welcome tour ------------------------------------------------------------------------
 
     fn the_tour_offers_skip_on_every_step_and_back_only_after_the_first() {
-        for step in 0..4 {
+        for step in 0..5 {
             let (ui, log) = onboarding(step);
             find(&ui, "Skip", AccessibleRole::Button).invoke_accessible_default_action();
             assert_eq!(take(&log), ["skip"], "step {step}");
@@ -2035,14 +2030,14 @@ ui_tests! {
                 assert_eq!(take(&log), ["back"]);
             }
             // The last step's button finishes; the others go on.
-            let next = if step == 3 { "Get started" } else { "Next" };
+            let next = if step == 4 { "Get started" } else { "Next" };
             find(&ui, next, AccessibleRole::Button).invoke_accessible_default_action();
             assert_eq!(take(&log), ["next"], "step {step}");
         }
     }
 
     fn escape_goes_back_a_step_and_skips_only_on_the_first() {
-        for step in 0..4 {
+        for step in 0..5 {
             let (ui, log) = onboarding(step);
             press_key(&ui, Key::Escape);
             let expected = if step == 0 { "skip" } else { "back" };
@@ -2067,8 +2062,8 @@ ui_tests! {
 
     fn each_step_shows_its_own_content() {
         let (ui, _) = onboarding(0);
-        let _ = find(&ui, "The Panel", AccessibleRole::Groupbox);
-        let _ = find(&ui, "The Picker", AccessibleRole::Groupbox);
+        let _ = find(&ui, "The panel", AccessibleRole::Groupbox);
+        let _ = find(&ui, "The picker", AccessibleRole::Groupbox);
         // MAIN-47: the tour says where to bring other tools' snippets in.
         let import = find(&ui, "Bring your snippets", AccessibleRole::Groupbox);
         assert!(import.accessible_description().is_some_and(|d| d.contains("TextExpander") && d.contains("CopyQ")));
@@ -2076,8 +2071,8 @@ ui_tests! {
         assert!(missing(&ui, "Start with Windows", AccessibleRole::Switch));
         ui.set_step(1);
         settle();
-        assert!(missing(&ui, "The Panel", AccessibleRole::Groupbox));
-        let _ = find(&ui, "Show or hide the Panel", AccessibleRole::Button);
+        assert!(missing(&ui, "The panel", AccessibleRole::Groupbox));
+        let _ = find(&ui, "Show or hide the panel", AccessibleRole::Button);
         ui.set_step(2);
         settle();
         let _ = find(&ui, "Floating", AccessibleRole::RadioButton);
@@ -2090,7 +2085,7 @@ ui_tests! {
 
     fn the_shortcut_step_records_through_the_settings_recorder() {
         let (ui, log) = onboarding(1);
-        let first = find(&ui, "Show or hide the Panel", AccessibleRole::Button);
+        let first = find(&ui, "Show or hide the panel", AccessibleRole::Button);
         assert_eq!(first.accessible_value().as_deref(), Some("Ctrl+Alt+V"));
         first.invoke_accessible_default_action();
         chord(ui.window(), &[Key::Control, Key::Alt], "k");
@@ -2163,7 +2158,7 @@ ui_tests! {
         }
 
         let database: Vec<_> =
-            ElementHandle::find_by_accessible_label(&ui, "Database: Problem").collect();
+            ElementHandle::find_by_accessible_label(&ui, "Library: Problem").collect();
         assert_eq!(database.len(), 1);
         assert_eq!(
             database[0].accessible_role(),

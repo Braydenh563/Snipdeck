@@ -166,6 +166,58 @@ fn the_shortcut_texts_have_one_title_per_shortcut_and_one_name_per_scope() {
     });
 }
 
+/// One chord means one thing in every window (DESIGN.md "Shortcut conventions"): a chord with `Ctrl` or
+/// `Alt` that two scopes list carries the same words in both. `Esc` and `Enter` are context keys and are not
+/// checked. The pairs below are the same act worded for the window (the Panel opens the palette in Main).
+#[test]
+fn a_ctrl_or_alt_chord_has_the_same_title_in_every_scope_that_lists_it() {
+    use snipdeck_app::shortcuts::Keys;
+    const SAME_ACT: &[(&str, &str)] = &[
+        ("Commands (every action)", "Commands in the Main window"),
+        ("New item (quick add in an open list)", "New item"),
+        ("Close the window", "Close"),
+        ("Close the window", "Hide the Panel"),
+        ("Close the window", "Clear the search, then close"),
+        (
+            "Move the item up or down its list",
+            "Move the group up or down",
+        ),
+        ("Move the item up or down its list", "Move the group up"),
+        ("Move the item up or down its list", "Move the group down"),
+        ("Edit the item", "Edit the result"),
+        ("Select every item", "Select several items"),
+    ];
+    on_ui_thread(|| {
+        let r = rig(Settings::default());
+        let titles: Vec<String> = ShortcutTexts::get(&r.ui)
+            .get_titles()
+            .iter()
+            .map(|t| t.to_string())
+            .collect();
+        let mut seen: Vec<(&str, String)> = Vec::new();
+        for (s, title) in CATALOGUE.iter().zip(&titles) {
+            let Keys::Chord(chord) = s.keys else { continue };
+            if !(chord.contains("Ctrl") || chord.contains("Alt")) {
+                continue;
+            }
+            for (c, other_title) in &seen {
+                if *c != chord || other_title == title {
+                    continue;
+                }
+                let same = SAME_ACT.iter().any(|(a, b)| {
+                    (a == title && b == other_title) || (b == title && a == other_title)
+                });
+                assert!(
+                    same,
+                    "{chord} is `{other_title}` in one scope and `{title}` in another"
+                );
+            }
+            seen.push((chord, title.clone()));
+        }
+        let _ = &r.binding;
+    });
+}
+
 #[test]
 fn the_tab_lists_every_shortcut_in_six_groups_with_the_note_under_the_global_ones() {
     on_ui_thread(|| {
@@ -216,7 +268,7 @@ fn the_global_hotkeys_show_the_chords_in_the_settings() {
         );
         assert_eq!(
             anywhere[2],
-            ("Quick capture the clipboard".to_owned(), String::new()),
+            ("Quick capture".to_owned(), String::new()),
             "an off hotkey has no keys"
         );
     });
