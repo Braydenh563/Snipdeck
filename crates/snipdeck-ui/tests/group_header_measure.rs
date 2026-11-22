@@ -304,9 +304,9 @@ fn at_225_text_and_320_wide_a_long_title_elides_and_count_and_chevron_stay_whole
 
 #[test]
 fn a_coloured_header_names_its_colour_and_draws_its_dot_and_a_nested_one_is_indented() {
-    let h = panel(320, false, 1.0, "Replies", false);
-    let mut rows: Vec<PanelRow> = (0..h.component.get_rows().row_count())
-        .map(|i| h.component.get_rows().row_data(i).unwrap())
+    let ui = panel(320, false, 1.0, "Replies", false);
+    let mut rows: Vec<PanelRow> = (0..ui.component.get_rows().row_count())
+        .map(|at| ui.component.get_rows().row_data(at).unwrap())
         .collect();
     rows[0].group_colour = 1;
     rows.insert(
@@ -317,15 +317,15 @@ fn a_coloured_header_names_its_colour_and_draws_its_dot_and_a_nested_one_is_inde
         },
     );
     rows[4].depth = 2;
-    fixture::set_rows(&h.component, rows);
-    let f = h.render_settled();
+    fixture::set_rows(&ui.component, rows);
+    let frame = ui.render_settled();
     assert_eq!(
-        h.component
+        ui.component
             .invoke_group_announcement("Replies".into(), 2, 1),
         "group Replies, Teal, 2 items"
     );
-    let outer = handle_labelled(&h, "group Replies, Teal, 2 items");
-    let inner = handle(&h, "Inner", 1);
+    let outer = handle_labelled(&ui, "group Replies, Teal, 2 items");
+    let inner = handle(&ui, "Inner", 1);
     let step = inner.absolute_position().x - outer.absolute_position().x;
     assert!(
         (step - 12.0).abs() < 0.5,
@@ -337,9 +337,9 @@ fn a_coloured_header_names_its_colour_and_draws_its_dot_and_a_nested_one_is_inde
     );
     // The dot: the first header's pixels left of its name show the teal, the plain one's do not.
     let (x0, y0, x1, y1) = rect(&outer);
-    let teal = (x0..x1).any(|x| {
-        let [r, g, b] = f.pixel(x, (y0 + y1) / 2);
-        g > r.saturating_add(20) && b > r.saturating_add(20)
+    let teal = (x0..x1).any(|col| {
+        let [red, green, blue] = frame.pixel(col, u32::midpoint(y0, y1));
+        green > red.saturating_add(20) && blue > red.saturating_add(20)
     });
     assert!(teal, "a teal dot is drawn on the coloured header");
 }

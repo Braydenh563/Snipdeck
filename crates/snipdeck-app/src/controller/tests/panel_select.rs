@@ -1786,7 +1786,7 @@ fn group_of_title(w: &World, title: &str) -> bool {
         .rows
         .iter()
         .find(|r| r.title == title)
-        .is_some_and(|r| r.grouped())
+        .is_some_and(crate::panel::Row::grouped)
 }
 
 #[test]
