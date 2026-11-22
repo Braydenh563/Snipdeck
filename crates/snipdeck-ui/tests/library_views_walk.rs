@@ -1483,10 +1483,6 @@ fn the_filter_chips_share_a_centre_line_with_clear_filter() {
         let centre = clear.y + clear.h / 2.0;
         for chip in chips.iter().filter(|b| b.label != "Clear filter") {
             let at = chip.y + chip.h / 2.0;
-            eprintln!(
-                "scale {scale}: {:?} y {:.1} h {:.1} centre {at:.1}, Clear filter y {:.1} h {:.1} centre {centre:.1}",
-                chip.label, chip.y, chip.h, clear.y, clear.h
-            );
             assert!(
                 (at - centre).abs() <= 1.0,
                 "scale {scale}: chip {:?} centre {at:.1} is not on Clear filter's {centre:.1}",
@@ -1514,12 +1510,6 @@ fn a_tag_rename_error_stays_inside_its_row() {
                 .find(|b| b.label == ERROR && b.role == Role::Text)
                 .expect("the error text is on screen");
             let (row, next) = (rows[0], rows[1]);
-            eprintln!(
-                "scale {scale}, {width}px: error bottom {:.1}, row bottom {:.1}, next row top {:.1}",
-                error.y + error.h,
-                row.y + row.h,
-                next.y
-            );
             assert!(
                 error.y + error.h <= row.y + row.h - 1.0 + 0.5,
                 "scale {scale}, {width}px: the error ends at {:.1}, below the row's divider at {:.1}",
