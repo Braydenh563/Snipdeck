@@ -405,12 +405,14 @@ where
                         w.set_rename_error(SharedString::new());
                         w.invoke_finish_rename();
                     }
+                    // A name that is taken offers the merge into that tag: the dialog is the
+                    // message, so no error line shows beside it.
+                    Err(crate::controller::TagRenameError::Exists) => {
+                        w.set_rename_error(SharedString::new());
+                        w.set_merge_into(name.trim().into());
+                    }
                     Err(error) => {
                         w.set_rename_error(wording::tag_rename_error_text(&w, &error).into());
-                        // A name that is taken offers the merge into that tag.
-                        if matches!(error, crate::controller::TagRenameError::Exists) {
-                            w.set_merge_into(name.trim().into());
-                        }
                     }
                 }
             }
