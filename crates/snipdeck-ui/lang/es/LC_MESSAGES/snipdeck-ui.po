@@ -256,8 +256,8 @@ msgstr "Animales y naturaleza"
 msgid "Another Snipdeck shortcut already uses {}."
 msgstr "Otro atajo de Snipdeck ya usa {}."
 
-msgid "Another app has {}: use the mouse for those."
-msgstr "Otra app usa {}: usa el ratón para esas."
+msgid "Another app has {}: use the mouse for those"
+msgstr "Otra app usa {}: usa el ratón para esas"
 
 msgid "Another backup or export is still running. Try again when it has finished."
 msgstr "Otra copia de seguridad o exportación sigue en curso. Inténtalo de nuevo cuando termine."
@@ -2901,9 +2901,6 @@ msgid_plural "Saved {}, but {} items could not be included, such as \"{}\". Thei
 msgstr[0] "Guardado {}, pero no se pudo incluir {} fragmento: «{}». No se pudo leer su adjunto."
 msgstr[1] "Guardado {}, pero no se pudieron incluir {} fragmentos, como «{}». No se pudieron leer sus adjuntos."
 
-msgid "Saved {}."
-msgstr "{} guardado."
-
 msgid "Saved {}: {} of {} items. Sensitive items and items with no text are left out."
 msgstr "Guardado {}: {} de {} fragmentos. Los fragmentos sensibles y los que no tienen texto se dejan fuera."
 
@@ -3487,8 +3484,8 @@ msgstr "El Historial del Portapapeles aún no tiene texto. Copia algo de texto y
 msgid "The backups cannot be read: {}"
 msgstr "No se pueden leer las copias de seguridad: {}"
 
-msgid "The colour pick timed out."
-msgstr "Se agotó el tiempo de la selección de color."
+msgid "The colour pick timed out"
+msgstr "Se agotó el tiempo de la selección de color"
 
 msgid "The file dialog couldn’t open. Type the path instead."
 msgstr "No se pudo abrir el diálogo de archivos. Escribe la ruta en su lugar."
@@ -3550,8 +3547,8 @@ msgstr "El selector"
 msgid "The report holds versions and settings switches, never your items."
 msgstr "El informe contiene versiones e interruptores de configuración, nunca tus fragmentos."
 
-msgid "The screen changed, so the colour pick ended."
-msgstr "La pantalla cambió, así que terminó la selección de color."
+msgid "The screen changed, so the colour pick ended"
+msgstr "La pantalla cambió, así que terminó la selección de color"
 
 msgid "The selected item is deleted for good. This can't be undone."
 msgid_plural "The selected items are deleted for good. This can't be undone."
@@ -4054,8 +4051,8 @@ msgstr "Windows rechazó {} (error de Windows {})."
 msgid "Windows refused {} (Windows error {}). Choose another in Settings."
 msgstr "Windows rechazó {} (error de Windows {}). Elige otro en Configuración."
 
-msgid "Windows won’t let Snipdeck read this screen."
-msgstr "Windows no permite que Snipdeck lea esta pantalla."
+msgid "Windows won’t let Snipdeck read this screen"
+msgstr "Windows no permite que Snipdeck lea esta pantalla"
 
 msgid "With Recent turned on, it keeps what you copy in other programs."
 msgstr "Con Recientes activado, guarda lo que copias en otros programas."

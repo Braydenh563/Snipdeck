@@ -339,7 +339,7 @@ msgid "Another Snipdeck shortcut already uses {}."
 msgstr ""
 
 #: ui/toast_texts.slint:575
-msgid "Another app has {}: use the mouse for those."
+msgid "Another app has {}: use the mouse for those"
 msgstr ""
 
 #: ui/toast_texts.slint:291
@@ -3848,7 +3848,7 @@ msgstr ""
 msgid "Saved to {}"
 msgstr ""
 
-#: ui/toast_texts.slint:581
+#: ui/toast_texts.slint:402 ui/toast_texts.slint:581
 msgid "Saved {}"
 msgstr ""
 
@@ -3857,10 +3857,6 @@ msgid "Saved {}, but {} item could not be included: \"{}\". Its attachment could
 msgid_plural "Saved {}, but {} items could not be included, such as \"{}\". Their attachments could not be read."
 msgstr[0] ""
 msgstr[1] ""
-
-#: ui/toast_texts.slint:402
-msgid "Saved {}."
-msgstr ""
 
 #: ui/toast_texts.slint:408
 msgid "Saved {}: {} of {} items. Sensitive items and items with no text are left out."
@@ -4639,7 +4635,7 @@ msgid "The backups cannot be read: {}"
 msgstr ""
 
 #: ui/toast_texts.slint:572
-msgid "The colour pick timed out."
+msgid "The colour pick timed out"
 msgstr ""
 
 #: ui/form_texts.slint:143
@@ -4723,7 +4719,7 @@ msgid "The report holds versions and settings switches, never your items."
 msgstr ""
 
 #: ui/toast_texts.slint:572
-msgid "The screen changed, so the colour pick ended."
+msgid "The screen changed, so the colour pick ended"
 msgstr ""
 
 #: ui/main_window.slint:933
@@ -5393,7 +5389,7 @@ msgid "Windows refused {} (Windows error {}). Choose another in Settings."
 msgstr ""
 
 #: ui/toast_texts.slint:569
-msgid "Windows won’t let Snipdeck read this screen."
+msgid "Windows won’t let Snipdeck read this screen"
 msgstr ""
 
 #: ui/tip_texts.slint:37

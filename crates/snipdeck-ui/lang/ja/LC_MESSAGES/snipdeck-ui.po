@@ -256,8 +256,8 @@ msgstr "動物と自然"
 msgid "Another Snipdeck shortcut already uses {}."
 msgstr "{} はすでに別の Snipdeck のショートカットで使われています。"
 
-msgid "Another app has {}: use the mouse for those."
-msgstr "別のアプリが {} を使用しています。それらはマウスで操作してください。"
+msgid "Another app has {}: use the mouse for those"
+msgstr "別のアプリが {} を使用しています。それらはマウスで操作してください"
 
 msgid "Another backup or export is still running. Try again when it has finished."
 msgstr "別のバックアップまたはエクスポートがまだ実行中です。完了してからもう一度お試しください。"
@@ -2891,9 +2891,6 @@ msgid "Saved {}, but {} item could not be included: \"{}\". Its attachment could
 msgid_plural "Saved {}, but {} items could not be included, such as \"{}\". Their attachments could not be read."
 msgstr[0] "{} を保存しましたが、{} 個のスニペット「{}」など、添付ファイルを読み取れず含められなかったものがあります。"
 
-msgid "Saved {}."
-msgstr "{} を保存しました。"
-
 msgid "Saved {}: {} of {} items. Sensitive items and items with no text are left out."
 msgstr "{} を保存しました： {} 件中 {} 件。機密のスニペットとテキストのないスニペットは除外されます。"
 
@@ -3475,8 +3472,8 @@ msgstr "クリップボードの履歴にはまだテキストがありません
 msgid "The backups cannot be read: {}"
 msgstr "バックアップを読み取れません：{}"
 
-msgid "The colour pick timed out."
-msgstr "色の選択がタイムアウトしました。"
+msgid "The colour pick timed out"
+msgstr "色の選択がタイムアウトしました"
 
 msgid "The file dialog couldn’t open. Type the path instead."
 msgstr "ファイルダイアログを開けませんでした。代わりにパスを入力してください。"
@@ -3538,8 +3535,8 @@ msgstr "ピッカー"
 msgid "The report holds versions and settings switches, never your items."
 msgstr "レポートにはバージョンと設定のスイッチが含まれ、スニペットは含まれません。"
 
-msgid "The screen changed, so the colour pick ended."
-msgstr "画面が変わったため、色の選択を終了しました。"
+msgid "The screen changed, so the colour pick ended"
+msgstr "画面が変わったため、色の選択を終了しました"
 
 msgid "The selected item is deleted for good. This can't be undone."
 msgid_plural "The selected items are deleted for good. This can't be undone."
@@ -4039,8 +4036,8 @@ msgstr "Windows が {} を受け付けませんでした (Windows エラー {})�
 msgid "Windows refused {} (Windows error {}). Choose another in Settings."
 msgstr "Windows が {} を受け付けませんでした (Windows エラー {})。設定で別のものを選んでください。"
 
-msgid "Windows won’t let Snipdeck read this screen."
-msgstr "Windows が Snipdeck によるこの画面の読み取りを許可していません。"
+msgid "Windows won’t let Snipdeck read this screen"
+msgstr "Windows が Snipdeck によるこの画面の読み取りを許可していません"
 
 msgid "With Recent turned on, it keeps what you copy in other programs."
 msgstr "「最近」をオンにすると、他のプログラムでコピーした内容が残ります。"

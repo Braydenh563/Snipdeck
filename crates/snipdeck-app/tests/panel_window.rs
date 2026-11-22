@@ -1254,7 +1254,7 @@ const MENU_ROWS: [&str; 17] = [
     "Open Main window",
     "New item",
     "Take screenshot",
-    "Pause hotkeys",
+    "Pause shortcuts",
     "Select items",
     "Reset size and position",
     "Troubleshoot\u{2026}",

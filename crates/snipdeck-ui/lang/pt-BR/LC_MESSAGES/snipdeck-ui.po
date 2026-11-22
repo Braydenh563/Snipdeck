@@ -256,8 +256,8 @@ msgstr "Animais e natureza"
 msgid "Another Snipdeck shortcut already uses {}."
 msgstr "Outro atalho do Snipdeck já usa {}."
 
-msgid "Another app has {}: use the mouse for those."
-msgstr "Outro app usa {}: use o mouse para essas."
+msgid "Another app has {}: use the mouse for those"
+msgstr "Outro app usa {}: use o mouse para essas"
 
 msgid "Another backup or export is still running. Try again when it has finished."
 msgstr "Outro backup ou exportação ainda está em andamento. Tente novamente quando terminar."
@@ -2901,9 +2901,6 @@ msgid_plural "Saved {}, but {} items could not be included, such as \"{}\". Thei
 msgstr[0] "{} salvo, mas {} trecho não pôde ser incluído: “{}”. O anexo não pôde ser lido."
 msgstr[1] "{} salvo, mas {} trechos não puderam ser incluídos, como “{}”. Os anexos não puderam ser lidos."
 
-msgid "Saved {}."
-msgstr "{} salvo."
-
 msgid "Saved {}: {} of {} items. Sensitive items and items with no text are left out."
 msgstr "{} salvo: {} de {} trechos. Trechos sensíveis e trechos sem texto ficam de fora."
 
@@ -3487,8 +3484,8 @@ msgstr "O Histórico da Área de Transferência ainda não tem texto. Copie algu
 msgid "The backups cannot be read: {}"
 msgstr "Não foi possível ler os backups: {}"
 
-msgid "The colour pick timed out."
-msgstr "A seleção de cor expirou."
+msgid "The colour pick timed out"
+msgstr "A seleção de cor expirou"
 
 msgid "The file dialog couldn’t open. Type the path instead."
 msgstr "A caixa de diálogo de arquivos não pôde ser aberta. Digite o caminho."
@@ -3550,8 +3547,8 @@ msgstr "O seletor"
 msgid "The report holds versions and settings switches, never your items."
 msgstr "O relatório contém versões e opções de configuração, nunca os seus trechos."
 
-msgid "The screen changed, so the colour pick ended."
-msgstr "A tela mudou, então a seleção de cor terminou."
+msgid "The screen changed, so the colour pick ended"
+msgstr "A tela mudou, então a seleção de cor terminou"
 
 msgid "The selected item is deleted for good. This can't be undone."
 msgid_plural "The selected items are deleted for good. This can't be undone."
@@ -4054,8 +4051,8 @@ msgstr "O Windows recusou {} (erro do Windows {})."
 msgid "Windows refused {} (Windows error {}). Choose another in Settings."
 msgstr "O Windows recusou {} (erro do Windows {}). Escolha outro em Configurações."
 
-msgid "Windows won’t let Snipdeck read this screen."
-msgstr "O Windows não permite que o Snipdeck leia esta tela."
+msgid "Windows won’t let Snipdeck read this screen"
+msgstr "O Windows não permite que o Snipdeck leia esta tela"
 
 msgid "With Recent turned on, it keeps what you copy in other programs."
 msgstr "Com Recentes ativado, ele guarda o que você copia em outros programas."

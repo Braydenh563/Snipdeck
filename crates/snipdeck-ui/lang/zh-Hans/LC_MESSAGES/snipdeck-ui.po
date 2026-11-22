@@ -256,8 +256,8 @@ msgstr "动物与自然"
 msgid "Another Snipdeck shortcut already uses {}."
 msgstr "另一个 Snipdeck 快捷键已在使用 {}。"
 
-msgid "Another app has {}: use the mouse for those."
-msgstr "其他应用占用了 {}：请改用鼠标操作。"
+msgid "Another app has {}: use the mouse for those"
+msgstr "其他应用占用了 {}：请改用鼠标操作"
 
 msgid "Another backup or export is still running. Try again when it has finished."
 msgstr "另一个备份或导出仍在进行。请在完成后再试。"
@@ -2891,9 +2891,6 @@ msgid "Saved {}, but {} item could not be included: \"{}\". Its attachment could
 msgid_plural "Saved {}, but {} items could not be included, such as \"{}\". Their attachments could not be read."
 msgstr[0] "已保存 {}，但有 {} 个片段（如“{}”）未能包含，其附件无法读取。"
 
-msgid "Saved {}."
-msgstr "已保存 {}。"
-
 msgid "Saved {}: {} of {} items. Sensitive items and items with no text are left out."
 msgstr "已保存 {}：{} / {} 个片段。敏感片段和没有文本的片段不包含在内。"
 
@@ -3475,8 +3472,8 @@ msgstr "剪贴板历史记录中还没有文本。请先复制一些文本，然
 msgid "The backups cannot be read: {}"
 msgstr "无法读取备份：{}"
 
-msgid "The colour pick timed out."
-msgstr "取色已超时。"
+msgid "The colour pick timed out"
+msgstr "取色已超时"
 
 msgid "The file dialog couldn’t open. Type the path instead."
 msgstr "无法打开文件对话框。请改为输入路径。"
@@ -3538,8 +3535,8 @@ msgstr "选择器"
 msgid "The report holds versions and settings switches, never your items."
 msgstr "报告只包含版本和设置开关，绝不包含你的片段。"
 
-msgid "The screen changed, so the colour pick ended."
-msgstr "屏幕已变化，取色已结束。"
+msgid "The screen changed, so the colour pick ended"
+msgstr "屏幕已变化，取色已结束"
 
 msgid "The selected item is deleted for good. This can't be undone."
 msgid_plural "The selected items are deleted for good. This can't be undone."
@@ -4039,8 +4036,8 @@ msgstr "Windows 拒绝了 {}（Windows 错误 {}）。"
 msgid "Windows refused {} (Windows error {}). Choose another in Settings."
 msgstr "Windows 拒绝了 {}（Windows 错误 {}）。请在设置中另选一个。"
 
-msgid "Windows won’t let Snipdeck read this screen."
-msgstr "Windows 不允许 Snipdeck 读取此屏幕。"
+msgid "Windows won’t let Snipdeck read this screen"
+msgstr "Windows 不允许 Snipdeck 读取此屏幕"
 
 msgid "With Recent turned on, it keeps what you copy in other programs."
 msgstr "开启“最近”后，它会保存你在其他程序中复制的内容。"

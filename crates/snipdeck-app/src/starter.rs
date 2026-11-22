@@ -63,7 +63,7 @@ impl StarterWords {
                 ),
                 card(
                     "Right-click for more",
-                    "Right-click a card, or press the Menu key, to edit it, pin it to the strip above the list, move it or delete it. Delete this list when you no longer need it.",
+                    "Right-click a card, or press the Menu key, to edit it, pin it to the strip above the list, move it, tag it or delete it. Delete this list when you no longer need it.",
                 ),
                 card(
                     "More tips",

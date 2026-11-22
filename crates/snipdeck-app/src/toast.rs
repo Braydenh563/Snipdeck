@@ -483,7 +483,7 @@ pub enum ToastMessage {
         /// Whether it was the time limit (else the display changed).
         timed_out: bool,
     },
-    /// "Another app keeps {keys}: use the mouse for those." (fallback hotkeys refused)
+    /// "Another app keeps {keys}: use the mouse for those" (fallback hotkeys refused)
     EyedropKeysBusy {
         /// The keys, as written for the user.
         keys: String,
