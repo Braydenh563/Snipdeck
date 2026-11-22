@@ -226,7 +226,7 @@ fn pointer_clicks_on_every_header_control_reach_the_controller() {
             "no click on a control starts a window drag"
         );
 
-        click(r.window(), &r.button("Close Panel (Esc)"));
+        click(r.window(), &r.button("Close panel (Esc)"));
         assert!(!r.window().is_visible());
     });
 }
@@ -742,7 +742,7 @@ fn the_close_button_hides_and_the_pin_button_reaches_the_controller() {
             .invoke_accessible_default_action();
         assert!(!r.ctl.borrow().view().on_top);
         assert!(!r.ui.get_on_top());
-        r.button("Close Panel (Esc)")
+        r.button("Close panel (Esc)")
             .invoke_accessible_default_action();
         assert!(!r.window().is_visible());
     });
@@ -958,7 +958,7 @@ fn the_tray_icon_toggles_the_panel_opens_the_menu_actions_and_quits() {
 fn open_panel_in_the_tray_menu_brings_back_a_panel_closed_with_its_button() {
     on_ui_thread(|| {
         let r = rig();
-        r.button("Close Panel (Esc)")
+        r.button("Close panel (Esc)")
             .invoke_accessible_default_action();
         assert!(!r.window().is_visible(), "closed to the tray");
         r.binding.tray(TrayEvent::OpenPanel);
@@ -972,7 +972,7 @@ fn open_panel_in_the_tray_menu_brings_back_a_panel_closed_with_its_button() {
         r.binding.tray(TrayEvent::OpenPanel);
         assert!(r.window().is_visible());
         // The tray's left click brings it back from hidden in the same way.
-        r.button("Close Panel (Esc)")
+        r.button("Close panel (Esc)")
             .invoke_accessible_default_action();
         r.binding.tray(TrayEvent::TogglePanel);
         assert!(r.window().is_visible());
@@ -993,7 +993,7 @@ fn open_panel_in_the_tray_menu_brings_back_a_panel_closed_with_its_button() {
 fn without_a_tray_icon_the_close_button_quits_instead_of_hiding() {
     on_ui_thread(|| {
         let r = rig_with_tray(false);
-        r.button("Close Panel (Esc)")
+        r.button("Close panel (Esc)")
             .invoke_accessible_default_action();
         assert!(
             r.window().is_visible(),

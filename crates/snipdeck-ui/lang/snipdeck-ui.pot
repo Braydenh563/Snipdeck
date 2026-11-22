@@ -270,10 +270,6 @@ msgstr ""
 msgid "All items"
 msgstr ""
 
-#: ui/main_window.slint:932
-msgid "All {} entries in Recent are removed. This can't be undone."
-msgstr ""
-
 #: ui/colours.slint:1430
 msgid "Alpha"
 msgstr ""
@@ -769,7 +765,7 @@ msgid "Close"
 msgstr ""
 
 #: ui/panel.slint:1812
-msgid "Close Panel (Esc)"
+msgid "Close panel (Esc)"
 msgstr ""
 
 #: ui/panel.slint:1910
@@ -1284,10 +1280,6 @@ msgstr ""
 msgid "Data folder"
 msgstr ""
 
-#: ui/doctor_texts.slint:8
-msgid "Database"
-msgstr ""
-
 #: ui/editors.slint:976
 msgid "Date and time in a format you choose"
 msgstr ""
@@ -1336,7 +1328,7 @@ msgstr ""
 msgid "Delete list"
 msgstr ""
 
-#: ui/dialog_texts.slint:11
+#: ui/dialog_texts.slint:12
 msgid "Delete tag"
 msgstr ""
 
@@ -2052,7 +2044,7 @@ msgid_plural "It holds {n} items"
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/dialog_texts.slint:8
+#: ui/dialog_texts.slint:9
 msgid "It is removed from {n} item. The item stays."
 msgid_plural "It is removed from {n} items. The items stay."
 msgstr[0] ""
@@ -2234,6 +2226,10 @@ msgstr ""
 
 #: ui/settings.slint:1101
 msgid "Lengthen the leave delay"
+msgstr ""
+
+#: ui/doctor_texts.slint:8
+msgid "Library"
 msgstr ""
 
 #: ui/toast_texts.slint:343
@@ -2698,6 +2694,10 @@ msgstr ""
 
 #: ui/doctor_texts.slint:29
 msgid "No item is marked sensitive."
+msgstr ""
+
+#: ui/dialog_texts.slint:8
+msgid "No item uses this tag."
 msgstr ""
 
 #: ui/main_window.slint:2827
@@ -4707,8 +4707,10 @@ msgid "The screen changed, so the colour pick ended."
 msgstr ""
 
 #: ui/main_window.slint:933
-msgid "The selected items are deleted for good. This can't be undone."
-msgstr ""
+msgid "The selected item is deleted for good. This can't be undone."
+msgid_plural "The selected items are deleted for good. This can't be undone."
+msgstr[0] ""
+msgstr[1] ""
 
 #: ui/import_texts.slint:23
 msgid "The sensitive item \"{}\" cannot be unlocked with this computer’s key and was skipped."
@@ -4729,6 +4731,12 @@ msgstr ""
 #: ui/master_password.slint:107
 msgid "The two passwords are not the same."
 msgstr ""
+
+#: ui/main_window.slint:932
+msgid "The {n} entry in Recent is removed. This can't be undone."
+msgid_plural "All {n} entries in Recent are removed. This can't be undone."
+msgstr[0] ""
+msgstr[1] ""
 
 #: ui/settings.slint:524 ui/settings.slint:739 ui/settings.slint:743
 msgid "Theme"

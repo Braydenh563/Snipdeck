@@ -205,9 +205,6 @@ msgstr "Alle globalen Tastenkürzel sind festgelegt."
 msgid "All items"
 msgstr "Alle Textbausteine"
 
-msgid "All {} entries in Recent are removed. This can't be undone."
-msgstr "Alle {} Einträge in „Zuletzt verwendet“ werden entfernt. Das lässt sich nicht rückgängig machen."
-
 msgid "Alpha"
 msgstr "Alpha"
 
@@ -579,7 +576,7 @@ msgstr "Zeit bis zum Leeren der Zwischenablage"
 msgid "Close"
 msgstr "Schließen"
 
-msgid "Close Panel (Esc)"
+msgid "Close panel (Esc)"
 msgstr "Panel schließen (Esc)"
 
 msgid "Close search"
@@ -965,9 +962,6 @@ msgstr "Dunkel"
 
 msgid "Data folder"
 msgstr "Datenordner"
-
-msgid "Database"
-msgstr "Datenbank"
 
 msgid "Date and time in a format you choose"
 msgstr "Datum und Uhrzeit in einem Format deiner Wahl"
@@ -1682,6 +1676,9 @@ msgstr "Verzögerung beim Darüberfahren verlängern"
 msgid "Lengthen the leave delay"
 msgstr "Verzögerung beim Verlassen verlängern"
 
+msgid "Library"
+msgstr "Bibliothek"
+
 msgid "Library rebuilt: {} items restored, {} recovered."
 msgstr "Bibliothek neu aufgebaut: {} Textbausteine wiederhergestellt, {} geborgen."
 
@@ -2030,6 +2027,9 @@ msgstr "Kein Textbaustein in dieser Ansicht trägt die gewählte Farbmarkierung.
 
 msgid "No item is marked sensitive."
 msgstr "Kein Textbaustein ist als vertraulich markiert."
+
+msgid "No item uses this tag."
+msgstr "Kein Textbaustein verwendet dieses Schlagwort."
 
 msgid "No items with this tag"
 msgstr "Keine Textbausteine mit diesem Schlagwort"
@@ -3538,8 +3538,10 @@ msgstr "Der Bericht enthält Versionen und Einstellungsschalter, niemals deine T
 msgid "The screen changed, so the colour pick ended."
 msgstr "Der Bildschirm hat sich geändert, die Farbauswahl wurde beendet."
 
-msgid "The selected items are deleted for good. This can't be undone."
-msgstr "Die ausgewählten Textbausteine werden endgültig gelöscht. Dies kann nicht rückgängig gemacht werden."
+msgid "The selected item is deleted for good. This can't be undone."
+msgid_plural "The selected items are deleted for good. This can't be undone."
+msgstr[0] "Der ausgewählte Textbaustein wird endgültig gelöscht. Das lässt sich nicht rückgängig machen."
+msgstr[1] "Die ausgewählten Textbausteine werden endgültig gelöscht. Das lässt sich nicht rückgängig machen."
 
 msgid "The sensitive item \"{}\" cannot be unlocked with this computer’s key and was skipped."
 msgstr "Der vertrauliche Textbaustein „{}“ kann mit dem Schlüssel dieses Computers nicht entsperrt werden und wurde übersprungen."
@@ -3555,6 +3557,11 @@ msgstr "Die aktuelle Uhrzeit"
 
 msgid "The two passwords are not the same."
 msgstr "Die beiden Passwörter sind nicht gleich."
+
+msgid "The {n} entry in Recent is removed. This can't be undone."
+msgid_plural "All {n} entries in Recent are removed. This can't be undone."
+msgstr[0] "Der {n} Eintrag in „Zuletzt verwendet“ wird entfernt. Das lässt sich nicht rückgängig machen."
+msgstr[1] "Alle {n} Einträge in „Zuletzt verwendet“ werden entfernt. Das lässt sich nicht rückgängig machen."
 
 msgid "Theme"
 msgstr "Design"

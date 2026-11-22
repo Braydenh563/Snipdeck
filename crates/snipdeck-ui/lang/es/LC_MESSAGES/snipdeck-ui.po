@@ -205,9 +205,6 @@ msgstr "Todos los atajos globales están definidos."
 msgid "All items"
 msgstr "Todos los fragmentos"
 
-msgid "All {} entries in Recent are removed. This can't be undone."
-msgstr "Se eliminan las {} entradas de Recientes. Esto no se puede deshacer."
-
 msgid "Alpha"
 msgstr "Alfa"
 
@@ -579,7 +576,7 @@ msgstr "Tiempo para vaciar el portapapeles"
 msgid "Close"
 msgstr "Cerrar"
 
-msgid "Close Panel (Esc)"
+msgid "Close panel (Esc)"
 msgstr "Cerrar panel (Esc)"
 
 msgid "Close search"
@@ -965,9 +962,6 @@ msgstr "Oscuro"
 
 msgid "Data folder"
 msgstr "Carpeta de datos"
-
-msgid "Database"
-msgstr "Base de datos"
 
 msgid "Date and time in a format you choose"
 msgstr "Fecha y hora en el formato que elijas"
@@ -1682,6 +1676,9 @@ msgstr "Alargar el retraso al pasar el puntero"
 msgid "Lengthen the leave delay"
 msgstr "Alargar el retraso al salir"
 
+msgid "Library"
+msgstr "Biblioteca"
+
 msgid "Library rebuilt: {} items restored, {} recovered."
 msgstr "Biblioteca reconstruida: {} fragmentos restaurados, {} recuperados."
 
@@ -2030,6 +2027,9 @@ msgstr "Ningún fragmento de esta vista tiene la etiqueta de color elegida."
 
 msgid "No item is marked sensitive."
 msgstr "Ningún fragmento está marcado como sensible."
+
+msgid "No item uses this tag."
+msgstr "Ningún fragmento usa esta etiqueta."
 
 msgid "No items with this tag"
 msgstr "No hay fragmentos con esta etiqueta"
@@ -3538,8 +3538,10 @@ msgstr "El informe contiene versiones e interruptores de configuración, nunca t
 msgid "The screen changed, so the colour pick ended."
 msgstr "La pantalla cambió, así que terminó la selección de color."
 
-msgid "The selected items are deleted for good. This can't be undone."
-msgstr "Los fragmentos seleccionados se eliminarán definitivamente. No se puede deshacer."
+msgid "The selected item is deleted for good. This can't be undone."
+msgid_plural "The selected items are deleted for good. This can't be undone."
+msgstr[0] "El fragmento seleccionado se elimina definitivamente. No se puede deshacer."
+msgstr[1] "Los fragmentos seleccionados se eliminan definitivamente. No se puede deshacer."
 
 msgid "The sensitive item \"{}\" cannot be unlocked with this computer’s key and was skipped."
 msgstr "El fragmento sensible «{}» no se puede desbloquear con la clave de este equipo y se omitió."
@@ -3555,6 +3557,11 @@ msgstr "La hora actual"
 
 msgid "The two passwords are not the same."
 msgstr "Las dos contraseñas no son iguales."
+
+msgid "The {n} entry in Recent is removed. This can't be undone."
+msgid_plural "All {n} entries in Recent are removed. This can't be undone."
+msgstr[0] "Se quita la {n} entrada de Recientes. No se puede deshacer."
+msgstr[1] "Se quitan las {n} entradas de Recientes. No se puede deshacer."
 
 msgid "Theme"
 msgstr "Tema"

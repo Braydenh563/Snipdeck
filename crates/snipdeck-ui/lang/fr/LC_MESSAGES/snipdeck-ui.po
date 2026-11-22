@@ -205,9 +205,6 @@ msgstr "Tous les raccourcis globaux sont définis."
 msgid "All items"
 msgstr "Tous les extraits"
 
-msgid "All {} entries in Recent are removed. This can't be undone."
-msgstr "Les {} entrées de Récents seront supprimées. Cette action est irréversible."
-
 msgid "Alpha"
 msgstr "Alpha"
 
@@ -579,7 +576,7 @@ msgstr "Délai de vidage du presse-papiers"
 msgid "Close"
 msgstr "Fermer"
 
-msgid "Close Panel (Esc)"
+msgid "Close panel (Esc)"
 msgstr "Fermer le panneau (Esc)"
 
 msgid "Close search"
@@ -965,9 +962,6 @@ msgstr "Sombre"
 
 msgid "Data folder"
 msgstr "Dossier de données"
-
-msgid "Database"
-msgstr "Base de données"
 
 msgid "Date and time in a format you choose"
 msgstr "Date et heure dans le format de votre choix"
@@ -1682,6 +1676,9 @@ msgstr "Allonger le délai de survol"
 msgid "Lengthen the leave delay"
 msgstr "Allonger le délai de sortie"
 
+msgid "Library"
+msgstr "Bibliothèque"
+
 msgid "Library rebuilt: {} items restored, {} recovered."
 msgstr "Bibliothèque reconstruite : {} extraits restaurés, {} récupérés."
 
@@ -2030,6 +2027,9 @@ msgstr "Aucun extrait de cette vue n’a l’étiquette de couleur choisie."
 
 msgid "No item is marked sensitive."
 msgstr "Aucun extrait n’est marqué comme sensible."
+
+msgid "No item uses this tag."
+msgstr "Aucun extrait n'utilise cette étiquette."
 
 msgid "No items with this tag"
 msgstr "Aucun extrait avec cette étiquette"
@@ -3538,8 +3538,10 @@ msgstr "Le rapport contient des versions et des paramètres, jamais vos extraits
 msgid "The screen changed, so the colour pick ended."
 msgstr "L’écran a changé, la sélection de couleur est terminée."
 
-msgid "The selected items are deleted for good. This can't be undone."
-msgstr "Les extraits sélectionnés seront supprimés définitivement. Cette action est irréversible."
+msgid "The selected item is deleted for good. This can't be undone."
+msgid_plural "The selected items are deleted for good. This can't be undone."
+msgstr[0] "L’extrait sélectionné est supprimé définitivement. Cette action est irréversible."
+msgstr[1] "Les extraits sélectionnés sont supprimés définitivement. Cette action est irréversible."
 
 msgid "The sensitive item \"{}\" cannot be unlocked with this computer’s key and was skipped."
 msgstr "L’extrait sensible « {} » ne peut pas être déverrouillé avec la clé de cet ordinateur et a été ignoré."
@@ -3555,6 +3557,11 @@ msgstr "L’heure actuelle"
 
 msgid "The two passwords are not the same."
 msgstr "Les deux mots de passe ne sont pas identiques."
+
+msgid "The {n} entry in Recent is removed. This can't be undone."
+msgid_plural "All {n} entries in Recent are removed. This can't be undone."
+msgstr[0] "L’{n} entrée de Récents est retirée. Cette action est irréversible."
+msgstr[1] "Les {n} entrées de Récents sont toutes retirées. Cette action est irréversible."
 
 msgid "Theme"
 msgstr "Thème"

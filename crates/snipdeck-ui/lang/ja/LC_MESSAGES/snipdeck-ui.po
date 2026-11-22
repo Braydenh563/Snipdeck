@@ -205,9 +205,6 @@ msgstr "すべてのグローバルショートカットが設定されていま
 msgid "All items"
 msgstr "すべてのスニペット"
 
-msgid "All {} entries in Recent are removed. This can't be undone."
-msgstr "「最近」の {} 件をすべて削除します。元に戻せません。"
-
 msgid "Alpha"
 msgstr "アルファ"
 
@@ -578,7 +575,7 @@ msgstr "クリップボードの消去時間"
 msgid "Close"
 msgstr "閉じる"
 
-msgid "Close Panel (Esc)"
+msgid "Close panel (Esc)"
 msgstr "パネルを閉じる (Esc)"
 
 msgid "Close search"
@@ -964,9 +961,6 @@ msgstr "ダーク"
 
 msgid "Data folder"
 msgstr "データフォルダー"
-
-msgid "Database"
-msgstr "データベース"
 
 msgid "Date and time in a format you choose"
 msgstr "任意の形式の日付と時刻"
@@ -1677,6 +1671,9 @@ msgstr "ポイントの待ち時間を長くする"
 msgid "Lengthen the leave delay"
 msgstr "離れたときの待ち時間を長くする"
 
+msgid "Library"
+msgstr "ライブラリ"
+
 msgid "Library rebuilt: {} items restored, {} recovered."
 msgstr "ライブラリを再構築しました：{} 件のスニペットを復元し、{} 件を回復しました。"
 
@@ -2023,6 +2020,9 @@ msgstr "このビューに、選択した色ラベルのスニペットはあり
 
 msgid "No item is marked sensitive."
 msgstr "機密に設定されたスニペットはありません。"
+
+msgid "No item uses this tag."
+msgstr "このタグを使っているスニペットはありません。"
 
 msgid "No items with this tag"
 msgstr "このタグのスニペットはありません"
@@ -3526,8 +3526,9 @@ msgstr "レポートにはバージョンと設定のスイッチが含まれ、
 msgid "The screen changed, so the colour pick ended."
 msgstr "画面が変わったため、色の選択を終了しました。"
 
-msgid "The selected items are deleted for good. This can't be undone."
-msgstr "選択したスニペットは完全に削除されます。この操作は元に戻せません。"
+msgid "The selected item is deleted for good. This can't be undone."
+msgid_plural "The selected items are deleted for good. This can't be undone."
+msgstr[0] "選択したスニペットを完全に削除します。この操作は元に戻せません。"
 
 msgid "The sensitive item \"{}\" cannot be unlocked with this computer’s key and was skipped."
 msgstr "機密スニペット「{}」は、このコンピューターのキーではロックを解除できないため、スキップされました。"
@@ -3543,6 +3544,10 @@ msgstr "現在時刻"
 
 msgid "The two passwords are not the same."
 msgstr "2つのパスワードが一致しません。"
+
+msgid "The {n} entry in Recent is removed. This can't be undone."
+msgid_plural "All {n} entries in Recent are removed. This can't be undone."
+msgstr[0] "「最近」の {n} 件を削除します。この操作は元に戻せません。"
 
 msgid "Theme"
 msgstr "テーマ"

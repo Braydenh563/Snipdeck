@@ -1249,7 +1249,7 @@ ui_tests! {
         w.dispatch_event(WindowEvent::PointerReleased { position: at, button: PointerEventButton::Left });
         assert_eq!(take(&log), ["drag", "drop"], "the press starts the drag and the release ends it");
 
-        find(&ui, "Close Panel (Esc)", AccessibleRole::Button).mock_single_click(PointerEventButton::Left);
+        find(&ui, "Close panel (Esc)", AccessibleRole::Button).mock_single_click(PointerEventButton::Left);
         assert_eq!(take(&log), ["close"], "the close button is not a drag handle");
     }
 
@@ -2823,7 +2823,7 @@ ui_tests! {
         assert_eq!(ui.get_tooltip_shown(), "Keep Panel open", "no second 500ms wait");
         move_to(&ui, centre(&close));
         settle();
-        assert_eq!(ui.get_tooltip_shown(), "Close Panel (Esc)");
+        assert_eq!(ui.get_tooltip_shown(), "Close panel (Esc)");
         // After a rest the next one waits again.
         move_to(&ui, away(&ui));
         wait(1000);
@@ -2901,7 +2901,7 @@ ui_tests! {
         settle();
         ui.set_app_menu_open(true);
         settle();
-        move_to(&ui, centre(&find(&ui, "Close Panel (Esc)", AccessibleRole::Button)));
+        move_to(&ui, centre(&find(&ui, "Close panel (Esc)", AccessibleRole::Button)));
         settle();
         assert_eq!(ui.get_tooltip_shown(), "");
         take(&log);
@@ -3232,7 +3232,7 @@ ui_tests! {
         press_at(&ui, LogicalPosition::new(w - 10.0, y));
         assert_eq!(take(&log), ["use:0"], "and on the right side");
         // The header buttons next to the top-right corner still work.
-        find(&ui, "Close Panel (Esc)", AccessibleRole::Button).mock_single_click(PointerEventButton::Left);
+        find(&ui, "Close panel (Esc)", AccessibleRole::Button).mock_single_click(PointerEventButton::Left);
         assert_eq!(take(&log), ["close"]);
         // A press on the top edge over the header is a resize, not a drag.
         press_at(&ui, LogicalPosition::new(120.0, 1.0));

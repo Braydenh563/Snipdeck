@@ -205,9 +205,6 @@ msgstr "Todos os atalhos globais estão definidos."
 msgid "All items"
 msgstr "Todos os trechos"
 
-msgid "All {} entries in Recent are removed. This can't be undone."
-msgstr "Todas as {} entradas de Recentes serão removidas. Isso não pode ser desfeito."
-
 msgid "Alpha"
 msgstr "Alfa"
 
@@ -579,7 +576,7 @@ msgstr "Tempo para limpar a área de transferência"
 msgid "Close"
 msgstr "Fechar"
 
-msgid "Close Panel (Esc)"
+msgid "Close panel (Esc)"
 msgstr "Fechar painel (Esc)"
 
 msgid "Close search"
@@ -965,9 +962,6 @@ msgstr "Escuro"
 
 msgid "Data folder"
 msgstr "Pasta de dados"
-
-msgid "Database"
-msgstr "Banco de dados"
 
 msgid "Date and time in a format you choose"
 msgstr "Data e hora no formato escolhido"
@@ -1682,6 +1676,9 @@ msgstr "Aumentar o atraso ao passar o mouse"
 msgid "Lengthen the leave delay"
 msgstr "Aumentar o atraso ao sair"
 
+msgid "Library"
+msgstr "Biblioteca"
+
 msgid "Library rebuilt: {} items restored, {} recovered."
 msgstr "Biblioteca reconstruído: {} trechos restaurados, {} recuperados."
 
@@ -2030,6 +2027,9 @@ msgstr "Nenhum trecho nesta visão tem a cor escolhida."
 
 msgid "No item is marked sensitive."
 msgstr "Nenhum trecho está marcado como sensível."
+
+msgid "No item uses this tag."
+msgstr "Nenhum trecho usa esta etiqueta."
 
 msgid "No items with this tag"
 msgstr "Nenhum trecho com esta etiqueta"
@@ -3538,8 +3538,10 @@ msgstr "O relatório contém versões e opções de configuração, nunca os seu
 msgid "The screen changed, so the colour pick ended."
 msgstr "A tela mudou, então a seleção de cor terminou."
 
-msgid "The selected items are deleted for good. This can't be undone."
-msgstr "Os trechos selecionados serão excluídos definitivamente. Isso não pode ser desfeito."
+msgid "The selected item is deleted for good. This can't be undone."
+msgid_plural "The selected items are deleted for good. This can't be undone."
+msgstr[0] "O trecho selecionado é excluído de vez. Isso não pode ser desfeito."
+msgstr[1] "Os trechos selecionados são excluídos de vez. Isso não pode ser desfeito."
 
 msgid "The sensitive item \"{}\" cannot be unlocked with this computer’s key and was skipped."
 msgstr "O trecho sensível \"{}\" não pode ser desbloqueado com a chave deste computador e foi ignorado."
@@ -3555,6 +3557,11 @@ msgstr "A hora atual"
 
 msgid "The two passwords are not the same."
 msgstr "As duas senhas não são iguais."
+
+msgid "The {n} entry in Recent is removed. This can't be undone."
+msgid_plural "All {n} entries in Recent are removed. This can't be undone."
+msgstr[0] "A {n} entrada em Recentes é removida. Isso não pode ser desfeito."
+msgstr[1] "Todas as {n} entradas em Recentes são removidas. Isso não pode ser desfeito."
 
 msgid "Theme"
 msgstr "Tema"

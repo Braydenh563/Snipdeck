@@ -929,8 +929,8 @@ export component MainWindow inherits Window {
         : @tr("Delete for good?");
     property <string> confirm-body: root.confirm-kind == 2 ? DialogTexts.tag-delete-body(root.tags[root.confirm-target].count)
         : root.confirm-kind == 3 ? @tr("Everything in the Trash is deleted for good. This can't be undone.")
-        : root.confirm-kind == 5 ? @tr("All {} entries in Recent are removed. This can't be undone.", root.count-recent)
-        : @tr("The selected items are deleted for good. This can't be undone.");
+        : root.confirm-kind == 5 ? @tr("The {n} entry in Recent is removed. This can't be undone." | "All {n} entries in Recent are removed. This can't be undone." % root.count-recent)
+        : @tr("The selected item is deleted for good. This can't be undone." | "The selected items are deleted for good. This can't be undone." % (root.multi ? root.selected-count : 1));
     property <string> confirm-ok: root.confirm-kind == 2 ? DialogTexts.tag-delete-ok()
         : root.confirm-kind == 3 ? @tr("Empty Trash")
         : root.confirm-kind == 5 ? @tr("Clear Recent") : @tr("Delete for good");

@@ -545,7 +545,7 @@ ui_tests! {
         let dialog = find(&ui, "Delete for good?", AccessibleRole::Groupbox);
         assert_eq!(
             dialog.accessible_description().as_deref(),
-            Some("The selected item is deleted for good. This can’t be undone.")
+            Some("The selected item is deleted for good. This can't be undone.")
         );
         // MAIN-44: the focus starts on Cancel, so Enter is the safe answer, never the destructive one.
         press_key(&ui, Key::Return);

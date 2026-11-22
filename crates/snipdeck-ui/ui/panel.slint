@@ -1809,7 +1809,7 @@ export component PanelWindow inherits Window {
                             size: IconButtonSize.sm;
                             side-override: Space.s8 * root.chrome-k;
                             glyph-scale: root.glyph-k;
-                            tooltip: @tr("Close Panel (Esc)");
+                            tooltip: @tr("Close panel (Esc)");
                             y: (parent.height - self.height) / 2;
                             clicked => { root.close-requested(); }
                             changed has-hover => { root.tip-set(self.tooltip, self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.has-hover || self.has-focus); }

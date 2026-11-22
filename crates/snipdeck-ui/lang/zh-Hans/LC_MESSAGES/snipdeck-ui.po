@@ -205,9 +205,6 @@ msgstr "所有全局快捷键均已设置。"
 msgid "All items"
 msgstr "所有片段"
 
-msgid "All {} entries in Recent are removed. This can't be undone."
-msgstr "将删除“最近”中的全部 {} 条内容。此操作无法撤销。"
-
 msgid "Alpha"
 msgstr "透明度"
 
@@ -578,7 +575,7 @@ msgstr "剪贴板清除时间"
 msgid "Close"
 msgstr "关闭"
 
-msgid "Close Panel (Esc)"
+msgid "Close panel (Esc)"
 msgstr "关闭面板 (Esc)"
 
 msgid "Close search"
@@ -964,9 +961,6 @@ msgstr "深色"
 
 msgid "Data folder"
 msgstr "数据文件夹"
-
-msgid "Database"
-msgstr "数据库"
 
 msgid "Date and time in a format you choose"
 msgstr "以你选择的格式显示日期和时间"
@@ -1677,6 +1671,9 @@ msgstr "延长悬停延迟"
 msgid "Lengthen the leave delay"
 msgstr "延长离开延迟"
 
+msgid "Library"
+msgstr "资料库"
+
 msgid "Library rebuilt: {} items restored, {} recovered."
 msgstr "资料库已重建：已恢复 {} 个片段，找回 {} 个。"
 
@@ -2023,6 +2020,9 @@ msgstr "此视图中没有片段带有所选的颜色标签。"
 
 msgid "No item is marked sensitive."
 msgstr "没有标记为敏感的片段。"
+
+msgid "No item uses this tag."
+msgstr "没有片段使用此标签。"
 
 msgid "No items with this tag"
 msgstr "没有带此标签的片段"
@@ -3526,8 +3526,9 @@ msgstr "报告只包含版本和设置开关，绝不包含你的片段。"
 msgid "The screen changed, so the colour pick ended."
 msgstr "屏幕已变化，取色已结束。"
 
-msgid "The selected items are deleted for good. This can't be undone."
-msgstr "所选片段将被永久删除，此操作无法撤销。"
+msgid "The selected item is deleted for good. This can't be undone."
+msgid_plural "The selected items are deleted for good. This can't be undone."
+msgstr[0] "所选片段将被永久删除。此操作无法撤销。"
 
 msgid "The sensitive item \"{}\" cannot be unlocked with this computer’s key and was skipped."
 msgstr "无法使用本电脑的密钥打开敏感片段“{}”，已跳过。"
@@ -3543,6 +3544,10 @@ msgstr "当前时间"
 
 msgid "The two passwords are not the same."
 msgstr "两次输入的密码不一致。"
+
+msgid "The {n} entry in Recent is removed. This can't be undone."
+msgid_plural "All {n} entries in Recent are removed. This can't be undone."
+msgstr[0] "将删除“最近”中的 {n} 条内容。此操作无法撤销。"
 
 msgid "Theme"
 msgstr "主题"
