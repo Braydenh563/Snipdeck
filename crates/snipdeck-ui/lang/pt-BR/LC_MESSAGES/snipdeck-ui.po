@@ -396,7 +396,7 @@ msgid "Bring up the Panel, open the Picker, save the clipboard or paste the next
 msgstr "Abra o painel, abra o seletor, salve a área de transferência ou cole o próximo trecho em qualquer app."
 
 msgid "Bring your snippets"
-msgstr "Traga seus itens"
+msgstr "Traga seus trechos"
 
 msgid "Brings the Panel up beside the app you are working in."
 msgstr "Traz o painel ao lado do aplicativo em que você está trabalhando."
@@ -2170,7 +2170,7 @@ msgid "Nothing pinned"
 msgstr "Nada fixado"
 
 msgid "Nothing pinned matches “{}”."
-msgstr "Nenhum item fixado corresponde a “{}”."
+msgstr "Nenhum trecho fixado corresponde a “{}”."
 
 msgid "Nothing pinned yet"
 msgstr "Nada fixado ainda"

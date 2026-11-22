@@ -396,7 +396,7 @@ msgid "Bring up the Panel, open the Picker, save the clipboard or paste the next
 msgstr "Das Panel einblenden, den Picker öffnen, die Zwischenablage speichern oder den nächsten Textbaustein einfügen, aus jeder App."
 
 msgid "Bring your snippets"
-msgstr "Eigene Einträge mitbringen"
+msgstr "Eigene Textbausteine mitbringen"
 
 msgid "Brings the Panel up beside the app you are working in."
 msgstr "Holt das Panel neben die App, mit der du gerade arbeitest."
@@ -2170,7 +2170,7 @@ msgid "Nothing pinned"
 msgstr "Nichts angeheftet"
 
 msgid "Nothing pinned matches “{}”."
-msgstr "Kein angehefteter Eintrag passt zu „{}“."
+msgstr "Kein angehefteter Textbaustein passt zu „{}“."
 
 msgid "Nothing pinned yet"
 msgstr "Noch nichts angeheftet"
@@ -3247,7 +3247,7 @@ msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "Snipdeck wartet im Infobereich, damit die Tastenkürzel nach der Anmeldung funktionieren."
 
 msgid "Snippets"
-msgstr "Einträge"
+msgstr "Textbausteine"
 
 msgid "Some files were left out: together they are over 64 MB."
 msgstr "Einige Dateien wurden ausgelassen: Zusammen sind sie größer als 64 MB."
@@ -4732,7 +4732,7 @@ msgid "{}, colour {}"
 msgstr "{}, Farbe {}"
 
 msgid "{}, match {}"
-msgstr "{}, Eintrag {}"
+msgstr "{}, Treffer {}"
 
 msgid "{}, {}"
 msgstr "{}, {}"

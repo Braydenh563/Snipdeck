@@ -2170,7 +2170,7 @@ msgid "Nothing pinned"
 msgstr "Nada fijado"
 
 msgid "Nothing pinned matches “{}”."
-msgstr "Ningún elemento fijado coincide con “{}”."
+msgstr "Ningún fragmento fijado coincide con “{}”."
 
 msgid "Nothing pinned yet"
 msgstr "Aún no hay nada fijado"

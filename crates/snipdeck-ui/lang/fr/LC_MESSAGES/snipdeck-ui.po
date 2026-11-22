@@ -2164,13 +2164,13 @@ msgid "Nothing new to import."
 msgstr "Rien de nouveau à importer."
 
 msgid "Nothing on this board matches “{}”."
-msgstr "Aucun élément de ce tableau ne correspond à « {} »."
+msgstr "Aucun extrait de ce tableau ne correspond à « {} »."
 
 msgid "Nothing pinned"
 msgstr "Rien d'épinglé"
 
 msgid "Nothing pinned matches “{}”."
-msgstr "Aucun élément épinglé ne correspond à « {} »."
+msgstr "Aucun extrait épinglé ne correspond à « {} »."
 
 msgid "Nothing pinned yet"
 msgstr "Rien d'épinglé pour le moment"

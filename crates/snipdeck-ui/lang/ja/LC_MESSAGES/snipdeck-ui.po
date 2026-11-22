@@ -394,7 +394,7 @@ msgid "Bring up the Panel, open the Picker, save the clipboard or paste the next
 msgstr "どのアプリからでも、パネルを表示、ピッカーを開く、クリップボードを保存、次のスニペットを貼り付けできます。"
 
 msgid "Bring your snippets"
-msgstr "項目を持ち込む"
+msgstr "スニペットを持ち込む"
 
 msgid "Brings the Panel up beside the app you are working in."
 msgstr "作業中のアプリの横にパネルを表示します。"
@@ -2160,7 +2160,7 @@ msgid "Nothing pinned"
 msgstr "ピン留めなし"
 
 msgid "Nothing pinned matches “{}”."
-msgstr "ピン留めした項目に「{}」は一致しません。"
+msgstr "ピン留めしたスニペットに「{}」は一致しません。"
 
 msgid "Nothing pinned yet"
 msgstr "ピン留めはまだありません"
@@ -3234,7 +3234,7 @@ msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "Snipdeck はサインイン後にショートカットが使えるよう、通知領域で待機します。"
 
 msgid "Snippets"
-msgstr "項目"
+msgstr "スニペット"
 
 msgid "Some files were left out: together they are over 64 MB."
 msgstr "一部のファイルを除外しました。合計が 64 MB を超えています。"
