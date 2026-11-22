@@ -22,6 +22,15 @@ use crate::{
 /// How often the host sends [`DockEvent::Tick`] while a delay is running.
 pub const TICK: Duration = Duration::from_millis(50);
 
+/// How often the host sends [`DockEvent::Tick`] while the dock has nothing to watch: no delay
+/// is running and the pointer is not near the tucked tab. Waking 20 times a second to learn
+/// that nothing moved is the cost of polling the pointer; at this pace it is four.
+pub const IDLE_TICK: Duration = Duration::from_millis(250);
+
+/// How far from the tucked tab (logical pixels) the pointer is when the dock goes back to
+/// [`TICK`]: a flick to the edge within [`IDLE_TICK`] still starts the hover delay on time.
+pub const WAKE_ZONE: u32 = 160;
+
 /// Where the dock is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum DockState {

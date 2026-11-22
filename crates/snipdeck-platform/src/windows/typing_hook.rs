@@ -82,6 +82,7 @@ thread_local! {
 /// A running hook. Dropping it stops it.
 #[derive(Debug)]
 pub struct TypingHook {
+    wake: SyncSender<TypedEvent>,
     sent: Arc<AtomicU64>,
     lost: Arc<AtomicU64>,
     tab: Arc<AtomicU64>,
@@ -98,6 +99,7 @@ impl TypingHook {
     /// could not start.
     pub fn start() -> Result<(Self, Receiver<TypedEvent>), Error> {
         let (events, receiver) = mpsc::sync_channel(CHANNEL_SLOTS);
+        let wake = events.clone();
         let (ready_tx, ready) = mpsc::channel();
         let sent = Arc::new(AtomicU64::new(0));
         let hook_sent = Arc::clone(&sent);
@@ -112,6 +114,7 @@ impl TypingHook {
         match ready.recv_timeout(Duration::from_secs(5)) {
             Ok(Ok(thread_id)) => Ok((
                 Self {
+                    wake,
                     sent,
                     lost,
                     tab,
@@ -140,6 +143,13 @@ impl TypingHook {
     #[must_use]
     pub fn lost(&self) -> Arc<AtomicU64> {
         Arc::clone(&self.lost)
+    }
+
+    /// A sender for [`TypedEvent::Wake`]: wakes the consumer so it reads what the app queued for it.
+    /// The consumer ends when the hook is stopped AND every clone is dropped.
+    #[must_use]
+    pub fn waker(&self) -> SyncSender<TypedEvent> {
+        self.wake.clone()
     }
 
     /// The flag that tells the hook a suggestion hint is up: the hint's number, 0 for none. While
@@ -201,7 +211,10 @@ fn run(
             lost,
             tab,
             foreground: 0,
-            classifier: Classifier::new(),
+            // SAFETY: no preconditions; bit 0 is the toggle state, read once as the starting point.
+            classifier: Classifier::with_caps(
+                unsafe { GetKeyState(i32::from(VK_CAPITAL.0)) } & 1 != 0,
+            ),
             dropped: false,
         });
     });
@@ -318,12 +331,14 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
 
 /// Takes one key press; returns whether the key must not reach the app (the hint's `Tab`).
 fn handle(info: &KBDLLHOOKSTRUCT) -> bool {
-    if info.flags.0 & LLKHF_INJECTED.0 != 0 {
+    // Only our own injected keys are skipped; other apps' injected keys count as typing.
+    if info.flags.0 & LLKHF_INJECTED.0 != 0 && info.dwExtraInfo == crate::win_logic::OWN_INPUT_TAG {
         return false;
     }
     // SAFETY: no preconditions.
     let foreground = unsafe { GetForegroundWindow() };
-    let stroke = stroke_of(info, foreground);
+    let caps = HOOKED.with(|state| state.borrow().as_ref().is_some_and(|h| h.classifier.caps()));
+    let stroke = stroke_of(info, foreground, caps);
     let plain_tab = typing::is_plain_tab(stroke) && !async_down(VK_SHIFT.0);
     HOOKED.with(|state| {
         let mut guard = state.borrow_mut();
@@ -375,7 +390,11 @@ fn async_down(vk: u16) -> bool {
     (unsafe { GetAsyncKeyState(i32::from(vk)) }) < 0
 }
 
-fn stroke_of(info: &KBDLLHOOKSTRUCT, foreground: windows::Win32::Foundation::HWND) -> Stroke {
+fn stroke_of(
+    info: &KBDLLHOOKSTRUCT,
+    foreground: windows::Win32::Foundation::HWND,
+    caps: bool,
+) -> Stroke {
     let vk = u16::try_from(info.vkCode).unwrap_or(0);
     let shift = async_down(VK_SHIFT.0);
     let ctrl = async_down(VK_CONTROL.0);
@@ -392,8 +411,9 @@ fn stroke_of(info: &KBDLLHOOKSTRUCT, foreground: windows::Win32::Foundation::HWN
     if alt {
         state[usize::from(VK_MENU.0)] = 0x80;
     }
-    // SAFETY: no preconditions; bit 0 is the toggle state.
-    if unsafe { GetKeyState(i32::from(VK_CAPITAL.0)) } & 1 != 0 {
+    // Counted by the classifier from the presses the hook sees: the hook thread has no message
+    // queue of its own, so the system's toggle state read here can be stale.
+    if caps {
         state[usize::from(VK_CAPITAL.0)] = 0x01;
     }
     // Only a key that may type text is translated; the rest are classified by `vk` alone.
@@ -435,7 +455,11 @@ fn translate(
         )
     };
     let translation = match written {
-        n if n < 0 => Translation::Dead,
+        n if n < 0 => Translation::Dead(
+            char::decode_utf16(out[..1].iter().copied())
+                .next()
+                .and_then(Result::ok),
+        ),
         0 => Translation::Nothing,
         n => {
             let units = &out[..usize::try_from(n).unwrap_or(0).min(out.len())];

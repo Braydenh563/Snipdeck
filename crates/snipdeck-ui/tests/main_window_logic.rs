@@ -2204,7 +2204,7 @@ ui_tests! {
         assert_eq!(take(&log), ["quick-add:hi:0:false"], "the box is open and focused");
         press(ui.window(), &key(Key::Escape));
         settle();
-        assert!(missing(&ui, "Create item", AccessibleRole::Button), "Esc closes it again");
+        assert!(missing(&ui, "Add item", AccessibleRole::Button), "Esc closes it again");
     }
 
     fn ctrl_n_and_the_buttons_report_what_was_asked() {
@@ -2661,8 +2661,8 @@ ui_tests! {
         // Wider: the icon button gives way to the full switcher while the pointer rests where it was.
         ui.window().set_size(slint::LogicalSize::new(1040.0, 640.0));
         settle();
-        // Time passes as on a clock, so the layer's 100ms check ticks each step.
-        for _ in 0..4 {
+        // Time passes as on a clock: the layer checks every 500ms (twice, to see no answer), then the tip lingers 200ms.
+        for _ in 0..14 {
             mock_elapsed_time(std::time::Duration::from_millis(100));
             settle();
         }
@@ -2939,6 +2939,75 @@ ui_tests! {
         assert_eq!(item.accessible_item_selected(), Some(true), "the first row is highlighted");
         assert_eq!(find(&ui, "Search", AccessibleRole::ListItem).accessible_item_selected(), Some(false));
         assert_eq!(live_status(&ui), "New item, 1 of 3", "the live footer names the highlighted row and its place");
+    }
+
+    fn a_row_with_a_hint_is_dimmed_read_with_its_reason_and_runs_nothing() {
+        let (ui, log) = start();
+        chord(ui.window(), &[Key::Control], "k");
+        let mut rows: Vec<PaletteRow> = SAMPLE
+            .iter()
+            .map(|(id, label, _)| PaletteRow {
+                id: *id,
+                label: (*label).into(),
+                ..Default::default()
+            })
+            .collect();
+        rows.insert(
+            0,
+            PaletteRow {
+                id: 4,
+                label: "Symbols".into(),
+                hint: "Turn on the Symbols tab in Settings".into(),
+                ..Default::default()
+            },
+        );
+        ui.set_palette_rows(ModelRc::new(VecModel::from(rows)));
+        settle();
+        take(&log);
+        let item = find(&ui, "Symbols", AccessibleRole::ListItem);
+        assert_eq!(
+            item.accessible_description().as_deref(),
+            Some("Turn on the Symbols tab in Settings")
+        );
+        assert_eq!(
+            live_status(&ui),
+            "Symbols: Turn on the Symbols tab in Settings, 1 of 4"
+        );
+        press_key(&ui, Key::Return);
+        item.invoke_accessible_default_action();
+        settle();
+        assert!(ui.get_palette_open(), "the palette stays open");
+        assert!(take(&log).is_empty(), "no command ran");
+        press_key(&ui, Key::DownArrow);
+        press_key(&ui, Key::Return);
+        assert_eq!(take(&log), ["command:0"], "an ordinary row still runs");
+    }
+
+    fn home_end_and_the_page_keys_move_the_palette_highlight() {
+        let (ui, log) = start();
+        chord(ui.window(), &[Key::Control], "k");
+        let labels: Vec<String> = (0..30).map(|i| format!("Command number {i}")).collect();
+        let many: Vec<(i32, &str, &[&str])> = labels
+            .iter()
+            .enumerate()
+            .map(|(i, l)| (i32::try_from(i).unwrap(), l.as_str(), &[][..]))
+            .collect();
+        palette_rows(&ui, &many);
+        take(&log);
+        press_key(&ui, Key::End);
+        assert_eq!(live_status(&ui), "Command number 29, 30 of 30");
+        press_key(&ui, Key::Home);
+        assert_eq!(live_status(&ui), "Command number 0, 1 of 30");
+        press_key(&ui, Key::PageDown);
+        let after_page = live_status(&ui);
+        assert!(
+            !after_page.ends_with("1 of 30") && !after_page.ends_with("2 of 30"),
+            "Page Down jumps a window of rows, not one: {after_page}"
+        );
+        press_key(&ui, Key::PageUp);
+        assert_eq!(live_status(&ui), "Command number 0, 1 of 30", "Page Up stops at the top");
+        press_key(&ui, Key::Return);
+        assert_eq!(take(&log), ["command:0"]);
     }
 
     fn typing_reports_the_query_and_the_hosts_rows_replace_the_list() {

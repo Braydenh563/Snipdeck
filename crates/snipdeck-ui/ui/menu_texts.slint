@@ -53,6 +53,12 @@ export global MenuTexts {
     pure public function app-select-or-delete() -> string {
         return @tr("Select items");
     }
+    pure public function app-move-frame() -> string {
+        return @tr("Move panel (arrow keys)");
+    }
+    pure public function app-size-frame() -> string {
+        return @tr("Resize panel (arrow keys)");
+    }
     pure public function app-reset-geometry() -> string {
         return @tr("Reset size and position");
     }
@@ -99,6 +105,15 @@ export global MenuTexts {
     pure public function paste-as-lastword() -> string {
         return @tr("Last word");
     }
+    pure public function paste-as-json() -> string {
+        return @tr("JSON string");
+    }
+    pure public function paste-as-quote() -> string {
+        return @tr("Markdown quote");
+    }
+    pure public function paste-as-code() -> string {
+        return @tr("Markdown code block");
+    }
     pure public function item-move-to() -> string {
         return @tr("Move to list…");
     }
@@ -119,6 +134,12 @@ export global MenuTexts {
     }
     pure public function app-about() -> string {
         return @tr("About Snipdeck");
+    }
+    pure public function app-group-window() -> string {
+        return @tr("Window");
+    }
+    pure public function app-group-help() -> string {
+        return @tr("Help");
     }
     pure public function app-quit() -> string {
         return @tr("Quit");

@@ -50,7 +50,7 @@ struct Shown {
     copies: bool,
 }
 
-struct FillCore<S, C, K, T> {
+struct FillCore<S, C: Clipboard, K, T> {
     controller: Rc<RefCell<Controller<S, C, K, T>>>,
     host: Rc<dyn PopupHost>,
     anchor: AnchorMemory,

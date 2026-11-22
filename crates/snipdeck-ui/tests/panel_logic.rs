@@ -58,6 +58,8 @@ fn start() -> (PanelWindow, Log) {
         }};
     }
     hook!(on_query_changed, |q| format!("query:{q}"));
+    hook!(on_frame_key, |dx, dy, big| format!("frame:{dx},{dy},{big}"));
+    hook!(on_frame_ended, |keep| format!("frame-end:{keep}"));
     hook!(on_row_activated, |i| format!("use:{i}"));
     hook!(on_row_copied, |i| format!("copy:{i}"));
     hook!(on_quick_use, |n| format!("quick:{n}"));
@@ -333,6 +335,19 @@ fn centre(e: &ElementHandle) -> LogicalPosition {
     LogicalPosition::new(p.x + s.width / 2.0, p.y + s.height / 2.0)
 }
 
+/// The middle of a row's kind tile (hovering it shows the kind's name: the row has no other tooltip).
+fn tile_of(ui: &PanelWindow, row: &ElementHandle) -> LogicalPosition {
+    let (p, s) = (row.absolute_position(), row.size());
+    let tile = by_role(ui, AccessibleRole::Image)
+        .into_iter()
+        .find(|i| {
+            let q = i.absolute_position();
+            q.x >= p.x && q.y >= p.y && q.x < p.x + s.width && q.y < p.y + s.height
+        })
+        .expect("the row's kind tile");
+    centre(&tile)
+}
+
 fn move_to(ui: &PanelWindow, at: LogicalPosition) {
     ui.window()
         .dispatch_event(WindowEvent::PointerMoved { position: at });
@@ -365,9 +380,15 @@ fn click_row_with(ui: &PanelWindow, row: usize, modifiers: &[Key]) {
     }
 }
 
+/// Lets `ms` pass as a clock does: in steps, so a timer a handler starts partway through still runs its time out.
 fn wait(ms: u64) {
-    mock_elapsed_time(Duration::from_millis(ms));
-    settle();
+    let mut left = ms;
+    while left > 0 {
+        let step = left.min(25);
+        mock_elapsed_time(Duration::from_millis(step));
+        settle();
+        left -= step;
+    }
 }
 
 /// An empty part of the body (no control under it, no tooltip anchor): the bottom, clear of the footer text.
@@ -687,7 +708,7 @@ ui_tests! {
         settle();
         type_text(ui.window(), "https://example.com");
         take(&log);
-        find(&ui, "Create item", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Add item", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["quick-add:https://example.com:1:false"]);
         settle();
         assert!(
@@ -906,11 +927,12 @@ ui_tests! {
                 title: "Replies".into(),
                 is_header: true,
                 group_count: 2,
+                group_colour: -1,
                 ..Default::default()
             },
         );
-        rs[1].grouped = true;
-        rs[2].grouped = true;
+        rs[1].depth = 1;
+        rs[2].depth = 1;
         fixture::set_rows(&ui, rs);
         let _ = rows(&ui);
         wait(1000);
@@ -1184,6 +1206,66 @@ ui_tests! {
         slint::select_bundled_translation("").expect("back to the source language");
     }
 
+    fn the_arrows_move_the_panel_only_while_the_frame_mode_is_on_and_enter_and_escape_end_it() {
+        let (ui, log) = start();
+        press(ui.window(), &key(Key::LeftArrow));
+        assert!(
+            take(&log).iter().all(|l| !l.starts_with("frame")),
+            "no mode, no frame keys"
+        );
+        ui.set_frame_mode(1);
+        settle();
+        for k in [Key::LeftArrow, Key::RightArrow, Key::UpArrow, Key::DownArrow] {
+            press(ui.window(), &key(k));
+        }
+        chord(ui.window(), &[Key::Shift], &key(Key::RightArrow));
+        press(ui.window(), "x");
+        press(ui.window(), &key(Key::Return));
+        press(ui.window(), &key(Key::Escape));
+        assert_eq!(
+            take(&log),
+            [
+                "frame:-1,0,false",
+                "frame:1,0,false",
+                "frame:0,-1,false",
+                "frame:0,1,false",
+                "frame:1,0,true",
+                "frame-end:true",
+                "frame-end:false",
+            ],
+            "arrows and Shift+arrows step, Enter keeps, Esc cancels, other keys do nothing"
+        );
+        let hint = find(&ui, "Move panel", AccessibleRole::Groupbox);
+        assert!(hint.size().height > 0.0, "a strip says what the arrows do");
+        ui.set_frame_mode(0);
+    }
+
+    fn the_panels_width_floor_grows_with_the_text_so_the_header_controls_stay_inside() {
+        let (ui, _log) = start();
+        assert!(
+            (ui.get_floor_width() - 260.0).abs() < 0.5,
+            "at the usual size the floor is the documented 260"
+        );
+        ui.global::<snipdeck_ui::SystemLook<'_>>().set_text_scale(2.25);
+        settle();
+        let floor = ui.get_floor_width();
+        assert!(floor > 260.0 && floor <= 480.0, "the floor follows the text: {floor}");
+        // The window manager keeps the Panel at least this wide: nothing in the header may stand outside it.
+        ui.window().set_size(slint::LogicalSize::new(floor, 700.0));
+        settle();
+        let mut outside = Vec::new();
+        for role in [AccessibleRole::Button, AccessibleRole::TextInput] {
+            for e in ElementQuery::from_root(&ui).match_accessible_role(role).find_all() {
+                let (p, s) = (e.absolute_position(), e.size());
+                if s.width > 0.0 && (p.x < -0.5 || p.x + s.width > floor + 0.5) {
+                    outside.push(format!("{role:?} {:?}: x {:.0} w {:.0}", e.accessible_label().unwrap_or_default(), p.x, s.width));
+                }
+            }
+        }
+        ui.global::<snipdeck_ui::SystemLook<'_>>().set_text_scale(1.0);
+        assert!(outside.is_empty(), "outside a {floor} px window at 225 %: {outside:#?}");
+    }
+
     fn a_tall_item_menu_in_a_short_panel_stays_inside_the_window() {
         let (ui, _log) = start();
         ui.set_item_menu_entries(ModelRc::new(VecModel::from(
@@ -1249,7 +1331,7 @@ ui_tests! {
         w.dispatch_event(WindowEvent::PointerReleased { position: at, button: PointerEventButton::Left });
         assert_eq!(take(&log), ["drag", "drop"], "the press starts the drag and the release ends it");
 
-        find(&ui, "Close panel (Esc)", AccessibleRole::Button).mock_single_click(PointerEventButton::Left);
+        find(&ui, "Close panel", AccessibleRole::Button).mock_single_click(PointerEventButton::Left);
         assert_eq!(take(&log), ["close"], "the close button is not a drag handle");
     }
 
@@ -1906,7 +1988,7 @@ ui_tests! {
             ui.set_layout(layout);
             settle();
             let row = rows(&ui)[2].clone();
-            move_to(&ui, centre(&row));
+            move_to(&ui, tile_of(&ui, &row));
             wait(900);
             assert!(!ui.get_tooltip_shown().is_empty(), "{layout:?}: the row's tooltip is up after a rest");
             fixture::set_rows(&ui, fixture::numbered_rows(1));
@@ -2369,7 +2451,7 @@ ui_tests! {
 
     fn every_control_has_a_role_and_a_label() {
         let (ui, _log) = start();
-        let _ = find(&ui, "Close panel (Esc)", AccessibleRole::Button);
+        let _ = find(&ui, "Close panel", AccessibleRole::Button);
         let _ = find(&ui, "Keep Panel open", AccessibleRole::Button);
         let _ = find(&ui, "Board: Work", AccessibleRole::Button);
         let _ = find(&ui, "Search (Ctrl+F)", AccessibleRole::Button);
@@ -2657,13 +2739,13 @@ ui_tests! {
         let model = Rc::new(VecModel::from(fixture::sample_rows()));
         ui.set_rows(ModelRc::from(model.clone()));
         settle();
-        move_to(&ui, centre(&rows(&ui)[2]));
+        move_to(&ui, tile_of(&ui, &rows(&ui)[2]));
         wait(900);
         assert!(!ui.get_tooltip_shown().is_empty(), "the row's tooltip is up after a rest");
         // Removed in place (the model is not replaced, so `rows` does not change) under the resting pointer.
         model.remove(2);
         settle();
-        for _ in 0..4 {
+        for _ in 0..9 {
             wait(100);
         }
         assert_eq!(ui.get_tooltip_shown(), "", "the tip does not outlive its row");
@@ -2672,7 +2754,7 @@ ui_tests! {
     fn a_tooltip_from_a_row_closes_when_the_rows_change_or_scroll() {
         let (ui, _log) = start();
         let row = rows(&ui)[2].clone();
-        move_to(&ui, centre(&row));
+        move_to(&ui, tile_of(&ui, &row));
         wait(900);
         let shown = ui.get_tooltip_shown().to_string();
         assert!(!shown.is_empty(), "the row's tooltip is up after a rest");
@@ -2697,7 +2779,7 @@ ui_tests! {
         assert!(kebab.size().width >= MIN_HIT && kebab.size().height >= MIN_HIT);
         // Between the pin and the close button.
         let pin = find(&ui, "Keep Panel open", AccessibleRole::Button).absolute_position().x;
-        let close = find(&ui, "Close panel (Esc)", AccessibleRole::Button).absolute_position().x;
+        let close = find(&ui, "Close panel", AccessibleRole::Button).absolute_position().x;
         assert!(pin < kebab.absolute_position().x && kebab.absolute_position().x < close);
 
         assert!(missing(&ui, "Panel menu", AccessibleRole::List), "closed by default");
@@ -2804,9 +2886,11 @@ ui_tests! {
         assert_eq!(ui.get_tooltip_shown(), "", "not yet");
         wait(2);
         assert_eq!(ui.get_tooltip_shown(), "More");
-        // The pointer leaves: it goes.
+        // The pointer leaves: it lingers 200ms for a pointer crossing onto it (WCAG 1.4.13), then goes.
         move_to(&ui, away(&ui));
-        settle();
+        wait(150);
+        assert_eq!(ui.get_tooltip_shown(), "More", "still there for the crossing");
+        wait(100);
         assert_eq!(ui.get_tooltip_shown(), "");
     }
 
@@ -2814,13 +2898,13 @@ ui_tests! {
         let (ui, _log) = start();
         let kebab = find(&ui, "More", AccessibleRole::Button);
         let pin = find(&ui, "Keep Panel open", AccessibleRole::Button);
-        let close = find(&ui, "Close panel (Esc)", AccessibleRole::Button);
+        let close = find(&ui, "Close panel", AccessibleRole::Button);
         move_to(&ui, centre(&kebab));
         wait(600);
         assert_eq!(ui.get_tooltip_shown(), "More");
         move_to(&ui, centre(&pin));
         settle();
-        assert_eq!(ui.get_tooltip_shown(), "Keep Panel open", "no second 500ms wait");
+        assert_eq!(ui.get_tooltip_shown(), "Keep Panel open: on", "no second 500ms wait");
         move_to(&ui, centre(&close));
         settle();
         assert_eq!(ui.get_tooltip_shown(), "Close panel (Esc)");
@@ -2882,7 +2966,8 @@ ui_tests! {
         settle();
         assert!(missing(&ui, "Scroll right", AccessibleRole::Button));
         // Time passes as on a clock, so the layer's 100ms check ticks each step.
-        for _ in 0..4 {
+        // The layer checks twice a second, then the tip lingers 200ms for a pointer crossing to it.
+        for _ in 0..13 {
             wait(100);
         }
         assert_eq!(ui.get_tooltip_shown(), "", "the tip does not outlive its arrow");
@@ -2901,7 +2986,7 @@ ui_tests! {
         settle();
         ui.set_app_menu_open(true);
         settle();
-        move_to(&ui, centre(&find(&ui, "Close panel (Esc)", AccessibleRole::Button)));
+        move_to(&ui, centre(&find(&ui, "Close panel", AccessibleRole::Button)));
         settle();
         assert_eq!(ui.get_tooltip_shown(), "");
         take(&log);
@@ -2912,16 +2997,23 @@ ui_tests! {
     fn every_icon_only_control_in_the_panel_has_a_tooltip() {
         let (ui, _log) = start();
         set_pinned(&ui, fixture::pinned_n(12));
-        let hover = |label: &str| {
+        let hover = |label: &str, tip: &str| {
             move_to(&ui, away(&ui));
             wait(1000);
             let target = find(&ui, label, AccessibleRole::Button);
             move_to(&ui, centre(&target));
             wait(501);
-            assert_eq!(ui.get_tooltip_shown(), label, "tooltip of {label:?}");
+            assert_eq!(ui.get_tooltip_shown(), tip, "tooltip of {label:?}");
         };
-        for label in ["More", "Keep Panel open", "Close panel (Esc)", "Add list", "Search (Ctrl+F)"] {
-            hover(label);
+        // (name, tooltip): the pin says its state, the close button its key.
+        for (label, tip) in [
+            ("More", "More"),
+            ("Keep Panel open", "Keep Panel open: on"),
+            ("Close panel", "Close panel (Esc)"),
+            ("Add list", "Add list"),
+            ("Search (Ctrl+F)", "Search (Ctrl+F)"),
+        ] {
+            hover(label, tip);
         }
     }
 
@@ -3112,7 +3204,9 @@ ui_tests! {
         // Undocked under the pointer, the tooltip that is up still closes when the pointer leaves.
         ui.set_dock_edge(0);
         settle();
-        move_to(&ui, away(&ui));
+        // (Not `away`: a tooltip under the strip reaches it, and the pointer resting on a tooltip keeps it.)
+        let size = ui.window().size().to_logical(ui.window().scale_factor());
+        move_to(&ui, LogicalPosition::new(8.0, size.height - 4.0));
         wait(600);
         assert_eq!(ui.get_tooltip_shown(), "");
         // A side dock that takes the whole edge does not slide.
@@ -3194,7 +3288,7 @@ ui_tests! {
         let row_at = centre(&rows(&ui).into_iter().next().expect("a row"));
         ui.set_dock_collapsed(true);
         settle();
-        let name = "Snipdeck handle, press the Panel hotkey to open";
+        let name = "Open Snipdeck Panel";
         let handle = find(&ui, name, AccessibleRole::Button);
         let (size, at) = (handle.size(), handle.absolute_position());
         let window = ui.window().size().to_logical(ui.window().scale_factor());
@@ -3232,7 +3326,7 @@ ui_tests! {
         press_at(&ui, LogicalPosition::new(w - 10.0, y));
         assert_eq!(take(&log), ["use:0"], "and on the right side");
         // The header buttons next to the top-right corner still work.
-        find(&ui, "Close panel (Esc)", AccessibleRole::Button).mock_single_click(PointerEventButton::Left);
+        find(&ui, "Close panel", AccessibleRole::Button).mock_single_click(PointerEventButton::Left);
         assert_eq!(take(&log), ["close"]);
         // A press on the top edge over the header is a resize, not a drag.
         press_at(&ui, LogicalPosition::new(120.0, 1.0));
@@ -3461,6 +3555,13 @@ ui_tests! {
         chord(ui.window(), &[Key::Alt], &key(Key::Return));
         press(ui.window(), &key(Key::Delete));
         press(ui.window(), &key(Key::F2));
+        settle();
+        assert!(
+            ElementHandle::find_by_accessible_label(&ui, "Save to…").count() > 0,
+            "F2 opens the menu whose Save to makes the entry an item"
+        );
+        press(ui.window(), &key(Key::Escape));
+        settle();
         press(ui.window(), "1");
         chord(ui.window(), &[Key::Control], "e");
         chord(ui.window(), &[Key::Control], "d");
@@ -3478,6 +3579,35 @@ ui_tests! {
                 "an item shortcut fired in the Recent list: {line}"
             );
         }
+    }
+
+    fn ctrl_home_ctrl_end_and_alt_digits_work_on_the_panel_list_and_on_recent() {
+        let (ui, log) = start();
+        let used = log.clone();
+        ui.on_recent_used(move |i| used.borrow_mut().push(format!("ruse:{i}")));
+        let n = ui.get_rows().row_count();
+        chord(ui.window(), &[Key::Control], &key(Key::End));
+        assert_eq!(usize::try_from(ui.get_selected_index()).ok(), n.checked_sub(1), "the last row");
+        chord(ui.window(), &[Key::Control], &key(Key::Home));
+        assert_eq!(ui.get_selected_index(), 0, "the first row");
+
+        ui.set_recent_available(true);
+        ui.set_recent_rows(ModelRc::new(VecModel::from(vec![
+            RecentRow { id: 1, preview: "one".into(), app: "".into(), age_minutes: 1, kind: snipdeck_ui::ItemKind::Text, image: slint::Image::default() },
+            RecentRow { id: 2, preview: "two".into(), app: "".into(), age_minutes: 2, kind: snipdeck_ui::ItemKind::Text, image: slint::Image::default() },
+            RecentRow { id: 3, preview: "three".into(), app: "".into(), age_minutes: 3, kind: snipdeck_ui::ItemKind::Text, image: slint::Image::default() },
+        ])));
+        press_at(&ui, centre(&find(&ui, "Recent", AccessibleRole::Tab)));
+        settle();
+        take(&log);
+        chord(ui.window(), &[Key::Control], &key(Key::End));
+        assert_eq!(ui.get_recent_selected(), 2);
+        chord(ui.window(), &[Key::Control], &key(Key::Home));
+        assert_eq!(ui.get_recent_selected(), 0);
+        chord(ui.window(), &[Key::Alt], "2");
+        assert_eq!(take(&log), ["ruse:2"], "Alt+2 pastes the second clipboard entry");
+        chord(ui.window(), &[Key::Alt], "9");
+        assert!(take(&log).is_empty(), "three entries: there is no ninth");
     }
 
     fn the_empty_recent_list_says_why_and_the_menu_offers_save_to() {

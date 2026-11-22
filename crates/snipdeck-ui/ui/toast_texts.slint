@@ -29,6 +29,9 @@ export global ToastTexts {
     pure public function copied-target-gone() -> string {
         return @tr("Copied. The window you were using went away.");
     }
+    pure public function copied-partly-sent() -> string {
+        return @tr("Copied. Only part of the keys went out, so some typed text may be gone.");
+    }
     pure public function clipboard-busy() -> string {
         return @tr("Couldn’t reach the clipboard. Another app may be using it.");
     }
@@ -144,6 +147,12 @@ export global ToastTexts {
     }
     pure public function nothing-to-paste-next() -> string {
         return @tr("Nothing to paste next. Pin an item, or add one to this list.");
+    }
+    pure public function stack-running() -> string {
+        return @tr("A stack is running. End it before you mark more snippets.");
+    }
+    pure public function form-closed() -> string {
+        return @tr("The form was closed without pasting");
     }
     pure public function taskbar-edge() -> string {
         return @tr("The taskbar is on that edge. Pick another edge, or move the taskbar.");

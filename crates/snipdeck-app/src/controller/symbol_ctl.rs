@@ -18,11 +18,10 @@ use snipdeck_platform::{
     file_dialog::{FilePicker, SaveKind},
     payload::{Data, Payload},
     pipeline::{self, Clipboard, Env, Keyboard, Timing},
-    route::Route,
 };
 use snipdeck_symbols::{Catalog, Kind, Recents, SymbolId};
 
-use super::{Controller, Effect, Library, PanelMenu, REFOCUS_WAIT, UseResult, failed};
+use super::{Controller, Effect, Library, PanelMenu, UseResult, failed};
 use crate::{
     host::ClipboardText,
     item_editor::Origin,
@@ -155,9 +154,7 @@ where
         };
         let route = self.model.route();
         let pasted_into = self.model.target().map(|t| t.app.clone());
-        if mode != UseMode::Copy && matches!(route, Route::Paste { .. }) && self.target.refocus() {
-            self.services.timing.sleep(REFOCUS_WAIT);
-        }
+        self.refocus_for_paste(mode, &route);
         let mut env = Env {
             clipboard: &mut self.services.clipboard,
             keyboard: &mut self.services.keyboard,

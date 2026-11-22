@@ -61,6 +61,7 @@ fn app(exe: &str, title: &str) -> Target {
         app: exe.into(),
         title: title.into(),
         elevated: false,
+        window: 0,
         focus: Focus::Caret,
     }
 }
@@ -145,6 +146,20 @@ fn rig_settings(
 }
 
 impl Rig {
+    /// Lets a paste's tail finish through the window's own timer chain: the fake clock moves by
+    /// hand (it only moves when something sleeps), the timers by mock time.
+    fn finish_paste(&self) {
+        for _ in 0..20 {
+            if !self.ctl.borrow().paste_pending() {
+                break;
+            }
+            self.ctl.borrow_mut().services_mut().timing.now += Duration::from_millis(50);
+            i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(10));
+            slint::platform::update_timers_and_animations();
+        }
+        assert!(!self.ctl.borrow().paste_pending(), "the paste ended");
+    }
+
     fn window(&self) -> &slint::Window {
         self.ui.window()
     }
@@ -226,7 +241,7 @@ fn pointer_clicks_on_every_header_control_reach_the_controller() {
             "no click on a control starts a window drag"
         );
 
-        click(r.window(), &r.button("Close panel (Esc)"));
+        click(r.window(), &r.button("Close panel"));
         assert!(!r.window().is_visible());
     });
 }
@@ -658,6 +673,7 @@ fn alt_3_pastes_the_third_item_and_counts_the_use() {
         let r = rig();
         assert_eq!(r.uses(2), 0);
         chord(r.window(), &[Key::Alt], "3");
+        r.finish_paste();
         {
             let ctl = r.ctl.borrow();
             let services = ctl.services();
@@ -742,8 +758,7 @@ fn the_close_button_hides_and_the_pin_button_reaches_the_controller() {
             .invoke_accessible_default_action();
         assert!(!r.ctl.borrow().view().on_top);
         assert!(!r.ui.get_on_top());
-        r.button("Close panel (Esc)")
-            .invoke_accessible_default_action();
+        r.button("Close panel").invoke_accessible_default_action();
         assert!(!r.window().is_visible());
     });
 }
@@ -915,6 +930,7 @@ fn the_toast_walks_through_its_phases_on_mock_time_and_then_goes() {
     on_ui_thread(|| {
         let r = rig();
         chord(r.window(), &[Key::Alt], "1");
+        r.finish_paste();
         assert_eq!(r.ui.get_toast_text(), "Pasted into Mail");
         assert_eq!(r.ui.get_toast_phase(), snipdeck_ui::ToastPhase::Enter);
         i_slint_backend_testing::mock_elapsed_time(TOAST_ENTER);
@@ -958,8 +974,7 @@ fn the_tray_icon_toggles_the_panel_opens_the_menu_actions_and_quits() {
 fn open_panel_in_the_tray_menu_brings_back_a_panel_closed_with_its_button() {
     on_ui_thread(|| {
         let r = rig();
-        r.button("Close panel (Esc)")
-            .invoke_accessible_default_action();
+        r.button("Close panel").invoke_accessible_default_action();
         assert!(!r.window().is_visible(), "closed to the tray");
         r.binding.tray(TrayEvent::OpenPanel);
         assert!(r.window().is_visible(), "Open Panel shows it again");
@@ -972,8 +987,7 @@ fn open_panel_in_the_tray_menu_brings_back_a_panel_closed_with_its_button() {
         r.binding.tray(TrayEvent::OpenPanel);
         assert!(r.window().is_visible());
         // The tray's left click brings it back from hidden in the same way.
-        r.button("Close panel (Esc)")
-            .invoke_accessible_default_action();
+        r.button("Close panel").invoke_accessible_default_action();
         r.binding.tray(TrayEvent::TogglePanel);
         assert!(r.window().is_visible());
         assert_eq!(
@@ -993,8 +1007,7 @@ fn open_panel_in_the_tray_menu_brings_back_a_panel_closed_with_its_button() {
 fn without_a_tray_icon_the_close_button_quits_instead_of_hiding() {
     on_ui_thread(|| {
         let r = rig_with_tray(false);
-        r.button("Close panel (Esc)")
-            .invoke_accessible_default_action();
+        r.button("Close panel").invoke_accessible_default_action();
         assert!(
             r.window().is_visible(),
             "the host quits; the window is not hidden first"
@@ -1079,7 +1092,7 @@ fn the_paste_as_row_has_its_name_and_the_second_level_takes_arrows_enter_and_esc
                 .expect("a Paste as row");
         r.ui.invoke_item_menu_activated(i32::try_from(at).expect("index"));
         r.binding.redraw();
-        // The second level replaces the first, with the six choices as rows.
+        // The second level replaces the first, with the nine choices as rows.
         assert!(r.ui.get_item_menu_open());
         let texts: Vec<String> =
             r.ui.get_item_menu_entries()
@@ -1100,7 +1113,10 @@ fn the_paste_as_row_has_its_name_and_the_second_level_takes_arrows_enter_and_esc
                 "snake_case",
                 "URL-encoded",
                 "First word",
-                "Last word"
+                "Last word",
+                "JSON string",
+                "Markdown quote",
+                "Markdown code block"
             ]
         );
         let _ = element(&r.ui, "UPPERCASE", AccessibleRole::ListItem);
@@ -1249,12 +1265,12 @@ fn click_at(window: &slint::Window, position: slint::LogicalPosition) {
     slint::platform::update_timers_and_animations();
 }
 
-const MENU_ROWS: [&str; 17] = [
+/// The rows that show while both groups are folded (audit item 31: Dock, Keep on top and Reset sit
+/// under "Window"; Shortcuts, Troubleshoot, the guide and About under "Help").
+const MENU_ROWS: [&str; 13] = [
     "Nothing to undo",
     "Nothing to redo",
     "Paste stack (mark items)",
-    "Dock to the nearest edge",
-    "Keyboard shortcuts",
     "Commands\u{2026}",
     "Settings\u{2026}",
     "Open Main window",
@@ -1262,10 +1278,8 @@ const MENU_ROWS: [&str; 17] = [
     "Take screenshot",
     "Pause shortcuts",
     "Select items",
-    "Reset size and position",
-    "Troubleshoot\u{2026}",
-    "User guide",
-    "About Snipdeck",
+    "Window",
+    "Help",
     "Quit",
 ];
 
@@ -1276,8 +1290,23 @@ fn open_menu(r: &Rig) {
     assert!(r.ui.get_app_menu_open(), "the kebab click opened the menu");
 }
 
+/// A row of the open menu. A row inside a folded group is not drawn: its group's head is clicked
+/// first, as a user would.
 fn menu_row(r: &Rig, label: &str) -> ElementHandle {
-    element(&r.ui, label, AccessibleRole::ListItem)
+    let find = || {
+        ElementHandle::find_by_accessible_label(&r.ui, label)
+            .find(|e| e.accessible_role() == Some(AccessibleRole::ListItem))
+    };
+    if let Some(row) = find() {
+        return row;
+    }
+    for head in ["Window", "Help"] {
+        click(r.window(), &element(&r.ui, head, AccessibleRole::ListItem));
+        if let Some(row) = find() {
+            return row;
+        }
+    }
+    panic!("no ListItem labelled {label:?}, in a folded group either");
 }
 
 fn open_menu_at(r: &Rig, height: f32) {
@@ -1309,7 +1338,13 @@ fn the_app_menu_in_a_560px_panel_leaves_a_clickable_strip_and_scrolls_to_quit() 
             "a strip is left below the menu: menu bottom {}",
             m.y + menu.size().height
         );
-        assert!(cue_visible(&r), "the menu scrolls, so the cue is drawn");
+        // With both groups folded (audit item 31) the 13 rows fit, so there is nothing to scroll to
+        // and no cue; the cue is covered at the minimum height, and with a group open below.
+        assert!(!cue_visible(&r), "everything fits, so no cue is drawn");
+        click(
+            r.window(),
+            &element(&r.ui, "Window", AccessibleRole::ListItem),
+        );
         press(r.window(), &key(Key::End));
         slint::platform::update_timers_and_animations();
         let quit = menu_row(&r, "Quit");
@@ -1381,6 +1416,42 @@ fn the_kebab_menu_is_a_list_of_the_expected_rows_with_a_name_and_positions() {
                 "{label}: Undo and Redo are really disabled while there is nothing to take back, \
                  Paste stack while nothing is marked"
             );
+        }
+    });
+}
+
+#[test]
+fn a_group_head_opens_its_rows_in_the_menu_and_the_other_group_folds() {
+    on_ui_thread(|| {
+        let r = rig();
+        open_menu(&r);
+        let find = |label: &str| {
+            ElementHandle::find_by_accessible_label(&r.ui, label)
+                .find(|e| e.accessible_role() == Some(AccessibleRole::ListItem))
+        };
+        assert!(find("Reset size and position").is_none(), "folded at first");
+        click(
+            r.window(),
+            &element(&r.ui, "Window", AccessibleRole::ListItem),
+        );
+        assert!(r.ui.get_app_menu_open(), "a group head keeps the menu open");
+        // "Keep panel on top" stays out of the menu below 150 % text: the header has the pin.
+        for label in ["Dock to the nearest edge", "Reset size and position"] {
+            assert!(find(label).is_some(), "{label} shows under Window");
+        }
+        assert!(find("User guide").is_none());
+        click(
+            r.window(),
+            &element(&r.ui, "Help", AccessibleRole::ListItem),
+        );
+        assert!(find("Reset size and position").is_none(), "Window folded");
+        for label in [
+            "Keyboard shortcuts",
+            "Troubleshoot\u{2026}",
+            "User guide",
+            "About Snipdeck",
+        ] {
+            assert!(find(label).is_some(), "{label} shows under Help");
         }
     });
 }
@@ -1710,7 +1781,7 @@ fn edit_and_rename_on_the_selected_row_ask_for_the_quick_editor() {
 
 // ---- The edge dock ----------------------------------------------------------------------------
 
-const HANDLE_LABEL: &str = "Snipdeck handle, press the Panel hotkey to open";
+const HANDLE_LABEL: &str = "Open Snipdeck Panel";
 
 /// The Panel on the first monitor, 40 px from its left edge, docked there through the kebab's
 /// "Dock to the left edge" row, with the dock trigger set to `trigger`.
@@ -1930,6 +2001,7 @@ fn a_paste_from_a_docked_panel_collapses_it() {
         let r = docked_rig(DockTrigger::Both);
         r.effects.borrow_mut().clear();
         chord(r.window(), &[Key::Alt], "3");
+        r.finish_paste();
         assert_eq!(r.uses(2), 1, "the third item was pasted");
         assert_eq!(*r.effects.borrow(), [Effect::PlaceWindow(STRIP)]);
         assert!(r.ui.get_dock_collapsed());
@@ -2382,7 +2454,7 @@ fn ctrl_g_groups_the_marked_rows() {
         let header = rows.row_data(0).expect("row");
         assert!(header.is_header);
         assert_eq!(header.group_count, 2);
-        assert!(rows.row_data(1).expect("row").grouped);
+        assert_eq!(rows.row_data(1).expect("row").depth, 1);
     });
 }
 
@@ -2658,7 +2730,7 @@ fn enter_and_space_fold_and_unfold_a_header_and_up_down_walk_into_its_rows() {
         press(r.window(), &key(Key::RightArrow));
         press(r.window(), &key(Key::DownArrow));
         assert_eq!(r.ui.get_selected_index(), 1, "into the first member");
-        assert!(r.ui.get_rows().row_data(1).expect("row").grouped);
+        assert_eq!(r.ui.get_rows().row_data(1).expect("row").depth, 1);
         press(r.window(), &key(Key::UpArrow));
         assert_eq!(r.ui.get_selected_index(), 0, "and back to the header");
     });

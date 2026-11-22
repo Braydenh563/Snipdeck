@@ -384,6 +384,7 @@ fn run(args: &Args, by_startup_task: bool) -> Result<(), String> {
     )
     .map_err(|e| format!("loading the library: {e}"))?;
     let controller = Rc::new(RefCell::new(controller));
+    snipdeck_app::binding::arm_paste_when_waiting(&controller);
     {
         let mut controller = controller.borrow_mut();
         controller.set_system_look(look.read());
@@ -873,6 +874,25 @@ fn show_tray(tray: &mut Option<Box<dyn snipdeck_platform::tray::Tray>>, window: 
 
 type Hotkeys = Rc<RefCell<Box<dyn host::HotkeyBackend>>>;
 
+/// Shows Settings, then starts `action` on it (the palette's Import, Export and Back up now).
+fn open_settings(
+    settings_ui: &SettingsUi,
+    action: Option<snipdeck_app::controller::SettingsAction>,
+    window_failed: &dyn Fn(snipdeck_app::toast::ToastMessage),
+) {
+    use snipdeck_app::controller::SettingsAction as A;
+    if let Err(e) = settings_ui.open() {
+        snipdeck_app::warn!("cannot open the settings: {e}");
+        window_failed(snipdeck_app::toast::ToastMessage::WindowNotShown);
+    } else if let (Some(action), Some(page)) = (action, settings_ui.window()) {
+        page.invoke_run_action(match action {
+            A::Import => 0,
+            A::Export => 1,
+            A::BackUp => 2,
+        });
+    }
+}
+
 /// What the host does with the controller's [`Effect`]s: quit, pause or resume the hotkeys,
 /// start a window drag, open the Main window.
 #[allow(
@@ -938,10 +958,11 @@ fn effect_handler(
         },
         Effect::OpenSettings => {
             retry_hotkeys(true);
-            if let Err(e) = settings_ui.open() {
-                snipdeck_app::warn!("cannot open the settings: {e}");
-                window_failed(snipdeck_app::toast::ToastMessage::WindowNotShown);
-            }
+            open_settings(&settings_ui, None, &*window_failed);
+        }
+        Effect::SettingsAction(action) => {
+            retry_hotkeys(true);
+            open_settings(&settings_ui, Some(*action), &*window_failed);
         }
         // The optional support page, in the browser: the same opener as Help's links.
         Effect::OpenSupport => {

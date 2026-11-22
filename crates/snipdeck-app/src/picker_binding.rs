@@ -25,7 +25,7 @@ use crate::{
     host::ClipboardText,
     palette::list_color,
     panel::Footer,
-    picker::{Entry, Scope},
+    picker::{Entry, RESULT_LIMIT, Scope},
     placement::{self, Anchor, PopupHost},
     popup_window::{Shell, set_look_globals},
     toast::{Toast, ToastKind, ToastMessage},
@@ -50,7 +50,7 @@ struct Shown {
     picker: PickerView,
 }
 
-struct PickerCore<S, C, K, T> {
+struct PickerCore<S, C: Clipboard, K, T> {
     controller: Rc<RefCell<Controller<S, C, K, T>>>,
     host: Rc<dyn PopupHost>,
     anchor: AnchorMemory,
@@ -212,6 +212,8 @@ where
         crate::wire_suggestions!(window, self.controller, picker_suggestions);
         wire!(on_scope_changed, |core, scope| core
             .act(|ctl| ctl.picker_scope(scope_of(scope))));
+        wire!(on_tag_stepped, |core, dir| core
+            .act(|ctl| ctl.picker_step_tag(if dir < 0 { -1 } else { 1 })));
         wire!(on_row_activated, |core, i| core
             .use_row(index(i), UseMode::Paste));
         wire!(on_row_copied, |core, i| core
@@ -227,9 +229,19 @@ where
         ));
         wire!(on_edit_requested, |core, i| core
             .act(|ctl| ctl.picker_edit(index(i))));
+        wire!(on_pin_requested, |core, i| core
+            .act(|ctl| ctl.picker_pin(index(i))));
+        wire!(on_duplicate_requested, |core, i| core
+            .act(|ctl| ctl.picker_duplicate(index(i))));
+        wire!(on_trash_requested, |core, i| core
+            .act(|ctl| ctl.picker_trash(index(i))));
         wire!(on_close_requested, |core| core
             .act(Controller::close_picker));
         wire!(on_dismissed, |core| core.act(Controller::dismiss_picker));
+        wire!(on_open_requested, |core| core
+            .act(Controller::picker_open_panel));
+        wire!(on_detail_toggled, |core| core
+            .act(Controller::picker_toggle_detail));
         wire!(on_help_requested, |core| core
             .act(|ctl| ctl.main_open_help(HelpTopic::Guide)));
         wire!(on_colour_chosen, |core, row, format, copy| core
@@ -335,7 +347,10 @@ fn scope_of(scope: ui::PickerScope) -> Scope {
     match scope {
         ui::PickerScope::All => Scope::All,
         ui::PickerScope::Board => Scope::Board,
+        ui::PickerScope::List => Scope::List,
         ui::PickerScope::Pinned => Scope::Pinned,
+        ui::PickerScope::Recent => Scope::Recent,
+        ui::PickerScope::Tag => Scope::Tag,
     }
 }
 
@@ -343,7 +358,10 @@ const fn scope_in(scope: Scope) -> ui::PickerScope {
     match scope {
         Scope::All => ui::PickerScope::All,
         Scope::Board => ui::PickerScope::Board,
+        Scope::List => ui::PickerScope::List,
         Scope::Pinned => ui::PickerScope::Pinned,
+        Scope::Recent => ui::PickerScope::Recent,
+        Scope::Tag => ui::PickerScope::Tag,
     }
 }
 
@@ -445,12 +463,33 @@ fn render(
     if window.get_query().as_str() != picker.query {
         window.set_query(picker.query.as_str().into());
     }
+    if window.get_scope_tag().as_str() != picker.tag {
+        window.set_scope_tag(picker.tag.as_str().into());
+    }
     if window.get_scope() != scope_in(picker.scope) {
         window.set_scope(scope_in(picker.scope));
     }
     let revealed = picker.revealed.map_or(-1, crate::binding::to_i32);
     if window.get_revealed_index() != revealed {
         window.set_revealed_index(revealed);
+    }
+    window.set_result_limit(if picker.more {
+        crate::binding::to_i32(RESULT_LIMIT)
+    } else {
+        0
+    });
+    let (open, text, hidden) = picker
+        .detail
+        .as_ref()
+        .map_or((false, "", false), |d| (true, d.text.as_str(), d.hidden));
+    if window.get_detail_open() != open {
+        window.set_detail_open(open);
+    }
+    if window.get_detail_text() != text {
+        window.set_detail_text(text.into());
+    }
+    if window.get_detail_hidden() != hidden {
+        window.set_detail_hidden(hidden);
     }
     let selected = crate::binding::to_i32(picker.selected);
     if window.get_selected_index() != selected {

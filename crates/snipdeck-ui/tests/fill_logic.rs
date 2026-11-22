@@ -231,7 +231,7 @@ ui_tests! {
 
     fn the_insert_button_submits_and_takes_its_label_from_the_host() {
         let (ui, log) = start();
-        find(&ui, "Insert", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Paste", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["submit:Ada||Friendly||"]);
         ui.set_submit_label("Copy".into());
         settle();
@@ -409,7 +409,7 @@ ui_tests! {
         type_text(ui.window(), "n");
         assert_eq!(value(&ui, 4), "n");
         take(&log);
-        // Notes -> the header close button is first in tree order, so wrap: the next stops are Cancel, Insert.
+        // Notes -> the header close button is first in tree order, so wrap: the next stops are Cancel, Paste.
         press(ui.window(), &key(Key::Tab));
         press(ui.window(), &key(Key::Return));
         assert_eq!(take(&log), ["cancel"], "Cancel is the stop after the last field");
@@ -436,7 +436,7 @@ ui_tests! {
             ("Tone", AccessibleRole::RadioGroup),
             ("Friendly", AccessibleRole::RadioButton),
             ("Cancel", AccessibleRole::Button),
-            ("Insert", AccessibleRole::Button),
+            ("Paste", AccessibleRole::Button),
             ("Close", AccessibleRole::Button),
             ("Fields", AccessibleRole::Groupbox),
             ("Preview", AccessibleRole::Groupbox),

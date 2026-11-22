@@ -83,8 +83,9 @@ pub struct KeyEvent {
     pub down: bool,
 }
 
-/// The most Backspaces one expansion injects; a trigger is far shorter.
-pub const MAX_BACKSPACES: usize = 64;
+/// The most Backspaces one injection sends: far more than a trigger, as long as the longest
+/// expansion the undo of a typed expansion takes back (PANEL-16).
+pub const MAX_BACKSPACES: usize = 512;
 
 /// `count` Backspace presses (each a press and a release), at most [`MAX_BACKSPACES`]. A typed
 /// trigger is erased with these before the item's normal paste.

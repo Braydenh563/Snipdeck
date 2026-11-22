@@ -9,7 +9,7 @@
 //   type            filters; a printable key typed while another control has focus moves into the search
 //   Up / Down       move the selection (PageUp / PageDown a page); Enter uses it, Shift+Enter copies only
 //   Alt+1-9         use the Nth row, whatever the search holds (bare digits are always search text)
-//   Tab             next scope (All, This board, Pinned), Shift+Tab previous
+//   Tab             next scope (All, This board, This list, Pinned, Recent, Tag); Ctrl+Tab, Ctrl+Shift+Tab the next or previous tag in the Tag scope, Shift+Tab previous
 //   Ctrl+E          asks the host to edit the selected snippet
 //   Menu, Shift+F10 on a colour row: "Paste as" (the colour in each format; Enter pastes, Shift+Enter copies, Esc back)
 //   Ctrl+O          on a colour row: open it in the Panel's Colours tab
@@ -57,7 +57,7 @@ export struct PickerRow {
 }
 
 // What the search covers. Tab cycles through these in order.
-export enum PickerScope { all, board, pinned }
+export enum PickerScope { all, board, list, pinned, recent, tag }
 
 // One footer hint: the key caps and what they do. The caps speak their own name; the text is read as it is.
 component Hint inherits HorizontalLayout {
@@ -84,7 +84,7 @@ component Hint inherits HorizontalLayout {
 }
 
 export component PickerWindow inherits Window {
-    title: @tr("Snipdeck");
+    title: @tr("Snipdeck: search snippets");
     no-frame: true;
     always-on-top: true;
     background: Theme.bg-overlay;
@@ -135,6 +135,11 @@ export component PickerWindow inherits Window {
     callback suggest-dismissed();
     callback suggest-chosen(int);
     callback scope-changed(PickerScope);
+    // The tag the Tag scope covers (empty when no snippet has a tag), and a step to the next (1) or previous (-1) one.
+    in property <string> scope-tag;
+    callback tag-stepped(int);
+    // The most results the list shows when the search found more (0 when nothing was cut).
+    in property <int> result-limit: 0;
     // Enter or a click used row `index`.
     callback row-activated(int);
     // Shift+Enter or Shift+click: copy only.
@@ -155,10 +160,23 @@ export component PickerWindow inherits Window {
     callback dismissed();
     // F1: the user guide.
     callback help-requested();
+    // F3: opens or closes the preview pane of the selected row.
+    callback detail-toggled();
+    // The preview pane: open when the controller shows it; its text is the selected item's whole text (cut), or empty
+    // with `detail-hidden` for a sensitive item.
+    in property <bool> detail-open: false;
+    in property <string> detail-text;
+    in property <bool> detail-hidden: false;
+    // The empty state's "Open Snipdeck": close the Picker and show the Panel, where snippets are made.
+    callback open-requested();
     // "Paste as" opens for colour row `index`: the host fills `colour-choices` before this returns.
     callback colour-choices-requested(int);
     // Format `format` (an index into the host's formats) of colour row `row` chosen; `copy` when Shift was held.
     callback colour-chosen(int, int, bool);
+    // Ctrl+P, Ctrl+D and Delete (with an empty search) on result row `index`: pin or unpin, duplicate, move to the Trash.
+    callback pin-requested(int);
+    callback duplicate-requested(int);
+    callback trash-requested(int);
     // Ctrl+O on colour row `index`: the Panel shows the colour on its Colours tab.
     callback colour-open-requested(int);
     // The formats of the colour on the row "Paste as" is open for, one choice each.
@@ -219,15 +237,20 @@ export component PickerWindow inherits Window {
     property <length> list-h: min(root.rows.length, root.max-rows) * root.row-h;
     property <length> empty-h: Space.s12 * 4 * SystemLook.text-scale;
     property <length> body-h: root.rows.length == 0 ? root.empty-h : root.list-h + 2 * Space.s1;
+    // Six lines of small text and their padding.
+    property <length> detail-h: 6 * Type.line-sm + 2 * Space.s2;
     property <int> page-rows: max(1, min(root.rows.length, root.max-rows) - 1);
 
     // The footer drops its secondary hints (Copy, Scope) when the window is narrow for the text size; the use and
     // Close hints stay, so the way in and the way out are always shown. Set from `changed`
     // handlers, not bound to `root.width`: a window's width follows its layout (see the Panel).
     property <bool> narrow: false;
+    // Wide enough for the F3 hint beside the Close hint; set with `narrow`, for the same reason.
+    property <bool> roomy: false;
     property <float> text-scale: SystemLook.text-scale;
     function update-narrow() {
         root.narrow = root.width < 380px * root.text-scale;
+        root.roomy = root.width >= 640px * root.text-scale;
     }
 
     init => {
@@ -272,11 +295,11 @@ export component PickerWindow inherits Window {
     }
 
     pure function scope-index(s: PickerScope) -> int {
-        return s == PickerScope.all ? 0 : s == PickerScope.board ? 1 : 2;
+        return s == PickerScope.all ? 0 : s == PickerScope.board ? 1 : s == PickerScope.list ? 2 : s == PickerScope.pinned ? 3 : s == PickerScope.recent ? 4 : 5;
     }
 
     pure function scope-at(i: int) -> PickerScope {
-        return i == 0 ? PickerScope.all : i == 1 ? PickerScope.board : PickerScope.pinned;
+        return i == 0 ? PickerScope.all : i == 1 ? PickerScope.board : i == 2 ? PickerScope.list : i == 3 ? PickerScope.pinned : i == 4 ? PickerScope.recent : PickerScope.tag;
     }
 
     // Rows are all `row-h` tall, so the selected row's place is known without the row existing yet.
@@ -365,7 +388,7 @@ export component PickerWindow inherits Window {
     }
 
     function cycle-scope(dir: int) {
-        root.pick-scope(root.scope-at(mod(root.scope-index(root.scope) + dir + 3, 3)));
+        root.pick-scope(root.scope-at(mod(root.scope-index(root.scope) + dir + 6, 6)));
     }
 
     // Moves a typed character into the search field when another control has focus.
@@ -416,10 +439,30 @@ export component PickerWindow inherits Window {
                 return accept;
             }
             if (event.modifiers.control && !event.modifiers.alt && !event.modifiers.meta) {
+                // Ctrl+Home and Ctrl+End: the first and last result (Home and End are the search field's caret keys).
+                if (event.text == Key.Home || event.text == Key.End) {
+                    root.move-selection(event.text == Key.Home ? -root.rows.length : root.rows.length);
+                    return accept;
+                }
+                // Ctrl+Tab and Ctrl+Shift+Tab: the next and previous tag, in the Tag scope only.
+                if (event.text == Key.Tab || event.text == Key.Backtab) {
+                    if (root.scope == PickerScope.tag) {
+                        root.tag-stepped(event.text == Key.Backtab || event.modifiers.shift ? -1 : 1);
+                    }
+                    return accept;
+                }
                 if (event.text == "e" || event.text == "E") {
                     if (root.sel >= 0) {
                         root.edit-requested(root.sel);
                     }
+                    return accept;
+                }
+                if ((event.text == "p" || event.text == "P") && root.sel >= 0) {
+                    root.pin-requested(root.sel);
+                    return accept;
+                }
+                if ((event.text == "d" || event.text == "D") && root.sel >= 0) {
+                    root.duplicate-requested(root.sel);
                     return accept;
                 }
                 if ((event.text == "o" || event.text == "O") && root.sel-colour && root.colour-can-open) {
@@ -447,8 +490,17 @@ export component PickerWindow inherits Window {
                 root.open-colour-menu(root.sel);
                 return accept;
             }
+            // Delete trashes the selected row only while the search holds nothing: otherwise it edits the text.
+            if (event.text == Key.Delete && root.query == "" && root.sel >= 0) {
+                root.trash-requested(root.sel);
+                return accept;
+            }
             if (event.text == Key.F1) {
                 root.help-requested();
+                return accept;
+            }
+            if (event.text == Key.F3) {
+                root.detail-toggled();
                 return accept;
             }
             if (event.text == Key.Escape) {
@@ -531,9 +583,41 @@ export component PickerWindow inherits Window {
                         clicked => { root.pick-scope(PickerScope.board); }
                     }
                     Tag {
+                        text: @tr("This list");
+                        selected: root.scope == PickerScope.list;
+                        clicked => { root.pick-scope(PickerScope.list); }
+                    }
+                    Tag {
                         text: @tr("Pinned");
                         selected: root.scope == PickerScope.pinned;
                         clicked => { root.pick-scope(PickerScope.pinned); }
+                    }
+                    Tag {
+                        text: @tr("Recent");
+                        selected: root.scope == PickerScope.recent;
+                        clicked => { root.pick-scope(PickerScope.recent); }
+                    }
+                    Tag {
+                        text: root.scope-tag == "" ? @tr("Tag") : "#" + root.scope-tag;
+                        selected: root.scope == PickerScope.tag;
+                        clicked => {
+                            // A second click on the chip steps to the next tag.
+                            if (root.scope == PickerScope.tag) {
+                                root.tag-stepped(1);
+                            } else {
+                                root.pick-scope(PickerScope.tag);
+                            }
+                        }
+                    }
+                    // The results were cut at the limit: say so instead of ending the list silently.
+                    if root.result-limit > 0: Text {
+                        horizontal-stretch: 1;
+                        horizontal-alignment: right;
+                        vertical-alignment: center;
+                        text: @tr("Showing the first {}", root.result-limit);
+                        color: Theme.text-secondary;
+                        font-size: Type.sm;
+                        font-family: Fonts.sans;
                     }
                 }
             }
@@ -625,14 +709,58 @@ export component PickerWindow inherits Window {
                     height: parent.height;
                     kind: root.searching ? EmptyStateKind.search : root.scope == PickerScope.pinned ? EmptyStateKind.board : EmptyStateKind.list;
                     heading: root.searching ? @tr("No matches")
-                        : root.scope == PickerScope.pinned ? @tr("Nothing pinned yet") : @tr("No items yet");
+                        : root.scope == PickerScope.pinned ? @tr("Nothing pinned yet")
+                        : root.scope == PickerScope.recent ? @tr("Nothing used yet")
+                        : root.scope == PickerScope.tag ? @tr("No tagged items") : @tr("No items yet");
                     body: root.searching
                         ? (root.scope == PickerScope.all ? @tr("Nothing matches “{}”.", root.query)
                             : root.scope == PickerScope.board ? @tr("Nothing on this board matches “{}”.", root.query)
+                            : root.scope == PickerScope.recent ? @tr("Nothing used recently matches “{}”.", root.query)
+                            : root.scope == PickerScope.tag ? @tr("Nothing with this tag matches “{}”.", root.query)
                             : @tr("Nothing pinned matches “{}”.", root.query))
                         : root.scope == PickerScope.pinned ? @tr("Pin an item from the Panel to find it here.")
+                        : root.scope == PickerScope.recent ? @tr("Items you paste show up here.")
+                        : root.scope == PickerScope.tag ? @tr("Add a tag to an item to find it here.")
                         : @tr("Copy something, then save it from the Panel.");
-                    action-text: "";
+                    // The one step that fixes the empty state: widen a search that found nothing in a narrow scope,
+                    // or go where snippets are made.
+                    action-text: root.searching
+                        ? (root.scope == PickerScope.all ? "" : @tr("Search all boards"))
+                        : @tr("Open Snipdeck");
+                    action => {
+                        if (root.searching) {
+                            root.pick-scope(PickerScope.all);
+                        } else {
+                            root.open-requested();
+                        }
+                    }
+                }
+            }
+
+            // ---- Preview of the selected row (F3) ------------------------------------------------------
+            Rectangle {
+                height: root.detail-open && root.sel >= 0 ? root.detail-h : 0px;
+                clip: true;
+
+                Rectangle {
+                    y: 0;
+                    height: 1px;
+                    background: Theme.border-subtle;
+                }
+                Text {
+                    x: Space.s3;
+                    y: Space.s2;
+                    width: parent.width - 2 * Space.s3;
+                    height: parent.height - 2 * Space.s2;
+                    wrap: word-wrap;
+                    overflow: elide;
+                    vertical-alignment: top;
+                    text: root.detail-hidden ? @tr("Sensitive: the text is not shown here") : (root.detail-text == "" ? @tr("No text to show") : root.detail-text);
+                    color: Theme.text-secondary;
+                    font-size: Type.sm;
+                    font-family: Fonts.sans;
+                    accessible-role: text;
+                    accessible-label: @tr("Preview");
                 }
             }
 
@@ -674,6 +802,12 @@ export component PickerWindow inherits Window {
                         keys: ["Alt", "1-9"];
                         key-label: @tr("Alt 1 to 9");
                         text: @tr("Use result N");
+                    }
+                    // Only where it fits beside the Close hint; the window's usual width has no room for it.
+                    if root.roomy: Hint {
+                        keys: ["F3"];
+                        key-label: @tr("F3");
+                        text: @tr("Preview");
                     }
                     if !root.narrow: Hint {
                         keys: ["Tab"];

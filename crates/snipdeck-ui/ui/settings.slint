@@ -547,6 +547,17 @@ export component SettingsPage inherits Window {
         return @tr("Follow Windows");
     }
 
+    // The palette's Import / Export / Back up commands: 0 shows the import sources, 1 exports, 2 backs up.
+    public function run-action(action: int) {
+        if (action == 0) {
+            root.import-choosing = true;
+        } else if (action == 1) {
+            root.export-requested();
+        } else {
+            root.backup-now-requested();
+        }
+    }
+
     // The host calls this when the page closes or opens, so a half-asked "Clear recent history"
     // (Cancel / Clear history showing), the password form, the Erase form and the import choice
     // are never still there on the next look. A password step that is still running keeps its form.
@@ -1521,7 +1532,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Expand abbreviations as I type");
-                        description: @tr("When you type an item’s trigger in another program, Snipdeck replaces it with the item’s text. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items.");
+                        description: @tr("When you type an item’s trigger in another program, Snipdeck replaces it with the item’s text. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items.") + "\n" + @tr("Only text that has been typed counts: while an input method (Japanese, Chinese) is still composing, nothing expands until you commit the text.");
                         Toggle {
                             a11y-label: @tr("Expand abbreviations as I type");
                             a11y-description: root.typing-available ? "" : @tr("Typing triggers work on Windows only.");

@@ -91,6 +91,9 @@ msgstr "Uma janela pequena que você pode arrastar para qualquer lugar."
 msgid "A smiley tab next to Recent with emoji, kaomoji and icons to paste. Turn it off to hide the tab and its Ctrl+K command."
 msgstr "Uma aba com um rosto sorridente ao lado de Recentes, com emoji, kaomoji e ícones para colar. Desative para ocultar a aba e o comando do Ctrl+K."
 
+msgid "A stack is running. End it before you mark more snippets."
+msgstr "Há uma pilha em andamento. Termine-a antes de marcar mais trechos."
+
 msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
 msgstr "Uma faixa com seus trechos ao lado do aplicativo em que você trabalha. Clique em um para colá-lo ali."
 
@@ -157,11 +160,17 @@ msgstr "Adicionar"
 msgid "Add Ctrl, Alt or Win to this key."
 msgstr "Adicione Ctrl, Alt ou Win a esta tecla."
 
+msgid "Add a tag to an item to find it here."
+msgstr "Adicione uma etiqueta a um trecho para encontrá-lo aqui."
+
 msgid "Add an item, or move items here from another list."
 msgstr "Adicione um trecho ou mova trechos para cá a partir de outra lista."
 
 msgid "Add an item… (Enter to save)"
 msgstr "Adicionar um trecho… (Enter para salvar)"
+
+msgid "Add item"
+msgstr "Adicionar trecho"
 
 msgid "Add list"
 msgstr "Adicionar lista"
@@ -303,6 +312,15 @@ msgstr "Vale na hora. “Seguir o Windows” vale na próxima vez que o Snipdeck
 
 msgid "Apply the new name"
 msgstr "Aplicar o novo nome"
+
+msgid "Arrow keys change it, Shift for bigger steps. Enter keeps it, Esc puts it back."
+msgstr "As setas alteram; Shift para passos maiores. Enter mantém; Esc desfaz."
+
+msgid "Arrow keys move the panel"
+msgstr "As setas movem o painel"
+
+msgid "Arrow keys resize the panel"
+msgstr "As setas redimensionam o painel"
 
 msgid "As soon as it is typed"
 msgstr "Assim que for digitado"
@@ -597,12 +615,6 @@ msgstr "Clique ou Enter escolhe · Esc cancela · setas movem"
 msgid "Click pastes into {} · Shift+click copies"
 msgstr "Clique cola em {} · Shift+clique copia"
 
-msgid "Click to copy."
-msgstr "Clique para copiar."
-
-msgid "Click to paste into {}. Shift+click copies."
-msgstr "Clique para colar em {}. Shift+clique copia."
-
 msgid "Clip {}"
 msgstr "Item {}"
 
@@ -611,6 +623,12 @@ msgstr "Tempo para limpar a área de transferência"
 
 msgid "Close"
 msgstr "Fechar"
+
+msgid "Close Panel when I click away"
+msgstr "Fechar o painel quando eu clicar fora"
+
+msgid "Close panel"
+msgstr "Fechar painel"
 
 msgid "Close panel (Esc)"
 msgstr "Fechar painel (Esc)"
@@ -707,6 +725,9 @@ msgstr "{} copiado. O HDR está ativo nesta tela, então o valor é aproximado."
 
 msgid "Copied. Nothing in {} can take text right now."
 msgstr "Copiado. Nada em {} pode receber texto agora."
+
+msgid "Copied. Only part of the keys went out, so some typed text may be gone."
+msgstr "Copiado. Só parte das teclas foi enviada, então parte do texto digitado pode ter sumido."
 
 msgid "Copied. Pasting into {} is turned off."
 msgstr "Copiado. Colar em {} está desativado."
@@ -966,14 +987,8 @@ msgstr "Não foi possível gravar na sua biblioteca. Verifique se o disco tem es
 msgid "Crash reports"
 msgstr "Relatórios de falha"
 
-msgid "Create"
-msgstr "Criar"
-
 msgid "Create (Enter)"
 msgstr "Criar (Enter)"
-
-msgid "Create item"
-msgstr "Criar trecho"
 
 msgid "Create “{}”"
 msgstr "Criar “{}”"
@@ -1052,6 +1067,9 @@ msgstr "Excluir grupo"
 
 msgid "Delete list"
 msgstr "Excluir lista"
+
+msgid "Delete selected item for good"
+msgstr "Excluir definitivamente o trecho selecionado"
 
 msgid "Delete tag"
 msgstr "Excluir etiqueta"
@@ -1296,6 +1314,9 @@ msgstr "Exportar a biblioteca"
 msgid "Eyedropper, {}"
 msgstr "Conta-gotas, {}"
 
+msgid "F3"
+msgstr "F3"
+
 msgid "Fields"
 msgstr "Campos"
 
@@ -1433,6 +1454,15 @@ msgstr "Ir para Recentes"
 
 msgid "Go to Trash"
 msgstr "Ir para a Lixeira"
+
+msgid "Go to board “{}”"
+msgstr "Ir para o quadro “{}”"
+
+msgid "Go to list “{}” on {}"
+msgstr "Ir para a lista “{}” em {}"
+
+msgid "Go to tag “{}”"
+msgstr "Ir para a etiqueta “{}”"
 
 msgid "Grab text as you go"
 msgstr "Capture texto na hora"
@@ -1614,6 +1644,9 @@ msgstr "Importar de: {}"
 msgid "Import into your library, see a preview first"
 msgstr "Importe para sua biblioteca e veja uma prévia antes"
 
+msgid "Import snippets"
+msgstr "Importar trechos"
+
 msgid "Imported {} item"
 msgid_plural "Imported {} items"
 msgstr[0] "{} trecho importado"
@@ -1630,9 +1663,6 @@ msgstr "No texto, escreva {} para uma chave literal. Dentro de um marcador, escr
 
 msgid "Include"
 msgstr "Incluir"
-
-msgid "Insert"
-msgstr "Colar"
 
 msgid "Insert the suggested item (Windows only)"
 msgstr "Inserir o trecho sugerido (somente Windows)"
@@ -1674,6 +1704,12 @@ msgstr "Os trechos são removidos após {} dias."
 msgid "Items need every chosen tag"
 msgstr "Os trechos precisam de todas as etiquetas escolhidas"
 
+msgid "Items you paste show up here."
+msgstr "Os trechos que você colar aparecerão aqui."
+
+msgid "JSON string"
+msgstr "String JSON"
+
 msgid "Jump to a section"
 msgstr "Ir para uma seção"
 
@@ -1685,6 +1721,9 @@ msgstr "Kaomoji"
 
 msgid "Keep Panel open"
 msgstr "Manter o painel aberto"
+
+msgid "Keep Panel open: on"
+msgstr "Manter o painel aberto: ativado"
 
 msgid "Keep Panel visible during screenshots"
 msgstr "Manter o painel visível durante as capturas"
@@ -1850,6 +1889,9 @@ msgstr "As listas guardam seus trechos."
 msgid "Location marker"
 msgstr "Marcador de local"
 
+msgid "Lock Snipdeck"
+msgstr "Bloquear o Snipdeck"
+
 msgid "Lock after"
 msgstr "Bloquear após"
 
@@ -1903,6 +1945,12 @@ msgstr "Manual"
 
 msgid "Mark an item Sensitive to hide it until you reveal it."
 msgstr "Marque um trecho como sensível para ocultá-lo até você revelá-lo."
+
+msgid "Markdown code block"
+msgstr "Bloco de código Markdown"
+
+msgid "Markdown quote"
+msgstr "Citação em Markdown"
 
 msgid "Master password"
 msgstr "Senha mestra"
@@ -1993,6 +2041,12 @@ msgstr "Mover para baixo"
 
 msgid "Move group to list…"
 msgstr "Mover o grupo para a lista…"
+
+msgid "Move panel"
+msgstr "Mover painel"
+
+msgid "Move panel (arrow keys)"
+msgstr "Mover painel (setas)"
 
 msgid "Move selected item to Trash"
 msgstr "Mover trecho selecionado para a Lixeira"
@@ -2226,6 +2280,9 @@ msgstr "Nenhum atalho corresponde"
 msgid "No symbols match “{}”"
 msgstr "Nenhum símbolo corresponde a “{}”"
 
+msgid "No tagged items"
+msgstr "Nenhum trecho com etiqueta"
+
 msgid "No tags"
 msgstr "Sem etiquetas"
 
@@ -2243,6 +2300,12 @@ msgstr "Sem destino:"
 
 msgid "No target: click copies"
 msgstr "Sem destino: o clique copia"
+
+msgid "No text to show"
+msgstr "Nenhum texto para mostrar"
+
+msgid "No typed trigger was skipped since Snipdeck started."
+msgstr "Nenhum gatilho digitado foi ignorado desde que o Snipdeck iniciou."
 
 msgid "Not a colour. Try {}"
 msgstr "Não é uma cor. Tente {}"
@@ -2304,8 +2367,17 @@ msgstr "Nada a salvar. Copie algum texto primeiro."
 msgid "Nothing to undo"
 msgstr "Nada para desfazer"
 
+msgid "Nothing used recently matches “{}”."
+msgstr "Nada usado recentemente corresponde a “{}”."
+
+msgid "Nothing used yet"
+msgstr "Nada usado ainda"
+
 msgid "Nothing was added. Folders, and files or pictures that are empty, too large or unreadable, are skipped."
 msgstr "Nada foi adicionado. Pastas e arquivos ou imagens vazios, grandes demais ou ilegíveis são ignorados."
+
+msgid "Nothing with this tag matches “{}”."
+msgstr "Nada com esta etiqueta corresponde a “{}”."
 
 msgid "Nothing you copy in these programs is kept in Recent. Use the program's file name, for example keepass.exe."
 msgstr "Nada que você copiar nestes programas é mantido em Recentes. Use o nome do arquivo do programa, por exemplo keepass.exe."
@@ -2340,6 +2412,9 @@ msgstr "Sobre esta cor"
 msgid "On white"
 msgstr "Sobre branco"
 
+msgid "Only text that has been typed counts: while an input method (Japanese, Chinese) is still composing, nothing expands until you commit the text."
+msgstr "Só conta o texto já digitado: enquanto um método de entrada (japonês, chinês) ainda está compondo, nada é expandido até você confirmar o texto."
+
 msgid "Only text, code, link and template items can be sensitive."
 msgstr "Somente trechos de texto, código, link e modelo podem ser sensíveis."
 
@@ -2360,6 +2435,12 @@ msgstr "Abrir o seletor"
 
 msgid "Open Settings"
 msgstr "Abrir configurações"
+
+msgid "Open Snipdeck"
+msgstr "Abrir o Snipdeck"
+
+msgid "Open Snipdeck Panel"
+msgstr "Abrir o painel do Snipdeck"
 
 msgid "Open a docked Panel by"
 msgstr "Abrir um painel acoplado por"
@@ -2553,6 +2634,9 @@ msgstr "Colar o próximo trecho"
 msgid "Paste next pastes the next item each time you press it."
 msgstr "Colar próximo cola o próximo trecho a cada vez que você pressiona."
 
+msgid "Paste selected item as plain text"
+msgstr "Colar o trecho selecionado como texto simples"
+
 msgid "Paste several in order"
 msgstr "Cole vários em ordem"
 
@@ -2565,11 +2649,20 @@ msgstr "Colar pilha (marque trechos)"
 msgid "Paste stack, item {} of {}, next: {}"
 msgstr "Pilha de colagem, trecho {} de {}, próximo: {}"
 
+msgid "Paste stack, item {} of {}, next: {}, into {}"
+msgstr "Pilha de colagem, trecho {} de {}, próximo: {}, em {}"
+
 msgid "Paste stack, {} marked"
 msgstr "Pilha de colagem, {} marcados"
 
+msgid "Paste stack, {} marked, into {}"
+msgstr "Pilha de colagem, {} marcados, em {}"
+
 msgid "Paste stack: {} marked"
 msgstr "Pilha de colagem: {} marcados"
+
+msgid "Paste stack: {} marked · into {}"
+msgstr "Pilha de colagem: {} marcados · em {}"
 
 msgid "Paste the Nth result"
 msgstr "Colar o enésimo resultado"
@@ -2730,6 +2823,9 @@ msgstr "Fixados"
 msgid "Pinned items"
 msgstr "Trechos fixados"
 
+msgid "Pinned snippet. Press to paste."
+msgstr "Trecho fixado. Pressione para colar."
+
 msgid "Placeholders"
 msgstr "Espaços reservados"
 
@@ -2816,6 +2912,9 @@ msgstr "Números de uso rápido"
 
 msgid "Quit"
 msgstr "Sair"
+
+msgid "Quit Snipdeck"
+msgstr "Sair do Snipdeck"
 
 msgid "RGB"
 msgstr "RGB"
@@ -2967,8 +3066,17 @@ msgstr "Redefinir tamanho e posição do painel"
 msgid "Reset size and position"
 msgstr "Redefinir tamanho e posição"
 
+msgid "Resize panel"
+msgstr "Redimensionar painel"
+
+msgid "Resize panel (arrow keys)"
+msgstr "Redimensionar painel (setas)"
+
 msgid "Restore"
 msgstr "Restaurar"
+
+msgid "Restore selected item"
+msgstr "Restaurar o trecho selecionado"
 
 msgid "Restore the backup of {}"
 msgstr "Restaurar o backup de {}"
@@ -3135,6 +3243,9 @@ msgstr "Pesquisar"
 msgid "Search (Ctrl+F)"
 msgstr "Pesquisar (Ctrl+F)"
 
+msgid "Search all boards"
+msgstr "Pesquisar em todos os quadros"
+
 msgid "Search all items"
 msgstr "Pesquisar todos os trechos"
 
@@ -3224,6 +3335,9 @@ msgstr "Trechos sensíveis não podem ser digitados, então não têm gatilho."
 
 msgid "Sensitive items in a backup or export can only be restored by this Windows account on this PC. On another PC, or after Windows is reinstalled, they are skipped. Keep your own copy of anything sensitive you cannot lose."
 msgstr "Trechos sensíveis em um backup ou uma exportação só podem ser restaurados por esta conta do Windows neste PC. Em outro PC, ou depois de reinstalar o Windows, eles são ignorados. Guarde sua própria cópia de tudo o que for sensível e que você não possa perder."
+
+msgid "Sensitive: the text is not shown here"
+msgstr "Sensível: o texto não é exibido aqui"
 
 msgid "Sentence case"
 msgstr "Maiúscula de frase"
@@ -3333,6 +3447,9 @@ msgstr "Mostrar o tour de boas-vindas novamente"
 msgid "Show title, colour, tags, trigger and privacy"
 msgstr "Mostrar título, cor, tags, gatilho e privacidade"
 
+msgid "Showing the first {}"
+msgstr "Mostrando os primeiros {}"
+
 msgid "Sidebar width"
 msgstr "Largura da barra lateral"
 
@@ -3399,9 +3516,6 @@ msgstr "O Snipdeck não conseguiu gravar na sua biblioteca. Verifique se o disco
 msgid "Snipdeck found a problem in your library. Export a copy to be safe."
 msgstr "O Snipdeck encontrou um problema na sua biblioteca. Exporte uma cópia por segurança."
 
-msgid "Snipdeck handle, press the Panel hotkey to open"
-msgstr "Alça do Snipdeck, pressione o atalho do painel para abrir"
-
 msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
 msgstr "O Snipdeck não tem conta, servidor nem telemetria e não abre nenhuma porta de rede. Nada do que você salva sai deste PC."
 
@@ -3434,6 +3548,9 @@ msgstr "O Snipdeck salva uma cópia da sua biblioteca uma vez por dia e mantém 
 
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "O Snipdeck aguarda na bandeja para que os atalhos funcionem após o login."
+
+msgid "Snipdeck: search snippets"
+msgstr "Snipdeck: pesquisar trechos"
 
 msgid "Snippets"
 msgstr "Itens"
@@ -3712,6 +3829,9 @@ msgstr "A seleção de cor expirou"
 msgid "The file dialog couldn’t open. Type the path instead."
 msgstr "A caixa de diálogo de arquivos não pôde ser aberta. Digite o caminho."
 
+msgid "The form was closed without pasting"
+msgstr "O formulário foi fechado sem colar"
+
 msgid "The icon is in the notification area."
 msgstr "O ícone está na área de notificação."
 
@@ -3874,6 +3994,9 @@ msgstr "Este trecho foi excluído. Nada foi salvo."
 msgid "This key cannot be part of a shortcut."
 msgstr "Esta tecla não pode fazer parte de um atalho."
 
+msgid "This list"
+msgstr "Esta lista"
+
 msgid "This list is empty"
 msgstr "Esta lista está vazia"
 
@@ -4006,6 +4129,12 @@ msgstr "Desligar e apagar"
 msgid "Turn off, keep them"
 msgstr "Desligar e manter"
 
+msgid "Turn on the Colours tab in Settings"
+msgstr "Ative a aba Cores em Configurações"
+
+msgid "Turn on the Symbols tab in Settings"
+msgstr "Ative a aba Símbolos em Configurações"
+
 msgid "Turn on “Keep what you copy in Recent” in Settings."
 msgstr "Ative “Manter em Recentes o que você copia” em Configurações."
 
@@ -4029,6 +4158,9 @@ msgstr "Digite isto em qualquer aplicativo para inserir o trecho. Ative em Confi
 
 msgid "Type {} to confirm"
 msgstr "Digite {} para confirmar"
+
+msgid "Typed triggers"
+msgstr "Gatilhos digitados"
 
 msgid "Typing"
 msgstr "Digitação"
@@ -4264,6 +4396,9 @@ msgstr "Em que lado do cursor de texto o seletor abre. Ele vai para o lado opost
 msgid "Will not be imported"
 msgstr "Não será importado"
 
+msgid "Window"
+msgstr "Janela"
+
 msgid "Window behaviour"
 msgstr "Comportamento da janela"
 
@@ -4444,6 +4579,12 @@ msgstr "adicionar criar"
 msgid "add create item note write"
 msgstr "adicionar criar trecho nota escrever"
 
+msgid "add create workspace group"
+msgstr "adicionar criar espaço de trabalho grupo"
+
+msgid "again forward step history"
+msgstr "de novo avançar etapa histórico"
+
 msgid "an offset in {} can be at most {}"
 msgstr "um deslocamento em {} pode ser no máximo {}"
 
@@ -4464,8 +4605,17 @@ msgstr "aparência cor escuro claro seguir windows"
 msgid "appearance colour night"
 msgstr "aparência cor noite"
 
+msgid "back revert step history"
+msgstr "voltar reverter etapa histórico"
+
+msgid "backup copy save safe"
+msgstr "backup cópia salvar segurança"
+
 msgid "board change"
 msgstr "alteração do quadro"
+
+msgid "bring back undelete trash recover"
+msgstr "recuperar restaurar lixeira"
 
 msgid "camelCase"
 msgstr "camelCase"
@@ -4481,6 +4631,9 @@ msgstr "área de transferência"
 
 msgid "clipboard save grab screenshot"
 msgstr "área de transferência salvar capturar captura de tela"
+
+msgid "close toggle deck stow"
+msgstr "fechar alternar painel guardar"
 
 msgid "collapse expand hide show toggle section"
 msgstr "recolher expandir ocultar mostrar alternar seção"
@@ -4515,6 +4668,9 @@ msgstr "padrão"
 msgid "delete"
 msgstr "excluir"
 
+msgid "delete everything bin permanently"
+msgstr "apagar tudo lixeira permanentemente"
+
 msgid "delete remove discard"
 msgstr "excluir remover descartar"
 
@@ -4526,6 +4682,9 @@ msgstr "diagnosticar médico problemas corrigir"
 
 msgid "dissolve split remove group keep items section"
 msgstr "desfazer separar remover grupo manter trechos seção"
+
+msgid "ditto copyq espanso restore bring in file"
+msgstr "ditto copyq espanso restaurar arquivo"
 
 msgid "donate donation coffee tip"
 msgstr "doar doação café gorjeta"
@@ -4550,6 +4709,9 @@ msgstr "todos marcar escolher selecionar"
 
 msgid "everything home show"
 msgstr "tudo início mostrar"
+
+msgid "exit close stop end"
+msgstr "sair fechar parar encerrar"
 
 msgid "eyedropper color pick sample screen"
 msgstr "conta-gotas cor escolher amostra tela eyedropper color pick"
@@ -4604,6 +4766,9 @@ msgid "in {n} list"
 msgid_plural "in {n} lists"
 msgstr[0] "em {n} lista"
 msgstr[1] "em {n} listas"
+
+msgid "keep open pin always on top stay hide blur"
+msgstr "manter aberto fixar sempre visível permanecer ocultar foco"
 
 msgid "label: {}"
 msgstr "rótulo: {}"
@@ -4685,6 +4850,9 @@ msgstr "sobre branco"
 msgid "pass"
 msgstr "aprovado"
 
+msgid "password secure private hide sensitive"
+msgstr "senha seguro privado ocultar sensível"
+
 msgid "paste"
 msgstr "colar"
 
@@ -4709,6 +4877,9 @@ msgstr "px"
 msgid "quick find paste palette"
 msgstr "busca rápida encontrar colar paleta"
 
+msgid "remove erase permanently trash"
+msgstr "remover apagar permanentemente lixeira"
+
 msgid "remove trash discard section items"
 msgstr "remover lixeira descartar seção trechos"
 
@@ -4726,6 +4897,9 @@ msgstr "restauração"
 
 msgid "s"
 msgstr "s"
+
+msgid "save file download copy out"
+msgstr "salvar arquivo baixar exportar"
 
 msgid "slug-like-this"
 msgstr "slug-como-este"
@@ -4762,6 +4936,9 @@ msgstr "gatilho expansão de texto autocompletar abreviação"
 
 msgid "tutorial intro onboarding basics learn"
 msgstr "tutorial introdução integração básico aprender"
+
+msgid "unformatted insert send without formatting"
+msgstr "sem formatação inserir enviar texto simples"
 
 msgid "unknown date format {}; supported: {}"
 msgstr "formato de data desconhecido {}; aceitos: {}"
@@ -4992,6 +5169,9 @@ msgstr "{} de {} caracteres"
 
 msgid "{} of {} · next: {}"
 msgstr "{} de {} · próximo: {}"
+
+msgid "{} of {} · next: {} · into {}"
+msgstr "{} de {} · próximo: {} · em {}"
 
 msgid "{} older backup was deleted."
 msgid_plural "{} older backups were deleted."

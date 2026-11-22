@@ -62,7 +62,34 @@ export global CommandTexts {
         { label: @tr("Move the group down"), words: @tr("reorder later lower section") },
         { label: MenuTexts.group-colour(), words: @tr("colour color dot tint hue accent section") },
         { label: MenuTexts.group-nest(), words: @tr("nest under inside child sub subgroup indent parent move out top level section") },
+        { label: @tr("Hide Panel"), words: @tr("close toggle deck stow") },
+        { label: @tr("Close Panel when I click away"), words: @tr("keep open pin always on top stay hide blur") },
+        { label: @tr("Undo"), words: @tr("back revert step history") },
+        { label: @tr("Redo"), words: @tr("again forward step history") },
+        { label: @tr("New board"), words: @tr("add create workspace group") },
+        { label: @tr("Lock Snipdeck"), words: @tr("password secure private hide sensitive") },
+        { label: @tr("Quit Snipdeck"), words: @tr("exit close stop end") },
+        { label: @tr("Paste selected item as plain text"), words: @tr("unformatted insert send without formatting") },
+        { label: @tr("Restore selected item"), words: @tr("bring back undelete trash recover") },
+        { label: @tr("Delete selected item for good"), words: @tr("remove erase permanently trash") },
+        { label: @tr("Import snippets"), words: @tr("ditto copyq espanso restore bring in file") },
+        { label: @tr("Export library"), words: @tr("save file download copy out") },
+        { label: @tr("Back up now"), words: @tr("backup copy save safe") },
+        { label: @tr("Empty Trash"), words: @tr("delete everything bin permanently") },
     ];
+    // Why a listed command cannot run now (shown dimmed on its row).
+    out property <string> hint-symbols-off: @tr("Turn on the Symbols tab in Settings");
+    out property <string> hint-colours-off: @tr("Turn on the Colours tab in Settings");
+    // The rows that go to a board, a list or a tag by name (shown once something is typed).
+    pure public function go-to-board(name: string) -> string {
+        return @tr("Go to board “{}”", name);
+    }
+    pure public function go-to-list(name: string, board: string) -> string {
+        return @tr("Go to list “{}” on {}", name, board);
+    }
+    pure public function go-to-tag(name: string) -> string {
+        return @tr("Go to tag “{}”", name);
+    }
     // The palette's own words.
     out property <string> palette-title: @tr("Commands");
     out property <string> palette-placeholder: @tr("Type a command");

@@ -1,5 +1,6 @@
 //! Searching, tabs, the board menu, the toggle hotkey and the Picker.
 
+use super::use_paste::make_sensitive;
 use super::*;
 use crate::controller::BoardMenuEntry;
 
@@ -171,6 +172,7 @@ fn enter_in_the_picker_pastes_counts_the_use_and_closes_it() {
     );
     assert!(w.ctl.view().picker.is_none());
     assert_eq!(pasted(&w), ["second"]);
+    w.ctl.drain_paste();
     assert_eq!(uses(&w, w.ids[1]), 1);
     assert_eq!(w.ctl.services().keyboard.sent.len(), 1, "Ctrl+V was sent");
     assert_eq!(w.targets.refocus_count(), refocused + 1);
@@ -219,6 +221,11 @@ fn a_template_chosen_in_the_picker_closes_it_and_opens_the_fill_form() {
     // And the other way: summoning the Picker drops a form that was open.
     w.ctl.on_hotkey(HotkeyAction::Picker);
     assert!(w.ctl.view().fill.is_none() && w.ctl.view().picker.is_some());
+    // PANEL-22: and it says so instead of dropping the form silently.
+    assert_eq!(
+        w.ctl.view().toast.map(|t| t.message),
+        Some(crate::toast::ToastMessage::FormClosed)
+    );
 }
 
 #[test]
@@ -282,6 +289,7 @@ fn the_picker_closes_when_the_user_switches_to_another_app_and_does_not_steal_th
         app: "chrome.exe".into(),
         title: "Docs".into(),
         elevated: false,
+        window: 0,
         focus: Focus::Caret,
     }));
     w.ctl.on_foreground_changed();
@@ -329,4 +337,177 @@ fn holding_space_in_the_picker_reveals_only_a_sensitive_row_and_closing_ends_it(
         None,
         "a reopened Picker starts hidden"
     );
+}
+
+#[test]
+fn the_pickers_empty_state_opens_the_panel_and_closes_the_picker() {
+    let mut w = world();
+    w.ctl.open_picker();
+    assert!(w.ctl.picker().is_some());
+    w.ctl.picker_open_panel();
+    assert!(w.ctl.picker().is_none());
+    assert!(w.ctl.visible());
+}
+
+#[test]
+fn the_picker_starts_on_the_scope_it_was_left_on_and_falls_back_without_a_list() {
+    let mut w = world();
+    w.ctl.on_hotkey(HotkeyAction::Picker);
+    w.ctl.picker_scope(Scope::List);
+    w.ctl.close_picker();
+    w.ctl.on_hotkey(HotkeyAction::Picker);
+    assert_eq!(w.ctl.view().picker.expect("open").scope, Scope::List);
+    w.ctl.picker_scope(Scope::Pinned);
+    w.ctl.close_picker();
+    w.ctl.on_hotkey(HotkeyAction::Picker);
+    assert_eq!(w.ctl.view().picker.expect("open").scope, Scope::Pinned);
+}
+
+#[test]
+fn ctrl_p_in_the_picker_pins_and_unpins_the_row_and_keeps_the_search() {
+    let mut w = world();
+    w.ctl.on_hotkey(HotkeyAction::Picker);
+    w.ctl.picker_query("o");
+    let before = picker_titles(&w);
+    let id = w.ctl.view().picker.expect("open").rows[1].id;
+    w.ctl.picker_pin(1);
+    assert!(w.ctl.store().item(id).expect("item").pinned);
+    let view = w.ctl.view().picker.expect("still open");
+    assert_eq!(view.query, "o", "the search stays");
+    assert_eq!(view.selected, 0, "a pin does not move the cursor");
+    w.ctl.picker_pin(1);
+    assert!(!w.ctl.store().item(id).expect("item").pinned);
+    assert_eq!(picker_titles(&w).len(), before.len());
+    w.ctl.picker_pin(99);
+}
+
+#[test]
+fn ctrl_d_in_the_picker_duplicates_the_row_and_the_list_shows_the_copy() {
+    let mut w = world();
+    w.ctl.on_hotkey(HotkeyAction::Picker);
+    w.ctl.picker_scope(Scope::Board);
+    let before = picker_titles(&w).len();
+    w.ctl.picker_duplicate(0);
+    assert_eq!(picker_titles(&w).len(), before + 1);
+    w.ctl.picker_duplicate(99);
+    assert_eq!(picker_titles(&w).len(), before + 1);
+}
+
+#[test]
+fn delete_in_the_picker_trashes_the_row_with_an_undo_toast() {
+    let mut w = world();
+    w.ctl.on_hotkey(HotkeyAction::Picker);
+    w.ctl.picker_scope(Scope::Board);
+    let before = picker_titles(&w).len();
+    w.ctl.picker_trash(0);
+    assert_eq!(picker_titles(&w).len(), before - 1);
+    assert!(w.ctl.view().toast.is_some(), "the Undo toast");
+}
+
+#[test]
+fn a_palette_the_panel_asked_for_acts_on_the_panel_row_not_on_mains_cursor() {
+    let mut w = world();
+    w.ctl.move_selection(2);
+    let id = w.ctl.view().rows[2].id;
+    assert_eq!(w.ctl.ask_commands(), [Effect::OpenCommands]);
+    assert_eq!(
+        w.ctl.palette_item_pinned(),
+        None,
+        "not until the palette opens"
+    );
+    w.ctl.palette_opened();
+    assert_eq!(w.ctl.palette_item_pinned(), Some(false));
+    w.ctl.run_command(crate::commands::Command::PinItem, 0);
+    assert!(w.ctl.store().item(id).expect("item").pinned);
+    assert_eq!(
+        w.ctl.palette_item_pinned(),
+        None,
+        "the Panel's row serves one command"
+    );
+    // A palette opened in Main alone has no Panel row.
+    w.ctl.palette_opened();
+    assert_eq!(w.ctl.palette_item_pinned(), None);
+}
+
+#[test]
+fn the_pickers_tag_scope_steps_through_tags_and_opens_on_the_last_one() {
+    use snipdeck_core::{Name, Tag};
+    use snipdeck_store::TagRepo;
+    let mut w = world();
+    let (alpha, beta) = (
+        Tag::new(Name::new("alpha").expect("name")),
+        Tag::new(Name::new("beta").expect("name")),
+    );
+    for tag in [&alpha, &beta] {
+        w.ctl.store.insert_tag(tag).expect("tag");
+    }
+    for (id, tag) in [(w.ids[0], &alpha), (w.ids[1], &beta), (w.ids[2], &beta)] {
+        let mut item = w.ctl.store.item(id).expect("item");
+        item.tags.insert(tag.id);
+        w.ctl.store.update_item(&item, None).expect("update");
+    }
+    w.ctl.open_picker();
+    w.ctl.picker_scope(crate::picker::Scope::Tag);
+    let view = w.ctl.view().picker.expect("open");
+    assert_eq!((view.tag.as_str(), view.rows.len()), ("alpha", 1));
+    // Stepping needs the Tag scope; a step elsewhere is ignored.
+    w.ctl.picker_step_tag(1);
+    let view = w.ctl.view().picker.expect("open");
+    assert_eq!((view.tag.as_str(), view.rows.len()), ("beta", 2));
+    // Closed and opened again, it is still on beta.
+    w.ctl.close_picker();
+    w.ctl.open_picker();
+    let view = w.ctl.view().picker.expect("open");
+    assert_eq!(view.scope, crate::picker::Scope::Tag);
+    assert_eq!((view.tag.as_str(), view.rows.len()), ("beta", 2));
+    w.ctl.picker_scope(crate::picker::Scope::All);
+    w.ctl.picker_step_tag(1);
+    assert_eq!(
+        w.ctl.view().picker.expect("open").tag,
+        "beta",
+        "no step outside the tag scope"
+    );
+}
+
+#[test]
+fn the_picker_preview_shows_the_whole_text_of_the_selected_row_and_never_a_secret() {
+    let mut w = world();
+    let long = "line one\n".repeat(200);
+    let list = w.links_list;
+    let long_id = add(&mut w.ctl.store, list, ItemKind::Text, "Long note", &long);
+    w.ctl.open_picker();
+    assert!(
+        w.ctl.view().picker.expect("picker").detail.is_none(),
+        "closed until asked"
+    );
+    w.ctl.picker_query("Long note");
+    w.ctl.picker_toggle_detail();
+    let detail = w
+        .ctl
+        .view()
+        .picker
+        .expect("picker")
+        .detail
+        .expect("the preview is open");
+    assert!(!detail.hidden);
+    assert!(
+        detail.text.starts_with("line one\nline one") && detail.text.chars().count() > 200,
+        "more than the 200-character list preview: {}",
+        detail.text.chars().count()
+    );
+    assert!(detail.text.ends_with('…'), "a very long text is cut short");
+    // A short text is shown whole, and the preview follows the selection.
+    w.ctl.picker_query("Two");
+    let detail = w.ctl.view().picker.expect("picker").detail.expect("open");
+    assert_eq!(detail.text, "second");
+    // A sensitive item shows nothing of itself.
+    w.ctl.close_picker();
+    make_sensitive(&mut w, long_id);
+    w.ctl.open_picker();
+    w.ctl.picker_query("Long note");
+    let detail = w.ctl.view().picker.expect("picker").detail.expect("open");
+    assert!(detail.hidden && detail.text.is_empty());
+    // Asking again closes it; it stays as it was left for the next summon.
+    w.ctl.picker_toggle_detail();
+    assert!(w.ctl.view().picker.expect("picker").detail.is_none());
 }

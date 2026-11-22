@@ -32,6 +32,32 @@ pub struct ScreenRect {
     pub h: u32,
 }
 
+/// What bringing the Target to the front did.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Refocus {
+    /// There is no Target, or Windows refused.
+    None,
+    /// The Target was in front already: injected keys reach it at once.
+    InFront,
+    /// The Target was brought to the front. Windows restores its focused control
+    /// asynchronously, so injected keys wait about 50 ms (the spike used 50 ms).
+    Switched,
+}
+
+impl Refocus {
+    /// Whether the Target is (or is being brought) in front.
+    #[must_use]
+    pub fn ok(self) -> bool {
+        self != Self::None
+    }
+
+    /// Whether keys must wait for the focused control to come back.
+    #[must_use]
+    pub fn must_wait(self) -> bool {
+        self == Self::Switched
+    }
+}
+
 /// The window that had focus before the user clicked Snipdeck.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Target {
@@ -43,6 +69,8 @@ pub struct Target {
     pub elevated: bool,
     /// What focus was found inside the Target.
     pub focus: Focus,
+    /// The window's handle (`0` when unknown): two windows of one program differ here.
+    pub window: usize,
 }
 
 // The title may be private (a document name, a page title): never print it.
@@ -53,6 +81,7 @@ impl std::fmt::Debug for Target {
             .field("title_len", &self.title.len())
             .field("elevated", &self.elevated)
             .field("focus", &self.focus)
+            .field("window", &self.window)
             .finish()
     }
 }
@@ -153,6 +182,7 @@ mod tests {
             title: "Untitled".into(),
             elevated,
             focus,
+            window: 0,
         }
     }
 

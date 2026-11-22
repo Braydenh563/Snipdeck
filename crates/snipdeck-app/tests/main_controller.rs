@@ -209,6 +209,7 @@ fn use_pastes_and_counts_through_the_controller_and_copy_only_copies() {
         other => panic!("{other:?}"),
     };
     ctl.main_action(MainAction::Use, at).expect("a use");
+    ctl.drain_paste();
     assert_eq!(ctl.store().item(id).unwrap().use_count, 1);
     ctl.main_action(MainAction::Copy, at).expect("a use");
     assert_eq!(ctl.store().item(id).unwrap().use_count, 2);
@@ -224,6 +225,7 @@ fn use_plain_pastes_without_formatting_and_counts() {
         other => panic!("{other:?}"),
     };
     ctl.main_action(MainAction::UsePlain, at).expect("a use");
+    ctl.drain_paste();
     assert_eq!(ctl.store().item(id).unwrap().use_count, 1);
     let written = &ctl.services().clipboard.written;
     assert!(
@@ -268,6 +270,7 @@ fn duplicate_copies_each_selected_item_next_to_it_unpinned_and_unused() {
     };
     ctl.main_action(MainAction::Pin, at);
     ctl.main_action(MainAction::Use, at).expect("a use");
+    ctl.drain_paste();
     let original = ctl.store().item(id).unwrap();
     let siblings = ctl.store().items(original.list_id).unwrap();
     let place = siblings.iter().position(|i| i.id == id).unwrap();
@@ -1996,11 +1999,23 @@ fn the_panel_button_and_palette_hide_a_panel_that_is_showing() {
 fn palette_commands_that_belong_to_other_windows_queue_the_menus_effects() {
     use snipdeck_app::{
         commands::Command,
-        controller::{Effect, HelpTopic},
+        controller::{Effect, HelpTopic, SettingsAction},
     };
     let mut ctl = seeded();
     for (command, effects) in [
         (Command::Settings, vec![Effect::OpenSettings]),
+        (
+            Command::ImportLibrary,
+            vec![Effect::SettingsAction(SettingsAction::Import)],
+        ),
+        (
+            Command::ExportLibrary,
+            vec![Effect::SettingsAction(SettingsAction::Export)],
+        ),
+        (
+            Command::BackUpNow,
+            vec![Effect::SettingsAction(SettingsAction::BackUp)],
+        ),
         (
             Command::Symbols,
             vec![Effect::ShowPanel, Effect::ShowSymbols],
@@ -2739,4 +2754,11 @@ fn the_detail_pane_reads_nothing_while_it_is_switched_off() {
     assert!(screen.detail.is_none());
     ctl.set_main_detail_open(true);
     assert!(ctl.main_screen().detail.is_some());
+}
+
+#[test]
+fn the_palettes_empty_trash_opens_the_trash_section() {
+    let mut ctl = seeded();
+    ctl.run_command(snipdeck_app::commands::Command::EmptyTrash, 0);
+    assert_eq!(ctl.main_screen().section, Section::Trash);
 }

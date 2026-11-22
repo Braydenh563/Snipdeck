@@ -54,6 +54,8 @@ pub enum ToastMessage {
     },
     /// "Copied. The window you were using went away."
     CopiedTargetGone,
+    /// "Copied. Only part of the keys went out, so some typed text may be gone."
+    CopiedPartlySent,
     /// "Couldn’t reach the clipboard. Another app may be using it."
     ClipboardBusy,
     /// "This template can’t be read. Open it to fix it."
@@ -153,6 +155,10 @@ pub enum ToastMessage {
     NoListToSave,
     /// "Nothing to paste next. Pin an item, or add one to this list."
     NothingToPasteNext,
+    /// "A stack is running. End it before you mark more snippets."
+    StackRunning,
+    /// "The form was closed without pasting"
+    FormClosed,
     /// "The taskbar is on that edge. Pick another edge, or move the taskbar."
     TaskbarEdge,
     /// "That was the last one. Paste next starts again from the first."
@@ -525,7 +531,7 @@ pub struct Toast {
 /// app when a paste fell back to a copy.
 #[must_use]
 pub fn after_use(outcome: UseOutcome, route: &Route, pasted_into: Option<&str>) -> Toast {
-    use snipdeck_core::PasteFailure::{TargetElevated, TargetUnavailable};
+    use snipdeck_core::PasteFailure::{PartlySent, TargetElevated, TargetUnavailable};
     let neutral = |message| Toast {
         kind: ToastKind::Neutral,
         message,
@@ -561,6 +567,7 @@ pub fn after_use(outcome: UseOutcome, route: &Route, pasted_into: Option<&str>) 
         (UseOutcome::CopiedInstead(_), Route::Copy(reason @ CopyReason::NothingFocused { .. })) => {
             neutral(ToastMessage::CopiedNothingFocused { app: app(reason) })
         }
+        (UseOutcome::CopiedInstead(PartlySent), _) => neutral(ToastMessage::CopiedPartlySent),
         (UseOutcome::CopiedInstead(TargetUnavailable | TargetElevated), _) => {
             neutral(ToastMessage::CopiedTargetGone)
         }
@@ -701,7 +708,7 @@ mod tests {
         assert_eq!(
             toast.message,
             ToastMessage::CopiedNothingFocused {
-                app: "Explorer".into()
+                app: "File Explorer".into()
             }
         );
         let toast = after_use(
@@ -710,6 +717,12 @@ mod tests {
             Some("a.exe"),
         );
         assert_eq!(toast.message, ToastMessage::CopiedTargetGone);
+        let toast = after_use(
+            UseOutcome::CopiedInstead(PasteFailure::PartlySent),
+            &PASTE,
+            Some("a.exe"),
+        );
+        assert_eq!(toast.message, ToastMessage::CopiedPartlySent);
     }
 
     #[test]

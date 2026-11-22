@@ -633,6 +633,8 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Picker | `Alt+Enter` | Paste as plain text |
 | Picker | `Alt+1` to `Alt+9` | Use that row |
 | Picker | `Ctrl+E`, `Esc` | Edit, close |
+| Picker | `Ctrl+P` | Pin or unpin the result |
+| Picker | `Ctrl+D` | Duplicate the result |
 | Main window | `Alt+Enter` | Paste the selected item as plain text |
 | Main window | `Ctrl+K`, `Ctrl+Shift+P` | Commands |
 | Main window | `Ctrl+/` | Show the keyboard shortcuts |

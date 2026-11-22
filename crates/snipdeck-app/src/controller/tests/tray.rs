@@ -458,6 +458,7 @@ fn a_panel_reached_with_alt_tab_still_pastes_into_the_app_before_it() {
         UseResult::Done(UseOutcome::Pasted)
     );
     assert_eq!(w.targets.refocus_count(), 1, "the keys go to Outlook");
+    w.ctl.drain_paste();
     assert_eq!(
         w.ctl.view().toast.expect("toast").message,
         ToastMessage::Pasted {

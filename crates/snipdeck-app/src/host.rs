@@ -9,7 +9,7 @@ use snipdeck_core::Timestamp;
 use snipdeck_platform::win_formats::ClipFiles;
 use snipdeck_platform::{
     chord::Chord,
-    route::{ScreenRect, Target},
+    route::{Refocus, ScreenRect, Target},
 };
 
 use crate::settings::HotkeyAction;
@@ -281,8 +281,9 @@ pub trait TargetSource {
     /// into. May probe the other app, so call it when needed, not per frame.
     fn current(&self) -> Option<Target>;
     /// Makes the Target the foreground window again so injected keys reach it (the panel may
-    /// have activated itself for text entry). `false` if there is no Target or Windows refused.
-    fn refocus(&self) -> bool;
+    /// have activated itself for text entry). [`Refocus::None`] if there is no Target or Windows
+    /// refused; [`Refocus::InFront`] when it needed nothing, so no wait before the keys.
+    fn refocus(&self) -> Refocus;
     /// Where the Target's text caret is on the screen, in physical pixels, if it has a system
     /// caret. Read before a popup takes the foreground. `None` (the default) means "unknown":
     /// the Picker then opens at the mouse.
@@ -450,6 +451,7 @@ type TargetSwitch = (
 pub struct FakeTargets {
     current: Rc<RefCell<Option<Target>>>,
     refocused: Rc<Cell<u32>>,
+    probes: Rc<Cell<u32>>,
     caret: Rc<Cell<Option<ScreenRect>>>,
     cursor: Rc<Cell<Option<(i32, i32)>>>,
     primary: Rc<Cell<Option<bool>>>,
@@ -468,6 +470,7 @@ impl FakeTargets {
         Self {
             current: Rc::new(RefCell::new(target)),
             refocused: Rc::default(),
+            probes: Rc::default(),
             caret: Rc::default(),
             cursor: Rc::default(),
             primary: Rc::default(),
@@ -529,10 +532,17 @@ impl FakeTargets {
     pub fn refocus_count(&self) -> u32 {
         self.refocused.get()
     }
+
+    /// How many times the controller asked what the Target is.
+    #[must_use]
+    pub fn probe_count(&self) -> u32 {
+        self.probes.get()
+    }
 }
 
 impl TargetSource for FakeTargets {
     fn current(&self) -> Option<Target> {
+        self.probes.set(self.probes.get() + 1);
         let raised = self
             .switch
             .borrow()
@@ -544,9 +554,13 @@ impl TargetSource for FakeTargets {
         self.current.borrow().clone()
     }
 
-    fn refocus(&self) -> bool {
+    fn refocus(&self) -> Refocus {
         self.refocused.set(self.refocused.get() + 1);
-        self.current.borrow().is_some()
+        if self.current.borrow().is_some() {
+            Refocus::Switched
+        } else {
+            Refocus::None
+        }
     }
 
     fn caret(&self) -> Option<ScreenRect> {
@@ -1018,7 +1032,7 @@ mod tests {
     fn a_fake_target_source_counts_refocus_calls_through_clones() {
         let source = FakeTargets::new(None);
         let handle = source.clone();
-        assert!(!source.refocus(), "nothing to refocus");
+        assert!(!source.refocus().ok(), "nothing to refocus");
         assert_eq!(handle.refocus_count(), 1);
         assert_eq!(source.current(), None);
     }

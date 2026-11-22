@@ -121,7 +121,7 @@ struct Editors {
     seq: u64,
 }
 
-struct MainCore<S, C, K, T> {
+struct MainCore<S, C: Clipboard, K, T> {
     controller: Rc<RefCell<Controller<S, C, K, T>>>,
     window: slint::Weak<ui::MainWindow>,
     /// What the window shows now, so a redraw sets only what changed.
@@ -140,11 +140,11 @@ struct MainCore<S, C, K, T> {
 
 /// A bound Main window. Dropping it does not unbind the window; the window's callbacks keep
 /// the binding alive.
-pub struct MainBinding<S, C, K, T> {
+pub struct MainBinding<S, C: Clipboard, K, T> {
     core: Rc<MainCore<S, C, K, T>>,
 }
 
-impl<S, C, K, T> std::fmt::Debug for MainBinding<S, C, K, T> {
+impl<S, C: Clipboard, K, T> std::fmt::Debug for MainBinding<S, C, K, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("MainBinding").finish_non_exhaustive()
     }
@@ -237,7 +237,14 @@ where
                 colours: ctl.settings().show_colours_tab,
                 eyedropper: ctl.eyedropper_state().0,
                 saved_colours: ctl.has_saved_list(),
+                panel_shown: ctl.visible(),
+                keep_open: ctl.keeps_open(),
+                can_undo: ctl.history_view().undo.is_some(),
+                can_redo: ctl.history_view().redo.is_some(),
+                lock_set: ctl.master_password_set(),
+                panel_item: ctl.palette_item_pinned(),
             },
+            &ctl.palette_places(),
             query,
         );
     }
@@ -245,6 +252,14 @@ where
     /// The palette ran command `id`: Search moves the window's own focus, Tour opens the tour
     /// window, every other command is the controller's.
     fn run_command(self: &Rc<Self>, id: i32) {
+        // A board, list or tag row: the places are read again in the order the rows were made.
+        if let Some(i) = crate::commands::place_index(id) {
+            let place = self.controller.borrow().palette_places().into_iter().nth(i);
+            if let Some(place) = place {
+                self.act(|ctl| ctl.main_go(&place));
+            }
+            return;
+        }
         let Some(command) = crate::command_binding::command_of(id) else {
             return;
         };
@@ -258,6 +273,14 @@ where
             // The tour has its own window: the same opener as Help's "Show the welcome tour again".
             crate::commands::Command::Tour => {
                 crate::onboarding_binding::request_open();
+                return;
+            }
+            // The Trash opens first, then the same confirmation as its button asks.
+            crate::commands::Command::EmptyTrash => {
+                self.act(|ctl| ctl.run_command(command, 0));
+                if let Some(window) = self.window.upgrade() {
+                    window.invoke_ask_empty_trash();
+                }
                 return;
             }
             // The nesting chooser is the window's own too, and opens over the same header.
@@ -324,6 +347,7 @@ where
         }
         self.sync_editors(&screen);
         self.sync_tag_manager(&screen, false);
+        crate::binding::arm_paste(&self.controller);
         *self.shown.borrow_mut() = Some(screen);
     }
 
@@ -963,7 +987,10 @@ where
         }
         {
             let core = Rc::clone(&core);
-            window.on_palette_opened(move || core.fill_palette(""));
+            window.on_palette_opened(move || {
+                core.controller.borrow_mut().palette_opened();
+                core.fill_palette("");
+            });
         }
         {
             let core = Rc::clone(&core);
@@ -1966,7 +1993,7 @@ where
 
 /// The editor's colour index: -1 for none, else the position in [`ListAccent::ALL`] (the order of
 /// the window's `ListHue`).
-fn accent_index(accent: Option<ListAccent>) -> i32 {
+pub(crate) fn accent_index(accent: Option<ListAccent>) -> i32 {
     accent
         .and_then(|a| ListAccent::ALL.iter().position(|x| *x == a))
         .map_or(-1, to_i32)

@@ -328,8 +328,29 @@ fn the_palette_command_keep_panel_open_switches_the_pin_both_ways() {
         Some(ToastMessage::PanelOnTop(false))
     );
     w.ctl
-        .run_command(crate::commands::Command::KeepPanelOpen, 0);
+        .run_command(crate::commands::Command::LetPanelClose, 0);
     assert!(w.ctl.view().on_top);
+}
+
+#[test]
+fn the_palette_state_follows_the_controller() {
+    let mut w = world();
+    assert_eq!(w.ctl.keeps_open(), w.ctl.view().on_top);
+    assert!(w.ctl.visible());
+    assert!(!w.ctl.master_password_set());
+    assert!(w.ctl.history_view().undo.is_none());
+    // Lock without a password and Undo without a step are no-ops, not errors.
+    w.ctl.run_command(crate::commands::Command::Lock, 0);
+    w.ctl.run_command(crate::commands::Command::Undo, 0);
+    w.ctl.run_command(crate::commands::Command::Redo, 0);
+    assert!(!w.ctl.library_locked());
+    w.ctl.run_command(crate::commands::Command::Quit, 0);
+    assert_eq!(w.ctl.take_pending(), [Effect::Quit]);
+    w.ctl.run_command(crate::commands::Command::NewBoard, 0);
+    assert!(
+        w.ctl.main_screen().editor.is_some_and(|e| e.is_new),
+        "the board editor opens for a new board"
+    );
 }
 
 #[test]

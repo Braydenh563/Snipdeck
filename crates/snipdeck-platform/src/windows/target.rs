@@ -62,7 +62,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
 };
 use windows::core::{BOOL, Owned, PWSTR};
 
-use crate::route::{Focus, ScreenRect, Target};
+use crate::route::{Focus, Refocus, ScreenRect, Target};
 use crate::win_logic::{self, ElementFacts, ForegroundKind};
 
 /// How long UI Automation may take to connect to the Target's process, in milliseconds.
@@ -369,23 +369,26 @@ impl TargetTracker {
         }
     }
 
-    /// Makes the Target the foreground window again so injected keys reach it. Returns `false`
-    /// when there is no Target or Windows refused.
-    ///
-    /// Windows restores the Target's focused control asynchronously: wait about 50 ms before
-    /// injecting (the spike used 50 ms).
-    pub fn refocus_target(&self) -> bool {
+    /// Makes the Target the foreground window again so injected keys reach it. Says whether
+    /// that was needed: a Target already in front needs no wait before injecting, one that was
+    /// brought forward restores its focused control asynchronously (the spike used 50 ms).
+    /// Unverified on Windows until the owner runs it.
+    pub fn refocus_target(&self) -> Refocus {
         let target = self.inner.target_hwnd();
         // SAFETY: `IsWindow` accepts any handle value.
         if target.is_invalid() || !unsafe { IsWindow(Some(target)) }.as_bool() {
-            return false;
+            return Refocus::None;
         }
         // SAFETY: no arguments, no preconditions.
         if unsafe { GetForegroundWindow() } == target {
-            return true;
+            return Refocus::InFront;
         }
         // SAFETY: `target` is a window handle; a stale one makes the call fail.
-        unsafe { SetForegroundWindow(target) }.as_bool()
+        if unsafe { SetForegroundWindow(target) }.as_bool() {
+            Refocus::Switched
+        } else {
+            Refocus::None
+        }
     }
 
     /// The text caret of the Target, in screen pixels, if it has a system caret. Call it while
@@ -420,11 +423,21 @@ impl TargetTracker {
             None if elevated => Focus::None,
             None => self.automation_focus(),
         };
+        // The program's own name, read once per executable (the first time it is the target).
+        let path = process_exe_path(pid);
+        if let Some(path) = &path {
+            super::app_description::remember_description(path);
+        }
+        let app = path
+            .as_deref()
+            .and_then(win_logic::exe_file_name)
+            .map_or_else(|| UNKNOWN_APP.to_owned(), str::to_owned);
         Some(Target {
-            app: process_exe_name(pid).unwrap_or_else(|| UNKNOWN_APP.to_owned()),
+            app,
             title: window_title(hwnd),
             elevated,
             focus,
+            window: hwnd.0 as usize,
         })
     }
 
@@ -748,6 +761,12 @@ fn window_title(hwnd: HWND) -> String {
 
 /// The executable file name of process `pid`, for example `notepad.exe`.
 fn process_exe_name(pid: u32) -> Option<String> {
+    let path = process_exe_path(pid)?;
+    win_logic::exe_file_name(&path).map(str::to_owned)
+}
+
+/// The full path of the executable of process `pid`.
+fn process_exe_path(pid: u32) -> Option<String> {
     let process = open_process(pid)?;
     // Paths can reach 32 767 units; a Vec avoids a large stack array.
     let mut buffer = vec![0u16; 32_768];
@@ -763,8 +782,9 @@ fn process_exe_name(pid: u32) -> Option<String> {
         )
     }
     .ok()?;
-    let path = String::from_utf16_lossy(buffer.get(..usize::try_from(length).ok()?)?);
-    win_logic::exe_file_name(&path).map(str::to_owned)
+    Some(String::from_utf16_lossy(
+        buffer.get(..usize::try_from(length).ok()?)?,
+    ))
 }
 
 /// The executable file name (lower case) of the process that owns window `hwnd`, for the

@@ -286,6 +286,7 @@ where
         ToastMessage::CopiedNothingFocused { app } => t.invoke_copied_nothing_focused(app.into()),
         ToastMessage::CopiedExcluded { app } => t.invoke_copied_excluded(app.into()),
         ToastMessage::CopiedTargetGone => t.invoke_copied_target_gone(),
+        ToastMessage::CopiedPartlySent => t.invoke_copied_partly_sent(),
         ToastMessage::ClipboardBusy => t.invoke_clipboard_busy(),
         ToastMessage::TemplateBroken => t.invoke_template_broken(),
         ToastMessage::Locked => t.invoke_locked(),
@@ -324,6 +325,8 @@ where
         ToastMessage::TooLargeToSave => t.invoke_too_large_to_save(),
         ToastMessage::NoListToSave => t.invoke_no_list_to_save(),
         ToastMessage::NothingToPasteNext => t.invoke_nothing_to_paste_next(),
+        ToastMessage::StackRunning => t.invoke_stack_running(),
+        ToastMessage::FormClosed => t.invoke_form_closed(),
         ToastMessage::TaskbarEdge => t.invoke_taskbar_edge(),
         ToastMessage::PasteNextFinished => t.invoke_paste_next_finished(),
         ToastMessage::HotkeyInUse { chord } => t.invoke_hotkey_in_use(chord.into()),
@@ -607,7 +610,7 @@ pub fn app_menu_text(
     docked: bool,
     dock_target: Option<DockEdge>,
 ) -> String {
-    use crate::controller::AppMenuEntry;
+    use crate::controller::{AppGroup, AppMenuEntry};
     let t = MenuTexts::get(window);
     match entry {
         AppMenuEntry::PasteStack => t.invoke_app_paste_stack(),
@@ -627,6 +630,8 @@ pub fn app_menu_text(
         AppMenuEntry::PauseHotkeys => t.invoke_app_pause_hotkeys(),
         AppMenuEntry::KeepOnTop => t.invoke_app_keep_on_top(),
         AppMenuEntry::SelectOrDelete => t.invoke_app_select_or_delete(),
+        AppMenuEntry::MoveFrame => t.invoke_app_move_frame(),
+        AppMenuEntry::SizeFrame => t.invoke_app_size_frame(),
         AppMenuEntry::ResetGeometry => t.invoke_app_reset_geometry(),
         AppMenuEntry::Undo | AppMenuEntry::Redo | AppMenuEntry::Separator => return String::new(),
         AppMenuEntry::Troubleshoot => t.invoke_app_troubleshoot(),
@@ -634,6 +639,8 @@ pub fn app_menu_text(
         AppMenuEntry::Shortcuts => t.invoke_app_shortcuts(),
         AppMenuEntry::About => t.invoke_app_about(),
         AppMenuEntry::Quit => t.invoke_app_quit(),
+        AppMenuEntry::Group(AppGroup::Window) => t.invoke_app_group_window(),
+        AppMenuEntry::Group(AppGroup::Help) => t.invoke_app_group_help(),
     }
     .into()
 }
@@ -734,6 +741,9 @@ pub fn transform_name(
         Transform::UrlEncode => t.invoke_paste_as_urlencode(),
         Transform::FirstWord => t.invoke_paste_as_firstword(),
         Transform::LastWord => t.invoke_paste_as_lastword(),
+        Transform::Json => t.invoke_paste_as_json(),
+        Transform::Quote => t.invoke_paste_as_quote(),
+        Transform::Code => t.invoke_paste_as_code(),
     }
     .into()
 }

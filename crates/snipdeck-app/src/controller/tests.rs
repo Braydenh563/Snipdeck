@@ -68,6 +68,7 @@ fn outlook() -> Target {
         app: "OUTLOOK.EXE".into(),
         title: "New message".into(),
         elevated: false,
+        window: 0,
         focus: Focus::Caret,
     }
 }

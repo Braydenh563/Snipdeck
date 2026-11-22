@@ -14,7 +14,8 @@ use std::time::Duration;
 use snipdeck_core::{Candidate, CaseShape, Fired, ItemId, Matcher, Trigger, prefix_of};
 use snipdeck_platform::typing::TypedEvent;
 
-/// How often the worker looks for a new trigger list while no key arrives.
+/// How often the worker looks at a shown hint's age while no key arrives. With no hint it does not
+/// wake at all: an update from the app comes with a [`TypedEvent::Wake`].
 const POLL: Duration = Duration::from_millis(100);
 
 /// Polls without any key before a shown hint comes down by itself (5 s): the user went on
@@ -116,6 +117,9 @@ pub enum Out {
     /// `Tab` was pressed while hint number `.1` showed: insert the suggested item, but only if
     /// that hint is the one on screen.
     Accept(Typed, u64),
+    /// Backspace was the very next key after an expansion: take the expansion back and type the
+    /// code again (the controller checks it was this item's, and recent).
+    Undo(Typed),
 }
 
 /// What the UI thread tells the worker.
@@ -147,7 +151,7 @@ pub struct Env {
     pub generation: u64,
     /// The hints made so far.
     pub hints: AtomicU64,
-    /// How often the worker looks around while no key arrives.
+    /// How often the worker looks at a shown hint's age while no key arrives.
     pub poll: Duration,
     /// Polls without a key before a shown hint comes down.
     pub idle_polls: u32,
@@ -204,6 +208,10 @@ pub struct Typist {
     /// A trigger just fired and nothing has forgotten the text since: its expansion may still be
     /// reported as not sent (see [`Typist::not_expanded`]).
     after_fire: bool,
+    /// The trigger that just fired, until the next key (a Backspace then is an undo).
+    last_fire: Option<Fired>,
+    /// A Backspace came right after `last_fire`: see [`Typist::take_undo`].
+    undo: Option<Fired>,
 }
 
 // What was typed is private: nothing of the matcher's state is shown.
@@ -220,6 +228,8 @@ impl Typist {
         Self {
             matcher,
             after_fire: false,
+            last_fire: None,
+            undo: None,
         }
     }
 
@@ -227,12 +237,22 @@ impl Typist {
     pub fn set_matcher(&mut self, matcher: Matcher) {
         self.matcher = matcher;
         self.after_fire = false;
+        self.last_fire = None;
+        self.undo = None;
     }
 
     /// Forgets what was typed.
     pub fn reset(&mut self) {
         self.matcher.reset();
         self.after_fire = false;
+        self.last_fire = None;
+        self.undo = None;
+    }
+
+    /// The trigger whose expansion the last event asked to take back (a Backspace as the very
+    /// next key after the expansion), once.
+    pub fn take_undo(&mut self) -> Option<Fired> {
+        self.undo.take()
     }
 
     /// Forgets what was typed after a suggestion was inserted: the text that came in is not
@@ -240,6 +260,8 @@ impl Typist {
     pub fn inserted(&mut self) {
         self.matcher.after_expansion(AFTER_EXPANSION);
         self.after_fire = false;
+        self.last_fire = None;
+        self.undo = None;
     }
 
     /// The expansion `fired` reported was not sent after all (a password box, a key typed on):
@@ -270,7 +292,9 @@ impl Typist {
     pub fn event(&mut self, event: TypedEvent) -> Option<Fired> {
         match event {
             TypedEvent::Char(c) => {
+                self.undo = None;
                 let fired = self.matcher.feed(c);
+                self.last_fire.clone_from(&fired);
                 if fired.is_some() {
                     self.matcher.after_expansion(AFTER_EXPANSION);
                     self.after_fire = true;
@@ -278,6 +302,8 @@ impl Typist {
                 fired
             }
             TypedEvent::Backspace => {
+                // The first key after a fire is the user taking the expansion back.
+                self.undo = self.last_fire.take();
                 if self.matcher.buffered() == 0 {
                     // Past the start: the text before is unknown, nothing to correct.
                     self.after_fire = false;
@@ -289,6 +315,8 @@ impl Typist {
                 self.reset();
                 None
             }
+            // Not a key (the worker loop answers it before the typist sees it).
+            TypedEvent::Wake => None,
             // The text a hint inserts is not known: start over, with a boundary needed.
             TypedEvent::Tab(_) => {
                 self.inserted();
@@ -317,6 +345,9 @@ pub fn run(
     let mut consumed: u64 = 0;
     let mut idle: u32 = 0;
     loop {
+        // The drain stays at the top of every turn: the app sends the update, then a `Wake`
+        // with `try_send`, and a full event queue drops the wake. The update is then picked up
+        // at the next turn, by any later key, so no update waits on a wake alone.
         while let Ok(update) = updates.try_recv() {
             match update {
                 Update::List(list) => {
@@ -327,7 +358,14 @@ pub fn run(
                 Update::NotExpanded(fired) => typist.not_expanded(&fired),
             }
         }
-        match events.recv_timeout(env.poll) {
+        // Nothing to time while no hint shows: block until a key or a wake (the app queued an update).
+        let next = if hint.is_some() {
+            events.recv_timeout(env.poll)
+        } else {
+            events.recv().map_err(|_| RecvTimeoutError::Disconnected)
+        };
+        match next {
+            Ok(TypedEvent::Wake) => {}
             Ok(event) => {
                 idle = 0;
                 consumed += 1;
@@ -350,6 +388,16 @@ pub fn run(
                 let fired = typist.event(event);
                 if fired.is_some() {
                     drop_hint(&mut hint, env, &mut deliver);
+                }
+                if let Some(undo) = typist.take_undo() {
+                    let window = (env.foreground)();
+                    let in_password_box = password();
+                    if fresh() {
+                        let typed = Typed::new(undo, in_password_box, fresh)
+                            .in_window(window, Arc::clone(&env.foreground));
+                        deliver(Out::Undo(typed));
+                    }
+                    continue;
                 }
                 let Some(fired) = fired else {
                     follow_hint(
@@ -598,6 +646,19 @@ mod tests {
     }
 
     #[test]
+    fn a_wake_is_no_key_it_neither_breaks_a_trigger_nor_makes_the_expansion_stale() {
+        let item = item_id(1);
+        let (keys, events) = Keys::new();
+        keys.type_text(";si");
+        // The app woke the worker (a new list is queued): the hook did not count it.
+        keys.tx.send(TypedEvent::Wake).expect("wake");
+        keys.type_text("g");
+        let (got, _) = deliver_all(keys, &events, item, ";sig", || false);
+        assert_eq!(got.len(), 1, "the trigger still fires");
+        assert!(got[0].still_current(), "a wake is not a key typed after it");
+    }
+
+    #[test]
     fn typing_while_the_password_check_runs_drops_the_expansion() {
         let item = item_id(1);
         let (keys, events) = Keys::new();
@@ -687,6 +748,34 @@ mod tests {
     }
 
     #[test]
+    fn a_backspace_straight_after_a_fire_asks_to_undo_it_once() {
+        let item = item_id(1);
+        let mut typist = Typist::new(matcher(";ab", item));
+        for c in ";ab".chars() {
+            typist.event(TypedEvent::Char(c));
+        }
+        typist.event(TypedEvent::Backspace);
+        assert_eq!(typist.take_undo().map(|f| f.item), Some(item));
+        assert!(typist.take_undo().is_none(), "once");
+        // Another key between the fire and the Backspace: no undo.
+        let mut typist = Typist::new(matcher(";ab", item));
+        for c in ";ab ".chars() {
+            typist.event(TypedEvent::Char(c));
+        }
+        typist.event(TypedEvent::Backspace);
+        assert!(typist.take_undo().is_none());
+        // Two Backspaces: only the first is the undo.
+        let mut typist = Typist::new(matcher(";ab", item));
+        for c in ";ab".chars() {
+            typist.event(TypedEvent::Char(c));
+        }
+        typist.event(TypedEvent::Backspace);
+        typist.take_undo();
+        typist.event(TypedEvent::Backspace);
+        assert!(typist.take_undo().is_none());
+    }
+
+    #[test]
     fn debug_shows_no_typed_text() {
         let mut typist = Typist::new(matcher(";sig", item_id(1)));
         for c in "hunter2".chars() {
@@ -729,6 +818,7 @@ mod tests {
                     Out::Hide(_) => "hide".to_owned(),
                     Out::Accept(t, _) => format!("accept {}", t.fired.chars),
                     Out::Expand(_) => "expand".to_owned(),
+                    Out::Undo(_) => "undo".to_owned(),
                 };
                 log.lock().expect("log").push(line);
             };
@@ -1118,6 +1208,7 @@ mod tests {
                         Out::Hide(_) => "hide",
                         Out::Expand(_) => "expand",
                         Out::Accept(..) => "accept",
+                        Out::Undo(_) => "undo",
                     });
                 },
             );

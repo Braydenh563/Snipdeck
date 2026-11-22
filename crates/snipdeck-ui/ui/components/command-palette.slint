@@ -17,6 +17,9 @@ export struct PaletteRow {
     // The first match of the query in the label: the text before it and the match (empty = no mark).
     mark-before: string,
     mark-text: string,
+    // Why the command cannot run now ("Turn on the Symbols tab in Settings"); empty = it can. The row is dimmed and
+    // activating it does nothing, so the palette stays open and the reason stays on the row.
+    hint: string,
 }
 
 // One palette row: the shared menu row (32px, radius 6): label left with the match on `search-mark`, key caps right.
@@ -33,7 +36,7 @@ component PaletteItem inherits Rectangle {
     border-radius: Radius.md;
     accessible-role: list-item;
     accessible-label: root.data.label;
-    accessible-description: root.data.spoken;
+    accessible-description: root.data.hint != "" ? root.data.hint : root.data.spoken;
     accessible-item-index: root.index;
     accessible-item-count: root.count;
     accessible-item-selectable: true;
@@ -72,12 +75,21 @@ component PaletteItem inherits Rectangle {
         spacing: Space.s2;
         label-text := Text {
             text: root.data.label;
-            color: Theme.text-primary;
+            color: root.data.hint != "" ? Theme.text-secondary : Theme.text-primary;
             font-family: Fonts.sans;
             font-size: Type.base;
             vertical-alignment: center;
             overflow: elide;
             horizontal-stretch: 1;
+            accessible-role: none;
+        }
+        if root.data.hint != "": Text {
+            text: root.data.hint;
+            color: Theme.text-secondary;
+            font-family: Fonts.sans;
+            font-size: Type.sm;
+            vertical-alignment: center;
+            overflow: elide;
             accessible-role: none;
         }
         if root.data.keys.length > 0: Rectangle {
@@ -125,7 +137,7 @@ export component CommandPalette inherits Rectangle {
     property <length> row-h: max(Space.s8, Type.line-base + Space.s2);
     // What the polite live region says: the highlighted command and where it stands ("Settings, 2 of 7"),
     // so a screen reader hears each arrow press and the count after each keystroke.
-    property <string> status: root.cur < 0 ? @tr("{} found", 0) : @tr("{}, {} of {}", root.rows[root.cur].label, root.cur + 1, root.rows.length);
+    property <string> status: root.cur < 0 ? @tr("{} found", 0) : @tr("{}, {} of {}", root.rows[root.cur].label + (root.rows[root.cur].hint == "" ? "" : ": " + root.rows[root.cur].hint), root.cur + 1, root.rows.length);
 
     // The highlight was last moved by the pointer: the row under it is already (at least partly) in view, so the list
     // is not nudged to show all of it, which would creep while a wheel or touchpad scroll passes rows under it.
@@ -199,8 +211,16 @@ export component CommandPalette inherits Rectangle {
                     root.page(root.rows.length);
                     return accept;
                 }
+                // With an empty query Home and End also jump to the first and last command.
+                if ((event.text == Key.Home || event.text == Key.End) && root.query == "" && !field.composing) {
+                    root.by-pointer = false;
+                    root.current = event.text == Key.Home ? 0 : max(root.rows.length - 1, 0);
+                    return accept;
+                }
                 if (event.text == Key.Return && root.cur >= 0 && !field.composing) {
-                    root.chosen(root.rows[root.cur].id);
+                    if (root.rows[root.cur].hint == "") {
+                        root.chosen(root.rows[root.cur].id);
+                    }
                     return accept;
                 }
                 return reject;
@@ -266,7 +286,11 @@ export component CommandPalette inherits Rectangle {
                                     root.by-pointer = true;
                                     root.current = i;
                                 }
-                                activated => { root.chosen(row.id); }
+                                activated => {
+                                    if (row.hint == "") {
+                                        root.chosen(row.id);
+                                    }
+                                }
                             }
                         }
                     }

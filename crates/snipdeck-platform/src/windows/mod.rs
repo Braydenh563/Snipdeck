@@ -32,6 +32,7 @@
 //! None of this has run on Windows yet. Behaviour is checked by the wizard steps in
 //! `tools/windows-test/tests/` (M2 section).
 
+mod app_description;
 pub mod autostart;
 pub mod clipboard;
 pub mod clipboard_history;

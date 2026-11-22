@@ -57,6 +57,7 @@ fn activating_a_row_pastes_it_counts_the_use_and_toasts() {
     );
     assert!(services.timing.slept.contains(&REFOCUS_WAIT));
     assert_eq!(w.targets.refocus_count(), 1);
+    w.ctl.drain_paste();
     assert_eq!(uses(&w, w.ids[1]), 1);
     assert_eq!(
         w.ctl.store().item(w.ids[1]).expect("item").last_used_at,
@@ -366,10 +367,12 @@ fn a_sensitive_paste_whose_restore_failed_still_arms_the_clear_timer() {
     let id = w.ids[0];
     make_sensitive(&mut w, id);
     w.ctl.services.clipboard.fail_snapshot = true;
+    // The key is out: the result is the provisional "pasted"; the restore comes on the tick.
     assert_eq!(
         w.ctl.activate_row(0, UseMode::Paste),
-        UseResult::Done(UseOutcome::PastedNotRestored)
+        UseResult::Done(UseOutcome::Pasted)
     );
+    w.ctl.drain_paste();
     assert_eq!(w.ctl.clipboard_clear_wait(), Some(Duration::from_secs(30)));
     w.clock.set(at("2026-10-17T10:30:30Z"));
     w.ctl.clear_clipboard_if_due();
@@ -385,10 +388,12 @@ fn a_partial_restore_leaves_the_users_restored_text_alone_when_the_timer_fires()
     w.ctl.services.clipboard.restore_result = Some(Err(
         snipdeck_platform::pipeline::Error::Clipboard("one format failed".into()),
     ));
+    // The key is out: the result is the provisional "pasted"; the restore comes on the tick.
     assert_eq!(
         w.ctl.activate_row(0, UseMode::Paste),
-        UseResult::Done(UseOutcome::PastedNotRestored)
+        UseResult::Done(UseOutcome::Pasted)
     );
+    w.ctl.drain_paste();
     // The restore put the user's text back before one other format failed: the clipboard now
     // holds their text under a newer sequence number.
     w.ctl.services.clipboard.written.clear();
@@ -500,6 +505,7 @@ fn copy_only_leaves_the_item_on_the_clipboard_and_sends_no_keys() {
 fn quick_use_pastes_the_nth_row() {
     let mut w = world();
     assert_eq!(w.ctl.quick_use(3), UseResult::Done(UseOutcome::Pasted));
+    w.ctl.drain_paste();
     assert_eq!(uses(&w, w.ids[2]), 1);
     assert_eq!(w.ctl.quick_use(9), UseResult::Failed, "no ninth row");
     assert_eq!(uses(&w, w.ids[0]), 0);
@@ -598,6 +604,7 @@ fn a_template_with_prompts_opens_the_fill_form_then_pastes_with_the_answers() {
         w.ctl.services().clipboard.written[0].data(),
         [Data::Text("Hi Sam".into())]
     );
+    w.ctl.drain_paste();
     assert_eq!(uses(&w, greeting), 1);
 }
 
@@ -668,6 +675,7 @@ fn a_program_rule_in_settings_decides_the_paste_key() {
         app: "wt.exe".into(),
         title: "PowerShell".into(),
         elevated: false,
+        window: 0,
         focus: Focus::Caret,
     };
     let rule = || ProgramRule {
@@ -682,6 +690,7 @@ fn a_program_rule_in_settings_decides_the_paste_key() {
     // A rule changed while running (Settings > Programs).
     let mut w = world_with(Some(wt.clone()), Settings::default());
     w.ctl.activate_row(0, UseMode::Paste);
+    w.ctl.drain_paste();
     assert!(
         !w.ctl.services().keyboard.sent[0].contains(&shift_down),
         "Ctrl+V by default: {:?}",
@@ -689,6 +698,7 @@ fn a_program_rule_in_settings_decides_the_paste_key() {
     );
     w.ctl.update_settings(|s| s.programs.push(rule()));
     w.ctl.activate_row(0, UseMode::Paste);
+    w.ctl.drain_paste();
     let sent = &w.ctl.services().keyboard.sent;
     assert!(
         sent[1].contains(&shift_down),
@@ -949,6 +959,7 @@ fn a_typed_trigger_backspaces_then_pastes() {
         w.ctl.services().clipboard.written[0].data(),
         [Data::Text("second".into())]
     );
+    w.ctl.drain_paste();
     assert_eq!(uses(&w, w.ids[1]), 1);
 }
 
@@ -1160,6 +1171,7 @@ fn a_prompted_trigger_opens_the_fill_form_and_erases_only_once_it_is_confirmed()
     let sent = backspaces_sent(&mut w);
     assert_eq!(sent.len(), 1, "erase and paste in one injection");
     assert!(sent[0].starts_with(&snipdeck_platform::keys::backspaces(3)));
+    w.ctl.drain_paste();
     assert_eq!(uses(&w, w.ids[3]), 1);
 }
 
@@ -1189,6 +1201,23 @@ fn a_fill_form_confirmed_in_another_app_erases_nothing() {
     let mut elsewhere = outlook();
     elsewhere.app = "other.exe".into();
     w.targets.set(Some(elsewhere));
+    w.ctl.submit_fill(&["Sam".to_owned()]);
+    for batch in backspaces_sent(&mut w) {
+        assert!(!batch.starts_with(&snipdeck_platform::keys::backspaces(1)));
+    }
+}
+
+#[test]
+fn a_fill_form_confirmed_in_another_window_of_the_same_app_erases_nothing() {
+    let mut w = typing_world(3, ";hi");
+    let mut here = outlook();
+    here.window = 0x10;
+    w.targets.set(Some(here.clone()));
+    let fired = typed(&w, ";hi");
+    w.ctl.expand_typed(&Typed::new(fired, false, || true));
+    // The same program, another document: the typed code is not there to erase.
+    here.window = 0x20;
+    w.targets.set(Some(here));
     w.ctl.submit_fill(&["Sam".to_owned()]);
     for batch in backspaces_sent(&mut w) {
         assert!(!batch.starts_with(&snipdeck_platform::keys::backspaces(1)));
@@ -1360,6 +1389,7 @@ fn tab_inserts_and_backspaces_the_prefix() {
         key: Key::V,
         down: true
     }));
+    w.ctl.drain_paste();
     assert_eq!(uses(&w, w.ids[1]), 1);
 }
 
@@ -1609,6 +1639,7 @@ fn a_sensitive_files_paste_deletes_its_temp_files_on_the_clear_timer_without_a_l
     w.ctl.store.update_item(&item, None).expect("update");
     w.ctl.activate_row(0, UseMode::Paste);
     // The timer the host arms covers the files even though the clipboard needs no clear.
+    w.ctl.drain_paste();
     assert_eq!(w.ctl.clipboard_clear_wait(), Some(Duration::from_secs(30)));
     w.clock.set(at("2026-10-17T10:30:29Z"));
     w.ctl.clear_clipboard_if_due();
@@ -1651,6 +1682,7 @@ fn a_called_off_sensitive_files_paste_still_deletes_its_temp_files_on_the_timer(
         Some(Erasing {
             chars: 2,
             app: None,
+            window: 0,
             fresh: Some(&stale),
             retype: Retype::default(),
         }),
@@ -1667,6 +1699,7 @@ fn a_later_use_does_not_postpone_the_temp_file_delete() {
     let mut w = world();
     make_sensitive_files(&mut w);
     w.ctl.activate_row(0, UseMode::Paste);
+    w.ctl.drain_paste();
     assert_eq!(w.ctl.clipboard_clear_wait(), Some(Duration::from_secs(30)));
     w.clock.set(at("2026-10-17T10:30:20Z"));
     w.ctl.activate_row(0, UseMode::Paste);
@@ -1697,5 +1730,209 @@ fn a_paste_that_restores_a_sensitive_clipboard_keeps_its_clear_armed() {
     let _ = plain;
     let now = w.ctl.services.clipboard.sequence_number();
     assert_ne!(now, armed, "the paste moved the number");
+    w.ctl.drain_paste();
     assert_eq!(w.ctl.clipboard_clear.as_ref().expect("armed").sequence, now);
+}
+
+#[test]
+fn a_paste_returns_at_once_and_its_tail_finishes_on_the_tick() {
+    use snipdeck_platform::pipeline::SETTLE;
+    let mut w = world();
+    let result = w.ctl.activate_row(1, UseMode::Paste);
+    assert_eq!(result, UseResult::Done(UseOutcome::Pasted));
+    assert!(w.ctl.paste_pending(), "the key is out, the tail waits");
+    assert_eq!(uses(&w, w.ids[1]), 0, "not counted before it ends");
+    assert!(
+        w.ctl.view().toast.is_none(),
+        "the toast waits for the real end"
+    );
+    // Ticks without the time passing change nothing and never sleep.
+    let slept = w.ctl.services().timing.slept.clone();
+    w.ctl.paste_tick();
+    assert!(w.ctl.paste_pending());
+    assert_eq!(w.ctl.services().timing.slept, slept, "a tick never sleeps");
+    // The Target asks for the data (this fake after one more look), then has the settle time
+    // to read it; only then does a tick restore the clipboard and finish.
+    w.ctl.paste_tick();
+    assert!(w.ctl.paste_pending(), "asked, but still reading");
+    w.ctl.services.timing.now += SETTLE;
+    w.ctl.paste_tick();
+    assert!(!w.ctl.paste_pending());
+    assert_eq!(uses(&w, w.ids[1]), 1);
+    assert!(matches!(
+        w.ctl.view().toast.expect("toast").message,
+        ToastMessage::Pasted { .. }
+    ));
+}
+
+#[test]
+fn the_next_use_finishes_an_earlier_tail_first() {
+    let mut w = world();
+    w.ctl.activate_row(0, UseMode::Paste);
+    assert!(w.ctl.paste_pending());
+    w.ctl.activate_row(1, UseMode::Paste);
+    // The first paste ended (counted, restored) before the second one wrote anything.
+    assert_eq!(uses(&w, w.ids[0]), 1);
+    let log = w.ctl.services().clipboard.log.clone();
+    let first_restore = log
+        .iter()
+        .position(|l| l.starts_with("restore"))
+        .expect("restore");
+    let second_write = log
+        .iter()
+        .rposition(|l| l.starts_with("transient"))
+        .expect("write");
+    assert!(first_restore < second_write, "{log:?}");
+    w.ctl.drain_paste();
+    assert_eq!(uses(&w, w.ids[1]), 1);
+    assert!(!w.ctl.paste_pending());
+}
+
+#[test]
+fn a_skipped_trigger_records_its_reason_for_troubleshoot() {
+    use crate::controller::SkipReason;
+    let mut w = typing_world(1, ";two");
+    assert_eq!(w.ctl.last_skipped_trigger(), None, "nothing skipped yet");
+    let fired = typed(&w, ";two");
+    w.ctl
+        .expand_typed(&Typed::new(fired.clone(), true, || true));
+    assert_eq!(
+        w.ctl.last_skipped_trigger(),
+        Some(SkipReason::PasswordField)
+    );
+    w.ctl.set_own_window_active(true);
+    w.ctl
+        .expand_typed(&Typed::new(fired.clone(), false, || true));
+    assert_eq!(
+        w.ctl.last_skipped_trigger(),
+        Some(SkipReason::SnipdeckWindow)
+    );
+    w.ctl.set_own_window_active(false);
+    w.ctl
+        .expand_typed(&Typed::new(fired.clone(), false, || false));
+    assert_eq!(w.ctl.last_skipped_trigger(), Some(SkipReason::KeyTyped));
+    let id = w.ids[1];
+    make_sensitive(&mut w, id);
+    w.ctl.expand_typed(&Typed::new(fired, false, || true));
+    assert_eq!(w.ctl.last_skipped_trigger(), Some(SkipReason::ItemChanged));
+}
+
+#[test]
+fn a_feature_that_is_off_explains_nothing() {
+    let mut w = typing_world(1, ";two");
+    w.ctl.update_settings(|s| s.expand_triggers = false);
+    let fired = typed(&w, ";two");
+    w.ctl.expand_typed(&Typed::new(fired, false, || true));
+    assert_eq!(w.ctl.last_skipped_trigger(), None);
+}
+
+#[test]
+fn quitting_settles_a_paste_still_waiting_for_its_target() {
+    let mut w = world();
+    w.ctl.activate_row(1, UseMode::Paste);
+    assert!(w.ctl.paste_pending(), "the key is out, the tail waits");
+    w.ctl.clear_pending_clipboard_now();
+    assert!(!w.ctl.paste_pending(), "the quit ran the paste to its end");
+    assert_eq!(uses(&w, w.ids[1]), 1);
+}
+
+#[test]
+fn locking_settles_a_paste_still_waiting_for_its_target() {
+    let mut w = world();
+    w.ctl.lock.set = true;
+    w.ctl.activate_row(1, UseMode::Paste);
+    assert!(w.ctl.paste_pending());
+    w.ctl.lock_now();
+    assert!(
+        !w.ctl.paste_pending(),
+        "the clipboard is put back before the key goes"
+    );
+    assert_eq!(uses(&w, w.ids[1]), 1);
+}
+
+#[test]
+fn a_paste_that_starts_asks_the_host_to_poll_it_wherever_it_started() {
+    let mut w = world();
+    let asked = std::rc::Rc::new(std::cell::Cell::new(0_u32));
+    let seen = std::rc::Rc::clone(&asked);
+    w.ctl
+        .set_on_paste_waiting(std::rc::Rc::new(move || seen.set(seen.get() + 1)));
+    w.ctl.activate_row(1, UseMode::Paste);
+    assert_eq!(asked.get(), 1, "asked once, when the paste began waiting");
+    // A copy waits for nothing.
+    w.ctl.drain_paste();
+    w.ctl.activate_row(1, UseMode::Copy);
+    assert_eq!(asked.get(), 1);
+    // The Picker's path starts a paste too.
+    w.ctl.drain_paste();
+    let id = w.ids[0];
+    w.ctl.use_item(id, UseMode::Paste);
+    assert_eq!(asked.get(), 2);
+}
+
+#[test]
+fn backspace_right_after_an_expansion_types_the_code_back() {
+    let mut w = typing_world(1, ";two");
+    w.clock.set(at("2026-10-17T10:30:00Z"));
+    let fired = typed(&w, ";two");
+    w.ctl
+        .expand_typed(&Typed::new(fired.clone(), false, || true));
+    w.ctl.drain_paste();
+    w.ctl.services_mut().keyboard.sent.clear();
+    w.ctl.services_mut().clipboard.written.clear();
+    w.clock.set(at("2026-10-17T10:30:05Z"));
+    assert!(
+        w.ctl
+            .undo_expansion(&Typed::new(fired.clone(), false, || true))
+    );
+    let sent = backspaces_sent(&mut w);
+    assert_eq!(sent.len(), 1);
+    // "second" is 6 characters; the user's own Backspace took one.
+    assert!(sent[0].starts_with(&snipdeck_platform::keys::backspaces(5)));
+    assert_eq!(
+        w.ctl.services().clipboard.written[0].data(),
+        [Data::Text(";two".into())],
+        "the code comes back"
+    );
+    // Once only.
+    assert!(!w.ctl.undo_expansion(&Typed::new(fired, false, || true)));
+}
+
+#[test]
+fn the_undo_is_for_a_fresh_expansion_of_the_same_item_in_the_same_conditions() {
+    let undo = |wait: &str, on: bool, password: bool, other: bool| {
+        let mut w = typing_world(1, ";two");
+        w.clock.set(at("2026-10-17T10:30:00Z"));
+        let fired = typed(&w, ";two");
+        w.ctl
+            .expand_typed(&Typed::new(fired.clone(), false, || true));
+        w.ctl.drain_paste();
+        w.clock.set(at(wait));
+        w.ctl.update_settings(|s| s.expand_triggers = on);
+        let mut asked = fired;
+        if other {
+            asked.item = w.ids[2];
+        }
+        w.ctl.undo_expansion(&Typed::new(asked, password, || true))
+    };
+    assert!(undo("2026-10-17T10:30:08Z", true, false, false), "in time");
+    assert!(!undo("2026-10-17T10:30:09Z", true, false, false), "late");
+    assert!(!undo("2026-10-17T10:30:01Z", false, false, false), "off");
+    assert!(!undo("2026-10-17T10:30:01Z", true, true, false), "password");
+    assert!(
+        !undo("2026-10-17T10:30:01Z", true, false, true),
+        "other item"
+    );
+}
+
+#[test]
+fn a_key_since_the_expansion_takes_the_undo_away() {
+    let mut w = typing_world(1, ";two");
+    let fired = typed(&w, ";two");
+    w.ctl
+        .expand_typed(&Typed::new(fired.clone(), false, || true));
+    w.ctl.drain_paste();
+    w.ctl.services_mut().keyboard.sent.clear();
+    assert!(!w.ctl.undo_expansion(&Typed::new(fired, false, || false)));
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
 }

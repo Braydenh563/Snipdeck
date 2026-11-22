@@ -316,6 +316,17 @@ fn closing_a_docked_panel_tucks_it_and_losing_the_foreground_does_not_hide_it() 
 }
 
 #[test]
+fn a_foreground_change_asks_the_host_for_the_target_once() {
+    let mut w = floating(DockTrigger::Both);
+    with_tray(&mut w);
+    w.ctl.set_on_top(false);
+    advance(&w, 5_000);
+    let before = w.targets.probe_count();
+    w.ctl.on_foreground_changed();
+    assert_eq!(w.targets.probe_count() - before, 1);
+}
+
+#[test]
 fn the_pointer_near_the_tab_reveals_the_panel_and_leaving_tucks_it() {
     let mut w = docked(DockTrigger::Both, DockEdge::Right);
     assert!(w.ctl.dock_live());
@@ -855,6 +866,30 @@ fn the_view_says_which_way_the_handle_runs() {
         assert_eq!(view.dock_vertical, vertical, "{edge:?}");
         assert!(view.dock_edge.is_some() && !view.dock_collapsed);
     }
+}
+
+#[test]
+fn an_idle_dock_polls_slowly_and_speeds_up_near_the_tab_or_while_a_delay_runs() {
+    use crate::dock::{IDLE_TICK, TICK};
+    let mut w = docked(DockTrigger::Both, DockEdge::Right);
+    // Away from the open Panel the leave delay runs: fast until the Panel tucks.
+    w.targets.set_cursor(Some((1000, 300)));
+    w.ctl.dock_tick();
+    assert_eq!(w.ctl.dock_interval(), TICK, "the leave delay is running");
+    advance(&w, 400);
+    w.ctl.dock_tick();
+    assert!(w.ctl.view().dock_collapsed);
+    // Tucked, the pointer far from the tab: nothing to watch, so the slow pace.
+    w.ctl.dock_tick();
+    assert_eq!(w.ctl.dock_interval(), IDLE_TICK);
+    // The pointer comes within the wake zone of the tab: the fast pace, before it is on it.
+    w.targets.set_cursor(Some((1914 - 100, 300)));
+    w.ctl.dock_tick();
+    assert_eq!(w.ctl.dock_interval(), TICK);
+    // And away again.
+    w.targets.set_cursor(Some((1000, 300)));
+    w.ctl.dock_tick();
+    assert_eq!(w.ctl.dock_interval(), IDLE_TICK);
 }
 
 #[test]
@@ -2592,4 +2627,126 @@ mod eyedropper {
         advance(&w, 10_000);
         assert_eq!(w.ctl.on_foreground_changed(), [Effect::HidePanel]);
     }
+}
+
+// ---- Move and Size by keyboard (PANEL-29) ---------------------------------------------------
+
+#[test]
+fn arrow_keys_move_a_floating_panel_in_steps_and_keep_it_inside_the_work_area() {
+    let mut w = floating(DockTrigger::Off);
+    assert_eq!(w.ctl.begin_frame_mode(FrameMode::Move), Vec::new());
+    assert_eq!(w.ctl.frame_mode(), Some(FrameMode::Move));
+    // Two quick steps before the window reports back: they add up.
+    assert_eq!(
+        w.ctl.frame_key(1, 0, false),
+        place(Rect { x: 616, ..FLOATING })
+    );
+    assert_eq!(
+        w.ctl.frame_key(0, 1, false),
+        place(Rect {
+            x: 616,
+            y: 116,
+            ..FLOATING
+        })
+    );
+    // The coarse step is four times as long.
+    assert_eq!(
+        w.ctl.frame_key(-1, 0, true),
+        place(Rect {
+            x: 552,
+            y: 116,
+            ..FLOATING
+        })
+    );
+    // Pushed past the edge of the work area the frame stays inside it.
+    let mut last = Vec::new();
+    for _ in 0..40 {
+        last = w.ctl.frame_key(-1, -1, true);
+    }
+    assert_eq!(
+        last,
+        place(Rect {
+            x: 0,
+            y: 0,
+            ..FLOATING
+        })
+    );
+}
+
+#[test]
+fn arrow_keys_resize_a_floating_panel_between_its_limits() {
+    let mut w = floating(DockTrigger::Off);
+    w.ctl.begin_frame_mode(FrameMode::Size);
+    assert_eq!(
+        w.ctl.frame_key(1, 0, false),
+        place(Rect { w: 336, ..FLOATING })
+    );
+    assert_eq!(
+        w.ctl.frame_key(0, -1, false),
+        place(Rect {
+            w: 336,
+            h: 484,
+            ..FLOATING
+        })
+    );
+    let mut last = Vec::new();
+    for _ in 0..40 {
+        last = w.ctl.frame_key(1, 0, true);
+    }
+    let [Effect::PlaceWindow(wide)] = last.as_slice() else {
+        panic!("one placement, got {last:?}");
+    };
+    assert_eq!(wide.w, 480, "the widest a Panel goes");
+    for _ in 0..40 {
+        last = w.ctl.frame_key(0, -1, true);
+    }
+    let [Effect::PlaceWindow(short)] = last.as_slice() else {
+        panic!("one placement, got {last:?}");
+    };
+    assert_eq!(short.h, frame::MIN_HEIGHT, "the lowest a Panel goes");
+}
+
+#[test]
+fn enter_keeps_the_new_frame_and_escape_gives_the_old_one_back() {
+    let mut w = floating(DockTrigger::Off);
+    w.ctl.begin_frame_mode(FrameMode::Move);
+    w.ctl.frame_key(1, 0, true);
+    assert_eq!(w.ctl.end_frame_mode(true), Vec::new());
+    assert_eq!(w.ctl.frame_mode(), None);
+    assert_eq!(w.ctl.frame_key(1, 0, false), Vec::new(), "no mode, no move");
+
+    w.ctl.begin_frame_mode(FrameMode::Size);
+    w.ctl.frame_key(1, 1, true);
+    let back = w.ctl.end_frame_mode(false);
+    assert_eq!(
+        back,
+        place(Rect { x: 664, ..FLOATING }),
+        "the frame the mode began with"
+    );
+    assert_eq!(w.ctl.view().frame_mode, None);
+}
+
+#[test]
+fn a_docked_panel_has_no_keyboard_move_or_size() {
+    let mut w = docked(DockTrigger::Both, DockEdge::Right);
+    assert_eq!(w.ctl.begin_frame_mode(FrameMode::Move), Vec::new());
+    assert_eq!(w.ctl.frame_mode(), None);
+}
+
+#[test]
+fn the_window_menu_has_move_and_size_rows_that_start_the_mode() {
+    let mut w = floating(DockTrigger::Off);
+    let at = |entry| APP_MENU.iter().position(|e| *e == entry).expect("a row");
+    w.ctl.open_app_menu();
+    assert_eq!(
+        w.ctl.choose_app_menu(at(AppMenuEntry::MoveFrame)),
+        Vec::new()
+    );
+    assert_eq!(w.ctl.frame_mode(), Some(FrameMode::Move));
+    assert_eq!(w.ctl.view().frame_mode, Some(FrameMode::Move));
+    assert!(w.ctl.view().app_menu.is_none(), "the menu closed");
+    w.ctl.end_frame_mode(true);
+    w.ctl.open_app_menu();
+    w.ctl.choose_app_menu(at(AppMenuEntry::SizeFrame));
+    assert_eq!(w.ctl.frame_mode(), Some(FrameMode::Size));
 }

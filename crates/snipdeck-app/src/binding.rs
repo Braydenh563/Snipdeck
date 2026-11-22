@@ -132,6 +132,69 @@ pub(crate) fn arm_toast<S, C, K, T>(
     });
 }
 
+/// Starts the timer chain that polls a paste waiting for its target, unless one runs: each tick
+/// looks once, never sleeps, and redraws the windows when the paste ends.
+pub(crate) fn arm_paste<S, C, K, T>(controller: &Rc<RefCell<Controller<S, C, K, T>>>)
+where
+    S: Library + 'static,
+    C: Clipboard + ClipboardText + 'static,
+    K: Keyboard + 'static,
+    T: Timing + 'static,
+{
+    if !controller.borrow_mut().claim_paste_timer() {
+        return;
+    }
+    paste_tick_after(Rc::downgrade(controller));
+}
+
+/// Has the controller start the paste timer chain the moment a paste begins waiting, whichever
+/// window or trigger started it (a redraw would only arm it if a bound window drew then). The
+/// chain starts on the next turn of the event loop: the controller is still borrowed when it asks.
+pub fn arm_paste_when_waiting<S, C, K, T>(controller: &Rc<RefCell<Controller<S, C, K, T>>>)
+where
+    S: Library + 'static,
+    C: Clipboard + ClipboardText + 'static,
+    K: Keyboard + 'static,
+    T: Timing + 'static,
+{
+    let weak = Rc::downgrade(controller);
+    controller
+        .borrow_mut()
+        .set_on_paste_waiting(Rc::new(move || {
+            let weak = Weak::clone(&weak);
+            slint::Timer::single_shot(std::time::Duration::ZERO, move || {
+                if let Some(strong) = weak.upgrade() {
+                    arm_paste(&strong);
+                }
+            });
+        }));
+}
+
+fn paste_tick_after<S, C, K, T>(controller: Weak<RefCell<Controller<S, C, K, T>>>)
+where
+    S: Library + 'static,
+    C: Clipboard + ClipboardText + 'static,
+    K: Keyboard + 'static,
+    T: Timing + 'static,
+{
+    slint::Timer::single_shot(crate::controller::PASTE_TICK, move || {
+        let Some(strong) = controller.upgrade() else {
+            return;
+        };
+        let Ok(mut ctl) = strong.try_borrow_mut() else {
+            // Busy in a handler: look again next tick.
+            paste_tick_after(controller);
+            return;
+        };
+        let again = ctl.paste_timer_next();
+        drop(ctl);
+        redraw_all();
+        if again {
+            paste_tick_after(controller);
+        }
+    });
+}
+
 /// How long after a collapse the handle's frame is asked for once more (see `Core::apply`).
 const DOCK_REPLACE_AFTER: std::time::Duration = std::time::Duration::from_millis(50);
 
@@ -302,7 +365,7 @@ impl Binding {
     }
 }
 
-struct Core<S, C, K, T> {
+struct Core<S, C: Clipboard, K, T> {
     controller: Rc<RefCell<Controller<S, C, K, T>>>,
     window: slint::Weak<ui::PanelWindow>,
     /// What the Panel asks of the machine: the keyboard for text entry, and to give it back.
@@ -330,6 +393,8 @@ struct Core<S, C, K, T> {
     warm_timer: slint::Timer,
     /// Sends the dock its ticks while a hover or leave delay runs.
     dock_timer: slint::Timer,
+    /// The interval `dock_timer` runs at.
+    dock_pace: Cell<std::time::Duration>,
     /// Set once the Panel has been shown: from then on a hidden Panel is not drawn.
     been_shown: std::cell::Cell<bool>,
     drag_timer: slint::Timer,
@@ -379,6 +444,7 @@ where
                 idle_timer: Cell::new(false),
                 warm_timer: slint::Timer::default(),
                 dock_timer: slint::Timer::default(),
+                dock_pace: Cell::new(crate::dock::TICK),
                 been_shown: std::cell::Cell::new(false),
                 drag_timer: slint::Timer::default(),
                 screen_clip_timer: slint::Timer::default(),
@@ -414,6 +480,11 @@ where
                 self.hint_down();
                 self.act(|ctl| {
                     let _ = ctl.expand_typed(&typed);
+                });
+            }
+            Out::Undo(typed) => {
+                self.act(|ctl| {
+                    let _ = ctl.undo_expansion(&typed);
                 });
             }
             // Only the hint that is on screen is accepted: anything else was passed on or is
@@ -689,6 +760,7 @@ where
         }
         self.arm_settings();
         self.arm_clipboard_clear();
+        arm_paste(&self.controller);
         self.arm_idle_lock();
         self.arm_warm();
     }
@@ -717,14 +789,18 @@ where
     /// then: each tick reads the pointer and runs the hover and leave delays. A tick that
     /// changes nothing redraws nothing.
     fn arm_dock(self: &Rc<Self>) {
-        let needed = self.controller.borrow().dock_live();
-        if needed == self.dock_timer.running() {
+        let (needed, interval) = {
+            let ctl = self.controller.borrow();
+            (ctl.dock_live(), ctl.dock_interval())
+        };
+        if needed == self.dock_timer.running() && (!needed || interval == self.dock_pace.get()) {
             return;
         }
         if needed {
+            self.dock_pace.set(interval);
             let core = Rc::downgrade(self);
             self.dock_timer
-                .start(slint::TimerMode::Repeated, crate::dock::TICK, move || {
+                .start(slint::TimerMode::Repeated, interval, move || {
                     let Some(core) = core.upgrade() else {
                         return;
                     };
@@ -740,6 +816,8 @@ where
                         redraw_all();
                         core.apply(&effects);
                     }
+                    // The pace follows what the tick found (a pointer near the tab, a delay).
+                    core.arm_dock();
                 });
         } else {
             self.dock_timer.stop();
@@ -1001,6 +1079,9 @@ where
         wire!(on_item_menu_dismissed, |ctl| ctl.close_item_menu());
         wire!(on_stack_started, |ctl| ctl.start_stack());
         wire!(on_stack_ended, |ctl| ctl.end_stack());
+        wire_effects!(on_frame_key, |ctl, dx, dy, coarse| ctl
+            .frame_key(dx, dy, coarse));
+        wire_effects!(on_frame_ended, |ctl, keep| ctl.end_frame_mode(keep));
         wire!(on_list_menu_requested, |ctl, i| ctl
             .open_list_menu(index(i)));
         wire_effects!(on_list_menu_activated, |ctl, i| ctl
@@ -1231,7 +1312,7 @@ where
         wire_effects!(on_help_requested, |ctl| ctl.open_help(HelpTopic::Guide));
         wire_effects!(on_shortcuts_requested, |ctl| ctl
             .open_help(HelpTopic::Shortcuts));
-        wire_effects!(on_commands_requested, |_ctl| vec![Effect::OpenCommands]);
+        wire_effects!(on_commands_requested, |ctl| ctl.ask_commands());
         wire!(on_app_menu_dismissed, |ctl| ctl.close_app_menu());
         wire_effects!(on_edit_requested, |ctl, i| ctl.edit_row(index(i)));
         wire_effects!(on_rename_requested, |ctl, i| ctl.rename_row(index(i)));
@@ -1735,6 +1816,13 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
             view.reduced_motion,
         );
     }
+    if differs(&|p| p.frame_mode == view.frame_mode) {
+        window.set_frame_mode(match view.frame_mode {
+            None => 0,
+            Some(crate::controller::FrameMode::Move) => 1,
+            Some(crate::controller::FrameMode::Size) => 2,
+        });
+    }
     if differs(&|p| p.stack == view.stack) {
         window.set_stack_visible(view.stack.is_some());
         let stack = view.stack.clone().unwrap_or_default();
@@ -1871,6 +1959,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     }
     if differs(&|p| {
         p.app_menu == view.app_menu
+            && p.app_menu_group == view.app_menu_group
             && p.hotkeys_paused == view.hotkeys_paused
             && p.stack == view.stack
             && p.history == view.history
@@ -2013,15 +2102,24 @@ fn render_app_menu(window: &ui::PanelWindow, view: &View) {
         },
         disabled: (entry == AppMenuEntry::Undo && view.history.undo.is_none())
             || (entry == AppMenuEntry::Redo && view.history.redo.is_none())
-            || (entry == AppMenuEntry::PasteStack && view.stack.is_none()),
+            || (entry == AppMenuEntry::PasteStack && view.stack.is_none())
+            // A docked Panel keeps to its edge: it has no keyboard move or size.
+            || (matches!(entry, AppMenuEntry::MoveFrame | AppMenuEntry::SizeFrame)
+                && view.dock_edge.is_some()),
         checked: (entry == AppMenuEntry::PauseHotkeys && view.hotkeys_paused)
             || (entry == AppMenuEntry::PasteStack
                 && view.stack.as_ref().is_some_and(|s| s.running))
             || (entry == AppMenuEntry::KeepOnTop && view.on_top),
         shortcut: wording::app_menu_shortcut(entry).into(),
         separator: entry == AppMenuEntry::Separator,
-        // The header's pin is there below 150 % text: the row would only repeat it.
-        hidden: entry == AppMenuEntry::KeepOnTop && !pin_in_menu,
+        // The header's pin is there below 150 % text: the row would only repeat it. The rows of a group
+        // that is not open are folded away (their indexes stay).
+        hidden: (entry == AppMenuEntry::KeepOnTop && !pin_in_menu)
+            || entry
+                .group()
+                .is_some_and(|group| view.app_menu_group != Some(group)),
+        expandable: matches!(entry, AppMenuEntry::Group(_)),
+        expanded: matches!(entry, AppMenuEntry::Group(group) if view.app_menu_group == Some(group)),
         ..Default::default()
     });
     window.set_app_menu_entries(model(entries));
@@ -2224,7 +2322,8 @@ pub fn panel_row(row: &Row, dark: bool, label_name: &dyn Fn(ItemLabel) -> String
         is_header: row.header.is_some(),
         group_count: row.header.as_ref().map_or(0, |h| to_i32(h.count)),
         group_collapsed: row.header.as_ref().is_some_and(|h| h.collapsed),
-        grouped: row.grouped,
+        group_colour: crate::main_binding::accent_index(row.header.as_ref().and_then(|h| h.colour)),
+        depth: i32::try_from(row.depth).unwrap_or(i32::MAX),
         set_position: 0,
         set_size: 0,
     }
@@ -2474,7 +2573,7 @@ mod tests {
             deleted_pending: false,
             formatted: false,
             header: None,
-            grouped: false,
+            depth: 0,
         }
     }
 
@@ -2486,6 +2585,33 @@ mod tests {
         assert_eq!(mapped.kind, ui::ItemKind::Sensitive);
         assert_eq!(mapped.masked_preview.as_str(), MASKED_PREVIEW);
         assert_eq!(mapped.preview.as_str(), "");
+    }
+
+    #[test]
+    fn a_group_header_carries_its_colour_and_every_row_its_nesting_depth() {
+        use crate::panel::GroupHeader;
+        let header = |colour, depth| {
+            let mut r = row(ItemKind::Text, false, "");
+            r.depth = depth;
+            r.header = Some(GroupHeader {
+                group: snipdeck_core::GroupId::generate(),
+                name: "Replies".into(),
+                count: 1,
+                collapsed: false,
+                colour,
+                depth,
+            });
+            r
+        };
+        let none = |r: &Row| panel_row(r, false, &|_| String::new());
+        let teal = none(&header(Some(ListAccent::Teal), 1));
+        assert_eq!((teal.group_colour, teal.depth), (1, 1));
+        assert_eq!(none(&header(None, 0)).group_colour, -1);
+        let mut member = row(ItemKind::Text, false, "x");
+        member.depth = 2;
+        let member = none(&member);
+        assert_eq!((member.group_colour, member.depth), (-1, 2));
+        assert_eq!(none(&row(ItemKind::Text, false, "x")).depth, 0);
     }
 
     #[test]

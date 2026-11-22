@@ -40,7 +40,7 @@ struct Shown {
     toast: ToastView,
 }
 
-struct ToastCore<S, C, K, T> {
+struct ToastCore<S, C: Clipboard, K, T> {
     controller: Rc<RefCell<Controller<S, C, K, T>>>,
     host: Rc<dyn PopupHost>,
     others: OthersShowing,

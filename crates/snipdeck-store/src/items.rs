@@ -73,10 +73,14 @@ impl ItemRow {
         })
     }
 
-    fn into_item(self, tags: &mut HashMap<Vec<u8>, BTreeSet<TagId>>) -> Result<Item> {
-        let tags = tags.remove(&self.id).unwrap_or_default();
+    fn into_item(self, tags: &mut Links) -> Result<Item> {
+        let id = id_from(&self.id)?;
+        let tags = <[u8; 16]>::try_from(self.id.as_slice())
+            .ok()
+            .and_then(|key| tags.remove(&key))
+            .unwrap_or_default();
         Ok(Item {
-            id: id_from(&self.id)?,
+            id,
             list_id: id_from(&self.list_id)?,
             title: self.title,
             kind: self.kind.parse()?,
@@ -96,27 +100,56 @@ impl ItemRow {
     }
 }
 
-/// Live items matching `extra` (an `AND ...` clause), in `order`, with their tags: two queries
-/// however many items there are.
-fn fetch(conn: &Connection, extra: &str, args: &[&dyn ToSql], order: &str) -> Result<Vec<Item>> {
-    let mut tags: HashMap<Vec<u8>, BTreeSet<TagId>> = HashMap::new();
-    let mut stmt = conn.prepare_cached(&format!(
-        "SELECT it.item_id, it.tag_id FROM item_tags it
-         JOIN items i ON i.id = it.item_id {JOIN_LIVE}
-         WHERE {WHERE_LIVE} {extra}"
-    ))?;
+/// Tag links by item id.
+type Links = HashMap<[u8; 16], BTreeSet<TagId>>;
+
+/// Runs `sql`, which selects `(item id, tag id)` pairs, into [`Links`].
+fn read_links(conn: &Connection, sql: &str, args: &[&dyn ToSql]) -> Result<Links> {
+    let mut tags = Links::new();
+    let mut stmt = conn.prepare_cached(sql)?;
     let links = stmt.query_map(args, |r| {
-        Ok((r.get::<_, Vec<u8>>(0)?, r.get::<_, Vec<u8>>(1)?))
+        Ok((r.get::<_, [u8; 16]>(0)?, r.get::<_, [u8; 16]>(1)?))
     })?;
     for link in links {
         let (item, tag) = link?;
         tags.entry(item).or_default().insert(id_from(&tag)?);
     }
+    Ok(tags)
+}
 
+/// Live items matching `extra` (an `AND ...` clause), in `order`, with their tags: two queries
+/// however many items there are.
+fn fetch(conn: &Connection, extra: &str, args: &[&dyn ToSql], order: &str) -> Result<Vec<Item>> {
+    let mut tags = read_links(
+        conn,
+        &format!(
+            "SELECT it.item_id, it.tag_id FROM item_tags it
+             JOIN items i ON i.id = it.item_id {JOIN_LIVE}
+             WHERE {WHERE_LIVE} {extra}"
+        ),
+        args,
+    )?;
     let mut stmt = conn.prepare_cached(&format!(
         "SELECT {COLUMNS} FROM {FROM_LIVE} WHERE {WHERE_LIVE} {extra} ORDER BY {order}"
     ))?;
     let rows = stmt.query_map(args, ItemRow::read)?;
+    rows.map(|row| row?.into_item(&mut tags)).collect()
+}
+
+/// Every live item in library order (board, list, item), with its tags: the read the Panel and
+/// the Picker make on every cold start, so it is kept off the slow plans. Joined in that order
+/// (`CROSS JOIN` pins SQLite to it), the three rank indexes already deliver the rows sorted, so
+/// there is no sort of 10,000 rows; and the tag links are read in one scan, without the three
+/// look-ups per link a filter would need (a link of a trashed item is read and never claimed).
+fn fetch_all(conn: &Connection) -> Result<Vec<Item>> {
+    let mut tags = read_links(conn, "SELECT item_id, tag_id FROM item_tags", &[])?;
+    let mut stmt = conn.prepare_cached(&format!(
+        "SELECT {COLUMNS} FROM boards b
+         CROSS JOIN lists l ON l.board_id = b.id
+         CROSS JOIN items i ON i.list_id = l.id
+         WHERE {WHERE_LIVE} ORDER BY b.rank, l.rank, i.rank"
+    ))?;
+    let rows = stmt.query_map([], ItemRow::read)?;
     rows.map(|row| row?.into_item(&mut tags)).collect()
 }
 
@@ -383,7 +416,7 @@ pub(crate) fn items(conn: &Connection, list: ListId) -> Result<Vec<Item>> {
 }
 
 pub(crate) fn all_items(conn: &Connection) -> Result<Vec<Item>> {
-    fetch(conn, "", &[], "b.rank, l.rank, i.rank")
+    fetch_all(conn)
 }
 
 /// How many live items are marked sensitive.
