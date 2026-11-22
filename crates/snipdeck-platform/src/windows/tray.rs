@@ -117,7 +117,7 @@ enum Command {
     Tooltip(String, Reply),
     Paused(bool, Reply),
     History(bool, bool, Reply),
-    Labels(TrayLabels, Reply),
+    Labels(Box<TrayLabels>, Reply),
     DoubleClickOpens(bool, Reply),
 }
 
@@ -196,7 +196,7 @@ impl Tray for WinTray {
     }
 
     fn set_labels(&mut self, labels: TrayLabels) -> Result<(), Error> {
-        self.call(|reply| Command::Labels(labels, reply))
+        self.call(|reply| Command::Labels(Box::new(labels), reply))
     }
 
     fn set_double_click_opens(&mut self, opens: bool) -> Result<(), Error> {
@@ -453,7 +453,7 @@ impl TrayHandler {
             }
             Command::Labels(labels, reply) => {
                 // The menu is built from the model on every right click: nothing to redraw.
-                self.model.borrow_mut().set_labels(labels);
+                self.model.borrow_mut().set_labels(*labels);
                 let _ = reply.send(self.refresh_tip(hwnd));
             }
             Command::DoubleClickOpens(opens, reply) => {
