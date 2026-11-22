@@ -1511,7 +1511,13 @@ ui_tests! {
         ui.window().set_size(slint::LogicalSize::new(232.0 + 360.0 + 854.0, 640.0));
         settle();
         assert!(ui.get_detail_shown());
-        let labels = ElementQuery::from_root(&ui).match_id("ToolbarButton::label-text").find_all().len();
+        // Filter and Sort sit in the heading row below the toolbar and keep their words.
+        let labels = ElementQuery::from_root(&ui)
+            .match_id("ToolbarButton::label-text")
+            .find_all()
+            .iter()
+            .filter(|e| e.accessible_label().is_some_and(|l| !l.starts_with("Filter") && !l.starts_with("Sort")))
+            .count();
         assert_eq!(labels, 2, "the list keeps 854px beside the pane, so the toolbar is as at 854 without it");
         ui.window().set_size(slint::LogicalSize::new(232.0 + 360.0 + 853.0, 640.0));
         settle();
@@ -3469,7 +3475,7 @@ ui_tests! {
         let cleared = Rc::new(RefCell::new(Vec::new()));
         let sink = cleared.clone();
         ui.on_label_filter_requested(move |i| sink.borrow_mut().push(i));
-        find(&ui, "Clear filter", AccessibleRole::Button).invoke_accessible_default_action();
+        find_top(&ui, "Clear filter", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(*cleared.borrow(), [-1], "Clear filter drops the label filter");
     }
 }

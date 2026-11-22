@@ -1197,7 +1197,7 @@ fn arrow_keys_walk_the_nested_rows_in_reading_order_and_draw_the_focus_ring_on_e
             let mut rows: Vec<Boxed> = all(&h)
                 .into_iter()
                 .filter(|b| {
-                    b.x > 235.0
+                    b.x > 70.0
                         && ((b.role == Role::Button && b.label.starts_with("group "))
                             || b.role == Role::ListItem)
                 })
@@ -1228,7 +1228,7 @@ fn arrow_keys_walk_the_nested_rows_in_reading_order_and_draw_the_focus_ring_on_e
                     let bottom = ((from.y + from.h).max(to.y + to.h) + 6.0) as u32;
                     let mut ring_on_target = 0;
                     for y in 0..b.height.min(a.height) {
-                        for x in 236..b.width {
+                        for x in 72..b.width {
                             if a.pixel(x, y) != b.pixel(x, y) {
                                 if y < top || y > bottom {
                                     problems.push(format!(
