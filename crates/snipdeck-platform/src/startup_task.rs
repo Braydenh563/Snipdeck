@@ -5,6 +5,8 @@
 //! in Settings > Apps > Startup, and an organisation can forbid it; neither can be undone from the
 //! app. This module holds the portable decisions; `windows::package` makes the calls.
 
+use crate::command_line::AutostartStatus;
+
 /// The `TaskId` of the `windows.startupTask` extension in the MSIX manifest.
 pub const TASK_ID: &str = "SnipdeckStartup";
 
@@ -73,10 +75,18 @@ pub const fn enable_outcome(after_request: TaskState) -> Result<(), Blocked> {
     }
 }
 
-/// Whether the task will run at sign-in (the state means "on").
+/// What the Settings switch shows for the task's state (`None`: not read yet, which trusts the
+/// saved setting). A task Windows (or the organisation) keeps off reads as switched off there, so
+/// the switch does not claim "on".
 #[must_use]
-pub const fn is_registered(state: TaskState) -> bool {
-    matches!(state, TaskState::Enabled | TaskState::EnabledByPolicy)
+pub const fn status_of(state: Option<TaskState>) -> AutostartStatus {
+    match state {
+        None | Some(TaskState::Enabled | TaskState::EnabledByPolicy) => AutostartStatus::On,
+        Some(TaskState::DisabledByUser | TaskState::DisabledByPolicy) => {
+            AutostartStatus::SwitchedOffInWindows
+        }
+        Some(TaskState::Disabled) => AutostartStatus::Off,
+    }
 }
 
 /// A start by the startup task cannot carry `--hidden`: it counts as one when the user chose to
@@ -133,16 +143,20 @@ mod tests {
     }
 
     #[test]
-    fn registered_means_on() {
-        for (state, on) in [
-            (TaskState::Enabled, true),
-            (TaskState::EnabledByPolicy, true),
-            (TaskState::Disabled, false),
-            (TaskState::DisabledByUser, false),
-            (TaskState::DisabledByPolicy, false),
-        ] {
-            assert_eq!(is_registered(state), on, "{state:?}");
-        }
+    fn the_switch_shows_what_windows_will_do() {
+        use AutostartStatus::{Off, On, SwitchedOffInWindows};
+        assert_eq!(status_of(None), On, "unread: trust the setting");
+        assert_eq!(status_of(Some(TaskState::Enabled)), On);
+        assert_eq!(status_of(Some(TaskState::EnabledByPolicy)), On);
+        assert_eq!(status_of(Some(TaskState::Disabled)), Off);
+        assert_eq!(
+            status_of(Some(TaskState::DisabledByUser)),
+            SwitchedOffInWindows
+        );
+        assert_eq!(
+            status_of(Some(TaskState::DisabledByPolicy)),
+            SwitchedOffInWindows
+        );
     }
 
     #[test]

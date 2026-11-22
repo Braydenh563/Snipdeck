@@ -50,11 +50,19 @@ export component TextField inherits VerticalLayout {
     in property <int> min-lines: 3;
     in property <int> max-lines: 8;
     in property <InputType> input-type: InputType.text;
+    // The field holds a secret (the text of a sensitive item, an answer in its fill form): copy and cut, by key or
+    // by menu, go to the host through `private-copied` and `private-cut` instead of the system clipboard, so the host
+    // writes them with the privacy markers and clears them later.
+    in property <bool> private-copy: false;
     in property <image> leading-icon;
     // Shows a clear button while `text` is not empty; Esc then clears too (SearchField turns this on).
     in property <bool> clearable: false;
     // Code and other text that must line up: IBM Plex Mono instead of the UI family.
     in property <bool> monospace: false;
+    // Multi line only: a column of line numbers (`gutter`, "1\n2\n3", one per line) left of the text, which stops
+    // wrapping so a number is the number of one line; a long line scrolls sideways with the caret.
+    in property <bool> line-numbers: false;
+    in property <string> gutter;
     // Accessible name of the clear button.
     in property <string> clear-label;
     // Forced visual states for galleries and screenshots. Real hover, focus and composition set them by themselves.
@@ -89,6 +97,10 @@ export component TextField inherits VerticalLayout {
 
     // User edit (typing, paste, IME commit, clear button, accessibility set-value).
     callback edited(text: string);
+    // Copy of the selected bytes `start` to `end` (either order) of `text`; only with `private-copy`.
+    callback private-copied(text: string, start: int, end: int);
+    // Cut of the same: the host copies and answers the text left, or nothing when nothing was cut.
+    callback private-cut(text: string, start: int, end: int) -> [string];
     // Enter pressed (single line).
     callback accepted(text: string);
     // The clear button or Esc emptied the field.
@@ -96,6 +108,26 @@ export component TextField inherits VerticalLayout {
 
     // `focus()` comes from `forward-focus`.
     public function select-all() { input.select-all(); }
+    function copy-selection() {
+        if (root.private-copy) {
+            root.private-copied(input.text, input.anchor-position-byte-offset, input.cursor-position-byte-offset);
+        } else {
+            input.copy();
+        }
+    }
+    function cut-selection() {
+        if (root.private-copy) {
+            let rest = root.private-cut(input.text, input.anchor-position-byte-offset, input.cursor-position-byte-offset);
+            if (rest.length > 0) {
+                let at = min(input.anchor-position-byte-offset, input.cursor-position-byte-offset);
+                input.text = rest[0];
+                input.set-selection-offsets(at, at);
+                root.edited(rest[0]);
+            }
+        } else {
+            input.cut();
+        }
+    }
     // Puts the caret at a UTF-8 byte offset (also scrolls it into view).
     public function set-cursor(offset: int) { input.set-selection-offsets(offset, offset); }
 
@@ -117,6 +149,7 @@ export component TextField inherits VerticalLayout {
         }
     }
 
+    property <bool> unwrapped: root.single-line || root.line-numbers;
     property <length> line-h: Type.line-base;
     property <length> pad-y: Space.s1;
     property <length> caret-w: Space.s0-5;
@@ -206,6 +239,24 @@ export component TextField inherits VerticalLayout {
                         y: ((root.single-line ? parent.height : root.line-h) - self.height) / 2;
                     }
                 }
+                // The line numbers scroll with the text: same font and size as the input, so each row lines up.
+                if root.line-numbers && !root.single-line: Rectangle {
+                    width: gutter-text.preferred-width + Space.s1;
+                    gutter-text := Text {
+                        x: 0px;
+                        y: flick.content-y;
+                        width: parent.width - Space.s1;
+                        text: root.gutter;
+                        color: Theme.text-secondary;
+                        font-family: root.monospace ? Fonts.mono : Fonts.sans;
+                        font-size: Type.base;
+                        font-weight: Type.regular;
+                        horizontal-alignment: right;
+                        vertical-alignment: top;
+                        wrap: no-wrap;
+                        accessible-role: none;
+                    }
+                }
                 viewport := Rectangle {
                     horizontal-stretch: 1;
                     min-width: 0px;
@@ -218,17 +269,16 @@ export component TextField inherits VerticalLayout {
                     ContextMenuArea {
                         enabled: root.enabled;
                         Menu {
-                            if !root.read-only: MenuItem {
+                            // A password is never copied or cut: not from this menu, and not by the keys below.
+                            if !root.read-only && root.input-type != InputType.password: MenuItem {
                                 title: @tr("Cut");
                                 enabled: input.anchor-position-byte-offset != input.cursor-position-byte-offset;
-                                activated => {
-                                    input.cut();
-                                }
+                                activated => { root.cut-selection(); }
                             }
-                            MenuItem {
+                            if root.input-type != InputType.password: MenuItem {
                                 title: @tr("Copy");
                                 enabled: input.anchor-position-byte-offset != input.cursor-position-byte-offset;
-                                activated => { input.copy(); }
+                                activated => { root.copy-selection(); }
                             }
                             if !root.read-only: MenuItem {
                                 title: @tr("Paste");
@@ -250,7 +300,7 @@ export component TextField inherits VerticalLayout {
                             width: parent.width;
                             height: parent.height;
                             interactive: false;
-                            content-width: root.single-line ? max(self.width, input.preferred-width + root.caret-w) : self.width;
+                            content-width: root.unwrapped ? max(self.width, input.preferred-width + root.caret-w) : self.width;
                             content-height: root.single-line ? self.height : max(self.height, input.preferred-height);
 
                             input := TextInput {
@@ -259,7 +309,7 @@ export component TextField inherits VerticalLayout {
                                 width: flick.content-width;
                                 height: root.single-line ? flick.height : max(flick.height, self.preferred-height);
                                 single-line: root.single-line;
-                                wrap: root.single-line ? TextWrap.no-wrap : TextWrap.word-wrap;
+                                wrap: root.unwrapped ? TextWrap.no-wrap : TextWrap.word-wrap;
                                 vertical-alignment: root.single-line ? TextVerticalAlignment.center : TextVerticalAlignment.top;
                                 enabled: root.enabled;
                                 read-only: root.read-only;
@@ -289,6 +339,31 @@ export component TextField inherits VerticalLayout {
                                 edited => { root.edited(self.text); }
                                 accepted => { root.accepted(self.text); }
                                 key-pressed(event) => {
+                                    // Copy and cut are swallowed in a password field, whichever way they are typed
+                                    // (Ctrl+C, Ctrl+X, Ctrl+Insert, Shift+Delete; Cmd on a Mac). The control characters
+                                    // are what some platforms report for Ctrl+C and Ctrl+X.
+                                    if (root.input-type == InputType.password
+                                        && (((event.modifiers.control || event.modifiers.meta)
+                                            && (event.text == "c" || event.text == "C" || event.text == "x" || event.text == "X"
+                                                || event.text == "\u{3}" || event.text == "\u{18}" || event.text == Key.Insert))
+                                            || (event.modifiers.shift && event.text == Key.Delete))) {
+                                        return accept;
+                                    }
+                                    // The same chords in a field that holds a secret go to the host (see `private-copy`).
+                                    if (root.private-copy) {
+                                        if ((event.modifiers.control || event.modifiers.meta)
+                                            && (event.text == "c" || event.text == "C" || event.text == "\u{3}" || event.text == Key.Insert)) {
+                                            root.copy-selection();
+                                            return accept;
+                                        }
+                                        if (!root.read-only
+                                            && (((event.modifiers.control || event.modifiers.meta)
+                                                && (event.text == "x" || event.text == "X" || event.text == "\u{18}"))
+                                                || (event.modifiers.shift && event.text == Key.Delete))) {
+                                            root.cut-selection();
+                                            return accept;
+                                        }
+                                    }
                                     // Key press only: the matching release of an IME-consumed key still arrives (S2 F4).
                                     if (event.text == Key.Escape && root.clear-visible && self.preedit-text == "") {
                                         root.clear();

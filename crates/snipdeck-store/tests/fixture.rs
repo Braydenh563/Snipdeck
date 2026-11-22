@@ -101,7 +101,7 @@ fn open_fixture() -> (tempfile::TempDir, Store) {
 #[test]
 fn a_version_1_database_opens_and_reads_back() {
     let (_dir, s) = open_fixture();
-    assert_eq!(s.schema_version().unwrap(), 9);
+    assert_eq!(s.schema_version().unwrap(), snipdeck_store::SCHEMA_VERSION);
     let boards = s.boards().unwrap();
     assert_eq!(boards.len(), 1);
     assert_eq!(
@@ -132,16 +132,15 @@ fn a_version_1_database_opens_and_reads_back() {
 #[test]
 fn the_fixtures_search_index_and_trash_work() {
     let (_dir, mut s) = open_fixture();
-    assert_eq!(s.search("hello", 5).unwrap(), [id::<ItemId>(ITEM_RICH)]);
-    assert_eq!(s.search("hunter2", 5).unwrap().len(), 0);
-    assert!(s.search("obsolete", 5).unwrap().is_empty(), "trashed");
+    assert_eq!(found(&s, "hello"), [id::<ItemId>(ITEM_RICH)]);
+    // Version 10 rebuilt the index with trigrams over folded text: mid-word and any case.
+    assert_eq!(found(&s, "ELL"), [id::<ItemId>(ITEM_RICH)]);
+    assert_eq!(found(&s, "hunter2").len(), 0);
+    assert_eq!(found(&s, "obsolete").len(), 0, "trashed");
     let trashed = s.trashed().unwrap();
     assert_eq!(trashed.len(), 1);
     s.restore(trashed[0].target).unwrap();
-    assert_eq!(
-        s.search("obsolete", 5).unwrap(),
-        [id::<ItemId>(ITEM_TRASHED)]
-    );
+    assert_eq!(found(&s, "obsolete"), [id::<ItemId>(ITEM_TRASHED)]);
 }
 
 /// The v1 to v2 migration (review H1, M6, N5) on the real version-1 file: every row survives,
@@ -149,7 +148,7 @@ fn the_fixtures_search_index_and_trash_work() {
 #[test]
 fn the_v1_fixture_migrates_to_v4_keeping_every_row_and_leaving_a_backup() {
     let (dir, s) = open_fixture();
-    assert_eq!(s.schema_version().unwrap(), 9);
+    assert_eq!(s.schema_version().unwrap(), snipdeck_store::SCHEMA_VERSION);
     assert_healthy(&s);
 
     let backup = rusqlite::Connection::open(dir.path().join("snipdeck.db.pre-v1.bak")).unwrap();

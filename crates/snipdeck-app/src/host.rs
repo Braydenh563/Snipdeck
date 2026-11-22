@@ -3,7 +3,7 @@
 //! the global hotkeys. Each has a real implementation (the Windows backend, in `windows_host`)
 //! and a fake here, so the controller runs under test with no desktop.
 
-use std::{cell::Cell, cell::RefCell, rc::Rc};
+use std::{cell::Cell, cell::RefCell, rc::Rc, time::Duration, time::Instant};
 
 use snipdeck_core::Timestamp;
 use snipdeck_platform::win_formats::ClipFiles;
@@ -18,6 +18,10 @@ use crate::settings::HotkeyAction;
 pub trait Clock {
     /// The current moment.
     fn now(&self) -> Timestamp;
+
+    /// Time since an arbitrary fixed start, from a monotonic source: it never goes back when the
+    /// wall clock is set back. For measuring spans (the idle lock), not for dates.
+    fn elapsed(&self) -> Duration;
 }
 
 /// [`Clock`] on the system clock.
@@ -28,28 +32,41 @@ impl Clock for SystemClock {
     fn now(&self) -> Timestamp {
         Timestamp::now()
     }
+
+    fn elapsed(&self) -> Duration {
+        static START: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
+        START.get_or_init(Instant::now).elapsed()
+    }
 }
 
 /// A clock that only moves when the test sets it. Cloning shares the same time.
 #[derive(Debug, Clone)]
-pub struct FixedClock(Rc<Cell<Timestamp>>);
+pub struct FixedClock(Rc<Cell<Timestamp>>, Rc<Cell<Duration>>);
 
 impl FixedClock {
     /// A clock stopped at `at`.
     #[must_use]
     pub fn new(at: Timestamp) -> Self {
-        Self(Rc::new(Cell::new(at)))
+        Self(Rc::new(Cell::new(at)), Rc::new(Cell::new(Duration::ZERO)))
     }
 
-    /// Moves the clock.
+    /// Moves the clock. The monotonic reading follows a move forward and ignores one back, like
+    /// a real wall clock that is set back.
     pub fn set(&self, at: Timestamp) {
-        self.0.set(at);
+        let before = self.0.replace(at);
+        if let Ok(by) = Duration::try_from(at.duration_since(before)) {
+            self.1.set(self.1.get() + by);
+        }
     }
 }
 
 impl Clock for FixedClock {
     fn now(&self) -> Timestamp {
         self.0.get()
+    }
+
+    fn elapsed(&self) -> Duration {
+        self.1.get()
     }
 }
 
@@ -61,7 +78,8 @@ pub trait ClipboardText {
     /// The clipboard's text, or `None` when it holds none or stays busy. Writes nothing.
     fn read_text(&mut self) -> Option<String>;
     /// The clipboard's text with its HTML and RTF flavours (only next to text; over the size cap
-    /// they are dropped). Writes nothing.
+    /// they are dropped). A copy that carries a "keep me out" marker is not read: `excluded`.
+    /// Writes nothing.
     fn read_rich(&mut self) -> snipdeck_platform::clipboard_watch::RichClip;
     /// Whether the clipboard holds a picture (a screenshot, say).
     fn has_image(&mut self) -> bool;
@@ -86,6 +104,17 @@ pub trait ClipboardText {
     /// Deletes the decrypted files that earlier file pastes left in the temp folder (a file
     /// another app still has open stays). Nothing for a clipboard that makes none.
     fn forget_pasted_files(&mut self) {}
+    /// [`forget_pasted_files`](Self::forget_pasted_files), but returns only when it is done (the
+    /// quit, whose process would end under a background deletion).
+    fn forget_pasted_files_waiting(&mut self) {
+        self.forget_pasted_files();
+    }
+    /// The text entries of the clipboard history besides the one on the clipboard, newest first
+    /// (`{clipboard:2}` is the first). Empty when there is none, the history is off, or this
+    /// platform has none. Writes nothing.
+    fn read_history(&mut self) -> Vec<String> {
+        Vec::new()
+    }
 }
 
 #[cfg(windows)]
@@ -120,6 +149,24 @@ impl ClipboardText for snipdeck_platform::windows::clipboard::WinClipboard {
     fn forget_pasted_files(&mut self) {
         Self::forget_pasted_files(self);
     }
+    fn forget_pasted_files_waiting(&mut self) {
+        Self::forget_pasted_files_waiting(self);
+    }
+    fn read_history(&mut self) -> Vec<String> {
+        // Unverified on Windows (see `snipdeck_platform::clipboard_history`). Blocks until Windows
+        // answers; the entry the clipboard holds now is dropped, as `{clipboard}` is that one.
+        let current = Self::read_text(self);
+        let Ok(snipdeck_platform::clipboard_history::HistoryRead::Entries(entries)) =
+            snipdeck_platform::clipboard_history::read_current_session()
+        else {
+            return Vec::new();
+        };
+        let mut texts: Vec<String> = entries.into_iter().map(|e| e.text).collect();
+        if texts.first().is_some() && texts.first() == current.as_ref() {
+            texts.remove(0);
+        }
+        texts
+    }
 }
 
 /// The fake clipboard "holds" what was last written to it (as a real one holds what the user
@@ -127,19 +174,50 @@ impl ClipboardText for snipdeck_platform::windows::clipboard::WinClipboard {
 impl ClipboardText for snipdeck_platform::testing::FakeClipboard {
     fn read_text(&mut self) -> Option<String> {
         self.text_reads += 1;
+        // A Target that was sent Ctrl+C answers after a few reads, by replacing the clipboard.
+        if let Some((after, _)) = &mut self.copy_arrives {
+            if *after == 0 {
+                if let Some((_, text)) = self.copy_arrives.take() {
+                    use snipdeck_platform::payload::{Data, Payload};
+                    self.written.extend(Payload::new(vec![Data::Text(text)]));
+                    self.sequence += 1;
+                }
+            } else {
+                *after -= 1;
+            }
+        }
         self.written.last()?.data().iter().find_map(|d| match d {
             snipdeck_platform::payload::Data::Text(text) => Some(text.clone()),
             _ => None,
         })
     }
+    fn read_history(&mut self) -> Vec<String> {
+        self.held_history.clone()
+    }
     fn read_rich(&mut self) -> snipdeck_platform::clipboard_watch::RichClip {
+        if self.held_excluded
+            || self
+                .written
+                .last()
+                .is_some_and(snipdeck_platform::payload::Payload::is_private)
+        {
+            return snipdeck_platform::clipboard_watch::RichClip {
+                excluded: true,
+                ..Default::default()
+            };
+        }
         let text = ClipboardText::read_text(self);
         let (html, rtf) = if text.is_some() {
             (self.held_html.clone(), self.held_rtf.clone())
         } else {
             (None, None)
         };
-        snipdeck_platform::clipboard_watch::RichClip { text, html, rtf }
+        snipdeck_platform::clipboard_watch::RichClip {
+            text,
+            html,
+            rtf,
+            excluded: false,
+        }
     }
     fn has_image(&mut self) -> bool {
         self.written.last().is_some_and(|p| {
@@ -181,6 +259,10 @@ impl ClipboardText for snipdeck_platform::testing::FakeClipboard {
     }
     fn forget_pasted_files(&mut self) {
         self.pasted_files_forgotten += 1;
+    }
+    fn forget_pasted_files_waiting(&mut self) {
+        self.pasted_files_forgotten += 1;
+        self.pasted_files_forgotten_waited += 1;
     }
     fn clear_if_sequence(&mut self, sequence: u32) -> bool {
         if self.sequence != sequence || self.busy_for_clear() {
@@ -270,7 +352,6 @@ pub trait TypingControl {
 #[derive(Debug, Clone, Default)]
 pub struct FakeTyping {
     enabled: Rc<RefCell<Vec<bool>>>,
-    triggers: Rc<Cell<u32>>,
     candidates: Rc<RefCell<Vec<snipdeck_core::Candidate>>>,
     up: Rc<RefCell<Vec<u64>>>,
     generation: Rc<Cell<u64>>,
@@ -325,12 +406,6 @@ impl FakeTyping {
     pub fn ever_enabled(&self) -> bool {
         self.enabled.borrow().contains(&true)
     }
-
-    /// How many trigger lists were handed over.
-    #[must_use]
-    pub fn trigger_lists(&self) -> u32 {
-        self.triggers.get()
-    }
 }
 
 impl TypingControl for FakeTyping {
@@ -344,7 +419,6 @@ impl TypingControl for FakeTyping {
         _matcher: snipdeck_core::Matcher,
         candidates: Vec<snipdeck_core::Candidate>,
     ) {
-        self.triggers.set(self.triggers.get() + 1);
         *self.candidates.borrow_mut() = candidates;
     }
 
@@ -524,9 +598,15 @@ pub enum HotkeyFailure {
     /// Another application already owns the chord.
     #[error("another application already uses this shortcut")]
     InUse,
+    /// Another Snipdeck shortcut already holds the chord (two actions given the same one).
+    #[error("another Snipdeck shortcut already uses this chord")]
+    OwnAction,
     /// The chord cannot be registered.
     #[error("this shortcut cannot be used")]
     Invalid,
+    /// Windows refused for another reason; its error code.
+    #[error("Windows refused this shortcut (Windows error {0})")]
+    Refused(u32),
     /// The hotkey service is not running or Windows refused.
     #[error("the hotkey service is unavailable")]
     Unavailable,
@@ -547,6 +627,15 @@ pub trait HotkeyBackend {
     ///
     /// [`HotkeyFailure::Unavailable`] if the service is not running or Windows refuses.
     fn unregister(&mut self, id: u32) -> Result<(), HotkeyFailure>;
+
+    /// Whether `chord` could be registered now, without leaving anything registered: another
+    /// program that holds it is [`HotkeyFailure::InUse`], another Snipdeck action
+    /// [`HotkeyFailure::OwnAction`].
+    ///
+    /// # Errors
+    ///
+    /// Why it could not be registered.
+    fn probe(&mut self, chord: Chord) -> Result<(), HotkeyFailure>;
 }
 
 /// The id a hotkey action is registered under.
@@ -588,8 +677,9 @@ pub fn register_all(
         let Some(chord) = hotkeys.chord(action) else {
             continue;
         };
-        let shown = chord.to_string();
+        let shown = chord.label();
         if let Err(failure) = backend.register(id_of(action), chord) {
+            crate::warn!("hotkey {action:?} ({shown}) could not be registered: {failure}");
             problems.push(HotkeyProblem {
                 action,
                 chord: shown,
@@ -598,6 +688,69 @@ pub fn register_all(
         }
     }
     problems
+}
+
+/// Registers again the hotkeys in `failed` (PLATFORM-3): the program that held a chord may have
+/// ended, or the hotkey service restarted. Uses the chords in `hotkeys` now (one the user has
+/// since turned off or changed is not the failed one). Returns the problems that remain, so a
+/// success clears its warning.
+pub fn retry_failed(
+    backend: &mut (impl HotkeyBackend + ?Sized),
+    hotkeys: &crate::settings::Hotkeys,
+    failed: &[HotkeyProblem],
+) -> Vec<HotkeyProblem> {
+    let mut remaining = Vec::new();
+    for problem in failed {
+        let Some(chord) = hotkeys.chord(problem.action) else {
+            continue;
+        };
+        let shown = chord.label();
+        if let Err(failure) = backend.register(id_of(problem.action), chord) {
+            remaining.push(HotkeyProblem {
+                action: problem.action,
+                chord: shown,
+                failure,
+            });
+        }
+    }
+    remaining
+}
+
+/// Decides when failed hotkeys are tried again (PLATFORM-3, -4), with the time given by the
+/// caller so a test needs no clock: on a slow interval, and at once after a wake, unlock,
+/// remote connect or opening Settings ([`Self::now`]).
+#[derive(Debug, Clone, Copy)]
+pub struct RetryGate {
+    interval: std::time::Duration,
+    last: Option<std::time::Duration>,
+}
+
+impl RetryGate {
+    /// A gate that allows a retry every `interval` (and one at once the first time).
+    #[must_use]
+    pub const fn new(interval: std::time::Duration) -> Self {
+        Self {
+            interval,
+            last: None,
+        }
+    }
+
+    /// Whether a retry is due at `now` (time since any fixed start); if so, it counts as made.
+    pub fn due(&mut self, now: std::time::Duration) -> bool {
+        let due = self
+            .last
+            .is_none_or(|last| now.saturating_sub(last) >= self.interval);
+        if due {
+            self.last = Some(now);
+        }
+        due
+    }
+
+    /// The user is back (wake, unlock, remote connect) or opened Settings: the next
+    /// [`due`](Self::due) is true whatever the time.
+    pub fn now(&mut self) {
+        self.last = None;
+    }
 }
 
 /// Switches every global hotkey off ("Pause hotkeys"); returns how many could not be removed.
@@ -653,6 +806,14 @@ impl HotkeyBackend for FakeHotkeys {
         if self.taken.contains(&chord.to_string()) {
             return Err(HotkeyFailure::InUse);
         }
+        // Like the real table: a chord another Snipdeck id already holds is refused.
+        if self
+            .registered
+            .iter()
+            .any(|(other, c)| *other != id && *c == chord)
+        {
+            return Err(HotkeyFailure::OwnAction);
+        }
         self.registered.retain(|(existing, _)| *existing != id);
         self.registered.push((id, chord));
         Ok(())
@@ -662,12 +823,81 @@ impl HotkeyBackend for FakeHotkeys {
         self.registered.retain(|(existing, _)| *existing != id);
         Ok(())
     }
+
+    fn probe(&mut self, chord: Chord) -> Result<(), HotkeyFailure> {
+        if self.taken.contains(&chord.to_string()) {
+            return Err(HotkeyFailure::InUse);
+        }
+        if self.registered.iter().any(|(_, c)| *c == chord) {
+            return Err(HotkeyFailure::OwnAction);
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::settings::Hotkeys;
+
+    #[test]
+    fn failed_hotkeys_are_retried_and_the_warning_clears_on_success() {
+        let hotkeys = all_on();
+        let mut backend = FakeHotkeys {
+            taken: vec![hotkeys.toggle_panel.clone()],
+            ..FakeHotkeys::default()
+        };
+        let problems = register_all(&mut backend, &hotkeys);
+        assert_eq!(problems.len(), 1);
+        // Still taken: still reported, with the same reason.
+        assert_eq!(retry_failed(&mut backend, &hotkeys, &problems), problems);
+        // The other program ended: the retry registers it and nothing remains.
+        backend.taken.clear();
+        assert_eq!(retry_failed(&mut backend, &hotkeys, &problems).len(), 0);
+        assert!(
+            backend
+                .registered
+                .iter()
+                .any(|(id, _)| *id == id_of(HotkeyAction::TogglePanel))
+        );
+        // A hotkey the user has since turned off is not retried.
+        let mut off = hotkeys.clone();
+        off.toggle_panel = String::new();
+        assert_eq!(retry_failed(&mut backend, &off, &problems).len(), 0);
+    }
+
+    #[test]
+    fn the_retry_gate_waits_its_interval_and_opens_at_once_when_the_user_is_back() {
+        use std::time::Duration;
+        let mut gate = RetryGate::new(Duration::from_mins(1));
+        assert!(gate.due(Duration::from_secs(5)), "the first time");
+        assert!(!gate.due(Duration::from_secs(30)));
+        assert!(!gate.due(Duration::from_secs(64)));
+        assert!(gate.due(Duration::from_secs(65)));
+        gate.now();
+        assert!(gate.due(Duration::from_secs(66)), "after a wake or unlock");
+        assert!(!gate.due(Duration::from_secs(67)));
+    }
+
+    #[test]
+    fn probing_leaves_nothing_registered_and_names_who_holds_the_chord() {
+        let hotkeys = all_on();
+        let mut backend = FakeHotkeys {
+            taken: vec!["Ctrl+Shift+G".into()],
+            ..FakeHotkeys::default()
+        };
+        assert_eq!(register_all(&mut backend, &hotkeys).len(), 0);
+        let before = backend.registered.clone();
+        let chord = |t: &str| t.parse::<Chord>().unwrap();
+        assert_eq!(backend.probe(chord("Ctrl+Shift+H")), Ok(()));
+        assert_eq!(
+            backend.probe(chord("Ctrl+Shift+G")),
+            Err(HotkeyFailure::InUse)
+        );
+        let own = hotkeys.chord(HotkeyAction::TogglePanel).unwrap();
+        assert_eq!(backend.probe(own), Err(HotkeyFailure::OwnAction));
+        assert_eq!(backend.registered, before);
+    }
 
     #[test]
     fn ids_round_trip_and_are_distinct() {

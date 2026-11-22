@@ -29,6 +29,11 @@ pub enum Effect {
     ShowColours,
     /// The Colours tab steps aside so the list under it shows.
     HideColours,
+    /// The eyedropper starts: the Main window, when it is on screen, steps aside too (it would
+    /// be in the screenshot) and is remembered.
+    HideMainForEyedropper,
+    /// The eyedropper ended: the Main window comes back if it was hidden for the pick.
+    RestoreMainAfterEyedropper,
     /// Hide the Panel.
     HidePanel,
     /// Move the Panel's window so that its top-left is here (physical pixels); its size
@@ -106,6 +111,10 @@ pub struct StackView {
 
 /// The toast on screen.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "one flag per button the toast can show"
+)]
 pub struct ToastView {
     /// Changes with every new toast, so the host can tell a new one from a redraw.
     pub seq: u64,
@@ -117,6 +126,9 @@ pub struct ToastView {
     pub phase: ToastPhase,
     /// It carries an Undo button ([`Controller::main_undo`](crate::controller::Controller::main_undo)).
     pub undo: bool,
+    /// It carries a "Delete forever" button ([`Controller::toast_action`](crate::controller::Controller::toast_action)),
+    /// after an Undo of an add.
+    pub purge: bool,
     /// It carries an Edit button ([`Controller::toast_edit`](crate::controller::Controller::toast_edit)).
     pub edit: bool,
     /// It carries an "Open log" button ([`Controller::toast_action`](crate::controller::Controller::toast_action)).
@@ -167,11 +179,30 @@ pub struct FillView {
     pub title: String,
     /// One per prompt.
     pub fields: Vec<fill::Field>,
+    /// The date format as letters in this user's order (`DD.MM.YYYY`), for date fields.
+    pub date_hint: String,
+    /// What the month grid of a date field needs: the words, the first day of the week and today.
+    pub calendar: CalendarView,
+    /// Per field: the day it holds, for a date field with a real day typed in.
+    pub dates: Vec<Option<(i32, i32, i32)>>,
     /// The text as it would be pasted now; empty while `masked`.
     pub preview: String,
     /// The template item is sensitive: the preview would show its secret text, so it is left
     /// out and the window draws a mask instead.
     pub masked: bool,
+}
+
+/// The month grid's words and today, in the language and week of the user's locale.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CalendarView {
+    /// The twelve month names, January first.
+    pub months: Vec<String>,
+    /// The seven short weekday names, Monday first.
+    pub weekdays: Vec<String>,
+    /// The week starts on Sunday.
+    pub week_starts_sunday: bool,
+    /// Today as (year, month, day) in the user's time zone.
+    pub today: (i32, i32, i32),
 }
 
 /// A filled-in form, ready to be used: see [`Controller::take_fill`](crate::controller::Controller::take_fill).
@@ -181,6 +212,8 @@ pub struct FillSubmission {
     pub(super) mode: UseMode,
     pub(super) answers: BTreeMap<String, String>,
     pub(super) transform: Option<snipdeck_core::template::transform::Transform>,
+    /// The Target's selection, read before the form opened.
+    pub(super) selection: Option<String>,
     /// A typed trigger to erase with the paste, once the form is confirmed.
     pub(super) erase: Option<FillErase>,
 }
@@ -192,6 +225,7 @@ pub(crate) struct FillErase {
     pub(super) chars: usize,
     pub(super) app: Option<String>,
     pub(super) window: usize,
+    pub(super) retype: crate::usecase::Retype,
 }
 
 /// How a use ended.
@@ -224,7 +258,7 @@ pub struct View {
     /// The pinned strip.
     pub pinned: Vec<Row>,
     /// The item rows. A revealed sensitive row carries its real text in `preview`.
-    pub rows: Vec<Row>,
+    pub rows: std::rc::Rc<Vec<Row>>,
     /// The index in `rows` of the sensitive row held revealed.
     pub revealed: Option<usize>,
     /// The search text.
@@ -319,7 +353,7 @@ pub struct View {
     /// The context menu of a list tab while it is open ([`LIST_MENU`](crate::controller::LIST_MENU)).
     pub list_menu: Option<Vec<ListMenuEntry>>,
     /// The sort of the list the list menu is open on (its "Sort by" row is checked).
-    pub list_menu_sort: snipdeck_core::ListSort,
+    pub list_menu_sort: snipdeck_core::Sort,
     /// The list the list menu is open on holds a colour (its "Copy as CSS variables" row is on).
     pub list_menu_css: bool,
     /// The shown list sorts itself and no search runs: moves are refused but offer manual order.
@@ -340,6 +374,10 @@ pub struct View {
     /// The first-run question "Keep a Recent list of what you copy?" is due: unanswered, and
     /// the welcome tour is not running. Nothing is kept until the answer is Yes.
     pub recent_question: bool,
+    /// The Recent limits in the settings, for the question's wording.
+    pub recent_max_entries: u32,
+    /// How many days Recent keeps an entry.
+    pub recent_days: u32,
 }
 
 /// What a row of the Move or Colour choice says, before wording.

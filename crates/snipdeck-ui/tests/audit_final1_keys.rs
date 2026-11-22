@@ -414,6 +414,7 @@ fn every_kind() -> Vec<snipdeck_ui::FormField> {
         snipdeck_ui::FormField {
             label: "Send a copy".into(),
             kind: snipdeck_ui::TemplateFieldKind::Toggle,
+            enabled: true,
             ..Default::default()
         },
     ]
@@ -524,10 +525,7 @@ fn fill_form_multiline_and_date_error_fit_at_225() {
 
 const ONE_CHAR_WARNING: &str = "A one-character trigger fires every time you type it, even inside words. Two or more characters are safer.";
 const WINDOWS_ONLY_NOTE: &str = "Typing triggers work on Windows only.";
-const TYPING_TOGGLES: [&str; 2] = [
-    "Expand abbreviations as I type",
-    "Suggest snippets as I type",
-];
+const TYPING_TOGGLES: [&str; 2] = ["Expand abbreviations as I type", "Suggest items as I type"];
 
 fn rel_lum(c: [u8; 3]) -> f64 {
     let l = |v: u8| {
@@ -708,6 +706,10 @@ fn editor_trigger_warning_is_visible_readable_and_reachable() {
                 editor::text_item(&h.component);
                 h.component.set_more_open(true);
                 h.component.set_trigger(trigger.into());
+                // The controller words the warning; the window only shows it.
+                let one = trigger.chars().count() == 1 && !sensitive;
+                h.component
+                    .set_trigger_warning(if one { ONE_CHAR_WARNING } else { "" }.into());
                 h.component.set_sensitive(sensitive);
                 h
             };

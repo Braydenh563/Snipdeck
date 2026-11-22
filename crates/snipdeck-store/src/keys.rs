@@ -10,7 +10,7 @@ use snipdeck_core::{BlobRef, Content, FormatKind, ItemId};
 
 use crate::batch::Post;
 use crate::codec::{id_bytes, id_from};
-use crate::crypto::{DataKey, KeyRecord, KeyRing, Slot, decrypt_payload};
+use crate::crypto::{DataKey, KeyRecord, KeyRing, Rotation, Slot, decrypt_payload};
 use crate::items::{Written, load_formats, write_formats};
 use crate::store::begin;
 use crate::{Error, Result, Store};
@@ -79,6 +79,37 @@ fn seal_in_transaction(
     let recent = crate::recent::encrypt_plain(&tx, key)?;
     tx.commit()?;
     Ok((encrypted, old, recent))
+}
+
+/// One transaction: re-seals every encrypted item and Recent entry from `old` to `new` and
+/// replaces the key record. Returns the blobs that held old envelopes.
+fn reseal_in_transaction(
+    conn: &mut Connection,
+    blobs: &mut crate::blobs::Blobs,
+    old: &DataKey,
+    new: &DataKey,
+    record: &KeyRecord,
+) -> Result<Vec<BlobRef>> {
+    let tx = begin(conn)?;
+    let ids: Vec<Vec<u8>> = tx
+        .prepare("SELECT id FROM items WHERE encrypted = 1")?
+        .query_map([], |r| r.get(0))?
+        .collect::<rusqlite::Result<_>>()?;
+    let mut stale = Vec::new();
+    for raw in ids {
+        let id: ItemId = id_from(&raw)?;
+        let stored = load_formats(&tx, id_bytes(id))?;
+        stale.extend(blob_refs(&stored));
+        let plain = crate::items::decrypt_formats(blobs, old, id, &stored)?;
+        write_formats(&tx, blobs, id, &plain, Some(new))?;
+    }
+    stale.extend(crate::recent::reseal(&tx, blobs, old, new)?);
+    tx.execute(
+        "UPDATE key_ring SET record = ?1, previous = NULL WHERE id = 1",
+        [record.as_bytes()],
+    )?;
+    tx.commit()?;
+    Ok(stale)
 }
 
 fn blob_refs(formats: &snipdeck_core::Formats) -> Vec<BlobRef> {
@@ -218,10 +249,10 @@ impl Store {
         Ok(ring.has_password(&stored_record(&self.conn)?)?)
     }
 
-    /// Re-wraps the data key under a new master password (`None` removes it); no item is
-    /// re-encrypted. `current` is the present password. The old record is overwritten in the
-    /// database, but a backup taken earlier still opens with the old password
-    /// (`docs/crypto.md`).
+    /// Sets, changes or removes the master password (`new`; `None` removes it) and **rotates
+    /// the data key**: every encrypted item and Recent entry is re-sealed under a fresh key in
+    /// one transaction. `current` is the present password. Slow (key derivation); the app runs
+    /// [`KeyRing::rotate`] on a worker and finishes with [`Store::rotate_key_ring`].
     pub fn change_master_password(
         &mut self,
         ring: &KeyRing<'_>,
@@ -229,36 +260,50 @@ impl Store {
         new: Option<&str>,
     ) -> Result<()> {
         let record = stored_record(&self.conn)?;
-        let changed = ring.change_password(&record, current, new)?;
-        self.replace_key_record(&changed)
+        let rotation = ring.rotate(&record, current, new)?;
+        self.rotate_key_ring(rotation)
     }
 
-    /// Overwrites the stored key record with `record`, made by [`KeyRing::rekey`] (possibly on
-    /// another thread) from the record [`Store::key_record`] returned, and keeps the record it
-    /// replaces ([`Store::previous_key_record`]). `opened` is the data key that call returned.
-    /// The store does not derive the password itself, so it checks `opened` instead: it must be
-    /// the key held while unlocked or, while locked, one that opens an encrypted payload.
-    /// Otherwise [`Error::Invalid`] and nothing changes (a wrong record would make every
-    /// encrypted item unreadable). Fails with [`Error::NotFound`] if there is no key ring.
-    /// Nothing is re-encrypted: the data key is unchanged.
+    /// Finishes a [`KeyRing::rotate`] made elsewhere: re-seals every encrypted payload from
+    /// `rotation.old` to `rotation.new`, stores `rotation.record`, and leaves the library open
+    /// under the new key. One transaction, so a crash leaves either the old key and record with
+    /// the old payloads or the new ones, never a mix. No older key record is kept, and the
+    /// blobs that held old envelopes are scrubbed.
     ///
-    /// This does not prove `record` itself opens to `opened`; the caller made it from that key.
-    pub fn replace_key_record_checked(
-        &mut self,
-        record: &KeyRecord,
-        opened: &DataKey,
-    ) -> Result<()> {
+    /// `rotation.old` must be the key the library is sealed under: the one held while unlocked
+    /// or, while locked, one that opens an encrypted payload. Otherwise [`Error::Invalid`] and
+    /// nothing changes. Fails with [`Error::NotFound`] if there is no key ring.
+    pub fn rotate_key_ring(&mut self, rotation: Rotation) -> Result<()> {
+        let Rotation { old, new, record } = rotation;
         stored_record(&self.conn)?;
         let matches = match &self.key {
-            Some(held) => held.same_as(opened),
-            None => self.opens_a_payload(opened)?,
+            Some(held) => held.same_as(&old),
+            None => self.opens_a_payload(&old)?,
         };
         if !matches {
             return Err(Error::Invalid(
-                "the key record does not belong to this library's data key".to_owned(),
+                "the old key does not belong to this library".to_owned(),
             ));
         }
-        self.replace_key_record(record)
+        let mark = self.blobs.mark();
+        let resealed = reseal_in_transaction(&mut self.conn, &mut self.blobs, &old, &new, &record);
+        let stale = match resealed {
+            Ok(stale) => {
+                self.blobs.end_log();
+                stale
+            }
+            Err(e) => {
+                self.blobs.rewind(mark);
+                self.blobs.end_log();
+                return Err(e);
+            }
+        };
+        self.blobs.clear_transient();
+        self.key = Some(new);
+        let mut post = Post::default();
+        post.written(Written::default(), stale, true);
+        self.finish(post);
+        Ok(())
     }
 
     /// Whether `key` opens one inline payload of an encrypted item; `true` when there is none
@@ -281,33 +326,6 @@ impl Store {
         let kind: FormatKind = kind.parse()?;
         let id: ItemId = id_from(&id)?;
         Ok(decrypt_payload(key, &id, Slot::Format(kind), &bytes).is_ok())
-    }
-
-    /// The key record the last replacement overwrote, if any: the way back from a wrong one.
-    pub fn previous_key_record(&self) -> Result<Option<KeyRecord>> {
-        let bytes: Option<Vec<u8>> = self
-            .conn
-            .query_row("SELECT previous FROM key_ring WHERE id = 1", [], |r| {
-                r.get(0)
-            })
-            .optional()?
-            .flatten();
-        bytes.map(|b| Ok(KeyRecord::from_bytes(b)?)).transpose()
-    }
-
-    /// As [`Store::replace_key_record_checked`] without the check on the data key: the caller
-    /// vouches that `record` protects the key the library is encrypted under. The old record is
-    /// still kept. Prefer the checked form.
-    pub fn replace_key_record(&mut self, record: &KeyRecord) -> Result<()> {
-        stored_record(&self.conn)?;
-        let tx = begin(&mut self.conn)?;
-        tx.execute(
-            "UPDATE key_ring SET previous = record, record = ?1 WHERE id = 1",
-            [record.as_bytes()],
-        )?;
-        tx.commit()?;
-        crate::store::checkpoint(&self.conn);
-        Ok(())
     }
 
     /// Forgets the data key and every decrypted payload held in memory. Encrypted content

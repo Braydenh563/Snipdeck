@@ -693,14 +693,14 @@ ui_tests! {
         let (ui, log) = start();
         fixture::set_rows(&ui, Vec::new());
         settle();
-        assert!(!all(&ui, "No snippets yet", AccessibleRole::Text).is_empty());
+        assert!(!all(&ui, "No items yet", AccessibleRole::Text).is_empty());
         assert_eq!(rows(&ui).len(), 0);
 
         type_text(ui.window(), "zz");
         settle();
         assert!(!all(&ui, "No matches", AccessibleRole::Text).is_empty());
         assert!(!all(&ui, "Nothing matches “zz”.", AccessibleRole::Text).is_empty());
-        assert!(missing(&ui, "No snippets yet", AccessibleRole::Text));
+        assert!(missing(&ui, "No items yet", AccessibleRole::Text));
 
         take(&log);
         press(ui.window(), &key(Key::Tab));
@@ -733,8 +733,8 @@ ui_tests! {
 
     fn the_controls_have_roles_and_labels() {
         let (ui, _log) = start();
-        let search = find(&ui, "Search all snippets", AccessibleRole::TextInput);
-        assert_eq!(search.accessible_placeholder_text().map(|p| p.to_string()).as_deref(), Some("Search all snippets"));
+        let search = find(&ui, "Search all items", AccessibleRole::TextInput);
+        assert_eq!(search.accessible_placeholder_text().map(|p| p.to_string()).as_deref(), Some("Search all items"));
         assert!(
             ElementHandle::find_by_accessible_label(&ui, "Results").count() > 0,
             "the results list is labelled"

@@ -14,18 +14,23 @@
 
 use std::{collections::BTreeSet, path::PathBuf, rc::Rc, sync::Arc};
 
+use crate::item_editor;
+
+use crate::usecase;
 use snipdeck_core::{
-    Format, Formats, Item, ItemId, ItemKind, ListId, Tag, TagId, template::Locale,
+    CaseMode, Format, Formats, Item, ItemId, ItemKind, ListId, Tag, TagId, Trigger, TriggerEnd,
+    TriggerOptions,
 };
 use snipdeck_platform::file_dialog::FilePicker;
 use snipdeck_store::{
-    BlobStore, ItemRepo,
+    BlobStore,
     crypto::{CryptoError, KeyProvider},
 };
 
-use super::{Controller, Library, Toast, ToastKind, ToastMessage, failed};
+use super::{Controller, Library, Toast, ToastKind, ToastMessage};
 use crate::{
     drafts::{Draft, DraftKey, Drafts},
+    duplicate::Duplicate,
     host::ClipboardText,
     item_editor::{
         AttachmentView, EditorInput, EditorProblem, ItemEditorView, SaveFailure, Source,
@@ -48,7 +53,16 @@ pub(super) struct EditorEnv {
     /// The file dialog. Shared so the window can ask it without holding the controller: the
     /// dialog runs its own message loop, and the controller must be free meanwhile.
     picker: Option<Rc<dyn FilePicker>>,
+    /// Reads what the editor window shows right now, so the lock does not depend on the last
+    /// two-second tick. Must not touch the controller.
+    text_source: Option<Rc<dyn Fn() -> Option<EditorInput>>>,
+    /// Opens a Link item's address (the system's handler; a recorder in tests).
+    pub(super) link_opener: Option<LinkOpener>,
 }
+
+/// Opens an address for "Open in browser": it is only called with addresses that passed
+/// [`link_open::allowed_target`](crate::link_open::allowed_target).
+pub type LinkOpener = Rc<dyn Fn(&str) -> Result<(), String>>;
 
 /// What the editor edits.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -75,6 +89,8 @@ struct Problems {
     privacy: Option<EditorProblem>,
     trigger: Option<EditorProblem>,
     banner: Option<EditorProblem>,
+    /// The new item's text is already saved: Save waits for "Open it" or "Save anyway".
+    duplicate: Option<Duplicate>,
 }
 
 /// An open item editor.
@@ -97,18 +113,30 @@ pub(super) struct ItemEditorSlot {
     /// The Trigger field as typed (empty: none); the window sends it with
     /// [`item_editor_set_trigger`](Controller::item_editor_set_trigger).
     trigger: String,
+    /// When the trigger fires and how it reads case, as chosen.
+    trigger_options: TriggerOptions,
+    /// "Save anyway" was chosen for a text that is already saved.
+    allow_duplicate: bool,
     /// The item's trigger when the editor opened (empty: none).
     original_trigger: String,
+    /// The options of that trigger.
+    original_options: TriggerOptions,
     /// The saved text of a text item up to the editing cap: what "changed" is measured against.
     /// A sensitive item's text is held here while its editor is open and no longer.
     original_text: Option<String>,
     /// The item keeps HTML or RTF next to its text: saving changed text drops them, and
     /// "Remove formatting" drops them alone.
     formatted: bool,
+    /// "Remove formatting" was pressed: Save drops the HTML and RTF, Cancel keeps them.
+    drop_formats: bool,
+    /// The item as it was when the editor opened: Save writes only the fields the person changed
+    /// since, so a colour, tag or move made elsewhere meanwhile is not overwritten.
+    opened: Option<snipdeck_core::Item>,
+    /// A new item goes after this one (the row the cursor was on) and joins its group, when the
+    /// list is in manual order and the item is saved to that same list.
+    insert_after: Option<ItemId>,
     /// `updated_at` of the item when it was opened, as text: a draft of an older state is stale.
     stamp: Option<String>,
-    /// The size of a text over the editing cap, which is shown read-only.
-    large: Option<u64>,
     attachment: Option<AttachmentView>,
     restored: bool,
     /// What the editor starts as: a draft equal to it is no draft.
@@ -122,12 +150,68 @@ pub(super) struct ItemEditorSlot {
     /// The Sensitive switch as the window last reported it (the two-second tick): an editor of a
     /// plain item becomes sensitive when the user turns it on.
     live_sensitive: bool,
+    /// The fields of a sensitive editor as the last tick saw them, so a lock can keep them.
+    /// Always `None` for an editor with nothing sensitive in it.
+    latest: Option<EditorInput>,
+}
+
+/// What the lock did to a sensitive editor that was open.
+pub(super) enum Parked {
+    /// Kept sealed in memory; it comes back after the unlock.
+    Kept,
+    /// Closed, its text dropped (no key to seal it with).
+    Dropped,
+}
+
+/// A sensitive editor the lock took off the screen: its window fields and the title and text
+/// sealed under the data key (the key itself is gone while locked). Given back after the unlock.
+pub(super) struct ParkedEditor {
+    /// The editor with its title and text blanked and the saved text forgotten.
+    slot: ItemEditorSlot,
+    /// The id the envelope is bound to.
+    seal_id: ItemId,
+    /// Title and text, sealed.
+    sealed: Vec<u8>,
+}
+
+/// Title and text as one sealed message: the title's length, the title, the text.
+fn pack_texts(title: &str, content: &str) -> Vec<u8> {
+    let mut out = Vec::with_capacity(4 + title.len() + content.len());
+    out.extend_from_slice(&u32::try_from(title.len()).unwrap_or(u32::MAX).to_le_bytes());
+    out.extend_from_slice(title.as_bytes());
+    out.extend_from_slice(content.as_bytes());
+    out
+}
+
+fn unpack_texts(bytes: &[u8]) -> Option<(String, String)> {
+    let (len, rest) = bytes.split_at_checked(4)?;
+    let len = usize::try_from(u32::from_le_bytes(len.try_into().ok()?)).ok()?;
+    let (title, content) = rest.split_at_checked(len)?;
+    Some((
+        String::from_utf8(title.to_vec()).ok()?,
+        String::from_utf8(content.to_vec()).ok()?,
+    ))
 }
 
 impl ItemEditorSlot {
     /// Whether this editor holds, or is about to hold, the text of a sensitive item.
     fn sensitive(&self) -> bool {
         self.original_sensitive || self.fields.sensitive || self.live_sensitive
+    }
+
+    /// The Trigger field as a trigger with the chosen options; `None` when it is blank or not a
+    /// valid code.
+    fn trigger_code(&self) -> Option<Trigger> {
+        Trigger::new(&self.trigger)
+            .ok()
+            .map(|t| t.with_options(self.trigger_options))
+    }
+
+    /// The trigger the item had when the editor opened.
+    fn original_code(&self) -> Option<Trigger> {
+        Trigger::new(&self.original_trigger)
+            .ok()
+            .map(|t| t.with_options(self.original_options))
     }
 
     fn draft_key(&self) -> DraftKey {
@@ -186,9 +270,20 @@ where
         self.editor_env.keys = Some(Arc::from(provider));
     }
 
+    /// Lets the lock read the editor window's text at that moment (it must not borrow the
+    /// controller). Without it the last autosave tick supplies the text.
+    pub fn set_editor_text_source(&mut self, source: Box<dyn Fn() -> Option<EditorInput>>) {
+        self.editor_env.text_source = Some(Rc::from(source));
+    }
+
     /// Lets the item editor open a file dialog with `picker`.
     pub fn set_file_picker(&mut self, picker: Box<dyn FilePicker>) {
         self.editor_env.picker = Some(Rc::from(picker));
+    }
+
+    /// Lets a Link item's "Open in browser" open addresses with `opener`.
+    pub fn set_link_opener(&mut self, opener: LinkOpener) {
+        self.editor_env.link_opener = Some(opener);
     }
 
     /// The file dialog, if the machine has one. Ask it with the controller released, then hand
@@ -249,11 +344,22 @@ where
             source_problem: slot.problems.source.clone(),
             privacy_problem: slot.problems.privacy.clone(),
             trigger: slot.trigger.clone(),
-            trigger_problem: slot.problems.trigger.clone(),
+            trigger_options: slot.trigger_options,
+            trigger_problem: slot
+                .problems
+                .trigger
+                .clone()
+                .or_else(|| self.trigger_notes(slot).0),
+            trigger_note: self.trigger_notes(slot).1,
+            duplicate: slot.problems.duplicate.clone(),
             banner: slot.problems.banner.clone(),
-            large: slot.large,
-            formatted: slot.formatted,
-            saved_text: slot.original_text.clone().unwrap_or_default(),
+            formatted: slot.formatted && !slot.drop_formats,
+            saved_text: slot
+                .original_text
+                .as_ref()
+                .filter(|t| t.len() <= item_editor::PART_BYTES)
+                .cloned()
+                .unwrap_or_default(),
             attachment: slot.attachment.clone(),
             can_browse: self.editor_env.picker.is_some(),
             restored: slot.restored,
@@ -275,8 +381,9 @@ where
             input,
             self.clock.now(),
             &self.tz,
-            Locale::for_tag(&self.settings.language),
+            usecase::template_locale(&self.settings.language),
             words,
+            &usecase::StoreSnippets::new(&self.store),
         ))
     }
 
@@ -300,12 +407,122 @@ where
         }
     }
 
+    /// The trigger fires `end`. Checked on Save, and noted at once by
+    /// [`item_editor_trigger_notes`](Self::item_editor_trigger_notes).
+    pub fn item_editor_set_trigger_end(&mut self, end: TriggerEnd) {
+        if let Some(slot) = self.item_editor.as_mut() {
+            slot.trigger_options.end = end;
+            slot.problems.trigger = None;
+        }
+    }
+
+    /// The trigger reads case as `case` says.
+    pub fn item_editor_set_trigger_case(&mut self, case: CaseMode) {
+        if let Some(slot) = self.item_editor.as_mut() {
+            slot.trigger_options.case = case;
+            slot.problems.trigger = None;
+        }
+    }
+
+    /// What is wrong with the trigger as it stands, before anything is saved: a refusal (the code
+    /// would fire inside ordinary words; Save will not take it) and a warning (the code hides
+    /// another snippet's, or is hidden by it; Save takes it). `(None, None)` when no editor is open.
+    #[must_use]
+    pub fn item_editor_trigger_notes(&self) -> (Option<EditorProblem>, Option<EditorProblem>) {
+        self.item_editor
+            .as_ref()
+            .map_or((None, None), |slot| self.trigger_notes(slot))
+    }
+
+    fn trigger_notes(
+        &self,
+        slot: &ItemEditorSlot,
+    ) -> (Option<EditorProblem>, Option<EditorProblem>) {
+        if slot.sensitive() || slot.trigger.is_empty() {
+            return (None, None);
+        }
+        let Some(code) = slot.trigger_code() else {
+            return (None, None);
+        };
+        if code.fires_in_words() {
+            // A code the item already had keeps working and can be saved with the item: it is
+            // only warned about until the user changes it.
+            return if slot.original_code().as_ref() == Some(&code) {
+                (None, Some(EditorProblem::TriggerTooShort))
+            } else {
+                (Some(EditorProblem::TriggerTooShort), None)
+            };
+        }
+        let own = match slot.target {
+            ItemTarget::Item(id) => Some(id),
+            ItemTarget::New => None,
+        };
+        let name = |other: &Trigger, owner| {
+            self.store
+                .item(owner)
+                .ok()
+                .map(|i| i.title)
+                .filter(|t| !t.trim().is_empty())
+                .unwrap_or_else(|| other.as_str().to_owned())
+        };
+        for (other, owner) in self.store.triggers().unwrap_or_default() {
+            if Some(owner) == own || code.same_code(&other) {
+                continue;
+            }
+            if code.shadows(&other) {
+                return (
+                    None,
+                    Some(EditorProblem::TriggerHides {
+                        title: name(&other, owner),
+                    }),
+                );
+            }
+            if other.shadows(&code) {
+                return (
+                    None,
+                    Some(EditorProblem::TriggerHidden {
+                        title: name(&other, owner),
+                    }),
+                );
+            }
+        }
+        if code.as_str().chars().count() == 1 {
+            return (None, Some(EditorProblem::TriggerOneCharacter));
+        }
+        (None, None)
+    }
+
+    /// Save for a new item whose text is already saved elsewhere ("Already saved in List X"):
+    /// saves it anyway.
+    pub fn item_editor_save_anyway(&mut self, input: &EditorInput) {
+        if let Some(slot) = self.item_editor.as_mut() {
+            slot.allow_duplicate = true;
+        }
+        self.item_editor_save(input);
+    }
+
+    /// "Open it" on the "Already saved" notice: drops the unsaved new item and opens the one that
+    /// has the text. Returns whether there was one to open.
+    pub fn item_editor_open_duplicate(&mut self) -> bool {
+        let Some(found) = self
+            .item_editor
+            .as_ref()
+            .and_then(|slot| slot.problems.duplicate.clone())
+        else {
+            return false;
+        };
+        self.item_editor_cancel();
+        self.open_item_editor(found.item);
+        true
+    }
+
     /// A field was edited: refusals no longer apply.
     pub fn item_editor_edited(&mut self) {
         let Some(slot) = self.item_editor.as_mut() else {
             return;
         };
         slot.problems = Problems::default();
+        slot.allow_duplicate = false;
         // Typing in a sensitive item is use: it must not idle the library out under the
         // user's hands (the lock closes this editor).
         if slot.sensitive() {
@@ -313,19 +530,85 @@ where
         }
     }
 
-    /// Closes the item editor if it holds a sensitive item's text, as the lock does: the text is
-    /// dropped, not saved, and no draft is kept. Returns whether one was closed.
-    pub(super) fn close_sensitive_item_editor(&mut self) -> bool {
-        if !self
-            .item_editor
-            .as_ref()
-            .is_some_and(ItemEditorSlot::sensitive)
-        {
+    /// The lock takes a sensitive item's editor off the screen: its title and text are sealed under
+    /// the data key (so call this before the key is dropped) and kept in memory, and the editor
+    /// comes back with them after the unlock. Nothing is written to disk and no draft is kept.
+    /// With no key to seal with the editor is closed and its text dropped. Returns what happened
+    /// to an editor that was open: `None` when none held anything sensitive.
+    pub(super) fn park_sensitive_item_editor(&mut self) -> Option<Parked> {
+        let mut slot = self.item_editor.take_if(|slot| slot.sensitive())?;
+        // Ask the window for its text now: the tick may be up to two seconds old.
+        if let Some(live) = self.editor_env.text_source.as_ref().and_then(|read| read()) {
+            slot.latest = Some(live);
+        }
+        let input = slot.latest.take().unwrap_or_else(|| slot.fields.clone());
+        let seal_id = ItemId::generate();
+        let sealed = self.store.duplicate_data_key().and_then(|key| {
+            snipdeck_store::crypto::encrypt_item(
+                &key,
+                &seal_id,
+                &pack_texts(&input.title, &input.content),
+            )
+            .ok()
+        });
+        let Some(sealed) = sealed else {
+            self.clear_draft(&slot);
+            return Some(Parked::Dropped);
+        };
+        slot.fields = EditorInput {
+            title: String::new(),
+            content: String::new(),
+            ..input
+        };
+        slot.original_text = None;
+        self.clear_draft(&slot);
+        self.parked_editor = Some(ParkedEditor {
+            slot,
+            seal_id,
+            sealed,
+        });
+        Some(Parked::Kept)
+    }
+
+    /// After an unlock: opens the parked editor again with what was typed, marked as unsaved.
+    /// Returns `false` when something was parked but could not come back (the item is gone, the
+    /// text does not open, or another editor is open now).
+    pub(super) fn restore_parked_editor(&mut self) -> bool {
+        let Some(parked) = self.parked_editor.take() else {
+            return true;
+        };
+        if self.item_editor.is_some() {
             return false;
         }
-        if let Some(slot) = self.item_editor.take() {
-            self.clear_draft(&slot);
+        let ParkedEditor {
+            mut slot,
+            seal_id,
+            sealed,
+        } = parked;
+        let texts = self
+            .store
+            .duplicate_data_key()
+            .and_then(|key| snipdeck_store::crypto::decrypt_item(&key, &seal_id, &sealed).ok())
+            .and_then(|bytes| unpack_texts(bytes.as_slice()));
+        let Some((title, content)) = texts else {
+            return false;
+        };
+        if let ItemTarget::Item(id) = slot.target {
+            // What "changed" is measured against comes from the stored item again.
+            let Ok(fresh) = self.existing_slot(id) else {
+                return false;
+            };
+            slot.original_text = fresh.original_text;
+            slot.attachment = fresh.attachment;
+            slot.formatted = fresh.formatted;
+            slot.stamp = fresh.stamp;
         }
+        slot.fields.title = title;
+        slot.fields.content = content;
+        slot.restored = true;
+        self.item_editor_seq += 1;
+        slot.seq = self.item_editor_seq;
+        self.item_editor = Some(slot);
         true
     }
 
@@ -344,36 +627,15 @@ where
         }
     }
 
-    /// "Remove formatting": the open item keeps its text and loses its HTML and RTF at once, with
-    /// the editor left open and the fields as they are. Does nothing for an item without them.
+    /// "Remove formatting": the open item will keep its text and lose its HTML and RTF when it is
+    /// saved, like every other field of the editor (Cancel keeps them). Does nothing for an item
+    /// without them.
     pub fn item_editor_remove_formatting(&mut self) {
-        let Some(slot) = self.item_editor.as_ref() else {
+        let Some(slot) = self.item_editor.as_mut() else {
             return;
         };
-        let ItemTarget::Item(id) = slot.target else {
-            return;
-        };
-        if !slot.formatted {
-            return;
-        }
-        let done = self.store.formats(id).and_then(|formats| {
-            let kept: Vec<Format> = formats
-                .iter()
-                .filter(|f| !matches!(f, Format::Html(_) | Format::Rtf(_)))
-                .cloned()
-                .collect();
-            let item = self.store.item(id)?;
-            self.store
-                .atomically(|b| b.update_item(&item, Some(&Formats::new(kept.clone())?)))
-        });
-        match done {
-            Ok(()) => {
-                if let Some(slot) = self.item_editor.as_mut() {
-                    slot.formatted = false;
-                }
-                self.library_changed();
-            }
-            Err(_) => self.show_toast(failed()),
+        if matches!(slot.target, ItemTarget::Item(_)) && slot.formatted {
+            slot.drop_formats = true;
         }
     }
 
@@ -414,7 +676,7 @@ where
 
     /// The two-second tick: writes the draft if the fields differ from what the editor started
     /// with and from the last draft, removes it when they are back to the start. Nothing is
-    /// written for a sensitive item (see [`crate::drafts`]), a read-only text, or without a
+    /// written for a sensitive item (see [`crate::drafts`]), a text over a draft's size, or without a
     /// drafts folder. A failed write is reported once per editor. Returns whether something the
     /// windows show changed (that report).
     pub fn item_editor_autosave(&mut self, input: &EditorInput) -> bool {
@@ -422,13 +684,14 @@ where
             return false;
         };
         slot.live_sensitive = input.sensitive;
+        slot.latest = (input.sensitive || slot.original_sensitive).then(|| input.clone());
         if slot.no_draft {
             return false;
         }
         let Some(drafts) = self.editor_env.drafts.as_ref() else {
             return false;
         };
-        if slot.large.is_some() {
+        if input.content.len() > item_editor::DRAFT_TEXT_MAX_BYTES {
             return false;
         }
         let key = slot.draft_key();

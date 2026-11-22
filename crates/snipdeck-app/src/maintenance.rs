@@ -18,25 +18,26 @@
 //! intervals survive a restart. A missing or damaged file just means "never ran".
 
 use std::{
+    cell::RefCell,
     fs,
     io::{self, Write as _},
     path::{Path, PathBuf},
+    rc::Rc,
     time::Duration,
 };
 
 use jiff::{Zoned, tz::TimeZone};
 use serde::{Deserialize, Serialize};
-use snipdeck_core::Timestamp;
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
-use snipdeck_portable::backup::{self, BackupOutcome};
+use snipdeck_portable::backup::BackupOutcome;
 use snipdeck_store::Store;
 
 use crate::{
-    controller::Controller,
+    archive_job::{self, ArchiveJob},
+    controller::{ArchiveEnd, Begun, Controller},
     crash,
     failure::Cause,
     host::{ClipboardText, Clock},
-    main_window::TRASH_DAYS,
     toast::{Toast, ToastKind, ToastMessage},
 };
 
@@ -69,6 +70,11 @@ pub struct State {
     pub last_integrity: Option<i64>,
     /// File name of the newest crash report the user has been told about.
     pub crash_acknowledged: Option<String>,
+    /// Unix seconds of the last tick of any run. A jump of more than the Trash's days since
+    /// then (a wrong clock, or a library left alone for a month) holds the purge for a day.
+    pub last_seen: Option<i64>,
+    /// Unix seconds before which the Trash is not purged: set by a forward jump of the clock.
+    pub purge_not_before: Option<i64>,
 }
 
 impl State {
@@ -90,6 +96,8 @@ impl State {
     /// The file cannot be written.
     pub fn save(&self, data_dir: &Path) -> io::Result<()> {
         let text = serde_json::to_string_pretty(self).map_err(io::Error::other)?;
+        // A crash between create and rename leaves `maintenance.json.<pid>-n.tmp`: clear them.
+        crate::settings_store::remove_stale_temps(data_dir, STATE_FILE);
         let (mut file, temp) = crate::settings_store::create_temp(data_dir, STATE_FILE)?;
         let written = file
             .write_all(text.as_bytes())
@@ -113,15 +121,44 @@ fn is_due(last: Option<i64>, now: i64, interval: Duration) -> bool {
 }
 
 /// What a backup run did.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BackupResult {
     /// Today's file was written; `pruned` older ones were deleted.
     Created {
         /// How many old backups went.
         pruned: usize,
+        /// Items in the previous backup and in this one, when this one holds under half
+        /// (nothing was pruned then).
+        shrunk: Option<(usize, usize)>,
+        /// How many items could not be written, and the first one's title.
+        skipped: Option<(usize, String)>,
     },
     /// Today's file already existed.
     NotDue,
+    /// A worker is writing it; [`Maintenance::backup_finished`] takes the outcome. Nothing else
+    /// starts a backup until then.
+    Started,
+}
+
+impl From<BackupOutcome> for BackupResult {
+    fn from(outcome: BackupOutcome) -> Self {
+        match outcome {
+            BackupOutcome::Created {
+                pruned,
+                suspect,
+                report,
+                ..
+            } => Self::Created {
+                pruned: pruned.len(),
+                shrunk: suspect.map(|s| (s.was, s.now)),
+                skipped: report
+                    .skipped
+                    .first()
+                    .map(|first| (report.skipped.len(), first.title.clone())),
+            },
+            BackupOutcome::NotDue { .. } => Self::NotDue,
+        }
+    }
 }
 
 /// The three jobs, as the scheduler needs them. The app's implementation is [`ControllerJobs`];
@@ -139,7 +176,7 @@ pub trait Jobs {
     /// # Errors
     ///
     /// A message for the log.
-    fn purge_trash(&mut self, cutoff: Timestamp) -> Result<usize, String>;
+    fn purge_trash(&mut self) -> Result<usize, String>;
 
     /// Sweeps blob files nothing uses (leftovers of interrupted writes) older than
     /// [`GC_GRACE`]; returns how many files went.
@@ -191,6 +228,17 @@ impl JobError {
     }
 }
 
+impl JobError {
+    /// The backup waits for the archive that is still running.
+    #[must_use]
+    pub fn busy() -> Self {
+        Self {
+            cause: Cause::Busy,
+            detail: BUSY_MESSAGE.to_owned(),
+        }
+    }
+}
+
 impl std::fmt::Display for JobError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.detail)
@@ -205,8 +253,25 @@ pub enum MaintenanceOutcome {
         /// How many old backups were deleted.
         pruned: usize,
     },
+    /// The backup holds under half the items of the one before; the older ones were kept.
+    BackupShrunk {
+        /// Items in the previous backup.
+        was: usize,
+        /// Items in this one.
+        now: usize,
+    },
+    /// The backup was written without some items whose attachments could not be read.
+    BackupSkipped {
+        /// How many items were left out.
+        count: usize,
+        /// The first one's title.
+        first: String,
+    },
     /// The backup could not be made; it is tried again at the next run.
     BackupFailed(JobError),
+    /// The clock jumped forward by more than the Trash's days since the last run, so the Trash
+    /// purge waits a day: a wrong date must not delete what the person trashed yesterday.
+    TrashPurgeHeld,
     /// The Trash purge finished.
     TrashPurged {
         /// How many entries were deleted for good.
@@ -227,7 +292,8 @@ pub enum MaintenanceOutcome {
     IntegrityProblems(Vec<String>),
     /// The integrity check could not run.
     IntegrityFailed(String),
-    /// The last run ended in a crash the user has not been told about.
+    /// A crash report the user has not been told about: the last run's, or a worker thread's
+    /// panic this run (the name dates from when only the first was reported).
     CrashedLastTime,
 }
 
@@ -247,8 +313,16 @@ impl MaintenanceOutcome {
                 kind: ToastKind::Neutral,
                 message: ToastMessage::CrashedLastTime,
             }),
+            Self::BackupShrunk { was, now } => Some(Toast {
+                kind: ToastKind::Danger,
+                message: ToastMessage::BackupShrunk { was, now },
+            }),
+            Self::BackupSkipped { count, first } => Some(Toast {
+                kind: ToastKind::Danger,
+                message: ToastMessage::BackupMadeSkipping { count, first },
+            }),
             Self::BackupFailed(JobError {
-                cause: Cause::Locked,
+                cause: Cause::Locked | Cause::Busy,
                 ..
             }) => None,
             Self::BackupFailed(JobError { cause, .. }) => Some(Toast {
@@ -269,7 +343,16 @@ impl MaintenanceOutcome {
     pub fn log_line(&self) -> String {
         match self {
             Self::BackupCreated { pruned } => format!("backup written, {pruned} old ones deleted"),
+            Self::BackupShrunk { was, now } => {
+                format!("backup holds {now} items, the previous one {was}; older ones kept")
+            }
+            Self::BackupSkipped { count, .. } => {
+                format!("backup written without {count} items whose attachments cannot be read")
+            }
             Self::BackupFailed(e) => format!("backup failed: {e}"),
+            Self::TrashPurgeHeld => {
+                "the clock jumped forward; the Trash purge waits a day".to_owned()
+            }
             Self::TrashPurged { count } => format!("{count} expired Trash entries deleted"),
             Self::TrashPurgeFailed(e) => format!("Trash purge failed: {e}"),
             Self::BlobsSwept { count } => format!("{count} unused blob files deleted"),
@@ -293,7 +376,8 @@ pub struct Maintenance {
     data_dir: PathBuf,
     clock: Box<dyn Clock>,
     state: State,
-    crash_checked: bool,
+    /// A worker is writing the daily backup.
+    backup_running: bool,
 }
 
 impl std::fmt::Debug for Maintenance {
@@ -315,7 +399,7 @@ impl Maintenance {
             data_dir,
             clock,
             state,
-            crash_checked: false,
+            backup_running: false,
         }
     }
 
@@ -326,7 +410,7 @@ impl Maintenance {
     }
 
     /// Runs what is due, saves when something succeeded, and returns what happened. The first
-    /// call also looks for a crash report the user has not been told about. A failed job leaves
+    /// call and every later one look for a crash report the user has not been told about. A failed job leaves
     /// its last-run time alone, so the next tick tries it again.
     pub fn tick(&mut self, jobs: &mut dyn Jobs) -> Vec<MaintenanceOutcome> {
         let now = self.clock.now();
@@ -338,32 +422,40 @@ impl Maintenance {
         // from the clock now.
         jobs.prune_recent();
 
-        if !self.crash_checked {
-            self.crash_checked = true;
-            if let Some(newest) =
-                crash::unacknowledged(&self.data_dir, self.state.crash_acknowledged.as_deref())
-            {
-                self.state.crash_acknowledged = Some(newest);
-                outcomes.push(MaintenanceOutcome::CrashedLastTime);
-                changed = true;
-            }
+        // Every tick: a worker thread's panic leaves a report while the app runs on, and is
+        // told about at once, not at the next start. A report already announced is not again.
+        if let Some(newest) =
+            crash::unacknowledged(&self.data_dir, self.state.crash_acknowledged.as_deref())
+        {
+            self.state.crash_acknowledged = Some(newest);
+            outcomes.push(MaintenanceOutcome::CrashedLastTime);
+            changed = true;
         }
 
-        if is_due(self.state.last_backup, seconds, INTERVAL) {
-            match jobs.backup(&now.to_zoned(TimeZone::system())) {
-                Ok(result) => {
-                    self.state.last_backup = Some(seconds);
-                    changed = true;
-                    if let BackupResult::Created { pruned } = result {
-                        outcomes.push(MaintenanceOutcome::BackupCreated { pruned });
-                    }
-                }
-                Err(e) => outcomes.push(MaintenanceOutcome::BackupFailed(e)),
-            }
+        if !self.backup_running && is_due(self.state.last_backup, seconds, INTERVAL) {
+            let result = jobs.backup(&now.to_zoned(TimeZone::system()));
+            changed |= self.take_backup(seconds, result, &mut outcomes);
         }
 
-        if is_due(self.state.last_purge, seconds, INTERVAL) {
-            match jobs.purge_trash(trash_cutoff(now)) {
+        let jumped = self.state.last_seen.is_some_and(|seen| {
+            seconds.saturating_sub(seen) > i64::from(crate::settings::TRASH_DAYS_DEFAULT) * 86_400
+        });
+        if jumped {
+            self.state.purge_not_before = Some(seconds.saturating_add(86_400));
+            outcomes.push(MaintenanceOutcome::TrashPurgeHeld);
+        }
+        // A hold from a jump that is still ahead of the clock; a hold far beyond a day (the
+        // clock went back after it) is stale.
+        let held = self
+            .state
+            .purge_not_before
+            .is_some_and(|until| seconds < until && until.saturating_sub(seconds) <= 86_400);
+        if self.state.last_seen != Some(seconds) {
+            // Saved with the next save; a write on every tick would be churn.
+            self.state.last_seen = Some(seconds);
+        }
+        if !held && is_due(self.state.last_purge, seconds, INTERVAL) {
+            match jobs.purge_trash() {
                 Ok(count) => {
                     self.state.last_purge = Some(seconds);
                     changed = true;
@@ -399,27 +491,79 @@ impl Maintenance {
             }
         }
 
-        if changed && let Err(e) = self.state.save(&self.data_dir) {
-            crate::trace!("maintenance: cannot save {STATE_FILE}: {e}");
+        if changed {
+            self.save();
         }
         outcomes
     }
-}
 
-/// Trash entries older than [`TRASH_DAYS`] days at `now` are expired.
-fn trash_cutoff(now: Timestamp) -> Timestamp {
-    let seconds = now
-        .as_second()
-        .saturating_sub(i64::from(TRASH_DAYS) * 86_400);
-    Timestamp::from_second(seconds).unwrap_or(Timestamp::MIN)
+    /// Takes what a backup came to. Whether the state changed.
+    fn take_backup(
+        &mut self,
+        seconds: i64,
+        result: Result<BackupResult, JobError>,
+        outcomes: &mut Vec<MaintenanceOutcome>,
+    ) -> bool {
+        match result {
+            Ok(BackupResult::Started) => {
+                self.backup_running = true;
+                false
+            }
+            Ok(result) => {
+                self.state.last_backup = Some(seconds);
+                if let BackupResult::Created {
+                    pruned,
+                    shrunk,
+                    skipped,
+                } = result
+                {
+                    outcomes.push(MaintenanceOutcome::BackupCreated { pruned });
+                    if let Some((was, now)) = shrunk {
+                        outcomes.push(MaintenanceOutcome::BackupShrunk { was, now });
+                    }
+                    if let Some((count, first)) = skipped {
+                        outcomes.push(MaintenanceOutcome::BackupSkipped { count, first });
+                    }
+                }
+                true
+            }
+            Err(e) => {
+                outcomes.push(MaintenanceOutcome::BackupFailed(e));
+                false
+            }
+        }
+    }
+
+    /// The outcome of a backup a worker was writing ([`BackupResult::Started`]): the same
+    /// bookkeeping as for one that finished at once. A failure leaves the last-run time alone, so
+    /// the next tick tries again.
+    pub fn backup_finished(
+        &mut self,
+        result: Result<BackupResult, JobError>,
+    ) -> Vec<MaintenanceOutcome> {
+        self.backup_running = false;
+        let mut outcomes = Vec::new();
+        if self.take_backup(self.clock.now().as_second(), result, &mut outcomes) {
+            self.save();
+        }
+        outcomes
+    }
+
+    fn save(&self) {
+        if let Err(e) = self.state.save(&self.data_dir) {
+            crate::trace!("maintenance: cannot save {STATE_FILE}: {e}");
+        }
+    }
 }
 
 /// The message of a deferred backup.
 const LOCKED_MESSAGE: &str = "library locked, backup deferred";
+/// The message of a backup deferred behind another archive.
+const BUSY_MESSAGE: &str = "another backup or export is running, backup deferred";
 
 /// `Err` when the library has a key ring that is locked: a backup now would leave out its
 /// sensitive items.
-fn deferred_while_locked(key_ring_exists: bool, unlocked: bool) -> Result<(), JobError> {
+pub(crate) fn deferred_while_locked(key_ring_exists: bool, unlocked: bool) -> Result<(), JobError> {
     if key_ring_exists && !unlocked {
         Err(JobError::deferred())
     } else {
@@ -431,6 +575,8 @@ fn deferred_while_locked(key_ring_exists: bool, unlocked: bool) -> Result<(), Jo
 pub struct ControllerJobs<'a, C: Clipboard, K, T> {
     controller: &'a mut Controller<Store, C, K, T>,
     data_dir: &'a Path,
+    /// The daily backup, when it went to a worker: the host runs it ([`spawn_backup`]).
+    started: Option<ArchiveJob>,
 }
 
 impl<'a, C: Clipboard, K, T> ControllerJobs<'a, C, K, T> {
@@ -439,6 +585,7 @@ impl<'a, C: Clipboard, K, T> ControllerJobs<'a, C, K, T> {
         Self {
             controller,
             data_dir,
+            started: None,
         }
     }
 }
@@ -450,37 +597,18 @@ where
     T: Timing,
 {
     fn backup(&mut self, now: &Zoned) -> Result<BackupResult, JobError> {
-        let store = self.controller.store();
-        // A library with a key ring that is locked (idle timeout) would export without its
-        // sensitive items; such a backup would also count as today's and push the last complete
-        // one out of the newest 7. Defer instead: the failure leaves `last_backup` alone, so the
-        // next tick tries again, and the unlock makes it complete.
-        deferred_while_locked(
-            store.key_ring_exists().map_err(|e| JobError {
-                cause: Cause::of_store(&e),
-                detail: e.to_string(),
-            })?,
-            store.is_unlocked(),
-        )?;
-        // Encrypted with the library's key when it has one; a library with no key ring has no
-        // encrypted items, so a backup never holds a sensitive item in plain text.
-        let key = snipdeck_portable::Library::data_key(store);
-        let keep = usize::try_from(self.controller.settings().backups_keep)
-            .unwrap_or(backup::DEFAULT_KEEP);
-        match backup::run_if_due(store, self.data_dir, now, keep, key) {
-            Ok(BackupOutcome::Created { pruned, .. }) => Ok(BackupResult::Created {
-                pruned: pruned.len(),
-            }),
-            Ok(BackupOutcome::NotDue { .. }) => Ok(BackupResult::NotDue),
-            Err(e) => Err(JobError {
-                cause: Cause::of_portable(&e),
-                detail: e.to_string(),
-            }),
+        match self.controller.begin_daily_backup(self.data_dir, now)? {
+            Begun::Job(job) => {
+                self.started = Some(job);
+                Ok(BackupResult::Started)
+            }
+            Begun::Finished(ArchiveEnd::Daily(done)) => done.map(BackupResult::from),
+            Begun::Refused | Begun::Finished(_) => Err(JobError::busy()),
         }
     }
 
-    /// The controller cuts at its own clock's `now - TRASH_DAYS`, the same moment as `_cutoff`.
-    fn purge_trash(&mut self, _cutoff: Timestamp) -> Result<usize, String> {
+    /// The controller cuts at its own clock's `now` minus the `trash_days` setting.
+    fn purge_trash(&mut self) -> Result<usize, String> {
         self.controller
             .purge_expired_trash()
             .map_err(|e| e.to_string())
@@ -504,30 +632,83 @@ where
     }
 }
 
+/// What one [`run`] did.
+#[derive(Debug)]
+pub struct Run {
+    /// How many outcomes were reported to the controller.
+    pub outcomes: usize,
+    /// The daily backup, when a worker is to write it: pass it to [`spawn_backup`] once no borrow
+    /// of the controller or the scheduler is held.
+    pub backup: Option<ArchiveJob>,
+}
+
 /// Runs one [`Maintenance::tick`] on `controller` and hands each outcome to
 /// [`Controller::report_maintenance`]. The host calls this from its timers.
 pub fn run<C, K, T>(
     maintenance: &mut Maintenance,
     controller: &mut Controller<Store, C, K, T>,
-) -> usize
+) -> Run
 where
     C: Clipboard + ClipboardText,
     K: Keyboard,
     T: Timing,
 {
     let data_dir = maintenance.data_dir.clone();
-    let outcomes = maintenance.tick(&mut ControllerJobs::new(controller, &data_dir));
+    let mut jobs = ControllerJobs::new(controller, &data_dir);
+    let outcomes = maintenance.tick(&mut jobs);
+    let backup = jobs.started.take();
     let count = outcomes.len();
     for outcome in outcomes {
         controller.report_maintenance(outcome);
     }
-    count
+    Run {
+        outcomes: count,
+        backup,
+    }
+}
+
+/// Hands the daily backup `job` to the archive offload. When it is done, on the UI thread, the
+/// controller raises its toast and `maintenance` notes the time. Returns whether anything was
+/// reported (so the host redraws); with the inline offload that is already known on return.
+pub fn spawn_backup<C, K, T>(
+    job: ArchiveJob,
+    maintenance: &Rc<RefCell<Maintenance>>,
+    controller: &Rc<RefCell<Controller<Store, C, K, T>>>,
+) where
+    C: Clipboard + ClipboardText + 'static,
+    K: Keyboard + 'static,
+    T: Timing + 'static,
+{
+    let maintenance = Rc::clone(maintenance);
+    let controller = Rc::downgrade(controller);
+    archive_job::offload().run(
+        job,
+        Box::new(move |done| {
+            let Some(controller) = controller.upgrade() else {
+                return;
+            };
+            {
+                let mut controller = controller.borrow_mut();
+                if let ArchiveEnd::Daily(result) = controller.finish_archive(done) {
+                    let outcomes = maintenance
+                        .borrow_mut()
+                        .backup_finished(result.map(BackupResult::from));
+                    for outcome in outcomes {
+                        controller.report_maintenance(outcome);
+                    }
+                }
+            }
+            crate::binding::redraw_all();
+        }),
+    );
+    crate::binding::redraw_all();
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::host::FixedClock;
+    use snipdeck_core::Timestamp;
 
     const HOUR: i64 = 3600;
     const DAY: i64 = 86_400;
@@ -542,6 +723,19 @@ mod tests {
             .parse::<Timestamp>()
             .unwrap()
             .as_second()
+    }
+
+    #[test]
+    fn saving_the_state_clears_temp_files_a_crash_left() {
+        let dir = tempfile::tempdir().unwrap();
+        let stale = dir.path().join(format!("{STATE_FILE}.4242-0.tmp"));
+        let other = dir.path().join("settings.json.4242-0.tmp");
+        fs::write(&stale, b"half").unwrap();
+        fs::write(&other, b"kept for the settings writer").unwrap();
+        State::default().save(dir.path()).unwrap();
+        assert!(!stale.exists());
+        assert!(other.exists(), "only this file's own temps");
+        assert!(dir.path().join(STATE_FILE).is_file());
     }
 
     #[test]
@@ -574,7 +768,7 @@ mod tests {
     #[derive(Default)]
     struct FakeJobs {
         backups: Vec<Timestamp>,
-        purges: Vec<Timestamp>,
+        purges: usize,
         checks: usize,
         sweeps: usize,
         prunes: usize,
@@ -589,10 +783,14 @@ mod tests {
             self.backups.push(now.timestamp());
             self.backup_result
                 .clone()
-                .unwrap_or(Ok(BackupResult::Created { pruned: 0 }))
+                .unwrap_or(Ok(BackupResult::Created {
+                    pruned: 0,
+                    shrunk: None,
+                    skipped: None,
+                }))
         }
-        fn purge_trash(&mut self, cutoff: Timestamp) -> Result<usize, String> {
-            self.purges.push(cutoff);
+        fn purge_trash(&mut self) -> Result<usize, String> {
+            self.purges += 1;
             self.purge_result.clone().unwrap_or(Ok(0))
         }
         fn gc_blobs(&mut self) -> Result<usize, String> {
@@ -633,6 +831,36 @@ mod tests {
     }
 
     #[test]
+    fn a_daily_backup_that_shrank_or_left_items_out_says_so() {
+        let dir = tempfile::tempdir().unwrap();
+        let (mut m, _clock) = rig(dir.path());
+        let mut jobs = FakeJobs {
+            backup_result: Some(Ok(BackupResult::Created {
+                pruned: 0,
+                shrunk: Some((120, 3)),
+                skipped: Some((2, "Screenshot".to_owned())),
+            })),
+            ..FakeJobs::default()
+        };
+        let out = m.tick(&mut jobs);
+        assert!(out.contains(&MaintenanceOutcome::BackupShrunk { was: 120, now: 3 }));
+        let toasts: Vec<_> = out
+            .into_iter()
+            .filter_map(MaintenanceOutcome::into_toast)
+            .collect();
+        assert!(
+            toasts
+                .iter()
+                .any(|t| t.message == ToastMessage::BackupShrunk { was: 120, now: 3 })
+        );
+        assert!(toasts.iter().any(|t| t.message
+            == ToastMessage::BackupMadeSkipping {
+                count: 2,
+                first: "Screenshot".to_owned()
+            }));
+    }
+
+    #[test]
     fn every_tick_prunes_the_recent_inbox_even_when_nothing_else_is_due() {
         let dir = tempfile::tempdir().unwrap();
         let (mut m, clock) = rig(dir.path());
@@ -644,17 +872,50 @@ mod tests {
     }
 
     #[test]
-    fn the_purge_cuts_at_exactly_thirty_days_before_now() {
+    fn a_forward_clock_jump_holds_the_purge_for_a_day() {
+        let dir = tempfile::tempdir().unwrap();
+        let (mut m, clock) = rig(dir.path());
+        let mut jobs = FakeJobs::default();
+        m.tick(&mut jobs);
+        assert_eq!(jobs.purges, 1);
+
+        // The clock leaps a year ahead: nothing is purged, and the person is not told of
+        // a purge that did not happen.
+        clock.set(at(t0() + 365 * DAY));
+        let out = m.tick(&mut jobs);
+        assert!(out.contains(&MaintenanceOutcome::TrashPurgeHeld), "{out:?}");
+        assert_eq!(jobs.purges, 1, "no purge on the jump");
+        clock.set(at(t0() + 365 * DAY + 12 * HOUR));
+        m.tick(&mut jobs);
+        assert_eq!(jobs.purges, 1, "still held half a day later");
+
+        // A day later the clock has kept its date: the purge runs.
+        clock.set(at(t0() + 366 * DAY + HOUR));
+        m.tick(&mut jobs);
+        assert_eq!(jobs.purges, 2);
+    }
+
+    #[test]
+    fn a_month_long_gap_survives_a_restart_as_a_jump_too() {
+        let dir = tempfile::tempdir().unwrap();
+        let (mut m, _clock) = rig(dir.path());
+        m.tick(&mut FakeJobs::default());
+        drop(m);
+        let clock = FixedClock::new(at(t0() + 40 * DAY));
+        let mut m = Maintenance::new(dir.path(), Box::new(clock));
+        let mut jobs = FakeJobs::default();
+        let out = m.tick(&mut jobs);
+        assert!(out.contains(&MaintenanceOutcome::TrashPurgeHeld));
+        assert_eq!(jobs.purges, 0);
+    }
+
+    #[test]
+    fn the_purge_runs_on_the_first_tick_and_then_every_six_hours() {
         let dir = tempfile::tempdir().unwrap();
         let (mut m, _clock) = rig(dir.path());
         let mut jobs = FakeJobs::default();
         m.tick(&mut jobs);
-        assert_eq!(jobs.purges, [at(t0() - 30 * DAY)]);
-        assert_eq!(
-            jobs.purges[0].to_string(),
-            "2026-09-18T09:00:00Z",
-            "30 days before 2026-10-18"
-        );
+        assert_eq!(jobs.purges, 1);
     }
 
     #[test]
@@ -666,11 +927,11 @@ mod tests {
 
         clock.set(at(t0() + 6 * HOUR - 1));
         assert!(m.tick(&mut jobs).is_empty(), "one second early");
-        assert_eq!((jobs.backups.len(), jobs.purges.len()), (1, 1));
+        assert_eq!((jobs.backups.len(), jobs.purges), (1, 1));
 
         clock.set(at(t0() + 6 * HOUR));
         let out = m.tick(&mut jobs);
-        assert_eq!((jobs.backups.len(), jobs.purges.len()), (2, 2), "{out:?}");
+        assert_eq!((jobs.backups.len(), jobs.purges), (2, 2), "{out:?}");
         assert_eq!(jobs.backups[1], at(t0() + 6 * HOUR));
         assert_eq!(jobs.checks, 1, "the integrity check is weekly");
     }
@@ -756,7 +1017,14 @@ mod tests {
                 MaintenanceOutcome::IntegrityFailed("busy".into()),
             ]
         );
-        assert_eq!(*m.state(), State::default(), "nothing is marked as run");
+        assert_eq!(
+            State {
+                last_seen: None,
+                ..m.state().clone()
+            },
+            State::default(),
+            "nothing is marked as run"
+        );
         assert!(!dir.path().join(STATE_FILE).exists());
 
         clock.set(at(t0() + 1));
@@ -766,12 +1034,7 @@ mod tests {
         jobs.integrity_result = None;
         m.tick(&mut jobs);
         assert_eq!(
-            (
-                jobs.backups.len(),
-                jobs.purges.len(),
-                jobs.sweeps,
-                jobs.checks
-            ),
+            (jobs.backups.len(), jobs.purges, jobs.sweeps, jobs.checks),
             (2, 2, 2, 2)
         );
     }
@@ -842,6 +1105,8 @@ mod tests {
                 last_gc: Some(t0()),
                 last_integrity: Some(t0()),
                 crash_acknowledged: None,
+                last_seen: Some(t0()),
+                purge_not_before: None,
             }
         );
         assert!(
@@ -965,7 +1230,7 @@ mod tests {
     }
 
     #[test]
-    fn a_report_written_while_running_is_not_announced_until_the_next_start() {
+    fn a_report_written_while_running_is_announced_on_the_next_tick_once() {
         let dir = tempfile::tempdir().unwrap();
         let (mut m, clock) = rig(dir.path());
         let mut jobs = FakeJobs::default();
@@ -979,8 +1244,15 @@ mod tests {
         crash::write_report(dir.path(), &clock.now().to_zoned(TimeZone::UTC), &report).unwrap();
         clock.set(at(t0() + 6 * HOUR));
         assert!(
+            m.tick(&mut jobs)
+                .contains(&MaintenanceOutcome::CrashedLastTime),
+            "a worker thread's panic is told about while the app still runs"
+        );
+        clock.set(at(t0() + 7 * HOUR));
+        assert!(
             !m.tick(&mut jobs)
-                .contains(&MaintenanceOutcome::CrashedLastTime)
+                .contains(&MaintenanceOutcome::CrashedLastTime),
+            "and only once"
         );
     }
 }

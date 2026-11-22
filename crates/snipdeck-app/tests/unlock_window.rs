@@ -658,7 +658,7 @@ fn a_hello_turned_off_for_failing_says_why_in_the_unlock_window() {
         assert!(!r.ctl.borrow().settings().hello_unlock);
         assert!(has_text(
             &r.ui,
-            "Windows Hello didn't work, so it was turned off. You can turn it on again in Settings."
+            "Windows Hello didn’t work, so it was turned off. You can turn it on again in Settings."
         ));
         assert!(hello_button(&r.ui).is_none());
     });
@@ -741,7 +741,8 @@ fn when_the_hello_button_disappears_the_focus_goes_to_the_password_field() {
     on_ui_thread(|| {
         let hello = std::sync::Arc::new(FakeHello::new());
         let r = rig_with(Some(&hello));
-        // Tab moves the focus to the Hello button.
+        // Tab moves the focus past the Show button to the Hello button.
+        press(r.ui.window(), "\t");
         press(r.ui.window(), "\t");
         settle();
         type_text(r.ui.window(), "x");
@@ -798,7 +799,7 @@ fn the_turned_off_line_shows_once_and_not_every_time_the_window_opens() {
             r.ctl.borrow_mut().lock_now();
             reopen(&r);
         }
-        let line = "Windows Hello didn't work, so it was turned off. You can turn it on again in Settings.";
+        let line = "Windows Hello didn’t work, so it was turned off. You can turn it on again in Settings.";
         assert!(has_text(&r.ui, line), "said when the window opens");
         r.ctl.borrow_mut().lock_now();
         reopen(&r);

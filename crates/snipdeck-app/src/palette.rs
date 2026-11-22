@@ -6,7 +6,7 @@
 
 use std::{collections::HashMap, sync::LazyLock};
 
-use snipdeck_core::ListAccent;
+use snipdeck_core::{ItemLabel, ListAccent};
 
 const PALETTE_JSON: &str = include_str!("../../../design/tokens/palette.json");
 
@@ -83,6 +83,23 @@ fn tint_over(c: slint::Color, bgs: &[[u8; 3]]) -> slint::Color {
     }
 }
 
+/// The colour that tints a tag's icon in the sidebar: its item colour, when it reads there (the
+/// item colours are the list hues of the same names).
+#[must_use]
+pub fn tag_icon_tint(colour: Option<ItemLabel>, dark: bool) -> slint::Color {
+    let accent = colour.map(|c| match c {
+        ItemLabel::Blue => ListAccent::Blue,
+        ItemLabel::Teal => ListAccent::Teal,
+        ItemLabel::Green => ListAccent::Green,
+        ItemLabel::Amber => ListAccent::Amber,
+        ItemLabel::Orange => ListAccent::Orange,
+        ItemLabel::Red => ListAccent::Red,
+        ItemLabel::Violet => ListAccent::Violet,
+        ItemLabel::Slate => ListAccent::Slate,
+    });
+    list_icon_tint(accent, dark)
+}
+
 /// The colour that tints a list's icon in the sidebar: the list colour when it reads against the
 /// row at rest, hovered and selected, otherwise transparent (the default icon colour).
 #[must_use]
@@ -97,6 +114,42 @@ pub fn list_icon_tint(accent: Option<ListAccent>, dark: bool) -> slint::Color {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The one named palette: the nine list hues. Item labels and accents offer subsets, under the
+    /// same keys and names, and every key they store is one of these.
+    #[test]
+    fn labels_and_accents_are_subsets_of_the_one_named_palette() {
+        use crate::accent::AccentChoice;
+        use snipdeck_core::ItemLabel;
+        let palette: Vec<&str> = ListAccent::ALL.iter().map(|a| a.key()).collect();
+        assert_eq!(
+            palette,
+            [
+                "blue", "teal", "green", "amber", "orange", "red", "rose", "violet", "slate"
+            ]
+        );
+        // Labels: all but Rose (the library file restricts the stored keys), same names and colours.
+        let labels: Vec<&str> = ItemLabel::ALL.iter().map(|l| l.key()).collect();
+        assert_eq!(labels.len(), 8);
+        for label in ItemLabel::ALL {
+            let key = label.key();
+            assert!(palette.contains(&key), "{key}");
+            let _hue: ListAccent = key.parse().expect("a list hue with the label key");
+        }
+        assert!(!labels.contains(&"rose"));
+        // Accents: six presets under the palette's keys; their stored ids stay the kebab names.
+        for choice in AccentChoice::ALL {
+            let stored = serde_json::to_string(&choice).expect("json");
+            let key = choice.hue().unwrap_or(match choice {
+                AccentChoice::Windows => "windows",
+                _ => "blue",
+            });
+            assert_eq!(stored, format!("\"{key}\""));
+            if choice != AccentChoice::Windows {
+                assert!(palette.contains(&key), "{key}");
+            }
+        }
+    }
 
     #[test]
     fn a_list_icon_is_tinted_only_where_it_keeps_three_to_one() {
@@ -254,6 +307,25 @@ mod tests {
         for theme in ["light", "dark"] {
             let ratio = contrast(theme, "toast.action", "ink.default");
             assert!(ratio >= 4.5, "{theme} toast action {ratio:.2}");
+        }
+    }
+
+    /// MAIN-59: the sidebar and chooser counts (secondary text) read at 4.5:1 on every surface they sit on,
+    /// the selected row included.
+    #[test]
+    fn counts_read_at_four_and_a_half_to_one_on_every_surface() {
+        for theme in ["light", "dark"] {
+            for bg in [
+                "bg.app",
+                "bg.surface",
+                "bg.sunken",
+                "bg.hover",
+                "bg.selected",
+                "bg.overlay",
+            ] {
+                let ratio = contrast(theme, "text.secondary", bg);
+                assert!(ratio >= 4.5, "{theme} count on {bg}: {ratio:.2}");
+            }
         }
     }
 }

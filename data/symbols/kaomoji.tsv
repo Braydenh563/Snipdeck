@@ -8,7 +8,7 @@ joy-grin	joy	(^▽^)	grin,happy,open mouth
 joy-beam	joy	(＾◡＾)	smile,beam,gentle
 joy-cheer	joy	＼(^o^)／	cheer,hooray,arms up,yay
 joy-hooray	joy	\(≧▽≦)/	hooray,excited,celebrate
-joy-sparkle	joy	(๑˃ᴗ˂)ﻭ	sparkle,cute,happy,cheer
+joy-sparkle	joy	(๑˃◡˂)ﻭ	sparkle,cute,happy,cheer
 joy-eyes-closed	joy	(´▽`)	content,relaxed,pleased
 joy-blush-smile	joy	(⌒‿⌒)	smile,warm,pleased
 joy-giggle	joy	(≧◡≦)	giggle,happy,sweet
@@ -22,20 +22,20 @@ joy-dance	joy	♪┏(・o･)┛♪	dance,music,party
 joy-dance-two	joy	┏(＾0＾)┛┗(＾0＾)┓	dance,party,duo,music
 joy-party	joy	(ﾉ◕ヮ◕)ﾉ*:･ﾟ✧	party,sparkles,magic,celebrate
 joy-confetti	joy	٩(◕‿◕)۶	celebrate,hands up,excited
-joy-thumbs-up	joy	(•̀ᴗ•́)و	thumbs up,confident,good
+joy-thumbs-up	joy	(•̀◡•́)و	thumbs up,confident,good
 joy-proud	joy	(￣ω￣)	proud,smug,content
 joy-star-eyes	joy	(★‿★)	star eyes,wow,amazed,love
 joy-wink	joy	(^_~)	wink,playful,flirt
-joy-wink-star	joy	(｡•̀ᴗ-)✧	wink,sparkle,cute
+joy-wink-star	joy	(｡•̀◡-)✧	wink,sparkle,cute
 joy-tongue	joy	(＾ｰ^)ノ	playful,wave,silly
 joy-silly	joy	(^ε^)	silly,kiss face,playful
 joy-peace	joy	(^‿^)v	peace,victory,smile
 joy-victory	joy	ヽ(・∀・)ﾉ	victory,hooray,cheerful
 joy-bounce	joy	ヾ(＾∇＾)	bounce,happy,cheerful
-joy-chill	joy	(ᵔᴥᵔ)	chill,cute,relaxed
+joy-chill	joy	(◠ω◠)	chill,cute,relaxed
 joy-relieved	joy	(´ー｀)	relieved,calm,sigh
 love-heart-eyes	love	(♥ω♥)	love,heart eyes,adore
-love-heart-smile	love	(◍•ᴗ•◍)❤	love,heart,sweet
+love-heart-smile	love	(◍•◡•◍)❤	love,heart,sweet
 love-kiss	love	(^3^)	kiss,love,smooch
 love-kiss-heart	love	(´,,•ω•,,)♡	kiss,love,cute,heart
 love-blow-kiss	love	(˘³˘)♥	kiss,love,blow kiss
@@ -55,10 +55,10 @@ love-flower	love	(◕‿◕✿)	flower,cute,gentle
 love-give-flower	love	(◠‿◠)✿	flower,gift,gentle
 love-gift-heart	love	(•‿•)ﾉ♡	gift,heart,offer
 love-wedding	love	(•◡•)/♡	love,wave,sweet
-love-couple	love	(´｡• ᵕ •｡`) ♡	couple,love,sweet
+love-couple	love	(´｡• ◡ •｡`) ♡	couple,love,sweet
 love-sleepy-love	love	(´-ω-`)♡	love,sleepy,soft
 love-heart-hands	love	(ﾉ´з`)ノ♡	love,kiss,blow kiss
-love-bear-hug	love	ʕっ•ᴥ•ʔっ	hug,bear,cuddle
+love-bear-hug	love	ʕっ•ω•ʔっ	hug,bear,cuddle
 love-squish	love	(*≧ω≦)	squish,happy,adore
 love-secret-crush	love	(・・ )♡	crush,shy,secret
 love-lovestruck	love	(๑>◡<๑)	lovestruck,cute,happy
@@ -206,7 +206,7 @@ greet-bow	greet	m(_ _)m	bow,thanks,respect,please
 greet-bow-deep	greet	orz=3	bow,deep,apology,thanks
 greet-thanks	greet	(*^^*)ゞ	thanks,grateful,nod
 greet-thank-you	greet	(´▽`ʃ♡ƪ)	thank you,sweet,grateful
-greet-good-morning	greet	(๑˃̵ᴗ˂̵)و	good morning,energetic,hello
+greet-good-morning	greet	(๑˃̵◡˂̵)و	good morning,energetic,hello
 greet-good-night	greet	(－ω－) zzZ	good night,sleep,zzz
 greet-sleepy-night	greet	(-.-)Zzz...	sleep,night,zzz
 greet-morning-yawn	greet	(´〜｀*) ｱﾌｧ	morning,yawn,sleepy
@@ -221,7 +221,7 @@ greet-okay	greet	(｀・ω・´)b	ok,thumbs up,good
 greet-nod	greet	(´･ω･`)ゞ	nod,agree,yes
 greet-yes	greet	(＾ω＾)b	yes,agree,thumbs up
 greet-no	greet	(×ω×)	no,refuse,cross
-greet-please	greet	(人 •͈ᴗ•͈)	please,beg,pray
+greet-please	greet	(人 •͈◡•͈)	please,beg,pray
 greet-pray	greet	(⁎˃ᆺ˂)	please,pray,hope
 sorry-bow	sorry	m(_ _;)m	sorry,bow,apology
 sorry-deep-bow	sorry	m(;_;)m	sorry,deep bow,apology,tears
@@ -249,7 +249,7 @@ sorry-nervous-laugh	sorry	(ﾉ∀`)	nervous laugh,oops,sorry
 sorry-bad-timing	sorry	(´-ω-`;)	bad timing,sorry,awkward
 sorry-sorry-hug	sorry	(つ﹏<。)	sorry,hug,tears
 sorry-apology-gift	sorry	(｡•́︿•̀｡)ゞ	apology,sorry,sad
-sorry-tiny-sorry	sorry	(⸝⸝•﹏•⸝⸝)	tiny sorry,shy,small
+sorry-tiny-sorry	sorry	(｡｡•﹏•｡｡)	tiny sorry,shy,small
 sorry-i-tried	sorry	(´･_･`)ゞ	i tried,sorry,sigh
 sorry-promise	sorry	(｀・ω・´)ゞ✧	promise,sorry,determined
 sorry-make-up	sorry	(＾～＾;)ゞ	make up,sorry,hopeful
@@ -265,10 +265,10 @@ animals-cat-kiss	animals	(=^･_･^=)ﾉ	cat,wave,hello
 animals-cat-loaf	animals	(=ﾟωﾟ)ﾉ	cat,wave,hello
 animals-dog	animals	U^ェ^U	dog,puppy,face
 animals-dog-two	animals	∪･ω･∪	dog,puppy,sweet
-animals-dog-happy	animals	＼(U・ᴥ・U)／	dog,happy,cheer
-animals-bear	animals	ʕ•ᴥ•ʔ	bear,cute,face
-animals-bear-two	animals	ʕ´•ᴥ•`ʔ	bear,sweet,face
-animals-bear-hug	animals	ʕ っ•ᴥ•ʔっ	bear,hug,cuddle
+animals-dog-happy	animals	＼(U・ω・U)／	dog,happy,cheer
+animals-bear	animals	ʕ•ω•ʔ	bear,cute,face
+animals-bear-two	animals	ʕ´•ω•`ʔ	bear,sweet,face
+animals-bear-hug	animals	ʕ っ•ω•ʔっ	bear,hug,cuddle
 animals-bunny	animals	(・x・)	bunny,rabbit,face
 animals-bunny-two	animals	(\(\	bunny,rabbit,ears
 animals-bunny-ears	animals	(\_/)	bunny,rabbit,ears
@@ -287,16 +287,16 @@ animals-fish-two	animals	><(((°>	fish,swim,sea
 animals-whale	animals	∪^∪≈≈	whale,sea,spout
 animals-crab	animals	(\/)(°,,,°)(\/)	crab,claws,sea
 animals-frog	animals	@(-.-)@	frog,eyes,pond
-animals-frog-two	animals	(°ᴥ°)	frog,round eyes,cute
+animals-frog-two	animals	(°ω°)	frog,round eyes,cute
 animals-monkey	animals	(°^°)	monkey,face,hands
 animals-monkey-hear	animals	(⊙ω⊙)	monkey,wide eyes,curious
 animals-sheep	animals	@( * O * )@	sheep,wool,fluffy
 animals-cow	animals	(__)(oo)	cow,moo,face
 animals-bat	animals	/\^._.^/\	bat,wings,spooky
-animals-spider	animals	/╲/\╭(ᴼ ᴥ ᴼ)╮/\╱\	spider,legs,spooky
+animals-spider	animals	/╲/\╭(O ω O)╮/\╱\	spider,legs,spooky
 animals-snail	animals	@_/	snail,slow,shell
 animals-snake	animals	~~~~~(°_°)	snake,hiss,slither
-animals-chick	animals	(•̀ᴗ•́)ʻ	chick,tweet,cute
+animals-chick	animals	(•̀◡•́)ʻ	chick,tweet,cute
 actions-table-flip	actions	(╯°□°）╯︵ ┻━┻	table flip,angry,rage,flip
 actions-table-flip-two	actions	(ノಠ益ಠ)ノ彡┻━┻	table flip,furious,rage
 actions-table-put-back	actions	┬─┬ ノ( ゜-゜ノ)	table,put back,calm down
@@ -327,7 +327,7 @@ actions-write	actions	φ(．．)	write,note,pen
 actions-notes	actions	φ(゜▽゜*)♪	write,notes,music
 actions-study	actions	(￣ω￣;)φ	study,write,work
 actions-typing	actions	(ﾟдﾟ)ｶﾀｶﾀ	typing,keyboard,work
-actions-working	actions	(•̀ᴗ•́)و ̑̑	working,determined,go
+actions-working	actions	(•̀◡•́)و ̑̑	working,determined,go
 actions-lets-go	actions	٩(ˊᗜˋ*)و	lets go,determined,energy
 actions-fighting	actions	ヽ(`ー´)ﾉ	fighting,determined,go
 actions-ganbare	actions	(ง •̀ω•́)ง✧	ganbare,keep going,good luck
@@ -342,5 +342,5 @@ actions-deal-with-it	actions	(⌐■_■)	sunglasses,cool,deal with it
 actions-cool	actions	(▀̿Ĺ̯▀̿ ̿)	sunglasses,cool,smug
 actions-shades-on	actions	(•_•)>⌐■-■	sunglasses,put on,cool
 actions-stars-fall	actions	(*´∀`)ﾉ★	star,wish,sparkle
-actions-wish	actions	(人 •͈ᴗ•͈)☆	wish,star,hope
+actions-wish	actions	(人 •͈◡•͈)☆	wish,star,hope
 actions-shy-wave	actions	(⁄ ⁄>⁄▽⁄<⁄ ⁄)ﾉ	shy,wave,blush

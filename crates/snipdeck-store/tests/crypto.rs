@@ -16,7 +16,7 @@ use common::*;
 use rusqlite::Connection;
 use snipdeck_core::{Content, FileEntry, Format, Formats, INLINE_LIMIT, Item, ItemKind, Placement};
 use snipdeck_store::crypto::{CryptoError, KdfParams, KeyRing, MemoryKeyProvider};
-use snipdeck_store::{BlobStore, Error, ItemRepo, Store, TrashRepo, Trashable};
+use snipdeck_store::{BlobStore, Error, ItemRepo, RecentRepo, Store, TrashRepo, Trashable};
 
 fn provider() -> MemoryKeyProvider {
     MemoryKeyProvider::new().unwrap()
@@ -168,11 +168,8 @@ fn sensitive_items_are_stored_encrypted_and_read_back_in_plain_text() {
         dir.path(),
         &[b"ZQ9inlineSECRET", b"ZQ9fileSECRET", &big[..64]],
     );
-    assert!(
-        s.search("4711", 5).unwrap().is_empty(),
-        "content is not indexed"
-    );
-    assert_eq!(s.search("bank", 5).unwrap(), [it.id], "the title is");
+    assert_eq!(found(&s, "4711").len(), 0, "content is not indexed");
+    assert_eq!(found(&s, "bank"), [it.id], "the title is");
     assert_healthy(&s);
 }
 
@@ -265,7 +262,7 @@ fn without_a_key_ring_sensitive_items_are_kept_in_plain_text() {
         .unwrap();
     assert_eq!(s.formats(it.id).unwrap(), text_formats("hunter2"));
     assert_eq!(encrypted_flag(&raw(&dir), &it), 0);
-    assert_eq!(s.search("hunter2", 5).unwrap().len(), 0);
+    assert_eq!(found(&s, "hunter2").len(), 0);
 }
 
 #[test]
@@ -310,13 +307,13 @@ fn marking_an_item_sensitive_encrypts_it_and_clearing_the_flag_decrypts_it() {
     let (dir, mut s, l) = on_disk();
     s.create_key_ring(&ring(&p), None).unwrap();
     let mut it = item(&mut s, l.id, "token", "ghp_ZQ9tokenSECRET");
-    assert_eq!(s.search("ghp_ZQ9tokenSECRET", 5).unwrap(), [it.id]);
+    assert_eq!(found(&s, "ghp_ZQ9tokenSECRET"), [it.id]);
 
     it.sensitive = true;
     it.preview = String::new();
     s.update_item(&it, None).unwrap();
     assert_eq!(encrypted_flag(&raw(&dir), &it), 1);
-    assert_eq!(s.search("ghp_ZQ9tokenSECRET", 5).unwrap().len(), 0);
+    assert_eq!(found(&s, "ghp_ZQ9tokenSECRET").len(), 0);
     assert_eq!(
         s.formats(it.id).unwrap(),
         text_formats("ghp_ZQ9tokenSECRET")
@@ -329,7 +326,7 @@ fn marking_an_item_sensitive_encrypts_it_and_clearing_the_flag_decrypts_it() {
         s.formats(it.id).unwrap(),
         text_formats("ghp_ZQ9tokenSECRET")
     );
-    assert_eq!(s.search("ghp_ZQ9tokenSECRET", 5).unwrap(), [it.id]);
+    assert_eq!(found(&s, "ghp_ZQ9tokenSECRET"), [it.id]);
     assert_healthy(&s);
 }
 
@@ -424,18 +421,18 @@ fn the_slow_half_of_a_master_password_step_can_run_on_another_thread() {
 
     // Change: the record is rebuilt off-thread from a copy, then written.
     let old = s.key_record().unwrap().unwrap();
-    let (key, record) = {
+    let rotation = {
         let p = p.clone();
         std::thread::spawn(move || {
             ring(&p)
-                .rekey(&old, Some(common::pw("one")), Some(common::pw("two")))
+                .rotate(&old, Some(common::pw("one")), Some(common::pw("two")))
                 .unwrap()
         })
         .join()
         .unwrap()
     };
-    s.replace_key_record(&record).unwrap();
-    s.open_with_key(key).unwrap();
+    s.rotate_key_ring(rotation).unwrap();
+    assert!(s.is_unlocked());
     s.lock_key_ring();
 
     // Unlock: the key is derived off-thread, then handed over.
@@ -455,12 +452,13 @@ fn provider_key(p: &MemoryKeyProvider) -> snipdeck_store::crypto::DataKey {
 }
 
 #[test]
-fn replacing_a_key_record_needs_a_key_ring() {
+fn rotating_a_key_needs_a_key_ring() {
     let p = provider();
     let mut s = store();
-    let record = ring(&p).create(None).unwrap().1;
+    let (_, record) = ring(&p).create(None).unwrap();
+    let rotation = ring(&p).rotate(&record, None, None).unwrap();
     assert!(matches!(
-        s.replace_key_record(&record),
+        s.rotate_key_ring(rotation),
         Err(Error::NotFound { .. })
     ));
 }
@@ -707,15 +705,16 @@ fn a_wrong_current_password_changes_nothing_and_the_old_one_still_works() {
 }
 
 #[test]
-fn a_rekeyed_record_opens_with_the_new_password_while_the_old_record_still_opens_with_the_old() {
-    // A password change writes the new record over the old one only after this holds, so a
-    // wrong write cannot lock the user out: the record handed back is good before it is stored.
+fn a_rotated_record_opens_with_the_new_password_while_the_old_record_still_opens_with_the_old() {
+    // The record handed back is good before it is stored, so a wrong write cannot lock the
+    // user out.
     let p = provider();
     let ring = ring(&p);
     let (_, old) = ring.create(Some(common::pw("one"))).unwrap();
-    let (key, new) = ring
-        .rekey(&old, Some(common::pw("one")), Some(common::pw("two")))
-        .unwrap();
+    let new = ring
+        .rotate(&old, Some(common::pw("one")), Some(common::pw("two")))
+        .unwrap()
+        .record;
     assert!(
         ring.unlock(&new, Some(common::pw("two"))).is_ok(),
         "the new record opens"
@@ -728,7 +727,6 @@ fn a_rekeyed_record_opens_with_the_new_password_while_the_old_record_still_opens
         ring.unlock(&old, Some(common::pw("one"))).is_ok(),
         "the old record is untouched"
     );
-    drop(key);
 }
 
 #[test]
@@ -756,7 +754,7 @@ fn a_failed_key_setup_leaves_no_envelope_files_behind() {
 }
 
 #[test]
-fn a_record_for_another_key_is_refused_and_the_old_one_stays() {
+fn a_rotation_from_another_key_is_refused_and_the_old_record_stays() {
     let p = provider();
     let mut s = store();
     let b = board(&mut s, "b");
@@ -769,63 +767,179 @@ fn a_record_for_another_key_is_refused_and_the_old_one_stays() {
     let before = s.key_record().unwrap().unwrap();
 
     // A record (and key) made for some other library.
-    let (other_key, other_record) = ring(&p).create(Some(common::pw("pw"))).unwrap();
+    let (_, other_record) = ring(&p).create(Some(common::pw("pw"))).unwrap();
     for locked in [false, true] {
         if locked {
             s.lock_key_ring();
         }
-        assert!(matches!(
-            s.replace_key_record_checked(&other_record, &other_key),
-            Err(Error::Invalid(_))
-        ));
+        let wrong = ring(&p)
+            .rotate(
+                &other_record,
+                Some(common::pw("pw")),
+                Some(common::pw("pw")),
+            )
+            .unwrap();
+        assert!(matches!(s.rotate_key_ring(wrong), Err(Error::Invalid(_))));
         assert_eq!(
             s.key_record().unwrap().unwrap().as_bytes(),
             before.as_bytes()
         );
     }
-    assert_eq!(s.previous_key_record().unwrap(), None);
 }
 
+/// PRIVACY-1/2: no older record survives a change, so neither the old OS-only record nor an old
+/// password opens the library afterwards.
 #[test]
-fn a_record_for_the_same_key_replaces_and_keeps_the_previous_one() {
+fn no_earlier_key_record_is_kept_after_a_change() {
     let p = provider();
-    let mut s = store();
-    let b = board(&mut s, "b");
-    let list = list(&mut s, b.id, "l");
-    s.create_key_ring(&ring(&p), Some(common::pw("one")))
-        .unwrap();
-    let it = secret_item(list.id, "bank");
+    let (dir, mut s, l) = on_disk();
+    s.create_key_ring(&ring(&p), None).unwrap();
+    let it = secret_item(l.id, "bank");
     s.insert_item(&it, &text_formats("kept"), Placement::Last)
         .unwrap();
-    let old = s.key_record().unwrap().unwrap();
-
-    for locked in [false, true] {
-        let current = s.key_record().unwrap().unwrap();
-        let (pw_from, pw_to) = if locked {
-            ("two", "three")
-        } else {
-            ("one", "two")
-        };
-        let (key, record) = ring(&p)
-            .rekey(&current, Some(common::pw(pw_from)), Some(common::pw(pw_to)))
+    for (from, to) in [
+        (None, Some("one")),
+        (Some("one"), Some("two")),
+        (Some("two"), None),
+    ] {
+        s.change_master_password(&ring(&p), from.map(common::pw), to.map(common::pw))
             .unwrap();
-        if locked {
-            s.lock_key_ring();
-        }
-        s.replace_key_record_checked(&record, &key).unwrap();
-        assert_eq!(
-            s.key_record().unwrap().unwrap().as_bytes(),
-            record.as_bytes()
-        );
-        assert_eq!(
-            s.previous_key_record().unwrap().unwrap().as_bytes(),
-            current.as_bytes()
-        );
+        let previous: Option<Vec<u8>> = raw(&dir)
+            .query_row("SELECT previous FROM key_ring WHERE id = 1", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+        assert_eq!(previous, None, "after {from:?} -> {to:?}");
     }
-    assert_ne!(old.as_bytes(), s.key_record().unwrap().unwrap().as_bytes());
-    s.unlock_key_ring(&ring(&p), Some(common::pw("three")))
-        .unwrap();
+    s.lock_key_ring();
+    s.unlock_key_ring(&ring(&p), None).unwrap();
     assert_eq!(s.formats(it.id).unwrap(), text_formats("kept"));
+}
+
+/// PRIVACY-3: an earlier copy of the database (with its record) opens nothing written after a
+/// password change, and the live library no longer opens with the old record's key.
+#[test]
+fn a_change_re_seals_everything_under_a_new_key() {
+    let p = provider();
+    let (dir, mut s, l) = on_disk();
+    let big = s.put(vec![b'Q'; INLINE_LIMIT + 10]).unwrap();
+    s.create_key_ring(&ring(&p), None).unwrap();
+    let it = secret_item(l.id, "bank");
+    let formats = Formats::new(vec![Format::Text(text("kept")), Format::Png(big)]).unwrap();
+    s.insert_item(&it, &formats, Placement::Last).unwrap();
+    s.add_recent(
+        snipdeck_store::RecentContent::Text {
+            text: "recent secret",
+            html: None,
+            rtf: None,
+        },
+        Some("app.exe"),
+        at(5),
+    )
+    .unwrap();
+    let old_record = s.key_record().unwrap().unwrap();
+    let old_key = ring(&p).unlock(&old_record, None).unwrap();
+    let in_blobs = |dir: &std::path::Path| {
+        content_files(dir)
+            .into_iter()
+            .filter(|f| f.components().any(|c| c.as_os_str() == "blobs"))
+            .collect::<Vec<_>>()
+    };
+    let blobs_before = in_blobs(dir.path());
+    assert!(!blobs_before.is_empty());
+
+    s.change_master_password(&ring(&p), None, Some(common::pw("pw")))
+        .unwrap();
+
+    // The old record still opens the old key, but that key opens nothing now stored.
+    let (stored, kind): (Vec<u8>, String) = raw(&dir)
+        .query_row(
+            "SELECT inline_bytes, kind FROM item_formats WHERE kind = 'text'",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .unwrap();
+    assert_eq!(kind, "text");
+    assert!(
+        snipdeck_store::crypto::decrypt_payload(
+            &old_key,
+            &it.id,
+            snipdeck_store::crypto::Slot::Format(snipdeck_core::FormatKind::Text),
+            &stored
+        )
+        .is_err()
+    );
+    let after = in_blobs(dir.path());
+    assert!(
+        blobs_before.iter().all(|b| !after.contains(b)),
+        "old envelope files are gone"
+    );
+    assert_eq!(s.formats(it.id).unwrap(), formats);
+    assert_eq!(s.recent().unwrap().len(), 1);
+    s.lock_key_ring();
+    drop(s);
+    let mut s = Store::open(dir.path()).unwrap();
+    assert!(matches!(
+        s.unlock_key_ring(&ring(&p), Some(common::pw("old"))),
+        Err(Error::Crypto(CryptoError::WrongPassword))
+    ));
+    s.unlock_key_ring(&ring(&p), Some(common::pw("pw")))
+        .unwrap();
+    assert_eq!(s.formats(it.id).unwrap(), formats);
+    assert_eq!(s.recent().unwrap()[0].text, "recent secret");
+}
+
+/// A library made before this change may still hold a previous record: opening it clears it,
+/// and it still opens with the right secret and not the wrong one.
+#[test]
+fn an_older_library_loses_its_previous_record_and_still_opens() {
+    let p = provider();
+    let dir = tempfile::tempdir().unwrap();
+    let item;
+    {
+        let mut s = Store::open(dir.path()).unwrap();
+        let b = board(&mut s, "b");
+        let l = list(&mut s, b.id, "l");
+        s.create_key_ring(&ring(&p), Some(common::pw("pw")))
+            .unwrap();
+        item = secret_item(l.id, "bank");
+        s.insert_item(&item, &text_formats("kept"), Placement::Last)
+            .unwrap();
+    }
+    {
+        let conn = raw(&dir);
+        // Put the file back to what version 9 had: the columns and indexes of versions 12 to 16
+        // go, so that opening runs the whole of version 10 onward again.
+        conn.execute_batch(
+            "UPDATE key_ring SET previous = record;
+             DROP INDEX item_groups_by_parent;
+             ALTER TABLE item_groups DROP COLUMN parent;
+             DROP INDEX tags_by_parent;
+             ALTER TABLE tags DROP COLUMN parent;
+             ALTER TABLE item_groups DROP COLUMN colour;
+             ALTER TABLE tags DROP COLUMN colour;
+             ALTER TABLE boards DROP COLUMN accent;
+             ALTER TABLE boards DROP COLUMN icon;
+             ALTER TABLE triggers DROP COLUMN fires;
+             ALTER TABLE triggers DROP COLUMN case_mode;
+             PRAGMA user_version = 9;",
+        )
+        .unwrap();
+    }
+    let mut s = Store::open(dir.path()).unwrap();
+    let previous: Option<Vec<u8>> = raw(&dir)
+        .query_row("SELECT previous FROM key_ring WHERE id = 1", [], |r| {
+            r.get(0)
+        })
+        .unwrap();
+    assert_eq!(previous, None);
+    assert!(matches!(
+        s.unlock_key_ring(&ring(&p), Some(common::pw("nope"))),
+        Err(Error::Crypto(CryptoError::WrongPassword))
+    ));
+    s.unlock_key_ring(&ring(&p), Some(common::pw("pw")))
+        .unwrap();
+    assert_eq!(s.formats(item.id).unwrap(), text_formats("kept"));
 }
 
 #[test]

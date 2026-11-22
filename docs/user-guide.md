@@ -67,28 +67,40 @@ editor, the **Placeholders** list inserts one for you.
 
 | Placeholder | What you get |
 |---|---|
-| `{date}`, `{time}` | Today's date, or the time |
-| `{datetime:FORMAT}` | Date and time in a format you choose, such as `{datetime:%d %B %Y}` |
+| `{date}`, `{time}`, `{datetime}` | Today's date, the time, or both, in your computer's regional format. Add `:FORMAT` for your own, such as `{datetime:%d %B %Y}` |
 | `{uuid}` | A new random ID (version 4), different for each `{uuid}` and each use |
+| `{clipboard}` | The clipboard text. `{clipboard:2}` is the copy before it, up to `{clipboard:25}` (needs clipboard history). |
+| `{selection}` | The text you had selected in the app you paste into (not in a terminal or console, where it is empty) |
 | `{cursor}` | Nothing. It marks where the text cursor ends up after pasting. |
-| `{field:Name}` or `{field:Name\|default}` | Asks you for a value each time |
-| `{choice:Name\|a\|b}` | Asks you to pick one of the options |
+| `{key:tab}`, `{key:enter}` | Presses Tab or Enter at that point, to fill a form: the text before it is pasted, the key is pressed, then the text after it. A copy keeps the text whole and presses nothing. |
+| `{field:Name}` or `{field:Name\|default}` | Asks you for a value each time. `{field:Name\|}` may be left empty. |
+| `{choice:Name\|a\|b}` | Asks you to pick one of the options. Put `*` before the option to start on, such as `{choice:Size\|S\|*M\|L}`; an empty option (`{choice:Size\|\|S\|M}`) is "(none)". |
 | `{multiline:Name}` or `{multiline:Name\|default}` | Asks for text over several lines |
-| `{pickdate:Name}` or `{pickdate:Name\|FORMAT}` | Asks for a date typed as `YYYY-MM-DD`; left empty it is today. `FORMAT` is how it is written, such as `%d %B %Y`. |
-| `{optional:Name}...{/optional}` | A tick box. The text inside is inserted only when it is ticked. Sections do not nest. |
+| `{number:Name}` or `{number:Name\|default}` | Asks for a number; `.` or `,` is the decimal mark |
+| `{calc:Qty*Price\|2}` | A sum with `+ - * /` and parentheses over your `{number}` prompts, with 2 decimals (the part after the bar is optional) |
+| `{pickdate:Name}` or `{pickdate:Name\|FORMAT}` | Asks for a date, typed in your computer's order (the box shows it, such as `DD.MM.YYYY`; `YYYY-MM-DD` always works) or picked in a month grid: press the calendar button, then use the arrow keys, `PageUp` / `PageDown` for the month, `Enter` to pick and `Esc` to close. Left empty it is today. |
+| `{optional:Name}...{/optional}` | A tick box. The text inside is inserted only when it is ticked, and fields inside are off while it is not. Sections do not nest. |
+| `{value:Name\|upper}` | An answer again, shaped by a transform |
+| `{snippet:Title}` | The text of another item, found by its title (or trigger); a template item brings its own placeholders. Nesting stops at 4 levels; an item that contains itself, or a Sensitive item, is refused. |
 
-`{date}`, `{time}` and `{datetime:FORMAT}` can move in time: add an offset such as `{date+3d}`,
+A placeholder can shape its text by a transform after a bar, such as `{clipboard\|upper}`: plain, upper, lower, title, trim, slug,
+sentence, camel, snake, urlencode, firstword, lastword. The same choices are in **Paste as...**.
+
+`{date}`, `{time}` and `{datetime}` can move in time: add an offset such as `{date+3d}`,
 `{date-1w:%Y-%m-%d}`, `{time+90min}` or `{datetime+1mo:%d %B %Y %H:%M}`. The units are `d` (days), `w` (weeks),
-`mo` (months), `y` (years), `h` (hours) and `min` (minutes); you can chain offsets, as in `{date+1mo-1d}`. A month
-that is too short gives its last day (`{date+1mo}` on 31 January is 28 or 29 February). `{date:FORMAT}` works like
-`{datetime:FORMAT}`. Very large offsets are an error, and the editor says so when you save.
+`mo` (months), `y` (years), `h` (hours) and `min` (minutes); you can chain up to 16 offsets, as in `{date+1mo-1d}`. A month
+that is too short gives its last day (`{date+1mo}` on 31 January is 28 or 29 February). In a format, `%-d` drops the
+zero (7, not 07), `%_d` pads with a space, `%V` is the ISO week, `%q` the quarter and `%Z` the time zone name; a wrong
+specifier is an error that lists the right ones. Month and weekday names follow the language of Snipdeck.
 
-`{date}` and `{time}` use your computer's time zone. `{clipboard}` inserts the clipboard text. Type `{{` and `}}` for literal braces. Any other braces are an error, and the editor says so when
-you save.
+`{date}` and `{time}` use your computer's time zone. A template can ask for up to 64 different answers. The editor lists the limits under the placeholder chips.
+To write a literal brace in the text, type `{{` or `}}`. Inside a placeholder, put a backslash before a bar or brace that is
+part of a name, default or option: `{field:Test\|a \| b}` (the default is `a | b`). Any other braces are an error, and the editor says
+how to fix it when you save. Names are compared without regard to case: `{field:Name}` and `{field:name}` are one prompt.
 
 In the Fill in template window, each `{uuid}` shows as "(new ID)" in the preview: the real ID is made when you insert.
 
-When you use a template with `{field}`, `{choice}`, `{multiline}`, `{pickdate}` or `{optional}`, a **Fill in template** window
+When you use a template with `{field}`, `{choice}`, `{multiline}`, `{number}`, `{pickdate}` or `{optional}`, a **Fill in template** window
 opens. Fill the fields, check the preview and press `Ctrl+Enter` to insert. `Esc` cancels. In a multi-line box `Enter`
 adds a line; `Ctrl+Enter` still inserts. A date that is not a real day (such as 2026-02-30) is marked on its box and
 nothing is inserted until you fix it or clear it. `Enter` moves to the next box, and on the last box it inserts.
@@ -130,15 +142,36 @@ a message tells you why. The Panel footer always says where a click will go: "Pa
 
 ### The Picker
 
-Press `Ctrl+Shift+Space`. A small search window opens at your caret. Type to filter. It matches titles, tags
-and the start of the content. It opens one line below your caret, so it covers neither the line you are typing
-nor the next one. **Settings, Panel, Picker position** moves it above, to the right or to the left of the caret;
+Press `Ctrl+Shift+Space`. A small search window opens at your caret. Type to filter. It searches the way every
+search box does (see [Searching](#searching)). It opens one line below your caret, so it covers neither the
+line you are typing nor the next one. **Settings, Panel, Picker position** moves it above, to the right or to the left of the caret;
 it switches to the opposite side when there is no room. Where an app shows no caret it opens at the mouse.
 
 - `Up`, `Down`, `PageUp`, `PageDown` move. `Enter` pastes. `Shift+Enter` copies. `Alt+Enter` pastes as plain text.
 - `Tab` and `Shift+Tab` change where it searches: **All**, **This board** or **Pinned**.
 - `Alt+1` to `Alt+9` use that row, whatever the box holds. Digits without `Alt` are typed into the search.
 - `Ctrl+E` edits the selected item. `Esc` closes the Picker.
+
+### Searching
+
+The Panel, the Picker and the Main window search the same way, so a search finds the same items in each.
+Every word you type must match somewhere: in the title, a tag, the list name, the trigger or the content.
+`invoice work` finds an item titled "Invoice" that is tagged "work". Case, accents and full-width letters
+do not matter: `resume` finds "Résumé". A word can be part of a longer word (`ature` finds "Signature"), and
+in Japanese, Chinese, Korean or Thai text one character is enough. The best matches come first: an exact
+trigger or title before a word found deep in the content, and among equals the items you use most.
+
+| Type | To find |
+|---|---|
+| `"kind regards"` | the words together, in that order |
+| `-draft` | items without "draft" (also `-tag:old`, `-is:pinned`) |
+| `tag:billing` | items with a tag that starts with "billing" |
+| `list:"Email replies"` | items in that list (quotes for a name with spaces) |
+| `kind:link` | one kind: `text`, `template`, `code`, `link`, `image` or `file` |
+| `is:pinned` | pinned items |
+
+Only the first 32 words (256 characters) of a search count. The matched part of each row is highlighted;
+when only a tag matched, the row shows that tag.
 
 ### Paste next
 
@@ -167,8 +200,13 @@ the right of the sidebar header (or `Ctrl+B`) folds the sidebar to a narrow rail
   Panel it has **New board**, **Rename board** and **Delete board** for the board you are on, so you can manage
   boards without opening the Main window. The Main window can also move a board up or down. Deleting a board
   moves its lists and items to the Trash, and **Undo** brings it back.
-- **Lists.** Add a list with **Add list** in the sidebar, or the **+** tab in the Panel. **Edit list** sets the name, a colour and the sort: manual, most
-  used or recently used. Move a list with `Alt+Up` or `Alt+Down` while it is selected in the sidebar.
+- **Lists.** Add a list with **Add list** in the sidebar, or the **+** tab in the Panel. **Edit list** sets the name, a colour, an icon and the sort (see *Sort and filter* below). Move a list with `Alt+Up` or `Alt+Down` while it is selected in the sidebar.
+- **Sort and filter.** The toolbar of the Main window has **Sort by** and **Filter** buttons. Sort by is one menu for
+  every view (a list, All items, Pinned and a tag): Manual, Name, Created, Modified, Most used or Recently used,
+  and **Reverse order**. Each view keeps its own choice; items never used come last. Filter combines kind (Text,
+  Template, Code, Link, Image, File), **Has a trigger**, **Sensitive**, **Untagged** and **Tags…** (several tags,
+  matching any of them, or every one with **Items need every chosen tag**). The choices show as chips under the
+  toolbar; a chip's button removes it and **Clear filter** removes all. The colour label chips work with them.
 - **Order of items.** Select a row and press `Alt+Up` or `Alt+Down`, in the Main window or the Panel, or choose **Move up** / **Move down** in the snippet's menu.
 - **Groups.** A list sorted by hand (Manual) can hold named groups of items, in the Panel and in the Main window.
   - **Make one.** Select two or more rows and press `Ctrl+G`, or choose **Group…** from the item menu (the row
@@ -180,8 +218,20 @@ the right of the sidebar header (or `Ctrl+B`) folds the sidebar to a narrow rail
   - **Fold or unfold a group.** Click the header, or press `Left` to fold and `Right` to unfold. `Enter` toggles it
     (in the Panel `Space` does too). A folded group hides its items and stays folded.
   - **Rename.** Press `F2` on the header, press `Ctrl+G` on it with nothing selected, or choose **Rename group**.
+  - **Colour (Main window).** Choose **Group colour…** from the header's menu and pick one of nine colours, or none.
+    The colour shows as a dot before the name and is read out with it; `Ctrl+Z` takes it back.
   - **Ungroup or delete.** **Ungroup** dissolves the group and keeps its items. **Delete group** (or `Delete`
-    on the header) moves the group and its items to the Trash, and `Ctrl+Z` brings them all back in one step.
+    on the header) moves the group and its items to the Trash, and `Ctrl+Z` brings them all back in one step. A
+    folded group asks first and names how many items it hides.
+  - **Move to another list.** **Move group to list…** in the header's menu takes the header and all its items.
+  - **Other sorts.** Under any sort except Manual the headers stay and the items sort inside each group.
+  - **Groups inside groups (Main window).** Select rows that are all in one group and press `Ctrl+G` to make a
+    group inside it, or choose **Nest under…** from a header's menu (or **Nest under…** in the command
+    palette, `Ctrl+K`) and pick the group it goes under; pick **Top level** to take it out again. A group can
+    sit three levels deep. Inner headers are indented, folding a group folds the groups inside it, and
+    **Ungroup** moves what was inside up to the group above. **Delete group** on a group with groups inside asks
+    first with the total count, **Move group to list…** takes them all, and each step is one `Ctrl+Z`. The Panel
+    shows inner groups without the indent.
   - **Move.** Drag a header to move the whole group, or press `Alt+Up` or `Alt+Down` on it. Dropping an item on a
     header adds it to that group.
   - **Search.** Searching lists every match, even inside a folded group, under the group's header in the Panel;
@@ -203,7 +253,15 @@ the right of the sidebar header (or `Ctrl+B`) folds the sidebar to a narrow rail
   starts with the list name. Each item follows, with its title when it has one, and a line of dashes between
   items. Images, files and sensitive items are left out, because the file is plain text.
 - **Tags.** Choose **Tags…** to tick the tags of the selected items. Delete a tag from the sidebar; its items
-  stay. New tags are made in the item editor.
+  stay. New tags are made in the item editor. In **Manage tags** each tag has a colour button (one of the eight
+  item colours, shown as a dot in the sidebar and here). Renaming a tag to a name that exists offers **Merge**:
+  every item gets the other tag and the renamed one is deleted; `Ctrl+Z` undoes it.
+  **Nest tags.** The arrow button on a tag in **Manage tags** opens "Nest tag under": pick another tag (or the
+  top level) and the tag, with the tags already under it, moves there. The sidebar shows nested tags indented
+  under their parent. A tag stands for the tags under it: opening **work** or filtering by it lists the items
+  tagged `work/invoices` too, and `tag:work` in the search box finds them while `tag:work/inv` follows the path.
+  A tag cannot go under itself or under one of its own nested tags. Deleting a tag moves the tags under it up
+  one level; merging one into another moves them under the other; `Ctrl+Z` undoes either.
 - **Pin.** Press `Ctrl+P` on a row, or choose **Pin** from its menu. Pinned items show in a strip under the
   Panel's tabs, and under **Pinned** in the sidebar.
 - **Rename.** The item's title is in the editor (`Ctrl+E` or `F2`). Lists and boards have their own rename
@@ -228,6 +286,8 @@ the right of the sidebar header (or `Ctrl+B`) folds the sidebar to a narrow rail
   on its tab and in the sidebar, tinted in the list's colour. Use the arrow keys to move through the icons.
 
 ### Trash and undo
+
+The search box also searches the Trash by title and preview, with the same marks as everywhere else.
 
 Deleting an item, list or board moves it to the **Trash**. A message with an **Undo** button stays for about
 5 seconds, and longer while the pointer is on it. `Ctrl+Z` does the same as the button. In a search box
@@ -496,6 +556,12 @@ file or folder.
 Notes in the preview, such as which item they belong to ("entry 3", "Ditto clip 7" or a file name with the
 match number), are shown in your language like the rest of Snipdeck.
 
+**Open a .snipdeck file from Explorer.** Double-click a `.snipdeck` file (or choose **Open with Snipdeck**).
+Snipdeck comes to the front on **Settings** with the same preview as **Import…**, and changes nothing until you
+choose **Import**. The installer registers the file type; a copy that is only unzipped does not have it. The
+address `snipdeck://open`, `snipdeck://panel` or `snipdeck://settings` opens the Main window, the Panel or
+Settings; any other address, and any other kind of file, is refused.
+
 **Restore.** Restoring a backup in Settings shows the same preview. A restore puts each board back under its
 own name.
 
@@ -515,8 +581,10 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
   (`snipdeck.db` and its attachments), the daily backups, the settings file, drafts and the crash and
   diagnostic logs. To remove them by hand, quit Snipdeck and delete that folder (export your library first
   if you may want it back).
-- **Portable zip.** There is no uninstaller. Delete the folder you unzipped; your data stays in
-  `%LOCALAPPDATA%\Snipdeck` (or the folder you gave with `--data-dir`) until you delete it too. Turn off
+- **Portable zip.** There is no uninstaller. Delete the folder you unzipped. Your data stays in
+  `%LOCALAPPDATA%\Snipdeck` (or the folder you gave with `--data-dir`) until you delete it too, unless
+  you put an empty file named `portable` beside `snipdeck.exe`: then the data lives in a `data` folder
+  next to it and nothing is written to the machine. Turn off
   **Start with Windows** in Settings first, or the Run entry stays behind.
 - **Microsoft Store build.** Uninstalling the app deletes its data, as the Store does for any packaged app.
   Export your library first if you want to keep it.
@@ -635,4 +703,20 @@ Command Prompt, with `app\snipdeck.exe` in the folder that holds `Snipdeck.bat`:
 - `--troubleshoot` prints the same report as **Troubleshoot** in the Help window.
 
 Add `--data-dir <folder>` to check a library somewhere else.
+
+Snipdeck is a Windows program without a console of its own, so a Command Prompt does not wait for it: the
+text can appear after the prompt is back, and `%ERRORLEVEL%` is not set. Start it with `start /wait` to wait
+and read the exit code: `start /wait app\snipdeck.exe --check-db`, then `echo %ERRORLEVEL%`. In PowerShell use
+`(Start-Process -Wait -PassThru -NoNewWindow app\snipdeck.exe --check-db).ExitCode`. With the output sent to a
+file (`app\snipdeck.exe --check-db > result.txt`) nothing special is needed. The same text is in `--help`.
+
+**Starting Snipdeck twice.** One Snipdeck runs per Windows user and library folder. Starting it again (from the
+Start menu, a shortcut or a file) brings the running one to the front and exits. If the running Snipdeck does
+not answer within a few seconds, you get a message saying so; end it in Task Manager and start it again. A
+Snipdeck started with `--data-dir <other folder>` is a separate instance, so you can run two libraries side
+by side. Snipdeck run as administrator cannot be reached from a normal one: close it from its tray icon first.
+
+**Signing out and shutting down.** When Windows ends your session, Snipdeck saves what it is holding (an open
+editor's draft, a pending setting, the clipboard clear for a sensitive item) in the second or so Windows allows.
+This needs the tray icon's window, so it applies while Snipdeck is running with the tray.
 

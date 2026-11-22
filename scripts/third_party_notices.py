@@ -96,6 +96,21 @@ def render():
     return "\n".join(lines)
 
 
+def bundled_problems(text):
+    """What ships inside the program but is missing from the notices file: every font licence
+    next to a bundled font must appear in it word for word, and the LICENSE must exist."""
+    problems = []
+    if not (ROOT / "LICENSE").is_file():
+        problems.append("LICENSE is missing")
+    for licence in sorted(ROOT.glob("crates/*/fonts/OFL.txt")):
+        if licence.read_text(encoding="utf-8").strip() not in text:
+            problems.append(f"{licence.relative_to(ROOT)} is not in THIRD_PARTY_NOTICES.md")
+    for font in sorted(ROOT.glob("crates/*/fonts/*.ttf")):
+        if not (font.parent / "OFL.txt").is_file():
+            problems.append(f"{font.relative_to(ROOT)} has no OFL.txt beside it")
+    return problems
+
+
 def main():
     check = "--check" in sys.argv
     current = FILE.read_text(encoding="utf-8")
@@ -106,6 +121,10 @@ def main():
         new = head.rstrip("\n") + "\n\n" + block + tail
     else:
         new = current.rstrip("\n") + "\n\n" + block + "\n"
+    problems = bundled_problems(new)
+    if problems:
+        print("bundled assets without notices:\n  " + "\n  ".join(problems))
+        return 1
     if check:
         if new != current:
             print("THIRD_PARTY_NOTICES.md is stale: run python3 scripts/third_party_notices.py")

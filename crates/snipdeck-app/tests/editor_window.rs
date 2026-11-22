@@ -248,6 +248,7 @@ fn new_snippet_in_the_kebab_opens_an_empty_editor_that_saves_text_from_the_keybo
             "nothing is made until it is needed"
         );
         let before = r.item_count();
+        let cursor_title = r.panel.get_rows().row_data(0).expect("row").title;
         menu(&r, "New item");
         let ed = r.ed();
         assert!(ed.get_is_new());
@@ -275,8 +276,13 @@ fn new_snippet_in_the_kebab_opens_an_empty_editor_that_saves_text_from_the_keybo
         assert_eq!(r.item_count(), before + 1);
         let id = r.id("Sign-off");
         assert_eq!(r.text(id), "Kind regards,");
+        // A new item goes after the row the cursor was on.
         assert_eq!(
             r.panel.get_rows().row_data(0).expect("row").title,
+            cursor_title
+        );
+        assert_eq!(
+            r.panel.get_rows().row_data(1).expect("row").title,
             "Sign-off"
         );
         assert!(
@@ -624,7 +630,7 @@ fn a_link_without_a_scheme_is_refused_inline_and_a_good_one_saves() {
         let ed = r.ed();
         click(ed.window(), &find(&ed, "Link", AccessibleRole::RadioButton));
         assert_eq!(ed.get_kind_index(), 2);
-        ed.set_content("example.com/page".into());
+        ed.set_content("example".into());
         ed.set_item_title("Page".into());
         settle();
         save(&ed);
@@ -652,6 +658,22 @@ fn a_link_without_a_scheme_is_refused_inline_and_a_good_one_saves() {
             r.ctl.borrow().store().item(id).expect("item").kind,
             ItemKind::Link
         );
+    });
+}
+
+#[test]
+fn a_link_that_reads_as_a_web_host_is_saved_with_https() {
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        ed.set_kind_index(2);
+        ed.set_content("example.com/page".into());
+        ed.set_item_title("Page".into());
+        settle();
+        save(&ed);
+        assert!(!r.editor_shown(), "a host needs no scheme typed");
+        assert_eq!(r.text(r.id("Page")), "https://example.com/page");
     });
 }
 
@@ -775,6 +797,11 @@ fn a_sensitive_item_made_in_the_window_is_stored_encrypted_and_never_drafted() {
 
 /// The demo library on disk in `data` with one text item over the editing cap in the first list.
 fn with_big_item(data: &Path) -> (ItemId, String) {
+    with_big_item_formatted(data, false)
+}
+
+/// The same, with an HTML format beside the text when `html`.
+fn with_big_item_formatted(data: &Path, html: bool) -> (ItemId, String) {
     use snipdeck_core::{Format, Formats, Item, Placement};
     use snipdeck_store::{BlobStore, BoardRepo};
     let mut store = Store::open(data).expect("store");
@@ -784,10 +811,18 @@ fn with_big_item(data: &Path) -> (ItemId, String) {
     let mut item = Item::new(list, "Giant".into(), ItemKind::Text, now());
     item.preview = Item::preview_of(&big, false);
     let content = store.put(big.clone().into_bytes()).expect("put");
+    let mut formats = vec![Format::Text(content)];
+    if html {
+        formats.push(Format::Html(
+            store
+                .put(format!("<p>{big}</p>").into_bytes())
+                .expect("put"),
+        ));
+    }
     store
         .insert_item(
             &item,
-            &Formats::new(vec![Format::Text(content)]).expect("formats"),
+            &Formats::new(formats).expect("formats"),
             Placement::Last,
         )
         .expect("insert");
@@ -796,7 +831,41 @@ fn with_big_item(data: &Path) -> (ItemId, String) {
 }
 
 #[test]
-fn text_over_16_kb_opens_in_a_read_only_viewer_and_saving_keeps_it_whole() {
+fn the_formatting_notice_on_a_long_text_waits_for_a_change() {
+    on_ui_thread(|| {
+        let data = tempfile::tempdir().expect("dir");
+        let (id, _) = with_big_item_formatted(data.path(), true);
+        let r = rig_at(data.path(), &SharedProvider::new());
+        r.ctl.borrow_mut().open_item_editor(id);
+        r.editor.redraw();
+        let ed = r.ed();
+        assert!(ed.get_formatted());
+        let notice = "Saving changed text removes the formatting.";
+        assert!(ed.get_content_large());
+        assert!(!ed.get_content_changed(), "untouched on open");
+        assert!(
+            missing(&ed, notice, AccessibleRole::Text),
+            "no notice for text nobody typed in"
+        );
+        // Typing in the field, through the real `edited` wiring, brings the notice up.
+        click(
+            ed.window(),
+            &find(&ed, "Content", AccessibleRole::TextInput),
+        );
+        type_text(ed.window(), "x");
+        settle();
+        assert!(ed.get_content_changed());
+        let _ = find(&ed, notice, AccessibleRole::Text);
+        // It stays when the typing is taken back: a long text is not kept whole beside the field,
+        // so "same as saved" cannot be told cheaply, and the notice only warns.
+        press(ed.window(), &key(Key::Backspace));
+        settle();
+        assert!(ed.get_content_changed());
+    });
+}
+
+#[test]
+fn text_over_16_kb_opens_in_parts_that_are_all_editable_and_saves_whole() {
     on_ui_thread(|| {
         let data = tempfile::tempdir().expect("dir");
         let (id, big) = with_big_item(data.path());
@@ -805,32 +874,39 @@ fn text_over_16_kb_opens_in_a_read_only_viewer_and_saving_keeps_it_whole() {
         r.editor.redraw();
         let ed = r.ed();
         assert!(ed.get_content_large());
-        assert_eq!(
-            ed.get_content().len(),
-            16 * 1024,
-            "the start of the text is shown"
-        );
+        let parts = ed.get_parts().row_count();
+        assert_eq!(parts, 2, "27.5 KB is two parts");
+        assert_eq!(ed.get_part_index(), 0);
+        assert!(ed.get_content().len() <= 16 * 1024, "one part in the field");
+        assert!(big.starts_with(ed.get_content().as_str()));
         let field = find(&ed, "Content", AccessibleRole::TextInput);
-        assert_eq!(field.accessible_read_only(), Some(true));
+        assert_eq!(field.accessible_read_only(), Some(false), "editable");
         let size = ed.get_content_size().to_string();
         assert!(size.ends_with("KB"), "{size}");
         let notice = format!(
-            "This text is {size}. Anything over 16 KB opens read-only here, and the first 16 KB are shown."
+            "This text is {size}. It opens a part at a time, so typing stays fast; all the parts are saved together."
         );
         let _ = find(&ed, &notice, AccessibleRole::Text);
+        let _ = find(&ed, "Part 1 of 2", AccessibleRole::Text);
 
-        // Typing into the viewer changes nothing; the title is still editable.
-        let shown = ed.get_content();
+        // The second part is reachable, and the tail is readable there.
+        ed.invoke_part_requested(1);
+        settle();
+        assert_eq!(ed.get_part_index(), 1);
+        assert!(ed.get_content().ends_with("TAIL"));
+        let _ = find(&ed, "Part 2 of 2", AccessibleRole::Text);
+        // Typing into a part changes it, and only it; the whole text is saved with the change.
         ed.invoke_focus_title();
         click(
             ed.window(),
             &find(&ed, "Content", AccessibleRole::TextInput),
         );
-        type_text(ed.window(), "typed into the viewer");
-        assert_eq!(ed.get_content(), shown, "read-only");
+        type_text(ed.window(), "typed");
+        assert!(ed.get_content().contains("typed"), "editable");
+        ed.invoke_part_requested(0);
+        settle();
+        assert_eq!(ed.get_part_index(), 0);
         ed.set_item_title("Giant, renamed".into());
-        wait(AUTOSAVE_EVERY);
-        assert!(r.draft_files().is_empty(), "a read-only text has no draft");
         ed.invoke_mark_dirty();
         save(&ed);
         assert!(
@@ -843,7 +919,15 @@ fn text_over_16_kb_opens_in_a_read_only_viewer_and_saving_keeps_it_whole() {
             ))
         );
         let id = r.id("Giant, renamed");
-        assert_eq!(r.text(id), big, "the whole text is still there");
+        let saved = r.text(id);
+        assert_eq!(saved.len(), big.len() + "typed".len());
+        assert!(saved.ends_with("TAIL"));
+        assert!(saved.starts_with("0123456789\n"));
+        assert_eq!(
+            saved.replacen("typed", "", 1),
+            big,
+            "only the typing changed"
+        );
     });
 }
 
@@ -992,7 +1076,7 @@ fn a_save_refused_while_previewing_goes_back_to_the_form_and_shows_why() {
 
         // The host's check: a link with no scheme passes the window and is refused by Save.
         ed.set_kind_index(2);
-        ed.set_content("docs.example.com".into());
+        ed.set_content("docs".into());
         chord(ed.window(), &[Key::Control], "p");
         settle();
         assert!(ed.get_preview_on());
@@ -1239,7 +1323,7 @@ fn with_both_a_text_and_a_title_refused_the_text_gets_the_keyboard_first() {
         menu(&r, "New item");
         let ed = r.ed();
         ed.set_kind_index(2);
-        ed.set_content("docs.example.com".into());
+        ed.set_content("docs".into());
         ed.set_item_title("t".repeat(500).into());
         preview_on(&ed);
         save(&ed);
@@ -1249,7 +1333,7 @@ fn with_both_a_text_and_a_title_refused_the_text_gets_the_keyboard_first() {
         type_text(ed.window(), "x");
         assert_eq!(
             ed.get_content().len(),
-            "docs.example.com".len() + 1,
+            "docs".len() + 1,
             "the letter went into the text, the first error in reading order"
         );
         assert_eq!(ed.get_item_title().len(), 500);
@@ -1331,7 +1415,7 @@ fn trigger_clash_shows_an_error() {
         assert!(r.editor_shown(), "refused: the editor stays");
         assert_eq!(
             ed.get_trigger_error().as_str(),
-            "Another snippet already uses this trigger."
+            "Another item already uses this trigger."
         );
         // A different code saves.
         ed.set_trigger(";sig2".into());
@@ -1342,30 +1426,49 @@ fn trigger_clash_shows_an_error() {
 }
 
 #[test]
-fn a_one_character_trigger_gets_a_warning_under_the_field() {
+fn a_trigger_that_would_fire_inside_words_is_refused_and_a_lone_symbol_warned_under_the_field() {
     on_ui_thread(|| {
         let r = rig();
         menu(&r, "New item");
         let ed = r.ed();
         // Tall enough that every field is on screen (off-screen ones are not in the tree).
         ed.window().set_size(slint::PhysicalSize::new(900, 2400));
+        assert_eq!(ed.get_trigger_error().to_string(), "", "no error at first");
         assert_eq!(
             ed.get_trigger_warning().to_string(),
             "",
             "no warning at first"
         );
+        // Fewer than three letters or digits fires inside ordinary words: refused, before Save.
+        for code in ["a", "sg", "12"] {
+            ed.set_trigger(code.into());
+            ed.invoke_trigger_edited(code.into());
+            settle();
+            let error = ed.get_trigger_error().to_string();
+            assert!(error.contains("fewer than 3"), "{code}: {error}");
+        }
+        // Announced, not only drawn: a text element carrying the error is in the tree.
+        let _ = find(&ed, &ed.get_trigger_error(), AccessibleRole::Text);
+        // A lone symbol is allowed but warned about, under the field; no error.
         ed.set_trigger(";".into());
+        ed.invoke_trigger_edited(";".into());
         settle();
+        assert_eq!(ed.get_trigger_error().to_string(), "");
         let warning = ed.get_trigger_warning().to_string();
         assert!(warning.contains("one-character"), "{warning}");
-        // Announced, not only drawn: a text element carrying the warning is in the tree.
         let _ = find(&ed, &warning, AccessibleRole::Text);
-        ed.set_trigger(";s".into());
-        settle();
-        assert_eq!(ed.get_trigger_warning().to_string(), "", "two do not");
+        // A symbol with a letter, and three letters, are safe: neither error nor warning.
+        for code in [";s", "sig"] {
+            ed.set_trigger(code.into());
+            ed.invoke_trigger_edited(code.into());
+            settle();
+            assert_eq!(ed.get_trigger_error().to_string(), "", "{code}");
+            assert_eq!(ed.get_trigger_warning().to_string(), "", "{code}");
+        }
         ed.set_trigger("".into());
+        ed.invoke_trigger_edited("".into());
         settle();
-        assert_eq!(ed.get_trigger_warning().to_string(), "", "none either");
+        assert_eq!(ed.get_trigger_error().to_string(), "", "none either");
     });
 }
 

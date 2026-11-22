@@ -32,6 +32,10 @@ pub const VK_INSERT: u16 = 0x2D;
 pub const VK_BACK: u16 = 0x08;
 /// `VK_TAB`.
 pub const VK_TAB: u16 = 0x09;
+/// `VK_RETURN`.
+pub const VK_RETURN: u16 = 0x0D;
+/// `VK_C`.
+pub const VK_C: u16 = 0x43;
 /// `VK_LEFT`.
 pub const VK_LEFT: u16 = 0x25;
 /// The unassigned virtual key (0xE8) used to mask a lone `Alt` / `Win` release.
@@ -81,6 +85,8 @@ pub const fn key_to_vk(key: Key) -> VirtualKey {
         Key::Left => extended(VK_LEFT),
         Key::Backspace => plain(VK_BACK),
         Key::Tab => plain(VK_TAB),
+        Key::Enter => plain(VK_RETURN),
+        Key::C => plain(VK_C),
         Key::Mask => plain(VK_MASK),
     }
 }
@@ -452,6 +458,103 @@ impl EraseGate {
     }
 }
 
+// ---- A second launch, and the end of the Windows session -----------------------------------------
+
+/// How long a second launch waits for the first instance to say it has taken the hand-over.
+pub const ACK_TIMEOUT_MS: u32 = 5_000;
+/// How long a second launch waits for the mailbox lock (another second launch may hold it for up to
+/// [`ACK_TIMEOUT_MS`]).
+pub const LOCK_TIMEOUT_MS: u32 = ACK_TIMEOUT_MS + 1_000;
+/// How many times a second launch starts over when the first instance exits under it (a Quit
+/// followed at once by a new start), before it reports a problem.
+pub const MAX_HANDOVER_ATTEMPTS: u8 = 3;
+/// How long the session-end handler waits for the UI thread to flush (Windows ends a process that
+/// is still working a few seconds after `WM_ENDSESSION`).
+pub const SESSION_FLUSH_WAIT_MS: u64 = 3_000;
+
+/// What a second launch saw while it waited for the first instance.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WaitEvent {
+    /// The first instance's UI thread took the request.
+    Acked,
+    /// The first instance's process ended while we waited (it was quitting).
+    FirstExited,
+    /// Nothing happened within [`ACK_TIMEOUT_MS`]: hung, suspended, or its loop is stuck.
+    TimedOut,
+    /// The first instance could not be signalled at all (for example it runs elevated).
+    NotReached,
+}
+
+/// What a second launch does after one hand-over attempt.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HandoverNext {
+    /// The request is with the first instance: exit quietly.
+    Done,
+    /// The first instance went away: try again from the start (we may become the first).
+    Retry,
+    /// Tell the user: nothing is going to answer.
+    Unresponsive,
+}
+
+/// The decision after attempt number `attempt` (from 0) ended in `event`.
+#[must_use]
+pub fn after_handover(attempt: u8, event: WaitEvent) -> HandoverNext {
+    match event {
+        WaitEvent::Acked => HandoverNext::Done,
+        WaitEvent::FirstExited if attempt + 1 < MAX_HANDOVER_ATTEMPTS => HandoverNext::Retry,
+        WaitEvent::FirstExited | WaitEvent::TimedOut | WaitEvent::NotReached => {
+            HandoverNext::Unresponsive
+        }
+    }
+}
+
+/// `WM_QUERYENDSESSION`: Windows asks whether the session may end.
+pub const WM_QUERYENDSESSION: u32 = 0x0011;
+/// `WM_ENDSESSION`: the answer is in, `wParam` says whether the session really ends.
+pub const WM_ENDSESSION: u32 = 0x0016;
+
+/// What the hidden window does with a session-end message.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SessionEnd {
+    /// `WM_QUERYENDSESSION`: agree (return TRUE); the flush waits for `WM_ENDSESSION`, because the
+    /// session may still be cancelled by another program.
+    Agree,
+    /// `WM_ENDSESSION` with `wParam` true: the process may be killed as soon as this returns.
+    /// Flush everything now.
+    FlushNow,
+    /// `WM_ENDSESSION` with `wParam` false: the shutdown was cancelled. Nothing to do.
+    Cancelled,
+}
+
+/// Which session-end step `msg` is, or `None` for any other message.
+#[must_use]
+pub fn session_end(msg: u32, wparam: usize) -> Option<SessionEnd> {
+    match msg {
+        WM_QUERYENDSESSION => Some(SessionEnd::Agree),
+        WM_ENDSESSION if wparam != 0 => Some(SessionEnd::FlushNow),
+        WM_ENDSESSION => Some(SessionEnd::Cancelled),
+        _ => None,
+    }
+}
+
+/// The name of a Windows exception code that ends a program (`winnt.h` / `ntstatus.h`), for the
+/// crash report written when the process dies without a panic. An unlisted code is "unknown
+/// exception": the report still carries the number.
+#[must_use]
+pub const fn exception_name(code: u32) -> &'static str {
+    match code {
+        0xC000_0005 => "access violation",
+        0xC000_001D => "illegal instruction",
+        0xC000_0094 => "integer divide by zero",
+        0xC000_0096 => "privileged instruction",
+        0xC000_008C => "array bounds exceeded",
+        0xC000_00FD => "stack overflow",
+        0xC000_0374 => "heap corruption",
+        0xC000_0409 => "fast fail (stack buffer overrun or abort)",
+        _ => "unknown exception",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -496,6 +599,8 @@ mod tests {
         assert_eq!(key_to_vk(Key::Mask), plain(0xE8));
         assert_eq!(key_to_vk(Key::Backspace), plain(0x08));
         assert_eq!(key_to_vk(Key::Tab), plain(0x09));
+        assert_eq!(key_to_vk(Key::Enter), plain(0x0D));
+        assert_eq!(key_to_vk(Key::C), plain(0x43));
         assert_eq!(key_to_vk(Key::Modifier(Modifier::Ctrl)), plain(0xA2));
         assert_eq!(key_to_vk(Key::Modifier(Modifier::Shift)), plain(0xA0));
         assert_eq!(key_to_vk(Key::Modifier(Modifier::Alt)), plain(0xA4));
@@ -893,5 +998,77 @@ mod tests {
         assert!(!gate.keep_frame(7), "a destroyed window's paint is dropped");
         assert!(gate.needs_guard(7), "a reused handle is a new window");
         assert!(!gate.needs_guard(9));
+    }
+
+    #[test]
+    fn the_exceptions_that_end_a_program_have_names() {
+        assert_eq!(exception_name(0xC000_0005), "access violation");
+        assert_eq!(exception_name(0xC000_00FD), "stack overflow");
+        assert_eq!(
+            exception_name(0xC000_0409),
+            "fast fail (stack buffer overrun or abort)"
+        );
+        assert_eq!(exception_name(0x1234), "unknown exception");
+    }
+}
+
+#[cfg(test)]
+mod second_launch_tests {
+    use super::*;
+
+    #[test]
+    fn an_ack_ends_the_hand_over() {
+        assert_eq!(after_handover(0, WaitEvent::Acked), HandoverNext::Done);
+        assert_eq!(after_handover(2, WaitEvent::Acked), HandoverNext::Done);
+    }
+
+    #[test]
+    fn a_first_instance_that_exits_is_retried_a_few_times_then_reported() {
+        for attempt in 0..MAX_HANDOVER_ATTEMPTS - 1 {
+            assert_eq!(
+                after_handover(attempt, WaitEvent::FirstExited),
+                HandoverNext::Retry
+            );
+        }
+        assert_eq!(
+            after_handover(MAX_HANDOVER_ATTEMPTS - 1, WaitEvent::FirstExited),
+            HandoverNext::Unresponsive
+        );
+    }
+
+    #[test]
+    fn a_silent_or_unreachable_first_instance_is_reported_at_once() {
+        for event in [WaitEvent::TimedOut, WaitEvent::NotReached] {
+            assert_eq!(after_handover(0, event), HandoverNext::Unresponsive);
+        }
+    }
+
+    #[test]
+    fn the_lock_wait_outlasts_one_other_hand_over() {
+        const { assert!(LOCK_TIMEOUT_MS > ACK_TIMEOUT_MS) };
+    }
+
+    #[test]
+    fn only_a_real_session_end_flushes() {
+        assert_eq!(session_end(WM_QUERYENDSESSION, 0), Some(SessionEnd::Agree));
+        assert_eq!(
+            session_end(WM_QUERYENDSESSION, 1),
+            Some(SessionEnd::Agree),
+            "the query's wParam is a flag word, never a verdict"
+        );
+        assert_eq!(session_end(WM_ENDSESSION, 1), Some(SessionEnd::FlushNow));
+        assert_eq!(session_end(WM_ENDSESSION, 0), Some(SessionEnd::Cancelled));
+        assert_eq!(
+            session_end(0x0010, 1),
+            None,
+            "WM_CLOSE is not a session end"
+        );
+        assert_eq!(session_end(0x0002, 1), None);
+    }
+
+    #[test]
+    fn the_message_numbers_are_windows_own() {
+        assert_eq!(WM_QUERYENDSESSION, 0x11);
+        assert_eq!(WM_ENDSESSION, 0x16);
     }
 }

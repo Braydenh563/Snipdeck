@@ -22,7 +22,6 @@ chacha20poly1305 = { version = "0.11.0", default-features = false, features = ["
 getrandom = "0.4.3"
 jiff = { version = "0.2.38", default-features = false, features = ["std", "tz-system", "tzdb-bundle-platform"] }
 miniz_oxide = "0.8.9"
-nucleo-matcher = "0.3.1"
 # Pure-Rust PNG decode: the Windows clipboard backend synthesizes CF_DIB from an item's PNG.
 png = { version = "0.18.1", default-features = false }
 proptest = "1.12.0"
@@ -50,15 +49,19 @@ windows = { version = "0.62.2", features = [
     "Security_Cryptography",
     "Storage_Streams",
     "Win32_Foundation",
+    "Win32_Globalization",
     "Win32_Graphics_Dwm",
     "Win32_Graphics_Gdi",
     "Win32_Security",
+    "Win32_Security_Authorization",
     "Win32_Security_Cryptography",
     "Win32_Storage_FileSystem",
     "Win32_Storage_Packaging_Appx",
     "Win32_System_Com",
     "Win32_System_Console",
     "Win32_System_DataExchange",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_Kernel",
     "Win32_System_LibraryLoader",
     "Win32_System_Memory",
     "Win32_System_Ole",
@@ -117,13 +120,16 @@ incremental = false
 debug = false
 
 # Shipping builds (docs/reviews/fable-analysis.md P1): one codegen unit with fat LTO for a small,
-# fast exe; symbols stripped. `panic` stays `unwind` until the crash log (C4) owns panics.
+# fast exe. `panic` stays `unwind` until the crash log (C4) owns panics. Line tables are kept
+# (on Windows they go to a separate `snipdeck.pdb`, not into the exe, so the exe stays the same
+# size) and nothing is stripped: the release job keeps the PDB as an artifact, and a crash report's
+# backtrace addresses resolve against it (a report names its `anchor` address for the offset).
 [profile.release]
 opt-level = 3
 lto = "fat"
 codegen-units = 1
-strip = true
-debug = false
+strip = "none"
+debug = "line-tables-only"
 
 # A release build that keeps line tables for a readable crash log / profiler run.
 [profile.release-debug]

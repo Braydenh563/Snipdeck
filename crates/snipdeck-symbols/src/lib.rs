@@ -21,7 +21,8 @@ mod search;
 
 pub use art::{ArtCache, ArtPack};
 pub use catalog::{
-    Catalog, EMOJI_GROUPS, KAOMOJI_GROUPS, Kind, Lang, Symbol, SymbolId, catalog_init_count,
+    CHARACTER_GROUPS, Catalog, EMOJI_GROUPS, KAOMOJI_GROUPS, Kind, Lang, Symbol, SymbolId,
+    catalog_init_count,
 };
 pub use data::DataError;
 pub use fold::fold;

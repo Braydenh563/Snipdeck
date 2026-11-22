@@ -43,7 +43,7 @@ fn every_menu_row_has_words_except_the_separators() {
         );
         assert_eq!(
             app_menu_text(&w, AppMenuEntry::Dock, true, None),
-            "Undock the panel"
+            "Undock the Panel"
         );
         assert_eq!(
             app_menu_text(&w, AppMenuEntry::Commands, false, None),

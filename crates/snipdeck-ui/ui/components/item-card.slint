@@ -108,6 +108,9 @@ component RowAction inherits Rectangle {
     in property <image> icon;
     in property <string> label;
     in property <bool> shown;
+    // On the selected row (the system highlight in high contrast) the glyph takes the colour for text on it, while the
+    // button has no fill of its own: white on the highlight is 1.46:1 (MAIN-60).
+    in property <bool> selected: false;
     out property <bool> hovered: touch.has-hover;
     callback clicked();
     // The pointer (or focus) came or went: the card turns it into a tooltip request.
@@ -133,7 +136,7 @@ component RowAction inherits Rectangle {
         Icon {
             source: root.icon;
             size: root.glyph;
-            tint: Theme.text-primary;
+            tint: (root.selected && !root.hovered) || touch.pressed ? Theme.text-on-selected : Theme.text-primary;
             x: (parent.width - self.width) / 2;
             y: (parent.height - self.height) / 2;
         }
@@ -165,6 +168,8 @@ export component ItemCard inherits Rectangle {
     // False where nothing is ever numbered (the Main window): the number cell is left out.
     in property <bool> numbered: true;
     in property <string> title;
+    // An untitled secret has no preview either: a fixed stand-in names it wherever the title is all there is.
+    property <string> shown-title: root.title == "" && root.sensitive ? @tr("Sensitive item") : root.title;
     // Search (Panel v2 spec 2.3): the first match in the title, as the text before it and the match itself. A span
     // of `search.mark` is drawn behind the match (never an underline). Both empty = no mark.
     in property <string> mark-before;
@@ -365,7 +370,7 @@ export component ItemCard inherits Rectangle {
     // DESIGN.md §8: the title never truncates below 12 characters; the preview gives way first. Twelve Latin
     // characters are about 7 em; twelve CJK characters are 12 em, so the floor follows the title's own average
     // character width when that is larger.
-    property <length> avg-char-w: m-title.preferred-width / max(1, root.title.character-count);
+    property <length> avg-char-w: m-title.preferred-width / max(1, root.shown-title.character-count);
     property <length> min-title-w: min(m-title.preferred-width, max(Type.base * 7, root.avg-char-w * 12));
     property <length> row-w: root.content-w - root.lead-w;
     // Gap between the row's text (title or preview) and its trailing label: one step wider than the
@@ -475,8 +480,8 @@ export component ItemCard inherits Rectangle {
     max-height: root.card-h;
     forward-focus: scope;
     accessible-role: list-item;
-    accessible-label: root.sensitive && !root.shown ? root.title
-        : (root.preview != "" ? root.title + ", " + root.preview : root.title)
+    accessible-label: root.sensitive && !root.shown ? root.shown-title
+        : (root.preview != "" ? root.shown-title + ", " + root.preview : root.shown-title)
             + (root.stack-position > 0 ? ", " + @tr("paste stack, number {}", root.stack-position) : "");
     // A masked secret says how to reveal it (`masked-hint`); otherwise the list the item belongs to.
     accessible-description: (root.has-label ? (root.described == "" ? @tr("label: {}", root.label-name) : root.described + ", " + @tr("label: {}", root.label-name)) : root.described) + (root.formatted && !root.sensitive ? (root.described == "" && !root.has-label ? "" : ", ") + @tr("Formatted") : "");
@@ -493,7 +498,7 @@ export component ItemCard inherits Rectangle {
     // Natural sizes of the texts (never visible), so layout never depends on a text's own width.
     m-title := Text {
         visible: false;
-        text: root.title;
+        text: root.shown-title;
         font-family: Fonts.sans;
         font-size: Type.base;
         font-weight: Type.medium;
@@ -501,7 +506,7 @@ export component ItemCard inherits Rectangle {
     m-title-wrap := Text {
         visible: false;
         width: root.qti ? root.qti-title-w : max(0px, root.width - 2 * root.pad-x - root.reserve-r);
-        text: root.title;
+        text: root.shown-title;
         font-family: Fonts.sans;
         font-size: Type.base;
         font-weight: Type.medium;
@@ -769,7 +774,7 @@ export component ItemCard inherits Rectangle {
                 : root.qr-title-y;
             width: root.qti ? root.qti-title-w : root.tile ? max(0px, root.width - 2 * root.pad-x - root.reserve-r) : root.title-w;
             height: root.tile ? root.tile-title-h : root.title-h;
-            text: root.title;
+            text: root.shown-title;
             font-family: Fonts.sans;
             font-size: Type.base;
             font-weight: Type.medium;
@@ -899,6 +904,7 @@ export component ItemCard inherits Rectangle {
         background: root.fill;
     }
     act-more := RowAction {
+        selected: root.selected;
         shown: root.qr-actions-shown && root.more-action;
         box: root.q-box;
         icon: Icons.dots-three;
@@ -909,6 +915,7 @@ export component ItemCard inherits Rectangle {
         tip(on) => { root.report-tip(self.label, root.absolute-position.x + self.x, root.absolute-position.y + self.y, self.width, self.height, on); }
     }
     act-edit := RowAction {
+        selected: root.selected;
         shown: root.qr-actions-shown && root.edit-action;
         box: root.q-box;
         icon: Icons.pencil-simple;
@@ -919,6 +926,7 @@ export component ItemCard inherits Rectangle {
         tip(on) => { root.report-tip(self.label, root.absolute-position.x + self.x, root.absolute-position.y + self.y, self.width, self.height, on); }
     }
     act-copy := RowAction {
+        selected: root.selected;
         shown: root.qr-actions-shown && root.copy-action;
         box: root.q-box;
         icon: Icons.copy;
@@ -930,6 +938,7 @@ export component ItemCard inherits Rectangle {
     }
     // Use comes first (leftmost): it does what Enter does, and the click is its own (the row's click selects in the Main window).
     act-use := RowAction {
+        selected: root.selected;
         shown: root.qr-actions-shown && root.use-action;
         box: root.q-box;
         icon: root.use-glyph;

@@ -44,10 +44,11 @@ use serde::de::{self, DeserializeSeed, Deserializer, IgnoredAny, MapAccess, SeqA
 use snipdeck_core::{Name, Timestamp};
 use snipdeck_store::name_key;
 
+use crate::decoded::Decoded;
 use crate::error::{Error, Result};
 use crate::import::{ImportOptions, board_name, finish};
 use crate::limits::TEXT_LIMIT;
-use crate::plan::{Library, Plan, PlanBoard, PlanItem, PlanList};
+use crate::plan::{Plan, PlanBoard, PlanItem, PlanList};
 use crate::report::{ImportReport, Warning};
 
 use super::{MEMORY_BUDGET, clean_label, decode_text, note_lossy, title_from};
@@ -105,12 +106,11 @@ impl Tags {
 /// [`Error::File`] if the file cannot be read, [`Error::Malformed`] if it is not one of the
 /// accepted shapes, [`Error::LimitExceeded`] if it is over 256 MiB, and storage errors. Items
 /// that are empty, too large or of the wrong type are skipped with a warning.
-pub fn import_copyq_json<L: Library>(
-    lib: &mut L,
+pub fn decode_copyq_json(
     path: &Path,
     now: Timestamp,
     options: &ImportOptions<'_>,
-) -> Result<ImportReport> {
+) -> Result<Decoded<'static>> {
     let file_error = |source| Error::File {
         path: path.to_owned(),
         source,
@@ -127,15 +127,14 @@ pub fn import_copyq_json<L: Library>(
             limit: MEMORY_BUDGET,
         });
     }
-    import_copyq_bytes(lib, &bytes, now, options)
+    decode_copyq_bytes(&bytes, now, options)
 }
 
-pub(crate) fn import_copyq_bytes<L: Library>(
-    lib: &mut L,
+pub(crate) fn decode_copyq_bytes(
     bytes: &[u8],
     now: Timestamp,
     options: &ImportOptions<'_>,
-) -> Result<ImportReport> {
+) -> Result<Decoded<'static>> {
     let mut report = ImportReport::default();
     let (text, how) = decode_text(bytes);
     note_lossy(how, "the CopyQ file", &mut report);
@@ -161,6 +160,8 @@ pub(crate) fn import_copyq_bytes<L: Library>(
         let mut list = PlanList::new(board_name(&list_name, "CopyQ")?, now);
         list.items = items;
         plan.boards.push(PlanBoard {
+            accent: None,
+            icon: None,
             name: board_name(
                 options
                     .board_name
@@ -173,7 +174,7 @@ pub(crate) fn import_copyq_bytes<L: Library>(
             lists: vec![list],
         });
     }
-    finish(lib, plan, options, report)
+    Ok(finish(plan, options, report))
 }
 
 fn item_len(item: &PlanItem) -> u64 {

@@ -34,7 +34,7 @@ where
 {
     /// The policy's settings now.
     fn recent_settings(&self) -> RecentSettings {
-        RecentSettings::from_settings(&self.settings, self.session.history_paused)
+        RecentSettings::from_settings(&self.settings)
     }
 
     /// The Recent inbox is on in the settings.
@@ -52,24 +52,40 @@ where
     }
 
     /// Records the answer to the Recent question (or the Settings switch): `true` starts keeping
-    /// what is copied, `false` never does. Either way the question is not asked again.
+    /// what is copied, `false` never does. Either way the question is not asked again. Switching
+    /// off also clears what was kept (the default: a later switch-on must not show old copies
+    /// again); [`set_recent_history_off_keeping_entries`](Self::set_recent_history_off_keeping_entries)
+    /// is the explicit other choice.
     pub fn set_recent_history(&mut self, on: bool) {
+        if !on && self.settings.recent_history {
+            let _ = self.store.clear_recent();
+            self.index_cache.forget_recent();
+        }
+        self.set_recent_history_flag(on);
+    }
+
+    /// Switches the inbox off but keeps the entries stored, hidden, until they age out or are
+    /// cleared (the "keep them" answer to the switch-off question).
+    pub fn set_recent_history_off_keeping_entries(&mut self) {
+        self.set_recent_history_flag(false);
+    }
+
+    fn set_recent_history_flag(&mut self, on: bool) {
         self.update_settings(|s| {
             s.recent_history = on;
             s.recent_history_asked = true;
         });
     }
 
-    /// "Pause history" is on (tray; lasts until Snipdeck quits).
+    /// "Pause history" is on (tray). Saved: a restart stays paused until the user resumes.
     #[must_use]
     pub fn recent_paused(&self) -> bool {
-        self.session.history_paused
+        self.settings.recent_paused
     }
 
-    /// Pauses or resumes collecting. Not saved: a restart resumes.
+    /// Pauses or resumes collecting, and saves the choice.
     pub fn set_recent_paused(&mut self, paused: bool) {
-        self.session.history_paused = paused;
-        self.sync_recent_gate();
+        self.update_settings(|s| s.recent_paused = paused);
     }
 
     /// The switch of the platform listener. The listener reads nothing while it is closed.
@@ -88,7 +104,7 @@ where
     /// Opens the gate only for an opted-in, unpaused inbox.
     pub(super) fn sync_recent_gate(&self) {
         if let Some(sink) = &self.tray_history {
-            sink(self.settings.recent_history, self.session.history_paused);
+            sink(self.settings.recent_history, self.settings.recent_paused);
         }
         if let Some(gate) = &self.recent_gate {
             gate.set(self.recent_settings().collecting() && !self.library_locked());
@@ -117,7 +133,7 @@ where
         let _ = RecentCapture::consider(&mut self.store, observation, &settings, now);
     }
 
-    /// Applies the retention limits (start-up).
+    /// Applies the retention limits (start-up, unlock, and the periodic maintenance).
     pub fn prune_recent(&mut self) {
         let settings = self.recent_settings();
         let now = self.clock.now();
@@ -133,13 +149,24 @@ where
 
     /// [`Controller::recent_entries`] without copying: read from the store only when it was
     /// written since the last call.
-    fn recent_shared(&self) -> std::rc::Rc<Vec<RecentEntry>> {
+    pub(super) fn recent_shared(&self) -> std::rc::Rc<Vec<RecentEntry>> {
         if !self.settings.recent_history || self.library_locked() {
             // Nothing decrypted is kept while the inbox is hidden.
             self.index_cache.forget_recent();
             return std::rc::Rc::default();
         }
-        self.index_cache.recent(&self.store)
+        let entries = self.index_cache.recent(&self.store);
+        // An entry past its age is not shown even if no prune has run yet (a long sleep, a
+        // closed Snipdeck); the prune then removes it.
+        let oldest =
+            i64::try_from(recent::max_age_of(&self.settings).as_secs()).unwrap_or(i64::MAX);
+        let now = self.clock.now().as_second();
+        // The same edge as the prune: only an entry older than the age goes.
+        let stale = |e: &RecentEntry| now.saturating_sub(e.copied_at.as_second()) > oldest;
+        if entries.iter().any(stale) {
+            return std::rc::Rc::new(entries.iter().filter(|e| !stale(e)).cloned().collect());
+        }
+        entries
     }
 
     /// "Save to…": saves entry `id` into the `target`th list of [`RecentView::targets`].
@@ -172,7 +199,7 @@ where
         };
         Some(RecentView {
             open,
-            paused: self.session.history_paused,
+            paused: self.settings.recent_paused,
             locked: self.library_locked(),
             rows,
             targets,
@@ -208,17 +235,12 @@ where
     /// box matches, as of now. Empty while the inbox is off.
     pub(super) fn main_recent_rows(&self) -> Vec<RecentRowView> {
         let now = self.clock.now();
-        self.main_recent_entries()
-            .iter()
-            .map(|e| row_view(e, now))
-            .collect()
-    }
-
-    fn main_recent_entries(&self) -> Vec<RecentEntry> {
         let query = self.main.query();
-        self.recent_entries()
-            .into_iter()
+        // Borrowed from the cache: nothing is cloned but the rows shown.
+        self.recent_shared()
+            .iter()
             .filter(|e| matches_query(&e.text, query))
+            .map(|e| row_view(e, now))
             .collect()
     }
 
@@ -364,6 +386,24 @@ where
     /// Saves the entry as a new item at the top of `list` ("Save to…"), and says so. The entry
     /// stays in the inbox.
     pub fn recent_promote(&mut self, id: i64, list: ListId) {
+        self.promote_entry(id, list, false);
+    }
+
+    /// "Save to…" with the Sensitive choice: a text entry is saved as a Sensitive item (sealed,
+    /// no preview). A picture or files are saved as they are.
+    pub fn recent_promote_sensitive(&mut self, id: i64, list: ListId) {
+        self.promote_entry(id, list, true);
+    }
+
+    /// [`recent_promote_sensitive`](Self::recent_promote_sensitive) to the `target`th list of
+    /// [`RecentView::targets`].
+    pub fn recent_promote_sensitive_to(&mut self, id: i64, target: usize) {
+        if let Some(to) = self.save_targets().get(target) {
+            self.recent_promote_sensitive(id, to.id);
+        }
+    }
+
+    fn promote_entry(&mut self, id: i64, list: ListId, sensitive: bool) {
         let Some(entry) = self.recent_entries().into_iter().find(|e| e.id == id) else {
             return;
         };
@@ -374,6 +414,9 @@ where
         let now = self.clock.now();
         let mut note = None;
         let saved = match entry.kind {
+            RecentKind::Text if sensitive => {
+                capture::capture_sensitive_text(&mut self.store, &to, &entry.text, now)
+            }
             RecentKind::Text => {
                 let extras = self.store.recent_payload(entry.id).ok().flatten();
                 recent::promote(&mut self.store, &entry, extras.as_ref(), &to, now)

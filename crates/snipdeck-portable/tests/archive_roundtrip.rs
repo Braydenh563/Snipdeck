@@ -15,12 +15,22 @@ mod common;
 use std::io::Cursor;
 
 use common::*;
+use snipdeck_core::{CaseMode, Trigger, TriggerEnd, TriggerOptions};
 use snipdeck_portable::{BoardLayout, ExportOptions, ImportOptions, MergeStrategy, import_archive};
-use snipdeck_store::{BoardRepo, ItemRepo, ListRepo};
+use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, TriggerRepo};
 
 fn keep_boards() -> ImportOptions<'static> {
     ImportOptions {
         layout: BoardLayout::KeepBoards,
+        ..ImportOptions::default()
+    }
+}
+
+/// A restore: what a backup's own import does, so use counts and times carry over.
+fn restore_boards() -> ImportOptions<'static> {
+    ImportOptions {
+        layout: BoardLayout::KeepBoards,
+        merge: MergeStrategy::Restore,
         ..ImportOptions::default()
     }
 }
@@ -30,7 +40,7 @@ fn import(
     bytes: &[u8],
     opts: &ImportOptions<'_>,
 ) -> snipdeck_portable::ImportReport {
-    import_archive(store, Cursor::new(bytes), "backup", at(200), opts).unwrap()
+    import_archive(store, Cursor::new(bytes), "backup", at(10_000), opts).unwrap()
 }
 
 #[test]
@@ -39,7 +49,7 @@ fn round_trip_into_a_fresh_store_is_equal() {
     let bytes = export_bytes(&original, &ExportOptions::default());
 
     let mut fresh = store();
-    let report = import(&mut fresh, &bytes, &keep_boards());
+    let report = import(&mut fresh, &bytes, &restore_boards());
 
     assert_same(&snapshot(&fresh), &snapshot(&original));
     assert_eq!(report.boards_added, 2);
@@ -49,6 +59,40 @@ fn round_trip_into_a_fresh_store_is_equal() {
     assert!(!report.has_warnings(), "{:?}", report.warnings);
     assert_healthy(&fresh);
     assert_trash_empty(&fresh);
+}
+
+#[test]
+fn a_triggers_end_and_case_mode_round_trip() {
+    let mut original = sample_store();
+    let work = original.boards().unwrap().remove(0);
+    let replies = original.lists(work.id).unwrap().remove(0);
+    let items = original.items(replies.id).unwrap();
+    let options = |end, case| TriggerOptions { end, case };
+    let kept = [
+        ("sig", options(TriggerEnd::Delimiter, CaseMode::Adapt)),
+        (";plain", TriggerOptions::default()),
+        (";ci", options(TriggerEnd::Immediate, CaseMode::Ignore)),
+    ];
+    for (item, (text, o)) in items.iter().zip(kept) {
+        let t = Trigger::new(text).unwrap().with_options(o);
+        original.set_trigger(item.id, Some(&t)).unwrap();
+    }
+    let bytes = export_bytes(&original, &ExportOptions::default());
+    let mut fresh = store();
+    let report = import(&mut fresh, &bytes, &keep_boards());
+    assert!(!report.has_warnings(), "{:?}", report.warnings);
+    let read = |s: &snipdeck_store::Store| {
+        let mut all: Vec<(String, TriggerOptions)> = s
+            .triggers()
+            .unwrap()
+            .into_iter()
+            .map(|(t, _)| (t.as_str().to_owned(), t.options()))
+            .collect();
+        all.sort_by(|a, b| a.0.cmp(&b.0));
+        all
+    };
+    assert_eq!(read(&fresh), read(&original));
+    assert_eq!(read(&fresh).len(), 3);
 }
 
 #[test]
@@ -254,7 +298,7 @@ fn the_archive_is_a_zip_with_the_documented_entries() {
     }
     let manifest: serde_json::Value = serde_json::from_slice(&map["manifest.json"]).unwrap();
     assert_eq!(manifest["format"], "snipdeck-archive");
-    assert_eq!(manifest["format_version"], "1.2");
+    assert_eq!(manifest["format_version"], "1.3");
     assert_eq!(manifest["counts"]["boards"], 2);
     assert_eq!(manifest["counts"]["lists"], 5);
     assert_eq!(manifest["counts"]["items"], 6);
@@ -335,7 +379,8 @@ fn export_to_path_is_atomic_and_replaces_the_file() {
     let s = sample_store();
     snipdeck_portable::export_to_path(&s, at(5), &ExportOptions::default(), &path).unwrap();
     let mut fresh = store();
-    snipdeck_portable::import_archive_path(&mut fresh, &path, at(6), &keep_boards()).unwrap();
+    snipdeck_portable::import_archive_path(&mut fresh, &path, at(10_000), &restore_boards())
+        .unwrap();
     assert_same(&snapshot(&fresh), &snapshot(&s));
     let leftovers: Vec<_> = std::fs::read_dir(dir.path())
         .unwrap()

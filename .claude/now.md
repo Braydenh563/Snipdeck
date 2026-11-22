@@ -2,6 +2,12 @@
 Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 
 ## Decisions
+- 2026-11-22: Destructive acts follow DESIGN.md §5 from the UX audit branch: reversible acts (items, groups, Panel Clear list, lists, boards) act at once with Undo and no dialog; only irreversible ones (Empty Trash, tag delete, erase all) confirm. The PR's Clear-list confirmation and its three tests are replaced by the UX branch's Undo tests. Reason: one convention, held by tests; Trash keeps everything reversible. SPEC §134 follows.
+- 2026-11-22: Item noun in translations follows scripts/glossary.json (de Textbaustein, es fragmento, fr extrait, pt-BR trecho, ja スニペット, zh-Hans 片段), not the main audit's Eintrag/elemento. Reason: the glossary is enforced by `i18n.py check --strict` across every string and the merged catalogues already follow it; the i18n test now reads the glossary's avoid list. Owner may revisit in the translation review.
+- 2026-11-21: Editor "content changed" notice stays set after typing is reverted (no whole-text compare per key press on long items); it only warns. Reviewed and accepted.
+- 2026-11-16: A destructive dialog (delete, discard, delete for good) focuses its Cancel button when it opens, so Enter or Space cancels and the destructive button is one Tab away; supersedes the 2026-11-15 "card keeps focus" rule for dialogs only (MAIN-44, WCAG 2.4.3 and the dialog guidance that the least destructive action takes the first focus). Reason: a focus on the bare card gave a keyboard user no visible stop and no accessible name. The Recent consent question is not a Dialog and keeps its rule.
+- 2026-11-16: Inno MinVersion (10.0.18362) and the MSIX MinVersion stay; the tested minimum is documented in docs/packaging.md (only Windows 11 build 26300 run). Reason: DWM calls are gated by build number and fail soft (dwm_look.rs), and raising the floor changes 8+ user-facing files other workers are editing (PLATFORM-20).
+- 2026-11-16: no `snipdeck.com` console stub; the help text and docs say `start /wait`. Reason: it needs a second renamed binary in the installer, MSIX and release workflow, none buildable or testable off Windows (PLATFORM-22).
 - 2026-11-15: Recent consent question keeps focus on the card (Enter not wired, Esc = No) so a stray key cannot consent; overrides the earlier "Yes has focus" ask. Reason: consent safety, ux-auditor agreed.
 - 2026-11-15: Donation link stays in the Store build. Reason: Store Policy 10.8.2 (current) allows voluntary donations via a secure third-party purchase API when nothing is unlocked; Buy Me a Coffee in the browser is that. Owner: keep it if allowed.
 - 2026-11-15: Fable call refused by the plugin guard; audit runs on Opus instead (no workaround). Reason: guards are not bypassed.
@@ -95,8 +101,18 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - 2026-11-10 v1.1 spec (docs/reviews/v11-spec.md) decisions taken as proposed, owner asleep: Hello = one extra Hello prompt after a password unlock (in-memory sealed key; nothing persisted); password every 7 days, no setting; suggest-as-you-type matches triggers only, one suggestion, Tab inserts; tips pictures are English golden crops; importers drop the "Name (abbr)" title once triggers exist; date units d w mo y h min. Reason: safest defaults, reversible later.
 
 - 2026-11-12: Colour tool UI and the editor preview toggle are built by cloud worker sessions (branches claude/colour-tool, claude/editor-preview), merged into PR #5 by the coordinator. Reason: this machine fits one snipdeck_ui compile at a time, so local parallel builds OOM; the local colour workflow wf_8676d216-bbf is superseded and not resumed.
+- 2026-11-21: Data merge: "Back up now" keeps the data branch's manual backup (a file of its own) and drops PR #5's `replace` (overwrite today's). A separate file never destroys an earlier copy. Both folder features stay (the user-chosen backup folder and the Store copy-out).
 
 ## Inbox
+- 2026-11-21 (merge-main agent): a draft of control characters near DRAFT_TEXT_MAX_BYTES (128 KB) escapes to ~768 KB of JSON, over the 256 KB drafts file cap, so Drafts::save fails. Fix: cap on the encoded size (or size the file cap from the escape worst case), with a test.
+- 2026-11-21 (owner, verbatim): "dont stop and make sure no work is missed, I want absolutely everything done so that all I will have to do is test it myself"
+- 2026-11-16 owner: "I removed the key from github and Ive just made a developers account on the partner centre" -> SNIPDECK_LICENCE_PUBLIC_KEY secret removed (done); next owner steps: reserve name, set MSIX_* repo variables.
+- 2026-11-16 owner: name reserved (Store ID 9N358S63JBHH), MSIX_IDENTITY_NAME/PUBLISHER/PUBLISHER_DISPLAY_NAME repo variables set (verified from screenshot). Done.
+- 2026-11-16 owner: "i like option 1 but ive mever heard of that or used azure" (option 1 = auto-submit releases to the Store from GitHub Actions via Store Developer CLI). Plan: after the first manual Store submission; I draft the workflow + step-by-step Entra setup doc, owner commits the workflow and adds secrets.
+- 2026-11-16 owner: Partner Center now signed in as Entra tenant global admin (braydenh563.onmicrosoft.com); next: Entra app registration + Manager role (guide given in chat).
+- 2026-11-16 owner: Entra app "Snipdeck Store CI" registered (client 9619dca2-..., tenant 2aa21dc5-...); Seller ID 97391640; adding STORE_* repo secrets; pending: Entra app Manager role in Partner Center.
+- 2026-11-16 owner: could not find Partner Center "Microsoft Entra applications" tab (only Users tab as Entra admin). Parked until after first Store publish; resolve when drafting the auto-submit workflow.
+- 2026-11-16 owner: "dont stop at 85% but be very token efficient and try to have everything done"
 - 2026-11-16 owner: "so once you are finished all the issues and things found previously, and once all the fable audits are finished, I want you to fix absolutely everything they find. leave nothing undone or partly done. absolutely nothing left, and lemme know when everything is done, these fable checks are like the ultimate final check."
 - 2026-11-16 owner: "please run one fable agent at a time"
 - 2026-11-16 owner: "no visible way to uncollapse or expand the sidebar?? also that tooltip button in the 3rd last pushed commit image is overflowing"

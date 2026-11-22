@@ -14,6 +14,8 @@ export global ShortcutTexts {
     ];
     // Under the "Anywhere in Windows" group.
     out property <string> global-note: @tr("Change these in Settings.");
+    // Under the "Main window" and "Panel" groups: how far Undo and Redo reach.
+    out property <string> history-note: @tr("Undo and Redo reach the last 100 changes since Snipdeck started. They are forgotten when it closes or the library is erased. Text edits of sensitive items cannot be undone, and an item deleted for good is gone for good.");
     out property <[string]> titles: [
         // Anywhere in Windows.
         @tr("Show or hide the Panel"),
@@ -68,7 +70,7 @@ export global ShortcutTexts {
         @tr("Next list"),
         @tr("Previous list"),
         @tr("Search"),
-        @tr("Open the item's menu"),
+        @tr("Open the item’s menu"),
         @tr("Edit the item"),
         @tr("Edit the item"),
         @tr("Duplicate the item"),
@@ -89,7 +91,7 @@ export global ShortcutTexts {
         @tr("Fold or unfold a group"),
         @tr("Rename a group"),
         @tr("Move the group up or down"),
-        @tr("Ungroup (the group's menu)"),
+        @tr("Ungroup (the group’s menu)"),
         // Picker.
         @tr("Move through the results"),
         @tr("Paste the result"),

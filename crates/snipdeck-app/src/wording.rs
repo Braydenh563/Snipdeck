@@ -2,26 +2,31 @@
 //!
 //! The Panel's own strings are `@tr` in Slint and translate with the bundled catalogs. Rust
 //! cannot reach those catalogs, so what it shows goes through a UI-crate global that holds the
-//! `@tr` text: `ToastTexts` (every toast, read with [`toast_text`]), `TrayTexts` ([`tray_labels`])
-//! and `ImportTexts`. The Panel's item and kebab menus below are still plain English (listed in
-//! `docs/HANDOVER.md`).
+//! `@tr` text: `ToastTexts` (every toast, read with [`toast_text`]), `TrayTexts` ([`tray_labels`]),
+//! `ImportTexts` and `NameTexts` (colour labels, list icons and the spoken key names). The Panel's
+//! item and kebab menus below are still plain English (listed in `docs/HANDOVER.md`).
 
 use slint::Global;
 use snipdeck_platform::tray::TrayLabels;
 use snipdeck_portable::{Note, Warning};
 use snipdeck_ui::{
-    FormTexts, ImportTexts, MenuTexts, PanelWindow, SettingsPage, TemplateTexts, ToastTexts,
-    TrayTexts,
+    FormTexts, ImportTexts, MenuTexts, NameTexts, PanelWindow, SettingsPage, StarterTexts,
+    TemplateTexts, ToastTexts, TrayTexts,
 };
 
 use snipdeck_core::{
     ItemKind, ItemLabel, ListIcon,
-    template::{PLACEHOLDER_LIST, TemplateErrorKind, UnitHint, usage},
+    template::{
+        FORMAT_SPECIFIERS, PLACEHOLDER_LIST, SnippetProblem, TemplateErrorKind, UnitHint,
+        transform::Transform, usage,
+    },
 };
 
 use crate::{
+    commands::{KeyWords, PHRASES},
     item_editor::{AttachmentView, EditorProblem, SaveFailure, TemplateProblem},
     settings::{DockEdge, Theme},
+    starter::StarterWords,
     toast::ToastMessage,
 };
 
@@ -31,6 +36,15 @@ use crate::{
 pub fn startup_failure_text(window: &PanelWindow, details: &str) -> String {
     ToastTexts::get(window)
         .invoke_startup_failed(details.into())
+        .into()
+}
+
+/// The text of the message box a second launch shows when the running Snipdeck does not answer,
+/// in the language selected now.
+#[must_use]
+pub fn not_answering_text(window: &PanelWindow) -> String {
+    ToastTexts::get(window)
+        .invoke_already_running_not_answering()
         .into()
 }
 
@@ -54,49 +68,76 @@ pub fn tray_labels(window: &PanelWindow) -> TrayLabels {
 }
 
 /// The name of an item colour label: shown beside the colour wherever it appears, so the colour is
-/// never the only cue.
+/// never the only cue. Worded by the UI crate's `NameTexts` global, in the language selected now.
 #[must_use]
-pub fn item_label_name(label: ItemLabel) -> &'static str {
-    match label {
-        ItemLabel::Blue => "Blue",
-        ItemLabel::Teal => "Teal",
-        ItemLabel::Green => "Green",
-        ItemLabel::Amber => "Amber",
-        ItemLabel::Orange => "Orange",
-        ItemLabel::Red => "Red",
-        ItemLabel::Violet => "Violet",
-        ItemLabel::Slate => "Slate",
-    }
+pub fn item_label_name<C>(window: &C, label: ItemLabel) -> String
+where
+    for<'a> NameTexts<'a>: Global<'a, C>,
+{
+    let index = ItemLabel::ALL.iter().position(|l| *l == label).unwrap_or(0);
+    NameTexts::get(window)
+        .invoke_label(i32::try_from(index).unwrap_or(0))
+        .into()
 }
 
 /// The spoken name of a list icon, for the icon picker.
 #[must_use]
-pub fn list_icon_name(icon: ListIcon) -> &'static str {
-    match icon {
-        ListIcon::Folder => "Folder",
-        ListIcon::Star => "Star",
-        ListIcon::Heart => "Heart",
-        ListIcon::Briefcase => "Briefcase",
-        ListIcon::House => "House",
-        ListIcon::User => "Person",
-        ListIcon::EnvelopeSimple => "Envelope",
-        ListIcon::ChatCircle => "Chat",
-        ListIcon::Phone => "Phone",
-        ListIcon::CalendarBlank => "Calendar",
-        ListIcon::ShoppingCart => "Shopping cart",
-        ListIcon::CreditCard => "Credit card",
-        ListIcon::Code => "Code",
-        ListIcon::TerminalWindow => "Terminal",
-        ListIcon::BookOpen => "Book",
-        ListIcon::Lightbulb => "Light bulb",
-        ListIcon::Flag => "Flag",
-        ListIcon::BookmarkSimple => "Bookmark",
-        ListIcon::Globe => "Globe",
-        ListIcon::MapPin => "Map pin",
-        ListIcon::Camera => "Camera",
-        ListIcon::MusicNote => "Music",
-        ListIcon::Wrench => "Wrench",
-        ListIcon::RocketLaunch => "Rocket",
+pub fn list_icon_name<C>(window: &C, icon: ListIcon) -> String
+where
+    for<'a> NameTexts<'a>: Global<'a, C>,
+{
+    let index = ListIcon::ALL.iter().position(|i| *i == icon).unwrap_or(0);
+    NameTexts::get(window)
+        .invoke_icon(i32::try_from(index).unwrap_or(0))
+        .into()
+}
+
+/// What a new library starts with, in the language selected now.
+#[must_use]
+pub fn starter_words<C>(window: &C) -> StarterWords
+where
+    for<'a> StarterTexts<'a>: Global<'a, C>,
+{
+    let texts = StarterTexts::get(window);
+    let card = |i: i32| {
+        (
+            texts.invoke_card_title(i).to_string(),
+            texts.invoke_card_text(i).to_string(),
+        )
+    };
+    StarterWords {
+        board: texts.get_board().into(),
+        list: texts.get_list().into(),
+        getting_started: texts.get_getting_started().into(),
+        cards: [card(0), card(1), card(2), card(3), card(4)],
+        new_list: texts.get_new_list().into(),
+        new_board: texts.get_new_board().into(),
+    }
+}
+
+/// How assistive technology reads the keys of a shortcut, in the language selected now.
+#[must_use]
+pub fn key_words<C>(window: &C) -> KeyWords
+where
+    for<'a> NameTexts<'a>: Global<'a, C>,
+{
+    let texts = NameTexts::get(window);
+    let word = |i: i32| texts.invoke_key(i).to_string();
+    KeyWords {
+        control: word(0),
+        enter: word(1),
+        delete: word(2),
+        escape: word(3),
+        plus: word(4),
+        comma: word(5),
+        slash: word(6),
+        phrases: (0..PHRASES.len())
+            .map(|i| {
+                texts
+                    .invoke_phrase(i32::try_from(i).unwrap_or(0))
+                    .to_string()
+            })
+            .collect(),
     }
 }
 
@@ -112,6 +153,7 @@ pub fn import_warning_text(window: &SettingsPage, warning: &Warning) -> String {
     let texts = ImportTexts::get(window);
     let count = |n: usize| i32::try_from(n).unwrap_or(i32::MAX);
     let name = |name: &str| entry_label(&texts, name);
+    let count_u64 = |n: u64| i32::try_from(n).unwrap_or(i32::MAX);
     let text = match warning {
         Warning::NewerMinorVersion { found } => texts.invoke_newer_minor_version(found.into()),
         Warning::UnknownEntries { count: n } => texts.invoke_unknown_entries(count(*n)),
@@ -119,8 +161,9 @@ pub fn import_warning_text(window: &SettingsPage, warning: &Warning) -> String {
         Warning::SensitiveNeedKey { count: n } => texts.invoke_sensitive_need_key(count(*n)),
         Warning::CannotDecrypt { title } => texts.invoke_cannot_decrypt(title.into()),
         Warning::SensitiveOmittedByExport { count: n } => {
-            texts.invoke_sensitive_omitted_by_export(i32::try_from(*n).unwrap_or(i32::MAX))
+            texts.invoke_sensitive_omitted_by_export(count_u64(*n))
         }
+        Warning::SkippedByExport { count: n } => texts.invoke_skipped_by_export(count_u64(*n)),
         Warning::LossyText { name: n } => texts.invoke_lossy_text(name(n)),
         Warning::TooLarge { name: n, size } => {
             texts.invoke_too_large(name(n), size_text(window, *size).into())
@@ -129,6 +172,9 @@ pub fn import_warning_text(window: &SettingsPage, warning: &Warning) -> String {
         Warning::Unreadable { name: n, .. } => texts.invoke_unreadable(name(n)),
         Warning::SymlinkSkipped { name: n } => texts.invoke_symlink_skipped(name(n)),
         Warning::NonTextSkipped { count: n } => texts.invoke_non_text_skipped(count(*n)),
+        Warning::DeeperFoldersSkipped { count: n } => {
+            texts.invoke_deeper_folders_skipped(count(*n))
+        }
         Warning::Truncated { .. } => texts.invoke_truncated(),
         Warning::Note(note) => note_text(&texts, note, &count),
     };
@@ -175,6 +221,9 @@ fn note_text(
             texts.invoke_note_form_field(entry_label(texts, what), name.into())
         }
         Note::ColumnsCut { file } => texts.invoke_note_columns_cut(file.into()),
+        Note::TriggerTooShort { title, trigger } => {
+            texts.invoke_note_trigger_too_short(title.into(), trigger.into())
+        }
         Note::TriggerTaken { title, trigger } => {
             texts.invoke_note_trigger_taken(title.into(), trigger.into())
         }
@@ -249,9 +298,18 @@ where
         ToastMessage::HelloEnrolFailed => t.invoke_hello_enrol_failed(),
         ToastMessage::MasterPasswordRemovedNotOpen => t.invoke_master_password_removed_not_open(),
         ToastMessage::LockedEditorClosed => t.invoke_locked_editor_closed(),
+        ToastMessage::LockedEditorKept => t.invoke_locked_editor_kept(),
         ToastMessage::LockedFillClosed => t.invoke_locked_fill_closed(),
         ToastMessage::UnlockFirst => t.invoke_unlock_first(),
         ToastMessage::Saved { list } => t.invoke_saved(list.into()),
+        ToastMessage::NoColourOnClipboard => t.invoke_no_colour_on_clipboard(),
+        ToastMessage::AlreadySaved { list } => t.invoke_already_saved(list.into()),
+        ToastMessage::NameNotExact { name, hex } => {
+            t.invoke_name_not_exact(name.into(), hex.into())
+        }
+        ToastMessage::SavedAgain { list, was_in } => {
+            t.invoke_saved_again(list.into(), was_in.into())
+        }
         ToastMessage::AddedTo { list, .. } => t.invoke_added_to(list.into()),
         ToastMessage::AddedSomeFiles { list } => t.invoke_added_some_files(list.into()),
         ToastMessage::FilesNotAdded => t.invoke_files_not_added(),
@@ -271,6 +329,10 @@ where
         ToastMessage::PasteNextFinished => t.invoke_paste_next_finished(),
         ToastMessage::HotkeyInUse { chord } => t.invoke_hotkey_in_use(chord.into()),
         ToastMessage::HotkeyInvalid { chord } => t.invoke_hotkey_invalid(chord.into()),
+        ToastMessage::HotkeyOwnAction { chord } => t.invoke_hotkey_own_action(chord.into()),
+        ToastMessage::HotkeyRefused { chord, code } => {
+            t.invoke_hotkey_refused(chord.into(), i32::try_from(*code).unwrap_or(i32::MAX))
+        }
         ToastMessage::HotkeyUnavailable { chord } => t.invoke_hotkey_unavailable(chord.into()),
         ToastMessage::HotkeysFailed { chords } => t.invoke_hotkeys_failed(chords.into()),
         ToastMessage::PanelHidden { chord } => {
@@ -282,12 +344,23 @@ where
         ToastMessage::SettingsNotSaved => t.invoke_settings_not_saved(),
         ToastMessage::SettingsDamaged => t.invoke_settings_damaged(),
         ToastMessage::SettingsUnreadable => t.invoke_settings_unreadable(),
+        ToastMessage::LibrarySetAside { folder, has_backup } => {
+            t.invoke_library_set_aside(folder.into(), *has_backup)
+        }
         ToastMessage::ClipboardWatchFailed => t.invoke_clipboard_watch_failed(),
         ToastMessage::ItemsTrashed { count: n } => t.invoke_items_trashed(count(*n)),
         ToastMessage::ListTrashed { name } => t.invoke_list_trashed(name.into()),
         ToastMessage::BoardTrashed { name } => t.invoke_board_trashed(name.into()),
         ToastMessage::Restored { count: n } => t.invoke_restored(count(*n)),
         ToastMessage::Undone { action } => t.invoke_undone(action_word(&t, *action)),
+        ToastMessage::GroupNeedsList => t.invoke_group_needs_list(),
+        ToastMessage::GroupColourFilter => t.invoke_group_colour_filter(),
+        ToastMessage::GroupNothing => t.invoke_group_nothing(),
+        ToastMessage::GroupTooDeep => t.invoke_group_too_deep(),
+        ToastMessage::TagDeleted { name } => t.invoke_tag_deleted(name.into()),
+        ToastMessage::TagMerged { from, into } => t.invoke_tag_merged(from.into(), into.into()),
+        ToastMessage::UndoStopped => t.invoke_undo_stopped(),
+        ToastMessage::HistoryStepLost => t.invoke_history_step_lost(),
         ToastMessage::Redone { action } => t.invoke_redone(action_word(&t, *action)),
         ToastMessage::ItemsMoved { count: n, list } => t.invoke_items_moved(count(*n), list.into()),
         ToastMessage::ItemPlaced { position, total } => {
@@ -298,6 +371,16 @@ where
         ToastMessage::LibraryProblem => t.invoke_library_problem(),
         ToastMessage::CrashedLastTime => t.invoke_crashed_last_time(),
         ToastMessage::BackupMade => t.invoke_backup_made(),
+        ToastMessage::BackupMadeSkipping { count: n, first } => {
+            t.invoke_backup_made_skipping(count(*n), first.into())
+        }
+        ToastMessage::BackupShrunk { was, now } => t.invoke_backup_shrunk(count(*was), count(*now)),
+        ToastMessage::ExportedSkipping {
+            file,
+            count: n,
+            first,
+        } => t.invoke_exported_skipping(file.into(), count(*n), first.into()),
+        ToastMessage::ArchiveBusy => t.invoke_archive_busy(),
         ToastMessage::BackupFailed(cause) => t.invoke_backup_failed(cause.code()),
         ToastMessage::DailyBackupFailed(cause) => t.invoke_daily_backup_failed(cause.code()),
         ToastMessage::TrashPurgeFailed => t.invoke_trash_purge_failed(),
@@ -328,6 +411,7 @@ where
         ToastMessage::FolderNotOpened => t.invoke_folder_not_opened(),
         ToastMessage::LinkNotOpened => t.invoke_link_not_opened(),
         ToastMessage::AutostartFailed => t.invoke_autostart_failed(),
+        ToastMessage::StoreDataReminder => t.invoke_store_data_reminder(),
         ToastMessage::AutostartSwitchedOff => t.invoke_autostart_switched_off(),
         ToastMessage::AutostartPolicy => t.invoke_autostart_policy(),
         ToastMessage::CannotOpenLog => t.invoke_cannot_open_log(),
@@ -356,6 +440,12 @@ where
         ToastMessage::BoardSaved => t.invoke_board_saved(),
         ToastMessage::RecentDeleted => t.invoke_recent_deleted(),
         ToastMessage::RecentCleared => t.invoke_recent_cleared(),
+        ToastMessage::ExportedSome {
+            file,
+            written,
+            total,
+        } => t.invoke_exported_some(file.into(), count(*written), count(*total)),
+        ToastMessage::ItemsTagged { count: n, added } => t.invoke_items_tagged(count(*n), *added),
         ToastMessage::PickerRecentsCleared => t.invoke_picker_recents_cleared(),
         ToastMessage::DockSet(edge) => t.invoke_dock_set(match edge {
             None => 0,
@@ -369,6 +459,10 @@ where
         ToastMessage::IconSaved { name } => t.invoke_icon_saved(name.into()),
         ToastMessage::EyedropFailed => t.invoke_eyedrop_failed(),
         ToastMessage::EyedropHdr { hex } => t.invoke_eyedrop_hdr(hex.into()),
+        ToastMessage::EyedropHdrCopied { hex } => t.invoke_eyedrop_hdr_copied(hex.into()),
+        ToastMessage::EyedropRefused => t.invoke_eyedrop_refused(),
+        ToastMessage::EyedropEnded { timed_out } => t.invoke_eyedrop_ended(*timed_out),
+        ToastMessage::EyedropKeysBusy { keys } => t.invoke_eyedrop_keys_busy(keys.into()),
     };
     text.into()
 }
@@ -416,9 +510,6 @@ where
     t.invoke_redo_tip(word).into()
 }
 
-/// The label of a toast's undo button.
-pub const UNDO_LABEL: &str = "Undo";
-
 /// The label of a toast's Edit button, in the language shown. `window` is any window of the UI.
 #[must_use]
 pub fn toast_edit_label<C>(window: &C) -> String
@@ -427,12 +518,6 @@ where
 {
     ToastTexts::get(window).invoke_edit_button().into()
 }
-
-/// The label of the crash toast's button.
-pub const OPEN_LOG_LABEL: &str = "Open log";
-
-/// The label of the "Switch this list to Manual order?" toast's button.
-pub const SWITCH_LABEL: &str = "Switch";
 
 /// Why an import could not be previewed, in words for the page, in the language selected for the
 /// UI (the sentences are in the `ImportTexts` global; `window` is the Settings page).
@@ -472,17 +557,24 @@ pub fn history_source_name(window: &SettingsPage) -> String {
     ImportTexts::get(window).invoke_history_name().into()
 }
 
-/// The label of `toast`'s button; empty when it has none.
+/// The label of `toast`'s button in the language shown ("Undo", "Open log", "Switch"); empty when
+/// it has none. `window` is any window of the UI.
 #[must_use]
-pub const fn toast_button_text(toast: &crate::controller::ToastView) -> &'static str {
-    if toast.undo {
-        UNDO_LABEL
+pub fn toast_button_text<C>(window: &C, toast: &crate::controller::ToastView) -> String
+where
+    for<'a> ToastTexts<'a>: Global<'a, C>,
+{
+    let t = ToastTexts::get(window);
+    if toast.purge {
+        t.invoke_purge_button().into()
+    } else if toast.undo {
+        t.invoke_undo_button().into()
     } else if toast.open_log {
-        OPEN_LOG_LABEL
+        t.invoke_open_log_button().into()
     } else if matches!(toast.message, ToastMessage::SwitchToManual { .. }) {
-        SWITCH_LABEL
+        t.invoke_switch_button().into()
     } else {
-        ""
+        String::new()
     }
 }
 
@@ -507,7 +599,7 @@ pub fn paste_stack_idle_text(window: &PanelWindow) -> String {
     MenuTexts::get(window).invoke_app_paste_stack_idle().into()
 }
 
-/// The words of a row of the Panel's kebab menu. The dock row reads "Undock the panel" while the
+/// The words of a row of the Panel's kebab menu. The dock row reads "Undock the Panel" while the
 /// Panel is `docked`, else it names the edge it would dock to (`dock_target`).
 #[must_use]
 pub fn app_menu_text(
@@ -633,7 +725,6 @@ pub fn transform_name(
     window: &PanelWindow,
     transform: snipdeck_core::template::transform::Transform,
 ) -> String {
-    use snipdeck_core::template::transform::Transform;
     let t = MenuTexts::get(window);
     match transform {
         Transform::Plain => t.invoke_paste_as_plain(),
@@ -642,6 +733,12 @@ pub fn transform_name(
         Transform::Title => t.invoke_paste_as_title(),
         Transform::Trimmed => t.invoke_paste_as_trimmed(),
         Transform::Slug => t.invoke_paste_as_slug(),
+        Transform::Sentence => t.invoke_paste_as_sentence(),
+        Transform::Camel => t.invoke_paste_as_camel(),
+        Transform::Snake => t.invoke_paste_as_snake(),
+        Transform::UrlEncode => t.invoke_paste_as_urlencode(),
+        Transform::FirstWord => t.invoke_paste_as_firstword(),
+        Transform::LastWord => t.invoke_paste_as_lastword(),
         Transform::Json => t.invoke_paste_as_json(),
         Transform::Quote => t.invoke_paste_as_quote(),
         Transform::Code => t.invoke_paste_as_code(),
@@ -672,6 +769,13 @@ pub fn symbol_menu_entry(
         SymbolMenuEntry::CopyPng => (t.invoke_symbol_copy_png(), "", false),
         SymbolMenuEntry::SaveAsSvg => (t.invoke_symbol_save_svg(), "", false),
         SymbolMenuEntry::SaveAsPng => (t.invoke_symbol_save_png(), "", false),
+        SymbolMenuEntry::PngSize(px) => (
+            t.invoke_symbol_png_size(i32::try_from(*px).unwrap_or(0)),
+            "",
+            false,
+        ),
+        SymbolMenuEntry::PngInk { dark } => (t.invoke_symbol_png_ink(*dark), "", false),
+        SymbolMenuEntry::Tone(n) => (t.invoke_symbol_tone(i32::from(*n)), "", false),
         SymbolMenuEntry::Separator => {
             return snipdeck_ui::MenuEntry {
                 separator: true,
@@ -813,7 +917,7 @@ where
 }
 
 /// What is wrong with a template, in the language selected for the UI (the sentences are in the
-/// `TemplateTexts` global). The result has no final full stop: "This template can't be read: {}."
+/// `TemplateTexts` global). The result has no final full stop: "This template can’t be read: {}."
 /// adds it. The syntax of a placeholder is passed in as it is written, never translated.
 #[must_use]
 pub fn template_problem_text<C>(window: &C, problem: &TemplateProblem) -> String
@@ -832,7 +936,7 @@ where
     let text = match kind {
         K::UnmatchedClose => t.invoke_unmatched_close(code("}"), code("}}")),
         K::Unterminated => t.invoke_unterminated(code("{"), code("{{")),
-        K::EmptyPlaceholder => t.invoke_empty_placeholder(code("{}")),
+        K::EmptyPlaceholder => t.invoke_empty_placeholder(code("{}"), code("{{"), code("}}")),
         K::EmptyName => t.invoke_empty_name(code("{field:Name}")),
         K::UnclosedSection => t.invoke_unclosed_section(code("{optional:…}"), code("{/optional}")),
         K::NestedSection => t.invoke_nested_section(),
@@ -840,7 +944,8 @@ where
         K::NoOptions => t.invoke_no_options(code("{choice:Name|a|b}")),
         K::EmptyOption => t.invoke_empty_option(),
         K::DuplicateOption { option } => t.invoke_duplicate_option(code(option)),
-        K::TooManyParts => t.invoke_too_many_parts(code("{field:Name|default}")),
+        K::TooManyParts => t.invoke_too_many_parts(code("{field:Name|default}"), code("\\|")),
+        K::TwoStartOptions => t.invoke_two_start_options(code("*")),
         K::DuplicateCursor => t.invoke_duplicate_cursor(code("{cursor}")),
         K::TrailingPercent => t.invoke_trailing_percent(code("%"), code("%%")),
         K::Unknown { found, suggestion } => {
@@ -879,10 +984,77 @@ where
         K::TooManyOffsets { max } => t.invoke_too_many_offsets(int(*max)),
         K::UnknownFormatSpecifier { specifier } => t.invoke_unknown_format_specifier(
             code(&format!("%{specifier}")),
-            "%Y %y %m %B %b %d %e %j %A %a %H %I %M %S %p %z %F %T %%".into(),
+            FORMAT_SPECIFIERS.into(),
         ),
+        K::UnknownKey { found } => {
+            t.invoke_unknown_key(code(found), code("{key:tab}"), code("{key:enter}"))
+        }
+        K::CursorBeforeKey => t.invoke_cursor_before_key(code("{cursor}"), code("{key:…}")),
+        K::BadClipboardPosition { max } => {
+            t.invoke_bad_clipboard_position(code("{clipboard:N}"), int(*max))
+        }
+        K::UnknownTransform { found } => {
+            t.invoke_unknown_transform(code(found), Transform::keyword_list().into())
+        }
+        K::BadCalc => t.invoke_bad_calc(code("{calc:…}")),
+        K::CalcUnknownName { name } => {
+            t.invoke_calc_unknown_name(code(name), code(&format!("{{number:{name}}}")))
+        }
+        K::ValueUnknownName { name } => {
+            t.invoke_value_unknown_name(code(&format!("{{value:{name}}}")), code(name))
+        }
+        K::Snippet { name, problem } => match problem {
+            SnippetProblem::NotFound => t.invoke_snippet_not_found(code(name)),
+            SnippetProblem::Ambiguous => t.invoke_snippet_ambiguous(code(name)),
+            SnippetProblem::Unusable => t.invoke_snippet_unusable(code(name)),
+            SnippetProblem::Cycle => t.invoke_snippet_cycle(code(name)),
+            SnippetProblem::TooMuch => t.invoke_snippet_too_much(
+                int(snipdeck_core::template::MAX_SNIPPET_DEPTH),
+                int(snipdeck_core::template::MAX_SNIPPETS),
+            ),
+            SnippetProblem::Unavailable => t.invoke_snippet_unavailable(code(name)),
+        },
+        K::InSnippet { name, error } => {
+            let inner = template_problem_text(window, &TemplateProblem::Parse((**error).clone()));
+            t.invoke_in_snippet(code(name), inner.into())
+        }
     };
     text.into()
+}
+
+/// The "Already saved" dialog's body: which item holds the text and where.
+#[must_use]
+pub fn duplicate_text<C>(window: &C, found: &crate::duplicate::Duplicate) -> String
+where
+    for<'a> FormTexts<'a>: Global<'a, C>,
+{
+    FormTexts::get(window)
+        .invoke_duplicate_body(found.title.as_str().into(), found.list_name.as_str().into())
+        .into()
+}
+
+/// The four help lines under the editor's placeholder chips: the choice default, the limits, the
+/// escapes and the transform list. Each is built from the engine's own constants and enum, so the
+/// help cannot drift from what the parser does.
+#[must_use]
+pub fn template_help_texts<C>(window: &C) -> [String; 4]
+where
+    for<'a> TemplateTexts<'a>: Global<'a, C>,
+{
+    use snipdeck_core::template::{MAX_OFFSETS, MAX_PROMPTS, MAX_SNIPPET_DEPTH};
+    let t = TemplateTexts::get(window);
+    [
+        t.invoke_choice_help("`*`".into()).into(),
+        t.invoke_limits_help(int(MAX_PROMPTS), int(MAX_OFFSETS), int(MAX_SNIPPET_DEPTH))
+            .into(),
+        t.invoke_escapes_help("`{{` `}}`".into(), "`\\|` `\\{` `\\}`".into())
+            .into(),
+        t.invoke_transforms_help(
+            Transform::keyword_list().into(),
+            "`{clipboard|upper}`".into(),
+        )
+        .into(),
+    ]
 }
 
 /// Why the item editor refuses something, in words.
@@ -901,6 +1073,10 @@ where
         EditorProblem::ContentTooLong { max_kb } => t.invoke_content_too_long(int(*max_kb)),
         EditorProblem::TriggerInvalid => t.invoke_trigger_invalid(),
         EditorProblem::TriggerTaken => t.invoke_trigger_taken(),
+        EditorProblem::TriggerTooShort => t.invoke_trigger_too_short(),
+        EditorProblem::TriggerOneCharacter => t.invoke_trigger_one_character(),
+        EditorProblem::TriggerHides { title } => t.invoke_trigger_hides(title.as_str().into()),
+        EditorProblem::TriggerHidden { title } => t.invoke_trigger_hidden(title.as_str().into()),
         EditorProblem::LinkNeedsScheme => t.invoke_link_needs_scheme(),
         EditorProblem::LinkHasSpace => t.invoke_link_has_space(),
         EditorProblem::Template(why) => {

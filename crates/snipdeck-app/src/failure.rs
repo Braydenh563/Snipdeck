@@ -12,8 +12,10 @@ use snipdeck_store::{Error as Store, Trouble, crypto::CryptoError};
 pub enum Cause {
     /// The disk is full.
     DiskFull,
-    /// The file is open in another program, or may not be written (permission, read-only).
+    /// The file is open in another program.
     InUse,
+    /// The file or folder may not be written: a missing permission or a read-only disk.
+    NotAllowed,
     /// The library is locked behind the master password.
     Locked,
     /// The file is not a Snipdeck archive (or is damaged).
@@ -22,6 +24,8 @@ pub enum Cause {
     TooNew,
     /// An item, or the attachments together, are too big for a backup or an export.
     TooBig,
+    /// Another backup or export is still running (nothing was written; try again later).
+    Busy,
     /// Nothing more specific is known.
     Other,
 }
@@ -38,6 +42,8 @@ impl Cause {
             Self::NotArchive => 4,
             Self::TooNew => 5,
             Self::TooBig => 6,
+            Self::Busy => 7,
+            Self::NotAllowed => 8,
         }
     }
 
@@ -67,7 +73,7 @@ impl Cause {
             Portable::FormatTooNew { .. } => Self::TooNew,
             Portable::ItemTooLarge { .. }
             | Portable::LimitExceeded {
-                what: "total uncompressed size",
+                what: snipdeck_portable::TOTAL_SIZE,
                 ..
             } => Self::TooBig,
             Portable::NotAnArchive(_)
@@ -88,6 +94,7 @@ impl Cause {
         match trouble {
             Trouble::DiskFull => Self::DiskFull,
             Trouble::InUse => Self::InUse,
+            Trouble::NotAllowed => Self::NotAllowed,
             Trouble::Other => Self::Other,
         }
     }
@@ -107,7 +114,7 @@ mod tests {
         );
         assert_eq!(
             Cause::of_io(&Io::from(ErrorKind::PermissionDenied)),
-            Cause::InUse
+            Cause::NotAllowed
         );
         assert_eq!(Cause::of_io(&Io::from(ErrorKind::NotFound)), Cause::Other);
         assert_eq!(Cause::of_store(&Store::EncryptionLocked), Cause::Locked);
@@ -153,7 +160,7 @@ mod tests {
     #[test]
     fn a_library_over_the_total_is_too_big_and_names_no_item() {
         let error = Portable::LimitExceeded {
-            what: "total uncompressed size",
+            what: snipdeck_portable::TOTAL_SIZE,
             limit: 8,
         };
         assert_eq!(Cause::of_portable(&error), Cause::TooBig);

@@ -7,16 +7,15 @@
 
 use std::time::Duration;
 
-use snipdeck_core::{
-    BoardId, ItemId, ListId, Timestamp,
-    template::{Locale, TimeZone},
-};
+use snipdeck_core::{BoardId, ItemId, ListId, Timestamp, template::TimeZone};
 use snipdeck_platform::{
     pipeline::{Clipboard, Keyboard, Timing},
     system_look::SystemLook,
     tray::TrayEvent,
 };
+use snipdeck_store::Trashable;
 
+mod archive_ctl;
 mod colour_ctl;
 mod colour_main;
 mod commands_ctl;
@@ -45,13 +44,14 @@ mod trigger_ctl;
 mod use_ctl;
 mod views;
 
+pub use archive_ctl::{ArchiveEnd, Begun, spawn as spawn_archive};
 pub use colour_ctl::{ColourView, SaveList, SaveTarget};
 pub use colour_main::{ColourBlock, colour_formats};
 pub use create_ctl::DropRun;
 pub use history_ctl::HistoryView;
 pub use library::Library;
 pub use lock_ctl::{MasterProblem, MasterState};
-pub use main_ctl::{BoardMenuEntry, MainAction, MainScreen, TagChoice, TagRenameError};
+pub use main_ctl::{BoardMenuEntry, FilterChip, MainAction, MainScreen, TagChoice, TagRenameError};
 pub use panel::{
     APP_MENU, AppGroup, AppMenuEntry, FrameMode, HelpTopic, ItemMenuEntry, LIST_MENU, ListMenuEntry,
 };
@@ -60,9 +60,9 @@ pub use settings_ctl::{ImportKind, ImportPreview, ImportProblem, ImportSource};
 pub use symbol_ctl::{IconExport, IconSave, SaveOutcome, SymbolChoice, SymbolMenuEntry};
 pub use trigger_ctl::{HintOutcome, SkipReason, TypedOutcome};
 pub use views::{
-    BoardDeleteView, ChooseEntry, ChooseLabel, ChooseMenu, ClearListView, Effect, FillSubmission,
-    FillView, ListDeleteView, PickerDetail, PickerView, SettingsAction, StackView, ToastPhase,
-    ToastView, UseResult, View,
+    BoardDeleteView, CalendarView, ChooseEntry, ChooseLabel, ChooseMenu, ClearListView, Effect,
+    FillSubmission, FillView, ListDeleteView, PickerDetail, PickerView, SettingsAction, StackView,
+    ToastPhase, ToastView, UseResult, View,
 };
 
 use crate::{
@@ -99,6 +99,18 @@ pub const TOAST_ERROR_HOLD: Duration = Duration::from_secs(10);
 /// An undoable toast (a delete) settles for this long, so that it is on screen for 5 s with its
 /// fade-in (SPEC §5.7a).
 pub const TOAST_UNDO_HOLD: Duration = Duration::from_millis(4880);
+/// A toast whose text is long stays at least this long plus [`TOAST_READ_PER_CHAR`] for each character of it
+/// (WCAG 2.2.1: about 17 characters a second, and a second to take it in), at most [`TOAST_READ_MAX`].
+pub const TOAST_READ_BASE: Duration = Duration::from_secs(1);
+/// The reading time of one character of a toast, see [`TOAST_READ_BASE`].
+pub const TOAST_READ_PER_CHAR: Duration = Duration::from_millis(60);
+/// The longest a toast is held for the length of its text.
+pub const TOAST_READ_MAX: Duration = Duration::from_secs(20);
+/// An error toast is not replaced by a plain message for this long (the message waits its turn; the error is
+/// kept in the history for good).
+pub const TOAST_ERROR_GUARD: Duration = Duration::from_secs(4);
+/// How many toasts the message history keeps.
+pub const TOAST_HISTORY: usize = 10;
 /// A hovered toast looks again after this long to see whether the pointer has left.
 pub const TOAST_HOVER_RECHECK: Duration = Duration::from_millis(500);
 /// A toast is held for at most this many rechecks (a minute), so a missed pointer-leave (its
@@ -177,6 +189,17 @@ struct Undo {
     /// The list that save made (the first colour saved makes "Colours"): Undo trashes it too, so
     /// no empty list is left behind.
     list: Option<ListId>,
+    /// The toast reports an Undo of an add (the items are in the Trash now): its button is
+    /// "Delete forever", which removes them for good (a secret pasted by mistake must not stay
+    /// on disk for 30 days).
+    purge: Vec<Trashable>,
+}
+
+impl Undo {
+    /// An Undo that takes something back (as opposed to the "Delete forever" offer).
+    fn takes_back(&self) -> bool {
+        self.purge.is_empty()
+    }
 }
 
 struct ActiveToast {
@@ -187,6 +210,10 @@ struct ActiveToast {
     hovered: bool,
     /// How many times the hold has been extended for `hovered`, at most [`TOAST_HOVER_RECHECKS`].
     extended: u32,
+    /// The length of the words on screen, in characters; sets how long the toast is held.
+    chars: usize,
+    /// An error toast in its first seconds: a plain message that arrives waits (`pending_toast`).
+    guard: bool,
 }
 
 /// The Panel's brain. See the module documentation.
@@ -217,6 +244,8 @@ pub struct Controller<S, C: Clipboard, K, T> {
     /// A sensitive Files item was pasted: its decrypted files wait in the temp folder until the
     /// lock or the quit deletes them.
     secret_files_pasted: bool,
+    /// A background deletion of those files was started (the lock): the quit waits for it.
+    secret_files_deleting: bool,
     /// When the decrypted files of that paste are deleted (the clipboard clear's timer); none
     /// when clearing is off, then the lock or the quit does it.
     secret_files_due: Option<Timestamp>,
@@ -236,6 +265,12 @@ pub struct Controller<S, C: Clipboard, K, T> {
     blur_hide: bool,
     toast: Option<ActiveToast>,
     toast_seq: u64,
+    /// Toasts waiting for the one on screen to go (`queue_toast`), in the order they came.
+    toast_queue: std::collections::VecDeque<Toast>,
+    /// A plain toast that arrived while a guarded error was on screen: it shows when the guard ends.
+    pending_toast: Option<Toast>,
+    /// The last toasts shown, oldest first (the Help menu's "Recent messages").
+    toast_history: std::collections::VecDeque<Toast>,
     /// The Picker, while it is open.
     picker: Option<PickerModel>,
     /// The scope the Picker was left on; the next summon starts there.
@@ -249,6 +284,9 @@ pub struct Controller<S, C: Clipboard, K, T> {
     fill_seq: u64,
     /// A typed trigger to erase once the fill form is confirmed.
     fill_erase: Option<views::FillErase>,
+    /// The text selected in the Target, read before a fill form took the focus, for the use
+    /// that follows the form (`{selection}`).
+    selection_for_use: Option<String>,
     /// Where "paste next" is in its run.
     queue: PasteQueue,
     /// The items marked for a paste stack, in marking order.
@@ -289,11 +327,24 @@ pub struct Controller<S, C: Clipboard, K, T> {
     /// The board menu's delete confirmation is asking about this board (the Main window draws
     /// it; no editor opens).
     board_delete: Option<BoardId>,
+    /// The Main window asks before deleting this folded group (its items are out of sight).
+    group_delete: Option<snipdeck_core::GroupId>,
+    /// The group the *Move to list* chooser was opened for and the groups nested in it, parents first: they are made
+    /// again, with their names, folds and colours, in the list the items land in. Empty: no group.
+    group_move: Vec<snipdeck_store::GroupRun>,
+    /// What the Main window's "Nest under…" chooser offers while it is open.
+    nest: Option<group_ctl::NestChooser>,
     /// List and board editors closed with the window that opened them: what was typed in each,
     /// for the next time it opens (this app session only).
     parked_editors: Vec<(main_ctl::EditorTarget, crate::main_window::EditorView)>,
+    /// Decoded thumbnails of the Main window's image rows (MAIN-21).
+    thumbs: crate::thumb_cache::ThumbCache,
+    /// What the Detail pane read for the item it shows last.
+    detail_body: Option<main_ctl::detail::DetailBody>,
     /// The item editor, while one is open.
     item_editor: Option<editor_ctl::ItemEditorSlot>,
+    /// A sensitive editor the lock took off the screen, sealed, until the unlock.
+    parked_editor: Option<editor_ctl::ParkedEditor>,
     item_editor_seq: u64,
     /// What the item editor needs from the machine (drafts folder, key protection, file dialog).
     editor_env: editor_ctl::EditorEnv,
@@ -313,14 +364,21 @@ pub struct Controller<S, C: Clipboard, K, T> {
     panel_revealed: Option<snipdeck_core::ItemId>,
     /// What Windows says about light / dark and high contrast.
     os_look: SystemLook,
-    /// The words a new list's and a new board's editor name starts from, in the language shown
-    /// (the Main window's binding sets them; see [`Controller::set_new_name_bases`]).
-    new_list_base: String,
-    new_board_base: String,
+    /// The words a new library starts with and a new list's and board's editor name starts from,
+    /// in the language shown (the windows' bindings set them; see
+    /// [`Controller::set_starter_words`]).
+    starter: crate::starter::StarterWords,
+    /// What a duplicate is titled, `{title}` standing for the original's (translated by the
+    /// window layer, see [`Controller::set_copy_title`]).
+    copy_title: String,
     /// The Colours tab: the colour looked at, the second contrast colour, and the home list's
     /// name in the language shown.
     colour: snipdeck_colour::Rgba8,
     colour_other: snipdeck_colour::Rgba8,
+    /// The colour before the last change, for the click that restores it.
+    colour_previous: Option<snipdeck_colour::Rgba8>,
+    /// The colour a drag began with, until it settles.
+    colour_gesture_from: Option<snipdeck_colour::Rgba8>,
     colours_list_name: String,
     /// The title of an item made from a picture with no file name, in the language shown.
     pasted_image_title: String,
@@ -376,6 +434,10 @@ pub struct Controller<S, C: Clipboard, K, T> {
     pending: Vec<Effect>,
     /// The master password: whether one is set, whether its prompt is open, the idle clock.
     lock: lock_ctl::LockState,
+    /// The archive step a worker is writing, if any.
+    archive: archive_ctl::ArchiveState,
+    /// Where each backup written is also copied (the Store build), if anywhere.
+    backup_copy_to: Option<std::path::PathBuf>,
     /// Switches the clipboard listener of the Recent inbox (see `recent_ctl.rs`).
     recent_gate: Option<snipdeck_platform::clipboard_watch::WatchGate>,
     /// The typed-trigger service (keyboard hook), once the host hands it over.
@@ -413,6 +475,8 @@ pub struct Controller<S, C: Clipboard, K, T> {
     /// the dock (the pointer is away, picking) nor a blur (the overlay takes the foreground)
     /// changes what the Panel is meanwhile.
     eyedropping: bool,
+    /// The run in progress picks the contrast section's other colour, not the current one.
+    eyedrop_for_other: bool,
 }
 
 /// Opens the folder of the crash reports in the file manager.
@@ -465,8 +529,6 @@ struct Session {
     /// A fingerprint of the chord each shortcut had when the "press it now" test heard it; a
     /// changed chord is untested again.
     hotkeys_heard: [Option<u64>; 4],
-    /// "Pause history" is on: the Recent inbox collects nothing until Snipdeck restarts.
-    history_paused: bool,
     /// The Panel's clock tab is the one selected.
     recent_open: bool,
     /// The last settings save failed and the user was told.
@@ -513,12 +575,14 @@ where
         model.set_paste_rules(settings.paste_rules());
         model.set_target(target.current());
         let shown_at = clock.now();
+        let idle_start = clock.elapsed();
         let pinned = settings.panel_pinned;
         let colour =
             colour_ctl::colour_or(&settings.colour_current, crate::settings::DEFAULT_COLOUR);
         let colour_other = colour_ctl::colour_or(&settings.colour_contrast_with, "#ffffff");
-        let mut main = MainModel::new();
+        let mut main = MainModel::with_cache(index_cache.clone());
         main.set_view_mode(ViewMode::from(settings.row_density));
+        main.set_section_sorts(settings.section_sorts());
         Ok(Self {
             store,
             services,
@@ -530,6 +594,7 @@ where
             paste_timer: false,
             on_paste_waiting: None,
             secret_files_pasted: false,
+            secret_files_deleting: false,
             secret_files_due: None,
             model,
             index_cache,
@@ -541,12 +606,16 @@ where
             blur_hide: false,
             toast: None,
             toast_seq: 0,
+            toast_queue: std::collections::VecDeque::new(),
+            pending_toast: None,
+            toast_history: std::collections::VecDeque::new(),
             picker: None,
             picker_scope: crate::picker::Scope::default(),
             picker_detail: false,
             picker_tag: None,
             fill: None,
             fill_erase: None,
+            selection_for_use: None,
             fill_seq: 0,
             queue: PasteQueue::default(),
             stack: Vec::new(),
@@ -567,8 +636,14 @@ where
             editor: None,
             editor_seq: 0,
             board_delete: None,
+            group_delete: None,
+            group_move: Vec::new(),
+            nest: None,
             parked_editors: Vec::new(),
+            thumbs: crate::thumb_cache::ThumbCache::new(crate::thumb_cache::ROW_CAPACITY),
+            detail_body: None,
             item_editor: None,
+            parked_editor: None,
             item_editor_seq: 0,
             editor_env: editor_ctl::EditorEnv::default(),
             log_opener: None,
@@ -579,10 +654,12 @@ where
             revealed: None,
             panel_revealed: None,
             os_look: SystemLook::default(),
-            new_list_base: crate::starter::NEW_LIST.to_owned(),
-            new_board_base: crate::starter::NEW_BOARD.to_owned(),
+            starter: crate::starter::StarterWords::english(),
+            copy_title: crate::starter::COPY_TITLE.to_owned(),
             colour,
             colour_other,
+            colour_previous: None,
+            colour_gesture_from: None,
             colours_list_name: String::from("Colours"),
             pasted_image_title: crate::capture::PASTED_IMAGE_TITLE.to_owned(),
             colour_made_list: None,
@@ -607,7 +684,9 @@ where
             dock_area_seen: None,
             fullscreen: false,
             pending: Vec::new(),
-            lock: lock_ctl::LockState::new(shown_at),
+            lock: lock_ctl::LockState::new(idle_start),
+            archive: archive_ctl::ArchiveState::default(),
+            backup_copy_to: None,
             recent_gate: None,
             typing: None,
             typing_sent: Vec::new(),
@@ -627,6 +706,7 @@ where
             eyedrop_mailbox: std::sync::Arc::default(),
             eyedrop_wake: None,
             eyedropping: false,
+            eyedrop_for_other: false,
         })
     }
 
@@ -660,14 +740,26 @@ where
                 seq: self.fill_seq,
                 title: f.title().to_owned(),
                 fields: f.fields().to_vec(),
+                date_hint: f.date_hint(),
+                calendar: {
+                    let locale = f.locale();
+                    let today = self.clock.now().to_zoned(self.tz.clone());
+                    CalendarView {
+                        months: locale.lang.months().map(str::to_owned).to_vec(),
+                        weekdays: locale.lang.weekdays_abbr().map(str::to_owned).to_vec(),
+                        week_starts_sunday: locale.week_starts_sunday,
+                        today: (
+                            i32::from(today.year()),
+                            i32::from(today.month()),
+                            i32::from(today.day()),
+                        ),
+                    }
+                },
+                dates: (0..f.fields().len()).map(|i| f.date_parts(i)).collect(),
                 preview: if masked {
                     String::new()
                 } else {
-                    f.preview(
-                        self.clock.now(),
-                        &self.tz,
-                        Locale::for_tag(&self.settings.language),
-                    )
+                    f.preview(self.clock.now(), &self.tz)
                 },
                 masked,
             }
@@ -691,7 +783,7 @@ where
         {
             revealed = Some(at);
             if let Ok(Some(text)) = usecase::item_text(&self.store, id) {
-                rows[at].preview = text
+                std::rc::Rc::make_mut(&mut rows)[at].preview = text
                     .chars()
                     .take(snipdeck_core::Item::PREVIEW_CHARS)
                     .collect();
@@ -775,32 +867,41 @@ where
             fill: self.fill_view(),
             recent: self.recent_view(),
             recent_question: self.recent_question_due(),
+            recent_max_entries: self.settings.recent_max_entries,
+            recent_days: self.settings.recent_max_days,
         }
     }
 
     /// The sort of the list the list menu is open on (manual while it is closed).
-    fn list_menu_sort(&self) -> snipdeck_core::ListSort {
+    fn list_menu_sort(&self) -> snipdeck_core::Sort {
         match self.menu {
             PanelMenu::List(id) => self
                 .store
                 .list(id)
-                .map_or(snipdeck_core::ListSort::Manual, |l| l.sort),
-            _ => snipdeck_core::ListSort::Manual,
+                .map_or(snipdeck_core::Sort::MANUAL, |l| l.sort),
+            _ => snipdeck_core::Sort::MANUAL,
         }
     }
 
     /// The toast on screen, if any.
-    fn toast_view(&self) -> Option<ToastView> {
+    pub(crate) fn toast_view(&self) -> Option<ToastView> {
         self.toast.as_ref().map(|t| ToastView {
             seq: t.seq,
             kind: t.toast.kind,
             message: t.toast.message.clone(),
             phase: t.phase,
-            undo: self.undo.as_ref().is_some_and(|u| u.seq == t.seq),
+            undo: self
+                .undo
+                .as_ref()
+                .is_some_and(|u| u.seq == t.seq && u.takes_back()),
             edit: self
                 .undo
                 .as_ref()
                 .is_some_and(|u| u.seq == t.seq && u.adds.is_some()),
+            purge: self
+                .undo
+                .as_ref()
+                .is_some_and(|u| u.seq == t.seq && !u.takes_back()),
             open_log: t.toast.message == ToastMessage::CrashedLastTime,
         })
     }
@@ -1135,6 +1236,19 @@ where
         effects
     }
 
+    /// The Store build's one-time reminder that uninstalling removes the library, shown when the
+    /// Panel first comes up (`store_data`). Remembered in the settings so it comes once.
+    pub fn remind_store_data(&mut self, packaged: bool) {
+        if !crate::store_data::reminder_due(packaged, self.settings.store_data_reminded) {
+            return;
+        }
+        self.update_settings(|s| s.store_data_reminded = true);
+        self.show_toast(Toast {
+            kind: ToastKind::Neutral,
+            message: ToastMessage::StoreDataReminder,
+        });
+    }
+
     /// The close button or Esc on an empty search. With `close_to_tray` on and a tray icon to
     /// get it back from, the Panel hides; otherwise closing it quits the app.
     pub fn close(&mut self) -> Vec<Effect> {
@@ -1176,6 +1290,9 @@ where
             }
             TrayEvent::TakeScreenshot => self.take_screenshot(),
             TrayEvent::Quit => vec![Effect::Quit],
+            // Flushed by the host on the tray thread before an event could reach here
+            // (`session_end`); the controller has nothing to add.
+            TrayEvent::SessionEnding => Vec::new(),
             TrayEvent::IconPresent(present) => {
                 // With an icon in the notification area closing the Panel hides it (when
                 // `close_to_tray` is on); without one nothing could bring it back, so closing
@@ -1206,7 +1323,7 @@ where
 
     /// The foreground window changed: the Target follows it (see
     /// [`on_target_changed`](Self::on_target_changed)), and an unpinned Panel hides when
-    /// "Hide the panel when it loses focus" is on. Only the Panel does this: the Main window,
+    /// "Hide the Panel when it loses focus" is on. Only the Panel does this: the Main window,
     /// Settings and the editors are ordinary windows that stay until closed.
     pub fn on_foreground_changed(&mut self) -> Vec<Effect> {
         // The eyedropper's overlay, then whatever was under the pick point, takes the foreground

@@ -18,17 +18,19 @@
 -->
 <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
          xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+         xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
          xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
          xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-         IgnorableNamespaces="uap desktop rescap">
+         IgnorableNamespaces="uap uap3 desktop rescap">
 
   <!-- {{IDENTITY_NAME}}: the reserved package name, for example YourPublisher.Snipdeck. Copy from Partner Center. -->
   <!-- {{PUBLISHER}}: the CN=... string. Must match exactly what the package is signed with. -->
+  <!-- {{ARCH}}: x64 or arm64 (the arch option of scripts/msix_manifest.py). One package per architecture. -->
   <!-- {{VERSION}}: four parts, for example 0.1.0.0. Raise it for every upload. Keep the last part 0 for the Store. -->
   <Identity Name="{{IDENTITY_NAME}}"
             Publisher="{{PUBLISHER}}"
             Version="{{VERSION}}"
-            ProcessorArchitecture="x64" />
+            ProcessorArchitecture="{{ARCH}}" />
 
   <Properties>
     <DisplayName>Snipdeck</DisplayName>
@@ -64,6 +66,26 @@
                           Square150x150Logo="Assets\Square150x150Logo.png"
                           Square44x44Logo="Assets\Square44x44Logo.png" />
       <Extensions>
+        <!-- File type, URL scheme and command-line alias, from packaging/registration.json (scripts/installer_check.py
+             keeps this and snipdeck.iss equal to it). The app takes the file or URL as its first argument. -->
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="snipdeck">
+            <uap:DisplayName>Snipdeck archive</uap:DisplayName>
+            <uap:SupportedFileTypes>
+              <uap:FileType>.snipdeck</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+        <uap:Extension Category="windows.protocol">
+          <uap:Protocol Name="snipdeck">
+            <uap:DisplayName>Snipdeck</uap:DisplayName>
+          </uap:Protocol>
+        </uap:Extension>
+        <uap3:Extension Category="windows.appExecutionAlias" Executable="snipdeck.exe" EntryPoint="Windows.FullTrustApplication">
+          <uap3:AppExecutionAlias>
+            <desktop:ExecutionAlias Alias="snipdeck.exe" />
+          </uap3:AppExecutionAlias>
+        </uap3:Extension>
         <desktop:Extension Category="windows.startupTask" Executable="snipdeck.exe" EntryPoint="Windows.FullTrustApplication">
           <desktop:StartupTask TaskId="SnipdeckStartup" Enabled="false" DisplayName="Snipdeck" />
         </desktop:Extension>

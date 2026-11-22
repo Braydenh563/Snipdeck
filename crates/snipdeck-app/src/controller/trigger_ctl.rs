@@ -21,6 +21,7 @@ use super::{Controller, Library, Toast, ToastKind, ToastMessage, UseResult, use_
 use crate::{
     host::{ClipboardText, TypingControl},
     typing_worker::Typed,
+    usecase::Retype,
 };
 
 /// A typed expansion that was pasted and can still be taken back with Backspace (PANEL-16).
@@ -362,6 +363,10 @@ where
             app: self.model.target().map(|t| t.app.clone()),
             window: self.model.target().map_or(0, |t| t.window),
             fresh: Some(&fresh),
+            retype: Retype {
+                shape: fired.shape,
+                delimiter: fired.delimiter,
+            },
         };
         self.last_expansion = None;
         match self.run_use_erasing(

@@ -1,6 +1,6 @@
-//! Colour schemes: hue rotation in OKLCH and tints/shades.
+//! Colour schemes: HSL hue rotation and OKLCH tints and shades.
 
-use crate::model::{Oklch, Rgba8, from_oklch, to_oklch};
+use crate::model::{Hsl, Oklch, Rgba8, from_hsl, from_oklch, to_hsl, to_oklch};
 use serde::{Deserialize, Serialize};
 
 /// A colour scheme kind.
@@ -45,31 +45,47 @@ impl Scheme {
     }
 }
 
+/// Whether `c` has a hue to rotate. Greys, white and black do not: every hue scheme of them would
+/// be the same colour repeated.
+pub fn has_hue(c: Rgba8) -> bool {
+    to_oklch(c).c >= 0.02
+}
+
 /// The scheme's colours: `c` first, then the others in the spec's order (tints k=1..4 then shades
-/// k=1..4 for [`Scheme::TintsShades`]). Hue schemes rotate in OKLCH at constant lightness and chroma,
-/// reducing chroma when the result leaves the sRGB gamut. Alpha is kept.
+/// k=1..4 for [`Scheme::TintsShades`]). Hue schemes rotate the HSL hue and keep saturation and
+/// lightness (as `PowerToys` and Adobe do), so a pale or dark colour gives a pale or dark partner and
+/// never white or black. A colour without a hue ([`has_hue`]) gives only itself for a hue scheme.
+/// Tints exist only while there is room above the base lightness and shades only below it, so a
+/// near-white colour has no tints and a near-black one no shades (fewer swatches, never wrong
+/// ones). Alpha is kept.
 pub fn scheme(c: Rgba8, s: Scheme) -> Vec<Rgba8> {
-    let base = to_oklch(c);
     let mut out = vec![c];
     if s == Scheme::TintsShades {
+        let base = to_oklch(c);
         let at = |l: f64| from_oklch(Oklch { l, ..base }, c.a);
-        out.extend((1..=4).map(|k| at(base.l + (0.97 - base.l) * f64::from(k) / 4.0)));
-        out.extend((1..=4).map(|k| at(base.l - (base.l - 0.20) * f64::from(k) / 4.0)));
+        if base.l < LIGHT_END - 0.04 {
+            out.extend((1..=4).map(|k| at(base.l + (LIGHT_END - base.l) * f64::from(k) / 4.0)));
+        }
+        if base.l > DARK_END + 0.04 {
+            out.extend((1..=4).map(|k| at(base.l - (base.l - DARK_END) * f64::from(k) / 4.0)));
+        }
         return out;
     }
-    let achromatic = base.c < 0.0002;
+    if !has_hue(c) {
+        return out;
+    }
+    let hsl = to_hsl(c);
     out.extend(s.rotations().iter().map(|d| {
-        if achromatic {
-            c
-        } else {
-            from_oklch(
-                Oklch {
-                    h: (base.h + d).rem_euclid(360.0),
-                    ..base
-                },
-                c.a,
-            )
-        }
+        from_hsl(
+            Hsl {
+                h: (hsl.h + d).rem_euclid(360.0),
+                ..hsl
+            },
+            c.a,
+        )
     }));
     out
 }
+
+const LIGHT_END: f64 = 0.97;
+const DARK_END: f64 = 0.20;

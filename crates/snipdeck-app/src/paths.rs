@@ -34,6 +34,19 @@ pub fn data_dir(env: &dyn Fn(&str) -> Option<String>, windows: bool) -> Option<P
         .or_else(|| non_empty("HOME").map(|home| Path::new(&home).join(".local/share/snipdeck")))
 }
 
+/// The file whose presence next to the program makes it portable.
+pub const PORTABLE_MARKER: &str = "portable";
+
+/// The portable data folder: `data` beside the program when a [`PORTABLE_MARKER`] file sits there
+/// (the unzipped portable build on a USB stick), so nothing is written to the machine.
+#[must_use]
+pub fn portable_dir(exe_dir: &Path) -> Option<PathBuf> {
+    exe_dir
+        .join(PORTABLE_MARKER)
+        .is_file()
+        .then(|| exe_dir.join("data"))
+}
+
 /// What reading the settings file found.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LoadOutcome {
@@ -106,6 +119,17 @@ fn decode(bytes: &[u8]) -> String {
     }
 }
 
+/// The settings in `folder`, read without changing anything: a damaged file is not set aside
+/// (for diagnostics that may run beside a running app). Same values as [`read_settings`].
+#[must_use]
+pub fn peek_settings(folder: &Path) -> Settings {
+    match std::fs::read(folder.join(SETTINGS_FILE)) {
+        Ok(bytes) => Settings::from_json(&decode(&bytes)),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Settings::new_install(),
+        Err(_) => Settings::default(),
+    }
+}
+
 /// Reads the settings from `folder`. A missing file gives the new-install settings
 /// ([`Settings::new_install`]); an unreadable one gives the legacy defaults, and a damaged one keeps
 /// whatever parses ([`Settings::from_json`] never fails).
@@ -165,14 +189,6 @@ pub fn write_salvaged(folder: &Path, loaded: &Loaded) -> std::io::Result<()> {
     Ok(())
 }
 
-/// Whether this run writes settings changes back: not under `--dark` (a one-run override that
-/// must stay out of the user's file) and not when the file could not be read or set aside.
-/// Drafts, the daily backup and Settings "Back up now" do not depend on it.
-#[must_use]
-pub fn saves_settings(dark_override: bool, loaded: &Loaded) -> bool {
-    !dark_override && loaded.may_save()
-}
-
 /// What the settings saver should take as "on disk now": the loaded settings, except when a
 /// damaged file was set aside and writing the salvaged copy failed. Then no file exists, so the
 /// baseline is the new-install settings a fresh launch would read, and the first change (or the first poll
@@ -186,9 +202,56 @@ pub fn saver_baseline(loaded: &Loaded, salvage_written: bool) -> Settings {
     }
 }
 
+/// Opens the library in `folder`. One that cannot be opened (damaged, empty beside backups, a
+/// failed migration) is kept in `snipdeck.damaged-<stamp>/` and a fresh one opens, with a Danger
+/// notice pointing at Settings > Rebuild from backup. Everything else (another Snipdeck holds
+/// the folder, a newer database, a full or read-only disk) is an error and nothing moves.
+///
+/// # Errors
+/// The store's error when the library cannot be opened and moving it aside is not safe.
+pub fn open_library_folder(
+    folder: &Path,
+    now: jiff::Timestamp,
+) -> Result<(snipdeck_store::Store, Option<crate::toast::Toast>), snipdeck_store::Error> {
+    let stamp = now
+        .to_zoned(jiff::tz::TimeZone::system())
+        .strftime("%Y%m%d-%H%M");
+    let stem = (0..100)
+        .map(|n| {
+            if n == 0 {
+                format!("snipdeck.damaged-{stamp}")
+            } else {
+                format!("snipdeck.damaged-{stamp}-{n}")
+            }
+        })
+        .find(|stem| !folder.join(stem).exists())
+        .unwrap_or_else(|| format!("snipdeck.damaged-{stamp}-x"));
+    let (store, kept) = snipdeck_store::Store::open_or_set_aside(folder, &stem)?;
+    let has_backup =
+        snipdeck_portable::backup::list_backups(&snipdeck_portable::backup::backups_dir(folder))
+            .is_ok_and(|list| !list.is_empty());
+    let toast = kept.map(|folder| crate::toast::Toast {
+        kind: crate::toast::ToastKind::Danger,
+        message: crate::toast::ToastMessage::LibrarySetAside { folder, has_backup },
+    });
+    Ok((store, toast))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_portable_marker_beside_the_program_selects_its_data_folder() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        assert_eq!(portable_dir(dir.path()), None);
+        std::fs::write(dir.path().join(PORTABLE_MARKER), "").expect("marker");
+        assert_eq!(portable_dir(dir.path()), Some(dir.path().join("data")));
+        // A folder of that name is not the marker.
+        let other = tempfile::tempdir().expect("temp dir");
+        std::fs::create_dir(other.path().join(PORTABLE_MARKER)).expect("dir");
+        assert_eq!(portable_dir(other.path()), None);
+    }
 
     fn env<'a>(vars: &'a [(&'a str, &'a str)]) -> impl Fn(&str) -> Option<String> + 'a {
         move |name| {
@@ -266,18 +329,6 @@ mod tests {
             crate::settings::Theme::System,
             "the bad one is not"
         );
-    }
-
-    #[test]
-    fn dark_and_an_untouchable_file_stop_only_the_settings_saver() {
-        let loaded = |outcome| Loaded {
-            settings: Settings::default(),
-            outcome,
-        };
-        assert!(saves_settings(false, &loaded(LoadOutcome::Read)));
-        assert!(saves_settings(false, &loaded(LoadOutcome::Missing)));
-        assert!(!saves_settings(true, &loaded(LoadOutcome::Read)));
-        assert!(!saves_settings(false, &loaded(LoadOutcome::Untouchable)));
     }
 
     #[test]
@@ -507,5 +558,39 @@ mod tests {
             std::fs::read_to_string(dir.join(SETTINGS_FILE)).expect("still there"),
             cut
         );
+    }
+    #[test]
+    fn a_library_that_cannot_be_opened_starts_fresh_with_a_danger_notice() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("snipdeck.db"), vec![7u8; 2048]).unwrap();
+        let now: jiff::Timestamp = "2026-11-16T10:00:00Z".parse().unwrap();
+        let (_store, toast) = open_library_folder(dir.path(), now).unwrap();
+        let toast = toast.expect("a notice");
+        assert_eq!(toast.kind, crate::toast::ToastKind::Danger);
+        let crate::toast::ToastMessage::LibrarySetAside { folder, has_backup } = &toast.message
+        else {
+            panic!("the set-aside notice");
+        };
+        assert!(folder.starts_with("snipdeck.damaged-"));
+        assert!(!has_backup, "no backup in this folder");
+        let kept: Vec<_> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .filter(|n| n.starts_with("snipdeck.damaged-"))
+            .collect();
+        assert_eq!(kept.len(), 1, "{kept:?}");
+        assert_eq!(
+            std::fs::read(dir.path().join(&kept[0]).join("snipdeck.db")).unwrap(),
+            vec![7u8; 2048]
+        );
+    }
+
+    #[test]
+    fn a_library_held_by_another_snipdeck_is_not_moved() {
+        let dir = tempfile::tempdir().unwrap();
+        let _held = snipdeck_store::Store::open(dir.path()).unwrap();
+        let now: jiff::Timestamp = "2026-11-16T10:00:00Z".parse().unwrap();
+        assert!(open_library_folder(dir.path(), now).is_err());
+        assert!(dir.path().join("snipdeck.db").is_file());
     }
 }

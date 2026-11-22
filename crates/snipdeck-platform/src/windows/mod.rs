@@ -8,6 +8,7 @@
 //! | [`target`] | Foreground tracking, UIPI check, caret / UI Automation focus probe |
 //! | [`typing_hook`] | `TypingHook`: `WH_KEYBOARD_LL` on its own thread, for typed-trigger expansion |
 //! | [`window_style`] | Non-activating panel style and its `WM_STYLECHANGING` subclass |
+//! | [`exception`] | A last-chance filter that hands a native crash's code and address to the app |
 //! | [`erase`] | The theme colour a window shows before its first frame |
 //! | [`paint_diag`] | `SNIPDECK_DIAG=render`: paint, erase, move and DWM facts for a log |
 //! | [`eyedrop`] | `WinEyedropper`: [`crate::eyedrop::Eyedropper`] with a freeze-frame overlay per monitor |
@@ -21,8 +22,10 @@
 //! | [`message_box`] | A native message box for a start-up failure with no window |
 //! | [`shell_open`] | `ShellExecuteW` "open" with its result checked |
 //! | [`dpi`] | Per-monitor DPI awareness for windows created before the UI toolkit's |
+//! | [`dwm`] | Title bar theme and corner preference (DWM attributes), Windows build number |
 //! | [`dpapi`] | `CryptProtectData` wrappers for the sensitive-items key |
 //! | [`tray`] | `WinTray`: [`crate::tray::Tray`] via `Shell_NotifyIconW` (v4), menu, `TaskbarCreated` |
+//! | [`regional`] | The regional short date and time patterns (`GetLocaleInfoEx`) |
 //! | [`system_look`] | Light / dark and high contrast, and a watcher for changes |
 //! | `hidden_window` | The hidden top-level window and thread that tray and system look share |
 //!
@@ -34,10 +37,13 @@ pub mod autostart;
 pub mod clipboard;
 pub mod clipboard_history;
 pub mod console;
+pub mod data_record;
 pub mod dll_search;
 pub mod dpapi;
 pub mod dpi;
+pub mod dwm;
 pub mod erase;
+pub mod exception;
 pub mod eyedrop;
 pub mod file_dialog;
 pub mod hello;
@@ -47,6 +53,7 @@ pub mod keyboard;
 pub mod message_box;
 pub mod package;
 pub mod paint_diag;
+pub mod regional;
 pub mod screen;
 pub mod shell_open;
 pub mod single_instance;

@@ -67,6 +67,14 @@ pub trait Clipboard {
     ///
     /// [`Error::Clipboard`] if the clipboard cannot be opened or written.
     fn restore(&mut self, snapshot: Self::Snapshot, written: Self::Written) -> Result<bool, Error>;
+    /// Puts `snapshot` back whatever the clipboard holds now. Only for a copy this app asked the
+    /// Target to make (reading the selection), where the clipboard has changed on purpose.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Clipboard`] if the clipboard cannot be opened or written, or a format could not
+    /// be put back.
+    fn restore_forced(&mut self, snapshot: Self::Snapshot) -> Result<(), Error>;
 }
 
 /// Keyboard state and injection.

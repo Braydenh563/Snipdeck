@@ -21,7 +21,10 @@ use std::{
 
 use snipdeck_core::Timestamp;
 
-use crate::{paths::SETTINGS_FILE, settings::Settings};
+use crate::{
+    paths::SETTINGS_FILE,
+    settings::{Settings, Theme},
+};
 
 /// The start of the name of the file a write goes to before it replaces `settings.json`.
 pub const TEMP_STEM: &str = "settings.json";
@@ -45,7 +48,7 @@ pub(crate) fn create_temp(dir: &Path, stem: &str) -> io::Result<(File, PathBuf)>
 }
 
 /// Removes the temporary files that earlier, interrupted writes of `stem` left in `dir`.
-fn remove_stale_temps(dir: &Path, stem: &str) {
+pub(crate) fn remove_stale_temps(dir: &Path, stem: &str) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
     };
@@ -134,6 +137,47 @@ impl FileSink {
 impl SettingsSink for FileSink {
     fn save(&mut self, settings: &Settings) -> io::Result<()> {
         write_atomic(&self.folder, settings)
+    }
+}
+
+/// A [`SettingsSink`] that writes every setting but keeps the theme the file already has. For a
+/// run with `--dark`: the one-run theme must not reach the user's file, and no other change of
+/// the run should be lost either. A theme the person picks in Settings during the run is theirs,
+/// not the override: from that save on nothing is pinned.
+pub struct ThemePinned<S: SettingsSink> {
+    inner: S,
+    /// The theme the file holds.
+    theme: Theme,
+    /// The theme this run was started with; a save that differs holds the person's own choice.
+    run_theme: Theme,
+    pinned: bool,
+}
+
+impl<S: SettingsSink> ThemePinned<S> {
+    /// Wraps `inner`; `theme` is the theme the file holds now and `run_theme` the one this run
+    /// started with.
+    #[must_use]
+    pub fn new(inner: S, theme: Theme, run_theme: Theme) -> Self {
+        Self {
+            inner,
+            theme,
+            run_theme,
+            pinned: true,
+        }
+    }
+}
+
+impl<S: SettingsSink> SettingsSink for ThemePinned<S> {
+    fn save(&mut self, settings: &Settings) -> io::Result<()> {
+        if settings.theme != self.run_theme {
+            self.pinned = false;
+        }
+        if !self.pinned {
+            return self.inner.save(settings);
+        }
+        let mut pinned = settings.clone();
+        pinned.theme = self.theme;
+        self.inner.save(&pinned)
     }
 }
 
@@ -322,7 +366,7 @@ mod tests {
     use std::{cell::RefCell, rc::Rc};
 
     use super::*;
-    use crate::{paths::read_settings, settings::Theme};
+    use crate::paths::read_settings;
 
     fn at(s: &str) -> Timestamp {
         s.parse().expect("timestamp")
@@ -402,6 +446,70 @@ mod tests {
             self.writes.borrow_mut().push(settings.clone());
             Ok(())
         }
+    }
+
+    #[test]
+    fn a_dark_run_saves_every_other_change_and_keeps_the_files_theme() {
+        let rec = Recorder::default();
+        let on_disk = Settings {
+            theme: Theme::Light,
+            ..Settings::default()
+        };
+        let in_use = Settings {
+            theme: Theme::Dark,
+            ..on_disk.clone()
+        };
+        // The baseline is what this run starts from: the file, with the one-run theme.
+        let mut saver = SettingsSaver::new(
+            Box::new(ThemePinned::new(rec.clone(), Theme::Light, Theme::Dark)),
+            in_use.clone(),
+        );
+        saver.changed(&in_use, at("2026-10-19T10:00:00Z"));
+        assert!(!saver.has_pending(), "starting dark changes nothing");
+        let changed = Settings {
+            panel_width: 411,
+            ..in_use
+        };
+        saver.changed(&changed, at("2026-10-19T10:00:01Z"));
+        saver.flush().expect("flush");
+        let writes = rec.writes.borrow();
+        assert_eq!(writes.len(), 1);
+        assert_eq!(writes[0].panel_width, 411, "the other change is saved");
+        assert_eq!(writes[0].theme, Theme::Light, "the dark override is not");
+    }
+
+    #[test]
+    fn a_theme_chosen_during_a_dark_run_is_saved() {
+        let rec = Recorder::default();
+        let in_use = Settings {
+            theme: Theme::Dark,
+            ..Settings::default()
+        };
+        let mut saver = SettingsSaver::new(
+            Box::new(ThemePinned::new(rec.clone(), Theme::Light, Theme::Dark)),
+            in_use.clone(),
+        );
+        let chosen = Settings {
+            theme: Theme::System,
+            panel_width: 411,
+            ..in_use
+        };
+        saver.changed(&chosen, at("2026-10-19T10:00:01Z"));
+        saver.flush().expect("flush");
+        let again = Settings {
+            panel_width: 420,
+            ..chosen
+        };
+        saver.changed(&again, at("2026-10-19T10:00:02Z"));
+        saver.flush().expect("flush");
+        let writes = rec.writes.borrow();
+        assert_eq!(writes.len(), 2);
+        assert_eq!(
+            writes[0].theme,
+            Theme::System,
+            "the person's choice is saved"
+        );
+        assert_eq!(writes[1].theme, Theme::System, "and stays saved");
     }
 
     fn saver(rec: &Recorder) -> SettingsSaver {

@@ -2,7 +2,7 @@
 
 use std::collections::BTreeSet;
 
-use snipdeck_core::{Format, ItemId, ItemKind, ListId, Name, TagId};
+use snipdeck_core::{Format, ItemId, ItemKind, ListId, Name, TagId, TriggerOptions};
 use snipdeck_store::name_key;
 
 use super::super::{Controller, Library, Toast, ToastKind, ToastMessage};
@@ -11,7 +11,7 @@ use crate::{
     capture,
     drafts::Draft,
     host::ClipboardText,
-    item_editor::{self, AttachmentView, EDIT_LIMIT_BYTES, EditorInput, EditorProblem, Origin},
+    item_editor::{self, AttachmentView, EditorInput, EditorProblem, Origin},
     usecase,
 };
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
@@ -46,8 +46,32 @@ where
             return;
         };
         match self.new_slot(list) {
-            Ok(slot) => self.install_item_editor(slot),
+            Ok(mut slot) => {
+                slot.insert_after = self.cursor_anchor(origin);
+                self.install_item_editor(slot);
+            }
             Err(e) => self.show_toast(open_failed(&e)),
+        }
+    }
+
+    /// The item a new item opened from `origin` goes after: the row at the cursor, when the list
+    /// shown is in manual order (any other order puts a new item where the order says).
+    fn cursor_anchor(&self, origin: Origin) -> Option<ItemId> {
+        match origin {
+            Origin::Main => self
+                .main
+                .reorderable()
+                .then(|| self.main.keys().get(self.main.cursor()).copied())
+                .flatten()
+                .and_then(|k| match k {
+                    crate::main_window::Key::Item(id) => Some(id),
+                    _ => None,
+                }),
+            Origin::Panel => self
+                .model
+                .reorderable()
+                .then(|| self.model.selected())
+                .flatten(),
         }
     }
 
@@ -67,6 +91,7 @@ where
         };
         match self.new_slot(list) {
             Ok(mut slot) => {
+                slot.insert_after = self.cursor_anchor(origin);
                 if !text.trim().is_empty() {
                     slot.fields.kind = crate::paste_create::kind_of_text(text);
                     text.trim_end().clone_into(&mut slot.fields.content);
@@ -230,11 +255,16 @@ where
             original_kind: ItemKind::Text,
             original_sensitive: false,
             trigger: String::new(),
+            trigger_options: TriggerOptions::default(),
+            allow_duplicate: false,
             original_trigger: String::new(),
+            original_options: TriggerOptions::default(),
             original_text: None,
             formatted: false,
+            drop_formats: false,
+            opened: None,
+            insert_after: None,
             stamp: None,
-            large: None,
             attachment: None,
             restored: false,
             baseline: Draft::new(
@@ -252,6 +282,7 @@ where
             no_draft: false,
             draft_failed_told: false,
             live_sensitive: false,
+            latest: None,
         };
         slot.baseline = slot.draft_of(&fields);
         Ok(slot)
@@ -275,7 +306,7 @@ where
             source_path: String::new(),
             label: item.label,
         };
-        let (mut original_text, mut large, mut attachment) = (None, None, None);
+        let (mut original_text, mut attachment) = (None, None);
         if item_editor::is_text_kind(item.kind) {
             let text = usecase::item_text(&self.store, id)
                 .map_err(|e| match e {
@@ -283,13 +314,9 @@ where
                     _ => snipdeck_store::Error::Invalid("the item's text is not text".to_owned()),
                 })?
                 .unwrap_or_default();
-            if text.len() > EDIT_LIMIT_BYTES {
-                large = u64::try_from(text.len()).ok();
-                item_editor::prefix_of(&text, EDIT_LIMIT_BYTES).clone_into(&mut fields.content);
-            } else {
-                fields.content.clone_from(&text);
-                original_text = Some(text);
-            }
+            // The whole text: the window shows it a part at a time.
+            fields.content.clone_from(&text);
+            original_text = Some(text);
         } else {
             attachment = Some(self.attachment_of(item.kind, id)?);
         }
@@ -302,14 +329,16 @@ where
                 .formats(id)?
                 .iter()
                 .any(|f| matches!(f, Format::Html(_) | Format::Rtf(_)));
-        let trigger = if item.sensitive {
-            String::new()
+        let held = if item.sensitive {
+            None
         } else {
-            self.store
-                .trigger_of(id)?
-                .map(|t| t.as_str().to_owned())
-                .unwrap_or_default()
+            self.store.trigger_of(id)?
         };
+        let trigger = held
+            .as_ref()
+            .map(|t| t.as_str().to_owned())
+            .unwrap_or_default();
+        let options = held.map(|t| t.options()).unwrap_or_default();
         let mut slot = ItemEditorSlot {
             seq: 0,
             raise: 0,
@@ -321,11 +350,16 @@ where
             original_kind: item.kind,
             original_sensitive: item.sensitive,
             trigger: trigger.clone(),
+            trigger_options: options,
+            allow_duplicate: false,
             original_trigger: trigger,
+            original_options: options,
             original_text,
             formatted,
+            drop_formats: false,
+            opened: Some(item.clone()),
+            insert_after: None,
             stamp: Some(item.updated_at.to_string()),
-            large,
             attachment,
             restored: false,
             baseline: Draft::new(
@@ -343,6 +377,7 @@ where
             no_draft: false,
             draft_failed_told: false,
             live_sensitive: false,
+            latest: None,
         };
         slot.baseline = slot.draft_of(&fields);
         Ok(slot)
@@ -409,7 +444,7 @@ where
             ItemTarget::New => true,
             ItemTarget::Item(_) => draft.base == slot.stamp,
         };
-        if !fresh || slot.original_sensitive || slot.large.is_some() {
+        if !fresh || slot.original_sensitive {
             if let Err(e) = drafts.clear(key) {
                 crate::trace!("stale draft not removed: {e}");
             }

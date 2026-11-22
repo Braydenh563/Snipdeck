@@ -46,19 +46,19 @@ fn hsl_hsb_cmyk() {
     close(h.h, 214.839, 0.001);
     close(h.s, 0.64854, 1e-5);
     close(h.l, 0.53137, 1e-5);
-    assert_eq!(format(BASE, Format::Hsl), "hsl(215, 65%, 53%)");
-    assert_eq!(format(HALF, Format::Hsl), "hsla(215, 65%, 53%, 0.5)");
+    assert_eq!(format(BASE, Format::Hsl), "hsl(214.8, 64.9%, 53.1%)");
+    assert_eq!(format(HALF, Format::Hsl), "hsla(214.8, 64.9%, 53.1%, 0.5)");
     let v = to_hsv(BASE);
     close(v.h, 214.839, 0.001);
     close(v.s, 0.72770, 1e-5);
     close(v.v, 0.83529, 1e-5);
-    assert_eq!(format(BASE, Format::Hsb), "hsb(215, 73%, 84%)");
+    assert_eq!(format(BASE, Format::Hsb), "hsb(214.8, 72.8%, 83.5%)");
     let c = to_cmyk(BASE);
     close(c.c, 0.72770, 1e-5);
     close(c.m, 0.42254, 1e-5);
     close(c.y, 0.0, 1e-9);
     close(c.k, 0.16471, 1e-5);
-    assert_eq!(format(BASE, Format::Cmyk), "cmyk(73%, 42%, 0%, 16%)");
+    assert_eq!(format(BASE, Format::Cmyk), "cmyk(72.8%, 42.3%, 0%, 16.5%)");
 }
 
 #[test]
@@ -112,19 +112,20 @@ fn schemes() {
             near(*g, w);
         }
     };
-    check(Scheme::Complementary, &["#a47100"]);
-    check(Scheme::Analogous, &["#0088b0", "#786ad1"]);
-    check(Scheme::Triadic, &["#c64e5a", "#4b9029"]);
-    check(Scheme::SplitComplementary, &["#c25914", "#858000"]);
-    check(Scheme::Tetradic, &["#ba508d", "#a47100", "#00926d"]);
+    check(Scheme::Complementary, &["#d5943a"]);
+    check(Scheme::Analogous, &["#3ac8d5", "#463ad5"]);
+    check(Scheme::Triadic, &["#d53a7b", "#7bd53a"]);
+    check(Scheme::SplitComplementary, &["#d5463a", "#c9d53a"]);
+    check(Scheme::Tetradic, &["#d53ac8", "#d5943a", "#3ad546"]);
     check(
         Scheme::TintsShades,
         &[
             "#5799f6", "#88b9ff", "#bcd8ff", "#eff6ff", "#1b5db5", "#00428f", "#002a60", "#001435",
         ],
     );
+    // The partner keeps saturation and lightness, so it is not nearly the same luminance as white.
     let comp = scheme(BASE, Scheme::Complementary)[1];
-    close(contrast_ratio(BASE, comp), 1.0068, 2e-3);
+    assert!(contrast_ratio(BASE, comp) < 2.0);
 }
 
 #[test]

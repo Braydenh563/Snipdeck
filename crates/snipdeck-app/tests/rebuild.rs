@@ -10,6 +10,9 @@
 
 use std::{fs, path::Path};
 
+mod support;
+use support::ArchiveSteps as _;
+
 use snipdeck_app::{
     controller::{Controller, MainAction, Services},
     demo,
@@ -106,7 +109,7 @@ fn assert_no_marker(dir: &Path) {
 }
 
 fn newest_backup(dir: &Path) -> std::path::PathBuf {
-    snipdeck_portable::backup::list_backups(dir)
+    snipdeck_portable::backup::list_backups(&snipdeck_portable::backup::backups_dir(dir))
         .expect("list")
         .first()
         .expect("a backup")
@@ -138,7 +141,11 @@ fn rebuilding_restores_the_backup_recovers_newer_items_and_keeps_the_damaged_fol
     else {
         panic!("a rebuilt toast");
     };
-    assert!(restored > 0 && restored <= backed_up);
+    assert_eq!(
+        restored + missing_sensitive,
+        backed_up,
+        "every item but the plain-text sensitive one came back"
+    );
     assert_eq!(
         recovered, 1,
         "only the newer item came from the damaged file"
@@ -288,4 +295,130 @@ fn after_a_rebuild_deleting_and_sweeping_keeps_the_damaged_copys_blobs() {
     };
     let bytes = old.read(content).expect("blob reads");
     assert_eq!(bytes.len(), snipdeck_core::INLINE_LIMIT + 1);
+}
+
+#[test]
+fn an_item_written_while_the_salvage_is_copied_is_recovered_too() {
+    use snipdeck_app::controller::{ArchiveEnd, Begun};
+    let dir = tempfile::tempdir().expect("dir");
+    let mut ctl = start(dir.path());
+    assert!(ctl.backup_now(dir.path()));
+    let backup = newest_backup(dir.path());
+
+    let Begun::Job(job) = ctl.begin_rebuild_from_backup(dir.path(), &backup) else {
+        panic!("an on-disk library hands the salvage to a worker");
+    };
+    // The worker has cut its copy; then the user keeps typing before the swap.
+    let done = job.run();
+    add_item(&mut ctl, "Typed during the salvage");
+    // The copy is stale: the controller asks for it to be cut again on a worker.
+    let ArchiveEnd::Again(again) = ctl.finish_archive(done) else {
+        panic!("a changed library asks for another pass");
+    };
+    assert!(ctl.archive_busy(), "busy through the second pass too");
+    assert!(matches!(
+        ctl.finish_archive(again.run()),
+        ArchiveEnd::Rebuilt(true)
+    ));
+    assert!(
+        titles(&ctl).iter().any(|t| t == "Typed during the salvage"),
+        "the swap keeps what was written after the copy was cut"
+    );
+}
+
+#[test]
+fn an_unreadable_backup_ends_the_rebuild_before_anything_is_touched() {
+    use snipdeck_app::controller::{ArchiveEnd, Begun};
+    let dir = tempfile::tempdir().expect("dir");
+    let mut ctl = start(dir.path());
+    let before = titles(&ctl);
+    let broken = dir.path().join("broken.snipdeck");
+    std::fs::write(&broken, b"not an archive").expect("file");
+
+    let Begun::Job(job) = ctl.begin_rebuild_from_backup(dir.path(), &broken) else {
+        panic!("the backup is read on a worker, not on this thread");
+    };
+    assert!(ctl.archive_busy());
+    assert!(matches!(
+        ctl.finish_archive(job.run()),
+        ArchiveEnd::Rebuilt(false)
+    ));
+    assert!(!ctl.archive_busy());
+    assert_eq!(titles(&ctl), before, "the library is as it was");
+    let damaged = std::fs::read_dir(dir.path())
+        .expect("dir")
+        .flatten()
+        .any(|e| e.file_name().to_string_lossy().contains("damaged"));
+    assert!(!damaged, "nothing was set aside");
+    assert!(!dir.path().join("snipdeck.salvage.snipdeck").exists());
+}
+
+#[test]
+fn quitting_while_the_rebuild_reads_leaves_the_library_as_it_was() {
+    use snipdeck_app::controller::Begun;
+    let dir = tempfile::tempdir().expect("dir");
+    let mut ctl = start(dir.path());
+    assert!(ctl.backup_now(dir.path()));
+    let backup = newest_backup(dir.path());
+    let before = titles(&ctl);
+
+    let Begun::Job(job) = ctl.begin_rebuild_from_backup(dir.path(), &backup) else {
+        panic!("a worker job");
+    };
+    ctl.abandon_unfinished_archive();
+    drop(ctl);
+    let _done = job.run();
+    let reopened = start_with(Store::open(dir.path()).expect("reopen"));
+    assert_eq!(titles(&reopened), before);
+    assert!(
+        !std::fs::read_dir(dir.path())
+            .expect("dir")
+            .flatten()
+            .any(|e| e.file_name().to_string_lossy().contains("damaged")),
+        "nothing was set aside"
+    );
+}
+
+#[test]
+fn a_library_that_cannot_be_opened_is_set_aside_and_rebuild_finds_the_backups() {
+    let dir = tempfile::tempdir().expect("dir");
+    let mut ctl = start(dir.path());
+    assert!(ctl.backup_now(dir.path()));
+    let backed_up = titles(&ctl).len();
+    drop(ctl);
+    // Damage the header: the next start cannot open it.
+    let db = dir.path().join("snipdeck.db");
+    let mut bytes = fs::read(&db).expect("db");
+    bytes[..16].fill(0x42);
+    fs::write(&db, &bytes).expect("damage");
+    assert!(Store::open(dir.path()).is_err());
+
+    let (store, toast) = snipdeck_app::paths::open_library_folder(dir.path(), now())
+        .expect("the app opens a fresh library");
+    let Some(ToastMessage::LibrarySetAside { folder, has_backup }) = toast.map(|t| t.message)
+    else {
+        panic!("the set-aside notice");
+    };
+    assert!(has_backup, "the backup stays where Rebuild looks");
+    assert_eq!(damaged_files(dir.path()), vec![folder.clone()]);
+    assert_eq!(
+        fs::read(dir.path().join(&folder).join("snipdeck.db")).expect("kept"),
+        bytes
+    );
+    assert_no_marker(dir.path());
+
+    // The real proof: Rebuild from backup restores the newest backup into the fresh library.
+    let mut ctl = start_with(store);
+    assert!(ctl.rebuild_from_backup(dir.path(), &newest_backup(dir.path())));
+    assert_eq!(
+        titles(&ctl).len(),
+        backed_up - 1,
+        "the backup was restored, all of it (the demo's one plain-text sensitive item is in no backup)"
+    );
+    assert_eq!(
+        damaged_files(dir.path()).len(),
+        2,
+        "the first set-aside stays beside the new one"
+    );
+    assert_no_marker(dir.path());
 }

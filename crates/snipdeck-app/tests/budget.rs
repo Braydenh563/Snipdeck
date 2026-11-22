@@ -17,6 +17,7 @@ use snipdeck_app::{
     picker::{PickerModel, Scope},
     settings::Hotkeys,
 };
+use snipdeck_core::search::{BodyMatches, Query};
 use snipdeck_core::{
     Board, Content, Format, Formats, Inline, Item, ItemKind, List, Name, Placement, Tag, Timestamp,
 };
@@ -164,9 +165,9 @@ fn a_cached_panel_load_does_no_index_work() {
 fn search_finds_its_item_in_a_large_library() {
     let store = library(2_000);
     let cache = IndexCache::new();
-    let index = std::rc::Rc::clone(&cache.snapshot(&store).unwrap().index);
+    let index = std::rc::Rc::clone(&cache.snapshot(&store).unwrap().index());
     assert_eq!(index.len(), 2_000);
-    let hits = index.query("number 1999", 20);
+    let hits = index.query(&Query::parse("number 1999"), &BodyMatches::default(), 20);
     hits.first().expect("the item is found");
 }
 
@@ -189,11 +190,17 @@ fn measure_search_and_panel_load_budgets() {
     let (_, search_ms) = watch.measure(|| {
         let mut index = snipdeck_core::search::SearchIndex::default();
         for item in &all {
-            index.upsert_with_tags(
+            let tag_names: Vec<&str> = item
+                .tags
+                .iter()
+                .filter_map(|t| names.get(t).map(String::as_str))
+                .collect();
+            index.upsert(
                 item,
-                item.tags
-                    .iter()
-                    .filter_map(|t| names.get(t).map(String::as_str)),
+                snipdeck_core::search::Names {
+                    tags: &tag_names,
+                    ..Default::default()
+                },
             );
         }
         index
@@ -217,7 +224,7 @@ fn measure_search_and_panel_load_budgets() {
         "panel load, {LIBRARY} items: cold {cold_ms:.1} ms (builds the index), warm {warm_ms:.1} ms (budget {PANEL_BUDGET_MS} ms)"
     );
 
-    let index = std::rc::Rc::clone(&cache.snapshot(&store).unwrap().index);
+    let index = std::rc::Rc::clone(&cache.snapshot(&store).unwrap().index());
     let mut worst: f64 = 0.0;
     for q in [
         "snippet",
@@ -226,7 +233,8 @@ fn measure_search_and_panel_load_budgets() {
         "dear customer",
         "zzz",
     ] {
-        let (hits, ms) = watch.measure(|| index.query(q, 50));
+        let (hits, ms) =
+            watch.measure(|| index.query(&Query::parse(q), &BodyMatches::default(), 50));
         println!(
             "search {q:?}: {ms:.2} ms, {} hits (budget {SEARCH_BUDGET_MS} ms)",
             hits.len()
@@ -258,10 +266,10 @@ fn measure_picker_and_palette_budgets() {
     let mut worst_key: f64 = 0.0;
     let query = "reply template 9999";
     for end in (1..=query.len()).filter(|e| query.is_char_boundary(*e)) {
-        let ((), ms) = watch.measure(|| picker.set_query(&query[..end]));
+        let ((), ms) = watch.measure(|| picker.set_query(&store, &query[..end]).unwrap());
         worst_key = worst_key.max(ms);
     }
-    let ((), clear_ms) = watch.measure(|| picker.set_query(""));
+    let ((), clear_ms) = watch.measure(|| picker.set_query(&store, "").unwrap());
     let ((), scope_ms) = watch.measure(|| picker.set_scope(Scope::Board));
     println!(
         "picker per key: worst {worst_key:.2} ms, clearing {clear_ms:.2} ms, scope change {scope_ms:.2} ms (budget {SEARCH_BUDGET_MS} ms)"
@@ -296,7 +304,8 @@ fn measure_picker_and_palette_budgets() {
         .collect();
     let mut worst_palette: f64 = 0.0;
     for q in ["", "p", "pa", "paste", "paste it", "stg"] {
-        let (entries, ms) = watch.measure(|| commands::entries(&texts, &ctx, q));
+        let (entries, ms) =
+            watch.measure(|| commands::entries(&texts, &commands::KeyWords::english(), &ctx, q));
         drop(entries);
         worst_palette = worst_palette.max(ms);
     }
@@ -311,5 +320,68 @@ fn measure_picker_and_palette_budgets() {
     assert!(
         worst_palette <= PALETTE_BUDGET_MS,
         "palette filter over budget"
+    );
+}
+
+#[test]
+fn a_pin_and_a_use_patch_the_snapshot_and_rows_are_built_once() {
+    let mut store = library(2_000);
+    let cache = IndexCache::new();
+    let id = cache.snapshot(&store).unwrap().all[1_500].id;
+    let mut item = store.item(id).unwrap();
+    item.pinned = true;
+    cache
+        .edit_item_meta(&mut store, id, |s| s.update_item(&item, None))
+        .unwrap();
+    cache.snapshot(&store).unwrap();
+    assert_eq!((cache.rebuilds(), cache.patches()), (1, 1), "a pin patches");
+    store.record_use(id, at()).unwrap();
+    cache.note_use(id);
+    cache.snapshot(&store).unwrap();
+    assert_eq!((cache.rebuilds(), cache.patches()), (1, 2), "a use patches");
+
+    let model = PanelModel::load_cached(&store, None, None, &cache).unwrap();
+    let _ = model.rows();
+    let _ = model.rows();
+    assert_eq!(
+        model.rows_built(),
+        1,
+        "rows are built once until something changes"
+    );
+}
+
+/// Prints the cold load, a pin patch, a use patch and a row build at 10,000 items.
+#[test]
+#[ignore = "wall-clock measurement: run by hand with --ignored (docs/PERF.md)"]
+fn measure_pin_use_and_rows_at_ten_thousand_items() {
+    let mut store = library(LIBRARY);
+    let cache = IndexCache::new();
+    let watch = Wall;
+    let (_, cold) = watch.measure(|| cache.snapshot(&store).unwrap());
+    let id = cache.snapshot(&store).unwrap().all[LIBRARY / 2].id;
+    let mut item = store.item(id).unwrap();
+    item.pinned = true;
+    let (_, pin_ms) = watch.measure(|| {
+        cache
+            .edit_item_meta(&mut store, id, |s| s.update_item(&item, None))
+            .unwrap();
+        cache.snapshot(&store).unwrap()
+    });
+    let (_, use_ms) = watch.measure(|| {
+        store.record_use(id, at()).unwrap();
+        cache.note_use(id);
+        cache.snapshot(&store).unwrap()
+    });
+    let model = PanelModel::load_cached(&store, None, None, &cache).unwrap();
+    let (rows, rows_ms) = watch.measure(|| model.rows());
+    println!(
+        "{LIBRARY} items: cold snapshot {cold:.1} ms, pin {pin_ms:.2} ms, use {use_ms:.2} ms, rows ({}) {rows_ms:.2} ms; rebuilds {}, patches {}",
+        rows.len(),
+        cache.rebuilds(),
+        cache.patches()
+    );
+    assert!(
+        pin_ms <= PANEL_BUDGET_MS && use_ms <= PANEL_BUDGET_MS,
+        "act over budget"
     );
 }

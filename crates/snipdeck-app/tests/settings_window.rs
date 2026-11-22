@@ -43,6 +43,7 @@ use snipdeck_app::{
 use snipdeck_core::Timestamp;
 use snipdeck_platform::{
     clipboard_history::{ClipboardHistoryEntry, HistoryRead},
+    command_line::AutostartStatus,
     testing::{FakeClipboard, FakeKeyboard, FakeTiming},
     tray::TrayEvent,
 };
@@ -54,7 +55,7 @@ use snipdeck_ui::{SettingsPage, ToastKind};
 
 #[path = "support/mod.rs"]
 mod support;
-use support::{MasterSteps as _, SharedProvider, key, on_ui_thread, press};
+use support::{ArchiveSteps as _, MasterSteps as _, SharedProvider, key, on_ui_thread, press};
 
 type Ctl = Controller<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
 type Bound = SettingsBinding<FakeClipboard, FakeKeyboard, FakeTiming>;
@@ -85,6 +86,8 @@ struct FakeHost {
     /// Opening a link fails (no browser).
     url_fails: Cell<bool>,
     documents: RefCell<Option<PathBuf>>,
+    /// Pretends to be the Store build.
+    packaged: Cell<bool>,
     /// What the import dialog answers, once.
     import_pick: RefCell<Option<PathBuf>>,
     /// Every `pick_import` call: the kind and whether one file was asked for.
@@ -102,18 +105,23 @@ impl SettingsHost for FakeHost {
         settings_binding::apply_hotkeys(&mut *self.hotkeys.borrow_mut(), hotkeys)
     }
 
-    fn set_autostart(&self, on: bool, hidden: bool) -> Result<(), AutostartError> {
+    fn set_autostart(&self, on: bool, hidden: bool, done: settings_binding::AutostartDone) {
         if self.autostart_fails.get() {
-            return Err(AutostartError::Other("the registry said no".into()));
+            done(Err(AutostartError::Other("the registry said no".into())));
+            return;
         }
         self.autostart.set(Some(on));
         self.autostart_hidden.set(Some(hidden));
-        Ok(())
+        done(Ok(()));
     }
 
-    fn autostart_registered(&self) -> bool {
+    fn autostart_status(&self) -> AutostartStatus {
         self.autostart_reads.set(self.autostart_reads.get() + 1);
-        self.autostart.get() == Some(true)
+        if self.autostart.get() == Some(true) {
+            AutostartStatus::On
+        } else {
+            AutostartStatus::Off
+        }
     }
 
     fn set_panel_in_taskbar(&self, on: bool) {
@@ -137,12 +145,18 @@ impl SettingsHost for FakeHost {
         self.documents.borrow().clone()
     }
 
-    fn pick_export_folder(&self, _owner: Option<isize>) -> ExportFolder {
+    fn packaged(&self) -> bool {
+        self.packaged.get()
+    }
+
+    fn pick_export_folder(&self, _owner: Option<isize>, done: Box<dyn FnOnce(ExportFolder)>) {
         self.export_asked.set(self.export_asked.get() + 1);
-        self.export_pick
-            .borrow()
-            .clone()
-            .unwrap_or(ExportFolder::NoDialog)
+        done(
+            self.export_pick
+                .borrow()
+                .clone()
+                .unwrap_or(ExportFolder::NoDialog),
+        );
     }
 
     fn pick_import(
@@ -150,9 +164,11 @@ impl SettingsHost for FakeHost {
         kind: snipdeck_app::controller::ImportKind,
         single_file: bool,
         _owner: Option<isize>,
-    ) -> Option<PathBuf> {
+        done: Box<dyn FnOnce(Option<PathBuf>)>,
+    ) {
         self.import_asked.borrow_mut().push((kind, single_file));
-        self.import_pick.borrow_mut().take()
+        let answer = self.import_pick.borrow_mut().take();
+        done(answer);
     }
 
     fn clipboard_history_supported(&self) -> bool {
@@ -266,7 +282,16 @@ impl Rig {
 fn each_toggle_writes_settings_json_after_the_quiet_time() {
     on_ui_thread(|| {
         type Case = (&'static str, fn(&Rig), fn(&Settings) -> bool);
-        let cases: [Case; 20] = [
+        // Choosing a language applies it at once, and the translation is process-wide: put English
+        // back when this test ends so the tests that follow read the English sentences.
+        struct EnglishAgain;
+        impl Drop for EnglishAgain {
+            fn drop(&mut self) {
+                let _ = slint::select_bundled_translation("");
+            }
+        }
+        let _english = EnglishAgain;
+        let cases: [Case; 21] = [
             (
                 "theme",
                 |r| r.ui.invoke_theme_chosen(2),
@@ -321,6 +346,11 @@ fn each_toggle_writes_settings_json_after_the_quiet_time() {
                 "backups to keep",
                 |r| r.ui.invoke_backups_keep_chosen(12),
                 |s| s.backups_keep == 12,
+            ),
+            (
+                "days in the Trash",
+                |r| r.ui.invoke_trash_days_chosen(90),
+                |s| s.trash_days == 90,
             ),
             (
                 "panel width",
@@ -530,14 +560,14 @@ fn an_app_added_in_settings_is_no_longer_captured_end_to_end() {
                     ..Default::default()
                 });
         };
-        copy_from("KeePass.exe");
+        copy_from("Scratchpad.exe");
         assert_eq!(
             r.ctl.borrow().recent_entries().len(),
             1,
             "captured before it is excluded"
         );
-        r.ui.invoke_no_history_app_added("keepass.exe".into());
-        copy_from("KeePass.exe");
+        r.ui.invoke_no_history_app_added("scratchpad.exe".into());
+        copy_from("Scratchpad.exe");
         copy_from("notepad.exe");
         let texts: Vec<_> = r
             .ctl
@@ -548,7 +578,7 @@ fn an_app_added_in_settings_is_no_longer_captured_end_to_end() {
             .collect();
         assert_eq!(
             texts,
-            ["from notepad.exe", "from KeePass.exe"],
+            ["from notepad.exe", "from Scratchpad.exe"],
             "the excluded app is not captured again"
         );
     });
@@ -572,7 +602,7 @@ fn the_apps_left_out_of_recent_are_a_list_with_add_remove_and_words_for_a_refusa
         r.ui.invoke_no_history_app_added("C:\\x\\y.exe".into());
         assert_eq!(
             r.ui.get_no_history_error(),
-            "Use just the program's file name, like notepad.exe."
+            "Use just the program’s file name, like notepad.exe."
         );
         r.ui.invoke_no_history_app_removed(0);
         assert_eq!(r.ui.get_no_history_error(), "");
@@ -596,8 +626,8 @@ fn the_accent_applies_at_once_and_blue_keeps_the_built_in_palette() {
         assert!(look.get_accent_custom());
         assert_eq!(
             look.get_accent_light().default,
-            slint::Color::from_rgb_u8(0x04, 0x84, 0x84),
-            "teal-600"
+            slint::Color::from_rgb_u8(0x03, 0x6c, 0x6c),
+            "teal-700: teal-600 is 4.4:1 against the ink"
         );
         r.ui.invoke_accent_chosen(0);
         assert!(!look.get_accent_custom());
@@ -770,7 +800,7 @@ fn choosing_an_edge_docks_the_panel_there_and_floating_lets_it_go() {
             "queued for the Panel's window"
         );
 
-        // "Docked panel uses the full edge" stretches it, and off gives the height back.
+        // "Docked Panel uses the full edge" stretches it, and off gives the height back.
         r.ui.invoke_dock_full_edge_toggled(true);
         assert!(r.ui.get_dock_full_edge(), "the page follows");
         assert_eq!(
@@ -812,7 +842,7 @@ fn a_shortcut_that_clashes_is_refused_and_says_which_action_has_it() {
             rows.row_data(2)
                 .unwrap()
                 .conflict
-                .contains("Open the picker"),
+                .contains("Open the Picker"),
             "{:?}",
             rows.row_data(2).unwrap().conflict
         );
@@ -1061,7 +1091,7 @@ fn start_with_windows_that_cannot_be_changed_says_so_and_keeps_the_old_value() {
         assert!(!r.ui.get_autostart(), "the switch went back");
         assert_eq!(
             r.ui.get_toast_text(),
-            "Couldn't change the Windows start-up entry."
+            "Couldn’t change the Windows start-up entry."
         );
         assert_eq!(r.ui.get_toast_kind(), ToastKind::Danger);
         r.host.autostart_fails.set(false);
@@ -1079,7 +1109,8 @@ fn start_with_windows_shows_the_real_state_when_the_entry_was_removed_outside() 
         assert!(r.ui.get_autostart());
         // The user switches Snipdeck off in Task Manager's Startup tab (or the entry is gone).
         r.host.autostart.set(Some(false));
-        r.ui.invoke_panel_in_taskbar_toggled(true);
+        // The entry is read when the page opens (SET-1: not on every action).
+        r.binding.opened();
         assert!(
             !r.ui.get_autostart(),
             "the page reads the entry, not the stored setting"
@@ -1116,22 +1147,38 @@ fn the_window_behaviour_toggles_start_at_their_defaults_and_reach_the_host() {
 }
 
 #[test]
+fn days_in_the_trash_is_held_between_one_and_365_and_shown() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert_eq!(r.ui.get_trash_days(), 30);
+        r.ui.invoke_trash_days_chosen(90);
+        assert_eq!(r.ctl.borrow().settings().trash_days, 90);
+        assert_eq!(r.ui.get_trash_days(), 90);
+        r.ui.invoke_trash_days_chosen(9999);
+        assert_eq!(r.ctl.borrow().settings().trash_days, 365);
+        r.ui.invoke_trash_days_chosen(0);
+        assert_eq!(r.ctl.borrow().settings().trash_days, 1);
+    });
+}
+
+#[test]
 fn backups_to_keep_is_what_the_prune_keeps() {
     on_ui_thread(|| {
         let r = rig();
         r.ui.invoke_backups_keep_chosen(2);
         assert_eq!(r.ctl.borrow().settings().backups_keep, 2);
         assert_eq!(r.ui.get_backups_keep(), 2);
-        // Four days of backups on the frozen clock, moved on a day at a time.
-        for day in 0..4 {
+        // Twelve manual backups, a minute apart on the frozen clock: the daily count does not
+        // touch them, the manual ones keep their own newest ten.
+        for minute in 0..12 {
             r.clock
-                .set(at(&format!("2026-10-{:02}T10:30:00Z", 17 + day)));
+                .set(at(&format!("2026-10-17T10:{:02}:00Z", 10 + minute)));
             assert!(r.ctl.borrow_mut().backup_now(r.dir.path()));
         }
         let files = std::fs::read_dir(r.dir.path().join("backups"))
             .unwrap()
             .count();
-        assert_eq!(files, 2, "only the newest two stay");
+        assert_eq!(files, snipdeck_portable::backup::MANUAL_KEPT);
         // A bigger number is held between 1 and 60.
         r.ui.invoke_backups_keep_chosen(900);
         assert_eq!(r.ctl.borrow().settings().backups_keep, 60);
@@ -1155,13 +1202,13 @@ fn the_reduce_motion_switch_turns_animation_off_in_the_page_itself() {
 }
 
 #[test]
-fn the_clipboard_clear_time_is_held_between_zero_and_ten_minutes() {
+fn the_clipboard_clear_time_is_held_between_five_seconds_and_ten_minutes() {
     on_ui_thread(|| {
         let r = rig();
         assert_eq!(r.ui.get_clipboard_clear_secs(), 30);
-        r.ui.invoke_clipboard_clear_secs_chosen(0);
-        assert_eq!(r.ctl.borrow().settings().clipboard_clear_secs, 0);
-        assert_eq!(r.ui.get_clipboard_clear_secs(), 0);
+        r.ui.invoke_clipboard_clear_secs_chosen(1);
+        assert_eq!(r.ctl.borrow().settings().clipboard_clear_secs, 5);
+        assert_eq!(r.ui.get_clipboard_clear_secs(), 5);
         r.ui.invoke_clipboard_clear_secs_chosen(99_999);
         assert_eq!(r.ctl.borrow().settings().clipboard_clear_secs, 600);
     });
@@ -1297,24 +1344,60 @@ fn restoring_a_backup_round_trips_the_demo_library() {
 }
 
 #[test]
-fn back_up_now_replaces_todays_backup_instead_of_refusing() {
+fn back_up_now_writes_a_file_of_its_own_and_leaves_todays_backup_alone() {
     on_ui_thread(|| {
         let r = rig_on(
             demo::store(now()).unwrap(),
             tempfile::tempdir().unwrap(),
             true,
         );
+        let dir = snipdeck_portable::backup::backups_dir(r.dir.path());
         r.ui.invoke_backup_now_requested();
-        let files = snipdeck_portable::backup::list_backups(r.dir.path()).unwrap();
+        let files = snipdeck_portable::backup::list_backups(&dir).unwrap();
         assert_eq!(files.len(), 1);
-        // Today's file is stale (stand-in: three bytes); asking again writes a real one over it.
-        std::fs::write(&files[0].path, b"old").unwrap();
+        assert!(files[0].manual, "a file of its own, not today's daily one");
+        assert!(files[0].bytes > 100, "{} bytes", files[0].bytes);
+        // Today's daily backup exists (three bytes stand in for it): asking again leaves it be.
+        let daily = dir.join(snipdeck_portable::backup::file_name(files[0].date));
+        std::fs::write(&daily, b"old").unwrap();
         r.ui.invoke_backup_now_requested();
         assert_eq!(r.ui.get_toast_text(), "Backed up");
-        let after = snipdeck_portable::backup::list_backups(r.dir.path()).unwrap();
-        assert_eq!(after.len(), 1, "still one file for today");
-        assert!(after[0].bytes > 100, "{} bytes", after[0].bytes);
-        assert_eq!(r.ui.get_backups().row_count(), 1);
+        assert_eq!(std::fs::read(&daily).unwrap(), b"old");
+        let after = snipdeck_portable::backup::list_backups(&dir).unwrap();
+        assert_eq!(
+            after.len(),
+            2,
+            "the daily file and the manual one: {after:?}"
+        );
+    });
+}
+
+#[test]
+fn back_up_now_makes_no_second_export_the_copy_is_the_backup_jobs_own() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.host.packaged.set(true);
+        r.ui.invoke_backup_now_requested();
+        // The Store build's copy is made by the backup job (`archive_jobs` tests it), so this
+        // binding writes no export of its own and raises no second toast.
+        assert!(!r.dir.path().join("Documents").exists());
+        assert_eq!(
+            snipdeck_portable::backup::list_backups(&snipdeck_portable::backup::backups_dir(
+                r.dir.path()
+            ))
+            .unwrap()
+            .len(),
+            1
+        );
+    });
+}
+
+#[test]
+fn other_builds_keep_the_backup_in_the_data_folder_only() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_backup_now_requested();
+        assert!(!r.dir.path().join("Documents").exists());
     });
 }
 
@@ -1335,7 +1418,7 @@ fn export_saves_a_new_file_in_documents_each_time_and_opens_the_folder() {
         let first = files(&documents);
         assert_eq!(first.len(), 1);
         assert!(first[0].starts_with("Snipdeck-library-") && first[0].ends_with(".snipdeck"));
-        assert_eq!(r.ui.get_toast_text(), format!("Saved {}", first[0]));
+        assert_eq!(r.ui.get_toast_text(), format!("Saved {}.", first[0]));
         assert_eq!(*r.host.opened.borrow(), std::slice::from_ref(&documents));
         r.ui.invoke_export_requested();
         assert_eq!(
@@ -1625,7 +1708,7 @@ fn a_file_that_cannot_be_imported_shows_a_problem_and_nothing_to_confirm() {
         *r.host.import_pick.borrow_mut() = Some(junk);
         r.ui.invoke_import_source_chosen(1);
         assert!(r.ui.get_import_open());
-        assert_eq!(r.ui.get_import_problem(), "That isn't a Ditto database.");
+        assert_eq!(r.ui.get_import_problem(), "That isn’t a Ditto database.");
         // Confirming a problem writes nothing.
         r.ui.invoke_import_confirmed();
         assert!(!r.ui.get_import_open());
@@ -1652,6 +1735,7 @@ fn every_warning() -> Vec<snipdeck_portable::Warning> {
             title: "Bank PIN".into(),
         },
         W::SensitiveOmittedByExport { count: 4 },
+        W::SkippedByExport { count: 2 },
         W::LossyText { name: name() },
         W::TooLarge {
             name: name(),
@@ -1664,6 +1748,7 @@ fn every_warning() -> Vec<snipdeck_portable::Warning> {
         },
         W::SymlinkSkipped { name: name() },
         W::NonTextSkipped { count: 7 },
+        W::DeeperFoldersSkipped { count: 2 },
         W::Truncated {
             reason: "too many entries".into(),
         },
@@ -1680,12 +1765,14 @@ fn every_warning() -> Vec<snipdeck_portable::Warning> {
             | W::SensitiveNeedKey { .. }
             | W::CannotDecrypt { .. }
             | W::SensitiveOmittedByExport { .. }
+            | W::SkippedByExport { .. }
             | W::LossyText { .. }
             | W::TooLarge { .. }
             | W::Empty { .. }
             | W::Unreadable { .. }
             | W::SymlinkSkipped { .. }
             | W::NonTextSkipped { .. }
+            | W::DeeperFoldersSkipped { .. }
             | W::Truncated { .. }
             | W::Note(_) => {}
         }
@@ -1734,6 +1821,10 @@ fn every_note() -> Vec<snipdeck_portable::Note> {
             name: s("f"),
         },
         N::ColumnsCut { file: s("a.csv") },
+        N::TriggerTooShort {
+            title: s("Sig"),
+            trigger: s("s"),
+        },
         N::TriggerTaken {
             title: s("Sig"),
             trigger: s(";sig"),
@@ -1766,6 +1857,7 @@ fn every_note() -> Vec<snipdeck_portable::Note> {
             | N::DateFormat { .. }
             | N::FormField { .. }
             | N::ColumnsCut { .. }
+            | N::TriggerTooShort { .. }
             | N::TriggerTaken { .. }
             | N::TriggerOverlap { .. }
             | N::TitleCut { .. } => {}
@@ -1795,7 +1887,9 @@ fn note_args(n: &snipdeck_portable::Note) -> Vec<String> {
         N::DateFormat { what, format } => v(&[what, format]),
         N::FormField { what, name } => v(&[what, name]),
         N::ColumnsCut { file } => v(&[file]),
-        N::TriggerTaken { title, trigger } => v(&[title, trigger]),
+        N::TriggerTooShort { title, trigger } | N::TriggerTaken { title, trigger } => {
+            v(&[title, trigger])
+        }
         N::TriggerOverlap {
             title,
             trigger,
@@ -1862,7 +1956,7 @@ fn note_labels_are_translated_too() {
         slint::select_bundled_translation("de").expect("de is bundled");
         let (matched, clip) = (text("base.yml, match 3"), text("Ditto clip 7"));
         slint::select_bundled_translation("").expect("back to the source language");
-        assert!(matched.contains("base.yml, Eintrag 3"), "{matched}");
+        assert!(matched.contains("base.yml, Textbaustein 3"), "{matched}");
         assert!(
             !matched.contains("match") && !clip.contains("Ditto clip"),
             "{matched} {clip}"
@@ -2038,7 +2132,7 @@ fn each_new_choice_previews_its_own_source_and_a_wrong_file_is_a_problem() {
         *r.host.import_pick.borrow_mut() = Some(junk.clone());
         r.ui.invoke_import_source_chosen(6);
         assert!(r.ui.get_import_open());
-        assert_eq!(r.ui.get_import_problem(), "That isn't a Beeftext export.");
+        assert_eq!(r.ui.get_import_problem(), "That isn’t a Beeftext export.");
         r.ui.invoke_import_confirmed();
         for choice in [7, 8] {
             *r.host.import_pick.borrow_mut() = Some(r.dir.path().join("missing.csv"));
@@ -2046,7 +2140,7 @@ fn each_new_choice_previews_its_own_source_and_a_wrong_file_is_a_problem() {
             assert!(r.ui.get_import_open(), "choice {choice}");
             assert_eq!(
                 r.ui.get_import_problem(),
-                "Snipdeck couldn't open that. Check that it still exists.",
+                "Snipdeck couldn’t open that. Check that it still exists.",
                 "choice {choice}"
             );
             r.ui.invoke_import_confirmed();
@@ -2105,6 +2199,7 @@ fn the_recent_inbox_is_off_for_a_new_install_can_be_switched_on_and_its_clear_bu
             .borrow_mut()
             .on_clipboard_change(&snipdeck_app::recent::ClipboardObservation {
                 text: Some("copied".into()),
+                source_app: Some("notepad.exe".into()),
                 ..Default::default()
             });
         assert_eq!(r.ctl.borrow().recent_entries().len(), 1);
@@ -2145,7 +2240,7 @@ fn clearing_recent_emoji_and_colours_asks_first_then_clears_and_says_so() {
         });
         element(
             &r.ui,
-            "Clear recent emoji and colours…",
+            "Clear recent emoji and colours",
             AccessibleRole::Button,
         )
         .invoke_accessible_default_action();
@@ -2154,15 +2249,16 @@ fn clearing_recent_emoji_and_colours_asks_first_then_clears_and_says_so() {
             1,
             "asked first"
         );
-        element(&r.ui, "Keep them", AccessibleRole::Button).invoke_accessible_default_action();
+        element(&r.ui, "Cancel", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(r.ctl.borrow().settings().colours_recent.len(), 1, "kept");
         element(
             &r.ui,
-            "Clear recent emoji and colours…",
+            "Clear recent emoji and colours",
             AccessibleRole::Button,
         )
         .invoke_accessible_default_action();
-        element(&r.ui, "Clear them", AccessibleRole::Button).invoke_accessible_default_action();
+        element(&r.ui, "Clear emoji and colours", AccessibleRole::Button)
+            .invoke_accessible_default_action();
         assert!(r.ctl.borrow().settings().colours_recent.is_empty());
         assert_eq!(
             r.ui.get_toast_text(),
@@ -2230,7 +2326,7 @@ fn a_machine_without_key_protection_says_so_and_offers_nothing() {
         let note = master_row(&r)
             .accessible_description()
             .expect("a description");
-        assert!(note.contains("can't protect a key"), "{note}");
+        assert!(note.contains("can’t protect a key"), "{note}");
         assert_eq!(
             element(&r.ui, "Set password\u{2026}", AccessibleRole::Button).accessible_enabled(),
             Some(false)
@@ -2257,7 +2353,7 @@ fn a_key_record_that_cannot_be_read_offers_no_password_and_says_why() {
         let note = master_row(&r)
             .accessible_description()
             .expect("a description");
-        assert!(note.contains("couldn't read your encryption key"), "{note}");
+        assert!(note.contains("couldn’t read your encryption key"), "{note}");
         assert_eq!(
             element(&r.ui, "Set password\u{2026}", AccessibleRole::Button).accessible_enabled(),
             Some(false),
@@ -2689,11 +2785,13 @@ fn the_backups_section_names_the_newest_backup_or_says_there_is_none() {
             assert!(r.ctl.borrow_mut().backup_now(r.dir.path()));
         }
         r.ui.invoke_backup_now_requested();
-        let newest = snipdeck_portable::backup::list_backups(r.dir.path())
-            .unwrap()
-            .first()
-            .map(|b| b.date.to_string())
-            .unwrap();
+        let newest = snipdeck_portable::backup::list_backups(
+            &snipdeck_portable::backup::backups_dir(r.dir.path()),
+        )
+        .unwrap()
+        .first()
+        .map(|b| b.date.to_string())
+        .unwrap();
         assert_eq!(r.ui.get_last_backup(), newest.as_str());
         assert!(
             newest.starts_with("2026-10-1"),
@@ -2774,6 +2872,22 @@ fn the_text_size_row_changes_the_setting_and_scales_the_page_at_once() {
     });
 }
 
+/// MAIN-35: Windows goes to 225 %, so the fixed sizes do too.
+#[test]
+fn the_text_size_row_offers_200_and_225_percent() {
+    on_ui_thread(|| {
+        let r = rig();
+        let look = r.ui.global::<snipdeck_ui::SystemLook<'_>>();
+        r.ui.invoke_text_size_chosen(5);
+        assert_eq!(r.ctl.borrow().settings().text_size, TextSize::P200);
+        assert!((look.get_text_scale() - 2.0).abs() < 1e-6);
+        r.ui.invoke_text_size_chosen(6);
+        assert_eq!(r.ctl.borrow().settings().text_size, TextSize::P225);
+        assert!((look.get_text_scale() - 2.25).abs() < 1e-6);
+        r.ui.invoke_text_size_chosen(0);
+    });
+}
+
 // ---- Support Snipdeck (optional, unlocks nothing) -----------------------------------------------
 
 #[test]
@@ -2805,7 +2919,7 @@ fn a_browser_that_will_not_open_says_so_in_a_toast() {
         let r = rig();
         r.host.url_fails.set(true);
         r.ui.invoke_support_requested();
-        assert_eq!(r.ui.get_toast_text(), "Couldn't open the link.");
+        assert_eq!(r.ui.get_toast_text(), "Couldn’t open the link.");
         assert_eq!(r.ui.get_toast_kind(), ToastKind::Danger);
     });
 }
@@ -3038,6 +3152,24 @@ fn the_hello_row_appears_with_a_password_and_a_ready_hello_and_the_switch_seals(
 }
 
 #[test]
+fn the_recent_unknown_source_toggle_is_off_by_default_and_changes_the_setting() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert!(!r.ui.get_recent_keep_unknown_source());
+        assert!(!r.ctl.borrow().settings().recent_keep_unknown_source);
+        element(
+            &r.ui,
+            "Keep copies from unknown sources",
+            AccessibleRole::Switch,
+        );
+        r.ui.invoke_recent_keep_unknown_source_toggled(true);
+        assert!(r.ctl.borrow().settings().recent_keep_unknown_source);
+        r.binding.redraw();
+        assert!(r.ui.get_recent_keep_unknown_source());
+    });
+}
+
+#[test]
 fn the_typing_toggles_are_off_by_default_and_change_the_settings() {
     on_ui_thread(|| {
         let r = rig();
@@ -3089,5 +3221,115 @@ fn the_start_up_entry_is_read_once_when_the_page_opens_not_on_each_redraw() {
         r.binding.redraw();
         assert_eq!(r.host.autostart_reads.get(), after_toggle);
         assert!(r.ui.get_autostart(), "the toggle's result is shown");
+    });
+}
+
+/// MAIN-38: Esc closes the erase question first; it does not close the window or erase anything.
+#[test]
+fn escape_closes_the_erase_question_before_anything_else() {
+    on_ui_thread(|| {
+        let r = library_on_disk(false);
+        r.ui.window()
+            .set_size(slint::LogicalSize::new(640.0, 6000.0));
+        element(&r.ui, "Erase library\u{2026}", AccessibleRole::Button)
+            .invoke_accessible_default_action();
+        assert!(r.ui.get_erase_open());
+        press(r.ui.window(), &key(slint::platform::Key::Escape));
+        assert!(!r.ui.get_erase_open(), "Esc closes the question");
+        assert_eq!(
+            board_names(r.ctl.borrow().store()).len(),
+            2,
+            "and erases nothing"
+        );
+    });
+}
+
+/// SET-1: a step of a stepper does not ask Windows about the start-up entry again.
+#[test]
+fn a_page_action_does_not_reread_the_start_up_entry() {
+    on_ui_thread(|| {
+        let r = rig();
+        let before = r.host.autostart_reads.get();
+        for keep in [5, 6, 7] {
+            r.ui.invoke_backups_keep_chosen(keep);
+        }
+        r.ui.invoke_panel_width_chosen(420);
+        assert_eq!(r.host.autostart_reads.get(), before, "no read per action");
+    });
+}
+
+/// SET-2 and SET-3: what was half done or refused is not still there when the page comes back.
+#[test]
+fn closing_the_page_drops_open_forms_and_old_refusals() {
+    on_ui_thread(|| {
+        let r = rig();
+        // A password form with a problem, the erase form with a typed word, a refused program.
+        r.ui.invoke_paste_rule_added("KeePass.EXE".into());
+        r.ui.invoke_paste_rule_added("keepass.exe".into());
+        assert_ne!(r.ui.get_paste_rule_error(), "");
+        r.ui.set_erase_open(true);
+        r.ui.set_erase_text("erase".into());
+        r.ui.set_master_mode(snipdeck_ui::MasterMode::Set);
+        r.ui.invoke_close_requested();
+        assert!(!r.ui.get_erase_open());
+        assert_eq!(r.ui.get_erase_text(), "");
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Closed);
+        // The page is shown again before it is drawn again, as the real reopen does.
+        r.ui.show().expect("show again");
+        r.binding.opened();
+        assert_eq!(r.ui.get_paste_rule_error(), "", "the refusal is gone");
+        assert!(!r.ui.get_import_open());
+    });
+}
+
+#[test]
+fn restoring_shows_the_busy_state_while_the_backup_is_read_and_then_the_preview() {
+    on_ui_thread(|| {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = Store::open(dir.path()).unwrap();
+        snipdeck_app::demo::seed(&mut store, now()).unwrap();
+        snipdeck_portable::backup::run_if_due(
+            &store,
+            &snipdeck_portable::backup::backups_dir(dir.path()),
+            &now().to_zoned(jiff::tz::TimeZone::UTC),
+            7,
+            None,
+        )
+        .unwrap();
+        let r = rig_on(store, dir, true);
+        assert_eq!(r.ui.get_backups().row_count(), 1);
+        assert!(!r.ui.get_backup_busy());
+
+        let held = support::HeldArchive::default();
+        let _inline_again = held.install();
+        r.ui.invoke_backup_restore_requested(0);
+        assert_eq!(held.held(), 1, "the backup is read off this thread");
+        assert!(r.ui.get_backup_busy(), "the page shows the busy state");
+        assert!(!r.ui.get_import_open(), "no preview until the read is done");
+        assert!(r.ctl.borrow().archive_busy());
+        // A second start is refused while the first runs.
+        r.ui.invoke_backup_restore_requested(0);
+        assert_eq!(held.held(), 1);
+
+        held.release();
+        assert!(!r.ui.get_backup_busy());
+        assert!(
+            r.ui.get_import_open(),
+            "the preview opens when the read is done"
+        );
+        assert!(!r.ctl.borrow().archive_busy());
+    });
+}
+
+#[test]
+fn the_tray_double_click_choice_starts_on_and_is_stored() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert!(r.ui.get_tray_double_click_opens(), "on by default");
+        r.ui.invoke_tray_double_click_opens_toggled(false);
+        assert!(!r.ctl.borrow().settings().tray_double_click_opens);
+        assert!(!r.ui.get_tray_double_click_opens());
+        r.ui.invoke_tray_double_click_opens_toggled(true);
+        assert!(r.ctl.borrow().settings().tray_double_click_opens);
     });
 }

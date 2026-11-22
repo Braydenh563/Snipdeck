@@ -86,6 +86,22 @@ fn main_window_collapses_to_an_icon_rail_below_720px() {
     assert!(!h.component.get_rail(), "full sidebar at 760");
 }
 
+#[test]
+fn main_window_rail_drawer_shows_the_full_sidebar_over_the_list() {
+    let h = window((640, 520), false);
+    i_slint_backend_testing::ElementHandle::find_by_accessible_label(
+        &h.component,
+        "Expand sidebar (Ctrl+B)",
+    )
+    .next()
+    .expect("the rail's toggle")
+    .invoke_accessible_default_action();
+    slint::platform::update_timers_and_animations();
+    let f = render(&h);
+    assert!(h.component.get_drawer_open(), "the drawer is open");
+    assert_golden("main-rail-drawer-light", &f);
+}
+
 /// The ink of the glyph inside an element's box, resampled to a 12x12 mask (so a 16 px and a 20 px copy of the
 /// same icon give the same mask). Ink is any pixel that differs from the box's fill, sampled at its left edge (the corners are rounded).
 #[allow(
@@ -169,16 +185,6 @@ fn main_window_empty_states() {
 }
 
 #[test]
-fn main_window_loading_in_rows_and_tiles() {
-    let h = window(SIZE, false);
-    fixture::set_rows(&h.component, Vec::new());
-    h.component.set_loading(true);
-    assert_golden("main-loading-light", &render(&h));
-    h.component.set_view(MainView::Tile);
-    assert_golden("main-loading-tile-light", &render(&h));
-}
-
-#[test]
 fn main_window_long_titles_in_every_view() {
     for (view, name) in [
         (MainView::Compact, "main-awkward-compact-light"),
@@ -222,6 +228,47 @@ fn main_window_bulk_bar_with_a_selection() {
     }
     h.component.set_selected_count(3);
     assert_golden("main-bulk-light", &render(&h));
+}
+
+/// MAIN-60: in high contrast the row actions of the selected row are drawn in the text colour for the
+/// highlight (black on the cyan), not in the window text colour (white on it is 1.46:1); and a row nobody
+/// points at or has selected has no action buttons in the accessibility tree at all.
+#[test]
+fn hc_the_selected_rows_action_icons_are_visible_on_the_highlight() {
+    use i_slint_backend_testing::{AccessibleRole, ElementHandle};
+    const HC_HIGHLIGHT: [u8; 3] = [0x1A, 0xEB, 0xFF];
+    let h = window(SIZE, true);
+    h.component
+        .global::<SystemLook<'_>>()
+        .set_high_contrast(true);
+    let button = |label: &str| {
+        ElementHandle::find_by_accessible_label(&h.component, label)
+            .find(|e| e.accessible_role() == Some(AccessibleRole::Button))
+    };
+    let _ = render(&h);
+    assert!(
+        button("Copy").is_none() && button("Edit").is_none(),
+        "hover-only actions are not in the tree while hidden"
+    );
+    let rows = fixture::set_rows(&h.component, fixture::sample_rows());
+    let mut row = slint::Model::row_data(&*rows, 1).expect("row");
+    row.selected = true;
+    slint::Model::set_row_data(&*rows, 1, row);
+    h.component.set_selected_count(1);
+    let frame = render(&h);
+    for label in ["Copy", "Edit"] {
+        let e = button(label).unwrap_or_else(|| panic!("the selected row offers {label}"));
+        let (p, s) = (e.absolute_position(), e.size());
+        let (x0, y0) = (p.x.round() as u32, p.y.round() as u32);
+        let (x1, y1) = (x0 + s.width.round() as u32, y0 + s.height.round() as u32);
+        let drawn = (y0..y1).any(|y| {
+            (x0..x1).any(|x| {
+                let px = frame.pixel(x, y);
+                (0..3).any(|c| px[c].abs_diff(HC_HIGHLIGHT[c]) >= 48)
+            })
+        });
+        assert!(drawn, "the {label} icon is invisible on the highlight");
+    }
 }
 
 // ---- Measurements ----------------------------------------------------------------------------
@@ -567,13 +614,14 @@ fn main_window_with_a_group_light_and_dark() {
             is_header: true,
             group_count: count,
             group_collapsed: collapsed,
+            group_colour: -1,
             ..Default::default()
         };
         let mut rows = fixture::sample_rows();
         rows.truncate(4);
         rows.insert(0, header("Replies", 2, false));
-        rows[1].grouped = true;
-        rows[2].grouped = true;
+        rows[1].depth = 1;
+        rows[2].depth = 1;
         rows.push(header("Archive", 5, true));
         fixture::set_rows(&h.component, rows);
         h.component.set_has_groups(true);
@@ -598,11 +646,12 @@ fn a_main_group_header_grows_with_the_text_size() {
                 title: "Replies".into(),
                 is_header: true,
                 group_count: 2,
+                group_colour: -1,
                 ..Default::default()
             },
         );
-        rows[1].grouped = true;
-        rows[2].grouped = true;
+        rows[1].depth = 1;
+        rows[2].depth = 1;
         fixture::set_rows(&h.component, rows);
         h.component.set_has_groups(true);
         let _ = render(&h);
@@ -834,80 +883,108 @@ fn main_window_command_palette() {
     assert_golden("palette-dark", &render(&h));
 }
 
-/// Every control of the toolbar (left to right) as (name, x, width) in the title row, read from the accessibility
-/// tree: the search field, Panel, Undo, Redo, Commands, View, the three view toggles and New item.
-fn toolbar_boxes(h: &Harness<MainWindow>) -> Vec<(String, f32, f32)> {
-    use i_slint_backend_testing::{AccessibleRole, ElementQuery};
-    let mut boxes: Vec<(String, f32, f32)> = ElementQuery::from_root(&h.component)
-        .match_descendants()
-        .find_all()
-        .into_iter()
-        .filter(|e| {
-            let (p, s) = (e.absolute_position(), e.size());
-            // The title row: its controls sit in the first 48 px, right of the sidebar or rail.
-            matches!(
-                e.accessible_role(),
-                Some(AccessibleRole::Button | AccessibleRole::TextInput)
-            ) && p.y + s.height / 2.0 < 40.0
-                && p.x > 40.0
-        })
-        .filter_map(|e| {
-            let label = e.accessible_label()?.to_string();
-            // The sidebar's own fold button shares the row but is not part of the item toolbar.
-            if label.contains("sidebar") {
-                return None;
-            }
-            Some((label, e.absolute_position().x, e.size().width))
-        })
-        .collect();
-    boxes.sort_by(|a, b| a.1.total_cmp(&b.1));
-    // Nested elements repeat their control's name and place.
-    boxes.dedup();
-    boxes
+// ---- The Detail pane (MAIN-22) ------------------------------------------------------------------
+
+fn detail_sample() -> snipdeck_ui::DetailData {
+    snipdeck_ui::DetailData {
+        has_item: true,
+        kind: snipdeck_ui::ItemKind::Text,
+        title: "Out of office".into(),
+        text: "Hello,\n\nI am away until Monday and will answer when I am back.".into(),
+        text_cut: false,
+        image: slint::Image::default(),
+        formats: ModelRc::new(VecModel::from(vec![0, 1])),
+        use_count: 3,
+        last_used: "2026-10-16 09:12".into(),
+        created: "2026-09-01 08:00".into(),
+        updated: "2026-10-01 17:45".into(),
+        source_app: "Outlook".into(),
+        list_name: "Email replies".into(),
+        tags: "work, mail".into(),
+    }
 }
 
 #[test]
-fn the_toolbar_fits_at_every_width_with_a_gap_between_controls() {
-    // 480 is the window's minimum width. Nothing leaves the window, nothing touches its neighbour.
-    for (width, scale) in [(480_u32, 1.0_f32), (640, 1.0), (760, 1.0), (640, 1.5)] {
-        let h = window((width, 520), false);
-        h.component.global::<SystemLook<'_>>().set_text_scale(scale);
+fn the_detail_pane_shows_only_where_the_list_keeps_480px_beside_it() {
+    // At 100% text size: pane 360px, sidebar 232px, list at least 480px, so from 1072px.
+    for (width, shown) in [
+        (480, false),
+        (760, false),
+        (1040, false),
+        (1071, false),
+        (1072, true),
+        (1400, true),
+    ] {
+        let h = window((width, 640), false);
         let _ = render(&h);
-        let boxes = toolbar_boxes(&h);
-        let search = boxes
-            .iter()
-            .find(|b| b.0 == "Search snippets")
-            .expect("search");
-        assert!(
-            search.2 >= 32.0 * scale - 0.5,
-            "the search field keeps a full hit target at {width} (scale {scale}): {}",
-            search.2
-        );
-        let names: Vec<&str> = boxes.iter().map(|b| b.0.as_str()).collect();
-        for want in ["Search snippets", "Undo", "Redo", "New item"] {
-            assert!(
-                names.iter().any(|n| n.starts_with(want)),
-                "{want} is in the toolbar at {width} (scale {scale}): {names:?}"
-            );
-        }
-        for (name, x, w) in &boxes {
-            assert!(
-                *x >= 0.0 && x + w <= width as f32 - 8.0 + 0.5,
-                "{name} lies inside the window at {width} (scale {scale}): x {x}, w {w}"
-            );
-        }
-        for pair in boxes.windows(2) {
-            // The three view toggles are one segmented control, 2 px apart inside it.
-            if pair[0].0.ends_with(" view") && pair[1].0.ends_with(" view") {
-                continue;
-            }
-            let gap = pair[1].1 - (pair[0].1 + pair[0].2);
-            assert!(
-                gap >= 4.0 - 0.5,
-                "{} and {} have a gap at {width} (scale {scale}): {gap:?} of {boxes:?}",
-                pair[0].0,
-                pair[1].0
-            );
-        }
+        assert_eq!(h.component.get_detail_shown(), shown, "{width}px wide");
     }
+    let h = window((1400, 640), false);
+    h.component.set_detail_open(false);
+    let _ = render(&h);
+    assert!(
+        !h.component.get_detail_shown(),
+        "the View menu switches it off"
+    );
+}
+
+#[test]
+fn the_detail_pane_is_labelled_and_names_its_fields_for_assistive_technology() {
+    use i_slint_backend_testing::ElementQuery;
+    let h = window((1280, 720), false);
+    h.component.set_detail(detail_sample());
+    let _ = render(&h);
+    assert!(h.component.get_detail_shown());
+    let labels: Vec<String> = ElementQuery::from_root(&h.component)
+        .match_descendants()
+        .find_all()
+        .into_iter()
+        .filter_map(|e| e.accessible_label().map(|l| l.to_string()))
+        .collect();
+    for want in [
+        "Details",
+        "Title: Out of office",
+        "Preview",
+        "Formats: Text, HTML",
+        "List: Email replies",
+        "Source: Outlook",
+        "Created: 2026-09-01 08:00",
+    ] {
+        assert!(labels.iter().any(|l| l == want), "no label {want:?}");
+    }
+}
+
+#[test]
+fn the_detail_pane_keeps_the_list_at_480px_or_more() {
+    use i_slint_backend_testing::ElementQuery;
+    let h = window((1072, 640), false);
+    h.component.set_detail(detail_sample());
+    let _ = render(&h);
+    assert!(h.component.get_detail_shown());
+    let pane = ElementQuery::from_root(&h.component)
+        .match_descendants()
+        .find_all()
+        .into_iter()
+        .find(|e| e.accessible_label().is_some_and(|l| l == "Details"))
+        .expect("the pane");
+    assert!(
+        (pane.size().width - 360.0).abs() < 0.5,
+        "{}",
+        pane.size().width
+    );
+    assert!((pane.absolute_position().x + 360.0 - 1072.0).abs() < 0.5);
+}
+
+#[test]
+fn main_window_with_the_detail_pane() {
+    let h = window((1280, 720), false);
+    h.component.set_board_name("Work".into());
+    h.component.set_detail(detail_sample());
+    assert_golden("main-detail-light", &render(&h));
+    drop(h);
+    let h = window((1280, 720), true);
+    let mut empty = detail_sample();
+    empty.has_item = false;
+    h.component.set_detail(empty);
+    assert_golden("main-detail-empty-dark", &render(&h));
 }

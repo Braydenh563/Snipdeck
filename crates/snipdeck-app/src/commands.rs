@@ -136,11 +136,16 @@ pub enum Command {
     BackUpNow,
     /// Open the Trash and ask to empty it (offered while the Trash holds something).
     EmptyTrash,
+    /// Colour the group under the cursor (opens the colour dialog; the window owns the dialog).
+    ColourGroup,
+    /// Nest the group under the cursor in another group, or take it out to the top level (opens the
+    /// chooser; the window owns it).
+    NestGroup,
 }
 
 impl Command {
     /// Every command, in the order of `CommandTexts.all`.
-    pub const ALL: [Self; 61] = [
+    pub const ALL: [Self; 63] = [
         Self::NewItem,
         Self::NewList,
         Self::Search,
@@ -202,6 +207,8 @@ impl Command {
         Self::ExportLibrary,
         Self::BackUpNow,
         Self::EmptyTrash,
+        Self::ColourGroup,
+        Self::NestGroup,
     ];
 
     /// The command with palette id `id`.
@@ -294,15 +301,19 @@ impl Command {
 /// The configured chord of a global hotkey as text ("Ctrl+Alt+Space"); `None` while it is off.
 #[must_use]
 pub fn chord_text(hotkeys: &Hotkeys, action: HotkeyAction) -> Option<String> {
-    hotkeys.chord(action).map(|c| c.to_string())
+    hotkeys.chord(action).map(|c| c.label())
 }
 
 /// The caps and the spoken form of a global hotkey's configured chord; both empty while it is off.
 #[must_use]
-pub fn chord_caps(hotkeys: &Hotkeys, action: HotkeyAction) -> (Vec<String>, String) {
+pub fn chord_caps(
+    hotkeys: &Hotkeys,
+    action: HotkeyAction,
+    words: &KeyWords,
+) -> (Vec<String>, String) {
     chord_text(hotkeys, action).map_or_else(
         || (Vec::new(), String::new()),
-        |text| (caps(&text), spoken(&text)),
+        |text| (caps(&text), spoken(&text, words)),
     )
 }
 
@@ -330,19 +341,92 @@ pub fn caps(shortcut: &str) -> Vec<String> {
     parts
 }
 
+/// How assistive technology reads the keys whose cap is not a word of its own, in the language
+/// selected for the UI (the window layer reads them from `NameTexts`; Rust has no catalogues).
+/// Other caps ("Shift", "Alt", "K", "F1") are read as they are written.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KeyWords {
+    /// `Ctrl`.
+    pub control: String,
+    /// The Enter key (`↵`).
+    pub enter: String,
+    /// `Del`.
+    pub delete: String,
+    /// `Esc`.
+    pub escape: String,
+    /// The `+` key.
+    pub plus: String,
+    /// The `,` key.
+    pub comma: String,
+    /// The `/` key.
+    pub slash: String,
+    /// [`PHRASES`] in the language selected for the UI, in the same order.
+    pub phrases: Vec<String>,
+}
+
+/// The spoken forms of the shortcut rows that are not one chord, and the two words shown instead
+/// of keys, in English; the English text is what the shortcut catalogue names a phrase by.
+pub const PHRASES: [&str; 17] = [
+    "The item’s trigger",
+    "Tab while the suggestion hint shows",
+    "Alt+Up or Alt+Down",
+    "Hold Space",
+    "Left, Right or Enter on a group header",
+    "Type",
+    "Up or Down",
+    "PageUp or PageDown",
+    "Alt+1 to 9",
+    "Shift+Up or Shift+Down",
+    "Shift+F10 or the Menu key",
+    "Left, Right, Enter or Space on a group header",
+    "Alt+Up or Alt+Down on a group header",
+    "Tab or Shift+Tab",
+    "Unlock with Windows Hello",
+    "Trigger",
+    "Hello",
+];
+
+impl KeyWords {
+    /// The English words: what tests that do not run a window compare against.
+    #[must_use]
+    pub fn english() -> Self {
+        let word = |w: &str| w.to_owned();
+        Self {
+            control: word("Control"),
+            enter: word("Enter"),
+            delete: word("Delete"),
+            escape: word("Escape"),
+            plus: word("Plus"),
+            comma: word("Comma"),
+            slash: word("Slash"),
+            phrases: PHRASES.iter().map(|p| (*p).to_owned()).collect(),
+        }
+    }
+
+    /// `english` (one of [`PHRASES`]) in the selected language; anything else is returned as is.
+    #[must_use]
+    pub fn phrase(&self, english: &str) -> String {
+        PHRASES
+            .iter()
+            .position(|p| *p == english)
+            .and_then(|i| self.phrases.get(i))
+            .map_or_else(|| english.to_owned(), Clone::clone)
+    }
+}
+
 /// The spoken form of a shortcut ("Control Shift N") for assistive technology.
 #[must_use]
-pub fn spoken(shortcut: &str) -> String {
+pub fn spoken(shortcut: &str, words: &KeyWords) -> String {
     caps(shortcut)
         .iter()
         .map(|cap| match cap.as_str() {
-            "Ctrl" => "Control",
-            "↵" => "Enter",
-            "Del" => "Delete",
-            "Esc" => "Escape",
-            "+" => "Plus",
-            "," => "Comma",
-            "/" => "Slash",
+            "Ctrl" => words.control.as_str(),
+            "↵" => words.enter.as_str(),
+            "Del" => words.delete.as_str(),
+            "Esc" => words.escape.as_str(),
+            "+" => words.plus.as_str(),
+            "," => words.comma.as_str(),
+            "/" => words.slash.as_str(),
             other => other,
         })
         .collect::<Vec<_>>()
@@ -468,6 +552,8 @@ pub fn available(command: Command, ctx: &Context<'_>) -> bool {
         Command::GroupItems => ctx.has_item && ctx.in_list,
         Command::FoldGroup
         | Command::RenameGroup
+        | Command::ColourGroup
+        | Command::NestGroup
         | Command::UngroupGroup
         | Command::DeleteGroup => ctx.group.is_some(),
         Command::MoveGroupUp => ctx.group.is_some_and(|g| g.up),
@@ -589,9 +675,14 @@ pub fn matching_places(labels: &[String], query: &str) -> Vec<usize> {
 /// The entries for `query`, best match first. `texts` holds `(label, synonyms)` per command in the order
 /// of [`Command::ALL`]. Each whitespace-separated word of the query must appear (ignoring case) in the
 /// label or the synonyms; a word at the start of the label ranks above one inside it, above one in the
-/// synonyms. An empty query keeps the catalogue order.
+/// synonyms. An empty query keeps the catalogue order. `keys` words the spoken shortcuts.
 #[must_use]
-pub fn entries(texts: &[(String, String)], ctx: &Context<'_>, query: &str) -> Vec<Entry> {
+pub fn entries(
+    texts: &[(String, String)],
+    keys: &KeyWords,
+    ctx: &Context<'_>,
+    query: &str,
+) -> Vec<Entry> {
     let words: Vec<String> = query
         .split_whitespace()
         .map(snipdeck_symbols::fold)
@@ -628,7 +719,10 @@ pub fn entries(texts: &[(String, String)], ctx: &Context<'_>, query: &str) -> Ve
                 label: label.clone(),
                 mark: search_mark::word_mark(label, query),
                 keys: shortcut.as_deref().map(caps).unwrap_or_default(),
-                spoken: shortcut.as_deref().map(spoken).unwrap_or_default(),
+                spoken: shortcut
+                    .as_deref()
+                    .map(|s| spoken(s, keys))
+                    .unwrap_or_default(),
                 hint,
             },
         ));
@@ -803,7 +897,7 @@ mod tests {
     #[test]
     fn an_empty_query_lists_what_applies_in_catalogue_order() {
         let hotkeys = Hotkeys::new_install();
-        let found = entries(&texts(), &ctx(&hotkeys), "");
+        let found = entries(&texts(), &KeyWords::english(), &ctx(&hotkeys), "");
         assert_eq!(found.first().map(|e| e.label.as_str()), Some("New item"));
         assert!(labels(&found).contains(&"Pin selected item"));
         assert!(!labels(&found).contains(&"Unpin selected item"));
@@ -812,13 +906,13 @@ mod tests {
     #[test]
     fn palette_marks_label_prefix() {
         let hotkeys = Hotkeys::new_install();
-        let found = entries(&texts(), &ctx(&hotkeys), "new");
+        let found = entries(&texts(), &KeyWords::english(), &ctx(&hotkeys), "new");
         assert_eq!(found[0].label, "New item");
         assert_eq!(found[0].mark, Some((String::new(), "New".into())));
-        let by_synonym = entries(&texts(), &ctx(&hotkeys), "emoji");
+        let by_synonym = entries(&texts(), &KeyWords::english(), &ctx(&hotkeys), "emoji");
         assert_eq!(by_synonym[0].label, "Symbols");
         assert_eq!(by_synonym[0].mark, None, "a synonym hit marks nothing");
-        let all = entries(&texts(), &ctx(&hotkeys), "");
+        let all = entries(&texts(), &KeyWords::english(), &ctx(&hotkeys), "");
         assert!(all.iter().all(|e| e.mark.is_none()));
     }
 
@@ -827,31 +921,46 @@ mod tests {
         let hotkeys = Hotkeys::new_install();
         let mut c = ctx(&hotkeys);
         c.item_pinned = true;
-        let pinned = entries(&texts(), &c, "pin");
+        let pinned = entries(&texts(), &KeyWords::english(), &c, "pin");
         assert!(labels(&pinned).contains(&"Unpin selected item"));
         assert!(!labels(&pinned).contains(&"Pin selected item"));
         c.has_item = false;
-        assert!(!labels(&entries(&texts(), &c, "")).contains(&"Edit selected item"));
+        assert!(
+            !labels(&entries(&texts(), &KeyWords::english(), &c, ""))
+                .contains(&"Edit selected item")
+        );
         c.has_item = true;
         c.in_trash = true;
-        assert!(!labels(&entries(&texts(), &c, "")).contains(&"Edit selected item"));
+        assert!(
+            !labels(&entries(&texts(), &KeyWords::english(), &c, ""))
+                .contains(&"Edit selected item")
+        );
     }
 
     #[test]
     fn duplicate_is_offered_for_an_item_outside_the_trash_and_has_ctrl_d() {
         let hotkeys = Hotkeys::new_install();
         let mut c = ctx(&hotkeys);
-        assert!(labels(&entries(&texts(), &c, "")).contains(&"Duplicate selected item"));
+        assert!(
+            labels(&entries(&texts(), &KeyWords::english(), &c, ""))
+                .contains(&"Duplicate selected item")
+        );
         assert_eq!(
             Command::DuplicateItem.shortcut(&hotkeys).as_deref(),
             Some("Ctrl+D")
         );
         assert!(Command::DuplicateItem.needs_item());
         c.in_trash = true;
-        assert!(!labels(&entries(&texts(), &c, "")).contains(&"Duplicate selected item"));
+        assert!(
+            !labels(&entries(&texts(), &KeyWords::english(), &c, ""))
+                .contains(&"Duplicate selected item")
+        );
         c.in_trash = false;
         c.has_item = false;
-        assert!(!labels(&entries(&texts(), &c, "")).contains(&"Duplicate selected item"));
+        assert!(
+            !labels(&entries(&texts(), &KeyWords::english(), &c, ""))
+                .contains(&"Duplicate selected item")
+        );
     }
 
     #[test]
@@ -859,27 +968,30 @@ mod tests {
         let hotkeys = Hotkeys::new_install();
         let c = ctx(&hotkeys);
         assert_eq!(
-            labels(&entries(&texts(), &c, "ADD"))[..2],
+            labels(&entries(&texts(), &KeyWords::english(), &c, "ADD"))[..2],
             ["New item", "New list"]
         );
-        let by_name = entries(&texts(), &c, "short");
+        let by_name = entries(&texts(), &KeyWords::english(), &c, "short");
         assert_eq!(labels(&by_name), ["Keyboard shortcuts"]);
-        assert_eq!(entries(&texts(), &c, "zzzz"), Vec::new());
+        assert_eq!(
+            entries(&texts(), &KeyWords::english(), &c, "zzzz"),
+            Vec::new()
+        );
     }
 
     #[test]
     fn a_name_match_outranks_a_synonym_match() {
         let hotkeys = Hotkeys::new_install();
-        let found = entries(&texts(), &ctx(&hotkeys), "hotkeys");
+        let found = entries(&texts(), &KeyWords::english(), &ctx(&hotkeys), "hotkeys");
         // Both reach it through synonyms: catalogue order breaks the tie.
         assert_eq!(labels(&found), ["Settings", "Keyboard shortcuts"]);
-        let found = entries(&texts(), &ctx(&hotkeys), "view");
+        let found = entries(&texts(), &KeyWords::english(), &ctx(&hotkeys), "view");
         assert_eq!(
             found.first().map(|e| e.label.as_str()),
             Some("Tile view"),
             "the name match leads; the density commands reach \"view\" through their synonyms"
         );
-        let found = entries(&texts(), &ctx(&hotkeys), "trash");
+        let found = entries(&texts(), &KeyWords::english(), &ctx(&hotkeys), "trash");
         assert_eq!(
             labels(&found),
             ["Go to Trash", "Move selected item to Trash"],
@@ -899,7 +1011,7 @@ mod tests {
             ("recent", "Go to Recent"),
             ("copy", "Copy selected item"),
         ] {
-            let found = entries(&texts(), &ctx(&hotkeys), word);
+            let found = entries(&texts(), &KeyWords::english(), &ctx(&hotkeys), word);
             assert_eq!(
                 found.first().map(|e| e.label.as_str()),
                 Some(top),
@@ -911,31 +1023,34 @@ mod tests {
     #[test]
     fn letters_spread_over_a_name_and_accents_still_find_it() {
         let hotkeys = Hotkeys::new_install();
-        let found = entries(&texts(), &ctx(&hotkeys), "stg");
+        let found = entries(&texts(), &KeyWords::english(), &ctx(&hotkeys), "stg");
         assert_eq!(
             labels(&found),
             ["Settings"],
             "a subsequence from a word start"
         );
-        let found = entries(&texts(), &ctx(&hotkeys), "SETTÍNGS");
+        let found = entries(&texts(), &KeyWords::english(), &ctx(&hotkeys), "SETTÍNGS");
         assert_eq!(labels(&found), ["Settings"], "accents fold away");
         let mut accented = texts();
         accented[12].0 = "Réglages".to_owned();
-        let found = entries(&accented, &ctx(&hotkeys), "reglages");
+        let found = entries(&accented, &KeyWords::english(), &ctx(&hotkeys), "reglages");
         assert_eq!(
             labels(&found),
             ["Réglages"],
             "an accented name is found without the accent"
         );
-        assert_eq!(entries(&texts(), &ctx(&hotkeys), "zzq").len(), 0);
+        assert_eq!(
+            entries(&texts(), &KeyWords::english(), &ctx(&hotkeys), "zzq").len(),
+            0
+        );
     }
 
     #[test]
     fn take_screenshot_is_found_by_its_name_and_a_synonym() {
         let hotkeys = Hotkeys::new_install();
-        let by_name = entries(&texts(), &ctx(&hotkeys), "screenshot");
+        let by_name = entries(&texts(), &KeyWords::english(), &ctx(&hotkeys), "screenshot");
         assert_eq!(labels(&by_name), ["Take screenshot"]);
-        let by_synonym = entries(&texts(), &ctx(&hotkeys), "picture");
+        let by_synonym = entries(&texts(), &KeyWords::english(), &ctx(&hotkeys), "picture");
         assert_eq!(labels(&by_synonym), ["Take screenshot"]);
         assert_eq!(by_name[0].command, Command::TakeScreenshot);
         assert!(by_name[0].keys.is_empty(), "it has no shortcut");
@@ -945,8 +1060,14 @@ mod tests {
     fn every_word_of_the_query_must_match() {
         let hotkeys = Hotkeys::new_install();
         let c = ctx(&hotkeys);
-        assert_eq!(labels(&entries(&texts(), &c, "new list")), ["New list"]);
-        assert_eq!(entries(&texts(), &c, "new zzz"), Vec::new());
+        assert_eq!(
+            labels(&entries(&texts(), &KeyWords::english(), &c, "new list")),
+            ["New list"]
+        );
+        assert_eq!(
+            entries(&texts(), &KeyWords::english(), &c, "new zzz"),
+            Vec::new()
+        );
     }
 
     #[test]
@@ -956,7 +1077,7 @@ mod tests {
             capture: String::new(),
             ..Hotkeys::new_install()
         };
-        let found = entries(&texts(), &ctx(&hotkeys), "");
+        let found = entries(&texts(), &KeyWords::english(), &ctx(&hotkeys), "");
         let find = |label: &str| found.iter().find(|e| e.label == label).cloned();
         assert_eq!(
             find("Open Picker").map(|e| e.keys),
@@ -983,6 +1104,8 @@ mod tests {
             ("Delete group", "remove trash"),
             ("Move the group up", "reorder earlier"),
             ("Move the group down", "reorder later"),
+            ("Group colour…", "colour color dot tint"),
+            ("Nest under…", "nest inside child"),
         ] {
             all.push((label.to_owned(), words.to_owned()));
         }
@@ -993,7 +1116,7 @@ mod tests {
     fn group_commands_are_offered_where_the_code_performs_them_and_carry_their_keys() {
         let hotkeys = Hotkeys::new_install();
         let found = |c: &Context<'_>| -> Vec<Command> {
-            entries(&texts_with_groups(), c, "")
+            entries(&texts_with_groups(), &KeyWords::english(), c, "")
                 .into_iter()
                 .map(|e| e.command)
                 .filter(|c| {
@@ -1006,6 +1129,8 @@ mod tests {
                             | Command::DeleteGroup
                             | Command::MoveGroupUp
                             | Command::MoveGroupDown
+                            | Command::ColourGroup
+                            | Command::NestGroup
                     )
                 })
                 .collect()
@@ -1029,7 +1154,9 @@ mod tests {
                 Command::RenameGroup,
                 Command::UngroupGroup,
                 Command::DeleteGroup,
-                Command::MoveGroupDown
+                Command::MoveGroupDown,
+                Command::ColourGroup,
+                Command::NestGroup
             ]
         );
         h.group = Some(CursorGroup {
@@ -1069,10 +1196,10 @@ mod tests {
         let hotkeys = Hotkeys::new_install();
         let c = ctx(&hotkeys);
         assert_eq!(
-            labels(&entries(&texts(), &c, "theme")),
+            labels(&entries(&texts(), &KeyWords::english(), &c, "theme")),
             ["Theme: System", "Theme: Light", "Theme: Dark"]
         );
-        let dark = entries(&texts(), &c, "dark");
+        let dark = entries(&texts(), &KeyWords::english(), &c, "dark");
         assert_eq!(dark.first().map(|e| e.command), Some(Command::ThemeDark));
         assert_eq!(dark[0].keys, Vec::<String>::new());
         assert!(!Command::ThemeLight.needs_item());
@@ -1080,21 +1207,23 @@ mod tests {
         let mut c = ctx(&hotkeys);
         c.has_item = false;
         c.in_trash = true;
-        assert!(labels(&entries(&texts(), &c, "theme")).contains(&"Theme: Dark"));
+        assert!(
+            labels(&entries(&texts(), &KeyWords::english(), &c, "theme")).contains(&"Theme: Dark")
+        );
     }
 
     #[test]
     fn paste_next_and_select_all_are_in_the_palette_with_their_keys() {
         let hotkeys = Hotkeys::new_install();
         let c = ctx(&hotkeys);
-        let next = entries(&texts(), &c, "paste next");
+        let next = entries(&texts(), &KeyWords::english(), &c, "paste next");
         assert_eq!(next.first().map(|e| e.command), Some(Command::PasteNext));
         assert_eq!(
             Command::PasteNext.shortcut(&hotkeys).as_deref(),
             chord_text(&hotkeys, HotkeyAction::PasteNext).as_deref(),
             "the chord follows Settings"
         );
-        let all = entries(&texts(), &c, "select all");
+        let all = entries(&texts(), &KeyWords::english(), &c, "select all");
         assert_eq!(all.first().map(|e| e.command), Some(Command::SelectAll));
         assert_eq!(all[0].keys, ["Ctrl", "A"]);
         assert!(
@@ -1139,18 +1268,18 @@ mod tests {
     fn a_tab_that_is_off_stays_in_the_list_dimmed_with_its_reason_after_the_commands_that_run() {
         let hotkeys = Hotkeys::default();
         let mut c = ctx(&hotkeys);
-        let found = entries(&all_texts(), &c, "symbols");
+        let found = entries(&all_texts(), &KeyWords::english(), &c, "symbols");
         assert_eq!(found.first().map(|e| e.command), Some(Command::Symbols));
         assert_eq!(found.first().and_then(|e| e.hint), None);
         c.symbols = false;
         c.colours = false;
-        let found = entries(&all_texts(), &c, "symbols");
+        let found = entries(&all_texts(), &KeyWords::english(), &c, "symbols");
         assert_eq!(found.first().map(|e| e.command), Some(Command::Symbols));
         assert_eq!(
             found.first().and_then(|e| e.hint),
             Some(Hint::SymbolsTabOff)
         );
-        let all = entries(&all_texts(), &c, "");
+        let all = entries(&all_texts(), &KeyWords::english(), &c, "");
         let first_hint = all.iter().position(|e| e.hint.is_some());
         assert!(
             all.iter()
@@ -1158,7 +1287,7 @@ mod tests {
                 .all(|e| e.hint.is_some()),
             "unavailable rows come last"
         );
-        let colours = entries(&all_texts(), &c, "colours");
+        let colours = entries(&all_texts(), &KeyWords::english(), &c, "colours");
         assert_eq!(
             colours.first().and_then(|e| e.hint),
             Some(Hint::ColoursTabOff)
@@ -1170,7 +1299,7 @@ mod tests {
         let hotkeys = Hotkeys::default();
         let mut c = ctx(&hotkeys);
         let has = |c: &Context<'_>, cmd: Command| {
-            entries(&all_texts(), c, "")
+            entries(&all_texts(), &KeyWords::english(), c, "")
                 .iter()
                 .any(|e| e.command == cmd)
         };
@@ -1187,7 +1316,7 @@ mod tests {
         let hotkeys = Hotkeys::default();
         let mut c = ctx(&hotkeys);
         let has = |c: &Context<'_>, cmd: Command| {
-            entries(&all_texts(), c, "")
+            entries(&all_texts(), &KeyWords::english(), c, "")
                 .iter()
                 .any(|e| e.command == cmd)
         };
@@ -1208,7 +1337,7 @@ mod tests {
         c.in_trash = true;
         assert!(has(&c, Command::RestoreItem) && has(&c, Command::DeleteForever));
         assert!(!has(&c, Command::UsePlain));
-        let found = entries(&all_texts(), &c, "delete");
+        let found = entries(&all_texts(), &KeyWords::english(), &c, "delete");
         let forever = found
             .iter()
             .position(|e| e.command == Command::DeleteForever);
@@ -1227,8 +1356,8 @@ mod tests {
         assert_eq!(caps("Ctrl+,"), ["Ctrl", ","]);
         assert_eq!(caps("Ctrl++"), ["Ctrl", "+"]);
         assert_eq!(caps("F1"), ["F1"]);
-        assert_eq!(spoken("Ctrl+/"), "Control Slash");
-        assert_eq!(spoken("Del"), "Delete");
-        assert_eq!(spoken("Esc"), "Escape");
+        assert_eq!(spoken("Ctrl+/", &KeyWords::english()), "Control Slash");
+        assert_eq!(spoken("Del", &KeyWords::english()), "Delete");
+        assert_eq!(spoken("Esc", &KeyWords::english()), "Escape");
     }
 }

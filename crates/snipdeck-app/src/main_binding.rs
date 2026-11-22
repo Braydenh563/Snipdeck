@@ -15,10 +15,10 @@ use std::{
 };
 
 use slint::{
-    CloseRequestResponse, ComponentHandle, Global, SharedString,
+    CloseRequestResponse, ComponentHandle, Global, Model, SharedString,
     winit_030::{WinitWindowAccessor, winit},
 };
-use snipdeck_core::{ListAccent, ListIcon, ListSort};
+use snipdeck_core::{ItemKind, ItemLabel, ListAccent, ListIcon, Sort, SortKey};
 use snipdeck_platform::{
     pipeline::{Clipboard, Keyboard, Timing},
     system_look::HighContrast,
@@ -36,7 +36,7 @@ use crate::{
     },
     host::ClipboardText,
     item_editor::Origin,
-    main_window::{EditorKind, EditorView, Key, Section, SelectMode, ViewMode},
+    main_window::{EditorKind, EditorView, FilterTerm, Key, Section, SelectMode, ViewMode},
     native_window::{
         fit_logical, fit_when_settled, place_of, place_over_owner, restore_place, size_before_show,
     },
@@ -129,8 +129,13 @@ struct MainCore<S, C: Clipboard, K, T> {
     editors: RefCell<Editors>,
     /// The Tag manager window, made the first time it is asked for.
     tag_manager: RefCell<Option<ui::TagManager>>,
+    /// Set once the window has been on screen: from then on a hidden Main is not drawn.
+    been_shown: std::cell::Cell<bool>,
     /// Redraws this window (registered with `binding::register_redraw`).
     redraw: Rc<dyn Fn()>,
+    /// Redraws the window when only the toast changed (registered with
+    /// [`register_toast_redraw`](crate::binding::register_toast_redraw)).
+    toast_redraw: Rc<dyn Fn()>,
 }
 
 /// A bound Main window. Dropping it does not unbind the window; the window's callbacks keep
@@ -192,8 +197,9 @@ where
         let mut ctl = self.controller.borrow_mut();
         // The editors for a new list or board start from words in the language shown now.
         if let Some(window) = self.window.upgrade() {
+            ctl.set_starter_words(&crate::wording::starter_words(&window));
             let words = window.global::<ui::CommandTexts<'_>>();
-            ctl.set_new_name_bases(&words.get_new_list_name(), &words.get_new_board_name());
+            ctl.set_copy_title(&words.invoke_copy_title("{title}".into()));
         }
         let result = f(&mut ctl);
         drop(ctl);
@@ -202,6 +208,21 @@ where
     }
 
     /// Fills the command palette with the commands that match `query`.
+    /// Help > Recent messages: the last toasts, one a line, newest first, in the language shown.
+    fn fill_recent_messages(&self) {
+        let Some(window) = self.window.upgrade() else {
+            return;
+        };
+        let lines: Vec<String> = self
+            .controller
+            .borrow()
+            .recent_toasts()
+            .iter()
+            .map(|message| wording::toast_text(&window, message))
+            .collect();
+        window.set_recent_messages_text(lines.join("\n\n").into());
+    }
+
     fn fill_palette(&self, query: &str) {
         let Some(window) = self.window.upgrade() else {
             return;
@@ -262,10 +283,39 @@ where
                 }
                 return;
             }
+            // The nesting chooser is the window's own too, and opens over the same header.
+            crate::commands::Command::NestGroup => {
+                let cursor = self.shown.borrow().as_ref().map_or(0, |s| s.cursor);
+                if let Some(window) = self.window.upgrade() {
+                    window.invoke_open_group_nest(to_i32(cursor));
+                }
+                return;
+            }
+            // The colour dialog is the window's own: it opens over the header under the cursor.
+            crate::commands::Command::ColourGroup => {
+                let cursor = self.shown.borrow().as_ref().map_or(0, |s| s.cursor);
+                if let Some(window) = self.window.upgrade() {
+                    window.invoke_open_group_colour(to_i32(cursor));
+                }
+                return;
+            }
             _ => {}
         }
         let cursor = self.shown.borrow().as_ref().map_or(0, |s| s.cursor);
         self.act(|ctl| ctl.run_command(command, cursor));
+    }
+
+    /// A toast tick: draws only if the toast differs from the one the window shows.
+    fn toast_changed(self: &Rc<Self>) {
+        let now = self.controller.borrow().toast_view();
+        let same = self
+            .shown
+            .borrow()
+            .as_ref()
+            .is_some_and(|screen| screen.toast == now);
+        if !same {
+            self.sync();
+        }
     }
 
     /// Copies the controller's screen into the window and the editors, and keeps the toast
@@ -274,10 +324,20 @@ where
         let Some(window) = self.window.upgrade() else {
             return;
         };
+        // Nothing is drawn for a window nobody can see: the show path draws once it is visible.
+        if !self.anything_visible(&window) {
+            return;
+        }
         let screen = self.controller.borrow_mut().main_screen();
         render(&window, self.shown.borrow().as_ref(), &screen);
+        window.set_trash_days(crate::binding::limit(
+            self.controller.borrow().settings().trash_days,
+        ));
         if let Some(toast) = &screen.toast
-            && self.controller.borrow_mut().claim_toast_timer(toast.seq)
+            && self.controller.borrow_mut().claim_toast_timer(
+                toast.seq,
+                wording::toast_text(&window, &toast.message).chars().count(),
+            )
         {
             arm_toast(
                 Rc::downgrade(&self.controller),
@@ -289,6 +349,29 @@ where
         self.sync_tag_manager(&screen, false);
         crate::binding::arm_paste(&self.controller);
         *self.shown.borrow_mut() = Some(screen);
+    }
+
+    /// Whether Main, its Tag manager or one of its editors is on screen.
+    fn anything_visible(&self, window: &ui::MainWindow) -> bool {
+        let editors = self.editors.borrow();
+        if window.window().is_visible() {
+            self.been_shown.set(true);
+            return true;
+        }
+        !self.been_shown.get()
+            || self
+                .tag_manager
+                .borrow()
+                .as_ref()
+                .is_some_and(|w| w.window().is_visible())
+            || editors
+                .list
+                .as_ref()
+                .is_some_and(|w| w.window().is_visible())
+            || editors
+                .board
+                .as_ref()
+                .is_some_and(|w| w.window().is_visible())
     }
 
     /// Copies the tags into the Tag manager if it exists, so a delete, an Undo or a rename made
@@ -314,6 +397,15 @@ where
             icon: slint::Image::default(),
             checked: false,
         })));
+        window.set_colours(model(
+            screen
+                .tags
+                .iter()
+                .map(|t| crate::binding::label_index(t.colour)),
+        ));
+        window.set_depths(model(screen.tags.iter().map(|t| to_i32(t.depth))));
+        window.set_paths(model(screen.tags.iter().map(|t| t.path.as_str().into())));
+        window.set_own_counts(model(screen.tags.iter().map(|t| to_i32(t.own_count))));
         window.set_dark(screen.dark);
         apply_look(&window, screen);
     }
@@ -337,11 +429,70 @@ where
                         w.set_rename_error(SharedString::new());
                         w.invoke_finish_rename();
                     }
+                    // A name that is taken offers the merge into that tag: the dialog is the
+                    // message, so no error line shows beside it.
+                    Err(crate::controller::TagRenameError::Exists) => {
+                        w.set_rename_error(SharedString::new());
+                        w.set_merge_into(name.trim().into());
+                    }
                     Err(error) => {
                         w.set_rename_error(wording::tag_rename_error_text(&w, &error).into());
                     }
                 }
             }
+        });
+        let (core, weak) = (Rc::clone(self), w.as_weak());
+        w.on_create_requested(move |name| {
+            crate::trace!(
+                "callback tags create_requested (<{} chars>)",
+                name.chars().count()
+            );
+            let result = core.act(|ctl| ctl.main_new_tag(name.as_str()));
+            if let Some(w) = weak.upgrade() {
+                match result {
+                    Ok(()) => {
+                        w.set_new_error(SharedString::new());
+                        w.invoke_finish_create();
+                    }
+                    Err(error) => {
+                        w.set_new_error(wording::tag_rename_error_text(&w, &error).into());
+                    }
+                }
+            }
+        });
+        let core = Rc::clone(self);
+        w.on_colour_chosen(move |i, accent| {
+            crate::trace!("callback tags colour_chosen ({i}, {accent})");
+            core.act(|ctl| ctl.main_set_tag_colour(index(i), crate::binding::label_of(accent)));
+        });
+        let (core, weak) = (Rc::clone(self), w.as_weak());
+        w.on_merge_confirmed(move |i, into| {
+            crate::trace!("callback tags merge_confirmed ({i})");
+            let result = core.act(|ctl| ctl.main_merge_tag(index(i), into.as_str()));
+            if let Some(w) = weak.upgrade() {
+                if result.is_ok() {
+                    w.set_rename_error(SharedString::new());
+                    w.invoke_finish_rename();
+                } else {
+                    w.set_merge_into(SharedString::new());
+                }
+            }
+        });
+        let (core, weak) = (Rc::clone(self), w.as_weak());
+        w.on_nest_requested(move |i| {
+            crate::trace!("callback tags nest_requested ({i})");
+            let screen = core.controller.borrow_mut().main_screen();
+            let places = nest_places(&screen.tags, index(i));
+            if let Some(w) = weak.upgrade() {
+                w.set_nest_labels(model(places.iter().map(|p| p.0.as_str().into())));
+                w.set_nest_targets(model(places.iter().map(|p| p.1)));
+                w.set_nest_index(i);
+            }
+        });
+        let core = Rc::clone(self);
+        w.on_nest_chosen(move |i, under| {
+            crate::trace!("callback tags nest_chosen ({i}, {under})");
+            core.act(|ctl| ctl.main_nest_tag(index(i), usize::try_from(under).ok()));
         });
         let core = Rc::clone(self);
         w.on_delete_confirmed(move |i| {
@@ -374,7 +525,9 @@ where
         let screen = self.controller.borrow_mut().main_screen();
         self.sync_tag_manager(&screen, true);
         window.set_rename_error(SharedString::new());
+        window.set_new_error(SharedString::new());
         window.invoke_finish_rename();
+        window.invoke_finish_create();
         place_over_owner(window.window());
         let _ = window.show();
         crate::ownership::opened(crate::ownership::Win::TagManager);
@@ -384,6 +537,7 @@ where
 
     /// Shows, updates or hides the list or board editor to match `screen.editor`.
     fn sync_editors(self: &Rc<Self>, screen: &MainScreen) {
+        let trash_days = crate::binding::limit(self.controller.borrow().settings().trash_days);
         let Some(view) = &screen.editor else {
             let editors = self.editors.borrow();
             if let Some(w) = &editors.list {
@@ -405,6 +559,7 @@ where
                 }
                 apply_look(&window, screen);
                 window.set_dark(screen.dark);
+                window.set_trash_days(trash_days);
                 window.set_name_error(error_text(&window, view));
                 if fresh {
                     fill_list_editor(&window, view);
@@ -428,6 +583,7 @@ where
                 }
                 apply_look(&window, screen);
                 window.set_dark(screen.dark);
+                window.set_trash_days(trash_days);
                 window.set_name_error(error_text(&window, view));
                 if fresh {
                     fill_board_editor(&window, view);
@@ -456,13 +612,17 @@ where
         let weak = w.as_weak();
         w.on_save_requested(move || {
             if let Some(w) = weak.upgrade() {
-                let (name, accent, icon, sort) = (
+                let (name, accent, icon, sort, board) = (
                     w.get_name(),
                     accent_of(w.get_accent()),
                     icon_of(w.get_icon_index()),
-                    sort_of(w.get_sort_index()),
+                    sort_of(w.get_sort_index(), false),
+                    index(w.get_board_index()),
                 );
-                core.act(|ctl| ctl.main_editor_save(name.as_str(), accent, icon, sort));
+                core.act(|ctl| {
+                    ctl.main_editor_set_board(board);
+                    ctl.main_editor_save(name.as_str(), accent, icon, sort);
+                });
             }
         });
         let help = Rc::clone(self);
@@ -480,13 +640,14 @@ where
         let (core, weak) = (Rc::clone(self), w.as_weak());
         crate::ownership::register_closer(crate::ownership::Win::ListEditor, move || {
             if let Some(w) = weak.upgrade() {
-                let (name, accent, icon, sort) = (
+                let (name, accent, icon, sort, board) = (
                     w.get_name(),
                     accent_of(w.get_accent()),
                     icon_of(w.get_icon_index()),
-                    sort_of(w.get_sort_index()),
+                    sort_of(w.get_sort_index(), false),
+                    index(w.get_board_index()),
                 );
-                core.act(|ctl| ctl.main_editor_park(name.as_str(), accent, icon, sort));
+                core.act(|ctl| ctl.main_editor_park(name.as_str(), accent, icon, sort, board));
             }
         });
         self.editors.borrow_mut().list = Some(w.clone_strong());
@@ -503,8 +664,12 @@ where
         let weak = w.as_weak();
         w.on_save_requested(move || {
             if let Some(w) = weak.upgrade() {
-                let name = w.get_name();
-                core.act(|ctl| ctl.main_editor_save(name.as_str(), None, None, ListSort::Manual));
+                let (name, accent, icon) = (
+                    w.get_name(),
+                    accent_of(w.get_accent()),
+                    icon_of(w.get_icon_index()),
+                );
+                core.act(|ctl| ctl.main_editor_save(name.as_str(), accent, icon, Sort::MANUAL));
             }
         });
         let help = Rc::clone(self);
@@ -522,9 +687,13 @@ where
         let (core, weak) = (Rc::clone(self), w.as_weak());
         crate::ownership::register_closer(crate::ownership::Win::BoardEditor, move || {
             if let Some(w) = weak.upgrade() {
-                let name = w.get_name();
+                let (name, accent, icon) = (
+                    w.get_name(),
+                    accent_of(w.get_accent()),
+                    icon_of(w.get_icon_index()),
+                );
                 core.act(|ctl| {
-                    ctl.main_editor_park(name.as_str(), None, None, ListSort::Manual);
+                    ctl.main_editor_park(name.as_str(), accent, icon, Sort::MANUAL, 0);
                 });
             }
         });
@@ -575,12 +744,19 @@ where
     pub fn bind_main(this: &Rc<RefCell<Self>>, window: &ui::MainWindow) -> MainBinding<S, C, K, T> {
         let core = Rc::new_cyclic(|weak: &Weak<MainCore<S, C, K, T>>| {
             let weak = weak.clone();
+            let toast_weak = weak.clone();
             MainCore {
                 controller: Rc::clone(this),
                 window: window.as_weak(),
                 shown: RefCell::new(None),
                 editors: RefCell::new(Editors::default()),
                 tag_manager: RefCell::new(None),
+                been_shown: std::cell::Cell::new(false),
+                toast_redraw: Rc::new(move || {
+                    if let Some(core) = toast_weak.upgrade() {
+                        core.toast_changed();
+                    }
+                }),
                 redraw: Rc::new(move || {
                     if let Some(core) = weak.upgrade() {
                         core.sync();
@@ -589,6 +765,7 @@ where
             }
         });
         register_redraw(&core.redraw);
+        crate::binding::register_toast_redraw(&core.redraw, &core.toast_redraw);
         // The OS draws the title bar and its caption buttons until the client-area chrome of
         // ADR-0008 exists, so the toolbar reserves nothing for them.
         window.global::<ui::SystemLook<'_>>().set_caption_inset(0.0);
@@ -627,11 +804,33 @@ where
             .main_set_label_filter(crate::binding::label_of(i)));
         wire!(on_view_changed, |ctl, v| ctl.main_set_view(view_of(v)));
         wire!(on_theme_chosen, |ctl, i| ctl.choose_theme(theme_of(i)));
-        wire!(on_sort_chosen, |ctl, i| ctl.main_set_list_sort(sort_of(i)));
+        wire!(on_sort_chosen, |ctl, i, reversed| ctl
+            .main_set_sort(sort_of(i, reversed)));
         wire!(on_sidebar_width_changed, |ctl, w| ctl
             .set_main_sidebar_width(u32::try_from(w).unwrap_or(0)));
         wire!(on_sidebar_collapsed_changed, |ctl, c| ctl
             .set_main_sidebar_collapsed(c));
+        wire!(on_detail_open_changed, |ctl, o| ctl.set_main_detail_open(o));
+        {
+            // Rows on screen that want a thumbnail: a few are decoded per tick, then the window draws.
+            let wanted = Rc::new(RefCell::new(Vec::<usize>::new()));
+            let core2 = Rc::clone(&core);
+            window.on_thumb_wanted(move |i| {
+                let at = index(i);
+                let queued = {
+                    let mut queue = wanted.borrow_mut();
+                    if queue.contains(&at) {
+                        false
+                    } else {
+                        queue.push(at);
+                        queue.len() == 1
+                    }
+                };
+                if queued {
+                    decode_thumbs_later(Rc::clone(&core2), Rc::clone(&wanted));
+                }
+            });
+        }
         wire!(on_select_requested, |ctl, i, mode| ctl
             .main_select(index(i), select_mode(mode)));
         wire!(on_select_all_requested, |ctl| ctl.main_select_all());
@@ -642,6 +841,8 @@ where
             .recent_delete(i64::from(id)));
         wire!(on_recent_saved, |ctl, id, target| ctl
             .recent_promote_to(i64::from(id), index(target)));
+        wire!(on_recent_saved_sensitive, |ctl, id, target| ctl
+            .recent_promote_sensitive_to(i64::from(id), index(target)));
         wire!(on_recent_cleared, |ctl| ctl.recent_clear());
         wire!(on_recent_unlock_requested, |ctl| ctl.request_unlock());
         wire!(on_item_action, |ctl, action, i| ctl
@@ -674,6 +875,32 @@ where
                 })));
             });
         }
+        {
+            let core2 = Rc::clone(&core);
+            window.on_filter_toggled(move |code| {
+                crate::trace!("callback main filter_toggled ({code})");
+                if let Some(term) = filter_term_of(code) {
+                    core2.act(|ctl| ctl.main_toggle_filter(term));
+                }
+            });
+            let core3 = Rc::clone(&core);
+            window.on_filter_chip_removed(move |i| {
+                crate::trace!("callback main filter_chip_removed ({i})");
+                let term = core3
+                    .shown
+                    .borrow()
+                    .as_ref()
+                    .and_then(|s| s.filter_chips.get(index(i)).map(|c| c.term));
+                if let Some(term) = term {
+                    core3.act(|ctl| ctl.main_toggle_filter(term));
+                }
+            });
+        }
+        wire!(on_filter_tag_toggled, |ctl, i| ctl
+            .main_toggle_filter_tag(index(i)));
+        wire!(on_filter_match_all_changed, |ctl, all| ctl
+            .main_set_filter_match_all(all));
+        wire!(on_filter_cleared, |ctl| ctl.main_clear_filter());
         wire!(on_tag_toggled, |ctl, i, on| ctl
             .main_toggle_tag(index(i), on));
         wire!(on_reveal_requested, |ctl, i, on| ctl
@@ -694,6 +921,10 @@ where
         wire!(on_board_menu_activated, |ctl, i| ctl
             .main_board_menu_activate(index(i)));
         wire!(on_board_menu_dismissed, |ctl| ctl.main_board_menu_close());
+        wire!(on_group_delete_confirmed, |ctl| ctl
+            .main_group_delete_confirm());
+        wire!(on_group_delete_dismissed, |ctl| ctl
+            .main_group_delete_cancel());
         wire!(on_board_delete_confirmed, |ctl| ctl
             .main_board_delete_confirm());
         wire!(on_board_delete_dismissed, |ctl| ctl
@@ -753,6 +984,10 @@ where
         ));
         {
             let core = Rc::clone(&core);
+            window.on_recent_messages_requested(move || core.fill_recent_messages());
+        }
+        {
+            let core = Rc::clone(&core);
             window.on_palette_opened(move || {
                 core.controller.borrow_mut().palette_opened();
                 core.fill_palette("");
@@ -778,11 +1013,20 @@ where
             .main_group_collapse(index(i), Some(c)));
         wire!(on_group_renamed, |ctl, i, name| ctl
             .main_group_rename(index(i), name.as_str()));
+        wire!(on_group_colour_chosen, |ctl, i, accent| ctl
+            .main_group_colour(index(i), accent_of(accent)));
         wire!(on_group_rename_requested, |ctl, i| ctl
             .main_group_rename_start(index(i)));
         wire!(on_group_rename_ended, |ctl| ctl.main_group_rename_ended());
+        wire!(on_group_move_requested, |ctl, i| ctl
+            .main_group_move_start(index(i)));
         wire!(on_group_ungroup_requested, |ctl, i| ctl
             .main_group_ungroup(index(i)));
+        wire!(on_group_nest_requested, |ctl, i| ctl
+            .main_group_nest_start(index(i)));
+        wire!(on_group_nest_chosen, |ctl, i| ctl
+            .main_group_nest_chosen(index(i)));
+        wire!(on_group_nest_dismissed, |ctl| ctl.main_group_nest_cancel());
         wire!(on_group_delete_requested, |ctl, i| ctl
             .main_group_delete(index(i)));
         wire!(on_item_reorder_requested, |ctl, d| ctl
@@ -795,6 +1039,10 @@ where
             .main_drop_row_above(index(from), index(onto)));
         wire!(on_row_dropped_on_list, |ctl, row, list| ctl
             .main_drop_on_list(index(row), index(list)));
+        wire!(on_row_dropped_on_trash, |ctl, row| ctl
+            .main_drop_on_trash(index(row)));
+        wire!(on_row_dropped_on_tag, |ctl, row, tag| ctl
+            .main_drop_on_tag(index(row), index(tag)));
         wire!(on_list_dropped, |ctl, from, onto| ctl
             .main_drop_list(index(from), index(onto)));
         {
@@ -1059,8 +1307,8 @@ impl MainUi {
                     return Ok(());
                 };
                 // Reading the library again: it may have changed while the window was closed.
-                binding.redraw();
                 window.show()?;
+                binding.redraw();
                 if !placed.replace(true) {
                     // Where the user left it (then cut to the screen below); only once, as a
                     // hidden window keeps its place.
@@ -1146,7 +1394,9 @@ impl MainUi {
 /// The colour-label filter row.
 fn set_label_filter(window: &ui::MainWindow, screen: &MainScreen) {
     window.set_label_chips(model(screen.label_chips.iter().map(|chip| {
-        let (label, label_name) = crate::binding::label_fields(Some(chip.label));
+        let (label, label_name) = crate::binding::label_fields(Some(chip.label), &|l| {
+            wording::item_label_name(window, l)
+        });
         ui::LabelChipEntry {
             label,
             name: label_name,
@@ -1154,6 +1404,63 @@ fn set_label_filter(window: &ui::MainWindow, screen: &MainScreen) {
         }
     })));
     window.set_label_filter(crate::binding::label_index(screen.label_filter));
+}
+
+/// The Filter menu's row `code` (and a chip's `kind`): 0 to 5 an item kind in [`ItemKind::ALL`]
+/// order, 6 has a trigger, 7 sensitive, 8 untagged.
+fn filter_term_of(code: i32) -> Option<FilterTerm> {
+    let code = usize::try_from(code).ok()?;
+    match code {
+        0..=5 => ItemKind::ALL.get(code).copied().map(FilterTerm::Kind),
+        6 => Some(FilterTerm::HasTrigger),
+        7 => Some(FilterTerm::Sensitive),
+        8 => Some(FilterTerm::Untagged),
+        _ => None,
+    }
+}
+
+/// The code of a criterion for the window: see [`filter_term_of`]; 9 is a tag.
+fn filter_code(term: FilterTerm) -> i32 {
+    match term {
+        FilterTerm::Kind(kind) => ItemKind::ALL
+            .iter()
+            .position(|k| *k == kind)
+            .map_or(0, to_i32),
+        FilterTerm::HasTrigger => 6,
+        FilterTerm::Sensitive => 7,
+        FilterTerm::Untagged => 8,
+        FilterTerm::Tag(_) => 9,
+    }
+}
+
+/// The Filter menu's ticks and the chips of the active criteria.
+fn set_filter(window: &ui::MainWindow, screen: &MainScreen) {
+    let mut checked = [false; 9];
+    for chip in &screen.filter_chips {
+        if let Some(slot) = usize::try_from(filter_code(chip.term))
+            .ok()
+            .and_then(|i| checked.get_mut(i))
+        {
+            *slot = true;
+        }
+    }
+    window.set_filter_checked(model(checked.into_iter()));
+    window.set_filter_chips(model(screen.filter_chips.iter().map(|chip| {
+        ui::FilterChipEntry {
+            kind: filter_code(chip.term),
+            name: chip.name.as_str().into(),
+        }
+    })));
+    window.set_filter_match_all(screen.filter_match_all);
+    window.set_filter_tag_choices(model(screen.filter_tag_choices.iter().map(|t| {
+        ui::ChoiceEntry {
+            label: t.name.as_str().into(),
+            count: to_i32(t.count),
+            color: slint::Color::default(),
+            icon: slint::Image::default(),
+            checked: t.checked,
+        }
+    })));
 }
 
 /// The Colour block under the list: its swatch and the colour in every format.
@@ -1228,16 +1535,61 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
         }
         window.set_board_delete_open(screen.board_delete.is_some());
     }
+    if differs(&|p| p.group_delete == screen.group_delete)
+        || window.get_group_delete_open() != screen.group_delete.is_some()
+    {
+        if let Some((name, count)) = &screen.group_delete {
+            window.set_group_delete_name(name.as_str().into());
+            window.set_group_delete_count(to_i32(*count));
+        }
+        window.set_group_delete_open(screen.group_delete.is_some());
+    }
     if differs(&|p| p.lists == screen.lists && p.dark == screen.dark) {
         set_side_lists(window, screen);
+    }
+    if differs(&|p| p.move_targets == screen.move_targets && p.dark == screen.dark) {
+        let icons = ui::ListIcons::get(window).get_all();
+        window.set_move_choices(model(screen.move_targets.iter().map(|l| ui::ChoiceEntry {
+            label: l.label.as_str().into(),
+            count: to_i32(l.count),
+            color: list_icon_tint(l.accent, screen.dark),
+            icon: crate::binding::list_icon_image(&icons, l.icon),
+            checked: false,
+        })));
     }
     if differs(&|p| p.label_chips == screen.label_chips && p.label_filter == screen.label_filter) {
         set_label_filter(window, screen);
     }
-    if differs(&|p| p.tags == screen.tags) {
+    if differs(&|p| {
+        p.filter_chips == screen.filter_chips
+            && p.filter_match_all == screen.filter_match_all
+            && p.filter_tag_choices == screen.filter_tag_choices
+    }) {
+        set_filter(window, screen);
+    }
+    if differs(&|p| p.tags == screen.tags && p.dark == screen.dark) {
         window.set_tags(model(screen.tags.iter().map(|t| ui::ChoiceEntry {
             label: t.name.as_str().into(),
             count: to_i32(t.count),
+            color: crate::palette::tag_icon_tint(t.colour, screen.dark),
+            icon: slint::Image::default(),
+            checked: false,
+        })));
+        window.set_tag_depths(model(screen.tags.iter().map(|t| to_i32(t.depth))));
+    }
+    if differs(&|p| p.nest_choices == screen.nest_choices) {
+        let top = ui::MenuTexts::get(window).invoke_group_nest_top();
+        window.set_nest_choices(model(screen.nest_choices.iter().map(|c| ui::ChoiceEntry {
+            label: match &c.name {
+                // A nested group's name is set in by a step per level.
+                Some(name) => format!("{}{name}", "\u{2003}".repeat(c.depth)).into(),
+                None => top.clone(),
+            },
+            count: if c.name.is_some() {
+                to_i32(c.count)
+            } else {
+                -1
+            },
             color: slint::Color::default(),
             icon: slint::Image::default(),
             checked: false,
@@ -1255,8 +1607,9 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
     if window.get_recent_locked() != screen.recent_locked {
         window.set_recent_locked(screen.recent_locked);
     }
-    if window.get_recent_days() != crate::recent::max_age_days() {
-        window.set_recent_days(crate::recent::max_age_days());
+    let days = i32::try_from(screen.recent_days).unwrap_or(i32::MAX);
+    if window.get_recent_days() != days {
+        window.set_recent_days(days);
     }
     if window.get_recent_on() != screen.recent_on {
         window.set_recent_on(screen.recent_on);
@@ -1268,7 +1621,7 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
             app: r.app.as_str().into(),
             age_minutes: i32::try_from(r.age_minutes).unwrap_or(i32::MAX),
             kind: crate::binding::recent_kind(r.kind),
-            image: crate::binding::recent_thumb(r.thumb.as_ref()),
+            image: crate::binding::recent_thumb(r.id, r.thumb.as_ref()),
         })));
     }
     if differs(&|p| p.recent_targets == screen.recent_targets && p.dark == screen.dark) {
@@ -1289,20 +1642,24 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
         window.set_count_trash(to_i32(screen.counts.trash));
     }
     if differs(&|p| p.rows == screen.rows && p.dark == screen.dark) {
-        let rows = screen
-            .rows
-            .iter()
-            .enumerate()
-            .map(|(i, r)| {
-                let mut row = main_row(r, screen.dark);
-                // The one sensitive row held revealed: the controller put its text in the preview.
-                if screen.revealed == Some(i) {
-                    row.preview = r.preview.as_str().into();
-                }
-                row
-            })
+        let current = window.get_rows();
+        // The window's rows are the converted rows of the screen shown before, one for one: a row that
+        // did not change is not converted again (MAIN-29).
+        let converted: Vec<ui::MainRow> = (0..current.row_count())
+            .filter_map(|i| current.row_data(i))
             .collect();
-        if let Some(fresh) = crate::binding::refreshed_model(&window.get_rows(), rows) {
+        let old = previous
+            .filter(|p| p.dark == screen.dark && p.rows.len() == converted.len())
+            .map(|p| (p.rows.as_slice(), converted.as_slice(), p.revealed));
+        let rows = convert_rows(old, &screen.rows, screen.revealed, |i, r| {
+            let mut row = main_row(r, screen.dark, &|l| wording::item_label_name(window, l));
+            // The one sensitive row held revealed: the controller put its text in the preview.
+            if screen.revealed == Some(i) {
+                row.preview = r.preview.as_str().into();
+            }
+            row
+        });
+        if let Some(fresh) = crate::binding::refreshed_model(&current, rows) {
             window.set_rows(fresh);
         }
     }
@@ -1335,6 +1692,7 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
     if window.get_query().as_str() != screen.query {
         window.set_query(screen.query.as_str().into());
     }
+    window.set_search_capped(screen.search_capped);
     window.set_rows_reorderable(screen.reorderable);
     window.set_has_groups(screen.rows.iter().any(|r| r.header.is_some()));
     window.set_list_total(to_i32(list_total(&screen.rows)));
@@ -1346,11 +1704,19 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
     if window.get_rename_seq() != rename_seq {
         window.set_rename_seq(rename_seq);
     }
-    window.set_list_sort(sort_index(screen.list_sort));
+    window.set_list_sort(sort_index(screen.sort));
+    window.set_list_sort_reversed(screen.sort.reversed && screen.sort.key.has_direction());
+    window.set_sortable(screen.sortable);
     window.set_reorder_offer(screen.reorder_offer);
     // The window runs ahead of the setting while the splitter is dragged: only a change of the setting is pushed.
     if differs(&|p| p.sidebar_width == screen.sidebar_width) {
         window.set_sidebar_width(i32::try_from(screen.sidebar_width).unwrap_or(232));
+    }
+    if window.get_detail_open() != screen.detail_open {
+        window.set_detail_open(screen.detail_open);
+    }
+    if differs(&|p| p.detail == screen.detail && p.dark == screen.dark) {
+        window.set_detail(detail_data(screen.detail.as_ref()));
     }
     if differs(&|p| p.sidebar_collapsed == screen.sidebar_collapsed) {
         window.set_sidebar_collapsed(screen.sidebar_collapsed);
@@ -1376,7 +1742,7 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
                 ToastPhase::Hold => ui::ToastPhase::Hold,
                 ToastPhase::Exit => ui::ToastPhase::Exit,
             });
-            window.set_toast_undo_label(wording::toast_button_text(toast).into());
+            window.set_toast_undo_label(wording::toast_button_text(window, toast).into());
             window.set_toast_edit_label(if toast.edit {
                 wording::toast_edit_label(window).into()
             } else {
@@ -1446,18 +1812,53 @@ fn payload_key(payload: Payload) -> Option<Key> {
     }
 }
 
-/// The items a list holds: headers stand for their group's count (members folded away included) and the members
-/// shown under an open header are not counted twice.
+/// The window's rows for `rows`: a row equal to the one with the same key in `old` takes that
+/// row's converted form, and only the others go through `convert`. `old` is the rows shown
+/// before, their converted forms (one for one) and which of them was held revealed; a row that
+/// is or was revealed is always converted.
+fn convert_rows<R: Clone>(
+    old: Option<(&[crate::main_window::Row], &[R], Option<usize>)>,
+    rows: &[crate::main_window::Row],
+    revealed: Option<usize>,
+    mut convert: impl FnMut(usize, &crate::main_window::Row) -> R,
+) -> Vec<R> {
+    let at_key: std::collections::HashMap<crate::main_window::Key, usize> = old
+        .map(|(shown, _, _)| shown.iter().enumerate().map(|(i, r)| (r.key, i)).collect())
+        .unwrap_or_default();
+    rows.iter()
+        .enumerate()
+        .map(|(i, row)| {
+            if let Some((shown, out, was_revealed)) = old
+                && revealed != Some(i)
+                && let Some(&at) = at_key.get(&row.key)
+                && was_revealed != Some(at)
+                && shown.get(at) == Some(row)
+                && let Some(kept) = out.get(at)
+            {
+                return kept.clone();
+            }
+            convert(i, row)
+        })
+        .collect()
+}
+
+/// The items a list holds: a top-level header stands for its group's count (members folded away and nested groups
+/// included) and the rows shown under it are not counted twice.
 fn list_total(rows: &[crate::main_window::Row]) -> usize {
     rows.iter()
         .map(|r| match &r.header {
-            Some(h) => h.count,
-            None => usize::from(!r.grouped),
+            Some(h) if h.depth == 0 => h.count,
+            Some(_) => 0,
+            None => usize::from(r.depth == 0),
         })
         .sum()
 }
 
-fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
+fn main_row(
+    row: &crate::main_window::Row,
+    dark: bool,
+    label_name: &dyn Fn(ItemLabel) -> String,
+) -> ui::MainRow {
     let (list_name, color) = row.list.as_ref().map_or_else(
         || (SharedString::new(), slint::Color::default()),
         |label| {
@@ -1467,7 +1868,7 @@ fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
             )
         },
     );
-    let (label, label_name) = crate::binding::label_fields(row.label);
+    let (label, label_name) = crate::binding::label_fields(row.label, label_name);
     let marks = row.marks.fields();
     let (swatch, has_swatch) =
         crate::colour_words::swatch_of_kind(row.kind, &row.preview, row.sensitive);
@@ -1503,7 +1904,9 @@ fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
         list_color: color,
         label,
         label_name,
-        image: slint::Image::default(),
+        image: row.thumb.as_ref().map_or_else(slint::Image::default, |t| {
+            crate::binding::thumb_image(Some(t.pixels()))
+        }),
         pinned: row.pinned,
         selected: row.selected,
         is_header: row.header.is_some(),
@@ -1512,7 +1915,13 @@ fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
             .as_ref()
             .map_or(0, |h| i32::try_from(h.count).unwrap_or(i32::MAX)),
         group_collapsed: row.header.as_ref().is_some_and(|h| h.collapsed),
-        grouped: row.grouped,
+        group_colour: accent_index(row.header.as_ref().and_then(|h| h.colour)),
+        depth: row
+            .header
+            .as_ref()
+            .map_or(row.depth, |h| h.depth)
+            .try_into()
+            .unwrap_or(i32::MAX),
     }
 }
 
@@ -1545,15 +1954,22 @@ where
 
 fn fill_list_editor(window: &ui::ListEditor, view: &EditorView) {
     window.set_is_new(view.is_new);
+    window.set_restored(view.restored);
     window.set_name(view.name.as_str().into());
     window.set_accent(accent_index(view.accent));
     window.set_icon_names(model(
         ListIcon::ALL
             .iter()
-            .map(|i| SharedString::from(wording::list_icon_name(*i))),
+            .map(|i| SharedString::from(wording::list_icon_name(window, *i))),
     ));
     window.set_icon_index(icon_index(view.icon));
     window.set_sort_index(sort_index(view.sort));
+    window.set_board_names(model(
+        view.boards
+            .iter()
+            .map(|(_, name)| SharedString::from(name.as_str())),
+    ));
+    window.set_board_index(to_i32(view.board_index));
     window.set_show_colour(true);
     window.set_show_sort(true);
     window.set_item_count(to_i32(view.item_count));
@@ -1566,8 +1982,16 @@ fn fill_list_editor(window: &ui::ListEditor, view: &EditorView) {
 
 fn fill_board_editor(window: &ui::BoardEditor, view: &EditorView) {
     window.set_is_new(view.is_new);
+    window.set_restored(view.restored);
     window.set_name(view.name.as_str().into());
-    window.set_show_colour(false);
+    window.set_accent(accent_index(view.accent));
+    window.set_icon_names(model(
+        ListIcon::ALL
+            .iter()
+            .map(|i| SharedString::from(wording::list_icon_name(window, *i))),
+    ));
+    window.set_icon_index(icon_index(view.icon));
+    window.set_show_colour(true);
     window.set_show_sort(false);
     window.set_item_count(to_i32(view.item_count));
     window.set_can_delete(view.can_delete);
@@ -1616,21 +2040,23 @@ fn icon_of(index: i32) -> Option<ListIcon> {
         .and_then(|i| ListIcon::ALL.get(i).copied())
 }
 
-/// 0 manual, 1 most used, 2 recently used.
-pub(crate) fn sort_index(sort: ListSort) -> i32 {
-    match sort {
-        ListSort::Manual => 0,
-        ListSort::MostUsed => 1,
-        ListSort::RecentlyUsed => 2,
-    }
+/// The position of the sort's key in [`SortKey::ALL`] (manual, name, created, modified, most
+/// used, recently used): the sort menu and the list editor use the same order.
+pub(crate) fn sort_index(sort: Sort) -> i32 {
+    SortKey::ALL
+        .iter()
+        .position(|k| *k == sort.key)
+        .and_then(|i| i32::try_from(i).ok())
+        .unwrap_or(0)
 }
 
-fn sort_of(index: i32) -> ListSort {
-    match index {
-        1 => ListSort::MostUsed,
-        2 => ListSort::RecentlyUsed,
-        _ => ListSort::Manual,
-    }
+/// The sort at `index` of [`SortKey::ALL`]: the key's natural direction, or the other one.
+fn sort_of(index: i32, reversed: bool) -> Sort {
+    let key = usize::try_from(index)
+        .ok()
+        .and_then(|i| SortKey::ALL.get(i).copied())
+        .unwrap_or(SortKey::Manual);
+    Sort::new(key, reversed)
 }
 
 fn ui_section(section: Section, index: usize) -> (ui::MainSection, i32) {
@@ -1698,11 +2124,66 @@ fn select_mode(mode: ui::SelectMode) -> SelectMode {
     }
 }
 
+/// The Detail pane's data for `view` (an empty pane when there is none).
+fn detail_data(view: Option<&crate::main_window::DetailView>) -> ui::DetailData {
+    let Some(v) = view else {
+        return ui::DetailData::default();
+    };
+    ui::DetailData {
+        has_item: true,
+        kind: item_kind_of(v.kind, v.sensitive),
+        title: v.title.as_str().into(),
+        text: v.text.as_str().into(),
+        text_cut: v.text_cut,
+        image: crate::binding::thumb_image(v.thumb.as_ref().map(crate::thumb_cache::Thumb::pixels)),
+        formats: model(v.formats.iter().map(|k| match k {
+            snipdeck_core::FormatKind::Text => 0,
+            snipdeck_core::FormatKind::Html => 1,
+            snipdeck_core::FormatKind::Rtf => 2,
+            snipdeck_core::FormatKind::Png => 3,
+            snipdeck_core::FormatKind::Files => 4,
+        })),
+        use_count: i32::try_from(v.use_count).unwrap_or(i32::MAX),
+        last_used: v.last_used.as_str().into(),
+        created: v.created.as_str().into(),
+        updated: v.updated.as_str().into(),
+        source_app: v.source_app.as_str().into(),
+        list_name: v.list_name.as_str().into(),
+        tags: v.tags.as_str().into(),
+    }
+}
+
+/// Decodes the queued rows' thumbnails a few at a time, one tick after the window drew them.
+fn decode_thumbs_later<S, C, K, T>(core: Rc<MainCore<S, C, K, T>>, wanted: Rc<RefCell<Vec<usize>>>)
+where
+    S: Library + 'static,
+    C: Clipboard + ClipboardText + 'static,
+    K: Keyboard + 'static,
+    T: Timing + 'static,
+{
+    slint::Timer::single_shot(std::time::Duration::ZERO, move || {
+        let batch: Vec<usize> = {
+            let mut queue = wanted.borrow_mut();
+            let n = queue.len().min(crate::thumb_cache::DECODES_PER_PASS);
+            queue.drain(..n).collect()
+        };
+        core.act(|ctl| {
+            for at in batch {
+                ctl.main_thumbnail(at);
+            }
+        });
+        if !wanted.borrow().is_empty() {
+            decode_thumbs_later(core, wanted);
+        }
+    });
+}
+
 fn action_of(action: ui::ItemAction) -> MainAction {
     match action {
         ui::ItemAction::Use => MainAction::Use,
         ui::ItemAction::UsePlain => MainAction::UsePlain,
         ui::ItemAction::Copy => MainAction::Copy,
+        ui::ItemAction::OpenLink => MainAction::OpenLink,
         ui::ItemAction::Edit => MainAction::Edit,
         ui::ItemAction::Pin => MainAction::Pin,
         ui::ItemAction::Duplicate => MainAction::Duplicate,
@@ -1761,9 +2242,70 @@ fn read_run<S, C, K, T>(
     );
 }
 
+/// Where tag `at` of `tags` (in sidebar order) can go, as `(label, row)`: the top level (row -1)
+/// when it is nested now, then every tag it is not already under, other than itself and the tags
+/// nested under it (which follow it in the order, deeper than it).
+#[must_use]
+pub(crate) fn nest_places(tags: &[crate::main_window::SideTag], at: usize) -> Vec<(String, i32)> {
+    let Some(own) = tags.get(at) else {
+        return Vec::new();
+    };
+    let mut places = Vec::new();
+    if own.depth > 0 {
+        places.push((String::new(), -1));
+    }
+    let mut below_end = at + 1;
+    while tags.get(below_end).is_some_and(|t| t.depth > own.depth) {
+        below_end += 1;
+    }
+    let parent = tags[..at].iter().rposition(|t| t.depth + 1 == own.depth);
+    for (i, t) in tags.iter().enumerate() {
+        if i == at || (at < i && i < below_end) || Some(i) == parent {
+            continue;
+        }
+        places.push((t.path.clone(), to_i32(i)));
+    }
+    places
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_tag_is_offered_every_place_but_itself_its_own_tags_and_where_it_already_is() {
+        let tag = |path: &str, depth: usize| crate::main_window::SideTag {
+            id: snipdeck_core::TagId::generate(),
+            name: path.rsplit('/').next().unwrap_or(path).to_owned(),
+            count: 0,
+            colour: None,
+            own_count: 0,
+            depth,
+            path: path.to_owned(),
+        };
+        // a, a/b, a/b/c, a/d, e
+        let tags = [
+            tag("a", 0),
+            tag("a/b", 1),
+            tag("a/b/c", 2),
+            tag("a/d", 1),
+            tag("e", 0),
+        ];
+        let labels = |at: usize| -> Vec<(String, i32)> { nest_places(&tags, at) };
+        let owned = |v: &[(&str, i32)]| -> Vec<(String, i32)> {
+            v.iter().map(|(l, i)| ((*l).to_owned(), *i)).collect()
+        };
+        // a: not itself or its three nested tags; it is at the top already.
+        assert_eq!(labels(0), owned(&[("e", 4)]));
+        // a/b: top level, not a (its parent), not itself or a/b/c.
+        assert_eq!(labels(1), owned(&[("", -1), ("a/d", 3), ("e", 4)]));
+        // e: not itself.
+        assert_eq!(
+            labels(4),
+            owned(&[("a", 0), ("a/b", 1), ("a/b/c", 2), ("a/d", 3)])
+        );
+        assert_eq!(labels(9), owned(&[]));
+    }
 
     #[test]
     fn accent_and_sort_indexes_round_trip_in_the_editors_order() {
@@ -1777,9 +2319,17 @@ mod tests {
         // The window's ListHue order: blue, teal, green, amber, orange, red, rose, violet, slate.
         assert_eq!(accent_index(Some(ListAccent::Blue)), 0);
         assert_eq!(accent_index(Some(ListAccent::Slate)), 8);
-        for sort in [ListSort::Manual, ListSort::MostUsed, ListSort::RecentlyUsed] {
-            assert_eq!(sort_of(sort_index(sort)), sort);
+        for &key in SortKey::ALL {
+            for reversed in [false, true] {
+                let sort = Sort::new(key, reversed);
+                assert_eq!(sort_of(sort_index(sort), reversed), sort);
+            }
         }
+        assert_eq!(
+            sort_index(Sort::MOST_USED),
+            4,
+            "the menu lists the keys in SortKey::ALL order"
+        );
     }
 
     #[test]
@@ -1830,7 +2380,7 @@ mod tests {
     fn the_list_total_counts_items_not_headers_and_folded_members() {
         use crate::main_window::{Key, Row};
         use crate::panel::GroupHeader;
-        let item = |grouped: bool, header: Option<GroupHeader>| Row {
+        let item = |depth: usize, header: Option<GroupHeader>| Row {
             key: Key::Item(snipdeck_core::ItemId::generate()),
             kind: snipdeck_core::ItemKind::Text,
             sensitive: false,
@@ -1842,26 +2392,107 @@ mod tests {
             selected: false,
             marks: crate::search_mark::marks("", "", false, None, ""),
             header,
-            grouped,
+            depth,
+            image_stamp: None,
+            thumb: None,
         };
-        let head = |count, collapsed| {
+        let head = |count, collapsed, depth| {
             Some(GroupHeader {
                 group: snipdeck_core::GroupId::generate(),
                 name: "G".into(),
                 count,
                 collapsed,
+                colour: None,
+                depth,
             })
         };
         let rows = [
-            item(false, head(2, false)),
-            item(true, None),
-            item(true, None),
-            item(false, None),
-            item(false, None),
-            item(false, head(5, true)),
+            item(0, head(3, false, 0)),
+            item(1, None),
+            item(1, head(2, false, 1)),
+            item(2, None),
+            item(2, None),
+            item(0, None),
+            item(0, None),
+            item(0, head(5, true, 0)),
         ];
-        assert_eq!(list_total(&rows), 9);
-        assert_eq!(list_total(&rows[3..5]), 2);
+        assert_eq!(list_total(&rows), 10);
+        assert_eq!(list_total(&rows[5..7]), 2);
+    }
+
+    /// MAIN-29: a redraw converts the rows that changed, not all of them.
+    #[test]
+    fn unchanged_rows_are_not_converted_again() {
+        use crate::main_window::{Key, Row};
+        let plain = |title: &str| Row {
+            key: Key::Item(snipdeck_core::ItemId::generate()),
+            kind: snipdeck_core::ItemKind::Text,
+            sensitive: false,
+            title: title.into(),
+            preview: String::new(),
+            list: None,
+            pinned: false,
+            label: None,
+            selected: false,
+            marks: crate::search_mark::marks(title, "", false, None, ""),
+            header: None,
+            depth: 0,
+            image_stamp: None,
+            thumb: None,
+        };
+        let rows: Vec<Row> = ["a", "b", "c", "d"].iter().map(|t| plain(t)).collect();
+        let mut converted = 0;
+        let mut convert = |_: usize, r: &Row| {
+            converted += 1;
+            r.title.clone()
+        };
+        let first = convert_rows(None, &rows, None, &mut convert);
+        assert_eq!(first, ["a", "b", "c", "d"]);
+        assert_eq!(converted, 4, "the first draw converts every row");
+
+        // One row is selected and a new one comes in at the top: two conversions, not five.
+        let mut next = rows.clone();
+        next[1].selected = true;
+        next.insert(0, plain("new"));
+        let mut count = 0;
+        let out = convert_rows(
+            Some((&rows, &first, None)),
+            &next,
+            None,
+            |_: usize, r: &Row| {
+                count += 1;
+                r.title.clone()
+            },
+        );
+        assert_eq!(out, ["new", "a", "b", "c", "d"]);
+        assert_eq!(count, 2);
+
+        // Nothing changed: nothing is converted.
+        let mut count = 0;
+        let same = convert_rows(
+            Some((&rows, &first, None)),
+            &rows,
+            None,
+            |_: usize, r: &Row| {
+                count += 1;
+                r.title.clone()
+            },
+        );
+        assert_eq!(same, first);
+        assert_eq!(count, 0);
+
+        // The row held revealed (now or before) always converts: its text came from outside the row.
+        let mut count = 0;
+        convert_rows(
+            Some((&rows, &first, Some(2))),
+            &rows,
+            Some(1),
+            |_: usize, r: &Row| {
+                count += 1;
+                r.title.clone()
+            },
+        );
+        assert_eq!(count, 2, "the revealed row and the one that was");
     }
 
     #[test]
@@ -1885,16 +2516,18 @@ mod tests {
                 "report",
             ),
             header: None,
-            grouped: false,
+            depth: 0,
+            image_stamp: None,
+            thumb: None,
         };
-        let mapped = main_row(&row, false);
+        let mapped = main_row(&row, false, &|_| String::new());
         assert_eq!(mapped.mark_before.as_str(), "Q3 ");
         assert_eq!(mapped.mark_text.as_str(), "Report");
         assert_eq!(mapped.preview_before.as_str(), "see the ");
         assert_eq!(mapped.preview_match.as_str(), "report");
         row.sensitive = true;
         row.marks = crate::search_mark::marks("Q3 Report", "hunter", true, None, "report");
-        let secret = main_row(&row, false);
+        let secret = main_row(&row, false, &|_| String::new());
         assert_eq!(secret.preview.as_str(), "");
         assert_eq!(secret.preview_match.as_str(), "");
         assert_eq!(

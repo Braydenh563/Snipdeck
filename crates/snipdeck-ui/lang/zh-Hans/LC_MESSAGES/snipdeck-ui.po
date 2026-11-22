@@ -16,6 +16,9 @@ msgstr "#ffffff"
 msgid "(new ID)"
 msgstr "(新ID)"
 
+msgid "(none)"
+msgstr "（无）"
+
 msgid "+{} more"
 msgstr "另有 {} 项"
 
@@ -34,6 +37,12 @@ msgstr "150%"
 msgid "175 %"
 msgstr "175%"
 
+msgid "200 %"
+msgstr "200 %"
+
+msgid "225 %"
+msgstr "225 %"
+
 msgid "A PNG picture. Snipdeck keeps its own copy."
 msgstr "PNG 图片。Snipdeck 会保存自己的副本。"
 
@@ -43,7 +52,10 @@ msgstr "通过快捷键或托盘显示的面板会在粘贴或复制后隐藏。
 msgid "A docked Panel opens at its edge. Set Dock to Floating to choose where it opens."
 msgstr "已停靠的面板会在其边缘打开。将“停靠到”设为“浮动”，即可选择它的打开位置。"
 
-msgid "A link can't contain spaces or line breaks."
+msgid "A double click on the tray icon opens the Main window. Turn this off and a single click acts at once, with no wait for a second click."
+msgstr "双击托盘图标会打开主窗口。关闭后，单击会立即生效，无需等待第二次点击。"
+
+msgid "A link can’t contain spaces or line breaks."
 msgstr "链接不能包含空格或换行。"
 
 msgid "A link needs a scheme such as https://"
@@ -55,8 +67,8 @@ msgstr "已开启主密码，敏感片段已锁定。"
 msgid "A master password is on. Snipdeck asks for it when you first use a sensitive item and again after {} minutes without use."
 msgstr "已开启主密码。首次使用敏感片段时，Snipdeck 会要求输入，此后若 {} 分钟未使用，再次使用时也会要求输入。"
 
-msgid "A master password locks the whole deck."
-msgstr "主密码可以锁定整个卡组。"
+msgid "A master password locks your sensitive items."
+msgstr "主密码可锁定你的敏感片段。"
 
 msgid "A new random ID each time"
 msgstr "每次生成新的随机ID"
@@ -68,7 +80,7 @@ msgid "A palette tab with a colour picker, every colour format, contrast checks 
 msgstr "包含取色器、所有颜色格式、对比度检查和已保存颜色的调色板标签页。关闭后将隐藏该标签页及其 Ctrl+K 命令。"
 
 msgid "A paste leaves out the formatting and sends only the text. Alt+Enter or Alt+click does this for one paste."
-msgstr "粘贴时会去掉格式,只发送文本。按 Alt+Enter 或 Alt+点击,可对单次粘贴这样做。"
+msgstr "粘贴时会去掉格式，只发送文本。按 Alt+Enter 或 Alt+点击，可对单次粘贴这样做。"
 
 msgid "A small window you can drag anywhere."
 msgstr "可以拖到任意位置的小窗口。"
@@ -79,11 +91,17 @@ msgstr "“最近”旁边的笑脸标签页，提供可粘贴的表情符号、
 msgid "A stack is running. End it before you mark more snippets."
 msgstr "正在运行一个堆叠。请先结束它，再标记更多片段。"
 
-msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
+msgid "A strip of your items beside the app you are working in. Click one to paste it there."
 msgstr "在你正在使用的应用旁边显示的片段栏。点击其中一条，即可粘贴到该应用。"
+
+msgid "A sum of numbers and number names, with 2 decimals"
+msgstr "数字和数字名称的总和，保留 2 位小数"
 
 msgid "A tag with that name already exists."
 msgstr "已存在同名标签。"
+
+msgid "A template can ask for up to {} different answers (fields, choices, numbers, dates and sections), a date can have up to {} offsets, and snippets can be nested {} deep."
+msgstr "一个模板最多可以询问 {} 个不同的答案（字段、选项、数字、日期和区段），一个日期最多有 {} 个偏移，片段最多可嵌套 {} 层。"
 
 msgid "A tick box; the text inside is pasted only when ticked"
 msgstr "一个复选框；仅在勾选时才粘贴其中的文本"
@@ -91,23 +109,29 @@ msgstr "一个复选框；仅在勾选时才粘贴其中的文本"
 msgid "A title can have at most {} characters."
 msgstr "标题最多 {} 个字符。"
 
-msgid "A title can't contain line breaks or control characters."
+msgid "A title can’t contain line breaks or control characters."
 msgstr "标题不能包含换行或控制字符。"
 
 msgid "A trigger is 1 to 32 characters with no spaces."
 msgstr "触发词为 1 到 32 个字符，不含空格。"
 
-msgid "AA"
-msgstr "AA"
+msgid "A trigger of fewer than 3 letters or digits would fire inside words. Add a symbol such as ;, make it longer, or have it fire at a space or punctuation."
+msgstr "少于3个字母或数字的触发词会在单词中间触发。请加上 ; 之类的符号、加长它，或让它在空格或标点后触发。"
 
-msgid "AA large"
-msgstr "AA 大号文本"
+msgid "AA 4.5"
+msgstr "AA 4.5"
 
-msgid "AAA"
-msgstr "AAA"
+msgid "AA large 3"
+msgstr "AA 大字 3"
 
-msgid "AAA large"
-msgstr "AAA 大号文本"
+msgid "AAA 7"
+msgstr "AAA 7"
+
+msgid "AAA large 4.5"
+msgstr "AAA 大字 4.5"
+
+msgid "APCA Lc {}"
+msgstr "APCA Lc {}"
 
 msgid "About"
 msgstr "关于"
@@ -130,23 +154,26 @@ msgstr "活动"
 msgid "Add"
 msgstr "添加"
 
-msgid "Add a snippet, or move items here from another list."
-msgstr "添加片段，或从其他列表移动到这里。"
-
-msgid "Add a tag to a snippet to find it here."
+msgid "Add a tag to an item to find it here."
 msgstr "给片段添加标签后，就能在这里找到它。"
 
+msgid "Add an item, or move items here from another list."
+msgstr "添加片段，或从其他列表移动到这里。"
+
 msgid "Add an item… (Enter to save)"
-msgstr "添加项目… (按 Enter 保存)"
+msgstr "添加片段…(按 Enter 保存)"
 
 msgid "Add item"
-msgstr "添加项目"
+msgstr "添加片段"
 
 msgid "Add list"
 msgstr "添加列表"
 
 msgid "Add some text, or cancel."
 msgstr "添加一些文本，或取消。"
+
+msgid "Add tag"
+msgstr "添加标签"
 
 msgid "Add to list"
 msgstr "添加到列表"
@@ -157,8 +184,11 @@ msgstr "添加到粘贴堆栈"
 msgid "Add to “{}”"
 msgstr "添加到“{}”"
 
-msgid "Add {} or {} to a snippet."
+msgid "Add {} or {} to an item."
 msgstr "在片段中加入 {} 或 {}。"
+
+msgid "Add, rename, nest, merge or delete tags. Renaming to a name another tag has offers to merge the two. Deleting a tag removes it from its items; the items stay, and the tags nested under it move up a level."
+msgstr "添加、重命名、嵌套、合并或删除标签。重命名为另一个标签已有的名称时，可选择合并这两个标签。删除标签会将其从片段中移除；片段保留，嵌套在其中的标签上移一级。"
 
 msgid "Added to {}"
 msgstr "已添加到 {}"
@@ -166,11 +196,14 @@ msgstr "已添加到 {}"
 msgid "Added to {}. Some were skipped: folders, and files that are empty, too large or unreadable."
 msgstr "已添加到 {}。部分内容已跳过：文件夹，以及为空、太大或无法读取的文件。"
 
-msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. On Windows, you can then also unlock with Windows Hello."
-msgstr "在 Windows 自带保护之外，为你的敏感项目再加一道密码。首次使用敏感项目时会要求输入，闲置 {} 分钟后会再次要求。在 Windows 上，之后也可以用 Windows Hello 解锁。"
+msgid "Adds a password on top of Windows’ own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use. On Windows, you can then also unlock with Windows Hello."
+msgstr "在 Windows 自带保护之外，为你的敏感片段再加一道密码。首次使用敏感片段时会要求输入，闲置 {} 分钟后会再次要求。在 Windows 上，之后也可以用 Windows Hello 解锁。"
 
-msgid "Adds a text snippet to {}"
+msgid "Adds a text item to {}"
 msgstr "向 {} 添加文本片段"
+
+msgid "After a bar a placeholder can change its text: {}, for example {}."
+msgstr "在竖线后，占位符可以改变其文本：{}，例如 {}。"
 
 msgid "After a paste or copy"
 msgstr "粘贴或复制后"
@@ -179,23 +212,29 @@ msgid "After you pick a colour with the eyedropper it is copied in your default 
 msgstr "用吸管取色后，会以默认格式复制该颜色。仅限 Windows。"
 
 msgid "After you type the first two characters of a trigger, a small hint at the text cursor offers the item. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows."
-msgstr "输入触发词的前两个字符后，文本光标处会出现一个小提示，推荐对应的项目。按 Tab 键插入；按其他任何键则照常输入。仅在提示显示时才会占用 Tab 键。"
+msgstr "输入触发词的前两个字符后，文本光标处会出现一个小提示，推荐对应的片段。按 Tab 键插入；按其他任何键则照常输入。仅在提示显示时才会占用 Tab 键。"
 
 msgid "All"
 msgstr "全部"
+
+msgid "All global shortcuts are set."
+msgstr "所有全局快捷键均已设置。"
 
 msgid "All items"
 msgstr "所有片段"
 
 msgid "All {n} item moves to the Trash. You can restore it for {} days."
 msgid_plural "All {n} items move to the Trash. You can restore them for {} days."
-msgstr[0] "{n} 个项目将移入回收站。{} 天内可以恢复。"
-
-msgid "All {} recent copies are removed. This can't be undone."
-msgstr "将删除全部 {} 条最近复制的内容。此操作无法撤销。"
+msgstr[0] "{n} 个片段将移入回收站。{} 天内可以恢复。"
 
 msgid "Alpha"
 msgstr "透明度"
+
+msgid "Already saved"
+msgstr "已保存"
+
+msgid "Already saved in {}"
+msgstr "已保存在 {} 中"
 
 msgid "Also forget the encryption key"
 msgstr "同时忘记加密密钥"
@@ -205,6 +244,15 @@ msgstr "同时保留我复制的内容？"
 
 msgid "Alt 1 to 9"
 msgstr "Alt 1 到 9"
+
+msgid "Alt+1 to 9"
+msgstr "Alt+1 至 9"
+
+msgid "Alt+Up or Alt+Down"
+msgstr "Alt+上或Alt+下"
+
+msgid "Alt+Up or Alt+Down on a group header"
+msgstr "在分组标题上按 Alt+上或Alt+下"
 
 msgid "Alt+{}"
 msgstr "Alt+{}"
@@ -221,26 +269,32 @@ msgstr "琥珀色"
 msgid "An Image item holds a PNG picture. Choose a PNG file, or add this one as a File."
 msgstr "图片片段保存的是 PNG 图片。请选择 PNG 文件，或将此文件添加为“文件”片段。"
 
+msgid "An answer again, with a transform"
+msgstr "再次使用某个答案，并进行转换"
+
 msgid "An item is open in the editor, so the pasted text was not added. Close it, then paste again."
-msgstr "编辑器中已打开一个项目，所以粘贴的文本没有添加。请先关闭它，再重新粘贴。"
+msgstr "编辑器中已打开一个片段，所以粘贴的文本没有添加。请先关闭它，再重新粘贴。"
 
 msgid "Analogous"
 msgstr "邻近色"
 
-msgid "Angry"
-msgstr "生气"
-
-msgid "Animals"
-msgstr "动物"
-
 msgid "Animals & Nature"
 msgstr "动物与自然"
 
+msgid "Another Snipdeck shortcut already uses {}."
+msgstr "另一个 Snipdeck 快捷键已在使用 {}。"
+
+msgid "Another app has {}: use the mouse for those."
+msgstr "其他应用占用了 {}：请改用鼠标操作。"
+
+msgid "Another backup or export is still running. Try again when it has finished."
+msgstr "另一个备份或导出仍在进行。请在完成后再试。"
+
+msgid "Another item already uses this trigger."
+msgstr "另一个片段已使用此触发词。"
+
 msgid "Another program already uses {}."
 msgstr "其他程序已在使用 {}。"
-
-msgid "Another snippet already uses this trigger."
-msgstr "另一个片段已使用此触发词。"
 
 msgid "Anywhere in Windows"
 msgstr "Windows 中的任何位置"
@@ -250,6 +304,9 @@ msgstr "外观"
 
 msgid "Appears when you type"
 msgstr "输入时出现"
+
+msgid "Applies at once. Follow Windows takes effect the next time Snipdeck starts."
+msgstr "立即生效。“跟随 Windows”在下次启动 Snipdeck 时生效。"
 
 msgid "Apply the new name"
 msgstr "应用新名称"
@@ -263,8 +320,14 @@ msgstr "方向键移动面板"
 msgid "Arrow keys resize the panel"
 msgstr "方向键调整面板大小"
 
+msgid "As soon as it is typed"
+msgstr "输入后立即触发"
+
 msgid "Asks for a date, today if left empty"
 msgstr "询问日期，留空则为今天"
+
+msgid "Asks for a number"
+msgstr "询问一个数字"
 
 msgid "Asks for a value each time"
 msgstr "每次都询问值"
@@ -296,11 +359,27 @@ msgstr "返回编辑 (Ctrl+P)"
 msgid "Back up now"
 msgstr "立即备份"
 
+msgid "Backdrop: black"
+msgstr "背景：黑色"
+
+msgid "Backdrop: white"
+msgstr "背景：白色"
+
 msgid "Backed up"
 msgstr "已备份"
 
+msgid "Backed up, but {} item could not be included: \"{}\". Its attachment could not be read."
+msgid_plural "Backed up, but {} items could not be included, such as \"{}\". Their attachments could not be read."
+msgstr[0] "已备份，但有 {} 个片段（如“{}”）未能包含，其附件无法读取。"
+
+msgid "Backup folder"
+msgstr "备份文件夹"
+
 msgid "Backup of {}, {}"
 msgstr "{} 的备份（{}）"
+
+msgid "Backups"
+msgstr "备份"
 
 msgid "Backups and your data"
 msgstr "备份与你的数据"
@@ -316,6 +395,9 @@ msgstr "下方"
 
 msgid "Blue"
 msgstr "蓝色"
+
+msgid "Board"
+msgstr "看板"
 
 msgid "Board name"
 msgstr "看板名称"
@@ -335,8 +417,17 @@ msgstr "看板"
 msgid "Boards and lists"
 msgstr "看板和列表"
 
+msgid "Book"
+msgstr "书"
+
+msgid "Bookmark"
+msgstr "书签"
+
 msgid "Bottom edge"
 msgstr "底边"
+
+msgid "Briefcase"
+msgstr "公文包"
 
 msgid "Brightness"
 msgstr "亮度"
@@ -344,10 +435,13 @@ msgstr "亮度"
 msgid "Bring in items from a Snipdeck file or another clipboard manager. You see what will be added before anything is written."
 msgstr "从 Snipdeck 文件或其他剪贴板管理器导入片段。写入前可先查看将要添加的内容。"
 
-msgid "Bring up the panel, open the picker, save the clipboard or paste the next item from any app."
-msgstr "在任何应用中，都可以呼出面板、打开选择器、保存剪贴板内容或粘贴下一项。"
+msgid "Bring up the Panel, open the Picker, save the clipboard or paste the next item from any app."
+msgstr "在任何应用中呼出面板、打开选择器、保存剪贴板或粘贴下一个片段。"
 
-msgid "Brings the panel up beside the app you are working in."
+msgid "Bring your snippets"
+msgstr "导入你的项目"
+
+msgid "Brings the Panel up beside the app you are working in."
 msgstr "在你正在使用的应用旁边显示面板。"
 
 msgid "Browse for a file"
@@ -362,11 +456,20 @@ msgstr "构建日期"
 msgid "CMYK"
 msgstr "CMYK"
 
+msgid "Calendar"
+msgstr "日历"
+
+msgid "Camera"
+msgstr "相机"
+
 msgid "Cancel"
 msgstr "取消"
 
 msgid "Cancel the test of {}"
 msgstr "取消 {} 的测试"
+
+msgid "Caps Lock is on."
+msgstr "大写锁定已开启。"
 
 msgid "Captured items keep their kind."
 msgstr "捕获的片段保留其类型。"
@@ -380,8 +483,14 @@ msgstr "更改主密码"
 msgid "Change password"
 msgstr "更改密码"
 
+msgid "Change the text"
+msgstr "更改文本"
+
 msgid "Change these in Settings."
 msgstr "请在设置中更改。"
+
+msgid "Changed"
+msgstr "修改于"
 
 msgid "Changes apply at once."
 msgstr "更改立即生效。"
@@ -389,20 +498,38 @@ msgstr "更改立即生效。"
 msgid "Change…"
 msgstr "更改…"
 
+msgid "Character"
+msgstr "字符"
+
+msgid "Characters"
+msgstr "字符"
+
+msgid "Chat"
+msgstr "聊天"
+
 msgid "Check again"
 msgstr "重新检查"
 
 msgid "Check for updates"
 msgstr "检查更新"
 
+msgid "Checking…"
+msgstr "正在检查…"
+
 msgid "Checks"
 msgstr "检查项"
+
+msgid "Choose a change"
+msgstr "选择更改"
 
 msgid "Choose a file, or cancel."
 msgstr "请选择文件，或取消。"
 
 msgid "Choose comfortable rows, compact rows or tiles."
 msgstr "可选择舒适行、紧凑行或磁贴。"
+
+msgid "Choose folder…"
+msgstr "选择文件夹…"
 
 msgid "Choose one to add it where the cursor is. It is filled in when you use the item."
 msgstr "选择一项，将其添加到光标所在位置。使用该片段时会填入内容。"
@@ -415,6 +542,9 @@ msgstr "选择要导入的内容"
 
 msgid "Clear"
 msgstr "清除"
+
+msgid "Clear emoji and colours"
+msgstr "清除表情符号和颜色"
 
 msgid "Clear filter"
 msgstr "清除筛选"
@@ -433,9 +563,6 @@ msgstr "清空列表…"
 
 msgid "Clear recent emoji and colours"
 msgstr "清除最近使用的表情符号和颜色"
-
-msgid "Clear recent emoji and colours…"
-msgstr "清除最近使用的表情符号和颜色…"
 
 msgid "Clear recent history"
 msgstr "清除最近记录"
@@ -458,6 +585,9 @@ msgstr "稍后清除剪贴板"
 msgid "Clear the clipboard sooner"
 msgstr "尽快清除剪贴板"
 
+msgid "Clear the colour filter to group items"
+msgstr "清除颜色筛选后才能为片段分组"
+
 msgid "Clear the search"
 msgstr "清除搜索"
 
@@ -467,14 +597,17 @@ msgstr "先清除搜索，然后关闭"
 msgid "Clear the shortcut for {}"
 msgstr "清除 {} 的快捷键"
 
-msgid "Clear them"
-msgstr "清除"
-
 msgid "Click"
 msgstr "点击"
 
 msgid "Click copies"
 msgstr "点击为复制"
+
+msgid "Click makes a swatch current · Shift+click copies it"
+msgstr "单击设为当前色 · Shift+单击复制"
+
+msgid "Click me to paste"
+msgstr "点我粘贴"
 
 msgid "Click or Enter pastes. Shift+click or Shift+Enter copies."
 msgstr "点击或按 Enter 粘贴。Shift+点击或 Shift+Enter 为复制。"
@@ -494,17 +627,20 @@ msgstr "剪贴板清除时间"
 msgid "Close"
 msgstr "关闭"
 
+msgid "Close Panel"
+msgstr "关闭面板"
+
+msgid "Close Panel (Esc)"
+msgstr "关闭面板 (Esc)"
+
 msgid "Close Panel when I click away"
 msgstr "点击别处时关闭面板"
 
-msgid "Close panel"
-msgstr "关闭面板"
-
-msgid "Close panel (Esc)"
-msgstr "关闭面板 (Esc)"
-
 msgid "Close search"
 msgstr "关闭搜索"
+
+msgid "Close sidebar (Ctrl+B)"
+msgstr "关闭侧边栏 (Ctrl+B)"
 
 msgid "Close the tag list"
 msgstr "关闭标签列表"
@@ -524,6 +660,12 @@ msgstr "颜色"
 msgid "Colour label"
 msgstr "颜色标签"
 
+msgid "Colour of group “{}”"
+msgstr "分组“{}”的颜色"
+
+msgid "Colour of tag {}"
+msgstr "标签 {} 的颜色"
+
 msgid "Colours"
 msgstr "颜色"
 
@@ -532,6 +674,9 @@ msgstr "舒适"
 
 msgid "Comfortable view"
 msgstr "舒适视图"
+
+msgid "Comma"
+msgstr "逗号"
 
 msgid "Commands"
 msgstr "命令"
@@ -563,6 +708,9 @@ msgstr "内容"
 msgid "Contrast"
 msgstr "对比度"
 
+msgid "Control"
+msgstr "控制键"
+
 msgid "Control Enter"
 msgstr "Ctrl Enter"
 
@@ -574,6 +722,9 @@ msgstr "Ctrl O"
 
 msgid "Copied"
 msgstr "已复制"
+
+msgid "Copied {}. HDR is on for this screen, so it is approximate."
+msgstr "已复制 {}。此屏幕启用了 HDR，因此数值为近似值。"
 
 msgid "Copied. Nothing in {} can take text right now."
 msgstr "已复制。{} 当前无法接收文本。"
@@ -587,8 +738,11 @@ msgstr "已复制。已关闭粘贴到 {} 的功能。"
 msgid "Copied. The window you were using went away."
 msgstr "已复制。你正在使用的窗口已关闭。"
 
-msgid "Copied. {} runs as administrator, so Snipdeck can't paste into it."
+msgid "Copied. {} runs as administrator, so Snipdeck can’t paste into it."
 msgstr "已复制。{} 以管理员身份运行，Snipdeck 无法粘贴到其中。"
+
+msgid "Copies older than this are deleted, even when Recent is off or paused."
+msgstr "超过此天数的副本会被删除，即使“最近”已关闭或暂停。"
 
 msgid "Copy"
 msgstr "复制"
@@ -641,179 +795,209 @@ msgstr "复制{} {}"
 msgid "CopyQ export"
 msgstr "CopyQ 导出"
 
-msgid "Couldn't change the Windows start-up entry."
+msgid "Couldn’t change the Windows start-up entry."
 msgstr "无法更改 Windows 开机启动项。"
 
-msgid "Couldn't clear old items out of the Trash. Check the disk has room, then restart Snipdeck to try again."
-msgstr "无法清除回收站中的旧项目。请检查磁盘空间，然后重启 Snipdeck 重试。"
+msgid "Couldn’t clear old items out of the Trash. Restart Snipdeck to try again; if it keeps failing, check that the data folder can be written to."
+msgstr "无法清理回收站中的旧片段。请重启 Snipdeck 重试；如果仍然失败，请检查数据文件夹是否可写入。"
 
-msgid "Couldn't erase everything. Quit Snipdeck and try again."
+msgid "Couldn’t erase everything. Quit Snipdeck and try again."
 msgstr "无法全部删除。请退出 Snipdeck 后重试。"
 
-msgid "Couldn't export your library. Check the disk has room, then try again."
-msgstr "无法导出你的资料库。请检查磁盘空间，然后重试。"
+msgid "Couldn’t export your library. Try again, or pick another folder."
+msgstr "无法导出你的库。请重试，或选择其他文件夹。"
 
-msgid "Couldn't export your library: an attachment, or your attachments together, are too big for a .snipdeck file (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then try again."
-msgstr "无法导出你的库:某个附件或所有附件的总大小超出 .snipdeck 文件的上限(单个文件 64 MB,总计 8 GB)。请删除或压缩最大的文件,然后重试。"
+msgid "Couldn’t export your library: Snipdeck isn’t allowed to write there. Check that the folder isn’t read-only and that your account may change it, then try again."
+msgstr "无法导出你的资料库：Snipdeck 没有写入该位置的权限。请检查文件夹是否为只读，以及你的账户是否可以修改它，然后重试。"
 
-msgid "Couldn't export your library: it is locked. Unlock it, then try again."
+msgid "Couldn’t export your library: an attachment, or your attachments together, are too big for a .snipdeck file (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then try again."
+msgstr "无法导出你的库：某个附件或所有附件的总大小超出 .snipdeck 文件的上限(单个文件 64 MB,总计 8 GB)。请删除或压缩最大的文件，然后重试。"
+
+msgid "Couldn’t export your library: it is locked. Unlock it, then try again."
 msgstr "无法导出你的资料库：资料库已锁定。请先解锁，然后重试。"
 
-msgid "Couldn't export your library: the disk is full. Free up some space, then try again."
+msgid "Couldn’t export your library: the disk is full. Free up some space, then try again."
 msgstr "无法导出你的资料库：磁盘已满。请释放一些空间，然后重试。"
 
-msgid "Couldn't export your library: the folder can't be written to. Check it isn't read-only or in use, then try again."
+msgid "Couldn’t export your library: the folder can’t be written to. Check it isn’t read-only or in use, then try again."
 msgstr "无法导出你的资料库：无法写入该文件夹。请检查它是否为只读或正被占用，然后重试。"
 
-msgid "Couldn't import that."
+msgid "Couldn’t import that."
 msgstr "无法导入该内容。"
 
-msgid "Couldn't import that. Choose the file again, or try another one."
+msgid "Couldn’t import that. Choose the file again, or try another one."
 msgstr "无法导入。请重新选择文件，或换一个文件。"
 
-msgid "Couldn't import that: it isn't a file Snipdeck can read, or it is damaged. Choose a .snipdeck export."
+msgid "Couldn’t import that: Snipdeck isn’t allowed to write there. Check that the folder isn’t read-only and that your account may change it, then try again."
+msgstr "无法导入该文件：Snipdeck 没有写入该位置的权限。请检查文件夹是否为只读，以及你的账户是否可以修改它，然后重试。"
+
+msgid "Couldn’t import that: it isn’t a file Snipdeck can read, or it is damaged. Choose a .snipdeck export."
 msgstr "无法导入：Snipdeck 无法读取该文件，或文件已损坏。请选择 .snipdeck 导出文件。"
 
-msgid "Couldn't import that: it was made by a newer Snipdeck. Update Snipdeck, then try again."
+msgid "Couldn’t import that: it was made by a newer Snipdeck. Update Snipdeck, then try again."
 msgstr "无法导入：该文件由更新版本的 Snipdeck 创建。请更新 Snipdeck，然后重试。"
 
-msgid "Couldn't import that: the disk is full. Free up some space, then try again."
+msgid "Couldn’t import that: the disk is full. Free up some space, then try again."
 msgstr "无法导入：磁盘已满。请释放一些空间，然后重试。"
 
-msgid "Couldn't import that: the file is in use by another program or can't be read. Close the program using it, then try again."
+msgid "Couldn’t import that: the file is in use by another program or can’t be read. Close the program using it, then try again."
 msgstr "无法导入：文件正被其他程序占用或无法读取。请关闭占用它的程序，然后重试。"
 
-msgid "Couldn't import that: your library is locked. Unlock it, then try again."
+msgid "Couldn’t import that: your library is locked. Unlock it, then try again."
 msgstr "无法导入：你的资料库已锁定。请先解锁，然后重试。"
 
-msgid "Couldn't make a backup. Check the disk has room, then use Back up now in Settings."
-msgstr "无法创建备份。请检查磁盘空间，然后使用“设置”中的“立即备份”。"
+msgid "Couldn’t make a backup. Try Back up now in Settings again; if it keeps failing, open the data folder from Settings and check that it can be written to."
+msgstr "无法完成备份。请在设置中再试一次“立即备份”；如果仍然失败，请从设置中打开数据文件夹，检查它是否可写入。"
 
-msgid "Couldn't make a backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
-msgstr "无法创建备份:某个附件或所有附件的总大小超出备份的上限(单个文件 64 MB,总计 8 GB)。请删除或压缩最大的文件,然后在“设置”中使用“立即备份”。"
+msgid "Couldn’t make a backup: Snipdeck isn’t allowed to write there. Check that the folder isn’t read-only and that your account may change it, then use Back up now in Settings."
+msgstr "无法创建备份：Snipdeck 没有写入该位置的权限。请检查文件夹是否为只读，以及你的账户是否可以修改它，然后在设置中使用“立即备份”。"
 
-msgid "Couldn't make a backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."
+msgid "Couldn’t make a backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
+msgstr "无法创建备份：某个附件或所有附件的总大小超出备份的上限(单个文件 64 MB,总计 8 GB)。请删除或压缩最大的文件，然后在“设置”中使用“立即备份”。"
+
+msgid "Couldn’t make a backup: the backup file is in use or can’t be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."
 msgstr "无法创建备份：备份文件正被占用或无法写入。请关闭其他占用 Snipdeck 文件夹的程序，然后使用“设置”中的“立即备份”。"
 
-msgid "Couldn't make a backup: the disk is full. Free up some space, then use Back up now in Settings."
+msgid "Couldn’t make a backup: the disk is full. Free up some space, then use Back up now in Settings."
 msgstr "无法创建备份：磁盘已满。请释放一些空间，然后使用“设置”中的“立即备份”。"
 
-msgid "Couldn't make a backup: your library is locked. Unlock it, then use Back up now in Settings."
+msgid "Couldn’t make a backup: your library is locked. Unlock it, then use Back up now in Settings."
 msgstr "无法创建备份：你的资料库已锁定。请先解锁，然后使用“设置”中的“立即备份”。"
 
-msgid "Couldn't make that change. Try again, or restart Snipdeck if it keeps happening."
+msgid "Couldn’t make that change. Try again, or restart Snipdeck if it keeps happening."
 msgstr "无法完成此更改。请重试；如果问题持续出现，请重启 Snipdeck。"
 
-msgid "Couldn't make that change: the disk is full. Free up some space, then try again."
+msgid "Couldn’t make that change: Snipdeck isn’t allowed to write there. Check that the folder isn’t read-only and that your account may change it, then try again."
+msgstr "无法进行该更改：Snipdeck 没有写入该位置的权限。请检查文件夹是否为只读，以及你的账户是否可以修改它，然后重试。"
+
+msgid "Couldn’t make that change: the disk is full. Free up some space, then try again."
 msgstr "无法完成此更改：磁盘已满。请释放一些空间，然后重试。"
 
-msgid "Couldn't make that change: your library file is in use by another program. Close that program, then try again."
+msgid "Couldn’t make that change: your library file is in use by another program. Close that program, then try again."
 msgstr "无法完成此更改：你的资料库文件正被其他程序占用。请关闭该程序，然后重试。"
 
-msgid "Couldn't make that change: your library is locked. Unlock it, then try again."
+msgid "Couldn’t make that change: your library is locked. Unlock it, then try again."
 msgstr "无法完成此更改：你的资料库已锁定。请先解锁，然后重试。"
 
-msgid "Couldn't make today's backup. Check the disk has room, then use Back up now in Settings."
-msgstr "无法创建今天的备份。请检查磁盘空间，然后使用“设置”中的“立即备份”。"
+msgid "Couldn’t make today’s backup. Use Back up now in Settings to try again; if it keeps failing, open the data folder from Settings and check that it can be written to."
+msgstr "无法完成今天的备份。请在设置中使用“立即备份”重试；如果仍然失败，请从设置中打开数据文件夹，检查它是否可写入。"
 
-msgid "Couldn't make today's backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
-msgstr "无法创建今天的备份:某个附件或所有附件的总大小超出备份的上限(单个文件 64 MB,总计 8 GB)。请删除或压缩最大的文件,然后在“设置”中使用“立即备份”。"
+msgid "Couldn’t make today’s backup: Snipdeck isn’t allowed to write there. Check that the folder isn’t read-only and that your account may change it, then use Back up now in Settings."
+msgstr "无法创建今天的备份：Snipdeck 没有写入该位置的权限。请检查文件夹是否为只读，以及你的账户是否可以修改它，然后在设置中使用“立即备份”。"
 
-msgid "Couldn't make today's backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."
+msgid "Couldn’t make today’s backup: an attachment, or your attachments together, are too big for a backup (64 MB for one file, 8 GB in all). Remove or shrink the biggest files, then use Back up now in Settings."
+msgstr "无法创建今天的备份：某个附件或所有附件的总大小超出备份的上限(单个文件 64 MB,总计 8 GB)。请删除或压缩最大的文件，然后在“设置”中使用“立即备份”。"
+
+msgid "Couldn’t make today’s backup: the backup file is in use or can’t be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."
 msgstr "无法创建今天的备份：备份文件正被占用或无法写入。请关闭其他占用 Snipdeck 文件夹的程序，然后使用“设置”中的“立即备份”。"
 
-msgid "Couldn't make today's backup: the disk is full. Free up some space, then use Back up now in Settings."
+msgid "Couldn’t make today’s backup: the disk is full. Free up some space, then use Back up now in Settings."
 msgstr "无法创建今天的备份：磁盘已满。请释放一些空间，然后使用“设置”中的“立即备份”。"
 
-msgid "Couldn't open that window."
+msgid "Couldn’t open that window."
 msgstr "无法打开该窗口。"
 
-msgid "Couldn't open the encryption key. Nothing was saved."
+msgid "Couldn’t open the encryption key. Nothing was saved."
 msgstr "无法打开加密密钥。未保存任何内容。"
 
-msgid "Couldn't open the folder."
+msgid "Couldn’t open the folder."
 msgstr "无法打开文件夹。"
 
-msgid "Couldn't open the link."
+msgid "Couldn’t open the link."
 msgstr "无法打开该链接。"
 
-msgid "Couldn't open the log folder."
+msgid "Couldn’t open the log folder."
 msgstr "无法打开日志文件夹。"
 
-msgid "Couldn't open this item."
+msgid "Couldn’t open this item."
 msgstr "无法打开此片段。"
 
-msgid "Couldn't pick a colour from the screen."
+msgid "Couldn’t pick a colour from the screen."
 msgstr "无法从屏幕上取色。"
 
-msgid "Couldn't reach the clipboard. Another app may be using it."
+msgid "Couldn’t reach the clipboard. Another app may be using it."
 msgstr "无法访问剪贴板。可能有其他应用正在使用它。"
 
-msgid "Couldn't read your settings file, so Snipdeck is using the defaults. Changes to settings won't be saved until the file is fixed or removed."
-msgstr "无法读取你的设置文件,因此 Snipdeck 正在使用默认设置。在文件修复或删除之前,对设置的更改不会被保存。"
+msgid "Couldn’t read your settings file, so Snipdeck is using the defaults. Changes to settings won’t be saved until the file is fixed or removed."
+msgstr "无法读取你的设置文件，因此 Snipdeck 正在使用默认设置。在文件修复或删除之前，对设置的更改不会被保存。"
 
-msgid "Couldn't refresh the list on screen. Close and reopen the window to see the change."
+msgid "Couldn’t refresh the list on screen. Close and reopen the window to see the change."
 msgstr "无法刷新屏幕上的列表。请关闭并重新打开窗口以查看更改。"
 
-msgid "Couldn't rename the tag."
+msgid "Couldn’t rename the tag."
 msgstr "无法重命名标签。"
 
-msgid "Couldn't reopen your library. Restart Snipdeck. Your files have not been changed."
+msgid "Couldn’t reopen your library. Restart Snipdeck. Your files have not been changed."
 msgstr "无法重新打开你的库。请重启 Snipdeck。你的文件没有被改动。"
 
-msgid "Couldn't restore that backup. Choose another backup, or try again."
+msgid "Couldn’t restore that backup. Choose another backup, or try again."
 msgstr "无法还原该备份。请选择其他备份，或重试。"
 
-msgid "Couldn't restore that backup: a file is in use by another program. Close it, then try again."
+msgid "Couldn’t restore that backup: Snipdeck isn’t allowed to write there. Check that the folder isn’t read-only and that your account may change it, then try again."
+msgstr "无法还原该备份：Snipdeck 没有写入该位置的权限。请检查文件夹是否为只读，以及你的账户是否可以修改它，然后重试。"
+
+msgid "Couldn’t restore that backup: a file is in use by another program. Close it, then try again."
 msgstr "无法还原该备份：有文件正被其他程序占用。请关闭它，然后重试。"
 
-msgid "Couldn't restore that backup: it isn't a Snipdeck backup, or it is damaged. Choose another backup."
+msgid "Couldn’t restore that backup: it isn’t a Snipdeck backup, or it is damaged. Choose another backup."
 msgstr "无法还原该备份：它不是 Snipdeck 备份，或已损坏。请选择其他备份。"
 
-msgid "Couldn't restore that backup: it was made by a newer Snipdeck. Update Snipdeck, then try again."
+msgid "Couldn’t restore that backup: it was made by a newer Snipdeck. Update Snipdeck, then try again."
 msgstr "无法还原该备份：它由更新版本的 Snipdeck 创建。请更新 Snipdeck，然后重试。"
 
-msgid "Couldn't restore that backup: the disk is full. Free up some space, then try again."
+msgid "Couldn’t restore that backup: the disk is full. Free up some space, then try again."
 msgstr "无法还原该备份：磁盘已满。请释放一些空间，然后重试。"
 
-msgid "Couldn't restore that backup: your library is locked. Unlock it, then try again."
+msgid "Couldn’t restore that backup: your library is locked. Unlock it, then try again."
 msgstr "无法还原该备份：你的资料库已锁定。请先解锁，然后重试。"
 
-msgid "Couldn't save a draft of what you typed."
+msgid "Couldn’t save a draft of what you typed."
 msgstr "无法保存你输入内容的草稿。"
 
-msgid "Couldn't save this item. Nothing was changed."
+msgid "Couldn’t save this item. Nothing was changed."
 msgstr "无法保存此片段。未做任何更改。"
 
-msgid "Couldn't save your settings. Snipdeck will try again."
+msgid "Couldn’t save your settings. Snipdeck will try again."
 msgstr "无法保存你的设置。Snipdeck 将再次尝试。"
 
-msgid "Couldn't start the screenshot tool."
+msgid "Couldn’t start the screenshot tool."
 msgstr "无法启动截图工具。"
 
-msgid "Couldn't start typing triggers. Nothing will be expanded or suggested."
-msgstr "无法启动键入触发。不会展开或推荐任何内容。"
+msgid "Couldn’t start typing triggers. Nothing will be expanded or suggested."
+msgstr "无法启动键入触发词。不会展开或推荐任何内容。"
 
-msgid "Couldn't use this item. Try again, or restart Snipdeck if it keeps happening."
+msgid "Couldn’t use this item. Try again, or restart Snipdeck if it keeps happening."
 msgstr "无法使用此片段。请重试；如果问题持续出现，请重启 Snipdeck。"
 
-msgid "Couldn't use this item: the disk is full. Free up some space, then try again."
+msgid "Couldn’t use this item: Snipdeck isn’t allowed to write there. Check that the folder isn’t read-only and that your account may change it, then try again."
+msgstr "无法使用此片段：Snipdeck 没有写入该位置的权限。请检查文件夹是否为只读，以及你的账户是否可以修改它，然后重试。"
+
+msgid "Couldn’t use this item: the disk is full. Free up some space, then try again."
 msgstr "无法使用此片段：磁盘已满。请释放一些空间，然后重试。"
 
-msgid "Couldn't use this item: your library file is in use by another program. Close that program, then try again."
+msgid "Couldn’t use this item: your library file is in use by another program. Close that program, then try again."
 msgstr "无法使用此片段：你的资料库文件正被其他程序占用。请关闭该程序，然后重试。"
 
-msgid "Couldn't use this item: your library is locked. Unlock it, then try again."
+msgid "Couldn’t use this item: your library is locked. Unlock it, then try again."
 msgstr "无法使用此片段：你的资料库已锁定。请先解锁，然后重试。"
 
-msgid "Couldn't write to your library. Check that the disk has room."
+msgid "Couldn’t write to your library. Check that the disk has room."
 msgstr "无法写入你的资料库。请检查磁盘是否有足够空间。"
+
+msgid "Crash reports"
+msgstr "崩溃报告"
 
 msgid "Create (Enter)"
 msgstr "创建(Enter)"
 
 msgid "Create “{}”"
 msgstr "创建“{}”"
+
+msgid "Created"
+msgstr "创建于"
+
+msgid "Credit card"
+msgstr "信用卡"
 
 msgid "Ctrl+Shift+V"
 msgstr "Ctrl+Shift+V"
@@ -827,26 +1011,41 @@ msgstr "当前密码"
 msgid "Cut"
 msgstr "剪切"
 
+msgid "Daily copies kept; older ones are deleted when you lower this."
+msgstr "保留的每日副本数；调低后，更早的副本会被删除。"
+
 msgid "Dark"
 msgstr "深色"
 
+msgid "Data folder"
+msgstr "数据文件夹"
+
+msgid "Database"
+msgstr "数据库"
+
 msgid "Database rebuilt: {} items restored, {} recovered."
-msgstr "数据库已重建：已还原 {} 项，已恢复 {} 项。"
+msgstr "数据库已重建：已还原 {} 个片段，已恢复 {} 个。"
 
 msgid "Database rebuilt: {} items restored. Newer items could not be read."
-msgstr "数据库已重建：已还原 {} 项。无法读取较新的项目。"
+msgstr "数据库已重建：已还原 {} 项。无法读取较新的片段。"
 
 msgid "Date and time in a format you choose"
 msgstr "以你选择的格式显示日期和时间"
 
-msgid "Dates are today's; a field you fill in when you use the item shows its name or default."
-msgstr "日期为今天的日期；使用时才填写的字段会显示其名称或默认值。"
+msgid "Dates are today’s; a field you fill in when you use the item shows its name or default."
+msgstr "日期为今天的日期；使用该片段时才填写的字段会显示其名称或默认值。"
+
+msgid "Days a copy stays in Recent"
+msgstr "副本在“最近”中保留的天数"
+
+msgid "Days in the Trash"
+msgstr "回收站保留天数"
 
 msgid "Delete"
 msgstr "删除"
 
 msgid "Delete a group and its items"
-msgstr "删除分组及其中的项目"
+msgstr "删除分组及其中的片段"
 
 msgid "Delete board"
 msgstr "删除看板"
@@ -866,8 +1065,17 @@ msgstr "要永久删除吗？"
 msgid "Delete for good…"
 msgstr "永久删除…"
 
+msgid "Delete forever"
+msgstr "永久删除"
+
 msgid "Delete group"
 msgstr "删除分组"
+
+msgid "Delete group “{}” and its {} items?"
+msgstr "要删除分组“{}”及其 {} 个片段吗？"
+
+msgid "Delete items"
+msgstr "删除片段"
 
 msgid "Delete list"
 msgstr "删除列表"
@@ -879,10 +1087,7 @@ msgid "Delete list…"
 msgstr "删除列表…"
 
 msgid "Delete selected item for good"
-msgstr "永久删除所选项目"
-
-msgid "Delete snippets"
-msgstr "删除片段"
+msgstr "永久删除所选片段"
 
 msgid "Delete tag"
 msgstr "删除标签"
@@ -905,6 +1110,9 @@ msgstr "要删除此列表吗？"
 msgid "Delete this tag?"
 msgstr "要删除此标签吗？"
 
+msgid "Delete what Recent has kept?"
+msgstr "要删除“最近”保留的内容吗？"
+
 msgid "Delete “{}”"
 msgstr "删除“{}”"
 
@@ -914,11 +1122,17 @@ msgstr "已删除看板“{}”"
 msgid "Deleted for good"
 msgstr "已永久删除"
 
+msgid "Deleted items can be restored until then, and are removed after."
+msgstr "在此天数内可以恢复已删除的片段，之后会被移除。"
+
 msgid "Deleted items stay here for {} days before they are removed."
 msgstr "已删除的片段会在这里保留 {} 天，之后才会被移除。"
 
 msgid "Deleted list “{}”"
 msgstr "已删除列表“{}”"
+
+msgid "Deleted the tag “{}”"
+msgstr "已删除标签“{}”"
 
 msgid "Deleted “{}”"
 msgstr "已删除：“{}”"
@@ -928,6 +1142,12 @@ msgstr "删除这台电脑上的所有看板、列表、片段和备份。此操
 
 msgid "Deletes everything in the Recent inbox now."
 msgstr "立即删除“最近”收件箱中的所有内容。"
+
+msgid "Detail pane"
+msgstr "详情窗格"
+
+msgid "Details"
+msgstr "详情"
 
 msgid "Discard"
 msgstr "放弃"
@@ -959,7 +1179,7 @@ msgstr "停靠到右边缘"
 msgid "Dock to the top edge"
 msgstr "停靠到上边缘"
 
-msgid "Docked panel uses the full edge"
+msgid "Docked Panel uses the full edge"
 msgstr "已停靠面板占满整条边"
 
 msgid "Docked to the right"
@@ -967,6 +1187,9 @@ msgstr "停靠在右侧"
 
 msgid "Done"
 msgstr "完成"
+
+msgid "Double-click opens the Main window"
+msgstr "双击打开主窗口"
 
 msgid "Drag along the edge to move. Pull away from the edge to float."
 msgstr "沿边缘拖动可移动。拖离边缘可变为浮动。"
@@ -1004,6 +1227,9 @@ msgstr "编辑列表"
 msgid "Edit list…"
 msgstr "编辑列表…"
 
+msgid "Edit or rename…"
+msgstr "编辑或重命名…"
+
 msgid "Edit selected item"
 msgstr "编辑所选片段"
 
@@ -1025,7 +1251,7 @@ msgstr "表情符号"
 msgid "Emoji art: Microsoft Fluent Emoji (MIT). Icons: Phosphor (MIT). Emoji names and keywords: Unicode CLDR (Unicode-3.0)."
 msgstr "表情符号图片：Microsoft Fluent Emoji (MIT)。图标：Phosphor (MIT)。表情符号名称和关键词：Unicode CLDR (Unicode-3.0)。"
 
-msgid "Emoji, kaomoji and icons live in the Panel's Symbols tab."
+msgid "Emoji, kaomoji and icons live in the Panel’s Symbols tab."
 msgstr "表情符号、颜文字和图标都在面板的“符号”标签页中。"
 
 msgid "Empty Trash"
@@ -1037,14 +1263,20 @@ msgstr "清空回收站…"
 msgid "Empty the Trash?"
 msgstr "要清空回收站吗？"
 
+msgid "Encryption key"
+msgstr "加密密钥"
+
 msgid "End stack"
 msgstr "结束堆栈"
 
 msgid "Enter"
 msgstr "Enter"
 
-msgid "Enter a real date as YYYY-MM-DD, or leave it empty for today."
-msgstr "请输入真实的日期，格式为 YYYY-MM-DD，或留空表示今天。"
+msgid "Enter a number, such as 12 or 3.5."
+msgstr "请输入数字，例如 12 或 3.5。"
+
+msgid "Enter a real date as {}, or leave it empty for today."
+msgstr "请按 {} 输入有效日期，留空则使用今天。"
 
 msgid "Enter creates “{}” in {}"
 msgstr "按 Enter 创建“{}”（位于 {}）"
@@ -1054,6 +1286,9 @@ msgstr "输入主密码以使用资料库中的敏感片段。其他片段始终
 
 msgid "Enter your password."
 msgstr "请输入密码。"
+
+msgid "Envelope"
+msgstr "信封"
 
 msgid "Erase everything"
 msgstr "全部删除"
@@ -1076,14 +1311,17 @@ msgstr "Espanso（单个 .yml 文件）"
 msgid "Every command, one search away"
 msgstr "每个命令，一搜即得"
 
+msgid "Every item tagged “{}” gets “{}” and “{}” is deleted. You can undo it."
+msgstr "所有带“{}”的片段都会改为“{}”，并删除“{}”。可以撤销。"
+
 msgid "Everything checks out."
 msgstr "一切正常。"
 
-msgid "Everything in the Trash is deleted for good. This can't be undone."
+msgid "Everything in the Trash is deleted for good. This can’t be undone."
 msgstr "回收站中的所有内容都将被永久删除，此操作无法撤销。"
 
-msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings stay."
-msgstr "资料库中的所有内容都会被删除：看板、列表、项目、图片、草稿和备份。如需副本，请先导出。你的设置会保留。"
+msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings stay. Deleted files may still be recoverable with disk tools unless your disk is encrypted."
+msgstr "库中的所有内容都会被删除：看板、列表、片段、图片、草稿和备份。如需副本，请先导出。你的设置会保留。如果磁盘未加密，已删除的文件仍可能被磁盘工具恢复。"
 
 msgid "Expand abbreviations as I type"
 msgstr "输入时展开缩写"
@@ -1097,6 +1335,9 @@ msgstr "导出为文本"
 msgid "Export library"
 msgstr "导出资料库"
 
+msgid "Eyedropper, {}"
+msgstr "取色器，{}"
+
 msgid "F3"
 msgstr "F3"
 
@@ -1109,11 +1350,20 @@ msgstr "文件"
 msgid "File moved or deleted"
 msgstr "文件已移动或删除"
 
+msgid "Files"
+msgstr "文件"
+
 msgid "Fill in template"
 msgstr "填写模板"
 
 msgid "Fill in the blanks"
 msgstr "填写空白"
+
+msgid "Filter"
+msgstr "筛选"
+
+msgid "Filter ({})"
+msgstr "筛选 ({})"
 
 msgid "Filter as you type"
 msgstr "输入时筛选"
@@ -1121,8 +1371,29 @@ msgstr "输入时筛选"
 msgid "Filter by colour label"
 msgstr "按颜色标签筛选"
 
+msgid "Filter by tags"
+msgstr "按标签筛选"
+
+msgid "Filter the items"
+msgstr "筛选片段"
+
+msgid "Find"
+msgstr "查找"
+
+msgid "Find and replace, change the text, font, line numbers"
+msgstr "查找和替换、更改文本、字体、行号"
+
 msgid "Find anything by typing"
 msgstr "输入即可找到任何内容"
+
+msgid "First word"
+msgstr "第一个词"
+
+msgid "First {} matches in {}"
+msgstr "前 {} 个匹配项（{}）"
+
+msgid "Flag"
+msgstr "旗帜"
 
 msgid "Flags"
 msgstr "旗帜"
@@ -1136,14 +1407,14 @@ msgstr "折叠分组"
 msgid "Fold or unfold a group"
 msgstr "折叠或展开分组"
 
+msgid "Folder"
+msgstr "文件夹"
+
 msgid "Folder of .txt and .md files"
 msgstr "包含 .txt 和 .md 文件的文件夹"
 
 msgid "Follow Windows"
 msgstr "跟随 Windows"
-
-msgid "Follow Windows switches with your system setting."
-msgstr "跟随系统设置中的 Windows 主题。"
 
 msgid "Food & Drink"
 msgstr "食物与饮料"
@@ -1172,7 +1443,10 @@ msgstr "带格式"
 msgid "Get started"
 msgstr "开始使用"
 
-msgid "Give a snippet a trigger, such as ;sig, under More options in its editor."
+msgid "Getting started"
+msgstr "入门"
+
+msgid "Give an item a trigger, such as ;sig, under More options in its editor."
 msgstr "在片段编辑器的“更多选项”中为它设置触发词，例如 ;sig。"
 
 msgid "Give it a name."
@@ -1186,6 +1460,9 @@ msgstr "请为列表命名。"
 
 msgid "Gives the Panel a taskbar button and an Alt+Tab entry while it is on screen. Pasting still goes to the app you were in before. Off keeps it out of both; the tray icon and the Panel shortcut still bring it back."
 msgstr "面板在屏幕上时，为它显示任务栏按钮和 Alt+Tab 条目。粘贴仍会进入你之前所在的应用。关闭后两处都不显示；仍可通过托盘图标和面板快捷键调出。"
+
+msgid "Globe"
+msgstr "地球"
 
 msgid "Go to All items"
 msgstr "前往“所有片段”"
@@ -1214,17 +1491,23 @@ msgstr "随手保存文本"
 msgid "Green"
 msgstr "绿色"
 
-msgid "Greet"
-msgstr "问候"
-
 msgid "Group"
 msgstr "分组"
+
+msgid "Group colour"
+msgstr "分组颜色"
+
+msgid "Group colour…"
+msgstr "分组颜色…"
 
 msgid "Group name"
 msgstr "分组名称"
 
 msgid "Group the selected rows"
 msgstr "将所选的行分组"
+
+msgid "Groups nest three levels deep at most"
+msgstr "分组最多嵌套三层"
 
 msgid "Group…"
 msgstr "分组…"
@@ -1244,14 +1527,26 @@ msgstr "HSB"
 msgid "HSL"
 msgstr "HSL"
 
+msgid "HTML"
+msgstr "HTML"
+
 msgid "Handy for forms you fill field by field."
 msgstr "适合逐个字段填写的表单。"
+
+msgid "Has a trigger"
+msgstr "有触发词"
 
 msgid "Heard it. This shortcut works."
 msgstr "收到了。此快捷键可用。"
 
+msgid "Heart"
+msgstr "心形"
+
 msgid "Help"
 msgstr "帮助"
+
+msgid "Help > Tips has short cards with a picture and a Try it button each. Open it from Help, or from the tray icon’s menu."
+msgstr "帮助 > 提示 有简短的卡片，每张都带有图片和“试一试”按钮。可从帮助或托盘图标的菜单中打开。"
 
 msgid "Help sections"
 msgstr "帮助分区"
@@ -1271,11 +1566,17 @@ msgstr "隐藏面板"
 msgid "Hide Panel ({})"
 msgstr "隐藏面板 ({})"
 
+msgid "Hide password"
+msgstr "隐藏密码"
+
 msgid "Hide the Panel"
 msgstr "隐藏面板"
 
-msgid "Hide the panel when it loses focus"
+msgid "Hide the Panel when it loses focus"
 msgstr "失去焦点时隐藏面板"
+
+msgid "Hide the text tools"
+msgstr "隐藏文本工具"
 
 msgid "Hide title, colour, tags, trigger and privacy"
 msgstr "隐藏标题、颜色、标签、触发词和隐私"
@@ -1283,11 +1584,17 @@ msgstr "隐藏标题、颜色、标签、触发词和隐私"
 msgid "History is paused"
 msgstr "历史记录已暂停"
 
+msgid "Hold Space"
+msgstr "按住空格键"
+
 msgid "Hold to reveal"
 msgstr "按住以显示"
 
 msgid "Hold to reveal a hidden item"
 msgstr "按住以显示隐藏的片段"
+
+msgid "House"
+msgstr "房子"
 
 msgid "Hover"
 msgstr "悬停"
@@ -1298,19 +1605,19 @@ msgstr "悬停和点击"
 msgid "Hover delay"
 msgstr "悬停延迟"
 
-msgid "How long the pointer rests on the tab before the panel opens, from 0 to {} milliseconds."
+msgid "How long the pointer rests on the tab before the Panel opens, from 0 to {} milliseconds."
 msgstr "指针在标签上停留多久后打开面板，0 到 {} 毫秒。"
 
-msgid "How long the pointer stays off the open panel before it tucks away, from 0 to {} milliseconds."
+msgid "How long the pointer stays off the open Panel before it tucks away, from 0 to {} milliseconds."
 msgstr "指针离开已打开的面板多久后收起，0 到 {} 毫秒。"
 
 msgid "How tall the item rows are in the Main window lists. Compact shows one line per item."
 msgstr "主窗口列表中片段行的高度。紧凑模式每个片段显示一行。"
 
 msgid "How the Panel lists your items: one per row, two per row as cards, or tight rows. A search shows rows in every layout."
-msgstr "面板列出项目的方式：每行一个、每行两个卡片，或紧凑的行。搜索时在任何布局下都显示为行。"
+msgstr "面板列出片段的方式：每行一个、每行两个卡片，或紧凑的行。搜索时在任何布局下都显示为行。"
 
-msgid "How wide the panel opens, from {} to {} pixels."
+msgid "How wide the Panel opens, from {} to {} pixels."
 msgstr "面板展开的宽度，范围为 {} 至 {} 像素。"
 
 msgid "Hue"
@@ -1328,20 +1635,29 @@ msgstr "图标"
 msgid "Icons"
 msgstr "图标"
 
-msgid "Icons can't be added to a list yet."
+msgid "Icons can’t be added to a list yet."
 msgstr "暂时无法将图标添加到列表。"
 
 msgid "If you forget this password, your sensitive items can never be opened again. Snipdeck cannot reset it and keeps no recovery key. Your other items are not affected."
 msgstr "如果忘记此密码，敏感片段将再也无法打开。Snipdeck 无法重置它，也不保存恢复密钥。你的其他片段不受影响。"
 
+msgid "Ignore case"
+msgstr "忽略大小写"
+
+msgid "Ignore case and follow what I typed"
+msgstr "忽略大小写并跟随我的输入"
+
 msgid "Image"
 msgstr "图片"
 
-msgid "Images can't be pasted here. Save the picture as a PNG and add it as an Image item."
-msgstr "此处无法粘贴图片。请将图片保存为 PNG，并将其添加为图片项目。"
+msgid "Images can’t be pasted here. Save the picture as a PNG and add it as an Image item."
+msgstr "此处无法粘贴图片。请将图片保存为 PNG，并将其添加为图片片段。"
 
 msgid "Import"
 msgstr "导入"
+
+msgid "Import from TextExpander, Espanso, Beeftext, PhraseExpress, Ditto or CopyQ in Settings, under Import."
+msgstr "在“设置”的“导入”中，可从 TextExpander、Espanso、Beeftext、PhraseExpress、Ditto 或 CopyQ 导入。"
 
 msgid "Import from {}"
 msgstr "从 {} 导入"
@@ -1362,14 +1678,27 @@ msgstr[0] "已导入 {} 个片段"
 msgid "Import…"
 msgstr "导入…"
 
+msgid "In a choice, put {} before the option to start on; an empty option is the \"none\" choice."
+msgstr "在选项中，把 {} 放在默认选项之前；空选项表示“无”。"
+
+msgid "In the text, write {} for a literal brace. Inside a placeholder, write {} for a literal bar or brace."
+msgstr "在正文中，用 {} 表示字面大括号。在占位符内，用 {} 表示字面竖线或大括号。"
+
 msgid "Include"
 msgstr "包含"
 
 msgid "Insert the suggested item (Windows only)"
-msgstr "插入建议的项目（仅限 Windows）"
+msgstr "插入建议的片段（仅限 Windows）"
 
 msgid "Insert {}"
 msgstr "插入 {}"
+
+msgid "Install these triggers"
+msgstr "安装这些触发词"
+
+msgid "It holds {n} item"
+msgid_plural "It holds {n} items"
+msgstr[0] "它有 {n} 个片段"
 
 msgid "It is removed from {n} item. The item stays."
 msgid_plural "It is removed from {n} items. The items stay."
@@ -1378,27 +1707,40 @@ msgstr[0] "将从 {n} 个片段中移除。片段本身保留。"
 msgid "Item actions"
 msgstr "片段操作"
 
+msgid "Item list"
+msgstr "片段列表"
+
 msgid "Item pinned"
-msgstr "已固定"
+msgstr "片段已置顶"
 
 msgid "Item unpinned"
-msgstr "已取消固定"
+msgstr "片段已取消置顶"
+
+msgid "Items"
+msgstr "片段"
 
 msgid "Items are removed after {} days."
 msgstr "片段将在 {} 天后移除。"
 
-msgid "Its lists and {n} item will move to Trash. You can restore them for 30 days."
-msgid_plural "Its lists and {n} items will move to Trash. You can restore them for 30 days."
-msgstr[0] "其列表及其中的 {n} 个片段将移至回收站。你可以在 30 天内恢复它们。"
+msgid "Items need every chosen tag"
+msgstr "片段须带有所选的全部标签"
+
+msgid "Items you paste show up here."
+msgstr "你粘贴过的片段会显示在这里。"
+
+msgid "Its lists and {n} item move to the Trash. You can restore them for {} days."
+msgid_plural "Its lists and {n} items move to the Trash. You can restore them for {} days."
+msgstr[0] "它的列表和 {n} 个片段将移到回收站。你可以在 {} 天内恢复。"
+
+msgid "Its lists and {n} item will move to Trash. You can restore them for {} days."
+msgid_plural "Its lists and {n} items will move to Trash. You can restore them for {} days."
+msgstr[0] "其列表及其中的 {n} 个片段将移至回收站。你可以在 {} 天内恢复它们。"
 
 msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
-msgstr "它的列表和 {} 个项目将移到回收站。你可以在 {} 天内恢复。"
+msgstr "它的列表和 {} 个片段将移到回收站。你可以在 {} 天内恢复。"
 
 msgid "JSON string"
 msgstr "JSON 字符串"
-
-msgid "Joy"
-msgstr "喜悦"
 
 msgid "Jump to a section"
 msgstr "跳转到某个部分"
@@ -1409,17 +1751,41 @@ msgstr "刚刚"
 msgid "Kaomoji"
 msgstr "颜文字"
 
+msgid "Keep Panel on top"
+msgstr "面板保持在最前"
+
+msgid "Keep Panel on top: on"
+msgstr "保持面板置顶：开"
+
 msgid "Keep Panel open"
 msgstr "保持面板打开"
 
 msgid "Keep Panel visible during screenshots"
 msgstr "截图时保持面板可见"
 
+msgid "Keep Recent on"
+msgstr "保持“最近”开启"
+
 msgid "Keep a Recent inbox of what you copy"
 msgstr "保留你复制内容的“最近”收件箱"
 
 msgid "Keep a Recent list of what you copy?"
 msgstr "要保留你复制内容的“最近”列表吗？"
+
+msgid "Keep copies for fewer days"
+msgstr "减少副本保留天数"
+
+msgid "Keep copies for more days"
+msgstr "增加副本保留天数"
+
+msgid "Keep copies from unknown sources"
+msgstr "保留来源未知的复制内容"
+
+msgid "Keep deleted items for fewer days"
+msgstr "减少已删除片段的保留天数"
+
+msgid "Keep deleted items for more days"
+msgstr "增加已删除片段的保留天数"
 
 msgid "Keep editing"
 msgstr "继续编辑"
@@ -1430,14 +1796,14 @@ msgstr "常用内容触手可及"
 msgid "Keep fewer backups"
 msgstr "减少保留的备份"
 
+msgid "Keep fewer copies"
+msgstr "保留更少副本"
+
 msgid "Keep more backups"
 msgstr "增加保留的备份"
 
-msgid "Keep panel on top"
-msgstr "面板保持在最前"
-
-msgid "Keep panel on top: on"
-msgstr "保持面板置顶：开"
+msgid "Keep more copies"
+msgstr "保留更多副本"
 
 msgid "Keep running in the tray when the window closes"
 msgstr "关闭窗口时继续在通知区域运行"
@@ -1447,9 +1813,6 @@ msgstr "让机密保持机密"
 
 msgid "Keep the Panel open"
 msgstr "保持面板打开"
-
-msgid "Keep them"
-msgstr "保留"
 
 msgid "Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Sensitive items, password managers and the apps you exclude are never kept."
 msgstr "保留你复制的文本，最多保留最近 {} 次复制或 {} 天，以先到者为准，方便你再次找到或保存到列表。敏感片段、密码管理器以及你排除的应用的内容不会被保留。"
@@ -1469,6 +1832,16 @@ msgstr "语言"
 msgid "Last backup: {}"
 msgstr "上次备份：{}"
 
+msgid "Last backup: {}, {}, {} item"
+msgid_plural "Last backup: {}, {}, {} items"
+msgstr[0] "上次备份：{}，{}，{} 个片段"
+
+msgid "Last used"
+msgstr "上次使用"
+
+msgid "Last word"
+msgstr "最后一个词"
+
 msgid "Layout"
 msgstr "布局"
 
@@ -1480,6 +1853,12 @@ msgstr "左侧"
 
 msgid "Left edge"
 msgstr "左边"
+
+msgid "Left, Right or Enter on a group header"
+msgstr "在分组标题上按左、右或 Enter"
+
+msgid "Left, Right, Enter or Space on a group header"
+msgstr "在分组标题上按左、右、Enter 或空格键"
 
 msgid "Lengthen the hover delay"
 msgstr "延长悬停延迟"
@@ -1493,8 +1872,17 @@ msgstr "资料库已解锁。"
 msgid "Light"
 msgstr "浅色"
 
+msgid "Light bulb"
+msgstr "灯泡"
+
 msgid "Light, dark or follow Windows."
 msgstr "浅色、深色或跟随 Windows。"
+
+msgid "Line numbers"
+msgstr "行号"
+
+msgid "Lines stop wrapping, so a number is one line."
+msgstr "行不再自动换行，因此一个编号对应一行。"
 
 msgid "Link"
 msgstr "链接"
@@ -1520,20 +1908,26 @@ msgstr "列表已保存"
 msgid "Lists"
 msgstr "列表"
 
-msgid "Lists hold your snippets."
+msgid "Lists hold your items."
 msgstr "列表用来存放你的片段。"
 
-msgid "Loading"
-msgstr "正在加载"
+msgid "Location marker"
+msgstr "位置标记"
 
 msgid "Lock Snipdeck"
 msgstr "锁定 Snipdeck"
 
-msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
-msgstr "日志只在 Snipdeck 崩溃时写入，不含片段内容，也不会发送到任何地方。"
+msgid "Lock after"
+msgstr "锁定时间"
 
-msgid "Love"
-msgstr "爱"
+msgid "Lock later"
+msgstr "延后锁定"
+
+msgid "Lock sooner"
+msgstr "提前锁定"
+
+msgid "Logs are written when Snipdeck crashes, or when you turn on diagnostics yourself. They hold no item content and are never sent anywhere."
+msgstr "日志在 Snipdeck 崩溃时，或你自己开启诊断时写入。日志不含片段内容，也不会发送到任何地方。"
 
 msgid "Main list"
 msgstr "主列表"
@@ -1559,10 +1953,10 @@ msgstr "设为默认格式"
 msgid "Make it fit your screen"
 msgstr "适配你的屏幕"
 
-msgid "Make the panel narrower"
+msgid "Make the Panel narrower"
 msgstr "缩窄面板"
 
-msgid "Make the panel wider"
+msgid "Make the Panel wider"
 msgstr "加宽面板"
 
 msgid "Manage tags"
@@ -1574,7 +1968,7 @@ msgstr "管理标签…"
 msgid "Manual"
 msgstr "手动"
 
-msgid "Mark a snippet Sensitive to hide it until you reveal it."
+msgid "Mark an item Sensitive to hide it until you reveal it."
 msgstr "将片段标记为敏感，在你显示之前它会保持隐藏。"
 
 msgid "Markdown code block"
@@ -1589,26 +1983,56 @@ msgstr "主密码"
 msgid "Master password changed."
 msgstr "主密码已更改。"
 
-msgid "Master password changed. Snipdeck couldn't open the library just now. Unlock it with the new password."
+msgid "Master password changed. Snipdeck couldn’t open the library just now. Unlock it with the new password."
 msgstr "主密码已更改。Snipdeck 刚才无法打开资料库。请使用新密码解锁。"
 
 msgid "Master password removed."
 msgstr "主密码已移除。"
 
-msgid "Master password removed. Snipdeck couldn't open the library just now. Restart Snipdeck to use your sensitive items."
+msgid "Master password removed. Snipdeck couldn’t open the library just now. Restart Snipdeck to use your sensitive items."
 msgstr "主密码已移除。Snipdeck 刚才无法打开资料库。请重启 Snipdeck 以使用敏感片段。"
 
 msgid "Master password set."
 msgstr "主密码已设置。"
 
+msgid "Match case"
+msgstr "区分大小写"
+
+msgid "Match case exactly"
+msgstr "严格区分大小写"
+
 msgid "Menu"
 msgstr "菜单"
 
-msgid "Microsoft Store"
-msgstr "Microsoft Store"
+msgid "Merge"
+msgstr "合并"
+
+msgid "Merge into “{}”?"
+msgstr "要合并到“{}”吗？"
+
+msgid "Merged the tag “{}” into “{}”"
+msgstr "已将标签“{}”合并到“{}”"
+
+msgid "Minutes before the library locks"
+msgstr "资料库锁定前的分钟数"
+
+msgid "Minutes without use before a master password locks your sensitive items again."
+msgstr "主密码在无操作多少分钟后再次锁定你的敏感片段。"
+
+msgid "Modified"
+msgstr "修改时间"
+
+msgid "Monospace font"
+msgstr "等宽字体"
 
 msgid "More"
 msgstr "更多"
+
+msgid "More formats"
+msgstr "更多格式"
+
+msgid "More formats…"
+msgstr "更多格式…"
 
 msgid "More options"
 msgstr "更多选项"
@@ -1616,8 +2040,14 @@ msgstr "更多选项"
 msgid "More options: open the full editor"
 msgstr "更多选项：打开完整编辑器"
 
-msgid "More pinned snippets"
+msgid "More pinned items"
 msgstr "更多置顶片段"
+
+msgid "More tips"
+msgstr "更多提示"
+
+msgid "Most copies kept in Recent"
+msgstr "“最近”中保留的最大副本数"
 
 msgid "Most used"
 msgstr "最常用"
@@ -1636,6 +2066,9 @@ msgstr "将看板上移"
 
 msgid "Move down"
 msgstr "下移"
+
+msgid "Move group to list…"
+msgstr "将分组移到列表…"
 
 msgid "Move panel"
 msgstr "移动面板"
@@ -1693,17 +2126,35 @@ msgid "Moved {} item to {}"
 msgid_plural "Moved {} items to {}"
 msgstr[0] "已将 {} 个片段移到 {}"
 
+msgid "Music"
+msgstr "音乐"
+
+msgid "My snippets"
+msgstr "我的片段"
+
 msgid "Name"
 msgstr "名称"
 
 msgid "Names can have at most {} characters."
 msgstr "名称最多 {} 个字符。"
 
-msgid "Names can't contain line breaks or control characters."
+msgid "Names can’t contain line breaks or control characters."
 msgstr "名称不能包含换行或控制字符。"
 
 msgid "Navigation"
 msgstr "导航"
+
+msgid "Nest tag {} under"
+msgstr "将标签 {} 嵌套到"
+
+msgid "Nest tag {} under another"
+msgstr "将标签 {} 嵌套到另一个标签下"
+
+msgid "Nest under…"
+msgstr "嵌套到…"
+
+msgid "Never"
+msgstr "从未"
 
 msgid "Never keep copies from these programs"
 msgstr "从不保留这些程序中的复制内容"
@@ -1724,10 +2175,10 @@ msgid "New item"
 msgstr "新建片段"
 
 msgid "New item (quick add in an open list)"
-msgstr "新建项目（在打开的列表中为快速添加）"
+msgstr "新建片段（在打开的列表中为快速添加）"
 
 msgid "New item in {}"
-msgstr "在 {} 中新建项目"
+msgstr "在 {} 中新建片段"
 
 msgid "New list"
 msgstr "新建列表"
@@ -1750,11 +2201,20 @@ msgstr "新建标签"
 msgid "New tag, then Enter"
 msgstr "新建标签，然后按 Enter"
 
+msgid "Newest backup {}, {} kept."
+msgstr "最新备份 {}，保留 {} 份。"
+
 msgid "Next"
 msgstr "下一步"
 
 msgid "Next list"
 msgstr "下一个列表"
+
+msgid "Next month"
+msgstr "下个月"
+
+msgid "Next part"
+msgstr "下一部分"
 
 msgid "Next scope"
 msgstr "下一个范围"
@@ -1762,20 +2222,50 @@ msgstr "下一个范围"
 msgid "No"
 msgstr "否"
 
+msgid "No backup has been made yet."
+msgstr "尚未进行任何备份。"
+
 msgid "No backup yet"
 msgstr "尚无备份"
 
 msgid "No colour"
 msgstr "无颜色"
 
+msgid "No colour in the clipboard"
+msgstr "剪贴板中没有颜色"
+
 msgid "No commands match “{}”"
 msgstr "没有与“{}”匹配的命令"
+
+msgid "No crash report."
+msgstr "没有崩溃报告。"
+
+msgid "No global shortcut is set."
+msgstr "未设置任何全局快捷键。"
+
+msgid "No hue to rotate. Greys, white and black have none."
+msgstr "没有可旋转的色相。灰色、白色和黑色没有色相。"
 
 msgid "No icon"
 msgstr "无图标"
 
+msgid "No icon in the notification area; closing the panel quits Snipdeck."
+msgstr "通知区域中没有图标；关闭面板会退出 Snipdeck。"
+
+msgid "No item in this view carries the chosen colour label."
+msgstr "此视图中没有片段带有所选的颜色标签。"
+
+msgid "No item is marked sensitive."
+msgstr "没有标记为敏感的片段。"
+
+msgid "No item uses this tag."
+msgstr "没有片段使用此标签。"
+
 msgid "No items with this tag"
 msgstr "没有带此标签的片段"
+
+msgid "No items yet"
+msgstr "还没有片段"
 
 msgid "No label"
 msgstr "无标签"
@@ -1792,6 +2282,12 @@ msgstr "所有看板中均无匹配项"
 msgid "No matches in {}"
 msgstr "在 {} 中没有匹配项"
 
+msgid "No messages yet."
+msgstr "还没有消息。"
+
+msgid "No other group to nest under"
+msgstr "没有其他分组可嵌套"
+
 msgid "No programs yet."
 msgstr "还没有程序。"
 
@@ -1807,13 +2303,10 @@ msgstr "没有匹配的设置"
 msgid "No shortcut matches"
 msgstr "没有匹配的快捷键"
 
-msgid "No snippets yet"
-msgstr "还没有片段"
-
 msgid "No symbols match “{}”"
 msgstr "没有与“{}”匹配的符号"
 
-msgid "No tagged snippets"
+msgid "No tagged items"
 msgstr "没有带标签的片段"
 
 msgid "No tags"
@@ -1837,11 +2330,20 @@ msgstr "无目标：点击为复制"
 msgid "No text to show"
 msgstr "没有可显示的文本"
 
+msgid "No typed trigger was skipped since Snipdeck started."
+msgstr "自 Snipdeck 启动以来，没有跳过任何已输入的触发词。"
+
 msgid "Not a colour. Try {}"
 msgstr "不是颜色。试试 {}"
 
+msgid "Not checked from the command line."
+msgstr "命令行下不检查。"
+
 msgid "Not set"
 msgstr "未设置"
+
+msgid "Not set: {}."
+msgstr "未设置：{}。"
 
 msgid "Not working"
 msgstr "无法使用"
@@ -1849,11 +2351,11 @@ msgstr "无法使用"
 msgid "Nothing copied yet"
 msgstr "尚未复制任何内容"
 
-msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
-msgstr "除非你选择“是”，否则不会保存任何内容，你也可以随时在设置中更改。“最近”只在此电脑上保存你复制的文本，保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感项目绝不会保存。"
+msgid "Nothing has this label"
+msgstr "没有项目带此标签"
 
-msgid "Nothing matches “{}”"
-msgstr "没有与“{}”匹配的内容"
+msgid "Nothing is kept unless you say Yes, and you can change this any time in Settings. Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept."
+msgstr "除非你选择“是”，否则不会保存任何内容，你也可以随时在设置中更改。“最近”只在此电脑上保存你复制的文本，保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感片段绝不会保存。"
 
 msgid "Nothing matches “{}”."
 msgstr "没有与“{}”匹配的内容。"
@@ -1868,13 +2370,16 @@ msgid "Nothing pinned"
 msgstr "没有置顶内容"
 
 msgid "Nothing pinned matches “{}”."
-msgstr "没有与“{}”匹配的置顶片段。"
+msgstr "没有与“{}”匹配的置顶项目。"
 
 msgid "Nothing pinned yet"
 msgstr "还没有置顶内容"
 
-msgid "Nothing to paste next. Pin a snippet, or add one to this list."
+msgid "Nothing to paste next. Pin an item, or add one to this list."
 msgstr "没有可接着粘贴的内容。请置顶一个片段，或将其添加到此列表。"
+
+msgid "Nothing to preview."
+msgstr "没有可预览的内容。"
 
 msgid "Nothing to redo"
 msgstr "没有可重做的操作"
@@ -1900,11 +2405,11 @@ msgstr "未添加任何内容。文件夹，以及为空、太大或无法读取
 msgid "Nothing with this tag matches “{}”."
 msgstr "带此标签的内容中没有与“{}”匹配的项。"
 
-msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe."
+msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program’s file name, for example keepass.exe."
 msgstr "在这些程序中复制的内容不会进入“最近”收件箱。请使用程序的文件名，例如 keepass.exe。"
 
 msgid "Numbers the first nine rows so pressing Alt+1 to 9 uses that item."
-msgstr "为前九行编号，按 Alt+1 到 9 即可使用对应的项目。"
+msgstr "为前九行编号，按 Alt+1 到 9 即可使用对应的片段。"
 
 msgid "OK"
 msgstr "正常"
@@ -1915,20 +2420,20 @@ msgstr "物体"
 msgid "Off"
 msgstr "关闭"
 
-msgid "Off keeps a panel docked to the left or right at the height you dropped it. On stretches it over the whole edge."
+msgid "Off keeps a Panel docked to the left or right at the height you dropped it. On stretches it over the whole edge."
 msgstr "关闭：停靠在左侧或右侧的面板保持你放下时的高度。开启：面板占满整条边。"
 
-msgid "Off: a docked panel does not tuck and hides like a floating one. Otherwise it tucks into a thin tab at its edge, and the panel shortcut opens it too."
+msgid "Off: a docked Panel does not tuck and hides like a floating one. Otherwise it tucks into a thin tab at its edge, and the Panel shortcut opens it too."
 msgstr "关闭：停靠的面板不会收起，而是像浮动面板一样隐藏。否则它会收成边缘上的一条细标签，面板快捷键也能打开它。"
+
+msgid "Older copies are deleted when there are more than this many."
+msgstr "超过此数量时，较旧的副本会被删除。"
 
 msgid "On black"
 msgstr "在黑色上"
 
 msgid "On this colour"
 msgstr "在此颜色上"
-
-msgid "On this colour (on white)"
-msgstr "在此颜色上（在白色上）"
 
 msgid "On white"
 msgstr "在白色上"
@@ -1939,11 +2444,11 @@ msgstr "只有已输入的文字才会生效：输入法（日语、中文）还
 msgid "Only text, code, link and template items can be sensitive."
 msgstr "只有文本、代码、链接和模板类型的片段可以设为敏感。"
 
+msgid "Only the start is shown."
+msgstr "仅显示开头部分。"
+
 msgid "Only with Start with Windows: wait in the tray, or open the Panel as well."
 msgstr "仅在“随 Windows 启动”时：在托盘中等待，或同时打开面板。"
-
-msgid "Open"
-msgstr "打开"
 
 msgid "Open Panel"
 msgstr "打开面板"
@@ -1960,8 +2465,11 @@ msgstr "打开 Snipdeck"
 msgid "Open Snipdeck Panel"
 msgstr "打开 Snipdeck 面板"
 
-msgid "Open a docked panel by"
+msgid "Open a docked Panel by"
 msgstr "展开已停靠面板的方式"
+
+msgid "Open a list to group its items"
+msgstr "打开一个列表后才能为其中的片段分组"
 
 msgid "Open backups folder"
 msgstr "打开备份文件夹"
@@ -1969,20 +2477,44 @@ msgstr "打开备份文件夹"
 msgid "Open data folder"
 msgstr "打开数据文件夹"
 
+msgid "Open donation page"
+msgstr "打开捐赠页面"
+
+msgid "Open guide"
+msgstr "打开指南"
+
 msgid "Open in Colours"
 msgstr "在“颜色”中打开"
+
+msgid "Open in browser"
+msgstr "在浏览器中打开"
+
+msgid "Open it"
+msgstr "打开"
+
+msgid "Open log"
+msgstr "打开日志"
 
 msgid "Open logs folder"
 msgstr "打开日志文件夹"
 
+msgid "Open notices"
+msgstr "打开声明"
+
+msgid "Open releases page"
+msgstr "打开发布页面"
+
+msgid "Open source code"
+msgstr "打开源代码"
+
 msgid "Open the Colours list"
 msgstr "打开“颜色”列表"
 
-msgid "Open the Microsoft Store page"
-msgstr "打开 Microsoft Store 页面"
-
 msgid "Open the Panel from anywhere"
 msgstr "随处打开面板"
+
+msgid "Open the Picker"
+msgstr "打开选择器"
 
 msgid "Open the Picker at your cursor"
 msgstr "在光标处打开选择器"
@@ -1990,11 +2522,8 @@ msgstr "在光标处打开选择器"
 msgid "Open the Support Snipdeck page in your browser"
 msgstr "在浏览器中打开“支持 Snipdeck”页面"
 
-msgid "Open the item's menu"
-msgstr "打开项目菜单"
-
-msgid "Open the picker"
-msgstr "打开选择器"
+msgid "Open the item’s menu"
+msgstr "打开片段菜单"
 
 msgid "Open the releases page"
 msgstr "打开发布页面"
@@ -2035,11 +2564,23 @@ msgstr "其他颜色"
 msgid "Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."
 msgstr "在该文件夹之外，Snipdeck 只会写入 Windows 开机启动项（如果你开启了它），以及在你使用片段时写入剪贴板。"
 
+msgid "PNG ink: dark (click for theme colour)"
+msgstr "PNG 颜色：深色（点击改为主题色）"
+
+msgid "PNG ink: theme colour (click for dark)"
+msgstr "PNG 颜色：主题色（点击改为深色）"
+
+msgid "PNG size: {} px (click for the next)"
+msgstr "PNG 尺寸：{} px（点击切换下一个）"
+
 msgid "PNG, {}"
 msgstr "PNG，{}"
 
 msgid "PNG, {} × {}, {}"
 msgstr "PNG，{} × {}，{}"
+
+msgid "PageUp or PageDown"
+msgstr "Page Up 或 Page Down"
 
 msgid "Panel"
 msgstr "面板"
@@ -2077,6 +2618,9 @@ msgstr "面板保持打开"
 msgid "Panel width"
 msgstr "面板宽度"
 
+msgid "Part {} of {}"
+msgstr "第 {} 部分，共 {} 部分"
+
 msgid "Paste"
 msgstr "粘贴"
 
@@ -2086,20 +2630,20 @@ msgstr "以纯文本粘贴"
 msgid "Paste as…"
 msgstr "粘贴为…"
 
+msgid "Paste into {}"
+msgstr "粘贴到 {}"
+
 msgid "Paste key for {}"
 msgstr "{} 的粘贴键"
 
 msgid "Paste next item"
-msgstr "粘贴下一个项目"
+msgstr "粘贴下一个片段"
 
 msgid "Paste next pastes the next item each time you press it."
-msgstr "“粘贴下一个”每按一次就粘贴下一项。"
-
-msgid "Paste or copy"
-msgstr "粘贴或复制"
+msgstr "“粘贴下一个”每按一次就粘贴下一个片段。"
 
 msgid "Paste selected item as plain text"
-msgstr "将所选项目粘贴为纯文本"
+msgstr "将所选片段粘贴为纯文本"
 
 msgid "Paste several in order"
 msgstr "按顺序粘贴多项"
@@ -2108,13 +2652,13 @@ msgid "Paste stack"
 msgstr "粘贴堆栈"
 
 msgid "Paste stack (mark items)"
-msgstr "粘贴堆栈(请先标记项目)"
+msgstr "粘贴堆栈(请先标记片段)"
 
 msgid "Paste stack, item {} of {}, next: {}"
-msgstr "粘贴堆栈，第 {} 项（共 {} 项），下一项：{}"
+msgstr "粘贴堆栈，第 {} 个片段（共 {} 个），下一个：{}"
 
 msgid "Paste stack, item {} of {}, next: {}, into {}"
-msgstr "粘贴栈，第 {} / {} 项，下一项：{}，目标：{}"
+msgstr "粘贴栈，第 {} / {} 个片段，下一个：{}，目标：{}"
 
 msgid "Paste stack, {} marked"
 msgstr "粘贴堆栈，已标记 {} 项"
@@ -2132,16 +2676,34 @@ msgid "Paste the Nth result"
 msgstr "粘贴第 N 个结果"
 
 msgid "Paste the item as plain text"
-msgstr "将该条目以纯文本粘贴"
+msgstr "将该片段以纯文本粘贴"
 
 msgid "Paste the next item"
 msgstr "粘贴下一个片段"
 
 msgid "Paste the next item of a stack"
-msgstr "粘贴堆栈中的下一项"
+msgstr "粘贴堆栈中的下一个片段"
 
 msgid "Paste the result"
 msgstr "粘贴结果"
+
+msgid "Paste, dark skin tone"
+msgstr "粘贴，深肤色"
+
+msgid "Paste, default tone"
+msgstr "粘贴，默认色调"
+
+msgid "Paste, light skin tone"
+msgstr "粘贴，浅肤色"
+
+msgid "Paste, medium skin tone"
+msgstr "粘贴，中等肤色"
+
+msgid "Paste, medium-dark skin tone"
+msgstr "粘贴，中深肤色"
+
+msgid "Paste, medium-light skin tone"
+msgstr "粘贴，中浅肤色"
 
 msgid "Pasted"
 msgstr "已粘贴"
@@ -2179,8 +2741,8 @@ msgstr "文件路径"
 msgid "Pause history"
 msgstr "暂停历史"
 
-msgid "Pause hotkeys"
-msgstr "暂停热键"
+msgid "Pause shortcuts"
+msgstr "暂停快捷键"
 
 msgid "Paused"
 msgstr "已暂停"
@@ -2188,8 +2750,17 @@ msgstr "已暂停"
 msgid "People & Body"
 msgstr "人物与身体"
 
+msgid "Person"
+msgstr "人"
+
+msgid "Phone"
+msgstr "电话"
+
 msgid "PhraseExpress export (CSV)"
 msgstr "PhraseExpress 导出文件（CSV）"
+
+msgid "Pick"
+msgstr "选取"
 
 msgid "Pick a colour from the screen"
 msgstr "从屏幕上取色"
@@ -2197,11 +2768,26 @@ msgstr "从屏幕上取色"
 msgid "Pick a colour from the screen (Ctrl+I)"
 msgstr "从屏幕上取色（Ctrl+I）"
 
-msgid "Pick how the panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button."
+msgid "Pick a colour: it shows as a dot beside the group name. Esc closes."
+msgstr "选择颜色：它会作为圆点显示在分组名称旁。按 Esc 关闭。"
+
+msgid "Pick a colour: it shows as a dot beside the tag. Esc closes."
+msgstr "选择颜色：它会作为圆点显示在标签旁。按 Esc 关闭。"
+
+msgid "Pick a date"
+msgstr "选择日期"
+
+msgid "Pick how the Panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button."
 msgstr "选择面板的位置。你可以随时在设置中更改，还可设置其他边缘、切换应用时隐藏以及任务栏按钮。"
 
 msgid "Pick one and it pastes where you were typing."
 msgstr "选择一项，它就会粘贴到你正在输入的位置。"
+
+msgid "Pick the other colour from the screen"
+msgstr "从屏幕选取另一种颜色"
+
+msgid "Pick the tag it goes under. Its own nested tags go with it. Esc closes."
+msgstr "选择它要嵌套到的标签。它下面的标签会一起移动。按 Esc 关闭。"
 
 msgid "Picker"
 msgstr "选择器"
@@ -2221,7 +2807,7 @@ msgstr "图片文件"
 msgid "Pin"
 msgstr "置顶"
 
-msgid "Pin a snippet from the Panel to find it here."
+msgid "Pin an item from the Panel to find it here."
 msgstr "在面板中置顶片段后，即可在这里找到。"
 
 msgid "Pin or unpin the item"
@@ -2230,29 +2816,32 @@ msgstr "置顶或取消置顶该片段"
 msgid "Pin selected item"
 msgstr "置顶所选片段"
 
-msgid "Pin the snippets you use most to keep them one click away."
+msgid "Pin the items you use most to keep them one click away."
 msgstr "将常用的片段置顶，即可一键直达。"
 
-msgid "Pin the snippets you use most; they stay at the top of the Panel."
-msgstr "置顶最常用的片段，它们会固定在面板顶部。"
+msgid "Pin the items you use most; they stay at the top of the Panel."
+msgstr "置顶最常用的片段，它们会保留在面板顶部。"
 
 msgid "Pinned"
 msgstr "置顶"
 
-msgid "Pinned snippet. Press to paste."
-msgstr "已固定的片段。按下即可粘贴。"
-
-msgid "Pinned snippets"
+msgid "Pinned items"
 msgstr "已置顶的片段"
+
+msgid "Pinned snippet. Press to paste."
+msgstr "已置顶的片段。按下即可粘贴。"
 
 msgid "Placeholders"
 msgstr "占位符"
 
 msgid "Placeholders are {}. To write a literal brace, double it: {} or {}"
-msgstr "占位符写在 {} 中。若要写出字面花括号,请重复一次:{} 或 {}"
+msgstr "占位符写在 {} 中。若要写出字面花括号，请重复一次：{} 或 {}"
 
 msgid "Plain text"
 msgstr "纯文本"
+
+msgid "Plus"
+msgstr "加号"
 
 msgid "Press Ctrl+K in Main to find any action by name."
 msgstr "在主窗口按 Ctrl+K，可按名称查找任何操作。"
@@ -2263,17 +2852,32 @@ msgstr "按下新的快捷键"
 msgid "Press the shortcut now"
 msgstr "现在按下快捷键"
 
-msgid "Press your Panel shortcut in any app to bring up your snippets."
+msgid "Press your Panel shortcut in any app to bring up your items."
 msgstr "在任何应用中按面板快捷键，即可调出你的片段。"
+
+msgid "Presses Enter here"
+msgstr "在此按 Enter"
+
+msgid "Presses Tab here, to move between the fields of a form"
+msgstr "在此按 Tab，用于在表单字段之间切换"
 
 msgid "Preview"
 msgstr "预览"
 
 msgid "Preview how this item will look (Ctrl+P)"
-msgstr "预览此项目的外观 (Ctrl+P)"
+msgstr "预览此片段的外观 (Ctrl+P)"
+
+msgid "Previous colour {}. Click to go back."
+msgstr "上一个颜色 {}。单击可返回。"
 
 msgid "Previous list"
 msgstr "上一个列表"
+
+msgid "Previous month"
+msgstr "上个月"
+
+msgid "Previous part"
+msgstr "上一部分"
 
 msgid "Privacy"
 msgstr "隐私"
@@ -2296,13 +2900,13 @@ msgstr "程序"
 msgid "Pull away from the edge to float."
 msgstr "拖离边缘可变为浮动。"
 
-msgid "Puts the panel at one edge of the screen, on the monitor it is on. Dragging it to an edge and holding it there does the same. Floating lets it sit anywhere."
+msgid "Puts the Panel at one edge of the screen, on the monitor it is on. Dragging it to an edge and holding it there does the same. Floating lets it sit anywhere."
 msgstr "把面板放到它所在显示器的屏幕一侧边缘。把它拖到边缘并停住也一样。浮动则可放在任意位置。"
 
 msgid "Quick capture"
 msgstr "快速捕获"
 
-msgid "Quick capture saves what you copied as a new snippet."
+msgid "Quick capture saves what you copied as a new item."
 msgstr "快速捕获会把你复制的内容保存为新片段。"
 
 msgid "Quick capture the clipboard"
@@ -2319,6 +2923,9 @@ msgstr "退出 Snipdeck"
 
 msgid "RGB"
 msgstr "RGB"
+
+msgid "RTF"
+msgstr "RTF"
 
 msgid "Ready. Press Test to check it."
 msgstr "已就绪。按“测试”进行检查。"
@@ -2347,8 +2954,23 @@ msgstr "最近条目操作"
 msgid "Recent history cleared"
 msgstr "已清除最近记录"
 
+msgid "Recent holds {} copies. Turning it off deletes them, unless you choose to keep them hidden; kept copies show again if you turn Recent back on."
+msgstr "“最近”中有{}个副本。关闭后会将其删除，除非你选择隐藏保留；保留的副本会在重新开启“最近”后再次显示。"
+
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "“最近”会保留你复制的文本，仅保存在这台电脑上，最多保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感片段不会被保留。你可以随时在设置中更改。"
+
+msgid "Recent messages"
+msgstr "最近的消息"
+
+msgid "Recent skips a copy when Snipdeck cannot tell which program it came from, because it could be a password manager. Turn this on to keep those copies too."
+msgstr "当 Snipdeck 无法判断复制内容来自哪个程序时，“最近”会跳过它，因为它可能来自密码管理器。开启后，这些内容也会被保留。"
+
+msgid "Recent: days kept"
+msgstr "最近：保留天数"
+
+msgid "Recent: most copies kept"
+msgstr "最近：最大保留副本数"
 
 msgid "Recently used"
 msgstr "最近使用"
@@ -2398,8 +3020,14 @@ msgstr "移除主密码"
 msgid "Remove password"
 msgstr "移除密码"
 
+msgid "Remove repeated lines"
+msgstr "删除重复行"
+
 msgid "Remove tag {}"
 msgstr "移除标签 {}"
+
+msgid "Remove this filter"
+msgstr "移除此筛选"
 
 msgid "Remove {} from the list"
 msgstr "从列表中移除 {}"
@@ -2419,9 +3047,6 @@ msgstr "重命名看板…"
 msgid "Rename group"
 msgstr "重命名分组"
 
-msgid "Rename or delete tags. Deleting a tag removes it from its items; the items stay."
-msgstr "重命名或删除标签。删除标签会将其从片段中移除，片段本身保留。"
-
 msgid "Rename tag {}"
 msgstr "重命名标签 {}"
 
@@ -2429,7 +3054,13 @@ msgid "Repeat the new password"
 msgstr "再次输入新密码"
 
 msgid "Replace a typed trigger with its item (Windows only)"
-msgstr "将键入的触发词替换为对应项目（仅限 Windows）"
+msgstr "将键入的触发词替换为对应片段（仅限 Windows）"
+
+msgid "Replace all"
+msgstr "全部替换"
+
+msgid "Replace with"
+msgstr "替换为"
 
 msgid "Required"
 msgstr "必填"
@@ -2450,7 +3081,7 @@ msgid "Restore"
 msgstr "还原"
 
 msgid "Restore selected item"
-msgstr "恢复所选项目"
+msgstr "恢复所选片段"
 
 msgid "Restore the backup of {}"
 msgstr "还原 {} 的备份"
@@ -2475,20 +3106,29 @@ msgstr "搜索结果"
 msgid "Resume it from the tray icon, then copy some text."
 msgstr "请从托盘图标恢复，然后复制一些文本。"
 
+msgid "Reverse order"
+msgstr "反向排序"
+
 msgid "Right"
 msgstr "右侧"
 
 msgid "Right edge"
 msgstr "右边"
 
+msgid "Right-click a card, or press the Menu key, to edit it, pin it to the strip above the list, move it, tag it or delete it. Delete this list when you no longer need it."
+msgstr "右键单击卡片，或按菜单键，即可编辑、置顶到列表上方的栏、移动、添加标签或删除。不再需要时，请删除此列表。"
+
+msgid "Right-click for more"
+msgstr "右键单击查看更多"
+
 msgid "Right-click or press Menu for list actions"
 msgstr "右键单击或按菜单键查看列表操作"
 
+msgid "Rocket"
+msgstr "火箭"
+
 msgid "Rose"
 msgstr "玫瑰色"
-
-msgid "Sad"
-msgstr "难过"
 
 msgid "Saturation and brightness"
 msgstr "饱和度和亮度"
@@ -2502,11 +3142,20 @@ msgstr "保存"
 msgid "Save (Ctrl+Enter)"
 msgstr "保存 (Ctrl+Enter)"
 
+msgid "Save anyway"
+msgstr "仍然保存"
+
 msgid "Save as PNG…"
 msgstr "另存为 PNG…"
 
 msgid "Save as SVG…"
 msgstr "另存为 SVG…"
+
+msgid "Save as Sensitive to…"
+msgstr "作为敏感项目保存到…"
+
+msgid "Save as Sensitive…"
+msgstr "保存为敏感项目…"
 
 msgid "Save from clipboard"
 msgstr "从剪贴板保存"
@@ -2541,11 +3190,18 @@ msgstr "已保存的颜色"
 msgid "Saved to {}"
 msgstr "已保存到 {}"
 
-msgid "Saved {}"
-msgstr "已保存 {}"
+msgid "Saved to {}. The same text was already in {}."
+msgstr "已保存到 {}。相同的文本已在 {} 中。"
+
+msgid "Saved {}, but {} item could not be included: \"{}\". Its attachment could not be read."
+msgid_plural "Saved {}, but {} items could not be included, such as \"{}\". Their attachments could not be read."
+msgstr[0] "已保存 {}，但有 {} 个片段（如“{}”）未能包含，其附件无法读取。"
 
 msgid "Saved {}."
 msgstr "已保存 {}。"
+
+msgid "Saved {}: {} of {} items. Sensitive items and items with no text are left out."
+msgstr "已保存 {}：{} / {} 个片段。敏感片段和没有文本的片段不包含在内。"
 
 msgid "Saved. This trigger overlaps another trigger, so one of them may never fire."
 msgstr "已保存。此触发词与另一个触发词重叠，其中一个可能永远不会触发。"
@@ -2556,7 +3212,7 @@ msgstr "已保存。此触发词与“{}”的触发词重叠，其中一个可�
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "将所有看板、列表和片段保存为一个 .snipdeck 文件，存放在你选择的文件夹中。"
 
-msgid "Saves the text that is on the clipboard when you press it as a new item in the list the panel shows."
+msgid "Saves the text that is on the clipboard when you press it as a new item in the list the Panel shows."
 msgstr "将你按下时剪贴板中的文本，作为新片段保存到面板当前显示的列表中。"
 
 msgid "Saving changed text removes the formatting."
@@ -2589,11 +3245,11 @@ msgstr "搜索 (Ctrl+F)"
 msgid "Search all boards"
 msgstr "搜索所有看板"
 
-msgid "Search all snippets"
+msgid "Search all items"
 msgstr "搜索所有片段"
 
-msgid "Search emoji, kaomoji, icons"
-msgstr "搜索表情符号、颜文字、图标"
+msgid "Search emoji, kaomoji, icons, characters"
+msgstr "搜索表情、颜文字、图标、字符"
 
 msgid "Search every board and paste without opening the window."
 msgstr "搜索所有看板，无需打开窗口即可粘贴。"
@@ -2604,6 +3260,9 @@ msgstr "搜索框"
 msgid "Search in"
 msgstr "搜索范围"
 
+msgid "Search items"
+msgstr "搜索片段"
+
 msgid "Search results"
 msgstr "搜索结果"
 
@@ -2612,9 +3271,6 @@ msgstr "搜索设置"
 
 msgid "Search shortcuts"
 msgstr "搜索快捷键"
-
-msgid "Search snippets"
-msgstr "搜索片段"
 
 msgid "Search suggestions"
 msgstr "搜索建议"
@@ -2631,8 +3287,8 @@ msgstr "可用你的语言按名称搜索。"
 msgid "Searched every board and list."
 msgstr "已搜索所有看板和列表。"
 
-msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
-msgstr "复制敏感片段后，若期间未复制其他内容，则在此秒数后从剪贴板清除。设为 0 则永不清除。粘贴时会改为恢复你原本的剪贴板内容。"
+msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. Pasting restores your own clipboard instead."
+msgstr "复制敏感片段后，若期间未复制其他内容，则在此秒数后从剪贴板清除。粘贴时会改为恢复你原本的剪贴板内容。"
 
 msgid "See the tips"
 msgstr "查看提示"
@@ -2644,13 +3300,19 @@ msgid "Select all"
 msgstr "全选"
 
 msgid "Select all items"
-msgstr "选择所有项目"
+msgstr "选择所有片段"
+
+msgid "Select an item to see its details."
+msgstr "选择一个片段以查看详情。"
 
 msgid "Select and delete"
 msgstr "选择和删除"
 
 msgid "Select every item"
 msgstr "选择所有片段"
+
+msgid "Select items"
+msgstr "选择片段"
 
 msgid "Select or delete…"
 msgstr "选择或删除…"
@@ -2659,10 +3321,13 @@ msgid "Select or unselect the row"
 msgstr "选中或取消选中该行"
 
 msgid "Select several items"
-msgstr "选择多个项目"
+msgstr "选择多个片段"
 
-msgid "Select snippets"
-msgstr "选择片段"
+msgid "Select the items to group first"
+msgstr "请先选择要分组的片段"
+
+msgid "Selected symbol"
+msgstr "所选符号"
 
 msgid "Sensitive"
 msgstr "敏感"
@@ -2670,14 +3335,17 @@ msgstr "敏感"
 msgid "Sensitive item"
 msgstr "敏感片段"
 
-msgid "Sensitive items can't be typed in, so they have no trigger."
-msgstr "敏感项目无法通过键入插入，因此没有触发词。"
+msgid "Sensitive items can’t be typed in, so they have no trigger."
+msgstr "敏感片段无法通过键入插入，因此没有触发词。"
 
 msgid "Sensitive items in a backup or export can only be restored by this Windows account on this PC. On another PC, or after Windows is reinstalled, they are skipped. Keep your own copy of anything sensitive you cannot lose."
-msgstr "备份或导出中的敏感项目只能由此电脑上的这个 Windows 账户恢复。在另一台电脑上，或重新安装 Windows 后，这些项目会被跳过。请自行保留无法丢失的敏感内容的副本。"
+msgstr "备份或导出中的敏感片段只能由此电脑上的这个 Windows 账户恢复。在另一台电脑上，或重新安装 Windows 后，这些片段会被跳过。请自行保留无法丢失的敏感内容的副本。"
 
 msgid "Sensitive: the text is not shown here"
 msgstr "敏感：此处不显示文本"
+
+msgid "Sentence case"
+msgstr "句首大写"
 
 msgid "Set master password"
 msgstr "设置主密码"
@@ -2700,8 +3368,26 @@ msgstr "Shift Enter"
 msgid "Shift F10"
 msgstr "Shift F10"
 
+msgid "Shift+F10 or the Menu key"
+msgstr "Shift+F10 或菜单键"
+
 msgid "Shift+Insert"
 msgstr "Shift+Insert"
+
+msgid "Shift+Up or Shift+Down"
+msgstr "Shift+上或Shift+下"
+
+msgid "Shift+click (or Shift+Enter) only copies a card to the clipboard, so you can paste it yourself."
+msgstr "Shift+单击（或 Shift+Enter）只会将卡片复制到剪贴板，以便你自己粘贴。"
+
+msgid "Shift+click to copy"
+msgstr "Shift+单击以复制"
+
+msgid "Shopping cart"
+msgstr "购物车"
+
+msgid "Short tips"
+msgstr "简短提示"
 
 msgid "Shortcuts"
 msgstr "快捷键"
@@ -2742,17 +3428,20 @@ msgstr "显示或隐藏侧边栏"
 msgid "Show or hide the Panel"
 msgstr "显示或隐藏面板"
 
-msgid "Show or hide the panel"
-msgstr "显示或隐藏面板"
-
 msgid "Show or hide the sidebar"
 msgstr "显示或隐藏侧边栏"
+
+msgid "Show password"
+msgstr "显示密码"
 
 msgid "Show the Panel"
 msgstr "显示面板"
 
 msgid "Show the Panel in the taskbar and Alt+Tab"
 msgstr "在任务栏和 Alt+Tab 中显示面板"
+
+msgid "Show the text tools"
+msgstr "显示文本工具"
 
 msgid "Show the welcome tour again"
 msgstr "再次显示欢迎导览"
@@ -2763,19 +3452,19 @@ msgstr "显示标题、颜色、标签、触发词和隐私"
 msgid "Showing the first {}"
 msgstr "显示前 {} 项"
 
-msgid "Shrug"
-msgstr "耸肩"
-
 msgid "Sidebar width"
 msgstr "侧边栏宽度"
 
 msgid "Skip"
 msgstr "跳过"
 
+msgid "Slash"
+msgstr "斜杠"
+
 msgid "Slate"
 msgstr "石板灰"
 
-msgid "Small panel"
+msgid "Small Panel"
 msgstr "小面板"
 
 msgid "Smileys & Emotion"
@@ -2787,43 +3476,43 @@ msgstr "Snipdeck"
 msgid "Snipdeck (hotkeys paused)"
 msgstr "Snipdeck（热键已暂停）"
 
-msgid "Snipdeck can't keep a file with that name. Rename the file and try again."
+msgid "Snipdeck cannot write to its data folder: {}"
+msgstr "Snipdeck 无法写入其数据文件夹：{}"
+
+msgid "Snipdeck can’t keep a file with that name. Rename the file and try again."
 msgstr "Snipdeck 无法保存该名称的文件。请重命名文件后重试。"
 
-msgid "Snipdeck can't protect a key on this PC, so a master password is not available."
+msgid "Snipdeck can’t protect a key on this PC, so a master password is not available."
 msgstr "Snipdeck 无法在此电脑上保护密钥，因此无法使用主密码。"
 
-msgid "Snipdeck can't read that file. It may be in use or protected."
+msgid "Snipdeck can’t read that file. It may be in use or protected."
 msgstr "Snipdeck 无法读取该文件。它可能正在使用中或受保护。"
 
-msgid "Snipdeck can't watch the clipboard, so Recent stays empty. Restart Snipdeck to try again."
-msgstr "Snipdeck 无法监视剪贴板,因此“最近”将保持为空。请重启 Snipdeck 后重试。"
+msgid "Snipdeck can’t watch the clipboard, so Recent stays empty. Restart Snipdeck to try again."
+msgstr "Snipdeck 无法监视剪贴板，因此“最近”将保持为空。请重启 Snipdeck 后重试。"
 
-msgid "Snipdeck closed unexpectedly last time. Open the log?"
-msgstr "Snipdeck 上次意外关闭。要打开日志吗？"
-
-msgid "Snipdeck couldn't open that. Check that it still exists."
+msgid "Snipdeck couldn’t open that. Check that it still exists."
 msgstr "Snipdeck 无法打开该文件。请检查它是否仍然存在。"
 
-msgid "Snipdeck couldn't open the encryption key, so nothing was saved."
+msgid "Snipdeck couldn’t open the encryption key, so nothing was saved."
 msgstr "Snipdeck 无法打开加密密钥，因此未保存任何内容。"
 
-msgid "Snipdeck couldn't read that folder."
+msgid "Snipdeck couldn’t read that folder."
 msgstr "Snipdeck 无法读取该文件夹。"
 
-msgid "Snipdeck couldn't read your encryption key, so the master password can't be set or changed right now. Restart Snipdeck to try again."
+msgid "Snipdeck couldn’t read your encryption key, so the master password can’t be set or changed right now. Restart Snipdeck to try again."
 msgstr "Snipdeck 无法读取你的加密密钥，因此现在无法设置或更改主密码。请重启 Snipdeck 再试。"
 
-msgid "Snipdeck couldn't save a draft of what you typed."
+msgid "Snipdeck couldn’t save a draft of what you typed."
 msgstr "Snipdeck 无法保存你输入内容的草稿。"
 
-msgid "Snipdeck couldn't save this item. Nothing was changed."
+msgid "Snipdeck couldn’t save this item. Nothing was changed."
 msgstr "Snipdeck 无法保存此片段。未做任何更改。"
 
-msgid "Snipdeck couldn't start.\n\n{}\n\nNothing was deleted. Close any program that may be using your Snipdeck folder, make sure the folder is not read-only, then start Snipdeck again. If you went back to an older version, install the newer one. Your backups are in the backups folder inside your Snipdeck folder."
+msgid "Snipdeck couldn’t start.\n\n{}\n\nNothing was deleted. Close any program that may be using your Snipdeck folder, make sure the folder is not read-only, then start Snipdeck again. If you went back to an older version, install the newer one. Your backups are in the backups folder inside your Snipdeck folder."
 msgstr "Snipdeck 无法启动。\n\n{}\n\n没有删除任何内容。请关闭可能正在使用 Snipdeck 文件夹的程序，确认该文件夹不是只读的，然后重新启动 Snipdeck。如果你回退到了旧版本，请安装较新的版本。你的备份位于 Snipdeck 文件夹内的 backups 文件夹中。"
 
-msgid "Snipdeck couldn't write to your library. Check that the disk has room."
+msgid "Snipdeck couldn’t write to your library. Check that the disk has room."
 msgstr "Snipdeck 无法写入你的资料库。请检查磁盘是否有足够空间。"
 
 msgid "Snipdeck found a problem in your library. Export a copy to be safe."
@@ -2832,10 +3521,13 @@ msgstr "Snipdeck 在你的资料库中发现问题。为安全起见，请导出
 msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
 msgstr "Snipdeck 没有账户、没有服务器、没有遥测，也不开放任何网络端口。你保存的内容不会离开这台电脑。"
 
-msgid "Snipdeck is still running. Click the tray icon to bring the panel back."
+msgid "Snipdeck is already running, but it did not answer.\n\nIf it is stuck, end Snipdeck in Task Manager and start it again. If it runs as administrator, close it from its tray icon and start it again."
+msgstr "Snipdeck 已在运行，但没有响应。\n\n如果它卡住了，请在任务管理器中结束 Snipdeck，然后重新启动。如果它以管理员身份运行，请从托盘图标关闭它，然后重新启动。"
+
+msgid "Snipdeck is still running. Click the tray icon to bring the Panel back."
 msgstr "Snipdeck 仍在运行。单击托盘图标即可重新显示面板。"
 
-msgid "Snipdeck is still running. Press {} or click the tray icon to bring the panel back."
+msgid "Snipdeck is still running. Press {} or click the tray icon to bring the Panel back."
 msgstr "Snipdeck 仍在运行。按 {} 或单击托盘图标即可重新显示面板。"
 
 msgid "Snipdeck keeps its own copy of the file."
@@ -2850,8 +3542,11 @@ msgstr "Snipdeck 不会自行检查。这会在浏览器中打开发布页面。
 msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
 msgstr "Snipdeck 从不连接互联网：它显示的每个图标和字体都已随应用打包。"
 
-msgid "Snipdeck saves a copy of your library once a day and keeps the newest {}. Restoring adds back what is missing and never removes anything."
-msgstr "Snipdeck 每天保存一份资料库副本，并保留最新的 {} 份。还原只会补回缺少的内容，不会删除任何东西。"
+msgid "Snipdeck ran into a problem. Open the log?"
+msgstr "Snipdeck 遇到了问题。要打开日志吗？"
+
+msgid "Snipdeck saves a copy of your library once a day and keeps the newest {}, plus the last copy of each of the past four weeks and six months. A backup holds every board, list, item and tag; the Trash is not in it. Restoring adds back what is missing and never removes anything."
+msgstr "Snipdeck 每天保存一份资料库副本，保留最新的 {} 份，另外保留过去四周和过去六个月中每一段的最后一份。备份包含所有看板、列表、片段和标签；回收站不在其中。还原只会补回缺少的内容，绝不会删除任何东西。"
 
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "Snipdeck 会待在系统托盘中，以便登录后快捷键仍可使用。"
@@ -2860,37 +3555,37 @@ msgid "Snipdeck: search snippets"
 msgstr "Snipdeck：搜索片段"
 
 msgid "Snippets"
-msgstr "片段"
-
-msgid "Snippets you paste show up here."
-msgstr "你粘贴过的片段会显示在这里。"
+msgstr "项目"
 
 msgid "Some files were left out: together they are over 64 MB."
 msgstr "部分文件被忽略：它们加起来超过 64 MB。"
-
-msgid "Sorry"
-msgstr "抱歉"
 
 msgid "Sort by"
 msgstr "排序方式"
 
 msgid "Sort by: Manual"
-msgstr "排序方式:手动"
+msgstr "排序方式：手动"
 
 msgid "Sort by: Most used"
-msgstr "排序方式:最常使用"
+msgstr "排序方式：最常使用"
 
 msgid "Sort by: Recently used"
-msgstr "排序方式:最近使用"
+msgstr "排序方式：最近使用"
 
 msgid "Sort by: {}"
-msgstr "排序方式:{}"
+msgstr "排序方式：{}"
 
 msgid "Sort items by"
-msgstr "排序方式"
+msgstr "片段排序方式"
+
+msgid "Sort lines A to Z"
+msgstr "按 A 到 Z 排序行"
 
 msgid "Sort: {}"
-msgstr "排序:{}"
+msgstr "排序：{}"
+
+msgid "Source"
+msgstr "来源"
 
 msgid "Source code"
 msgstr "源代码"
@@ -2903,6 +3598,9 @@ msgstr "分裂互补色"
 
 msgid "Square"
 msgstr "方形"
+
+msgid "Star"
+msgstr "星形"
 
 msgid "Start stack"
 msgstr "开始堆栈"
@@ -2934,7 +3632,7 @@ msgstr "强度：强"
 msgid "Strength: weak"
 msgstr "强度：弱"
 
-msgid "Suggest snippets as I type"
+msgid "Suggest items as I type"
 msgstr "输入时推荐片段"
 
 msgid "Support"
@@ -2943,14 +3641,14 @@ msgstr "支持"
 msgid "Support Snipdeck"
 msgstr "支持 Snipdeck"
 
-msgid "Surprise"
-msgstr "惊讶"
-
 msgid "Swap the two colours"
 msgstr "交换两种颜色"
 
+msgid "Switch"
+msgstr "切换"
+
 msgid "Switch this list to Manual order?"
-msgstr "要将此列表切换为手动排序吗?"
+msgstr "要将此列表切换为手动排序吗？"
 
 msgid "Symbols"
 msgstr "符号"
@@ -2964,17 +3662,37 @@ msgstr "符号数据"
 msgid "Tab"
 msgstr "Tab"
 
+msgid "Tab or Shift+Tab"
+msgstr "Tab 或 Shift+Tab"
+
+msgid "Tab while the suggestion hint shows"
+msgstr "建议提示显示时按 Tab"
+
 msgid "Tabs"
 msgstr "标签页"
 
 msgid "Tabs put each list of the board in a row under the header. Menu moves them into the board picker and gives the space back to your items."
-msgstr "选项卡把看板的每个列表放在标题下的一行。“菜单”则把它们移入看板选择器，把空间还给你的项目。"
+msgstr "选项卡把看板的每个列表放在标题下的一行。“菜单”则把它们移入看板选择器，把空间还给你的片段。"
 
 msgid "Tag"
 msgstr "标签"
 
-msgid "Tag a snippet to see it here."
+msgid "Tag added to {} item"
+msgid_plural "Tag added to {} items"
+msgstr[0] "已为 {} 个片段添加标签"
+
+msgid "Tag an item to see it here."
 msgstr "为片段添加标签后，即可在这里看到。"
+
+msgid "Tag colour"
+msgstr "标签颜色"
+
+msgid "Tag removed from {} item"
+msgid_plural "Tag removed from {} items"
+msgstr[0] "已从 {} 个片段移除标签"
+
+msgid "Tag: {}"
+msgstr "标签：{}"
 
 msgid "Tags"
 msgstr "标签"
@@ -2985,11 +3703,8 @@ msgstr "标签…"
 msgid "Take screenshot"
 msgstr "截图"
 
-msgid "Take screenshot hides the panel until the picture is taken. Turn this on to leave it on screen."
+msgid "Take screenshot hides the Panel until the picture is taken. Turn this on to leave it on screen."
 msgstr "“截图”会先隐藏面板，直到截好图。打开此项可让面板保持显示。"
-
-msgid "Takes effect the next time Snipdeck starts."
-msgstr "下次启动 Snipdeck 时生效。"
 
 msgid "Teal"
 msgstr "青绿色"
@@ -3003,8 +3718,8 @@ msgstr "模板文本"
 msgid "Templates ask for names, dates and options before they paste."
 msgstr "模板会在粘贴前询问姓名、日期和选项。"
 
-msgid "Ten short tips"
-msgstr "十条简短提示"
+msgid "Terminal"
+msgstr "终端"
 
 msgid "Test"
 msgstr "测试"
@@ -3021,6 +3736,9 @@ msgstr "文本"
 msgid "Text size"
 msgstr "文字大小"
 
+msgid "Text tools"
+msgstr "文本工具"
+
 msgid "Text you copy appears here, newest first, until you clear it or it is older than {} days."
 msgstr "你复制的文本会按最新优先显示在这里，直到你清除或超过 {} 天。"
 
@@ -3033,8 +3751,11 @@ msgstr "TextExpander 导出文件（CSV）"
 msgid "That app"
 msgstr "该应用"
 
-msgid "That combination can't be used as a shortcut."
+msgid "That combination can’t be used as a shortcut."
 msgstr "该组合键不能用作快捷键。"
+
+msgid "That edit of a sensitive item cannot be undone: its text is not kept."
+msgstr "无法撤销对敏感片段的这次编辑：其文本未被保留。"
 
 msgid "That file is empty."
 msgstr "该文件为空。"
@@ -3048,25 +3769,25 @@ msgstr "该文件超过 {} MB，即单个片段可容纳的上限。"
 msgid "That is too many files to add at once."
 msgstr "一次添加的文件太多。"
 
-msgid "That isn't a Beeftext export."
+msgid "That isn’t a Beeftext export."
 msgstr "这不是 Beeftext 导出文件。"
 
-msgid "That isn't a CopyQ export."
+msgid "That isn’t a CopyQ export."
 msgstr "这不是 CopyQ 导出文件。"
 
-msgid "That isn't a Ditto database."
+msgid "That isn’t a Ditto database."
 msgstr "这不是 Ditto 数据库。"
 
-msgid "That isn't a PhraseExpress CSV export."
+msgid "That isn’t a PhraseExpress CSV export."
 msgstr "这不是 PhraseExpress 的 CSV 导出文件。"
 
-msgid "That isn't a Snipdeck file, or it is damaged."
+msgid "That isn’t a Snipdeck file, or it is damaged."
 msgstr "这不是 Snipdeck 文件，或者文件已损坏。"
 
-msgid "That isn't a TextExpander CSV export."
+msgid "That isn’t a TextExpander CSV export."
 msgstr "这不是 TextExpander 的 CSV 导出文件。"
 
-msgid "That isn't an Espanso configuration."
+msgid "That isn’t an Espanso configuration."
 msgstr "这不是 Espanso 配置。"
 
 msgid "That list was deleted. Choose another list."
@@ -3078,11 +3799,23 @@ msgstr "密码不正确。请重试。"
 msgid "That path is a folder, not a file."
 msgstr "该路径是文件夹，而不是文件。"
 
+msgid "That step cannot be undone any more: what it changed was deleted for good."
+msgstr "这一步已无法撤销：它所更改的内容已被永久删除。"
+
 msgid "That text is too large to save."
 msgstr "该文本太大，无法保存。"
 
 msgid "That was the last one. Paste next starts again from the first."
 msgstr "这是最后一项。再次粘贴将从第一项重新开始。"
+
+msgid "The Panel"
+msgstr "面板"
+
+msgid "The Picker"
+msgstr "选择器"
+
+msgid "The Store version keeps your library inside the app, so uninstalling removes it. Back up now also saves a copy in Documents > Snipdeck backups."
+msgstr "应用商店版将资源库保存在应用内，卸载时会一并删除。“立即备份”还会在 文档 > Snipdeck backups 中保存一份副本。"
 
 msgid "The Trash is empty"
 msgstr "回收站为空"
@@ -3090,20 +3823,53 @@ msgstr "回收站为空"
 msgid "The Windows clipboard history has no text in it yet. Copy some text, then try again."
 msgstr "剪贴板历史记录中还没有文本。请先复制一些文本，然后重试。"
 
-msgid "The file dialog couldn't open. Type the path instead."
+msgid "The backups cannot be read: {}"
+msgstr "无法读取备份：{}"
+
+msgid "The clipboard before the latest copy (2 to 25)"
+msgstr "最近一次复制之前的剪贴板内容（2 到 25）"
+
+msgid "The colour pick timed out."
+msgstr "取色已超时。"
+
+msgid "The file dialog couldn’t open. Type the path instead."
 msgstr "无法打开文件对话框。请改为输入路径。"
 
 msgid "The form was closed without pasting."
 msgstr "表单已关闭，未粘贴。"
 
+msgid "The group and its items move to the Trash. You can restore them for {} days."
+msgstr "分组及其片段将移入回收站。{} 天内可以恢复。"
+
+msgid "The icon is in the notification area."
+msgstr "图标在通知区域中。"
+
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
 msgstr "导入已提前停止，因为源内容比 Snipdeck 一次能读取的量大。"
 
-msgid "The key Snipdeck presses to paste into each program. Most programs use Ctrl+V; some terminals need another key. Choose Never paste to copy instead. Use the program's file name, for example notepad.exe."
+msgid "The integrity check could not run: {}"
+msgstr "无法运行完整性检查：{}"
+
+msgid "The integrity check found no problems."
+msgstr "完整性检查未发现问题。"
+
+msgid "The integrity check found {} problem(s); the first: {}"
+msgstr "完整性检查发现 {} 个问题；第一个：{}"
+
+msgid "The items cannot be read: {}"
+msgstr "无法读取片段：{}"
+
+msgid "The item’s trigger"
+msgstr "片段的触发词"
+
+msgid "The key Snipdeck presses to paste into each program. Most programs use Ctrl+V; some terminals need another key. Choose Never paste to copy instead. Use the program’s file name, for example notepad.exe."
 msgstr "Snipdeck 向每个程序粘贴时按下的键。大多数程序使用 Ctrl+V；有些终端需要其他键。选择“从不粘贴”则改为复制。请使用程序的文件名，例如 notepad.exe。"
 
+msgid "The key cannot be checked: {}"
+msgstr "无法检查密钥：{}"
+
 msgid "The key opens the encrypted items in exports you saved earlier. If you forget it, those items can never be opened again."
-msgstr "该密钥用于打开你之前保存的导出文件中的加密项目。如果忘记它，这些项目将永远无法再打开。"
+msgstr "该密钥用于打开你之前保存的导出文件中的加密片段。如果忘记它，这些片段将永远无法再打开。"
 
 msgid "The library could not be unlocked or changed. Nothing was changed."
 msgstr "无法解锁或更改资料库。未做任何更改。"
@@ -3111,31 +3877,36 @@ msgstr "无法解锁或更改资料库。未做任何更改。"
 msgid "The licences of the libraries Snipdeck is built from."
 msgstr "构成 Snipdeck 的库的许可证。"
 
+msgid "The list and its {n} item move to the Trash. You can restore them for {} days."
+msgid_plural "The list and its {n} items move to the Trash. You can restore them for {} days."
+msgstr[0] "该列表和它的 {n} 个片段将移到回收站。你可以在 {} 天内恢复。"
+
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
 msgstr "该列表及其中的 {} 个片段将移至回收站。你可以在 {} 天内恢复它们。"
 
 msgid "The list holds at most {} programs."
 msgstr "列表最多可包含 {} 个程序。"
 
-msgid "The newest backup is from {} and holds {} items on {} boards. Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read."
-msgstr "最新备份来自 {}，包含 {} 个看板上的 {} 项内容。当前数据库会被另行保存，不会被删除。此备份之后添加的内容，能读取的会被恢复。"
+msgid "The newest backup is from {}, {} days ago ({} kept)."
+msgstr "最新备份是 {} 的，{} 天前（保留 {} 份）。"
 
-msgid "The oldest ones are deleted once there are more than this."
-msgstr "超过此数量后，最旧的备份会被删除。"
+msgid "The newest backup is from {}."
+msgstr "最新的备份来自 {}。"
 
-msgid "The panel"
-msgstr "面板"
-
-msgid "The picker"
-msgstr "选择器"
+msgid "The newest crash report is {}."
+msgstr "最新的崩溃报告是 {}。"
 
 msgid "The report holds versions and settings switches, never your items."
-msgstr "报告只包含版本和设置开关,绝不包含你的条目。"
+msgstr "报告只包含版本和设置开关，绝不包含你的片段。"
 
-msgid "The selected items are deleted for good. This can't be undone."
-msgstr "所选片段将被永久删除，此操作无法撤销。"
+msgid "The screen changed, so the colour pick ended."
+msgstr "屏幕已变化，取色已结束。"
 
-msgid "The sensitive item \"{}\" cannot be unlocked with this computer's key and was skipped."
+msgid "The selected item is deleted for good. This can’t be undone."
+msgid_plural "The selected items are deleted for good. This can’t be undone."
+msgstr[0] "所选片段将被永久删除。此操作无法撤销。"
+
+msgid "The sensitive item \"{}\" cannot be unlocked with this computer’s key and was skipped."
 msgstr "无法使用本电脑的密钥打开敏感片段“{}”，已跳过。"
 
 msgid "The shortcut for each is shown beside it."
@@ -3147,23 +3918,36 @@ msgstr "标签将从其片段中移除，片段本身保留。"
 msgid "The taskbar is on that edge. Pick another edge, or move the taskbar."
 msgstr "任务栏位于该边缘。请选择其他边缘，或移动任务栏。"
 
+msgid "The text of another snippet"
+msgstr "另一个片段的文本"
+
+msgid "The text selected in the app you paste into"
+msgstr "粘贴目标应用中选中的文本"
+
 msgid "The time now"
 msgstr "当前时间"
 
+msgid "The trigger of {} starts like this one, so this one would never fire."
+msgstr "{} 的触发词与此触发词开头相同，因此此触发词永远不会触发。"
+
 msgid "The two passwords are not the same."
 msgstr "两次输入的密码不一致。"
+
+msgid "The {n} recent copy is removed. This can’t be undone."
+msgid_plural "All {n} recent copies are removed. This can’t be undone."
+msgstr[0] "将移除 {n} 条最近的复制。此操作无法撤销。"
 
 msgid "Theme"
 msgstr "主题"
 
 msgid "Theme: Dark"
-msgstr "主题:深色"
+msgstr "主题：深色"
 
 msgid "Theme: Light"
-msgstr "主题:浅色"
+msgstr "主题：浅色"
 
 msgid "Theme: System"
-msgstr "主题:跟随系统"
+msgstr "主题：跟随系统"
 
 msgid "Then type it in any app. Turn this on in Settings, under Typing."
 msgstr "然后在任何应用中输入它。请在设置的“输入”中开启。"
@@ -3180,6 +3964,9 @@ msgstr "以下快捷键无法使用：{}。原因见 设置 > 快捷键。"
 msgid "Third-party notices"
 msgstr "第三方声明"
 
+msgid "This backup holds {} items; the one before held {}. The older backups were kept. Check that nothing was deleted by mistake."
+msgstr "此备份包含 {} 个片段，上一次备份包含 {} 个。较旧的备份已保留。请检查是否误删了内容。"
+
 msgid "This board"
 msgstr "此看板"
 
@@ -3192,8 +3979,18 @@ msgstr "此演示不会在磁盘上保存任何内容，因此没有备份。"
 msgid "This field is required"
 msgstr "此字段为必填项"
 
+msgid "This file has {} trigger, which types text into other programs: {}"
+msgid_plural "This file has {} triggers, which type text into other programs: {}"
+msgstr[0] "此文件包含 {} 个会向其他程序输入文本的触发词：{}"
+
 msgid "This file was made by a newer Snipdeck (format {}), so anything this version does not know was left out."
 msgstr "此文件由更新版本的 Snipdeck 创建（格式 {}），因此本版本不认识的内容已被省略。"
+
+msgid "This folder is on a network share. A backup can fail while the share is offline, and a half-written copy there is hard to spot. Keep a second copy somewhere local."
+msgstr "此文件夹位于网络共享上。共享离线时备份可能失败，而写了一半的副本很难发现。请在本地另存一份副本。"
+
+msgid "This folder is synced by {}. Every backup is uploaded, and the service can bring an old copy back over a new one. Sensitive items stay encrypted, but a synced copy is still a copy."
+msgstr "此文件夹由 {} 同步。每次备份都会上传，服务可能会用旧副本覆盖新副本。敏感片段仍保持加密，但同步的副本依然是副本。"
 
 msgid "This is your only board. Add another before deleting it."
 msgstr "这是你唯一的看板。请先添加另一个再删除它。"
@@ -3213,20 +4010,35 @@ msgstr "此列表为空"
 msgid "This looks like a password or key, so it was not saved. Check it, then save."
 msgstr "这看起来像密码或密钥，所以没有保存。请检查后再保存。"
 
-msgid "This template can't be read. Open it to fix it."
+msgid "This screen could not be captured"
+msgstr "无法捕获此屏幕"
+
+msgid "This template can’t be read. Open it to fix it."
 msgstr "无法读取此模板。请打开它进行修复。"
 
-msgid "This template can't be read: {}."
+msgid "This template can’t be read: {}."
 msgstr "无法读取此模板：{}。"
+
+msgid "This text is already saved as {} in {}."
+msgstr "这段文字已作为 {} 保存在 {} 中。"
 
 msgid "This text is over {} KB, the most that can be edited here. Shorten it, or keep it in a file."
 msgstr "此文本超过 {} KB，这是此处可编辑的上限。请缩短它，或将其保存在文件中。"
 
-msgid "This text is {}. Anything over 16 KB opens read-only here, and the first 16 KB are shown."
-msgstr "此文本为 {}。超过 16 KB 的内容将在此以只读方式打开，并显示前 16 KB。"
+msgid "This text is {}. It opens a part at a time, so typing stays fast; all the parts are saved together."
+msgstr "此文本大小为 {}。为保持输入流畅，它按部分打开；所有部分会一起保存。"
+
+msgid "This text was pasted by clicking its card. Click a card in the Panel and Snipdeck pastes it into the app you were typing in."
+msgstr "此文本是通过单击卡片粘贴的。在面板中单击一张卡片，Snipdeck 就会将其粘贴到你正在输入的应用中。"
+
+msgid "This trigger starts the trigger of {}, which would then never fire."
+msgstr "此触发词是 {} 的触发词的开头，那个触发词将永远不会触发。"
 
 msgid "Tile view"
 msgstr "平铺视图"
+
+msgid "Tile view is not available while the list has groups"
+msgstr "列表有分组时，平铺视图不可用"
 
 msgid "Tints & shades"
 msgstr "明暗层次"
@@ -3243,14 +4055,23 @@ msgstr "首字母大写"
 msgid "Title, colour, tags, trigger, privacy"
 msgstr "标题、颜色、标签、触发词、隐私"
 
+msgid "Title: {}"
+msgstr "标题：{}"
+
 msgid "Titles, text and labels all count."
 msgstr "标题、文本和标签都会被搜索。"
 
 msgid "To remove everything, use Erase library under Backups and your data, then delete the folder."
 msgstr "要删除全部内容，请使用“备份与你的数据”下的“删除资料库”，然后删除该文件夹。"
 
-msgid "Today's date"
-msgstr "今天的日期"
+msgid "Today is {} and it is {}. Placeholders in braces fill in when you use the card."
+msgstr "今天是 {}，现在是 {}。大括号中的占位符会在你使用卡片时填入。"
+
+msgid "Today’s date, in your regional format"
+msgstr "今天的日期，使用区域格式"
+
+msgid "Too many wrong passwords. Wait a few seconds and try again."
+msgstr "错误密码次数过多。请稍等几秒后重试。"
 
 msgid "Tools"
 msgstr "工具"
@@ -3258,11 +4079,20 @@ msgstr "工具"
 msgid "Top edge"
 msgstr "顶边"
 
+msgid "Top level"
+msgstr "顶层"
+
+msgid "Top level (not nested)"
+msgstr "顶层（不嵌套）"
+
 msgid "Trash"
 msgstr "回收站"
 
 msgid "Travel & Places"
 msgstr "旅行与地点"
+
+msgid "Tray icon"
+msgstr "托盘图标"
 
 msgid "Tray icon click opens"
 msgstr "点击托盘图标时打开"
@@ -3273,6 +4103,15 @@ msgstr "三角配色"
 msgid "Trigger"
 msgstr "触发词"
 
+msgid "Trigger and letter case"
+msgstr "触发词与大小写"
+
+msgid "Trigger fires"
+msgstr "触发词的触发方式"
+
+msgid "Trim spaces and blank lines"
+msgstr "删除多余空格和空行"
+
 msgid "Trimmed"
 msgstr "去除首尾空白"
 
@@ -3282,11 +4121,20 @@ msgstr "故障排除"
 msgid "Troubleshoot…"
 msgstr "故障排除…"
 
+msgid "Try a template"
+msgstr "试试模板"
+
 msgid "Try another word, or a different kind."
 msgstr "试试其他词，或换一种类型。"
 
 msgid "Try it"
 msgstr "试一试"
+
+msgid "Turn off and delete"
+msgstr "关闭并删除"
+
+msgid "Turn off, keep them"
+msgstr "关闭并保留"
 
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "在设置中开启剪贴板历史，以收集你复制的内容。"
@@ -3309,26 +4157,35 @@ msgstr "类型"
 msgid "Type a command"
 msgstr "输入命令"
 
-msgid "Type a short code, get a snippet"
+msgid "Type a short code, get an item"
 msgstr "输入短代码，得到片段"
 
-msgid "Type this in any app to insert the snippet. Turn it on in Settings, under Typing."
+msgid "Type this in any app to insert the item. Turn it on in Settings, under Typing."
 msgstr "在任何应用中输入它即可插入该片段。请在“设置”的“输入”中开启。"
 
 msgid "Type {} to confirm"
 msgstr "输入 {} 以确认"
 
+msgid "Typed triggers"
+msgstr "已输入的触发词"
+
 msgid "Typing"
 msgstr "输入"
 
 msgid "Typing triggers work on Windows only."
-msgstr "键入触发仅适用于 Windows。"
+msgstr "键入触发词仅适用于 Windows。"
 
-msgid "UI"
-msgstr "UI"
+msgid "UI 3"
+msgstr "UI 3"
+
+msgid "UPPER CASE"
+msgstr "大写"
 
 msgid "UPPERCASE"
 msgstr "大写"
+
+msgid "URL-encoded"
+msgstr "URL 编码"
 
 msgid "Undid {}"
 msgstr "已撤销：{}"
@@ -3336,16 +4193,22 @@ msgstr "已撤销：{}"
 msgid "Undo"
 msgstr "撤销"
 
+msgid "Undo and Redo reach the last 100 changes since Snipdeck started. They are forgotten when it closes or the library is erased. Text edits of sensitive items cannot be undone, and an item deleted for good is gone for good."
+msgstr "撤销和重做可回溯 Snipdeck 启动以来的最近 100 项更改。关闭应用或清除资料库后历史记录会丢失。无法撤销对敏感片段文本的编辑，永久删除的片段也无法找回。"
+
 msgid "Undo delete of “{}”"
 msgstr "撤销删除“{}”"
 
 msgid "Undo last change"
 msgstr "撤销上一次更改"
 
+msgid "Undo the change"
+msgstr "撤销更改"
+
 msgid "Undo {} (Ctrl+Z)"
 msgstr "撤销 {} (Ctrl+Z)"
 
-msgid "Undock the panel"
+msgid "Undock the Panel"
 msgstr "取消停靠面板"
 
 msgid "Unfold group"
@@ -3354,7 +4217,7 @@ msgstr "展开分组"
 msgid "Ungroup"
 msgstr "取消分组"
 
-msgid "Ungroup (the group's menu)"
+msgid "Ungroup (the group’s menu)"
 msgstr "取消分组（分组菜单）"
 
 msgid "Unlock"
@@ -3403,15 +4266,24 @@ msgid "Unpin them the same way."
 msgstr "取消置顶的方式相同。"
 
 msgid "Unsaved: this is how the item will look once you save it."
-msgstr "未保存：保存后项目将如此显示。"
+msgstr "未保存：保存后片段将如此显示。"
+
+msgid "Untagged"
+msgstr "无标签"
+
+msgid "Up or Down"
+msgstr "上或下"
 
 msgid "Use"
 msgstr "使用"
 
+msgid "Use as other colour"
+msgstr "用作另一种颜色"
+
 msgid "Use at least {} characters."
 msgstr "至少使用 {} 个字符。"
 
-msgid "Use just the program's file name, like notepad.exe."
+msgid "Use just the program’s file name, like notepad.exe."
 msgstr "只需填写程序的文件名，例如 notepad.exe。"
 
 msgid "Use result N"
@@ -3423,6 +4295,9 @@ msgstr "使用所选片段"
 msgid "Use the Nth item"
 msgstr "使用第 N 个片段"
 
+msgid "Use the default"
+msgstr "使用默认位置"
+
 msgid "Use the item"
 msgstr "使用该片段"
 
@@ -3432,8 +4307,17 @@ msgstr "使用面部、指纹或 PIN 代替输入主密码。重启后以及每�
 msgid "Use {}"
 msgstr "使用 {}"
 
+msgid "Use {} ({})"
+msgstr "使用 {}（{}）"
+
 msgid "Use {} for {}"
 msgstr "将 {} 用于 {}"
+
+msgid "Use {} to pass AA"
+msgstr "使用 {} 以达到 AA"
+
+msgid "Used"
+msgstr "使用次数"
 
 msgid "User guide"
 msgstr "用户指南"
@@ -3471,6 +4355,9 @@ msgstr "Snipdeck 的功能介绍，每条都有图片和试用按钮。你可以
 msgid "What a click on the Snipdeck icon in the tray opens. The tray menu still has both."
 msgstr "点击托盘中的 Snipdeck 图标时打开的内容。托盘菜单中仍有这两项。"
 
+msgid "What a translucent colour is judged over"
+msgstr "半透明颜色的判断底色"
+
 msgid "What is on the clipboard"
 msgstr "剪贴板中的内容"
 
@@ -3486,16 +4373,19 @@ msgstr "色轮"
 msgid "When Windows starts"
 msgstr "Windows 启动时"
 
-msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays, and a docked panel that tucks goes to its tab instead."
-msgstr "图钉关闭时，切换到其他应用后面板会立即隐藏。已固定的面板不会隐藏，会收起的停靠面板则收成标签。"
+msgid "When a space or punctuation follows"
+msgstr "后面跟空格或标点时"
 
-msgid "When you type an item's trigger in another program, Snipdeck replaces it with the item's text. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items."
-msgstr "在其他程序中输入项目的触发词时，Snipdeck 会将其替换为该项目的文本。为此 Snipdeck 会监视你按下的按键，只在内存中保留最后几个字符，绝不写入磁盘。\n在密码框、设为“从不粘贴”的程序、以管理员身份运行的程序、Snipdeck 位于前台时以及敏感项目中不会展开。"
+msgid "When the pin is off, the Panel hides as soon as you switch to another app. A pinned Panel stays, and a docked Panel that tucks goes to its tab instead."
+msgstr "图钉关闭时，切换到其他应用后面板会立即隐藏。已置顶的面板不会隐藏，会收起的停靠面板则收成标签。"
+
+msgid "When you type an item’s trigger in another program, Snipdeck replaces it with the item’s text. Snipdeck watches the keys you press to do this and keeps only the last few characters in memory, never on disk.\nNothing is expanded in password boxes, in programs you set to Never paste, in programs running as administrator, while Snipdeck is in front, or for Sensitive items."
+msgstr "在其他程序中输入片段的触发词时，Snipdeck 会将其替换为该片段的文本。为此 Snipdeck 会监视你按下的按键，只在内存中保留最后几个字符，绝不写入磁盘。\n在密码框、设为“从不粘贴”的程序、以管理员身份运行的程序、Snipdeck 位于前台时以及敏感片段中不会展开。"
 
 msgid "Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none."
 msgstr "通过快捷键或托盘显示面板时，面板出现的位置。应用没有文本光标时，“文本光标处”会改用鼠标位置。"
 
-msgid "Where the panel sits"
+msgid "Where the Panel sits"
 msgstr "面板的位置"
 
 msgid "Where the text cursor lands after pasting"
@@ -3525,10 +4415,10 @@ msgstr "Windows"
 msgid "Windows Hello did not unlock Snipdeck. Use your master password."
 msgstr "Windows Hello 未能解锁 Snipdeck。请使用主密码。"
 
-msgid "Windows Hello didn't work, so it was not turned on."
+msgid "Windows Hello didn’t work, so it was not turned on."
 msgstr "Windows Hello 无法使用，因此未开启。"
 
-msgid "Windows Hello didn't work, so it was turned off. You can turn it on again in Settings."
+msgid "Windows Hello didn’t work, so it was turned off. You can turn it on again in Settings."
 msgstr "Windows Hello 无法使用，已将其关闭。您可以在“设置”中重新开启。"
 
 msgid "Windows Hello was cancelled. Use your master password."
@@ -3552,8 +4442,11 @@ msgstr "剪贴板历史记录已关闭。请在 Windows 设置 > 系统 > 剪贴
 msgid "Windows did not let Snipdeck read the clipboard history on this PC."
 msgstr "Windows 不允许 Snipdeck 读取这台电脑上的剪贴板历史记录。"
 
-msgid "Windows doesn't allow {} as a shortcut."
+msgid "Windows doesn’t allow {} as a shortcut."
 msgstr "Windows 不允许将 {} 用作快捷键。"
+
+msgid "Windows follows your Windows light or dark setting."
+msgstr "Windows 跟随你的 Windows 浅色或深色设置。"
 
 msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
 msgstr "Windows 跟随你的 Windows 文字大小（设置 > 辅助功能 > 文字大小）。选择一个大小即可改用该大小。"
@@ -3561,11 +4454,32 @@ msgstr "Windows 跟随你的 Windows 文字大小（设置 > 辅助功能 > 文�
 msgid "Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there."
 msgstr "Windows 已在“设置”>“应用”>“启动”中关闭了 Snipdeck。请在那里重新打开。"
 
+msgid "Windows keeps {} for itself. Choose another."
+msgstr "Windows 为自身保留了 {}。请另选一个。"
+
+msgid "Windows refused {} (Windows error {})."
+msgstr "Windows 拒绝了 {}（Windows 错误 {}）。"
+
+msgid "Windows refused {} (Windows error {}). Choose another in Settings."
+msgstr "Windows 拒绝了 {}（Windows 错误 {}）。请在设置中另选一个。"
+
+msgid "Windows won’t let Snipdeck read this screen."
+msgstr "Windows 不允许 Snipdeck 读取此屏幕。"
+
 msgid "With clipboard history on, Recent keeps what you copy in other programs."
 msgstr "开启剪贴板历史后，“最近”会保存你在其他程序中复制的内容。"
 
-msgid "YYYY-MM-DD, empty for today"
-msgstr "YYYY-MM-DD，留空表示今天"
+msgid "Words match anywhere in a title or body. \"Quotes\" match a phrase, -word excludes, and tag:, list:, kind: or is:pinned filter."
+msgstr "词语可匹配标题或正文中的任意位置。\"引号\" 匹配短语，-词 排除，tag:、list:、kind: 或 is:pinned（置顶） 用于筛选。"
+
+msgid "Wrench"
+msgstr "扳手"
+
+msgid "Writable, but only {} MB are free on its drive."
+msgstr "可写入，但其所在驱动器只剩 {} MB 可用。"
+
+msgid "Writable, with room to spare."
+msgstr "可写入，空间充足。"
 
 msgid "Yes"
 msgstr "是"
@@ -3573,14 +4487,26 @@ msgstr "是"
 msgid "Your Windows Hello PIN, face or fingerprint changed. Unlock with your password once to set Windows Hello up again."
 msgstr "你的 Windows Hello PIN、面部或指纹已更改。请先用密码解锁一次，以重新设置 Windows Hello。"
 
+msgid "Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read."
+msgstr "你当前的数据库会被放在一旁，不会删除。此备份之后添加的片段会在可读取的范围内恢复。"
+
+msgid "Your library couldn’t be opened, so it was moved aside to {} in your Snipdeck data folder. Settings > Rebuild from backup restores your newest backup."
+msgstr "无法打开你的资料库，已将其移至 Snipdeck 数据文件夹中的 {}。在 设置 > 从备份重建 中可恢复最新的备份。"
+
+msgid "Your library couldn’t be opened, so it was moved aside to {} in your Snipdeck data folder. There is no backup to restore from yet."
+msgstr "无法打开你的资料库，已将其移至 Snipdeck 数据文件夹中的 {}。目前还没有可供恢复的备份。"
+
 msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, backups (as many as you choose to keep) and logs."
-msgstr "你的资料库位于一个文件夹 %LOCALAPPDATA%\\Snipdeck 中：snipdeck.db（看板、列表、项目、标签和回收站）、blobs（图片、文件和长文本）、settings.json、backups（保留你选定的份数）和 logs。"
+msgstr "你的资料库位于一个文件夹 %LOCALAPPDATA%\\Snipdeck 中：snipdeck.db（看板、列表、片段、标签和回收站）、blobs（图片、文件和长文本）、settings.json、backups（保留你选定的份数）和 logs。"
 
 msgid "Your library locked after a while. The form for the sensitive template you were filling in was closed."
 msgstr "你的库在一段时间后已锁定。你正在填写的敏感模板表单已关闭。"
 
 msgid "Your library locked after a while. The sensitive item you were editing was closed without saving."
 msgstr "资料库在一段时间后自动锁定。你正在编辑的敏感片段已关闭，未保存。"
+
+msgid "Your library locked. What you were typing in the sensitive item is kept, and comes back when you unlock."
+msgstr "你的资料库已锁定。你在敏感片段中输入的内容已保留，解锁后会恢复。"
 
 msgid "Your library was erased."
 msgstr "资料库已删除。"
@@ -3591,14 +4517,14 @@ msgstr "库已重建，但清理失败。Snipdeck 会在下次启动时完成。
 msgid "Your old database is kept in the folder {}."
 msgstr "旧数据库已保留在文件夹 {} 中。"
 
-msgid "Your organisation's policy keeps Snipdeck from starting with Windows."
+msgid "Your organisation’s policy keeps Snipdeck from starting with Windows."
 msgstr "你所在组织的策略不允许 Snipdeck 随 Windows 启动。"
 
 msgid "Your sensitive items will be protected by Windows alone."
-msgstr "你的敏感项目将仅由 Windows 保护。"
+msgstr "你的敏感片段将仅由 Windows 保护。"
 
 msgid "Your settings file was damaged. Snipdeck kept what it could read and saved the original as settings.json.bad."
-msgstr "你的设置文件已损坏。Snipdeck 保留了能读取的内容,并将原文件另存为 settings.json.bad。"
+msgstr "你的设置文件已损坏。Snipdeck 保留了能读取的内容，并将原文件另存为 settings.json.bad。"
 
 msgid "Your shortcuts"
 msgstr "你的快捷键"
@@ -3616,7 +4542,7 @@ msgid "`mo` for months"
 msgstr "`mo` 表示月"
 
 msgid "`mo` for months or `min` for minutes"
-msgstr "`mo` 表示月,`min` 表示分钟"
+msgstr "`mo` 表示月，`min` 表示分钟"
 
 msgid "`w` for weeks"
 msgstr "`w` 表示周"
@@ -3624,11 +4550,14 @@ msgstr "`w` 表示周"
 msgid "`y` for years"
 msgstr "`y` 表示年"
 
-msgid "a choice needs options, e.g. {}"
-msgstr "选择项需要选项,例如 {}"
+msgid "a calculation uses {}, which is not a {} of this template"
+msgstr "计算中使用了 {}，它不是此模板的 {}"
 
-msgid "a choice option is empty"
-msgstr "选择项的某个选项为空"
+msgid "a choice needs an option with text, and at most one empty option"
+msgstr "选项至少需要一个有文字的选项，空选项最多一个"
+
+msgid "a choice needs options, e.g. {}"
+msgstr "选择项需要选项，例如 {}"
 
 msgid "a placeholder can have at most {} offsets"
 msgstr "一个占位符最多可有 {} 个偏移"
@@ -3636,11 +4565,11 @@ msgstr "一个占位符最多可有 {} 个偏移"
 msgid "a placeholder is not valid"
 msgstr "占位符无效"
 
-msgid "a prompt takes a name and one more part: {}"
-msgstr "提示项需要一个名称和另一部分:{}"
+msgid "a prompt takes a name and one more part: {}; write {} for a literal bar"
+msgstr "占位符接受一个名称和另一部分：{}；用 {} 表示字面竖线"
 
-msgid "a template can ask for at most {} different fields, choices, dates or sections"
-msgstr "一个模板最多可询问 {} 个不同的字段、选择、日期或区段"
+msgid "a template can ask for at most {} different fields, choices, numbers, dates or sections"
+msgstr "一个模板最多可以询问 {} 个不同的字段、选项、数字、日期或区段"
 
 msgid "a {} ends the format; write {} for a literal {}"
 msgstr "{} 表示格式结束;请写 {} 来表示字面的 {}"
@@ -3651,7 +4580,7 @@ msgstr "添加"
 msgid "add create"
 msgstr "添加 新建"
 
-msgid "add create snippet note write"
+msgid "add create item note write"
 msgstr "添加 新建 片段 笔记 写入"
 
 msgid "add create workspace group"
@@ -3664,7 +4593,7 @@ msgid "an offset in {} can be at most {}"
 msgstr "{} 中的偏移最大为 {}"
 
 msgid "an offset is a sign, a number and a unit, like {} or {}"
-msgstr "偏移由符号、数字和单位组成,例如 {} 或 {}"
+msgstr "偏移由符号、数字和单位组成，例如 {} 或 {}"
 
 msgid "and {} more"
 msgid_plural "and {} more"
@@ -3685,8 +4614,14 @@ msgstr "返回 撤销 步骤 历史"
 msgid "backup copy save safe"
 msgstr "备份 复制 保存 安全"
 
+msgid "board change"
+msgstr "看板更改"
+
 msgid "bring back undelete trash recover"
 msgstr "找回 恢复 回收站 还原"
+
+msgid "camelCase"
+msgstr "camelCase"
 
 msgid "change modify rename"
 msgstr "更改 修改 重命名"
@@ -3715,6 +4650,9 @@ msgstr "颜色 调色板 色板 列表 库 colors palette swatches"
 msgid "colour change"
 msgstr "颜色更改"
 
+msgid "colour color dot tint hue accent section"
+msgstr "颜色 色彩 圆点 色调 强调色 分组 区块"
+
 msgid "copy clone twice"
 msgstr "复制 克隆 两次"
 
@@ -3723,6 +4661,9 @@ msgstr "创建“{}”"
 
 msgid "creates “{}” in {}"
 msgstr "创建“{}”(在 {})"
+
+msgid "days"
+msgstr "天"
 
 msgid "default"
 msgstr "默认"
@@ -3743,7 +4684,7 @@ msgid "diagnose doctor problems fix"
 msgstr "诊断 检查 问题 修复"
 
 msgid "dissolve split remove group keep items section"
-msgstr "解散 拆分 移除 分组 保留 项目 区段"
+msgstr "解散 拆分 移除 分组 保留 片段 区段"
 
 msgid "ditto copyq espanso restore bring in file"
 msgstr "ditto copyq espanso 恢复 文件 导入"
@@ -3763,8 +4704,8 @@ msgstr "编辑"
 msgid "emoji kaomoji icons smiley emoticon insert"
 msgstr "表情符号 emoji 颜文字 图标 笑脸 符号 插入"
 
-msgid "empty placeholder {}"
-msgstr "空占位符 {}"
+msgid "empty placeholder {}; to write a literal brace, write {} (and {} to close it)"
+msgstr "空占位符 {}；要写字面大括号，请写 {}（结束用 {}）"
 
 msgid "every mark choose all"
 msgstr "全部 标记 选择 全选"
@@ -3801,7 +4742,11 @@ msgstr "分组更改"
 
 msgid "group {}, {} item"
 msgid_plural "group {}, {} items"
-msgstr[0] "分组 {}，{} 项"
+msgstr[0] "分组 {}，{} 个片段"
+
+msgid "group {}, {}, {} item"
+msgid_plural "group {}, {}, {} items"
+msgstr[0] "分组 {}，{}，{} 个片段"
 
 msgid "help docs manual how"
 msgstr "帮助 文档 手册 操作方法"
@@ -3815,17 +4760,36 @@ msgstr "快捷键 键位 速查表 按键绑定 组合键"
 msgid "https://example.com"
 msgstr "https://example.com"
 
+msgid "in the snippet {}: {}"
+msgstr "在片段 {} 中：{}"
+
+msgid "in {n} list"
+msgid_plural "in {n} lists"
+msgstr[0] "在 {n} 个列表中"
+
 msgid "keep open pin always on top stay hide blur"
-msgstr "保持打开 固定 始终置顶 停留 隐藏 失焦"
+msgstr "保持打开 置顶 始终置顶 停留 隐藏 失焦"
 
 msgid "label: {}"
 msgstr "标签：{}"
+
+msgid "list change"
+msgstr "列表更改"
+
+msgid "lower case"
+msgstr "小写"
 
 msgid "lowercase"
 msgstr "小写"
 
 msgid "make new folder together section collect"
 msgstr "创建 新建 文件夹 一起 区段 收集"
+
+msgid "min"
+msgstr "分钟"
+
+msgid "more than one snippet is titled {}; rename one"
+msgstr "有多个片段名为 {}；请重命名其中一个"
 
 msgid "move"
 msgstr "移动"
@@ -3842,17 +4806,27 @@ msgstr "导航 侧边栏 折叠 展开 列表 面板 左侧 宽度"
 msgid "near {}"
 msgstr "接近 {}"
 
+msgid "nest under inside child sub subgroup indent parent move out top level section"
+msgstr "嵌套 放入 里面 子 子分组 缩进 父 移动 移出 顶层 分区"
+
 msgid "never paste excluded apps"
 msgstr "从不粘贴 排除的程序"
 
-msgid "no close name"
-msgstr "无相近名称"
+msgid "no snippet is titled {}"
+msgstr "没有名为 {} 的片段"
 
 msgid "notepad.exe"
 msgstr "notepad.exe"
 
+msgid "on {n} board."
+msgid_plural "on {n} boards."
+msgstr[0] "在 {n} 个看板上。"
+
 msgid "one of d, w, mo, y, h, min"
 msgstr "d、w、mo、y、h、min 之一"
+
+msgid "only one choice option can start with {}"
+msgstr "一个选项中只有一项可以以 {} 开头"
 
 msgid "only one {} is allowed"
 msgstr "只允许一个 {}"
@@ -3865,6 +4839,12 @@ msgstr "可选区段不能嵌套"
 
 msgid "or"
 msgstr "或"
+
+msgid "over black"
+msgstr "在黑色上"
+
+msgid "over white"
+msgstr "在白色上"
 
 msgid "pass"
 msgstr "通过"
@@ -3882,10 +4862,10 @@ msgid "paste stack, number {}"
 msgstr "粘贴堆栈，编号 {}"
 
 msgid "pin"
-msgstr "固定"
+msgstr "置顶"
 
 msgid "pin always on top stay hide click away blur"
-msgstr "固定 置顶 保持 隐藏 点击别处"
+msgstr "置顶 保持 隐藏 点击别处 总在最前"
 
 msgid "preferences options configure hotkeys theme backup"
 msgstr "偏好设置 选项 配置 快捷键 主题 备份"
@@ -3900,7 +4880,7 @@ msgid "remove erase permanently trash"
 msgstr "移除 清除 永久 回收站"
 
 msgid "remove trash discard section items"
-msgstr "移除 回收站 丢弃 区段 项目"
+msgstr "移除 回收站 丢弃 区段 片段"
 
 msgid "reorder"
 msgstr "重新排序"
@@ -3911,6 +4891,9 @@ msgstr "重新排序 提前 上移 区段"
 msgid "reorder later lower section"
 msgstr "重新排序 延后 下移 区段"
 
+msgid "restore"
+msgstr "恢复"
+
 msgid "s"
 msgstr "秒"
 
@@ -3920,8 +4903,14 @@ msgstr "保存 文件 下载 导出"
 msgid "slug-like-this"
 msgstr "短链接式（slug-like-this）"
 
+msgid "snake_case"
+msgstr "snake_case"
+
 msgid "snip snipping capture screen picture image"
 msgstr "截取 截图 屏幕 图片 图像"
+
+msgid "snippets can be nested {} deep and used {} times in one template"
+msgstr "片段最多可嵌套 {} 层，在一个模板中最多使用 {} 次"
 
 msgid "stack queue sequence following paste"
 msgstr "堆栈 队列 顺序 下一个 粘贴"
@@ -3936,13 +4925,13 @@ msgid "the choice option {} is listed twice"
 msgstr "选择项 {} 重复出现"
 
 msgid "the prompt needs a name, e.g. {}"
-msgstr "提示项需要名称,例如 {}"
+msgstr "提示项需要名称，例如 {}"
 
 msgid "to insert"
 msgstr "插入"
 
 msgid "trigger triggers text expansion autocomplete shortcode"
-msgstr "触发词 文本扩展 自动补全 缩写 快捷"
+msgstr "触发词 文本扩展 自动补全 缩写"
 
 msgid "tutorial intro onboarding basics learn"
 msgstr "教程 入门 引导 基础 学习"
@@ -3951,7 +4940,10 @@ msgid "unformatted insert send without formatting"
 msgstr "无格式 插入 发送 不带格式"
 
 msgid "unknown date format {}; supported: {}"
-msgstr "未知的日期格式 {};支持:{}"
+msgstr "未知的日期格式 {};支持：{}"
+
+msgid "unknown key {}; use {} or {}"
+msgstr "未知的按键 {}；请使用 {} 或 {}"
 
 msgid "unknown offset unit {}; use {}"
 msgstr "未知的偏移单位 {};请使用 {}"
@@ -3960,7 +4952,10 @@ msgid "unknown placeholder {}"
 msgstr "未知的占位符 {}"
 
 msgid "unknown placeholder {}, did you mean {}?"
-msgstr "未知的占位符 {},你是指 {} 吗?"
+msgstr "未知的占位符 {},你是指 {} 吗？"
+
+msgid "unknown transform {}; use one of {}"
+msgstr "未知的转换 {}；请使用以下之一：{}"
 
 msgid "version update"
 msgstr "版本 更新"
@@ -3981,19 +4976,37 @@ msgid "{n} item"
 msgid_plural "{n} items"
 msgstr[0] "{n} 个片段"
 
-msgid "{n} item will move to Trash with it. You can restore them for 30 days."
-msgid_plural "{n} items will move to Trash with it. You can restore them for 30 days."
-msgstr[0] "{n} 个片段将一同移至回收站。你可以在 30 天内恢复它们。"
+msgid "{n} item will be added"
+msgid_plural "{n} items will be added"
+msgstr[0] "将添加 {n} 个片段"
+
+msgid "{n} item will move to Trash with it. You can restore them for {} days."
+msgid_plural "{n} items will move to Trash with it. You can restore them for {} days."
+msgstr[0] "{n} 个片段将一同移至回收站。你可以在 {} 天内恢复它们。"
+
+msgid "{n} match"
+msgid_plural "{n} matches"
+msgstr[0] "{n} 处匹配"
 
 msgid "{n} match in {}"
 msgid_plural "{n} matches in {}"
 msgstr[0] "在 {} 中有 {n} 个匹配项"
+
+msgid "{n} time"
+msgid_plural "{n} times"
+msgstr[0] "{n} 次"
 
 msgid "{}"
 msgstr "{}"
 
 msgid "{} (Enter)"
 msgstr "{}（Enter）"
+
+msgid "{} - Snipdeck"
+msgstr "{} - Snipdeck"
+
+msgid "{} - {} - Snipdeck"
+msgstr "{} - {} - Snipdeck"
 
 msgid "{} KB"
 msgstr "{} KB"
@@ -4009,7 +5022,10 @@ msgid "{} byte"
 msgid_plural "{} bytes"
 msgstr[0] "{} 字节"
 
-msgid "{} can't be used as a shortcut. Choose another in Settings."
+msgid "{} cannot be looked up here"
+msgstr "此处无法查找 {}"
+
+msgid "{} can’t be used as a shortcut. Choose another in Settings."
 msgstr "{} 无法用作快捷键。请在设置中选择其他快捷键。"
 
 msgid "{} closes nothing"
@@ -4017,6 +5033,12 @@ msgstr "{} 没有可关闭的内容"
 
 msgid "{} closes nothing; write {} for a literal {}"
 msgstr "{} 没有可关闭的内容;请写 {} 来表示字面的 {}"
+
+msgid "{} contains itself"
+msgstr "{} 包含自身"
+
+msgid "{} copy"
+msgstr "{} 副本"
 
 msgid "{} could not be read and was skipped."
 msgstr "{} 无法读取，已跳过。"
@@ -4035,17 +5057,33 @@ msgid "{} file, {} in all"
 msgid_plural "{} files, {} in all"
 msgstr[0] "{} 个文件，共 {} 个"
 
+msgid "{} folder inside a subfolder was not read; Snipdeck reads one level of subfolders."
+msgid_plural "{} folders inside subfolders were not read; Snipdeck reads one level of subfolders."
+msgstr[0] "子文件夹内的 {} 个文件夹未被读取；Snipdeck 只读取一级子文件夹。"
+
 msgid "{} found"
 msgstr "找到 {} 个"
 
 msgid "{} h ago"
 msgstr "{} 小时前"
 
+msgid "{} has no text a template can use (a picture, files or a Sensitive item)"
+msgstr "{} 没有模板可用的文本（图片、文件或敏感片段）"
+
+msgid "{} is a copy or paste shortcut that every program uses. Choose another."
+msgstr "{} 是所有程序都在使用的复制或粘贴快捷键。请另选一个。"
+
 msgid "{} is a link to somewhere else and was not followed."
 msgstr "{} 是指向其他位置的链接，未被跟随。"
 
+msgid "{} is a sum of numbers and number names; the part after the bar is the decimals, 0 to 10"
+msgstr "{} 是由数字和数字名称组成的算式；竖线后的部分是小数位数，0 到 10"
+
 msgid "{} is already in the list."
 msgstr "{} 已在列表中。"
+
+msgid "{} is already used by another Snipdeck shortcut. Choose another in Settings."
+msgstr "{} 已被另一个 Snipdeck 快捷键使用。请在设置中另选一个。"
 
 msgid "{} is already used for “{}”."
 msgstr "{} 已用于“{}”。"
@@ -4069,26 +5107,26 @@ msgid "{} is used by another app. Choose another in Settings."
 msgstr "{} 正被其他应用占用。请在设置中选择其他快捷键。"
 
 msgid "{} is used for two different prompts; use the same kind and options each time, or pick another name"
-msgstr "{} 被用于两个不同的提示项;请每次使用相同的类型和选项,或换一个名称"
+msgstr "{} 被用于两个不同的提示项;请每次使用相同的类型和选项，或换一个名称"
 
 msgid "{} is {}, over the 5 MB limit for text, and was skipped."
 msgstr "{} 为 {}，超过文本 5 MB 的上限，已跳过。"
 
 msgid "{} item"
 msgid_plural "{} items"
-msgstr[0] "{} 项"
+msgstr[0] "{} 个片段"
 
 msgid "{} item had a title or source app longer than {} or {} characters, and it was cut."
 msgid_plural "{} items had a title or source app longer than {} or {} characters, and it was cut."
-msgstr[0] "有 {} 个项目的标题或来源应用超过 {} 或 {} 个字符，已截断。"
-
-msgid "{} item in {} list will be added"
-msgid_plural "{} items in {} lists will be added"
-msgstr[0] "将添加 {} 个片段，共 {} 个列表"
+msgstr[0] "有 {} 个片段的标题或来源应用超过 {} 或 {} 个字符，已截断。"
 
 msgid "{} item that is not text (a picture or file) was skipped."
 msgid_plural "{} items that are not text (pictures or files) were skipped."
-msgstr[0] "{} 项不是文本（图片或文件），已跳过。"
+msgstr[0] "{} 个片段不是文本（图片或文件），已跳过。"
+
+msgid "{} item with an attachment that could not be read was left out when this file was made."
+msgid_plural "{} items with an attachment that could not be read were left out when this file was made."
+msgstr[0] "创建此文件时，有 {} 个带有无法读取的附件的片段被排除在外。"
 
 msgid "{} match in all boards"
 msgid_plural "{} matches in all boards"
@@ -4097,11 +5135,14 @@ msgstr[0] "所有看板中有 {} 个匹配项"
 msgid "{} min ago"
 msgstr "{} 分钟前"
 
+msgid "{} must come after the last {}"
+msgstr "{} 必须位于最后一个 {} 之后"
+
 msgid "{} needs a number"
 msgstr "{} 需要一个数字"
 
 msgid "{} needs an argument: {}"
-msgstr "{} 需要一个参数:{}"
+msgstr "{} 需要一个参数：{}"
 
 msgid "{} new board will be made"
 msgid_plural "{} new boards will be made"
@@ -4110,18 +5151,34 @@ msgstr[0] "将新建 {} 个看板"
 msgid "{} of the checks need a look."
 msgstr "有 {} 项检查需要留意。"
 
+msgid "{} of {} characters"
+msgstr "{} / {} 个字符"
+
 msgid "{} of {} · next: {}"
 msgstr "{} / {} · 下一项：{}"
 
 msgid "{} of {} · next: {} · into {}"
 msgstr "第 {} / {} 项 · 下一项：{} · 目标：{}"
 
+msgid "{} older backup was deleted."
+msgid_plural "{} older backups were deleted."
+msgstr[0] "已删除 {} 份较旧的备份。"
+
+msgid "{} on its own is used by every program. Add Ctrl, Alt or Win."
+msgstr "单独的 {} 会被所有程序使用。请加上 Ctrl、Alt 或 Win。"
+
+msgid "{} opens menus and moves windows in other programs. Choose another."
+msgstr "{} 会在其他程序中打开菜单或移动窗口。请另选一个。"
+
 msgid "{} percent"
 msgstr "{}%"
 
-msgid "{} picture or file that no snippet uses was left out."
-msgid_plural "{} pictures or files that no snippet uses were left out."
+msgid "{} picture or file that no item uses was left out."
+msgid_plural "{} pictures or files that no item uses were left out."
 msgstr[0] "{} 张没有被任何片段使用的图片或文件已被省略。"
+
+msgid "{} repeats an answer, but nothing asks for {}"
+msgstr "{} 重复使用某个答案，但没有任何内容询问 {}"
 
 msgid "{} selected"
 msgstr "已选择 {} 项"
@@ -4136,19 +5193,32 @@ msgstr[0] "创建此文件时，已省略 {} 个敏感片段。"
 
 msgid "{} sensitive item was not in the backup."
 msgid_plural "{} sensitive items were not in the backup."
-msgstr[0] "备份中不包含 {} 项敏感项目。"
+msgstr[0] "备份中不包含 {} 项敏感片段。"
+
+msgid "{} sensitive item(s) are stored as plain text (no encryption key yet): masked and readable, but not encrypted."
+msgstr "{} 个敏感片段以纯文本存储（尚无加密密钥）：已遮盖且可读，但未加密。"
+
+msgid "{} sensitive item(s), the key is present."
+msgstr "{} 个敏感片段，密钥存在。"
+
+msgid "{} takes a whole number from 1 to {}; 1 is the clipboard now"
+msgstr "{} 接受 1 到 {} 的整数；1 表示当前剪贴板"
 
 msgid "{} takes no argument"
 msgstr "{} 不接受参数"
 
+msgid "{} trigger will be restored: {}"
+msgid_plural "{} triggers will be restored: {}"
+msgstr[0] "将还原 {} 个触发词：{}"
+
 msgid "{} · {}"
 msgstr "{} · {}"
 
-msgid "{} — press Tab to insert"
-msgstr "{} — 按 Tab 插入"
-
 msgid "{}, colour {}"
 msgstr "{}，颜色 {}"
+
+msgid "{}, empty for today"
+msgstr "{}，留空表示今天"
 
 msgid "{}, match {}"
 msgstr "{}，第 {} 项"
@@ -4180,6 +5250,9 @@ msgstr "{}：唯一的触发词是正则表达式，Snipdeck 无法使用，已�
 msgid "{}: its variables cannot be one Snipdeck template together (for example two cursor marks), so it was kept as plain text."
 msgstr "{}：其变量无法合并为一个 Snipdeck 模板（例如有两个光标标记），已保留为纯文本。"
 
+msgid "{}: press Tab to insert"
+msgstr "{}: 按 Tab 插入"
+
 msgid "{}: some rows have more than 256 columns, and the extra columns were ignored."
 msgstr "{}：有些行超过 256 列，多余的列已忽略。"
 
@@ -4189,8 +5262,11 @@ msgstr "{}：表单字段 {} 在 Snipdeck 中没有对应项，已保持原样�
 msgid "{}: the trigger {} and {} start alike, so the shorter one fires first."
 msgstr "{}：触发词 {} 与 {} 开头相同，因此较短的会先触发。"
 
-msgid "{}: the trigger {} is already used by another snippet, so it was imported without it."
+msgid "{}: the trigger {} is already used by another item, so it was imported without it."
 msgstr "{}：触发词 {} 已被另一个片段使用，因此导入时未带触发词。"
+
+msgid "{}: the trigger {} is too short (a trigger needs at least two characters), so it was imported without it."
+msgstr "{}：触发词 {} 太短（触发词至少需要两个字符），因此导入时未包含它。"
 
 msgid "{}: this entry is not a match and was skipped."
 msgstr "{}：此条目不是匹配项，已跳过。"
@@ -4207,11 +5283,26 @@ msgstr "{}：{} 在 Snipdeck 中没有对应项，已保持原样。"
 msgid "{}: {} to 1. AA text {}. AA large text {}. AAA text {}. AAA large text {}. Interface parts {}."
 msgstr "{}：{} 比 1。AA 文本{}。AA 大号文本{}。AAA 文本{}。AAA 大号文本{}。界面部件{}。"
 
-msgid "{}: {} was not kept as a trigger, because a snippet has one trigger."
-msgstr "{}：{} 未保留为触发词，因为一个片段只有一个触发词。"
-
 msgid "{}: {} was not kept as a trigger, because a trigger has no spaces and at most 32 characters."
 msgstr "{}：{} 未保留为触发词，因为触发词不能含空格，且最多 32 个字符。"
 
+msgid "{}: {} was not kept as a trigger, because an item has one trigger."
+msgstr "{}：{} 未保留为触发词，因为一个片段只有一个触发词。"
+
 msgid "{}: {} was not kept as a trigger, because it fires after a separator and a Snipdeck trigger does not wait for one."
 msgstr "{}：{} 未保留为触发词，因为它在分隔符之后触发，而 Snipdeck 的触发词不会等待分隔符。"
+
+msgid "≈ {}, not an exact colour name. Nothing copied. Click the Name row to switch to {}."
+msgstr "≈ {}，不是精确的颜色名称。未复制任何内容。点击“名称”行可切换为 {}。"
+
+msgctxt "shortcut row"
+msgid "Hello"
+msgstr "Windows Hello"
+
+msgctxt "shortcut row"
+msgid "Trigger"
+msgstr "触发词"
+
+msgctxt "shortcut row"
+msgid "Type"
+msgstr "输入"

@@ -9,6 +9,10 @@ use snipdeck_platform::keys::{BUILTIN_PASTE_KEYS, PasteKey};
 
 /// The settings file format version.
 pub const VERSION: u32 = 1;
+/// The sides, in pixels, an icon can be copied or saved as a PNG at.
+pub const ICON_PNG_SIZES: [u32; 6] = [24, 32, 48, 64, 128, 256];
+/// The ink of an icon picture that is not the theme's: dark, so it reads on a white document.
+pub const ICON_DARK_INK: [u8; 4] = [0x17, 0x16, 0x13, 0xFF];
 /// Narrowest and widest Panel, in logical pixels (DESIGN.md §5).
 pub const PANEL_WIDTH: std::ops::RangeInclusive<u32> = 260..=480;
 /// The Panel's default width.
@@ -21,11 +25,29 @@ pub const MAIN_SIDEBAR_WIDTH_DEFAULT: u32 = 232;
 pub const BACKUPS_KEEP: std::ops::RangeInclusive<u32> = 1..=60;
 /// The default number of backups kept (SPEC 5.7a).
 pub const BACKUPS_KEEP_DEFAULT: u32 = 7;
-/// How long a copied sensitive item may stay on the clipboard, in seconds (Settings > Privacy);
-/// 0 never clears it (SPEC 5.7).
-pub const CLIPBOARD_CLEAR_SECS: std::ops::RangeInclusive<u32> = 0..=600;
+/// How many days the Trash keeps deleted things (Settings > Backups; SPEC 5.7a).
+pub const TRASH_DAYS: std::ops::RangeInclusive<u32> = 1..=365;
+/// The default number of days the Trash keeps things.
+pub const TRASH_DAYS_DEFAULT: u32 = 30;
+/// How long a copied sensitive item may stay on the clipboard, in seconds (Settings > Privacy).
+/// There is no "never": a sensitive copy always clears (an older file's 0 reads as the default).
+pub const CLIPBOARD_CLEAR_SECS: std::ops::RangeInclusive<u32> = 5..=600;
 /// The default time before a copied sensitive item is cleared from the clipboard.
 pub const CLIPBOARD_CLEAR_SECS_DEFAULT: u32 = 30;
+
+/// How many Recent entries may be kept (Settings > Privacy).
+pub const RECENT_MAX_ENTRIES: std::ops::RangeInclusive<u32> = 10..=1000;
+/// The default number of Recent entries kept.
+pub const RECENT_MAX_ENTRIES_DEFAULT: u32 = 200;
+/// How many days a Recent entry may be kept (Settings > Privacy).
+pub const RECENT_MAX_DAYS: std::ops::RangeInclusive<u32> = 1..=30;
+/// The default number of days a Recent entry is kept.
+pub const RECENT_MAX_DAYS_DEFAULT: u32 = 7;
+/// Minutes without use before a master password locks the library again (Settings > Privacy).
+/// There is no "never": a missing or 0 value reads as the default.
+pub const IDLE_LOCK_MINUTES: std::ops::RangeInclusive<u32> = 1..=240;
+/// The default idle lock, in minutes.
+pub const IDLE_LOCK_MINUTES_DEFAULT: u32 = 15;
 
 /// How many monitors' Panel geometry is remembered.
 pub const PANEL_GEOMETRY_LIMIT: usize = 16;
@@ -452,6 +474,12 @@ pub enum TextSize {
     /// 175 %.
     #[serde(rename = "175")]
     P175,
+    /// 200 %.
+    #[serde(rename = "200")]
+    P200,
+    /// 225 % (the largest Windows text size).
+    #[serde(rename = "225")]
+    P225,
 }
 
 /// The smallest and largest text scale the UI is laid out for (Windows allows 100 % to 225 %).
@@ -459,7 +487,15 @@ pub const TEXT_SCALE: std::ops::RangeInclusive<f32> = 1.0..=2.25;
 
 impl TextSize {
     /// Every choice, in the order Settings lists them.
-    pub const ALL: [Self; 5] = [Self::System, Self::P100, Self::P125, Self::P150, Self::P175];
+    pub const ALL: [Self; 7] = [
+        Self::System,
+        Self::P100,
+        Self::P125,
+        Self::P150,
+        Self::P175,
+        Self::P200,
+        Self::P225,
+    ];
 
     /// The fixed percentage, or `None` for "follow Windows".
     #[must_use]
@@ -470,6 +506,8 @@ impl TextSize {
             Self::P125 => Some(125),
             Self::P150 => Some(150),
             Self::P175 => Some(175),
+            Self::P200 => Some(200),
+            Self::P225 => Some(225),
         }
     }
 
@@ -479,7 +517,7 @@ impl TextSize {
     pub fn scale(self, system: f32) -> f32 {
         #[allow(
             clippy::cast_precision_loss,
-            reason = "a percentage up to 175 is exact in an f32"
+            reason = "a percentage up to 225 is exact in an f32"
         )]
         let wanted = self.percent().map_or(system, |p| p as f32 / 100.0);
         if wanted.is_nan() {
@@ -722,6 +760,9 @@ impl WindowPlace {
 /// The colour the Colours tab starts on (`accent.default`).
 pub const DEFAULT_COLOUR: &str = "#2870d4";
 
+/// How many non-list sections keep a sort in the settings.
+const SECTION_SORTS_MAX: usize = 500;
+
 /// The user's settings.
 #[allow(
     clippy::struct_excessive_bools,
@@ -762,10 +803,19 @@ pub struct Settings {
     /// The one-time "Snipdeck is still running" toast has been shown (the first time the Panel
     /// hid itself by the close button or by losing focus).
     pub hide_hint_shown: bool,
+    /// The one-time Store-build reminder that uninstalling removes the library has been shown
+    /// (`store_data`, PLATFORM-33).
+    pub store_data_reminded: bool,
     /// Panel width in logical pixels.
     pub panel_width: u32,
     /// How many daily backups to keep (1 to 60).
     pub backups_keep: u32,
+    /// The folder backups are written to; empty is `<data folder>/backups`. A second disk or a
+    /// synced folder keeps them when the library's disk is lost (a backup is one finished file
+    /// written by rename, so a sync client never sees half of one).
+    pub backup_folder: String,
+    /// How many days deleted things stay in the Trash before they are removed (1 to 365).
+    pub trash_days: u32,
     /// Animations are off even when Windows' "Animation effects" is on.
     pub reduce_motion: bool,
     /// The text size: follow Windows, or a fixed percentage (WCAG 1.4.4).
@@ -788,6 +838,12 @@ pub struct Settings {
     pub main_sidebar_width: u32,
     /// The Main sidebar is collapsed to its icon rail (Ctrl+B).
     pub main_sidebar_collapsed: bool,
+    /// The Main window's Detail pane is on (View menu); it shows only while the window is wide.
+    pub main_detail_open: bool,
+    /// The sort of the Main window's sections that are not a list (a list keeps its own in the
+    /// library): `all`, `pinned` and `tag:<id>`, each a sort word (`name`, `modified-reversed`).
+    /// Absent in older files, and a section with no entry is in manual order.
+    pub section_sorts: std::collections::BTreeMap<String, String>,
     /// How Snipdeck pastes into each program, lower-case executable name first: the paste key,
     /// or "never paste" (SPEC §5.8). A program with no rule gets `Ctrl+V`. A new file starts
     /// with the programs known to need another key.
@@ -812,8 +868,20 @@ pub struct Settings {
     /// [`Settings::from_json`] then reads `recent_history` as off until the answer is Yes: an
     /// upgrade where the user never chose is asked, and nothing is kept before they say Yes.
     pub recent_history_asked: bool,
+    /// "Pause history" (tray) is on. Saved, so a restart does not resume collecting by itself.
+    pub recent_paused: bool,
+    /// Keep at most this many Recent entries (bounded by [`RECENT_MAX_ENTRIES`]).
+    pub recent_max_entries: u32,
+    /// Keep a Recent entry at most this many days (bounded by [`RECENT_MAX_DAYS`]).
+    pub recent_max_days: u32,
+    /// Minutes without use before a master password locks the library (bounded by
+    /// [`IDLE_LOCK_MINUTES`]).
+    pub idle_lock_minutes: u32,
     /// Executable names that are never kept in the Recent inbox (lower case).
     pub no_history_apps: Vec<String>,
+    /// Keep a Recent copy whose source program is unknown. Off by default: a copy with no
+    /// known source could come from a password manager, so it is skipped.
+    pub recent_keep_unknown_source: bool,
     /// The edge dock: when a docked Panel collapses to a handle, and the delays.
     pub dock: DockSettings,
     /// The welcome tour has been finished or skipped. Absent (false) in older files; the tour
@@ -838,6 +906,10 @@ pub struct Settings {
     pub panel_switcher: PanelSwitcher,
     /// What a left click on the tray icon opens.
     pub tray_click: TrayClick,
+    /// A double click on the tray icon opens the Main window. On by default. Off, a single click
+    /// acts at once instead of waiting out the double-click time, and a double click does nothing
+    /// of its own.
+    pub tray_double_click_opens: bool,
     /// Where a floating Panel opens (ignored while it is docked).
     pub panel_open_at: PanelOpenAt,
     /// A floating Panel that is not pinned hides after a paste or copy. On for a new install
@@ -849,6 +921,12 @@ pub struct Settings {
     pub panel_start_visible: bool,
     /// The symbols the user used last, newest first, at most 24 (the Symbols tab's Recent strip).
     pub symbols_recent: Vec<snipdeck_symbols::RecentEntry>,
+    /// The skin tone emoji with tones are pasted in: 0 the default yellow, 1 to 5 light to dark.
+    pub symbol_tone: u8,
+    /// The side, in pixels, of an icon copied or saved as a PNG (one of [`ICON_PNG_SIZES`]).
+    pub symbol_icon_px: u32,
+    /// An icon picture is drawn in dark ink (safe on a white document) instead of the theme's text colour.
+    pub symbol_icon_dark_ink: bool,
     /// The Panel shows its Colours tab (picker, formats, schemes, contrast). On by default.
     pub show_colours_tab: bool,
     /// The colours used last, newest first, at most 24 (the Colours tab's "Recently used" strip).
@@ -892,8 +970,11 @@ impl Default for Settings {
             panel_pinned: true,
             screenshot_keep_panel: false,
             hide_hint_shown: false,
+            store_data_reminded: false,
             panel_width: PANEL_WIDTH_DEFAULT,
             backups_keep: BACKUPS_KEEP_DEFAULT,
+            backup_folder: String::new(),
+            trash_days: TRASH_DAYS_DEFAULT,
             reduce_motion: false,
             text_size: TextSize::System,
             clipboard_clear_secs: CLIPBOARD_CLEAR_SECS_DEFAULT,
@@ -903,11 +984,18 @@ impl Default for Settings {
             main_window: None,
             main_sidebar_width: MAIN_SIDEBAR_WIDTH_DEFAULT,
             main_sidebar_collapsed: false,
+            main_detail_open: true,
+            section_sorts: std::collections::BTreeMap::new(),
             programs: builtin_program_rules(),
             no_paste_apps: Vec::new(),
             recent_history: false,
             recent_history_asked: false,
+            recent_paused: false,
+            recent_max_entries: RECENT_MAX_ENTRIES_DEFAULT,
+            recent_max_days: RECENT_MAX_DAYS_DEFAULT,
+            idle_lock_minutes: IDLE_LOCK_MINUTES_DEFAULT,
             no_history_apps: Vec::new(),
+            recent_keep_unknown_source: false,
             dock: DockSettings::default(),
             onboarded: false,
             editor_more_open: false,
@@ -919,10 +1007,14 @@ impl Default for Settings {
             panel_search: PanelSearch::OnType,
             panel_switcher: PanelSwitcher::Tabs,
             tray_click: TrayClick::Panel,
+            tray_double_click_opens: true,
             panel_open_at: PanelOpenAt::Last,
             panel_hide_after_use: false,
             panel_start_visible: false,
             symbols_recent: Vec::new(),
+            symbol_tone: 0,
+            symbol_icon_px: 64,
+            symbol_icon_dark_ink: true,
             show_colours_tab: true,
             colours_recent: Vec::new(),
             colour_format: snipdeck_colour::Format::Hex,
@@ -965,6 +1057,42 @@ impl Settings {
     #[must_use]
     pub const fn starts_visible(&self) -> bool {
         self.autostart && self.panel_start_visible
+    }
+
+    /// The sorts of the Main window's non-list sections that are valid; the rest is dropped by
+    /// [`sanitize`](Self::sanitize).
+    #[must_use]
+    pub fn section_sorts(&self) -> std::collections::BTreeMap<String, snipdeck_core::Sort> {
+        self.section_sorts
+            .iter()
+            .filter_map(|(k, v)| Some((k.clone(), snipdeck_core::Sort::from_key(v).ok()?)))
+            .collect()
+    }
+
+    /// Sets the sort of the section stored under `key` (manual removes the entry).
+    pub fn set_section_sort(&mut self, key: &str, sort: snipdeck_core::Sort) {
+        if sort.is_manual() {
+            self.section_sorts.remove(key);
+        } else {
+            self.section_sorts.insert(key.to_owned(), sort.key());
+        }
+        self.sanitize_section_sorts();
+    }
+
+    /// Drops the entries that name no section or hold a word no sort has, and keeps at most
+    /// [`SECTION_SORTS_MAX`] (a tag's view is stored by its id, and tags come and go).
+    fn sanitize_section_sorts(&mut self) {
+        self.section_sorts.retain(|key, word| {
+            let known = key == "all"
+                || key == "pinned"
+                || key
+                    .strip_prefix("tag:")
+                    .is_some_and(|id| id.parse::<snipdeck_core::TagId>().is_ok());
+            known && snipdeck_core::Sort::from_key(word).is_ok_and(|s| !s.is_manual())
+        });
+        while self.section_sorts.len() > SECTION_SORTS_MAX {
+            self.section_sorts.pop_first();
+        }
     }
 
     /// Reads settings from JSON. Never fails: text that is not JSON gives the defaults, and a
@@ -1028,8 +1156,11 @@ impl Settings {
         field!(panel_pinned);
         field!(screenshot_keep_panel);
         field!(hide_hint_shown);
+        field!(store_data_reminded);
         field!(panel_width);
         field!(backups_keep);
+        field!(backup_folder);
+        field!(trash_days);
         field!(reduce_motion);
         field!(text_size);
         field!(clipboard_clear_secs);
@@ -1039,6 +1170,8 @@ impl Settings {
         field!(main_window);
         field!(main_sidebar_width);
         field!(main_sidebar_collapsed);
+        field!(main_detail_open);
+        field!(section_sorts);
         if let Some(rules) = map.get("programs").and_then(programs_from_value) {
             settings.programs = rules;
         }
@@ -1056,7 +1189,12 @@ impl Settings {
         }
         field!(recent_history);
         field!(recent_history_asked);
+        field!(recent_paused);
+        field!(recent_max_entries);
+        field!(recent_max_days);
+        field!(idle_lock_minutes);
         field!(no_history_apps);
+        field!(recent_keep_unknown_source);
         field!(dock);
         field!(onboarded);
         field!(editor_more_open);
@@ -1068,8 +1206,16 @@ impl Settings {
         field!(panel_search);
         field!(panel_switcher);
         field!(tray_click);
+        field!(tray_double_click_opens);
         field!(panel_open_at);
         field!(symbols_recent);
+        field!(symbol_tone);
+        field!(symbol_icon_px);
+        field!(symbol_icon_dark_ink);
+        settings.symbol_tone = settings.symbol_tone.min(5);
+        if !ICON_PNG_SIZES.contains(&settings.symbol_icon_px) {
+            settings.symbol_icon_px = 64;
+        }
         settings.colour_fields(map);
         field!(panel_hide_after_use);
         field!(panel_start_visible);
@@ -1143,6 +1289,16 @@ impl Settings {
         }
     }
 
+    /// Where backups are written and read: the chosen folder, else `<data folder>/backups`.
+    #[must_use]
+    pub fn backup_folder(&self, data_dir: &std::path::Path) -> std::path::PathBuf {
+        if self.backup_folder.is_empty() {
+            snipdeck_portable::backup::backups_dir(data_dir)
+        } else {
+            std::path::PathBuf::from(&self.backup_folder)
+        }
+    }
+
     /// The settings as pretty JSON.
     ///
     /// # Panics
@@ -1168,10 +1324,33 @@ impl Settings {
         self.backups_keep = self
             .backups_keep
             .clamp(*BACKUPS_KEEP.start(), *BACKUPS_KEEP.end());
+        if self.trash_days == 0 {
+            self.trash_days = TRASH_DAYS_DEFAULT;
+        }
+        self.trash_days = self
+            .trash_days
+            .clamp(*TRASH_DAYS.start(), *TRASH_DAYS.end());
+        if self.clipboard_clear_secs == 0 {
+            self.clipboard_clear_secs = CLIPBOARD_CLEAR_SECS_DEFAULT;
+        }
+        self.backup_folder = self.backup_folder.trim().to_owned();
         self.clipboard_clear_secs = self
             .clipboard_clear_secs
             .clamp(*CLIPBOARD_CLEAR_SECS.start(), *CLIPBOARD_CLEAR_SECS.end());
+        self.recent_max_entries = self
+            .recent_max_entries
+            .clamp(*RECENT_MAX_ENTRIES.start(), *RECENT_MAX_ENTRIES.end());
+        self.recent_max_days = self
+            .recent_max_days
+            .clamp(*RECENT_MAX_DAYS.start(), *RECENT_MAX_DAYS.end());
+        if self.idle_lock_minutes == 0 {
+            self.idle_lock_minutes = IDLE_LOCK_MINUTES_DEFAULT;
+        }
+        self.idle_lock_minutes = self
+            .idle_lock_minutes
+            .clamp(*IDLE_LOCK_MINUTES.start(), *IDLE_LOCK_MINUTES.end());
         self.sanitize_panel_geometry();
+        self.sanitize_section_sorts();
         self.main_window = self.main_window.filter(|p| {
             (WindowPlace::MIN_SIDE..=PANEL_SIDE_LIMIT).contains(&p.w)
                 && (WindowPlace::MIN_SIDE..=PANEL_SIDE_LIMIT).contains(&p.h)
@@ -1546,6 +1725,10 @@ mod tests {
         let old = Settings::from_json(r#"{"version":1,"theme":"dark","panel_width":400}"#);
         assert_eq!(old.main_sidebar_width, 232);
         assert!(!old.main_sidebar_collapsed);
+        assert!(
+            old.main_detail_open,
+            "the pane is on until the user turns it off"
+        );
         assert_eq!(old.panel_width, 400);
         let saved = Settings {
             main_sidebar_collapsed: true,
@@ -1557,6 +1740,11 @@ mod tests {
             (back.main_sidebar_width, back.main_sidebar_collapsed),
             (280, true)
         );
+        let off = Settings {
+            main_detail_open: false,
+            ..Settings::default()
+        };
+        assert!(!Settings::from_json(&off.to_json()).main_detail_open);
     }
 
     #[test]
@@ -2062,6 +2250,74 @@ mod tests {
     }
 
     #[test]
+    fn trash_days_default_to_thirty_and_are_held_between_one_and_365() {
+        assert_eq!(Settings::from_json("{}").trash_days, 30);
+        // 0 is no choice of the user's (a corrupt or hand-edited file): the default, as for the
+        // clipboard clear time, not the floor of 1 day.
+        assert_eq!(Settings::from_json(r#"{"trash_days":0}"#).trash_days, 30);
+        assert_eq!(Settings::from_json(r#"{"trash_days":1}"#).trash_days, 1);
+        assert_eq!(
+            Settings::from_json(r#"{"trash_days":9999}"#).trash_days,
+            365
+        );
+        assert_eq!(Settings::from_json(r#"{"trash_days":90}"#).trash_days, 90);
+        let bad = Settings::from_json(r#"{"trash_days":"long","theme":"dark"}"#);
+        assert_eq!((bad.trash_days, bad.theme), (30, Theme::Dark));
+        let kept = Settings {
+            trash_days: 14,
+            ..Settings::default()
+        };
+        assert_eq!(Settings::from_json(&kept.to_json()), kept);
+    }
+
+    #[test]
+    fn the_recent_limits_the_idle_lock_and_the_pause_are_settings_with_bounds() {
+        let d = Settings::from_json("{}");
+        assert_eq!(
+            (
+                d.recent_max_entries,
+                d.recent_max_days,
+                d.idle_lock_minutes,
+                d.recent_paused
+            ),
+            (200, 7, 15, false)
+        );
+        let low = Settings::from_json(
+            r#"{"recent_max_entries":0,"recent_max_days":0,"idle_lock_minutes":0}"#,
+        );
+        assert_eq!(
+            (
+                low.recent_max_entries,
+                low.recent_max_days,
+                low.idle_lock_minutes
+            ),
+            (10, 1, 15),
+            "never an unlimited or a zero value; the idle lock has no never"
+        );
+        let high = Settings::from_json(
+            r#"{"recent_max_entries":99999,"recent_max_days":9999,"idle_lock_minutes":99999}"#,
+        );
+        assert_eq!(
+            (
+                high.recent_max_entries,
+                high.recent_max_days,
+                high.idle_lock_minutes
+            ),
+            (1000, 30, 240)
+        );
+        let bad = Settings::from_json(r#"{"recent_max_days":"week","recent_paused":"yes"}"#);
+        assert_eq!((bad.recent_max_days, bad.recent_paused), (7, false));
+        let kept = Settings {
+            recent_max_entries: 50,
+            recent_max_days: 3,
+            idle_lock_minutes: 5,
+            recent_paused: true,
+            ..Settings::default()
+        };
+        assert_eq!(Settings::from_json(&kept.to_json()), kept);
+    }
+
+    #[test]
     fn reduced_motion_is_off_by_default_and_round_trips() {
         assert!(!Settings::from_json("{}").reduce_motion);
         assert!(Settings::from_json(r#"{"reduce_motion":true}"#).reduce_motion);
@@ -2088,11 +2344,16 @@ mod tests {
     }
 
     #[test]
-    fn the_clipboard_clear_time_defaults_to_thirty_seconds_and_zero_means_never() {
+    fn the_clipboard_clear_time_defaults_to_thirty_seconds_and_is_never_off() {
         assert_eq!(Settings::from_json("{}").clipboard_clear_secs, 30);
+        // An older file's 0 ("never") reads as the default; a small value is held at the floor.
         assert_eq!(
             Settings::from_json(r#"{"clipboard_clear_secs":0}"#).clipboard_clear_secs,
-            0
+            30
+        );
+        assert_eq!(
+            Settings::from_json(r#"{"clipboard_clear_secs":1}"#).clipboard_clear_secs,
+            5
         );
         assert_eq!(
             Settings::from_json(r#"{"clipboard_clear_secs":99999}"#).clipboard_clear_secs,
@@ -2115,6 +2376,7 @@ mod tests {
             panel_pinned: false,
             screenshot_keep_panel: true,
             hide_hint_shown: true,
+            store_data_reminded: true,
             ..Settings::default()
         };
         assert_eq!(Settings::from_json(&settings.to_json()), settings);
@@ -2193,6 +2455,8 @@ mod tests {
         assert!(near(TextSize::P125.scale(1.0), 1.25));
         assert!(near(TextSize::P150.scale(1.0), 1.5));
         assert!(near(TextSize::P175.scale(1.0), 1.75));
+        assert!(near(TextSize::P200.scale(1.0), 2.0));
+        assert!(near(TextSize::P225.scale(1.0), 2.25));
         assert!(near(TextSize::System.scale(1.0), 1.0));
         assert!(near(TextSize::System.scale(1.5), 1.5));
         // Windows' value is held to 1.0 ..= 2.25, whatever it says.

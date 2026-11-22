@@ -404,6 +404,11 @@ mod at_rest {
              ALTER TABLE items DROP COLUMN group_id;
              DROP TABLE item_groups;
              ALTER TABLE key_ring DROP COLUMN previous;
+             DROP INDEX tags_by_parent;
+             ALTER TABLE tags DROP COLUMN parent;
+             ALTER TABLE tags DROP COLUMN colour;
+             ALTER TABLE boards DROP COLUMN accent;
+             ALTER TABLE boards DROP COLUMN icon;
              PRAGMA user_version = 4;",
         )
         .unwrap();
@@ -432,7 +437,7 @@ mod at_rest {
         // Opened with no key: the rows are kept and readable, flagged plain.
         {
             let s = Store::open(dir.path()).unwrap();
-            assert_eq!(s.schema_version().unwrap(), 9);
+            assert_eq!(s.schema_version().unwrap(), snipdeck_store::SCHEMA_VERSION);
             assert_eq!(texts(&s), [m2.clone(), m1.clone()]);
             assert!(s.has_plain_recent().unwrap());
         }
@@ -543,11 +548,16 @@ mod at_rest {
                  ALTER TABLE recent_entries DROP COLUMN rich;
                  ALTER TABLE recent_entries DROP COLUMN blob;
                  ALTER TABLE recent_entries DROP COLUMN blob_len;
+                 DROP INDEX tags_by_parent;
+                 ALTER TABLE tags DROP COLUMN parent;
+                 ALTER TABLE tags DROP COLUMN colour;
+                 ALTER TABLE boards DROP COLUMN accent;
+                 ALTER TABLE boards DROP COLUMN icon;
                  PRAGMA user_version = 6;",
             )
             .unwrap();
         let s = Store::open(dir.path()).unwrap();
-        assert_eq!(s.schema_version().unwrap(), 9);
+        assert_eq!(s.schema_version().unwrap(), snipdeck_store::SCHEMA_VERSION);
         let all = s.recent().unwrap();
         assert_eq!(all.len(), 1);
         assert_eq!(all[0].text, m);

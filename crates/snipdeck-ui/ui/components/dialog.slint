@@ -14,14 +14,16 @@ export enum DialogVariant { default, destructive }
 // The children are the actions row, laid out right-aligned, e.g. a secondary and a primary `Button`. With `fill`
 // the children stretch across the card instead (a child that wants the width sets `horizontal-stretch: 1`).
 // Keyboard: Esc emits `dismissed`; Enter emits `accepted` (default variant only: in a destructive dialog the
-// destructive action is never the Enter default, so Enter on the dialog itself does nothing and focus starts on
-// the dialog, then Tab reaches the buttons in order). Esc and Enter react to key PRESS only.
+// destructive action is never the Enter default, so Enter on the dialog itself does nothing). A destructive dialog
+// starts with focus on its first button, Cancel: the host binds that button's `focus-request` to `cancel-focus`, so
+// Enter or Space on the dialog cancels, and Tab reaches the destructive action next (MAIN-44). Esc and Enter react
+// to key PRESS only.
 //
 // The card never grows past its parent (less a margin): when the window is too short for the whole body (a narrow
 // Panel at a large text size), the body scrolls (wheel, the overlay bar, or Up/Down/Page Up/Page Down on the card)
 // and the title and the actions stay in view.
 //
-// Slint 1.18 has no `dialog` accessibility role; the card is exposed as a labelled group (gap, see README).
+// Slint 1.18 has no `dialog` accessibility role; the focus scope (which holds the focus on open) is exposed as a labelled group (gap, see README).
 export component Dialog inherits Rectangle {
     in property <bool> open: false;
     in property <string> title;
@@ -33,6 +35,8 @@ export component Dialog inherits Rectangle {
     callback accepted();
     // The dialog closed (`open` went false): the host puts keyboard focus back on whatever opened it.
     callback closed();
+    // Counts up each time a destructive dialog opens; bind the Cancel button's `focus-request` to it.
+    out property <int> cancel-focus: 0;
 
     // 40% scrim (DESIGN.md §6): dark in both themes; system window colour in high contrast.
     // The body's scroll position (0 or negative) and how far it can scroll, for the keyboard.
@@ -46,16 +50,25 @@ export component Dialog inherits Rectangle {
     changed open => {
         if (root.open) {
             scope.focus();
+            if (root.variant == DialogVariant.destructive) { root.cancel-focus += 1; }
         } else {
             scope.clear-focus();
             root.closed();
         }
     }
     init => {
-        if (root.open) { scope.focus(); }
+        if (root.open) {
+            scope.focus();
+            if (root.variant == DialogVariant.destructive) { root.cancel-focus += 1; }
+        }
     }
 
+    // The scope holds the focus when the dialog opens, so it carries the name and the words (MAIN-57); a screen reader
+    // reads them when the focus enters. Slint 1.18 has no `dialog` accessibility role: the scope is a labelled group.
     scope := FocusScope {
+        accessible-role: groupbox;
+        accessible-label: root.title;
+        accessible-description: root.body;
         key-pressed(event) => {
             if (event.text == Key.Escape) {
                 root.dismissed();
@@ -94,9 +107,6 @@ export component Dialog inherits Rectangle {
                 border-radius: Radius.lg;
                 border-width: 1px;
                 border-color: Theme.border-default;
-                accessible-role: groupbox;
-                accessible-label: root.title;
-                accessible-description: root.body;
 
                 content := VerticalLayout {
                     padding: Space.s4;

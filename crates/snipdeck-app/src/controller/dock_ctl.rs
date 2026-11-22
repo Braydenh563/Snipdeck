@@ -718,7 +718,7 @@ where
         self.show_toast(neutral(ToastMessage::DockSet(edge)));
     }
 
-    /// "Docked panel uses the full edge" was switched: the setting changes and an open docked
+    /// "Docked Panel uses the full edge" was switched: the setting changes and an open docked
     /// Panel is placed again at its new height (queued for [`take_pending`](Self::take_pending)).
     pub fn set_dock_full_edge(&mut self, on: bool) {
         self.update_settings(|s| s.dock.full_edge = on);

@@ -1,8 +1,10 @@
 //! The list and board editors.
 
-use snipdeck_core::{BoardId, ListAccent, ListIcon, ListId, ListSort, Name, Placement};
+use snipdeck_core::{BoardId, ListAccent, ListIcon, ListId, Name, Placement, Sort};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::Trashable;
+
+use crate::history::{Action, Change, Record};
 
 use super::super::{Controller, Library, ToastMessage, failed, success};
 use super::{EditorSlot, EditorTarget, Opened, neutral_toast};
@@ -36,18 +38,30 @@ where
                 kind: EditorKind::List,
                 is_new: true,
                 name: crate::starter::numbered_name(
-                    &self.new_list_base,
+                    &self.starter.new_list,
                     self.main.lists().iter().map(|l| l.name.as_str()),
                 ),
                 accent: None,
                 icon: None,
-                sort: ListSort::Manual,
+                sort: Sort::MANUAL,
+                boards: self.board_choices(),
+                board_index: self.main.board_position().unwrap_or(0),
                 item_count: 0,
                 can_delete: false,
                 delete_hint: None,
                 name_error: None,
+                restored: false,
             },
         );
+    }
+
+    /// The boards a list can be put on, in board order.
+    fn board_choices(&self) -> Vec<(BoardId, String)> {
+        self.main
+            .boards()
+            .iter()
+            .map(|b| (b.id, b.name.as_str().to_owned()))
+            .collect()
     }
 
     /// "Edit list…": opens the list editor for list `index` of the sidebar.
@@ -85,10 +99,17 @@ where
             accent: list.accent,
             icon: list.icon,
             sort: list.sort,
+            boards: self.board_choices(),
+            board_index: self
+                .main
+                .board_of_list(list.id)
+                .and_then(|b| self.main.boards().iter().position(|x| x.id == b))
+                .unwrap_or(0),
             item_count: count,
             can_delete: true,
             delete_hint: None,
             name_error: None,
+            restored: false,
         };
         self.open_editor(EditorTarget::List(list.id), view);
     }
@@ -118,13 +139,16 @@ where
             kind: EditorKind::Board,
             is_new: false,
             name: board.name.as_str().to_owned(),
-            accent: None,
-            icon: None,
-            sort: ListSort::Manual,
+            accent: board.accent,
+            icon: board.icon,
+            sort: Sort::MANUAL,
+            boards: Vec::new(),
+            board_index: 0,
             item_count,
             can_delete,
             delete_hint: (!can_delete).then_some(DeleteHint::LastBoard),
             name_error: None,
+            restored: false,
         };
         self.open_editor(EditorTarget::Board(id), view);
     }
@@ -144,16 +168,19 @@ where
                 kind: EditorKind::Board,
                 is_new: true,
                 name: crate::starter::numbered_name(
-                    &self.new_board_base,
+                    &self.starter.new_board,
                     self.main.boards().iter().map(|b| b.name.as_str()),
                 ),
                 accent: None,
                 icon: None,
-                sort: ListSort::Manual,
+                sort: Sort::MANUAL,
+                boards: Vec::new(),
+                board_index: 0,
                 item_count: 0,
                 can_delete: false,
                 delete_hint: None,
                 name_error: None,
+                restored: false,
             },
         );
     }
@@ -169,13 +196,16 @@ where
             kind: EditorKind::Board,
             is_new: false,
             name: self.main.board_name().to_owned(),
-            accent: None,
-            icon: None,
-            sort: ListSort::Manual,
+            accent: self.store.board(board).ok().and_then(|b| b.accent),
+            icon: self.store.board(board).ok().and_then(|b| b.icon),
+            sort: Sort::MANUAL,
+            boards: Vec::new(),
+            board_index: 0,
             item_count: self.main.side_lists().iter().map(|l| l.count).sum(),
             can_delete,
             delete_hint: (!can_delete).then_some(DeleteHint::LastBoard),
             name_error: None,
+            restored: false,
         };
         self.open_editor(EditorTarget::Board(board), view);
     }
@@ -190,6 +220,8 @@ where
             view.accent = typed.accent;
             view.icon = typed.icon;
             view.sort = typed.sort;
+            view.board_index = typed.board_index.min(view.boards.len().saturating_sub(1));
+            view.restored = true;
         }
         self.editor = Some(EditorSlot { view, target });
     }
@@ -201,7 +233,7 @@ where
         name: &str,
         accent: Option<ListAccent>,
         icon: Option<ListIcon>,
-        sort: ListSort,
+        sort: Sort,
     ) {
         self.main_fresh();
         let Some(slot) = self.editor.as_mut() else {
@@ -215,8 +247,8 @@ where
                 return;
             }
         };
-        let now = self.clock.now();
-        match self.write_editor(target, name, accent, icon, sort, now) {
+        let board = slot.view.boards.get(slot.view.board_index).map(|b| b.0);
+        match self.write_editor(target, name, accent, icon, sort, board) {
             Ok(opened) => {
                 self.editor = None;
                 // Read again below (`library_changed`, after the toast); the window needs
@@ -225,6 +257,10 @@ where
                 self.main_fresh();
                 match opened {
                     Some(Opened::List(id)) => self.main.open(Section::List(id)),
+                    Some(Opened::MovedList(board, id)) => {
+                        self.open_board(board);
+                        self.main.open(Section::List(id));
+                    }
                     Some(Opened::Board(id)) => self.open_board(id),
                     None => {}
                 }
@@ -245,38 +281,97 @@ where
         name: Name,
         accent: Option<ListAccent>,
         icon: Option<ListIcon>,
-        sort: ListSort,
-        now: snipdeck_core::Timestamp,
+        sort: Sort,
+        board: Option<BoardId>,
     ) -> snipdeck_store::Result<Option<Opened>> {
+        let now = self.clock.now();
         match target {
-            EditorTarget::NewList(board) => {
-                let mut list = snipdeck_core::List::new(board, name, now);
+            EditorTarget::NewList(opened_on) => {
+                let mut list = snipdeck_core::List::new(board.unwrap_or(opened_on), name, now);
                 list.accent = accent;
                 list.icon = icon;
                 list.sort = sort;
                 self.store.insert_list(&list, Placement::Last)?;
+                self.record_step(
+                    Action::List,
+                    vec![Change::Restore(vec![Trashable::List(list.id)])],
+                );
                 Ok(Some(Opened::List(list.id)))
             }
             EditorTarget::List(id) => {
-                let mut list = self.store.list(id)?;
+                let before = self.store.list(id)?;
+                let mut list = before.clone();
                 list.name = name;
                 list.accent = accent;
                 list.icon = icon;
-                list.sort = sort;
+                // The editor chooses the key; a list that already sorts by it keeps its direction.
+                list.sort = if sort.key == before.sort.key {
+                    before.sort
+                } else {
+                    sort
+                };
+                let changed = list != before;
                 list.updated_at = now;
                 self.store.update_list(&list)?;
+                let from = self.main.board_of_list(id);
+                let order_before: Vec<ListId> = from
+                    .and_then(|b| self.store.lists(b).ok())
+                    .map(|l| l.iter().map(|l| l.id).collect())
+                    .unwrap_or_default();
+                let moved_to = board.filter(|to| from.is_some_and(|f| f != *to));
+                let mut steps = Vec::new();
+                if changed {
+                    steps.push(Change::Rewrite {
+                        before: Record::List(before),
+                        after: Record::List(list),
+                    });
+                }
+                // Another board chosen: the list goes to the end of that board and is shown there.
+                if let (Some(to), Some(from)) = (moved_to, from) {
+                    self.store.move_list(id, to, Placement::Last)?;
+                    let at = order_before.iter().position(|l| *l == id).unwrap_or(0);
+                    steps.push(Change::MoveList {
+                        id,
+                        from: (from, crate::main_window::place_of(&order_before, at)),
+                        to: (to, Placement::Last),
+                    });
+                    self.record_step(Action::List, steps);
+                    return Ok(Some(Opened::MovedList(to, id)));
+                }
+                if !steps.is_empty() {
+                    self.record_step(Action::List, steps);
+                }
                 Ok(None)
             }
             EditorTarget::NewBoard => {
-                let board = snipdeck_core::Board::new(name, now);
+                let mut board = snipdeck_core::Board::new(name, now);
+                board.accent = accent;
+                board.icon = icon;
                 self.store.insert_board(&board, Placement::Last)?;
+                self.record_step(
+                    Action::Board,
+                    vec![Change::Restore(vec![Trashable::Board(board.id)])],
+                );
                 Ok(Some(Opened::Board(board.id)))
             }
             EditorTarget::Board(id) => {
-                let mut board = self.store.board(id)?;
+                let before = self.store.board(id)?;
+                let mut board = before.clone();
                 board.name = name;
+                board.accent = accent;
+                board.icon = icon;
+                let changed = board != before;
                 board.updated_at = now;
                 self.store.update_board(&board)?;
+                if changed {
+                    self.record_step(
+                        Action::Board,
+                        vec![Change::Rewrite {
+                            before: Record::Board(before),
+                            after: Record::Board(board),
+                        }],
+                    );
+                }
                 Ok(None)
             }
         }
@@ -305,8 +400,8 @@ where
         match self.store.trash(Trashable::Board(id), now) {
             Ok(()) => {
                 let step = self.record_step(
-                    crate::history::Action::Delete,
-                    vec![crate::history::Change::Trash(vec![Trashable::Board(id)])],
+                    Action::Delete,
+                    vec![Change::Trash(vec![Trashable::Board(id)])],
                 );
                 self.show_undo_toast(neutral_toast(ToastMessage::BoardTrashed { name }), step);
                 self.library_changed();
@@ -328,14 +423,17 @@ where
         name: &str,
         accent: Option<ListAccent>,
         icon: Option<ListIcon>,
-        sort: ListSort,
+        sort: Sort,
+        board_index: usize,
     ) {
         let Some(slot) = self.editor.take() else {
             return;
         };
         self.parked_editors.retain(|(t, _)| *t != slot.target);
         let v = &slot.view;
-        if (v.name.as_str(), v.accent, v.icon, v.sort) == (name, accent, icon, sort) {
+        if (v.name.as_str(), v.accent, v.icon, v.sort) == (name, accent, icon, sort)
+            && v.board_index == board_index
+        {
             return;
         }
         let mut typed = slot.view;
@@ -343,7 +441,17 @@ where
         typed.accent = accent;
         typed.icon = icon;
         typed.sort = sort;
+        typed.board_index = board_index.min(typed.boards.len().saturating_sub(1));
         self.parked_editors.push((slot.target, typed));
+    }
+
+    /// The list editor's Board field picked board `index` of [`EditorView::boards`].
+    pub fn main_editor_set_board(&mut self, index: usize) {
+        if let Some(slot) = self.editor.as_mut()
+            && index < slot.view.boards.len()
+        {
+            slot.view.board_index = index;
+        }
     }
 
     /// The user edited a field of the editor: a refusal no longer applies.

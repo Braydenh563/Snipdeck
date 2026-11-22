@@ -514,8 +514,9 @@ export component PickerWindow inherits Window {
                 padding: Space.s2;
                 search := SearchField {
                     expanded: suggest.open;
-                    placeholder: @tr("Search all snippets");
-                    label: @tr("Search all snippets");
+                    placeholder: @tr("Search all items");
+                    label: @tr("Search all items");
+                    description: @tr("Words match anywhere in a title or body. \"Quotes\" match a phrase, -word excludes, and tag:, list:, kind: or is:pinned filter.");
                     clear-label: @tr("Clear search");
                     edited(text) => {
                         root.reset-results();
@@ -675,16 +676,16 @@ export component PickerWindow inherits Window {
                     heading: root.searching ? @tr("No matches")
                         : root.scope == PickerScope.pinned ? @tr("Nothing pinned yet")
                         : root.scope == PickerScope.recent ? @tr("Nothing used yet")
-                        : root.scope == PickerScope.tag ? @tr("No tagged snippets") : @tr("No snippets yet");
+                        : root.scope == PickerScope.tag ? @tr("No tagged items") : @tr("No items yet");
                     body: root.searching
                         ? (root.scope == PickerScope.all ? @tr("Nothing matches “{}”.", root.query)
                             : root.scope == PickerScope.board ? @tr("Nothing on this board matches “{}”.", root.query)
                             : root.scope == PickerScope.recent ? @tr("Nothing used recently matches “{}”.", root.query)
                             : root.scope == PickerScope.tag ? @tr("Nothing with this tag matches “{}”.", root.query)
                             : @tr("Nothing pinned matches “{}”.", root.query))
-                        : root.scope == PickerScope.pinned ? @tr("Pin a snippet from the Panel to find it here.")
-                        : root.scope == PickerScope.recent ? @tr("Snippets you paste show up here.")
-                        : root.scope == PickerScope.tag ? @tr("Add a tag to a snippet to find it here.")
+                        : root.scope == PickerScope.pinned ? @tr("Pin an item from the Panel to find it here.")
+                        : root.scope == PickerScope.recent ? @tr("Items you paste show up here.")
+                        : root.scope == PickerScope.tag ? @tr("Add a tag to an item to find it here.")
                         : @tr("Copy something, then save it from the Panel.");
                     // The one step that fixes the empty state: widen a search that found nothing in a narrow scope,
                     // or go where snippets are made.

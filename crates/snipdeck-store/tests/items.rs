@@ -541,12 +541,8 @@ fn metadata_edits_do_not_read_the_content() {
     it.pinned = true;
     it.title = "renamed".to_owned();
     s.update_item(&it, None).unwrap();
-    assert_eq!(
-        s.search("needle", 5).unwrap(),
-        [it.id],
-        "body still indexed"
-    );
-    assert_eq!(s.search("renamed", 5).unwrap(), [it.id], "title updated");
+    assert_eq!(found(&s, "needle"), [it.id], "body still indexed");
+    assert_eq!(found(&s, "renamed"), [it.id], "title updated");
 }
 
 /// Review L12: `record_use` owns the usage columns; saving an item loaded earlier keeps them.

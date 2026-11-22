@@ -250,9 +250,25 @@ function Get-AppProcessNames {
     return @('snipdeck-app', 'snipdeck')
 }
 
+function Get-AppRoots {
+    # The folders whose snipdeck exe this launcher owns: build folders, the fast-start copy and the portable app\.
+    $roots = @((Get-DistDir), (Get-AppDir))
+    foreach ($t in @(Get-CandidateTargets)) { $roots += $t }
+    return $roots
+}
+
 function Get-AppProcesses {
+    # Running snipdeck programs matched by FULL exe path under an owned folder (a process of the same name
+    # from somewhere else, or one whose path cannot be read, is never touched).
+    $roots = @(Get-AppRoots)
     $found = @()
-    foreach ($n in (Get-AppProcessNames)) { $found += @(Get-Process -Name $n -ErrorAction SilentlyContinue) }
+    foreach ($n in (Get-AppProcessNames)) {
+        foreach ($p in @(Get-Process -Name $n -ErrorAction SilentlyContinue)) {
+            $path = ''
+            try { $path = [string]$p.Path } catch { }
+            if (Test-OwnedExe $path $roots) { $found += $p }
+        }
+    }
     return $found
 }
 
@@ -263,18 +279,32 @@ function Stop-ProcessTree([int]$ProcessId) {
     try { Stop-Process -Id $ProcessId -Force -ErrorAction SilentlyContinue } catch { }
 }
 
+function Request-AppQuit($Proc) {
+    # Runs "<exe> --quit" (the app's own tray > Quit: it saves drafts and releases the single-instance mutex),
+    # then waits for the process to exit. True when it is gone. Unverified on Windows (see docs/packaging.md).
+    $exe = ''
+    try { $exe = [string]$Proc.Path } catch { }
+    if ($exe -and (Test-Path -LiteralPath $exe)) {
+        try {
+            $q = Start-Process -FilePath $exe -ArgumentList '--quit' -WindowStyle Hidden -PassThru -ErrorAction Stop
+            [void]$q.WaitForExit(10000)
+        } catch { Write-Log 'WARN' ("--quit: " + $_.Exception.Message) }
+    }
+    try { return [bool]$Proc.WaitForExit(15000) } catch { return $false }
+}
+
 function Stop-AppProcesses {
-    # Stops only processes named exactly snipdeck-app or snipdeck. Closes the window first, then ends what is left.
+    # Stops the snipdeck programs from Get-AppProcesses: "--quit" first and a wait for the exit (the mutex goes
+    # with the process); only a program that is still there after that is closed by force.
     foreach ($p in (Get-AppProcesses)) {
         $where = ''
         try { $where = $p.Path } catch { }
         if ($script:Opt.WhatIf) { Say "  [whatif] would stop $($p.ProcessName).exe (process $($p.Id)) $where" 'Yellow'; continue }
         Say "  Stopping $($p.ProcessName).exe (process $($p.Id))" 'Gray'
         Write-Log 'STOP' "$($p.ProcessName) pid $($p.Id) $where"
-        try { [void]$p.CloseMainWindow() } catch { }
-        $gone = $false
-        try { $gone = $p.WaitForExit(3000) } catch { }
-        if (-not $gone) { try { Stop-Process -Id $p.Id -Force -ErrorAction Stop } catch { Write-Log 'WARN' $_.Exception.Message } }
+        if (Request-AppQuit $p) { Write-Log 'STOP' "pid $($p.Id) quit normally"; continue }
+        Write-Log 'WARN' "pid $($p.Id) did not quit after --quit; ending it"
+        try { Stop-Process -Id $p.Id -Force -ErrorAction Stop } catch { Write-Log 'WARN' $_.Exception.Message }
     }
     Start-Sleep -Milliseconds 400
     return (@(Get-AppProcesses).Count -eq 0)

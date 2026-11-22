@@ -37,6 +37,7 @@ pub fn slint_problem(problem: MasterProblem) -> ui::MasterProblem {
         MasterProblem::Mismatch => ui::MasterProblem::Mismatch,
         MasterProblem::Unavailable => ui::MasterProblem::Unavailable,
         MasterProblem::Failed => ui::MasterProblem::Failed,
+        MasterProblem::Wait => ui::MasterProblem::Wait,
         MasterProblem::HelloFailed => ui::MasterProblem::HelloFailed,
         MasterProblem::HelloCancelled => ui::MasterProblem::HelloCancelled,
         MasterProblem::HelloChanged => ui::MasterProblem::HelloChanged,

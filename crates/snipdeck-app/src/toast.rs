@@ -56,9 +56,9 @@ pub enum ToastMessage {
     CopiedTargetGone,
     /// "Copied. Only part of the keys went out, so some typed text may be gone."
     CopiedPartlySent,
-    /// "Couldn't reach the clipboard. Another app may be using it."
+    /// "Couldn’t reach the clipboard. Another app may be using it."
     ClipboardBusy,
-    /// "This template can't be read. Open it to fix it."
+    /// "This template can’t be read. Open it to fix it."
     TemplateBroken,
     /// "Unlock your library to use this item."
     Locked,
@@ -74,16 +74,19 @@ pub enum ToastMessage {
     MasterPasswordChangedNotOpen,
     /// "Master password removed. Snipdeck couldn't open the library just now; ..."
     MasterPasswordRemovedNotOpen,
-    /// "Windows Hello didn't work, so it was turned off. You can turn it on again in Settings."
+    /// "Windows Hello didn’t work, so it was turned off. You can turn it on again in Settings."
     HelloTurnedOff,
     /// "Windows Hello was not turned on." (the user cancelled the prompt that turns it on)
     HelloNotTurnedOn,
-    /// "Windows Hello didn't work, so it was not turned on." (the prompt that turns it on failed)
+    /// "Windows Hello didn’t work, so it was not turned on." (the prompt that turns it on failed)
     HelloEnrolFailed,
     /// "Unlock your library first, so a copy includes your sensitive items."
     UnlockFirst,
     /// "Your library locked. The sensitive item you were editing was closed without saving."
     LockedEditorClosed,
+    /// "Your library locked. What you were typing in the sensitive item is kept, and comes back
+    /// when you unlock."
+    LockedEditorKept,
     /// "Your library locked after a while. The form for the sensitive template you were filling in
     /// was closed."
     LockedFillClosed,
@@ -91,6 +94,29 @@ pub enum ToastMessage {
     Saved {
         /// The list's name.
         list: String,
+    },
+    /// "No colour in the clipboard" (Ctrl+V on the Colours tab found none).
+    NoColourOnClipboard,
+    /// "Already saved in {list}" (a colour saved twice selects the first).
+    AlreadySaved {
+        /// The list's name.
+        list: String,
+    },
+    /// "≈ royalblue, not exactly a colour name. Nothing copied" (a copy as Name of a colour that no
+    /// CSS keyword is exactly).
+    NameNotExact {
+        /// The nearest keyword.
+        name: String,
+        /// That keyword's colour, as hex.
+        hex: String,
+    },
+    /// "Saved to `list`. The same text was already in `was_in`." (a capture or a Ctrl+V of text
+    /// another item holds): it is saved anyway, and Undo takes it back.
+    SavedAgain {
+        /// The list the copy went to.
+        list: String,
+        /// The list that holds the same text.
+        was_in: String,
     },
     /// "Added to {list}" / "Added {count} items to {list}" (Ctrl+V on a list), with Undo and Edit.
     AddedTo {
@@ -127,7 +153,7 @@ pub enum ToastMessage {
     TooLargeToSave,
     /// "There is no list to save into. Add a list first."
     NoListToSave,
-    /// "Nothing to paste next. Pin a snippet, or add one to this list."
+    /// "Nothing to paste next. Pin an item, or add one to this list."
     NothingToPasteNext,
     /// "A stack is running. End it before you mark more snippets."
     StackRunning,
@@ -147,6 +173,18 @@ pub enum ToastMessage {
         /// The chord as typed in Settings.
         chord: String,
     },
+    /// "{chord} is already used by another Snipdeck shortcut. Choose another in Settings."
+    HotkeyOwnAction {
+        /// The chord two Snipdeck shortcuts were given.
+        chord: String,
+    },
+    /// "Windows refused {chord} (Windows error {code}). Choose another in Settings."
+    HotkeyRefused {
+        /// The chord Windows refused.
+        chord: String,
+        /// The Windows error code.
+        code: u32,
+    },
     /// "Shortcuts are unavailable, so {chord} is not active. Restart Snipdeck to try again."
     HotkeyUnavailable {
         /// The chord that could not be registered.
@@ -164,15 +202,15 @@ pub enum ToastMessage {
         /// The Panel hotkey, or `None` when it is switched off.
         chord: Option<String>,
     },
-    /// "Couldn't use this item. Try again, or restart Snipdeck if it keeps happening." (the
+    /// "Couldn’t use this item. Try again, or restart Snipdeck if it keeps happening." (the
     /// cause is not known)
     Failed,
     /// A use that failed for a cause the error names: "Couldn't use this item: the disk is full.
     /// Free up some space, then try again."
     UseFailed(Cause),
-    /// "Couldn't open that window." (the Picker or the fill form could not be shown)
+    /// "Couldn’t open that window." (the Picker or the fill form could not be shown)
     WindowNotShown,
-    /// "Couldn't save your settings. Snipdeck will try again."
+    /// "Couldn’t save your settings. Snipdeck will try again."
     SettingsNotSaved,
     /// "Your settings file was damaged. Snipdeck kept what it could read; the original is saved
     /// as settings.json.bad."
@@ -180,7 +218,15 @@ pub enum ToastMessage {
     /// "Couldn't read your settings file, so Snipdeck started with the defaults. Changes to
     /// settings won't be saved until you fix or remove the file."
     SettingsUnreadable,
-    /// "Snipdeck can't watch the clipboard, so Recent stays empty. Restart Snipdeck to try again."
+    /// "Your library couldn't be opened, so it was moved aside to {folder}." With a backup in
+    /// the folder it adds that Settings > Rebuild from backup restores the newest one.
+    LibrarySetAside {
+        /// The folder the library was moved into (a name inside the data folder).
+        folder: String,
+        /// Whether the data folder holds a backup to rebuild from.
+        has_backup: bool,
+    },
+    /// "Snipdeck can’t watch the clipboard, so Recent stays empty. Restart Snipdeck to try again."
     ClipboardWatchFailed,
     /// "Moved 3 items to the Trash" (with Undo).
     ItemsTrashed {
@@ -207,6 +253,32 @@ pub enum ToastMessage {
         /// What was taken back.
         action: crate::history::Action,
     },
+    /// "Open a list to group its items": Ctrl+G in a search or a view of several lists.
+    GroupNeedsList,
+    /// "Clear the colour filter to group items": the rows show no group headers under it.
+    GroupColourFilter,
+    /// "Select the items to group first".
+    GroupNothing,
+    /// "Groups nest three levels deep at most": a nest or a new group inside a group would go
+    /// deeper.
+    GroupTooDeep,
+    /// "Deleted tag work": the items keep their other tags.
+    TagDeleted {
+        /// The tag's name.
+        name: String,
+    },
+    /// "Merged tag work into Work": the items of the first carry the second now.
+    TagMerged {
+        /// The tag that went.
+        from: String,
+        /// The tag its items moved to.
+        into: String,
+    },
+    /// "That edit of a sensitive item cannot be undone": Undo stopped at an edit whose text is
+    /// not kept.
+    UndoStopped,
+    /// "That step cannot be undone any more: what it changed is gone for good."
+    HistoryStepLost,
     /// "Redid delete": the history brought a step back.
     Redone {
         /// What was brought back.
@@ -235,15 +307,35 @@ pub enum ToastMessage {
     TrashEmptied,
     /// "Snipdeck found a problem in your library. Export a copy to be safe." (the weekly check)
     LibraryProblem,
-    /// "Snipdeck closed unexpectedly last time. Open the log?" The action opens the log folder
+    /// "Snipdeck ran into a problem. Open the log?" The action opens the log folder
     /// (`crash::open_log_folder`).
     CrashedLastTime,
     /// "Backed up".
     BackupMade,
+    /// "Backed up, but {count} items could not be included, such as {first}." (an attachment
+    /// could not be read; the rest of the backup is whole)
+    BackupMadeSkipping {
+        /// How many items were left out.
+        count: usize,
+        /// The title of the first one.
+        first: String,
+    },
+    /// "This backup holds {now} items, the one before held {was}. The older backups were kept."
+    BackupShrunk {
+        /// Items in the previous backup.
+        was: usize,
+        /// Items in this one.
+        now: usize,
+    },
+    /// "Another backup or export is still running. Try again when it has finished."
+    ArchiveBusy,
+    /// "The Store version keeps your library inside the app, so uninstalling removes it. Back up
+    /// now also saves a copy in Documents > Snipdeck backups." Shown once (`store_data`).
+    StoreDataReminder,
     /// "Couldn't make a backup: the disk is full. ..." (a backup the user asked for)
     BackupFailed(Cause),
-    /// "Couldn't make today's backup. Check the disk has room, then use Back up now in
-    /// Settings." (the daily run)
+    /// "Couldn't make today's backup. Use Back up now in Settings to try again; ..." (the daily
+    /// run)
     DailyBackupFailed(Cause),
     /// "Couldn't clear old items out of the Trash. ..." (the daily run)
     TrashPurgeFailed,
@@ -271,7 +363,7 @@ pub enum ToastMessage {
     RebuildNeedsRestart,
     /// "Your library was rebuilt, but the cleanup failed. Snipdeck will finish it the next time it starts."
     RebuildUnfinished,
-    /// "Images can't be pasted here. Save the picture as a PNG and add it as an Image item." (Ctrl+V
+    /// "Images can’t be pasted here. Save the picture as a PNG and add it as an Image item." (Ctrl+V
     /// in the item editor with a picture on the clipboard)
     ImageNotPasteable,
     /// "Imported 5 items".
@@ -286,31 +378,56 @@ pub enum ToastMessage {
         /// The file's name.
         file: String,
     },
+    /// "Saved {file}, but {count} items could not be included, such as {first}."
+    ExportedSkipping {
+        /// The file's name.
+        file: String,
+        /// How many items were left out.
+        count: usize,
+        /// The title of the first one.
+        first: String,
+    },
+    /// "Saved {file}: 12 of 15 items. Sensitive items and items with no text are left out."
+    ExportedSome {
+        /// The file's name.
+        file: String,
+        /// Items written.
+        written: usize,
+        /// Items in the list.
+        total: usize,
+    },
+    /// "Tag added to 3 items" or "Tag removed from 3 items" (a bulk tag toggle).
+    ItemsTagged {
+        /// How many items changed.
+        count: usize,
+        /// Whether the tag was added (otherwise removed).
+        added: bool,
+    },
     /// "Couldn't export your library: ..."
     ExportFailed(Cause),
     /// "Your library was erased."
     LibraryErased,
-    /// "Couldn't erase everything. Quit Snipdeck and try again."
+    /// "Couldn’t erase everything. Quit Snipdeck and try again."
     EraseFailed,
-    /// "Couldn't open the folder."
+    /// "Couldn’t open the folder."
     FolderNotOpened,
-    /// "Couldn't open the link." (a web page that did not open)
+    /// "Couldn’t open the link." (a web page that did not open)
     LinkNotOpened,
-    /// "Couldn't change the Windows start-up entry."
+    /// "Couldn’t change the Windows start-up entry."
     AutostartFailed,
     /// "Windows has Snipdeck switched off under Settings > Apps > Startup. Switch it on there."
     /// (the Store build; only the user can switch the startup task back on)
     AutostartSwitchedOff,
-    /// "Your organisation's policy keeps Snipdeck from starting with Windows."
+    /// "Your organisation’s policy keeps Snipdeck from starting with Windows."
     AutostartPolicy,
-    /// "Couldn't open the log folder."
+    /// "Couldn’t open the log folder."
     CannotOpenLog,
     /// "Saved. This trigger overlaps the trigger of “{other}”, so one of them may never fire."
     TriggerOverlaps {
         /// The title of the other item whose trigger overlaps.
         other: String,
     },
-    /// "Couldn't start typing triggers. Nothing will be expanded or suggested."
+    /// "Couldn’t start typing triggers. Nothing will be expanded or suggested."
     TypingUnavailable,
     /// "Couldn't unlock the encryption key. Nothing was saved."
     KeyUnavailable,
@@ -318,18 +435,18 @@ pub enum ToastMessage {
     ItemGone,
     /// "That list was deleted. Choose another list."
     ListGone,
-    /// "Couldn't write to your library. Check that the disk has room."
+    /// "Couldn’t write to your library. Check that the disk has room."
     StorageFailed,
-    /// "Couldn't save this item. Nothing was changed."
+    /// "Couldn’t save this item. Nothing was changed."
     NotSaved,
-    /// "Couldn't open this item."
+    /// "Couldn’t open this item."
     NotOpened,
-    /// "Couldn't save a draft of what you typed."
+    /// "Couldn’t save a draft of what you typed."
     DraftNotSaved,
     /// A move, reorder or other change to the library that the store refused, for a cause the
     /// error names: "Couldn't make that change: the disk is full. ..."
     ChangeFailed(Cause),
-    /// "Couldn't start the screenshot tool." (Take screenshot)
+    /// "Couldn’t start the screenshot tool." (Take screenshot)
     ScreenshotFailed,
     /// "Theme: Dark": the theme was switched from a menu, the palette or Settings.
     ThemeSet(Theme),
@@ -367,19 +484,37 @@ pub enum ToastMessage {
     /// "Couldn't refresh the view": the change worked, but the list on screen could not be read
     /// again and may be out of date.
     NotRefreshed,
-    /// "Icons can't be added to a list yet." (Symbols: Add to list on an icon)
+    /// "Icons can’t be added to a list yet." (Symbols: Add to list on an icon)
     IconNotAddable,
     /// "Saved {name}." (Symbols: Save as... wrote the file)
     IconSaved {
         /// The file name written, without its folder.
         name: String,
     },
-    /// "Couldn't pick a colour from the screen." (the eyedropper failed)
+    /// "Couldn’t pick a colour from the screen." (the eyedropper failed)
     EyedropFailed,
     /// "HDR is on for this screen: {hex} is approximate." (a colour picked on an HDR monitor)
     EyedropHdr {
         /// The picked colour, `#rrggbb`.
         hex: String,
+    },
+    /// "Copied {hex}. HDR is on for this screen, so it is approximate." (one toast for the copy
+    /// and the HDR note)
+    EyedropHdrCopied {
+        /// The picked colour, `#rrggbb`.
+        hex: String,
+    },
+    /// "Windows won't let Snipdeck read this screen." (the capture was refused)
+    EyedropRefused,
+    /// "The screen changed, so the pick ended." / "The pick timed out." (not the user's doing)
+    EyedropEnded {
+        /// Whether it was the time limit (else the display changed).
+        timed_out: bool,
+    },
+    /// "Another app keeps {keys}: use the mouse for those." (fallback hotkeys refused)
+    EyedropKeysBusy {
+        /// The keys, as written for the user.
+        keys: String,
     },
 }
 
@@ -618,7 +753,7 @@ mod tests {
             store(snipdeck_store::Error::Io(Io::from(
                 ErrorKind::PermissionDenied
             ))),
-            ToastMessage::UseFailed(Cause::InUse)
+            ToastMessage::UseFailed(Cause::NotAllowed)
         );
         assert_eq!(
             store(snipdeck_store::Error::Corrupt("x".into())),

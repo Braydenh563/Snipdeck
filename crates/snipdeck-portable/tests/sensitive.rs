@@ -151,7 +151,7 @@ fn encrypted_export_round_trips_with_the_key() {
         key: KeySource::Given(&key),
         ..keep()
     };
-    let report = import_archive(&mut fresh, Cursor::new(&bytes), "x", at(1), &opts).unwrap();
+    let report = import_archive(&mut fresh, Cursor::new(&bytes), "x", at(10_000), &opts).unwrap();
     assert_eq!(report.items_added, 3);
     assert!(!report.has_warnings(), "{:?}", report.warnings);
     assert_same(&snapshot(&fresh), &snapshot(&original));
@@ -703,6 +703,7 @@ fn a_sensitive_file_of_the_largest_attachment_size_exports_encrypted() {
         &ExportOptions {
             sensitive: SensitivePolicy::Encrypt(&key),
             limits,
+            every_tag: false,
         },
         &mut out,
     )
@@ -715,19 +716,25 @@ fn an_item_over_the_entry_limit_is_named_instead_of_failing_without_a_word() {
     let limits = small_entries();
     let s = vault_with_file(usize::try_from(limits.max_entry_bytes).unwrap() + 1);
     let mut out = Cursor::new(Vec::new());
-    let err = snipdeck_portable::export_to_writer(
+    // DATA-4: one item that does not fit no longer stops the export; it is left out and named.
+    let report = snipdeck_portable::export_to_writer(
         &s,
         at(100),
         &ExportOptions {
             sensitive: SensitivePolicy::Encrypt(&key),
             limits,
+            every_tag: false,
         },
         &mut out,
     )
-    .expect_err("too big");
+    .expect("the rest of the library is still written");
+    assert_eq!(report.items, 0);
+    assert_eq!(report.skipped.len(), 1, "{:?}", report.skipped);
+    assert_eq!(report.skipped[0].title, "Passport scan");
     assert!(
-        matches!(&err, Error::ItemTooLarge { title, .. } if title == "Passport scan"),
-        "{err:?}"
+        report.skipped[0].reason.contains("limit"),
+        "{:?}",
+        report.skipped[0]
     );
 }
 
@@ -766,10 +773,67 @@ fn a_total_over_the_limit_is_reported_as_the_total_and_names_no_item() {
         matches!(
             &err,
             Error::LimitExceeded {
-                what: "total uncompressed size",
+                what: snipdeck_portable::TOTAL_SIZE,
                 limit: 150_000
             }
         ),
         "{err:?}"
     );
+}
+
+/// DATA-12: the writer holds itself to the reader's budget for decrypted sensitive content, so a
+/// backup it writes never fails to restore; what does not fit is named.
+#[test]
+fn sensitive_content_past_the_readers_budget_is_left_out_and_named() {
+    let key = DataKey::generate().unwrap();
+    let mut s = store();
+    let b = board(&mut s, "B");
+    let l = list(&mut s, b.id, "L");
+    for (n, title) in ["First scan", "Second scan"].into_iter().enumerate() {
+        let mut secret = Item::new(l.id, title.to_owned(), ItemKind::File, at(1));
+        secret.sensitive = true;
+        let file = FileEntry::new("p.bin", s.put(noise(60_000, n as u64)).unwrap()).unwrap();
+        s.insert_item(
+            &secret,
+            &Formats::new(vec![Format::Files(vec![file])]).unwrap(),
+            Placement::Last,
+        )
+        .unwrap();
+    }
+    let limits = Limits {
+        max_sensitive_bytes: 100_000,
+        ..Limits::default()
+    };
+    let mut out = Cursor::new(Vec::new());
+    let report = snipdeck_portable::export_to_writer(
+        &s,
+        at(100),
+        &ExportOptions {
+            sensitive: SensitivePolicy::Encrypt(&key),
+            limits,
+            every_tag: false,
+        },
+        &mut out,
+    )
+    .unwrap();
+    assert_eq!(report.sensitive_encrypted, 1);
+    assert_eq!(report.skipped.len(), 1, "{:?}", report.skipped);
+    assert_eq!(report.skipped[0].title, "Second scan");
+
+    // The same limits read it back.
+    let mut fresh = store();
+    let opts = ImportOptions {
+        key: KeySource::Given(&key),
+        limits,
+        ..ImportOptions::default()
+    };
+    let back = import_archive(
+        &mut fresh,
+        Cursor::new(out.into_inner()),
+        "x",
+        at(10_000),
+        &opts,
+    )
+    .unwrap();
+    assert_eq!(back.items_added, 1, "{:?}", back.warnings);
 }

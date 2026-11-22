@@ -137,6 +137,8 @@ count; single select; choosing it again or "Clear filter" clears it).
 `blue` (default), `teal`, `green`, `orange`, `rose`, `violet`, `slate`. Each maps to the same
 600/700/800 steps; the checks run for every option.
 
+**One named palette.** Item labels, list and board colours and the accent choice share the nine names Blue, Teal, Green, Amber, Orange, Red, Rose, Violet and Slate (`HueNames` in `theme.slint`; the Rust side keeps one key per hue). A surface offers a subset (labels have no Rose, because the library file restricts the stored label keys; the accent offers Blue, Teal, Green, Amber, Rose, Violet and Windows), and the stored ids and values never change.
+
 ## 3. Typography
 
 **Families (bundled, SIL OFL):**
@@ -169,7 +171,7 @@ Icons: **Phosphor (Regular)**, MIT licence, 16px in rows and 20px in toolbars. T
 | Meaning | Glyph | Where | Never |
 |---|---|---|---|
 | More actions on this object or region | `dots-three` (horizontal ···) | end of a row or card on hover; end of a toolbar or header; tooltip "More" | `dots-three-vertical` (the Android kebab); a hamburger |
-| Primary navigation drawer | none: Snipdeck has no drawer; the Main window sidebar collapses to an icon rail | | `list` as a hamburger |
+| Primary navigation drawer | none as a hamburger menu: the Main window sidebar folds to an icon rail, and below 720px the rail's toggle (`caret-double-right`, "Expand sidebar (Ctrl+B)") opens the full sidebar as a drawer over the list | | `list` as a hamburger |
 | App launcher / switcher | none | | `dots-nine` (bento) |
 | Choose from a list (Board switcher, Select) | `caret-down` after the label | | a hamburger or ··· |
 | Disclose / collapse | `caret-right` / `caret-down`; strip scroll `caret-left` / `caret-right` | | |
@@ -212,7 +214,7 @@ Every icon-only control has a tooltip and an accessible label with the same word
 | IconPicker | Pick a list icon | "No icon" + 24 icons, one tab stop, arrow keys | default, hover, selected (ring), focus |
 | LabelChip | Filter the Main window by colour label | colour dot + name + count | default, hover, selected (ring + check), focus |
 | Tooltip | Name icon-only actions | — | delay 500ms, instant when moving between items (for 250ms after one closes); centred under its control, flipped above at the bottom edge, wraps to the window width and is clamped 8px inside the window; drawn by the window's last child (`TipLayer`), so nothing paints over it and no container clips it; fades in over 90ms; a menu, dialog, open drop-down list or the palette hides it; it goes when its control is used or removed; Esc closes it (and does nothing else on that press) |
-| Toast | Transient result ("Copied", "Pasted into Notepad"); the one **ink toast** (40 tall, `ink` fill, `text.on-ink`, radius 8) used by every surface, including the toast window | neutral · success (check) · danger (warning, with Undo) | enter, hold 2.5s, exit |
+| Toast | Transient result ("Copied", "Pasted into Notepad"); the one **ink toast** (40 tall, `ink` fill, `text.on-ink`, radius 8) used by every surface, including the toast window | neutral · success (check) · danger (warning, with Undo) | enter, hold 2.5s (longer for a long text, a delete's Undo and an error), exit; the last ten are in Help > Recent messages |
 | Skeleton | Loading placeholder matching the final shape | row · tile | — |
 | Menu / MenuItem | Context and overflow actions; also the Settings select popups | with icon, shortcut keycap, accent check (chosen row), destructive; rows 32px (radius 6), 28px when the menu would not fit its window at 32, then a scroll cue (hairline and caret) at the bottom edge | default, highlight (`bg.overlay-hover`; 2px `focus.ring` on a key highlight only, never on hover), disabled (`text.tertiary` glyph and label, no opacity) |
 
@@ -230,11 +232,11 @@ Every icon-only control has a tooltip and an accessible label with the same word
 | ListTabBar | Tab ×N, overflow, + | Switch and reorder lists in the panel | scrollable, draggable |
 | BoardSwitcher | Button + Menu | Change board | — |
 | PinnedStrip | Tag-style pinned items | One-click access to pinned items | horizontal scroll |
-| SidebarItem | icon, label, count | Main-window navigation | board, list (8px colour mark, optional list icon), tag, system |
+| SidebarItem | icon, label, count | Main-window navigation | board, list (8px colour mark, optional list icon), tag, system; list, tag and Trash rows take a dragged item row (`drop-target`: a 2px focus-ring border) |
 | TemplateField | label, TextField / choice | Fill in a prompted placeholder | text · choice · date |
 | HotkeyRecorder | Keycap combo, clear | Rebind shortcuts, detect conflicts | idle, recording, conflict |
 | EmptyState | heading, one sentence, primary action | Teach how to fill an empty surface | list, board, search, inbox |
-| Dialog | title, body, actions | Confirm, import | default · destructive |
+| Dialog | title, body, actions | Confirm, import | default · destructive (focus starts on Cancel; the focus scope carries the title and body for a screen reader) |
 | EditorToolbar | IconButtons, Menu | Text transforms / image tools | text · image |
 | **Symbols cell** | glyph (emoji or icon art, 24px) or kaomoji chip text (13px) | One emoji, icon or kaomoji in the Panel's Symbols grid | emoji / icon: 40×40 hit box · kaomoji chip: 2 per row, 36px high, a wide kaomoji takes the full row; radius 6; rest (transparent) · hover (`bg-hover`) · selected (`bg-selected`) · keyboard focus (2px `focus-ring`, drawn while the search field has focus) |
 
@@ -307,9 +309,9 @@ One row, `components/item-card.slint`, used by the Panel, the Picker and the Mai
 ### Main window (3-pane)
 | Zone | Width | Content |
 |---|---|---|
-| Sidebar | 232 (resizable 200–320), on Mica | Search, Recent, Pinned, Boards ▸ Lists, Tags, Trash |
-| Item list | flex, min 320 | toolbar (view, sort, filter) + ItemCards / tiles. Toolbar controls are 32px tall; as the item area (less the caption strip, at 100% text size) narrows, the toolbar sheds content before it shrinks a target: the Ctrl K chips go below 736px, the Commands label below 658px, the View label below 608px (icon-only, tooltips "Commands (Ctrl+K)", "View"), and the three view toggles below 574px (the View menu then lists all three). The search field takes the rest and every control keeps a 4px gap or more. |
-| Detail | 400 (resizable 320–640) | preview, editor, metadata |
+| Sidebar | 232 (resizable 200–320), on Mica; folds to a 48px rail (Ctrl+B or the toggle at the right of its header), and the toggle is always visible: below 720px it opens the full sidebar as a drawer | Search, Recent, Pinned, Boards ▸ Lists, Tags, Trash |
+| Item list | flex, min 320 | toolbar (view, sort, filter) + ItemCards / tiles. Toolbar controls are 32px tall; as the item area (less the caption strip, at 100% text size) narrows, the toolbar sheds content before it shrinks a target: the Ctrl K chips go below 854px, the Commands label below 776px, the View label below 726px (icon-only, tooltips "Commands (Ctrl+K)", "View"), and the three view toggles below 692px (the View menu then lists all three). Below 480px the Panel button, Undo and Redo go and New item is icon-only. The search field takes the rest, never under 150px x text scale, and every control keeps a 4px gap or more. All thresholds and the window minimum (480x360) scale with the text size. |
+| Detail | 360, shown from 1072 window width at 100% text size (never narrower than the list's 480) | Preview (text or picture) and metadata of the item under the cursor; View menu toggle, kept in settings |
 
 ### Shortcut conventions (Panel and Main window)
 
@@ -364,7 +366,7 @@ Layering: window → cards → lifted (drag) → popovers/menus → toasts → c
 | Panel | < 300 | New and Open Snipdeck go icon-only; Compact drops the Edit action (it stays in More); Cards fall to one column below 288. Title column 170 at 260 |
 | Panel | docked full-height | Pinned strip wraps to 2 rows max, then scrolls |
 | Main | < 960 | Detail becomes an overlay sheet from the right (400px) |
-| Main | < 720 | Sidebar collapses to a 48px icon rail |
+| Main | < 720 | Sidebar collapses to a 48px icon rail (scaled with the text size). The toggle at the top of the rail, and Ctrl+B, open the full sidebar as a drawer over the list with a 40% scrim; Esc, a click on the scrim or choosing an item closes it. Focus moves into the drawer and returns to the toggle. Settings and Help stack in a column on the rail, so neither reaches the status line |
 | All | Windows text scale 100–225% | Layout grows. Rows never truncate the title to < 12 chars; the preview truncates first |
 | All | High contrast mode | Switch to system colours (`SystemColors`); keep 1px borders on everything |
 | All | Reduced motion | All durations 0, except ≤ 90ms opacity fades |

@@ -180,7 +180,7 @@ pub enum ListMenuEntry {
     Separator,
     /// "Sort by": the list orders itself so. The Panel's `Menu` has no sub-menus, so the three
     /// orders are three rows under a line; the open list's own is checked.
-    SortBy(snipdeck_core::ListSort),
+    SortBy(snipdeck_core::Sort),
     /// "Copy as CSS variables": the list's colours as a `:root` block (disabled while it holds none).
     CopyCss,
 }
@@ -190,9 +190,9 @@ pub const LIST_MENU: [ListMenuEntry; 8] = [
     ListMenuEntry::Edit,
     ListMenuEntry::Delete,
     ListMenuEntry::Separator,
-    ListMenuEntry::SortBy(snipdeck_core::ListSort::Manual),
-    ListMenuEntry::SortBy(snipdeck_core::ListSort::MostUsed),
-    ListMenuEntry::SortBy(snipdeck_core::ListSort::RecentlyUsed),
+    ListMenuEntry::SortBy(snipdeck_core::Sort::MANUAL),
+    ListMenuEntry::SortBy(snipdeck_core::Sort::MOST_USED),
+    ListMenuEntry::SortBy(snipdeck_core::Sort::RECENTLY_USED),
     ListMenuEntry::Separator,
     ListMenuEntry::CopyCss,
 ];
@@ -369,11 +369,11 @@ where
 
     /// The row of item `id` in the list or the pinned strip.
     fn menu_row(&self, id: ItemId) -> Option<crate::panel::Row> {
-        self.model
-            .rows()
-            .into_iter()
-            .chain(self.model.pinned())
+        let rows = self.model.rows();
+        rows.iter()
             .find(|r| r.id == id)
+            .cloned()
+            .or_else(|| self.model.pinned().into_iter().find(|r| r.id == id))
     }
 
     /// The rows of the item menu for `id`.
@@ -446,7 +446,7 @@ where
         let rows = if in_strip {
             self.model.pinned()
         } else {
-            self.model.rows()
+            self.model.rows().to_vec()
         };
         if let Some(row) = rows.get(index).filter(|r| !r.deleted_pending) {
             self.menu_targets = if in_strip {
@@ -706,16 +706,18 @@ where
     pub(super) fn set_item_pinned(&mut self, id: ItemId, pin: bool) {
         let now = self.clock.now();
         let mut changes = Vec::new();
-        let done = self.index_cache.edit_item(&mut self.store, id, |store| {
-            store.atomically(|b| {
-                changes.clear();
-                let before = b.item(id)?;
-                let mut item = before.clone();
-                item.pinned = pin;
-                item.updated_at = now;
-                super::history_ctl::update_recorded(b, &before, &item, &mut changes)
-            })
-        });
+        let done = self
+            .index_cache
+            .edit_item_meta(&mut self.store, id, |store| {
+                store.atomically(|b| {
+                    changes.clear();
+                    let before = b.item(id)?;
+                    let mut item = before.clone();
+                    item.pinned = pin;
+                    item.updated_at = now;
+                    super::history_ctl::update_recorded(b, &before, &item, &mut changes)
+                })
+            });
         match done {
             Ok(()) => {
                 self.record_step(crate::history::Action::Pin, changes);

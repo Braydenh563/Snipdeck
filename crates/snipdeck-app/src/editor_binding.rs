@@ -18,9 +18,10 @@ use std::{
 };
 
 use slint::{
-    CloseRequestResponse, ComponentHandle, SharedPixelBuffer, SharedString,
+    CloseRequestResponse, ComponentHandle, Model, SharedPixelBuffer, SharedString,
     winit_030::WinitWindowAccessor,
 };
+use snipdeck_core::{CaseMode, TriggerEnd, text_tools};
 use snipdeck_platform::{
     file_dialog::PickKind,
     pipeline::{Clipboard, Keyboard, Timing},
@@ -32,13 +33,18 @@ use crate::{
     controller::{Controller, HelpTopic, Library},
     drafts::AUTOSAVE_EVERY,
     host::ClipboardText,
-    item_editor::{EditorInput, EditorProblem, ItemEditorView, kind_at, kind_index},
+    item_editor::{self, EditorInput, EditorProblem, ItemEditorView, kind_at, kind_index},
     main_binding::{create_window, set_look},
     native_window, wording,
 };
 
 /// The editor's width, logical pixels (the window's preferred width in editors.slint).
 const EDITOR_WIDTH: f32 = 560.0;
+
+/// The index of `value` in `all` (0 when it is not there), for a choice list.
+fn position<T: PartialEq>(all: &[T], value: &T) -> i32 {
+    to_i32(all.iter().position(|v| v == value).unwrap_or(0))
+}
 
 /// Records `now` as the shown state of More options; true when it differs from the last one.
 fn more_changed(last: &Cell<bool>, now: bool) -> bool {
@@ -139,6 +145,16 @@ where
             }
         });
         register_redraw(&core.redraw);
+        let weak = Rc::downgrade(&core);
+        this.borrow_mut().set_editor_text_source(Box::new(move || {
+            let core = weak.upgrade()?;
+            let window = core
+                .window
+                .borrow()
+                .as_ref()
+                .map(ComponentHandle::clone_strong)?;
+            Some(read_input(&window))
+        }));
         EditorBinding { core }
     }
 }
@@ -183,6 +199,11 @@ where
             view.reduced_motion,
         );
         window.set_dark(view.dark);
+        let [choice, limits, escapes, transforms] = wording::template_help_texts(&window);
+        window.set_choice_help(choice.into());
+        window.set_limits_help(limits.into());
+        window.set_escapes_help(escapes.into());
+        window.set_transforms_help(transforms.into());
         let fresh = view.seq != self.seq.get();
         {
             let mut shown = self.tags_shown.borrow_mut();
@@ -310,10 +331,116 @@ where
             };
             core.show_preview(&w);
         });
+        let weak = w.as_weak();
+        w.on_part_requested(move |target| {
+            if let Some(w) = weak.upgrade() {
+                show_part(&w, index(target));
+            }
+        });
+        let weak = w.as_weak();
+        w.on_content_edited(move || {
+            // A paste made the field longer than a part: cut it, so the next key press is cheap.
+            let Some(w) = weak.upgrade() else {
+                return;
+            };
+            if w.get_content().len() > 2 * item_editor::PART_BYTES {
+                show_part(&w, index(w.get_part_index()));
+            }
+        });
+        let core = Rc::downgrade(self);
+        w.on_private_copied(move |text, start, end| {
+            if let Some(core) = core.upgrade() {
+                core.act(|ctl| ctl.copy_private_selection(text.as_str(), start, end));
+            }
+        });
+        let core = Rc::downgrade(self);
+        w.on_private_cut(move |text, start, end| {
+            let rest = core.upgrade().and_then(|core| {
+                core.act(|ctl| ctl.cut_private_selection(text.as_str(), start, end))
+            });
+            slint::ModelRc::new(slint::VecModel::from(
+                rest.into_iter()
+                    .map(slint::SharedString::from)
+                    .collect::<Vec<_>>(),
+            ))
+        });
+        let core = Rc::downgrade(self);
+        let weak = w.as_weak();
+        w.on_save_anyway_requested(move || {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            if let Some(w) = weak.upgrade() {
+                let input = read_input(&w);
+                core.act(|ctl| ctl.item_editor_save_anyway(&input));
+            }
+        });
+        let core = Rc::downgrade(self);
+        w.on_open_duplicate_requested(move || {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            core.act(Controller::item_editor_open_duplicate);
+        });
         let core = Rc::downgrade(self);
         w.on_paste_requested(move || {
             core.upgrade()
                 .is_some_and(|core| core.act(Controller::refuse_pasted_image))
+        });
+    }
+
+    /// The Trigger field and its two choices (when it fires, which letter case it takes).
+    fn wire_trigger(self: &Rc<Self>, w: &ui::ItemEditor) {
+        let core = Rc::downgrade(self);
+        let weak = w.as_weak();
+        w.on_trigger_edited(move |text| {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            core.controller
+                .borrow_mut()
+                .item_editor_set_trigger(text.as_str());
+            if let Some(w) = weak.upgrade() {
+                core.show_trigger_notes(&w);
+            }
+        });
+        let core = Rc::downgrade(self);
+        let weak = w.as_weak();
+        w.on_trigger_end_chosen(move |index| {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            if let Some(end) = usize::try_from(index)
+                .ok()
+                .and_then(|i| TriggerEnd::ALL.get(i).copied())
+            {
+                core.controller
+                    .borrow_mut()
+                    .item_editor_set_trigger_end(end);
+            }
+            if let Some(w) = weak.upgrade() {
+                w.set_trigger_end_index(index);
+                core.show_trigger_notes(&w);
+            }
+        });
+        let core = Rc::downgrade(self);
+        let weak = w.as_weak();
+        w.on_trigger_case_chosen(move |index| {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            if let Some(case) = usize::try_from(index)
+                .ok()
+                .and_then(|i| CaseMode::ALL.get(i).copied())
+            {
+                core.controller
+                    .borrow_mut()
+                    .item_editor_set_trigger_case(case);
+            }
+            if let Some(w) = weak.upgrade() {
+                w.set_trigger_case_index(index);
+                core.show_trigger_notes(&w);
+            }
         });
     }
 
@@ -357,6 +484,7 @@ where
             core.act(Controller::item_editor_delete);
         });
         self.wire_content(w);
+        wire_text_tools(w);
         let core = Rc::downgrade(self);
         let weak = w.as_weak();
         w.on_more_toggled(move |open| {
@@ -368,15 +496,7 @@ where
             }
             core.act(|ctl| ctl.set_editor_more_open(open));
         });
-        let core = Rc::downgrade(self);
-        w.on_trigger_edited(move |text| {
-            let Some(core) = core.upgrade() else {
-                return;
-            };
-            core.controller
-                .borrow_mut()
-                .item_editor_set_trigger(text.as_str());
-        });
+        self.wire_trigger(w);
         let core = Rc::downgrade(self);
         w.on_edited(move || {
             let Some(core) = core.upgrade() else {
@@ -420,6 +540,19 @@ where
 
     /// Preview was switched on: the card, the sample result and the link are built from the fields
     /// as they are now (nothing is saved) and put into the window.
+    /// Shows what is wrong with the trigger as it stands, as it is typed (before Save).
+    fn show_trigger_notes(&self, w: &ui::ItemEditor) {
+        let (problem, note) = self.controller.borrow().item_editor_trigger_notes();
+        let text = |p: &Option<EditorProblem>| -> SharedString {
+            p.as_ref()
+                .map(|problem| wording::editor_problem_text(w, problem))
+                .unwrap_or_default()
+                .into()
+        };
+        w.set_trigger_error(text(&problem));
+        w.set_trigger_warning(text(&note));
+    }
+
     fn show_preview(&self, w: &ui::ItemEditor) {
         let input = read_input(w);
         let new_id = w.get_preview_new_id();
@@ -441,8 +574,9 @@ where
         set_preview(w, card.as_ref());
     }
 
-    /// Browse: the file dialog runs with no borrow of the controller held (it has its own
-    /// message loop), then its answer goes into the path field.
+    /// Browse: the file dialog runs on a thread of its own with no borrow of the controller held
+    /// (timers and hotkeys keep running), then its answer comes back to the UI thread and goes
+    /// into the path field.
     fn browse(self: &Rc<Self>, w: &ui::ItemEditor) {
         let Some(picker) = self.controller.borrow().file_picker() else {
             return;
@@ -452,14 +586,60 @@ where
         } else {
             PickKind::Any
         };
-        let answer = picker.pick(kind, native_window::handle_of(w.window()));
-        let path = self.controller.borrow_mut().item_editor_picked(answer);
-        if let Some(path) = path {
-            w.set_source_path(path.into());
-            w.invoke_mark_dirty();
-        }
-        redraw_all();
+        let this = Rc::clone(self);
+        let weak = w.as_weak();
+        let back =
+            crate::ui_thread::back_on_ui(move |answer: snipdeck_platform::file_dialog::Answer| {
+                let path = this.controller.borrow_mut().item_editor_picked(answer);
+                if let Some(path) = path
+                    && let Some(w) = weak.upgrade()
+                {
+                    w.set_source_path(path.into());
+                    w.invoke_mark_dirty();
+                }
+                redraw_all();
+            });
+        picker.pick(kind, native_window::handle_of(w.window()), Box::new(back));
     }
+}
+
+/// The text tools change the whole text in the window (the controller sees it at the next save, as it sees typing);
+/// the counts and the line numbers are answers for the window's bindings.
+fn wire_text_tools(w: &ui::ItemEditor) {
+    w.on_match_count(|text, find, match_case| {
+        to_i32(text_tools::count_matches(
+            text.as_str(),
+            find.as_str(),
+            match_case,
+        ))
+    });
+    w.on_numbered(|text| text_tools::line_numbers(text.as_str()).into());
+    let weak = w.as_weak();
+    w.on_transform_requested(move |i| {
+        let Some(w) = weak.upgrade() else {
+            return;
+        };
+        if let Some(tool) = usize::try_from(i)
+            .ok()
+            .and_then(|i| text_tools::Transform::ALL.get(i))
+        {
+            let text = tool.apply(w.get_content().as_str());
+            w.set_content(text.into());
+        }
+    });
+    let weak = w.as_weak();
+    w.on_replace_all_requested(move |find, with, match_case| {
+        let Some(w) = weak.upgrade() else {
+            return;
+        };
+        let (text, _) = text_tools::replace_all(
+            w.get_content().as_str(),
+            find.as_str(),
+            with.as_str(),
+            match_case,
+        );
+        w.set_content(text.into());
+    });
 }
 
 /// A placeholder chip inserts its token at the caret, then the caret goes after it.
@@ -484,13 +664,60 @@ fn read_input(w: &ui::ItemEditor) -> EditorInput {
     EditorInput {
         kind: kind_at(index(w.get_kind_index())),
         title: w.get_item_title().to_string(),
-        content: w.get_content().to_string(),
+        content: whole_text(w),
         sensitive: w.get_sensitive(),
         always_plain: w.get_always_plain(),
         list_index: index(w.get_list_index()),
         source_path: w.get_source_path().to_string(),
         label: crate::binding::label_of(w.get_label_index()),
     }
+}
+
+/// The whole text: the field is one part of it while the text spans several.
+fn whole_text(w: &ui::ItemEditor) -> String {
+    let parts = w.get_parts();
+    let shown = w.get_content();
+    if !w.get_content_large() || parts.row_count() <= 1 {
+        return shown.to_string();
+    }
+    let at = index(w.get_part_index());
+    let mut text =
+        String::with_capacity(parts.iter().map(|p| p.len()).sum::<usize>() + shown.len());
+    for (i, part) in parts.iter().enumerate() {
+        text.push_str(if i == at {
+            shown.as_str()
+        } else {
+            part.as_str()
+        });
+    }
+    text
+}
+
+/// Shows part `target` of the text (a part number of the parts as they are now). The field goes
+/// back into its place first, and is cut again if a paste made it longer than a part, which can
+/// move the later parts.
+fn show_part(w: &ui::ItemEditor, target: usize) {
+    let mut parts: Vec<String> = w.get_parts().iter().map(|p| p.to_string()).collect();
+    let at = index(w.get_part_index());
+    let shown = w.get_content().to_string();
+    let made = item_editor::replace_part(&mut parts, at, &shown);
+    let target = if target > at {
+        target + made - 1
+    } else {
+        target
+    };
+    set_parts(w, &parts, target);
+}
+
+/// Puts `parts` in the window with part `shown` in the field.
+fn set_parts(w: &ui::ItemEditor, parts: &[String], shown: usize) {
+    let shown = shown.min(parts.len().saturating_sub(1));
+    let bytes: usize = parts.iter().map(String::len).sum();
+    w.set_content_large(parts.len() > 1);
+    w.set_content_size(wording::size_text(w, u64::try_from(bytes).unwrap_or(u64::MAX)).into());
+    w.set_parts(model(parts.iter().map(|p| SharedString::from(p.as_str()))));
+    w.set_part_index(to_i32(shown));
+    w.set_content(parts.get(shown).map_or("", String::as_str).into());
 }
 
 /// The parts of the view that follow the controller on every redraw: problems, the tag chips,
@@ -502,11 +729,22 @@ fn apply_state(w: &ui::ItemEditor, view: &ItemEditorView) {
             .unwrap_or_default()
             .into()
     };
+    w.set_title_max(to_i32(crate::item_editor::TITLE_MAX_CHARS));
     w.set_title_error(text(&view.title_problem));
     w.set_content_error(text(&view.content_problem));
     w.set_source_error(text(&view.source_problem));
     w.set_privacy_error(text(&view.privacy_problem));
     w.set_trigger_error(text(&view.trigger_problem));
+    w.set_trigger_warning(text(&view.trigger_note));
+    w.set_duplicate_body(
+        view.duplicate
+            .as_ref()
+            .map(|d| wording::duplicate_text(w, d))
+            .unwrap_or_default()
+            .into(),
+    );
+    w.set_trigger_end_index(position(&TriggerEnd::ALL, &view.trigger_options.end));
+    w.set_trigger_case_index(position(&CaseMode::ALL, &view.trigger_options.case));
     w.set_banner(text(&view.banner));
     w.set_can_browse(view.can_browse);
     w.set_restored(view.restored);
@@ -561,7 +799,8 @@ fn fill(w: &ui::ItemEditor, view: &ItemEditorView) {
     w.set_more_open(view.more_open);
     w.set_kind_index(to_i32(kind_index(fields.kind)));
     w.set_item_title(fields.title.as_str().into());
-    w.set_content(fields.content.as_str().into());
+    set_parts(w, &item_editor::split_parts(&fields.content), 0);
+    w.set_content_changed(false);
     w.set_sensitive(fields.sensitive);
     w.set_always_plain(fields.always_plain);
     w.set_trigger(view.trigger.as_str().into());
@@ -573,13 +812,6 @@ fn fill(w: &ui::ItemEditor, view: &ItemEditorView) {
     ));
     w.set_list_index(to_i32(fields.list_index));
     w.set_label_index(crate::binding::label_index(fields.label));
-    w.set_content_large(view.large.is_some());
-    w.set_content_size(
-        view.large
-            .map(|bytes| wording::size_text(w, bytes))
-            .unwrap_or_default()
-            .into(),
-    );
     if let Some(a) = &view.attachment {
         w.set_attachment_name(wording::attachment_name_text(w, a).into());
         w.set_attachment_detail(wording::attachment_detail_text(w, a).into());
@@ -595,6 +827,7 @@ fn fill(w: &ui::ItemEditor, view: &ItemEditorView) {
     }
     w.set_discard_open(false);
     w.set_tags_open(false);
+    w.invoke_reset_tools();
     // A fresh editor opens on the form.
     w.set_preview_on(false);
     w.invoke_mark_clean();

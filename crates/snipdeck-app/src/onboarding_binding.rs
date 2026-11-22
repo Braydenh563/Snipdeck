@@ -21,7 +21,7 @@ use crate::{
     binding::{Loggable, Shown, model, redraw_all, register_redraw, to_i32},
     controller::Controller,
     host::ClipboardText,
-    hotkey_health::{self, HotkeyHealth},
+    hotkey_health::HotkeyHealth,
     main_binding::{create_window, set_look},
     native_window::fit_when_settled,
     settings::{HotkeyAction, Hotkeys},
@@ -146,7 +146,7 @@ where
                     let alternatives = if !value.is_empty()
                         && (!conflict.is_empty() || matches!(health, HotkeyHealth::Failed(_)))
                     {
-                        hotkey_health::alternatives(&settings.hotkeys)
+                        self.host.free_alternatives(&settings.hotkeys)
                     } else {
                         Vec::new()
                     };
@@ -182,8 +182,8 @@ where
         window.set_autostart(settings.autostart);
         window.set_close_to_tray(settings.close_to_tray);
         window.set_recent_history(settings.recent_history);
-        window.set_recent_max_entries(crate::recent::max_entries_count());
-        window.set_recent_max_days(crate::recent::max_age_days());
+        window.set_recent_max_entries(i32::try_from(settings.recent_max_entries).unwrap_or(200));
+        window.set_recent_max_days(i32::try_from(settings.recent_max_days).unwrap_or(7));
         window.set_dock_edge_index(dock_edge_index(controller.dock_edge()));
         window.set_notice(match &*self.autostart_failed.borrow() {
             Some(message) => wording::toast_text(&window, message).into(),
@@ -264,18 +264,23 @@ where
 
     fn autostart_toggled(self: &Rc<Self>, on: bool) {
         let hidden = !self.controller.borrow().settings().panel_start_visible;
-        match self.host.set_autostart(on, hidden) {
-            Ok(()) => {
-                *self.autostart_failed.borrow_mut() = None;
-                self.act(|ctl| ctl.update_settings(|s| s.autostart = on));
-            }
-            Err(error) => {
-                crate::trace!("autostart {on}: {error}");
-                *self.autostart_failed.borrow_mut() = Some(error.toast());
-                // The redraw puts the switch the user flipped back to the stored value.
-                redraw_all();
-            }
-        }
+        let core = Rc::clone(self);
+        self.host.set_autostart(
+            on,
+            hidden,
+            Box::new(move |result| match result {
+                Ok(()) => {
+                    *core.autostart_failed.borrow_mut() = None;
+                    core.act(|ctl| ctl.update_settings(|s| s.autostart = on));
+                }
+                Err(error) => {
+                    crate::trace!("autostart {on}: {error}");
+                    *core.autostart_failed.borrow_mut() = Some(error.toast());
+                    // The redraw puts the switch the user flipped back to the stored value.
+                    redraw_all();
+                }
+            }),
+        );
     }
 
     // ---- Back, Next, Skip ------------------------------------------------------------------

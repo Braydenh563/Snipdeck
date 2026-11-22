@@ -187,7 +187,7 @@ fn search_field_role_label_and_placeholder() {
     let search = find(&ui, "Search", AccessibleRole::TextInput);
     assert_eq!(
         search.accessible_placeholder_text().as_deref(),
-        Some("Search snippets")
+        Some("Search items")
     );
     let filled = find(&ui, "Search filled", AccessibleRole::TextInput);
     assert_eq!(filled.accessible_value().as_deref(), Some("invoice"));
@@ -686,7 +686,7 @@ fn a_closed_dialog_is_gone_and_holds_no_keys() {
 
 fn empty_state_has_heading_sentence_and_one_primary_action() {
     let ui = start(EmptyStateGallery::new);
-    for heading in ["No snippets yet", "No lists on this board", "Nothing found", "Inbox is empty"] {
+    for heading in ["No items yet", "No lists on this board", "Nothing found", "Inbox is empty"] {
         assert!(
             !missing(&ui, heading, AccessibleRole::Text),
             "heading {heading:?}"

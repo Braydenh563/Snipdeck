@@ -89,7 +89,8 @@ where
             | MainAction::DeleteForever
             | MainAction::Move
             | MainAction::Tag
-            | MainAction::PasteAs => {}
+            | MainAction::PasteAs
+            | MainAction::OpenLink => {}
         }
     }
 
@@ -179,11 +180,13 @@ where
                 self.set_main_sidebar_collapsed(!collapsed);
             }
             // Not the controller's: `MainBinding::run_command` handles both before it gets here
-            // (Search moves the window's focus, Tour opens the tour window). The arm stays only so
+            // (Search moves the window's focus, Tour opens the tour window, the group commands open a dialog). The arm stays only so
             // the match is exhaustive.
             // The item commands never get here (`item_action` took them).
             Command::Search
             | Command::Tour
+            | Command::ColourGroup
+            | Command::NestGroup
             | Command::UseItem
             | Command::CopyItem
             | Command::DuplicateItem

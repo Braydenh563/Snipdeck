@@ -126,27 +126,32 @@ pub fn rows(
                 ..Default::default()
             })
         });
-    commands::entries(&texts(window), &context(hotkeys, screen, offers), query)
-        .into_iter()
-        .map(|entry| {
-            let (mark_before, mark_text) = entry.mark.clone().unwrap_or_default();
-            let hint = match entry.hint {
-                Some(commands::Hint::SymbolsTabOff) => words.get_hint_symbols_off(),
-                Some(commands::Hint::ColoursTabOff) => words.get_hint_colours_off(),
-                None => "".into(),
-            };
-            ui::PaletteRow {
-                id: entry.command.id(),
-                label: entry.label.as_str().into(),
-                keys: model(entry.keys.iter().map(|k| k.as_str().into())),
-                spoken: entry.spoken.as_str().into(),
-                mark_before: mark_before.into(),
-                mark_text: mark_text.into(),
-                hint,
-            }
-        })
-        .chain(place_rows)
-        .collect()
+    commands::entries(
+        &texts(window),
+        &crate::wording::key_words(window),
+        &context(hotkeys, screen, offers),
+        query,
+    )
+    .into_iter()
+    .map(|entry| {
+        let (mark_before, mark_text) = entry.mark.clone().unwrap_or_default();
+        let hint = match entry.hint {
+            Some(commands::Hint::SymbolsTabOff) => words.get_hint_symbols_off(),
+            Some(commands::Hint::ColoursTabOff) => words.get_hint_colours_off(),
+            None => "".into(),
+        };
+        ui::PaletteRow {
+            id: entry.command.id(),
+            label: entry.label.as_str().into(),
+            keys: model(entry.keys.iter().map(|k| k.as_str().into())),
+            spoken: entry.spoken.as_str().into(),
+            mark_before: mark_before.into(),
+            mark_text: mark_text.into(),
+            hint,
+        }
+    })
+    .chain(place_rows)
+    .collect()
 }
 
 /// Fills the palette of `window` with the rows for `query`.

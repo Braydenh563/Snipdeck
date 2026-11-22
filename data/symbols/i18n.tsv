@@ -1,0 +1,67 @@
+# Translations of the English kaomoji group names, kaomoji names and tags, icon category names and the most used icon keywords (TOOLS-47).
+# Columns (tab-separated): English term, then de, es, fr, ja, pt, zh. Every cell filled. Terms must occur in the data (the generator refuses unknown ones).
+# Searching in a language also finds the translation; the translated name shows in the grid, the footer and the screen-reader label.
+joy	Freude	alegría	joie	喜び	alegria	喜悦
+love	Liebe	amor	amour	愛	amor	爱
+sad	traurig	triste	triste	悲しい	triste	悲伤
+angry	wütend	enfado	colère	怒り	raiva	生气
+surprise	Überraschung	sorpresa	surprise	驚き	surpresa	惊讶
+shrug	Achselzucken	encogerse de hombros	haussement d'épaules	肩をすくめる	dar de ombros	耸肩
+greet	Gruß	saludo	salutation	あいさつ	saudação	问候
+sorry	Entschuldigung	perdón	désolé	ごめんね	desculpa	抱歉
+animals	Tiere	animales	animaux	動物	animais	动物
+actions	Aktionen	acciones	actions	アクション	ações	动作
+math & finance	Mathe und Finanzen	matemáticas y finanzas	maths et finance	数学と金融	matemática e finanças	数学与金融
+communication	Kommunikation	comunicación	communication	コミュニケーション	comunicação	通讯
+maps & travel	Karten und Reisen	mapas y viajes	cartes et voyages	地図と旅行	mapas e viagens	地图与旅行
+media	Medien	multimedia	médias	メディア	mídia	媒体
+system & devices	System und Geräte	sistema y dispositivos	système et appareils	システムとデバイス	sistema e dispositivos	系统与设备
+games	Spiele	juegos	jeux	ゲーム	jogos	游戏
+design	Design	diseño	design	デザイン	design	设计
+brands	Marken	marcas	marques	ブランド	marcas	品牌
+health & wellness	Gesundheit	salud y bienestar	santé et bien-être	健康	saúde e bem-estar	健康
+office & editing	Büro und Bearbeitung	oficina y edición	bureau et édition	オフィスと編集	escritório e edição	办公与编辑
+objects	Objekte	objetos	objets	オブジェクト	objetos	物体
+arrows	Pfeile	flechas	flèches	矢印	setas	箭头
+technology & development	Technik und Entwicklung	tecnología y desarrollo	technologie et développement	テクノロジーと開発	tecnologia e desenvolvimento	技术与开发
+commerce	Handel	comercio	commerce	商取引	comércio	商务
+people	Menschen	personas	personnes	人	pessoas	人物
+nature	Natur	naturaleza	nature	自然	natureza	自然
+weather & nature	Wetter und Natur	clima y naturaleza	météo et nature	天気と自然	clima e natureza	天气与自然
+editor	Editor	editor	éditeur	エディター	editor	编辑器
+happy	glücklich	feliz	heureux	嬉しい	feliz	开心
+cute	niedlich	mono	mignon	かわいい	fofo	可爱
+wave	winken	saludar	saluer	手を振る	acenar	挥手
+tears	Tränen	lágrimas	larmes	涙	lágrimas	眼泪
+hello	hallo	hola	bonjour	こんにちは	olá	你好
+sweet	süß	dulce	doux	甘い	doce	甜蜜
+tired	müde	cansado	fatigué	疲れた	cansado	疲惫
+shock	Schock	impacto	choc	ショック	choque	震惊
+cat	Katze	gato	chat	猫	gato	猫
+annoyed	genervt	molesto	agacé	いらいら	irritado	烦躁
+shy	schüchtern	tímido	timide	恥ずかしい	tímido	害羞
+please	bitte	por favor	s'il vous plaît	お願い	por favor	拜托
+confused	verwirrt	confundido	confus	困惑	confuso	困惑
+surprised	overrascht	sorprendido	surpris	驚き	surpreso	惊讶
+sleepy	schläfrig	somnoliento	somnolent	眠い	sonolento	困倦
+sigh	seufzen	suspiro	soupir	ため息	suspiro	叹气
+nervous	nervös	nervioso	nerveux	緊張	nervoso	紧张
+music	Musik	música	musique	音楽	música	音乐
+laugh	lachen	reír	rire	笑う	rir	大笑
+hug	Umarmung	abrazo	câlin	ハグ	abraço	拥抱
+determined	entschlossen	determinado	déterminé	決意	determinado	坚定
+awkward	peinlich	incómodo	gêné	気まずい	constrangido	尴尬
+amazed	begeistert	asombrado	émerveillé	感動	admirado	惊叹
+whatever	egal	lo que sea	peu importe	どうでもいい	faz diferença	随便
+smug	selbstgefällig	presumido	suffisant	ドヤ顔	convencido	得意
+smile	lächeln	sonrisa	sourire	笑顔	sorriso	微笑
+rage	Wut	rabia	rage	激怒	raiva	暴怒
+neutral	neutral	neutral	neutre	無表情	neutro	平静
+mad	sauer	enfadado	fâché	怒る	bravo	生气
+fight	kämpfen	pelea	combat	戦う	luta	战斗
+cuddle	kuscheln	mimos	câliner	すりすり	aconchego	依偎
+cry	weinen	llorar	pleurer	泣く	chorar	哭
+blush	erröten	sonrojo	rougir	赤面	corar	脸红
+bird	Vogel	pájaro	oiseau	鳥	pássaro	鸟
+bear	Bär	oso	ours	クマ	urso	熊
+zzz	zzz	zzz	zzz	すやすや	zzz	呼呼

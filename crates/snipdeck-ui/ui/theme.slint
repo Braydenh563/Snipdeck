@@ -61,12 +61,10 @@ export global Type {
     out property <length> md: 14px * SystemLook.text-scale;
     out property <length> lg: 16px * SystemLook.text-scale;
     out property <length> xl: 20px * SystemLook.text-scale;
-    out property <length> xxl: 24px * SystemLook.text-scale;
     out property <length> line-xs: 16px * SystemLook.text-scale;
     out property <length> line-sm: 16px * SystemLook.text-scale;
     out property <length> line-base: 20px * SystemLook.text-scale;
     out property <length> line-lg: 24px * SystemLook.text-scale;
-    out property <length> line-xl: 28px * SystemLook.text-scale;
     out property <int> regular: 400;
     out property <int> medium: 500;
     out property <int> semibold: 600;
@@ -192,6 +190,23 @@ export global Theme {
 // Used for tab underlines, sidebar marks, list labels and Swatch. Never as a fill behind text.
 // ---------------------------------------------------------------------------------------------
 export enum ListHue { blue, teal, green, amber, orange, red, rose, violet, slate }
+
+// The one named palette (SPEC 5.4, DESIGN.md §2): these nine names are the only names a colour has, on item labels,
+// list and board colours and the accent choice. Each surface offers a subset (labels have no Rose: the library file
+// restricts the stored label keys; accents leave out Orange, Red and Slate, which read as warning or neutral).
+export global HueNames {
+    pure public function name(hue: ListHue) -> string {
+        if (hue == ListHue.blue) { return @tr("Blue"); }
+        if (hue == ListHue.teal) { return @tr("Teal"); }
+        if (hue == ListHue.green) { return @tr("Green"); }
+        if (hue == ListHue.amber) { return @tr("Amber"); }
+        if (hue == ListHue.orange) { return @tr("Orange"); }
+        if (hue == ListHue.red) { return @tr("Red"); }
+        if (hue == ListHue.rose) { return @tr("Rose"); }
+        if (hue == ListHue.violet) { return @tr("Violet"); }
+        return @tr("Slate");
+    }
+}
 
 export global ListAccent {
     pure public function color(hue: ListHue) -> color {

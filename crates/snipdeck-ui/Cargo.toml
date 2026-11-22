@@ -25,6 +25,8 @@ serde_json.workspace = true
 slint-build.workspace = true
 
 [dev-dependencies]
+# Reads scripts/glossary.json in the translation tests.
+serde_json.workspace = true
 # Accessibility-tree queries and synthetic clicks (`ElementHandle`) for logic tests.
 i-slint-backend-testing = "=1.18.1"
 # Real emoji art and icons for the Symbols goldens.

@@ -17,8 +17,8 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 use snipdeck_core::{
-    BlobRef, Board, Content, FileEntry, Format, FormatKind, Formats, Group, Item, ItemId, ItemKind,
-    ItemLabel, List, ListAccent, ListIcon, ListSort, ListView, Name, Placement, Tag, TagId,
+    BlobRef, Board, Content, FileEntry, Format, FormatKind, Formats, Group, GroupId, Item, ItemId,
+    ItemKind, ItemLabel, List, ListAccent, ListIcon, ListView, Name, Placement, Sort, Tag, TagId,
     Timestamp, Trigger,
 };
 use snipdeck_store::crypto::{DataKey, Slot};
@@ -147,17 +147,27 @@ impl PlanItem {
     }
 }
 
+/// A group of a list in a plan.
+#[derive(Debug)]
+pub(crate) struct PlanGroup {
+    pub name: Name,
+    pub collapsed: bool,
+    pub colour: Option<ListAccent>,
+    /// The group it is nested in, an index into [`PlanList::groups`] (always an earlier one).
+    pub parent: Option<usize>,
+}
+
 #[derive(Debug)]
 pub(crate) struct PlanList {
     pub name: Name,
     pub accent: Option<ListAccent>,
     pub icon: Option<ListIcon>,
     pub view: ListView,
-    pub sort: ListSort,
+    pub sort: Sort,
     pub created_at: Timestamp,
     pub updated_at: Timestamp,
-    /// Name and collapsed flag of each group; items point at them by index.
-    pub groups: Vec<(Name, bool)>,
+    /// Each group; items point at them by index.
+    pub groups: Vec<PlanGroup>,
     pub items: Vec<PlanItem>,
 }
 
@@ -168,7 +178,7 @@ impl PlanList {
             accent: None,
             icon: None,
             view: ListView::Comfortable,
-            sort: ListSort::Manual,
+            sort: Sort::MANUAL,
             created_at: now,
             updated_at: now,
             groups: Vec::new(),
@@ -180,6 +190,8 @@ impl PlanList {
 #[derive(Debug)]
 pub(crate) struct PlanBoard {
     pub name: Name,
+    pub accent: Option<ListAccent>,
+    pub icon: Option<ListIcon>,
     pub created_at: Timestamp,
     pub updated_at: Timestamp,
     pub lists: Vec<PlanList>,
@@ -188,7 +200,13 @@ pub(crate) struct PlanBoard {
 #[derive(Debug, Default)]
 pub(crate) struct Plan {
     pub tags: Vec<Name>,
+    /// The colour of each tag, by the same index; a tag past the end has none.
+    pub tag_colours: Vec<Option<ItemLabel>>,
+    /// The tag each tag is nested under, as an index into `tags`; a tag past the end is top-level.
+    pub tag_parents: Vec<Option<usize>>,
     pub boards: Vec<PlanBoard>,
+    /// A restore: boards and lists the library already has (by name) are reused, not added.
+    pub reuse_existing: bool,
 }
 
 impl Plan {
@@ -199,24 +217,6 @@ impl Plan {
             .flat_map(|b| &b.lists)
             .map(|l| l.items.len())
             .sum()
-    }
-
-    /// Removes items whose content hash is in `known`, and adds the hashes of the rest, so an
-    /// item repeated within the import is dropped too. Lists keep their place, but a board left
-    /// without any item is dropped, so an import with nothing new creates nothing. Returns how
-    /// many items were dropped.
-    pub(crate) fn drop_duplicates(&mut self, known: &mut HashSet<[u8; 32]>) -> usize {
-        let mut dropped = 0;
-        for item_list in self.boards.iter_mut().flat_map(|b| &mut b.lists) {
-            let before = item_list.items.len();
-            item_list
-                .items
-                .retain(|item| known.insert(item.content_hash));
-            dropped += before - item_list.items.len();
-        }
-        self.boards
-            .retain(|b| b.lists.iter().any(|l| !l.items.is_empty()));
-        dropped
     }
 }
 
@@ -272,12 +272,12 @@ fn content_parts(content: &Content) -> ([u8; 32], u64) {
 /// Items stored in plain text are hashed from one pass over the tables
 /// ([`ItemRepo::plain_formats`]); only encrypted items are read one by one, as they need the
 /// data key.
-pub(crate) fn existing_hashes<L: ItemRepo>(lib: &L) -> Result<HashSet<[u8; 32]>> {
-    let mut known = HashSet::new();
+pub(crate) fn existing_hashes<L: ItemRepo>(lib: &L) -> Result<HashMap<ItemId, [u8; 32]>> {
+    let mut known = HashMap::new();
     let mut seen = HashSet::new();
     for (id, formats) in lib.plain_formats()? {
         seen.insert(id);
-        known.insert(hash_formats(&formats));
+        known.insert(id, hash_formats(&formats));
     }
     for item in lib.all_items()? {
         if seen.contains(&item.id) {
@@ -285,7 +285,7 @@ pub(crate) fn existing_hashes<L: ItemRepo>(lib: &L) -> Result<HashSet<[u8; 32]>>
         }
         match lib.formats(item.id) {
             Ok(formats) => {
-                known.insert(hash_formats(&formats));
+                known.insert(item.id, hash_formats(&formats));
             }
             // An encrypted item cannot be read while the library is locked. Skipping it only
             // means a duplicate of it is not recognised; refusing would stop a restore of the
@@ -340,18 +340,84 @@ pub(crate) fn apply<L: Library>(
     plan: &mut Plan,
     fetch: &mut dyn FnMut(&AssetRef) -> Result<Vec<u8>>,
     mut report: ImportReport,
-    dry_run: bool,
 ) -> Result<ImportReport> {
-    let written = lib.atomically(|batch| {
-        write(batch, plan, fetch, &mut report)?;
-        // A dry run does the real writes so its counts are exact, then fails the transaction
-        // so none of it (blob files included) remains.
-        if dry_run { Err(Error::DryRun) } else { Ok(()) }
-    });
-    match written {
-        Ok(()) | Err(Error::DryRun) => Ok(report),
-        Err(e) => Err(e),
+    lib.atomically(|batch| write(batch, plan, fetch, &mut report))?;
+    Ok(report)
+}
+
+/// The tags a write creates or finds: those a kept item uses and the tags above them, with each
+/// parent before its children (fewer ancestors first).
+fn tags_in_use(plan: &Plan) -> Vec<usize> {
+    // A restore (`reuse_existing`) keeps every tag; an import only those a kept item uses.
+    let mut used: HashSet<usize> = if plan.reuse_existing {
+        (0..plan.tags.len()).collect()
+    } else {
+        plan.boards
+            .iter()
+            .flat_map(|b| &b.lists)
+            .flat_map(|l| &l.items)
+            .flat_map(|i| i.tags.iter().copied())
+            .collect()
+    };
+    let parent_of = |index: usize| plan.tag_parents.get(index).copied().flatten();
+    for start in used.clone() {
+        let mut at = parent_of(start);
+        while let Some(index) = at {
+            if !used.insert(index) {
+                break;
+            }
+            at = parent_of(index);
+        }
     }
+    let mut order: Vec<usize> = used.iter().copied().collect();
+    let depth = |index: usize| {
+        let mut n = 0;
+        let mut at = parent_of(index);
+        while let Some(p) = at {
+            n += 1;
+            if n > 64 {
+                break;
+            }
+            at = parent_of(p);
+        }
+        n
+    };
+    order.sort_by_key(|i| (depth(*i), *i));
+    order
+}
+
+/// Creates the tags the plan needs (existing ones are reused by name and keep their place; the
+/// rest are created parent first); the plan's tag index to the library's id.
+fn write_tags(
+    lib: &mut Batch<'_>,
+    plan: &Plan,
+    report: &mut ImportReport,
+) -> Result<HashMap<usize, TagId>> {
+    let parent_of = |index: usize| plan.tag_parents.get(index).copied().flatten();
+    let order = tags_in_use(plan);
+    let mut by_key: HashMap<String, TagId> = lib
+        .tags()?
+        .into_iter()
+        .map(|t| (name_key(t.name.as_str()), t.id))
+        .collect();
+    let mut tag_ids: HashMap<usize, TagId> = HashMap::new();
+    for index in order {
+        let name = &plan.tags[index];
+        let key = name_key(name.as_str());
+        let id = if let Some(id) = by_key.get(&key) {
+            *id
+        } else {
+            let mut tag = Tag::new(name.clone());
+            tag.colour = plan.tag_colours.get(index).copied().flatten();
+            tag.parent = parent_of(index).and_then(|p| tag_ids.get(&p).copied());
+            lib.insert_tag(&tag)?;
+            by_key.insert(key, tag.id);
+            report.tags_added += 1;
+            tag.id
+        };
+        tag_ids.insert(index, id);
+    }
+    Ok(tag_ids)
 }
 
 fn write(
@@ -360,55 +426,52 @@ fn write(
     fetch: &mut dyn FnMut(&AssetRef) -> Result<Vec<u8>>,
     report: &mut ImportReport,
 ) -> Result<()> {
-    // Only tags that a kept item uses are created; existing tags are reused by name.
-    let used: HashSet<usize> = plan
-        .boards
-        .iter()
-        .flat_map(|b| &b.lists)
-        .flat_map(|l| &l.items)
-        .flat_map(|i| i.tags.iter().copied())
-        .collect();
-    let mut by_key: HashMap<String, TagId> = lib
-        .tags()?
-        .into_iter()
-        .map(|t| (name_key(t.name.as_str()), t.id))
-        .collect();
-    let mut tag_ids: HashMap<usize, TagId> = HashMap::new();
-    for (index, name) in plan
-        .tags
-        .iter()
-        .enumerate()
-        .filter(|(i, _)| used.contains(i))
-    {
-        let key = name_key(name.as_str());
-        let id = if let Some(id) = by_key.get(&key) {
-            *id
-        } else {
-            let tag = Tag::new(name.clone());
-            lib.insert_tag(&tag)?;
-            by_key.insert(key, tag.id);
-            report.tags_added += 1;
-            tag.id
-        };
-        tag_ids.insert(index, id);
-    }
+    let tag_ids = write_tags(lib, plan, report)?;
 
     for plan_board in &mut plan.boards {
-        let mut board = Board::new(plan_board.name.clone(), plan_board.created_at);
-        board.updated_at = plan_board.updated_at;
-        lib.insert_board(&board, Placement::Last)?;
-        report.boards_added += 1;
-        report.boards.push(board.id);
+        let existing_board = if plan.reuse_existing {
+            let key = name_key(plan_board.name.as_str());
+            lib.boards()?
+                .into_iter()
+                .find(|b| name_key(b.name.as_str()) == key)
+        } else {
+            None
+        };
+        let board = if let Some(board) = existing_board {
+            board
+        } else {
+            let mut board = Board::new(plan_board.name.clone(), plan_board.created_at);
+            board.updated_at = plan_board.updated_at;
+            board.accent = plan_board.accent;
+            board.icon = plan_board.icon;
+            lib.insert_board(&board, Placement::Last)?;
+            report.boards_added += 1;
+            report.boards.push(board.id);
+            board
+        };
 
         for plan_list in &mut plan_board.lists {
-            let mut list = List::new(board.id, plan_list.name.clone(), plan_list.created_at);
-            list.updated_at = plan_list.updated_at;
-            list.accent = plan_list.accent;
-            list.icon = plan_list.icon;
-            list.view = plan_list.view;
-            list.sort = plan_list.sort;
-            lib.insert_list(&list, Placement::Last)?;
-            report.lists_added += 1;
+            let existing_list = if plan.reuse_existing {
+                let key = name_key(plan_list.name.as_str());
+                lib.lists(board.id)?
+                    .into_iter()
+                    .find(|l| name_key(l.name.as_str()) == key)
+            } else {
+                None
+            };
+            let list = if let Some(list) = existing_list {
+                list
+            } else {
+                let mut list = List::new(board.id, plan_list.name.clone(), plan_list.created_at);
+                list.updated_at = plan_list.updated_at;
+                list.accent = plan_list.accent;
+                list.icon = plan_list.icon;
+                list.view = plan_list.view;
+                list.sort = plan_list.sort;
+                lib.insert_list(&list, Placement::Last)?;
+                report.lists_added += 1;
+                list
+            };
 
             let mut members: Vec<Vec<ItemId>> = vec![Vec::new(); plan_list.groups.len()];
             for plan_item in &mut plan_list.items {
@@ -420,7 +483,7 @@ fn write(
                 // A code already in use keeps its owner (the library's, or the first in this
                 // import); the newcomer comes in without one, and the report says so.
                 if let Some(trigger) = plan_item.trigger.as_ref().filter(|_| !item.sensitive) {
-                    if lib.trigger_holder(trigger)?.is_some() {
+                    if lib.triggers()?.iter().any(|(t, _)| t.same_code(trigger)) {
                         report.warn(Warning::Note(Note::TriggerTaken {
                             title: item.title.clone(),
                             trigger: trigger.to_string(),
@@ -440,15 +503,42 @@ fn write(
                 }
                 report.items_added += 1;
             }
-            // Items skipped as duplicates leave their group short; one left empty is not made.
-            for ((name, collapsed), ids) in plan_list.groups.iter().zip(&members) {
-                if !ids.is_empty() {
-                    let mut group = Group::new(list.id, name.clone());
-                    group.collapsed = *collapsed;
-                    lib.create_group(&group, ids)?;
-                }
-            }
+            make_groups(lib, list.id, &plan_list.groups, &members)?;
         }
+    }
+    Ok(())
+}
+
+/// Makes a list's groups, the deepest first so that a parent can take the groups nested in it
+/// where they stand. Items skipped as duplicates leave their group short; a group left with
+/// nothing in it (and nothing nested in it) is not made.
+fn make_groups(
+    lib: &mut Batch<'_>,
+    list: snipdeck_core::ListId,
+    groups: &[PlanGroup],
+    members: &[Vec<ItemId>],
+) -> Result<()> {
+    let mut made: Vec<Option<Group>> = vec![None; groups.len()];
+    // A parent comes before the groups nested in it, so going backwards finds children first.
+    for index in (0..groups.len()).rev() {
+        let plan = &groups[index];
+        let children: Vec<GroupId> = (index + 1..groups.len())
+            .filter(|c| groups[*c].parent == Some(index))
+            .filter_map(|c| made[c].as_ref().map(|g| g.id))
+            .collect();
+        let ids = &members[index];
+        if ids.is_empty() && children.is_empty() {
+            continue;
+        }
+        let mut group = Group::new(list, plan.name.clone());
+        group.collapsed = plan.collapsed;
+        group.colour = plan.colour;
+        if children.is_empty() {
+            lib.create_group(&group, ids)?;
+        } else {
+            lib.restore_group(&group, ids, &children)?;
+        }
+        made[index] = Some(group);
     }
     Ok(())
 }
@@ -475,7 +565,21 @@ fn build_item(
         .filter_map(|index| tag_ids.get(index).copied())
         .collect();
 
-    if let Some(preview) = &plan.preview {
+    // The excerpt is derived from the item's own text whenever it has one: an archive's claimed
+    // preview is only a fallback for items with no text (DATA-8). An image shows its picture,
+    // never an excerpt of its alt text, as the app itself makes it.
+    let is_image = plan.kind == ItemKind::Image;
+    let has_text = is_image
+        || plan.formats.iter().any(|f| {
+            matches!(
+                f,
+                PlanFormat::Single {
+                    kind: FormatKind::Text,
+                    ..
+                }
+            )
+        });
+    if let (Some(preview), false) = (&plan.preview, has_text) {
         item.preview = Item::preview_of(preview, plan.sensitive);
     }
     let mut formats = Vec::with_capacity(plan.formats.len());
@@ -483,7 +587,7 @@ fn build_item(
         match format {
             PlanFormat::Single { kind, source } => {
                 let bytes = resolve(source, fetch)?;
-                if *kind == FormatKind::Text && plan.preview.is_none() {
+                if *kind == FormatKind::Text && !is_image {
                     item.preview = Item::preview_of(preview_text(&bytes), plan.sensitive);
                 }
                 let content = put(lib, bytes, plan.sensitive)?;
@@ -578,14 +682,19 @@ mod tests {
         let mut list_b = PlanList::new(name("B"), at(1));
         list_b.items = vec![item("b1", asset(2), &[1]), item("b2", asset(3), &[])];
         let board = |n: &str, lists| PlanBoard {
+            accent: None,
+            icon: None,
             name: name(n),
             created_at: at(1),
             updated_at: at(1),
             lists,
         };
         Plan {
+            tag_colours: Vec::new(),
+            tag_parents: Vec::new(),
             tags: vec![name("existing"), name("fresh")],
             boards: vec![board("First", vec![list_a]), board("Second", vec![list_b])],
+            reuse_existing: false,
         }
     }
 
@@ -643,7 +752,6 @@ mod tests {
             &mut two_boards(),
             &mut fetch,
             ImportReport::default(),
-            false,
         )
         .unwrap();
         assert_eq!(
@@ -682,7 +790,6 @@ mod tests {
                 &mut two_boards(),
                 &mut fetch,
                 ImportReport::default(),
-                false,
             )
             .unwrap_err();
             assert!(matches!(err, Error::Malformed { .. }), "{err}");
@@ -701,23 +808,21 @@ mod tests {
         let mut list = PlanList::new(name("L"), at(1));
         list.items = vec![item("t", Source::Bytes(b"t".to_vec()), &[0, 1, 2])];
         let mut plan = Plan {
+            tag_colours: Vec::new(),
+            tag_parents: Vec::new(),
             tags: vec![name("Straße"), name("STRASSE"), name("e\u{301}cole")],
             boards: vec![PlanBoard {
+                accent: None,
+                icon: None,
                 name: name("B"),
                 created_at: at(1),
                 updated_at: at(1),
                 lists: vec![list],
             }],
+            reuse_existing: false,
         };
         let mut fetch = |_: &AssetRef| Ok(Vec::new());
-        let report = apply(
-            &mut s,
-            &mut plan,
-            &mut fetch,
-            ImportReport::default(),
-            false,
-        )
-        .unwrap();
+        let report = apply(&mut s, &mut plan, &mut fetch, ImportReport::default()).unwrap();
         assert_eq!(report.tags_added, 1);
         assert_eq!(s.tags().unwrap().len(), 3);
         assert_eq!(s.check_integrity().unwrap(), Vec::<String>::new());
@@ -734,7 +839,6 @@ mod tests {
             &mut two_boards(),
             &mut fetch,
             ImportReport::default(),
-            false,
         )
         .unwrap_err();
         assert_eq!(state(&s).4, before.4);
@@ -742,25 +846,42 @@ mod tests {
 
     #[test]
     fn duplicates_are_dropped_by_content_and_empty_boards_vanish() {
+        use crate::decoded::{Decoded, Known};
+        use crate::import::{ImportOptions, MergeStrategy};
+        let options = ImportOptions {
+            merge: MergeStrategy::SkipDuplicates,
+            ..ImportOptions::default()
+        };
         let mut plan = two_boards();
         let hash = plan.boards[0].lists[0].items[0].content_hash;
         plan.boards[1].lists[0].items[0].content_hash = hash;
-        let mut known = HashSet::new();
-        assert_eq!(plan.drop_duplicates(&mut known), 1, "b1 repeats a1");
+        let items = plan.item_count();
+        let mut s = library();
+        let report = Decoded::new(plan, ImportReport::default(), &options)
+            .preview(&s, Some(&Known::default()))
+            .unwrap();
+        assert_eq!(report.duplicates_skipped, 1, "b1 repeats a1");
+        assert_eq!(report.items_added, items - 1);
 
-        let mut again = two_boards();
-        let mut everything: HashSet<[u8; 32]> = again
+        // Everything already there: nothing is created, not even a board.
+        let again = two_boards();
+        let mut all = HashSet::new();
+        for i in again
             .boards
             .iter()
             .flat_map(|b| &b.lists)
             .flat_map(|l| &l.items)
-            .map(|i| i.content_hash)
-            .collect();
-        let items = again.item_count();
-        assert!(items > 0);
-        let dropped = again.drop_duplicates(&mut everything);
-        assert_eq!(dropped, items);
-        assert_eq!(again.boards.len(), 0);
+        {
+            all.insert(i.content_hash);
+        }
+        let known = Known::from_hashes(all);
+        let before = state(&s);
+        let report = Decoded::new(again, ImportReport::default(), &options)
+            .apply(&mut s, Some(&known))
+            .unwrap();
+        assert_eq!((report.boards_added, report.items_added), (0, 0));
+        assert_eq!(report.duplicates_skipped, items);
+        assert_eq!(state(&s), before);
     }
 
     #[test]
@@ -803,7 +924,11 @@ mod tests {
         let known = existing_hashes(&s).unwrap();
         for body in ["small", big.as_str()] {
             let plan = PlanItem::text("other title".to_owned(), body.to_owned(), at(1));
-            assert!(known.contains(&plan.content_hash), "{} bytes", body.len());
+            assert!(
+                known.values().any(|h| *h == plan.content_hash),
+                "{} bytes",
+                body.len()
+            );
         }
     }
 
@@ -855,8 +980,11 @@ mod tests {
         fn record_use(&mut self, _: ItemId, _: Timestamp) -> snipdeck_store::Result<()> {
             unreachable!()
         }
-        fn search(&self, query: &str, limit: usize) -> snipdeck_store::Result<Vec<ItemId>> {
-            self.0.search(query, limit)
+        fn search(
+            &self,
+            query: &snipdeck_core::search::Query,
+        ) -> snipdeck_store::Result<snipdeck_core::search::BodyMatches> {
+            self.0.search(query)
         }
     }
 
@@ -884,7 +1012,7 @@ mod tests {
         assert_eq!(known.len(), bodies.len());
         for body in &bodies {
             let plan = PlanItem::text("x".to_owned(), body.clone(), at(1));
-            assert!(known.contains(&plan.content_hash));
+            assert!(known.values().any(|h| *h == plan.content_hash));
         }
     }
 }

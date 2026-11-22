@@ -29,22 +29,10 @@ pub const MAX_IMAGE_BYTES: usize = 8 * 1024 * 1024;
 pub const MAX_FILES: usize = 100;
 /// The longest side of a list thumbnail, in pixels.
 pub const THUMB_SIDE: u32 = 96;
-/// Default number of entries kept.
-pub const DEFAULT_MAX_ENTRIES: usize = 200;
+/// Default number of entries kept (the setting's default; the limits are user settings).
+pub const DEFAULT_MAX_ENTRIES: usize = crate::settings::RECENT_MAX_ENTRIES_DEFAULT as usize;
 /// Default retention in days.
-pub const DEFAULT_MAX_AGE_DAYS: u64 = 7;
-
-/// How long entries are kept, in days, as the windows' texts take it.
-#[must_use]
-pub fn max_age_days() -> i32 {
-    i32::try_from(DEFAULT_MAX_AGE_DAYS).unwrap_or(i32::MAX)
-}
-
-/// How many entries are kept, as the windows' texts take it.
-#[must_use]
-pub fn max_entries_count() -> i32 {
-    i32::try_from(DEFAULT_MAX_ENTRIES).unwrap_or(i32::MAX)
-}
+pub const DEFAULT_MAX_AGE_DAYS: u64 = crate::settings::RECENT_MAX_DAYS_DEFAULT as u64;
 
 /// The settings the policy reads. `Default` is the shipped default: off.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -61,7 +49,29 @@ pub struct RecentSettings {
     pub excluded_apps: Vec<String>,
     /// Keep the pictures' bytes within this total; the oldest go first.
     pub max_blob_bytes: u64,
+    /// Keep a copy whose source program could not be found (no clipboard owner, or an owner
+    /// that cannot be queried). Off: such a copy is skipped, because a password manager that
+    /// writes with no owner would otherwise bypass the exclusion list.
+    pub keep_unknown_source: bool,
 }
+
+/// Password managers whose copies are never kept, whatever the user's own list says (lower
+/// case executable names). The user's list adds to it.
+pub const KNOWN_PASSWORD_MANAGERS: &[&str] = &[
+    "1password.exe",
+    "bitwarden.exe",
+    "keepass.exe",
+    "keepassxc.exe",
+    "dashlane.exe",
+    "lastpass.exe",
+    "nordpass.exe",
+    "protonpass.exe",
+    "proton pass.exe",
+    "enpass.exe",
+    "roboform.exe",
+    "keeper.exe",
+    "keeperpasswordmanager.exe",
+];
 
 impl Default for RecentSettings {
     fn default() -> Self {
@@ -72,18 +82,22 @@ impl Default for RecentSettings {
             max_age: Duration::from_hours(24 * DEFAULT_MAX_AGE_DAYS),
             excluded_apps: Vec::new(),
             max_blob_bytes: BLOB_BUDGET,
+            keep_unknown_source: false,
         }
     }
 }
 
 impl RecentSettings {
-    /// The policy's view of the app settings; `paused` is the tray's session-only switch.
+    /// The policy's view of the app settings (the limits, and the tray's "Pause history").
     #[must_use]
-    pub fn from_settings(settings: &crate::settings::Settings, paused: bool) -> Self {
+    pub fn from_settings(settings: &crate::settings::Settings) -> Self {
         Self {
             enabled: settings.recent_history,
-            paused,
+            paused: settings.recent_paused,
+            max_entries: settings.recent_max_entries as usize,
+            max_age: max_age_of(settings),
             excluded_apps: settings.no_history_apps.clone(),
+            keep_unknown_source: settings.recent_keep_unknown_source,
             ..Self::default()
         }
     }
@@ -93,6 +107,12 @@ impl RecentSettings {
     pub const fn collecting(&self) -> bool {
         self.enabled && !self.paused
     }
+}
+
+/// How long the settings keep a Recent entry.
+#[must_use]
+pub fn max_age_of(settings: &crate::settings::Settings) -> Duration {
+    Duration::from_hours(24 * u64::from(settings.recent_max_days))
 }
 
 /// One clipboard change, as the listener saw it.
@@ -150,6 +170,8 @@ pub enum Skipped {
     ExcludedFormat,
     /// The source app is on the exclusion list.
     ExcludedApp,
+    /// The source program is unknown and the setting keeps only copies with a known source.
+    UnknownSource,
     /// No text, files or picture, or only whitespace.
     Empty,
     /// Over [`MAX_ENTRY_BYTES`], a picture over [`MAX_IMAGE_PIXELS`] or [`MAX_IMAGE_BYTES`], or
@@ -208,11 +230,15 @@ impl RecentCapture {
             return skip(Skipped::ExcludedFormat);
         }
         let app = obs.source_app.as_deref().map(str::to_ascii_lowercase);
-        if app
-            .as_ref()
-            .is_some_and(|a| settings.excluded_apps.iter().any(|x| x == a))
-        {
-            return skip(Skipped::ExcludedApp);
+        match app.as_deref() {
+            Some(a)
+                if KNOWN_PASSWORD_MANAGERS.contains(&a)
+                    || settings.excluded_apps.iter().any(|x| x == a) =>
+            {
+                return skip(Skipped::ExcludedApp);
+            }
+            None if !settings.keep_unknown_source => return skip(Skipped::UnknownSource),
+            _ => {}
         }
         let id = if let Some(text) = obs.text.as_deref().filter(|t| !t.trim().is_empty()) {
             if text.len() > MAX_ENTRY_BYTES {
@@ -358,12 +384,23 @@ fn files_label(paths: &[String]) -> String {
 
 /// `rgba` (`width` x `height`) shrunk to fit [`THUMB_SIDE`], averaging the source pixels that
 /// fall in each new pixel. `None` for an empty picture or a buffer of the wrong size.
-fn thumbnail(width: u32, height: u32, rgba: &[u8]) -> Option<RecentThumb> {
+pub(crate) fn thumbnail(width: u32, height: u32, rgba: &[u8]) -> Option<RecentThumb> {
+    thumbnail_within(width, height, rgba, THUMB_SIDE)
+}
+
+/// [`thumbnail`] with a longest side of `side` pixels (the Main window's Detail pane draws a
+/// bigger one than a list row).
+pub(crate) fn thumbnail_within(
+    width: u32,
+    height: u32,
+    rgba: &[u8],
+    side: u32,
+) -> Option<RecentThumb> {
     let (w, h) = (width as usize, height as usize);
     if w == 0 || h == 0 || rgba.len() != w * h * 4 {
         return None;
     }
-    let side = THUMB_SIDE as usize;
+    let side = side as usize;
     let (tw, th) = if w.max(h) <= side {
         (w, h)
     } else if w >= h {
@@ -535,6 +572,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::too_many_lines, reason = "one table, one row per policy case")]
     fn the_policy_table() {
         let big = "x".repeat(MAX_ENTRY_BYTES + 1);
         let edge = "x".repeat(MAX_ENTRY_BYTES);
@@ -604,13 +642,37 @@ mod tests {
             ("exactly 64 KiB", on(), obs(&edge), None),
             ("plain text", on(), obs("hello"), None),
             (
-                "unknown source app",
+                "unknown source app is skipped by default",
                 on(),
                 ClipboardObservation {
                     source_app: None,
                     ..obs("a")
                 },
+                Some(Skipped::UnknownSource),
+            ),
+            (
+                "unknown source app, when the setting keeps it",
+                RecentSettings {
+                    keep_unknown_source: true,
+                    ..on()
+                },
+                ClipboardObservation {
+                    source_app: None,
+                    ..obs("a")
+                },
                 None,
+            ),
+            (
+                "a known password manager with an empty user list",
+                RecentSettings {
+                    excluded_apps: Vec::new(),
+                    ..on()
+                },
+                ClipboardObservation {
+                    source_app: Some("Bitwarden.exe".to_owned()),
+                    ..obs("a")
+                },
+                Some(Skipped::ExcludedApp),
             ),
         ];
         for (name, settings, observation, expect) in cases {

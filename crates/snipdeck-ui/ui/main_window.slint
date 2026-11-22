@@ -19,7 +19,7 @@
 //             Ctrl+/ the keyboard shortcuts, F1 the user guide
 import { TipHost, TipLayer, TipSource } from "components/tip-host.slint";
 import { ListView } from "std-widgets.slint";
-import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook, Palette, ListHue } from "theme.slint";
+import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook, Palette, ListHue, ListAccent } from "theme.slint";
 import { Icons } from "icons.slint";
 import { Icon } from "components/icon.slint";
 import { KeyCombo } from "components/keycap.slint";
@@ -36,6 +36,7 @@ import { Toast, ToastKind, ToastPhase, Skeleton, SkeletonKind } from "components
 import { Menu, MenuEntry } from "components/menu.slint";
 import { SuggestDropdown, SuggestRow } from "components/suggest-dropdown.slint";
 import { Dialog, DialogVariant } from "components/dialog.slint";
+import { ColourPicker } from "components/colour-picker.slint";
 import { Chooser, ChoiceEntry } from "components/chooser.slint";
 import { ColourBlock, ColourFormatCell } from "components/colour_block.slint";
 import { MenuTexts } from "menu_texts.slint";
@@ -46,8 +47,9 @@ import { EdgeScroll } from "components/edge-scroll.slint";
 import { CommandPalette, PaletteRow } from "components/command-palette.slint";
 import { CommandTexts } from "command_texts.slint";
 import { RecentRow, RecentText } from "panel.slint";
+import { DetailPane, DetailData } from "components/detail-pane.slint";
 
-export { ChoiceEntry, PaletteRow }
+export { ChoiceEntry, PaletteRow, DetailData }
 
 // One item of the item area. `selected` is written by the host (see the file header).
 export struct MainRow {
@@ -76,11 +78,14 @@ export struct MainRow {
     pinned: bool,
     selected: bool,
     // A group's header takes the place of a card: `title` is its name, `group-count` its items, `group-collapsed`
-    // whether they are hidden. `grouped`: the item sits under a header, so its card is indented.
+    // whether they are hidden. `depth`: how many groups the row is nested in (a header: those above it), so it is indented
+    // by that many steps.
     is-header: bool,
     group-count: int,
     group-collapsed: bool,
-    grouped: bool,
+    // The group's colour: -1 none, else 0 to 8 in the order of `ListHue` (the host's `ListAccent`).
+    group-colour: int,
+    depth: int,
 }
 
 // One chip of the colour-label filter row: `label` is 0 to 7 in the order blue, teal, green, amber, orange, red,
@@ -91,6 +96,13 @@ export struct LabelChipEntry {
     count: int,
 }
 
+// One chip of the view filter: `kind` is the Filter menu's row (0 to 5 an item kind in the host's order text, template,
+// code, link, image, file; 6 has a trigger, 7 sensitive, 8 untagged, 9 a tag, whose name is `name`).
+export struct FilterChipEntry {
+    kind: int,
+    name: string,
+}
+
 // What the sidebar has open. `list` and `tag` come with an index into `lists` / `tags`.
 export enum MainSection { all, pinned, recent, trash, list, tag }
 export enum MainView { comfortable, compact, tile }
@@ -98,7 +110,7 @@ export enum MainView { comfortable, compact, tile }
 export enum SelectMode { replace, toggle, extend }
 // What the context menu, the bulk bar and the shortcuts ask for. The host applies it to the selection when
 // `selected-count` > 1, else to the row the index names.
-export enum ItemAction { use, copy, edit, duplicate, pin, move, tag, paste-as, delete, restore, delete-forever, use-plain }
+export enum ItemAction { use, copy, edit, duplicate, pin, move, tag, paste-as, delete, restore, delete-forever, use-plain, open-link }
 
 // The pages the Help menu and its shortcuts open (the host's HelpTopic). "Show Panel" is not one: it has its own
 // callback. Named so the menu's row order and the keys (F1, Ctrl+/) cannot drift apart from the host's mapping.
@@ -119,7 +131,12 @@ component ToolbarButton inherits Rectangle {
     in property <length> h: 32px;
     out property <bool> has-hover: touch.has-hover;
     out property <bool> has-focus: scope.has-focus;
+    // Each time this goes up the button takes the keyboard focus (a menu it opened gives it back on close).
+    in property <int> focus-request: 0;
     callback clicked();
+    changed focus-request => {
+        if (root.focus-request > 0) { scope.focus(); }
+    }
 
     height: root.h;
     width: root.compact ? root.h : max(root.h, row.preferred-width);
@@ -229,6 +246,17 @@ component MainCard inherits ItemCard {
     label: root.data.label;
     label-name: root.data.label-name;
     selected: root.data.selected;
+
+    // An image card with no picture yet asks the host for one (MAIN-21). The list is virtualised, so only the cards on
+    // screen ask, one decode each.
+    callback thumb-wanted();
+    function ask() {
+        if (root.data.kind == ItemKind.image && root.data.image.width == 0 && !root.data.is-header) {
+            root.thumb-wanted();
+        }
+    }
+    init => { root.ask(); }
+    changed data => { root.ask(); }
 }
 
 // A group heading in the sidebar with an optional trailing action.
@@ -270,16 +298,23 @@ component SidebarHeading inherits Rectangle {
 }
 
 export component MainWindow inherits Window {
-    title: @tr("Snipdeck");
+    // The place in the title, so the taskbar, Alt+Tab and a screen reader say where the window is (MAIN-20).
+    title: root.window-title;
+    out property <string> window-title: root.board-name == "" ? @tr("{} - Snipdeck", root.section-name()) : @tr("{} - {} - Snipdeck", root.section-name(), root.board-name);
     background: Theme.bg-app;
-    min-width: 480px;
-    min-height: 360px;
+    // The minimum scales with the text size: the toolbar and the sidebar are drawn in text-scaled units (MAIN-48).
+    min-width: 480px * max(1, SystemLook.text-scale);
+    min-height: 360px * max(1, SystemLook.text-scale);
     preferred-width: root.wanted-width;
     preferred-height: root.wanted-height;
 
     // The size the window opens at; the host cuts it to the screen before the window exists.
     out property <length> wanted-width: 1100px;
     out property <length> wanted-height: 720px;
+    // The window's own minimum size and the sidebar's right edge, for the fit tests (MAIN-62).
+    out property <length> min-w: 480px * max(1, SystemLook.text-scale);
+    out property <length> min-h: 360px * max(1, SystemLook.text-scale);
+    out property <length> sidebar-right: root.sidebar-w;
 
     // ---- State in -----------------------------------------------------------------------------
     in property <bool> dark: false;
@@ -291,7 +326,11 @@ export component MainWindow inherits Window {
     in property <bool> board-delete-open: false;
     in property <int> board-delete-count;
     in property <[ChoiceEntry]> lists;
+    // The Move to list chooser: the open board's lists, then the other boards' (named with their board).
+    in property <[ChoiceEntry]> move-choices;
     in property <[ChoiceEntry]> tags;
+    // How many tags each of `tags` is nested under (the sidebar indents it by that many steps).
+    in property <[int]> tag-depths;
     // Tags with a tick for those on the selected items (the host refreshes it on `item-action(tag, ...)`).
     in property <[ChoiceEntry]> tag-choices;
     in property <int> count-all: -1;
@@ -322,8 +361,6 @@ export component MainWindow inherits Window {
     in property <[LabelChipEntry]> label-chips;
     in property <int> label-filter: -1;
     in property <int> selected-count: 0;
-    // True while the app loads: skeletons replace the empty state.
-    in property <bool> loading: false;
     // The label of the card's use button and the menu's first entry ("Use"; "Copy" while nothing can be pasted into).
     in property <string> use-label: @tr("Use");
     // The use label copies (no paste target), so a card hides its separate Copy icon while the label shows.
@@ -343,6 +380,8 @@ export component MainWindow inherits Window {
     in-out property <int> section-index: 0;
     in-out property <MainView> view: MainView.comfortable;
     in-out property <string> query <=> search.text;
+    // The host sets it when the search filled its limit: the line then says the list is the first part of the matches.
+    in property <bool> search-capped;
     // The row the keyboard works on. The window moves it; the host resets it when the section changes.
     in-out property <int> cursor: 0;
 
@@ -378,7 +417,7 @@ export component MainWindow inherits Window {
     // The box is open: it owns the typing keys (/, Ctrl+Z) like the search field does.
     property <bool> quick-open: false;
     // The box sits above the rows of an open list (not in a search, the Trash or a system view).
-    property <bool> quick-add-shown: root.section == MainSection.list && !root.searching && !root.loading;
+    property <bool> quick-add-shown: root.section == MainSection.list && !root.searching;
     // Ctrl+N: the quick-add box when a list is open, else the item editor.
     // The box owns the typing keys only while it is on screen.
     property <bool> quick-typing: root.quick-open && root.quick-add-shown;
@@ -411,6 +450,8 @@ export component MainWindow inherits Window {
     callback recent-copied(int);
     callback recent-deleted(int);
     callback recent-saved(int, int);
+    // "Save as Sensitive…": the same chooser; the item is saved as Sensitive (text entries only).
+    callback recent-saved-sensitive(int, int);
     callback recent-cleared();
     callback recent-unlock-requested();
     callback move-chosen(int);
@@ -435,17 +476,45 @@ export component MainWindow inherits Window {
     in property <string> panel-hotkey;
     // The Panel is on screen: the toolbar button hides it (pressed, "Hide Panel") instead of showing it.
     in property <bool> panel-visible;
-    // The open list's sort (0 Manual, 1 Most used, 2 Recently used); the heading's "Sort" menu changes it.
+    // The open section's sort: the key's position (0 Manual, 1 Name, 2 Created, 3 Modified, 4 Most used, 5 Recently
+    // used) and whether it runs against its natural direction. The heading's "Sort" menu changes both.
     in property <int> list-sort: 0;
-    callback sort-chosen(int);
+    in property <bool> list-sort-reversed: false;
+    // The section has a sort to choose (not the Recent inbox, the Trash or a search).
+    in property <bool> sortable: false;
+    callback sort-chosen(int, bool);
+    // The view filter: which of the menu's rows are ticked (the nine of `FilterChipEntry.kind`), the chips of the
+    // active criteria, whether the chosen tags must all be on an item, and the tags the Tags chooser offers.
+    in property <[bool]> filter-checked: [false, false, false, false, false, false, false, false, false];
+    in property <[FilterChipEntry]> filter-chips;
+    in property <bool> filter-match-all: false;
+    in property <[ChoiceEntry]> filter-tag-choices;
+    callback filter-toggled(int);
+    callback filter-chip-removed(int);
+    callback filter-tag-toggled(int);
+    callback filter-match-all-changed(bool);
+    callback filter-cleared();
     // The sidebar's width in logical pixels at 100 % text size (200 to 320), and whether Ctrl+B or the toolbar
     // button folded it to the icon rail. The host remembers both; the window changes them as the user does.
     in-out property <int> sidebar-width: 232;
     in-out property <bool> sidebar-collapsed: false;
     callback sidebar-width-changed(int);
     callback sidebar-collapsed-changed(bool);
+    // The Detail pane (SPEC 5.3): the item under the cursor, shown right of the list while the window is wide enough
+    // (`detail-open` is the user's choice in the View menu, remembered by the host).
+    in property <DetailData> detail;
+    in-out property <bool> detail-open: true;
+    callback detail-open-changed(bool);
+    // An image row on screen has no thumbnail yet: the host decodes it and draws again.
+    callback thumb-wanted(int);
+    out property <bool> detail-shown: false;
     // F1 asks for the guide, Ctrl+/ for the shortcuts, the Help menu for any of them.
     callback help-requested(HelpPage);
+    // Help > Recent messages (MAIN-43): the host fills `recent-messages-text` (one message a line, newest first) before
+    // the dialog opens, so a toast that went by before it could be read can be read again.
+    callback recent-messages-requested();
+    in-out property <string> recent-messages-text;
+    property <bool> recent-messages-open: false;
     // ---- Command palette: the host fills `palette-rows` (filtered for the query it is told about).
     in property <[PaletteRow]> palette-rows;
     in-out property <bool> palette-open: false;
@@ -465,6 +534,28 @@ export component MainWindow inherits Window {
     callback board-menu-activated(int);
     callback board-menu-dismissed();
     // The board delete confirmation: "Delete board", or Cancel / Esc / a click on the scrim.
+    // A folded group hides the rows its deletion trashes: the host asks first (`group-delete-open`), with the group's
+    // name and how many items go with it.
+    in property <bool> group-delete-open: false;
+    in property <string> group-delete-name;
+    in property <int> group-delete-count;
+    callback group-delete-confirmed();
+    callback group-delete-dismissed();
+    // A header's menu row "Group colour…" opens a small dialog with the nine hues; the choice goes to the host
+    // (`group-colour-chosen(row, hue)`, hue -1 for none) and the dialog closes.
+    callback group-colour-chosen(int, int);
+    property <int> group-colour-row: -1;
+    // The command palette's "Group colour…": the dialog opens over the group header at `row` (nothing for any other row).
+    public function open-group-colour(row: int) {
+        if (row >= 0 && row < root.rows.length && root.rows[row].is-header) {
+            root.group-colour-row = row;
+        }
+    }
+    property <[ListHue]> group-hues: [ListHue.blue, ListHue.teal, ListHue.green, ListHue.amber, ListHue.orange, ListHue.red, ListHue.rose, ListHue.violet, ListHue.slate];
+    property <[string]> group-colour-names: [
+        @tr("Blue"), @tr("Teal"), @tr("Green"), @tr("Amber"), @tr("Orange"),
+        @tr("Red"), @tr("Rose"), @tr("Violet"), @tr("Slate"),
+    ];
     callback board-delete-confirmed();
     callback board-delete-dismissed();
     callback toast-undo();
@@ -500,6 +591,7 @@ export component MainWindow inherits Window {
     callback group-rename-requested(int);
     callback group-rename-ended();
     callback group-ungroup-requested(int);
+    callback group-move-requested(int);
     callback group-delete-requested(int);
     // The header that should open its name for editing (the host counts requests in `rename-seq`).
     in property <int> rename-row: -1;
@@ -508,7 +600,10 @@ export component MainWindow inherits Window {
     in property <bool> has-groups: false;
     // The items the list holds, folded group members included (headers are not items); -1: count the rows.
     in property <int> list-total: -1;
-    public pure function group-announcement(name: string, count: int) -> string {
+    public pure function group-announcement(name: string, count: int, colour: int) -> string {
+        if (colour >= 0 && colour < root.group-colour-names.length) {
+            return @tr("group {}, {}, {} item" | "group {}, {}, {} items" % count, name, root.group-colour-names[colour], count);
+        }
         return @tr("group {}, {} item" | "group {}, {} items" % count, name, count);
     }
     // Alt+Up / Alt+Down in the sidebar on a list: its index in `lists`, then -1 or +1.
@@ -525,6 +620,9 @@ export component MainWindow inherits Window {
     callback row-dropped-above(int, int);
     // Row `row` was dropped on sidebar list `list`.
     callback row-dropped-on-list(int, int);
+    // Row `row` was dropped on the sidebar's Trash, or on sidebar tag `tag` (an index of `tags`).
+    callback row-dropped-on-trash(int);
+    callback row-dropped-on-tag(int, int);
     // Sidebar list `from` was dropped on sidebar list `onto`.
     callback list-dropped(int, int);
     // Rows can be dragged into a new place: the open list is in manual order and no search is running.
@@ -568,9 +666,11 @@ export component MainWindow inherits Window {
     out property <bool> sidebar-focused: nav-scope.has-focus;
     out property <bool> search-focused: search.has-focus;
     out property <bool> rail: root.narrow;
+    // The room the sidebar takes beside the list (the rail's, or the chosen width), in logical pixels.
+    out property <length> sidebar-slot-width: root.sidebar-w;
     out property <int> columns: root.cols;
     out property <bool> confirm-open: root.confirm-shown;
-    out property <bool> menu-open: item-menu-open || nav-menu-open || chooser-open || help-menu-open || view-menu-open || sort-menu-open || recent-menu-open || recent-save-open;
+    out property <bool> menu-open: item-menu-open || nav-menu-open || chooser-open || help-menu-open || view-menu-open || sort-menu-open || filter-menu-open || recent-menu-open || recent-save-open;
 
     // ---- Internals ----------------------------------------------------------------------------
     property <int> used-index: -1;
@@ -584,17 +684,40 @@ export component MainWindow inherits Window {
     property <bool> commands-compact: false;
     property <bool> view-compact: false;
     property <bool> toolbar-toggles: true;
+    property <bool> toolbar-tight: false;
+    // The heading row's Filter and Sort buttons drop their words (the tooltip keeps them) when the row is too narrow for both.
+    property <bool> heading-compact: false;
     property <length> caption-inset: SystemLook.caption-inset;
     property <length> ctl-h: max(Space.s8 * SystemLook.text-scale, Type.line-base + Space.s2);
-    property <length> bar-h: max(Space.s8 + Space.s3, Type.line-base + Space.s2 + Space.s3);
+    property <length> bar-h: root.ctl-h + Space.s3;
     // A group header row: a full hit target inside its focus-ring inset, growing with the text size so its name never spills.
     property <length> header-h: Space.hit * SystemLook.text-scale + 2 * root.ring;
     // Below 720px the sidebar is a rail whatever was chosen; the chosen width and the collapsed flag apply above it.
     property <bool> auto-rail: false;
-    property <length> sidebar-w: root.narrow ? Space.s12 * root.text-scale : root.sidebar-width * 1px + (root.text-scale - 1) * 96px;
-    property <length> splitter-w: 8px;
+    // The room the sidebar takes in the layout: the rail's, or the chosen width.
+    property <length> sidebar-w: root.narrow ? Space.s12 * root.text-scale : root.full-w;
+    property <length> full-w: root.sidebar-width * 1px + (root.text-scale - 1) * 96px;
+    // The automatic rail's drawer: the full sidebar over the list, with a scrim, from the toggle or Ctrl+B.
+    out property <bool> drawer-open: false;
+    // The sidebar shows its rail form: narrow, and not open as the drawer.
+    property <bool> compact: root.narrow && !root.drawer-open;
+    // 40% scrim (DESIGN.md §6), as the dialogs have: dark in both themes; the window colour in high contrast.
+    property <color> scrim: ((Theme.dark || Theme.hc-border != transparent) ? Theme.bg-app : Theme.text-primary).with-alpha(0.4);
+    // How wide the sidebar is drawn: the drawer is wider than the room it takes.
+    property <length> view-w: root.drawer-open ? root.full-w : root.sidebar-w;
+    property <int> toggle-focus: 0;
+    // The drawer's first and last tab stops (the board switcher and Help): Tab wraps from the last to the first and
+    // Shift+Tab the other way, so the keys never reach the toolbar, search or list behind the scrim.
+    property <bool> switcher-focused: false;
+    property <bool> help-focused: false;
+    property <int> switcher-focus: 0;
+    // Settings and Help do not fit side by side in the sidebar's width at its preferred button widths: stack them.
+    property <bool> foot-stack: foot-measure-settings.preferred-width + foot-measure-help.preferred-width + 3 * Space.s2 > root.view-w;
+    // The splitter's target: 24px wide (WCAG 2.5.8), the line in it stays 2px.
+    property <length> splitter-w: 24px;
     property <length> splitter-grab: 0px;
-    property <bool> splitter-focused: false;
+    out property <bool> splitter-focused: false;
+    property <int> splitter-focus-request: 0;
     property <length> pad: Space.s4;
     // The keyboard focus ring is drawn this far outside a card; the lists are inset by it so a scroll viewport never clips it.
     property <length> ring: Space.s1;
@@ -603,7 +726,11 @@ export component MainWindow inherits Window {
     property <int> nav-total: 4 + root.n-lists + root.n-tags;
     property <int> cur: root.rows.length == 0 ? -1 : min(max(root.cursor, 0), root.rows.length - 1);
     property <bool> tile: root.view == MainView.tile && !root.has-groups;
+    // The density that is really drawn: groups draw rows, so a stored Tile view shows as Compact (MAIN-10).
+    property <MainView> drawn-view: root.view == MainView.tile && root.has-groups ? MainView.compact : root.view;
     property <bool> in-trash: root.section == MainSection.trash;
+    // Every section that lists items can be narrowed (the Recent inbox lists clipboard entries and the Trash deleted records).
+    property <bool> filterable: root.section != MainSection.recent && root.section != MainSection.trash;
     property <bool> searching: root.query != "";
     property <bool> multi: root.selected-count > 1;
     property <int> nav-cursor: 0;
@@ -615,6 +742,9 @@ export component MainWindow inherits Window {
     property <bool> help-menu-open: false;
     property <bool> view-menu-open: false;
     property <bool> sort-menu-open: false;
+    property <bool> filter-menu-open: false;
+    // The Tags chooser is the filter's (not an item's).
+    property <bool> chooser-filter: false;
     // An empty image: a menu row without a check mark keeps its icon column.
     property <image> no-icon;
     property <length> nav-menu-x: 0px;
@@ -624,6 +754,8 @@ export component MainWindow inherits Window {
     // The Recent entry menu and its "Save to…" chooser: the row they act on, and where they open.
     property <bool> recent-menu-open: false;
     property <bool> recent-save-open: false;
+    property <bool> recent-save-sensitive: false;
+    property <bool> recent-menu-text: true;
     property <int> recent-menu-row: 0;
     // The entry the open menu acts on, by id: the list can shift (a new copy, a search edit) while it is open.
     property <int> recent-menu-id: 0;
@@ -645,6 +777,8 @@ export component MainWindow inherits Window {
     property <bool> chooser-paste: false;
     // ... and they are a colour row's formats.
     property <bool> chooser-colour: false;
+    // 240px at text size, never wider than the window (MAIN-5).
+    property <length> chooser-w: min(240px * root.text-scale, root.width);
     property <length> chooser-x: 0px;
     property <length> chooser-y: 0px;
     // What the confirmation dialog is asking: 0 none, 1 delete a list, 2 delete a tag, 3 empty the Trash,
@@ -652,7 +786,7 @@ export component MainWindow inherits Window {
     property <int> confirm-kind: 0;
     property <int> confirm-target: 0;
     property <bool> confirm-shown: false;
-    property <bool> overlay-open: root.recent-menu-open || root.recent-save-open || root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.view-menu-open || root.sort-menu-open || root.chooser-open || root.board-menu-open || root.confirm-shown || root.board-delete-open || root.palette-open;
+    property <bool> overlay-open: root.recent-menu-open || root.recent-save-open || root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.view-menu-open || root.sort-menu-open || root.filter-menu-open || root.chooser-open || root.board-menu-open || root.confirm-shown || root.board-delete-open || root.group-delete-open || root.group-colour-row >= 0 || root.palette-open || root.recent-messages-open;
 
     init => {
         Palette.dark = root.dark;
@@ -663,13 +797,22 @@ export component MainWindow inherits Window {
     }
     // Set from `changed` handlers, not bound to `root.width`: a window's width follows its layout.
     function update-narrow() {
-        root.auto-rail = root.width < 720px;
+        root.auto-rail = root.width < 720px * max(1, root.text-scale);
         root.narrow = root.auto-rail || root.sidebar-collapsed;
-        let room = (root.width - root.sidebar-w - root.caption-inset) / root.text-scale;
-        root.toolbar-keys = room >= 736px;
-        root.commands-compact = room < 658px;
-        root.view-compact = room < 608px;
-        root.toolbar-toggles = room >= 574px;
+        if (!root.auto-rail) {
+            root.drawer-open = false;
+        }
+        // The pane takes 360px and leaves the list 480px, so it shows from 1072px (232px sidebar) at 100% text size.
+        root.detail-shown = root.detail-open && (root.width - root.sidebar-w - root.caption-inset) / root.text-scale >= 840px;
+        let room = (root.width - root.sidebar-w - (root.detail-shown ? 360px * root.text-scale : 0px) - root.caption-inset) / root.text-scale;
+        // The tiers leave the search field its 150px floor (scaled): each width is the controls that stay plus 150px.
+        root.toolbar-keys = room >= 854px;
+        root.commands-compact = room < 776px;
+        root.view-compact = room < 726px;
+        root.toolbar-toggles = room >= 692px;
+        // Last tier: Panel, Undo and Redo leave the bar (Ctrl+Z, Ctrl+Y and the Commands list keep them) and New item is an icon.
+        root.toolbar-tight = room < 480px;
+        root.heading-compact = room < 380px;
     }
     // The Colour block needs room above the list. Set from `changed height` (not bound to `root.height`: the
     // block changes the layout, and a binding on the height would loop).
@@ -690,9 +833,29 @@ export component MainWindow inherits Window {
     changed caption-inset => {
         root.update-narrow();
     }
-    // Ctrl+B and the toolbar button. Below 720px the rail is automatic and wins, so there is nothing to fold.
+    changed detail-open => {
+        root.update-narrow();
+    }
+    // Ctrl+B and the sidebar toggle. Below 720px the rail is automatic: the toggle opens the full sidebar as a
+    // drawer over the list instead of folding it.
+    function open-drawer() {
+        root.drawer-open = true;
+        root.nav-cursor = root.nav-selected;
+        nav-scope.focus();
+    }
+    function close-drawer() {
+        if (root.drawer-open) {
+            root.drawer-open = false;
+            root.toggle-focus += 1;
+        }
+    }
     function toggle-sidebar() {
         if (root.auto-rail) {
+            if (root.drawer-open) {
+                root.close-drawer();
+            } else {
+                root.open-drawer();
+            }
             return;
         }
         // The splitter goes away on the rail: the keys go to the list, not nowhere.
@@ -743,12 +906,31 @@ export component MainWindow inherits Window {
             root.query-changed("");
         }
         root.section-selected(root.section, root.section-index);
+        // Choosing in the drawer closes it and the keys go to the list that was chosen.
+        if (root.drawer-open) {
+            root.drawer-open = false;
+            items-scope.focus();
+        }
     }
 
     // Where the keys go back to when a menu, chooser or confirmation closes: the sidebar when it was opened there.
     property <bool> nav-origin: false;
+    // The toolbar or footer button that opened the menu that is closing (0 none, 1 Help, 2 View, 3 Sort): the focus
+    // goes back to it, not to the list (MAIN-56, WCAG 2.4.3). The counters ask the button to take the focus.
+    property <int> menu-origin: 0;
+    property <int> help-focus: 0;
+    property <int> view-focus: 0;
+    property <int> sort-focus: 0;
     function restore-focus() {
-        if (root.nav-origin) {
+        let origin = root.menu-origin;
+        root.menu-origin = 0;
+        if (origin == 1) {
+            root.help-focus += 1;
+        } else if (origin == 2) {
+            root.view-focus += 1;
+        } else if (origin == 3) {
+            root.sort-focus += 1;
+        } else if (root.nav-origin) {
             nav-scope.focus();
         } else {
             items-scope.focus();
@@ -810,11 +992,11 @@ export component MainWindow inherits Window {
         : root.confirm-kind == 5 ? @tr("Clear recent history?")
         : @tr("Delete for good?");
     property <string> confirm-body: root.confirm-kind == 1
-        ? @tr("The list and its {} items move to the Trash. You can restore them for {} days.", root.lists[root.confirm-target].count, root.trash-days)
+        ? @tr("The list and its {n} item move to the Trash. You can restore them for {} days." | "The list and its {n} items move to the Trash. You can restore them for {} days." % root.lists[root.confirm-target].count, root.trash-days)
         : root.confirm-kind == 2 ? @tr("The tag is removed from its items. The items themselves stay.")
-        : root.confirm-kind == 3 ? @tr("Everything in the Trash is deleted for good. This can't be undone.")
-        : root.confirm-kind == 5 ? @tr("All {} recent copies are removed. This can't be undone.", root.count-recent)
-        : @tr("The selected items are deleted for good. This can't be undone.");
+        : root.confirm-kind == 3 ? @tr("Everything in the Trash is deleted for good. This can’t be undone.")
+        : root.confirm-kind == 5 ? @tr("The {n} recent copy is removed. This can’t be undone." | "All {n} recent copies are removed. This can’t be undone." % root.count-recent)
+        : @tr("The selected item is deleted for good. This can’t be undone." | "The selected items are deleted for good. This can’t be undone." % (root.multi ? root.selected-count : 1));
     property <string> confirm-ok: root.confirm-kind == 1 ? @tr("Delete list")
         : root.confirm-kind == 2 ? @tr("Delete tag")
         : root.confirm-kind == 3 ? @tr("Empty Trash")
@@ -873,16 +1055,55 @@ export component MainWindow inherits Window {
         }
     }
 
+    // "Nest under…" (the header menu, or the palette): the host lists where the group at `row` can go
+    // (`nest-choices`), the chooser picks one (`group-nest-chosen`) or closes (`group-nest-dismissed`).
+    in property <[ChoiceEntry]> nest-choices;
+    callback group-nest-requested(int);
+    callback group-nest-chosen(int);
+    callback group-nest-dismissed();
+    property <bool> chooser-nest: false;
+    public function open-group-nest(row: int) {
+        if (row >= 0 && row < root.rows.length && root.rows[row].is-header) {
+            root.group-nest-requested(row);
+            root.chooser-filter = false;
+            root.chooser-tags = false;
+            root.chooser-paste = false;
+            root.chooser-colour = false;
+            root.chooser-nest = true;
+            root.chooser-x = min(max(root.item-menu-x, root.sidebar-w), max(root.sidebar-w, root.width - 240px));
+            root.chooser-y = min(root.item-menu-y, max(0px, root.height - 300px));
+            root.chooser-open = true;
+        }
+    }
+
     function open-chooser(tags: bool, paste: bool, index: int) {
+        root.chooser-nest = false;
+        root.chooser-filter = false;
         root.chooser-tags = tags;
         root.chooser-paste = paste;
         root.chooser-colour = paste && root.rows[index].has-swatch;
         if (root.chooser-colour) {
             root.colour-choices-requested(index);
         }
-        root.chooser-x = min(max(root.item-menu-x, root.sidebar-w), max(root.sidebar-w, root.width - 240px));
-        root.chooser-y = min(root.item-menu-y, max(0px, root.height - 300px));
+        // The chooser is `240px * text-scale` wide: clamp with its real size, so it never leaves the window (MAIN-5).
+        root.chooser-x = max(0px, min(root.item-menu-x, root.width - root.chooser-w));
+        root.chooser-y = max(0px, min(root.item-menu-y, root.height - 300px * root.text-scale));
         root.chooser-open = true;
+    }
+
+    // Where a menu opened from the keyboard (Menu key, Shift+F10) goes: at the cursor row, not under the toolbar
+    // (MAIN-6). The row's top is estimated from the average row height, then kept inside the list.
+    function cursor-menu-y() -> length {
+        let row-h = root.tile ? max(Space.hit, grid.content-height / max(1, root.grid-row-count)) : root.avg-row-h;
+        let top = root.tile ? grid.absolute-position.y : list.absolute-position.y;
+        let h = root.tile ? grid.height : list.height;
+        let content-y = root.tile ? grid.content-y : list.content-y;
+        let line = root.tile ? floor(root.cur / root.cols) : root.cur;
+        return min(max(top + content-y + line * row-h, top), top + max(0px, h - row-h)) + row-h / 2;
+    }
+    function cursor-menu-x() -> length {
+        return root.tile ? grid.absolute-position.x + mod(root.cur, root.cols) * (grid.width / root.cols) + root.pad
+            : root.sidebar-w + root.pad * 2;
     }
 
     function open-item-menu(index: int, x: length, y: length) {
@@ -896,12 +1117,14 @@ export component MainWindow inherits Window {
     function open-help-menu() {
         root.close-menus();
         root.nav-origin = true;
+        root.menu-origin = 1;
         root.help-menu-open = true;
     }
 
     function open-view-menu() {
         root.close-menus();
         root.nav-origin = false;
+        root.menu-origin = 2;
         root.view-menu-open = true;
     }
 
@@ -910,14 +1133,26 @@ export component MainWindow inherits Window {
     function open-sort-menu(x: length, y: length) {
         root.close-menus();
         root.nav-origin = false;
+        root.menu-origin = 3;
         root.sort-menu-x = x;
         root.sort-menu-y = y;
         root.sort-menu-open = true;
     }
 
+    property <length> filter-menu-x: 0px;
+    property <length> filter-menu-y: 0px;
+    function open-filter-menu(x: length, y: length) {
+        root.close-menus();
+        root.nav-origin = false;
+        root.filter-menu-x = x;
+        root.filter-menu-y = y;
+        root.filter-menu-open = true;
+    }
+
     function open-recent-menu(row: int, x: length, y: length) {
         root.nav-origin = false;
         root.recent-menu-row = row;
+        root.recent-menu-text = root.recent-rows[row].kind != ItemKind.image && root.recent-rows[row].kind != ItemKind.file;
         root.recent-menu-id = root.recent-rows[row].id;
         root.recent-menu-x = x;
         root.recent-menu-y = y;
@@ -927,6 +1162,7 @@ export component MainWindow inherits Window {
 
     function open-recent-save(row: int, x: length, y: length) {
         root.nav-origin = false;
+        root.recent-save-sensitive = false;
         root.recent-menu-row = row;
         root.recent-menu-id = root.recent-rows[row].id;
         root.recent-menu-x = x;
@@ -943,13 +1179,22 @@ export component MainWindow inherits Window {
         root.help-menu-open = false;
         root.view-menu-open = false;
         root.sort-menu-open = false;
+        root.filter-menu-open = false;
+        if (root.chooser-open && root.chooser-nest) {
+            root.group-nest-dismissed();
+        }
+        root.chooser-nest = false;
         root.chooser-open = false;
+        root.chooser-filter = false;
         root.restore-focus();
     }
 
     property <[MenuEntry]> group-entries: [
         { text: MenuTexts.group-rename(), icon: Icons.pencil-simple, shortcut: "F2" },
+        { text: MenuTexts.group-colour(), icon: Icons.palette },
         { text: MenuTexts.group-ungroup(), icon: Icons.files },
+        { text: MenuTexts.group-nest(), icon: Icons.arrow-elbow-down-right },
+        { text: MenuTexts.group-move(), icon: Icons.folder },
         { separator: true },
         { text: MenuTexts.group-delete(), icon: Icons.trash, destructive: true, shortcut: "Del" },
     ];
@@ -963,6 +1208,7 @@ export component MainWindow inherits Window {
         { text: @tr("Copy"), icon: Icons.copy, shortcut: "Shift+Enter", disabled: root.multi },
         { text: MenuTexts.item-paste-as(), icon: Icons.text-t, disabled: root.multi || root.rows[root.item-menu-index].kind == ItemKind.image || root.rows[root.item-menu-index].kind == ItemKind.file },
         { text: MenuTexts.item-open-in-colours(), icon: Icons.palette, hidden: root.multi || !root.colour-can-open || !root.rows[root.item-menu-index].has-swatch },
+        { text: MenuTexts.item-open-in-browser(), icon: Icons.globe, hidden: root.multi || root.rows[root.item-menu-index].kind != ItemKind.link },
         { separator: true },
         { text: @tr("Edit"), icon: Icons.pencil-simple, shortcut: "Ctrl+E", disabled: root.multi },
         { text: @tr("Duplicate"), icon: Icons.files, shortcut: "Ctrl+D" },
@@ -995,11 +1241,19 @@ export component MainWindow inherits Window {
             if (i == 0) {
                 root.group-rename-requested(index);
             } else if (i == 1) {
+                root.group-colour-row = index;
+            } else if (i == 2) {
                 root.group-ungroup-requested(index);
             } else if (i == 3) {
+                root.open-group-nest(index);
+            } else if (i == 4) {
+                // Every item of the group goes to the chosen list: the host fills the chooser, the window opens it.
+                root.group-move-requested(index);
+                root.open-chooser(false, false, index);
+            } else if (i == 6) {
                 root.group-delete-requested(index);
             }
-            if (i != 0) {
+            if (i != 0 && i != 1 && i != 3 && i != 4) {
                 items-scope.focus();
             }
             return;
@@ -1014,22 +1268,24 @@ export component MainWindow inherits Window {
             root.act(ItemAction.paste-as, index);
         } else if (i == 3) {
             root.colour-open-requested(index);
-        } else if (i == 5) {
-            root.act(ItemAction.edit, index);
+        } else if (i == 4) {
+            root.act(ItemAction.open-link, index);
         } else if (i == 6) {
-            root.act(ItemAction.duplicate, index);
+            root.act(ItemAction.edit, index);
         } else if (i == 7) {
+            root.act(ItemAction.duplicate, index);
+        } else if (i == 8) {
             root.act(ItemAction.pin, index);
-        } else if (i == 8 || i == 9) {
+        } else if (i == 9 || i == 10) {
             root.cursor = index;
-            root.item-reorder-requested(i == 8 ? -1 : 1);
-        } else if (i == 10) {
-            root.act(ItemAction.move, index);
+            root.item-reorder-requested(i == 9 ? -1 : 1);
         } else if (i == 11) {
-            root.act(ItemAction.tag, index);
+            root.act(ItemAction.move, index);
         } else if (i == 12) {
+            root.act(ItemAction.tag, index);
+        } else if (i == 13) {
             root.group-requested(index);
-        } else if (i == 14) {
+        } else if (i == 15) {
             root.act(ItemAction.delete, index);
         }
         if (!root.chooser-open && !root.confirm-shown) {
@@ -1105,6 +1361,10 @@ export component MainWindow inherits Window {
     pure function tile-index(r: int, c: int) -> int {
         return r * root.cols + c;
     }
+    // What the card of cell `c` of grid row `r` needs: nothing for a cell past the last row.
+    pure function cell-need(r: int, c: int, need: length) -> length {
+        return root.tile-index(r, c) < root.rows.length ? need : 0px;
+    }
     property <length> tile-w: (grid.width - 2 * root.ring - (root.cols - 1) * root.tile-gap) / root.cols;
     // ---- Keyboard ---------------------------------------------------------------------------------
     pure function section-name() -> string {
@@ -1118,7 +1378,31 @@ export component MainWindow inherits Window {
     }
 
     pure function sort-name(sort: int) -> string {
-        return sort == 1 ? @tr("Most used") : sort == 2 ? @tr("Recently used") : @tr("Manual");
+        return sort == 1 ? @tr("Name")
+            : sort == 2 ? @tr("Created")
+            : sort == 3 ? @tr("Modified")
+            : sort == 4 ? @tr("Most used")
+            : sort == 5 ? @tr("Recently used")
+            : @tr("Manual");
+    }
+
+    // The words of a filter criterion (the Filter menu's row and its chip).
+    pure function filter-name(kind: int, name: string) -> string {
+        return kind == 0 ? @tr("Text")
+            : kind == 1 ? @tr("Template")
+            : kind == 2 ? @tr("Code")
+            : kind == 3 ? @tr("Link")
+            : kind == 4 ? @tr("Image")
+            : kind == 5 ? @tr("File")
+            : kind == 6 ? @tr("Has a trigger")
+            : kind == 7 ? @tr("Sensitive")
+            : kind == 8 ? @tr("Untagged")
+            : @tr("Tag: {}", name);
+    }
+
+    // How many criteria narrow the view, the colour label included.
+    pure function filter-count() -> int {
+        return root.filter-chips.length + (root.label-filter >= 0 ? 1 : 0);
     }
 
     // A suggestion was chosen: the word at the caret is replaced (the host computed the text and the new caret).
@@ -1130,6 +1414,9 @@ export component MainWindow inherits Window {
     }
 
     root-scope := FocusScope {
+        // Not a Tab stop of its own (MAIN-57): it only catches the window's keys; it has no name to read and nothing
+        // drawn as focused. A click or a call to `focus()` can still give it the focus.
+        focus-on-tab-navigation: false;
         capture-key-pressed(event) => {
             // An IME composition gets every key, Esc included (it cancels the composition).
             if (search.composing) {
@@ -1142,8 +1429,37 @@ export component MainWindow inherits Window {
             if (root.overlay-open) {
                 return reject;
             }
+            if (root.drawer-open && event.text == Key.Escape) {
+                root.close-drawer();
+                return accept;
+            }
+            if (root.drawer-open && (event.text == Key.Tab || event.text == Key.Backtab)) {
+                let back = event.text == Key.Backtab || event.modifiers.shift;
+                if (!back && root.help-focused) {
+                    root.switcher-focus += 1;
+                    return accept;
+                }
+                if (back && root.switcher-focused) {
+                    root.help-focus += 1;
+                    return accept;
+                }
+                return reject;
+            }
             if (search.has-focus && suggest.handle-key(event)) {
                 return accept;
+            }
+            // From the search field: Down moves into the results, Enter uses the first hit (MAIN-3).
+            if (search.has-focus && !root.recent-shown && root.rows.length > 0 && !event.modifiers.control && !event.modifiers.alt && !event.modifiers.meta) {
+                if (event.text == Key.DownArrow) {
+                    root.cursor = 0;
+                    root.focus-items();
+                    return accept;
+                }
+                if (event.text == Key.Return && root.searching && !root.in-trash) {
+                    root.cursor = 0;
+                    root.act(event.modifiers.shift ? ItemAction.copy : ItemAction.use, 0);
+                    return accept;
+                }
             }
             if (event.modifiers.control && !event.modifiers.alt && !event.modifiers.meta) {
                 if ((event.text == "b" || event.text == "B") && !event.modifiers.shift) {
@@ -1201,8 +1517,27 @@ export component MainWindow inherits Window {
 
         HorizontalLayout {
             // ======== Sidebar ====================================================================
-            sidebar := Rectangle {
+            // The layout's slot for the sidebar. The drawer is drawn from it, over the list (above it, by `z`).
+            Rectangle {
                 width: root.sidebar-w;
+                z: root.drawer-open ? 20 : 0;
+                if root.drawer-open: Rectangle {
+                    x: 0px;
+                    width: root.width;
+                    height: root.height;
+                    background: root.scrim;
+                    TouchArea {
+                        pointer-event(event) => {
+                            if (event.kind == PointerEventKind.down) {
+                                root.close-drawer();
+                            }
+                        }
+                    }
+                }
+            sidebar := Rectangle {
+                x: 0px;
+                width: root.view-w;
+                height: parent.height;
                 background: Theme.bg-app;
                 accessible-role: AccessibleRole.list;
                 accessible-label: @tr("Navigation");
@@ -1213,33 +1548,36 @@ export component MainWindow inherits Window {
                     Rectangle {
                         height: root.bar-h;
                         HorizontalLayout {
-                            padding-left: root.narrow ? 0px : Space.s2;
-                            padding-right: root.narrow ? 0px : Space.s2;
-                            alignment: root.narrow ? center : start;
+                            padding-left: root.compact ? 0px : Space.s2;
+                            padding-right: root.compact ? 0px : Space.s2;
+                            alignment: root.compact ? center : start;
                             spacing: Space.s2;
-                            if !root.narrow: switcher := BoardSwitcher {
+                            if !root.compact: switcher := BoardSwitcher {
                                 horizontal-stretch: 0;
                                 board-name: root.board-name;
                                 menu-open: root.board-menu-open;
                                 a11y-label: @tr("Board: {}", root.board-name);
+                                focus-request: root.switcher-focus;
                                 y: (parent.height - self.height) / 2;
+                                changed has-focus => { root.switcher-focused = self.has-focus; }
                                 menu-requested => { root.board-menu-requested(); }
                             }
                         }
-                        if !root.auto-rail: sidebar-toggle := IconButton {
+                        sidebar-toggle := IconButton {
                             scaled: true;
                             side-override: root.ctl-h;
-                            icon: root.sidebar-collapsed ? Icons.caret-double-right : Icons.caret-double-left;
-                            tooltip: root.sidebar-collapsed ? @tr("Expand sidebar (Ctrl+B)") : @tr("Collapse sidebar (Ctrl+B)");
+                            focus-request: root.toggle-focus;
+                            icon: root.compact ? Icons.caret-double-right : Icons.caret-double-left;
+                            tooltip: root.compact ? @tr("Expand sidebar (Ctrl+B)") : root.drawer-open ? @tr("Close sidebar (Ctrl+B)") : @tr("Collapse sidebar (Ctrl+B)");
                             own-tooltip: true;
-                            active: root.sidebar-collapsed;
-                            x: root.narrow ? (parent.width - self.width) / 2 : parent.width - self.width - Space.s2;
+                            active: root.compact;
+                            x: root.compact ? (parent.width - self.width) / 2 : parent.width - self.width - Space.s2;
                             y: (parent.height - self.height) / 2;
                             clicked => { root.toggle-sidebar(); }
                         }
                     }
-                    if root.narrow: Rectangle {
-                        height: Space.hit + Space.s1;
+                    if root.compact: Rectangle {
+                        height: Space.hit * root.text-scale + Space.s1;
                         IconButton {
                             scaled: true;
                             icon: Icons.stack;
@@ -1299,9 +1637,20 @@ export component MainWindow inherits Window {
                                         root.open-section(root.nav-cursor);
                                         return accept;
                                     }
+                                    // F2 edits and Delete asks to delete the list or tag under the cursor (MAIN-15), like the menu.
+                                    if (event.text == Key.F2 || event.text == Key.Delete) {
+                                        let kind = root.nav-section(root.nav-cursor);
+                                        let at = root.nav-index(root.nav-cursor);
+                                        if (kind == MainSection.list) {
+                                            if (event.text == Key.F2) { root.list-edit-requested(at); } else { root.ask(1, at); }
+                                        } else if (kind == MainSection.tag) {
+                                            if (event.text == Key.F2) { root.manage-tags-requested(); } else { root.ask(2, at); }
+                                        }
+                                        return accept;
+                                    }
                                     if (event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10)) {
                                         if (root.nav-cursor >= 3) {
-                                            root.open-nav-menu(root.nav-cursor, root.sidebar-w, root.bar-h + Space.s8);
+                                            root.open-nav-menu(root.nav-cursor, root.view-w, root.bar-h + Space.s8);
                                         }
                                         return accept;
                                     }
@@ -1319,7 +1668,7 @@ export component MainWindow inherits Window {
                                         icon: Icons.tray;
                                         label: @tr("All items");
                                         count: root.count-all;
-                                        rail: root.narrow;
+                                        rail: root.compact;
                                         selected: root.nav-selected == 0;
                                         keyboard-focusable: false;
                                         show-focus: nav-scope.has-focus && root.nav-cursor == 0;
@@ -1330,7 +1679,7 @@ export component MainWindow inherits Window {
                                         icon: Icons.push-pin;
                                         label: @tr("Pinned");
                                         count: root.count-pinned;
-                                        rail: root.narrow;
+                                        rail: root.compact;
                                         selected: root.nav-selected == 1;
                                         keyboard-focusable: false;
                                         show-focus: nav-scope.has-focus && root.nav-cursor == 1;
@@ -1341,37 +1690,57 @@ export component MainWindow inherits Window {
                                         icon: Icons.clock;
                                         label: @tr("Recent");
                                         count: root.count-recent;
-                                        rail: root.narrow;
+                                        rail: root.compact;
                                         selected: root.nav-selected == 2;
                                         keyboard-focusable: false;
                                         show-focus: nav-scope.has-focus && root.nav-cursor == 2;
                                         clicked => { root.open-section(2); }
                                     }
-                                    SidebarItem {
-                                        kind: SidebarItemKind.system;
-                                        icon: Icons.trash;
-                                        label: @tr("Trash");
-                                        count: root.count-trash;
-                                        rail: root.narrow;
-                                        selected: root.nav-selected == 3;
-                                        keyboard-focusable: false;
-                                        show-focus: nav-scope.has-focus && root.nav-cursor == 3;
-                                        clicked => { root.open-section(3); }
-                                        context-menu-requested(x, y) => { root.open-nav-menu(3, root.sidebar-w, self.absolute-position.y + y); }
+                                    Rectangle {
+                                        height: side-trash.height;
+                                        trash-drop := DropArea {
+                                            can-drop(event) => {
+                                                root.edge-dir = 0;
+                                                root.payload-row(event.data) >= 0 && !root.in-trash ? DragAction.move : DragAction.none
+                                            }
+                                            dropped(event) => {
+                                                root.row-dropped-on-trash(root.payload-row(event.data));
+                                                return DragAction.move;
+                                            }
+                                            side-trash := SidebarItem {
+                                                kind: SidebarItemKind.system;
+                                                icon: Icons.trash;
+                                                label: @tr("Trash");
+                                                count: root.count-trash;
+                                                rail: root.compact;
+                                                selected: root.nav-selected == 3;
+                                                drop-target: trash-drop.has-drag;
+                                                keyboard-focusable: false;
+                                                show-focus: nav-scope.has-focus && root.nav-cursor == 3;
+                                                clicked => { root.open-section(3); }
+                                                context-menu-requested(x, y) => { root.open-nav-menu(3, root.view-w, self.absolute-position.y + y); }
+                                            }
+                                        }
                                     }
 
-                                    if !root.narrow: SidebarHeading {
+                                    if !root.compact: SidebarHeading {
                                         text: @tr("Lists");
                                         action-icon: Icons.plus;
                                         action-label: @tr("Add list");
                                         action => { root.add-list-requested(); }
                                     }
-                                    if root.narrow: Rectangle {
-                                        height: Space.s2;
-                                        Rectangle {
+                                    // The rail keeps the two header controls as icon buttons (MAIN-16).
+                                    if root.compact: Rectangle {
+                                        height: root.ctl-h + Space.s1;
+                                        IconButton {
+                                            x: (parent.width - self.width) / 2;
                                             y: (parent.height - self.height) / 2;
-                                            height: 1px;
-                                            background: Theme.border-subtle;
+                                            scaled: true;
+                                            side-override: root.ctl-h;
+                                            icon: Icons.plus;
+                                            tooltip: @tr("Add list");
+                                            own-tooltip: true;
+                                            clicked => { root.add-list-requested(); }
                                         }
                                     }
                                     for entry[i] in root.lists: Rectangle {
@@ -1404,13 +1773,13 @@ export component MainWindow inherits Window {
                                                     count: entry.count;
                                                     mark-color: entry.color;
                                                     icon: entry.icon;
-                                                    rail: root.narrow;
+                                                    rail: root.compact;
                                                     selected: root.nav-selected == 4 + i;
                                                 drop-target: side-drop.has-drag && list-from < 0;
                                                     keyboard-focusable: false;
                                                     show-focus: nav-scope.has-focus && root.nav-cursor == 4 + i;
                                                     clicked => { root.open-section(4 + i); }
-                                                    context-menu-requested(x, y) => { root.open-nav-menu(4 + i, root.sidebar-w, self.absolute-position.y + y); }
+                                                    context-menu-requested(x, y) => { root.open-nav-menu(4 + i, root.view-w, self.absolute-position.y + y); }
                                                 }
                                             }
                                         }
@@ -1423,30 +1792,51 @@ export component MainWindow inherits Window {
                                     }
                                     }
 
-                                    if !root.narrow: SidebarHeading {
+                                    if !root.compact: SidebarHeading {
                                         text: @tr("Tags");
                                         action-icon: Icons.gear;
                                         action-label: @tr("Manage tags");
                                         action => { root.manage-tags-requested(); }
                                     }
-                                    if root.narrow && root.n-tags > 0: Rectangle {
-                                        height: Space.s2;
-                                        Rectangle {
+                                    if root.compact && root.n-tags > 0: Rectangle {
+                                        height: root.ctl-h + Space.s1;
+                                        IconButton {
+                                            x: (parent.width - self.width) / 2;
                                             y: (parent.height - self.height) / 2;
-                                            height: 1px;
-                                            background: Theme.border-subtle;
+                                            scaled: true;
+                                            side-override: root.ctl-h;
+                                            icon: Icons.gear;
+                                            tooltip: @tr("Manage tags");
+                                            own-tooltip: true;
+                                            clicked => { root.manage-tags-requested(); }
                                         }
                                     }
-                                    for entry[i] in root.tags: SidebarItem {
-                                        kind: SidebarItemKind.tag;
-                                        label: entry.label;
-                                        count: entry.count;
-                                        rail: root.narrow;
-                                        selected: root.nav-selected == 4 + root.n-lists + i;
-                                        keyboard-focusable: false;
-                                        show-focus: nav-scope.has-focus && root.nav-cursor == 4 + root.n-lists + i;
-                                        clicked => { root.open-section(4 + root.n-lists + i); }
-                                        context-menu-requested(x, y) => { root.open-nav-menu(4 + root.n-lists + i, root.sidebar-w, self.absolute-position.y + y); }
+                                    for entry[i] in root.tags: Rectangle {
+                                        height: side-tag.height;
+                                        tag-drop := DropArea {
+                                            can-drop(event) => {
+                                                root.edge-dir = 0;
+                                                root.payload-row(event.data) >= 0 && !root.in-trash ? DragAction.move : DragAction.none
+                                            }
+                                            dropped(event) => {
+                                                root.row-dropped-on-tag(root.payload-row(event.data), i);
+                                                return DragAction.move;
+                                            }
+                                            side-tag := SidebarItem {
+                                                kind: SidebarItemKind.tag;
+                                                label: entry.label;
+                                                count: entry.count;
+                                                mark-color: entry.color;
+                                                indent: i < root.tag-depths.length ? min(root.tag-depths[i], 4) : 0;
+                                                rail: root.compact;
+                                                selected: root.nav-selected == 4 + root.n-lists + i;
+                                                drop-target: tag-drop.has-drag;
+                                                keyboard-focusable: false;
+                                                show-focus: nav-scope.has-focus && root.nav-cursor == 4 + root.n-lists + i;
+                                                clicked => { root.open-section(4 + root.n-lists + i); }
+                                                context-menu-requested(x, y) => { root.open-nav-menu(4 + root.n-lists + i, root.view-w, self.absolute-position.y + y); }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -1460,41 +1850,78 @@ export component MainWindow inherits Window {
                         }
                     }
 
-                    // Settings, pinned to the foot of the sidebar.
+                    // Settings and Help, pinned to the foot of the sidebar. They sit side by side while both fit at their
+                    // own width; otherwise they stack, each at its full width (a button is never squeezed below its
+                    // text). On the rail they are icons in a column, so neither reaches past the rail's edge.
                     Rectangle {
-                        height: root.bar-h;
-                        HorizontalLayout {
-                            padding: Space.s2;
-                            alignment: root.narrow ? center : start;
-                            if !root.narrow: Button {
+                        height: root.compact ? 2 * Space.hit * root.text-scale + 3 * Space.s1
+                            : root.foot-stack ? 2 * Space.s2 + Space.s1 + 2 * foot-measure-settings.height
+                            : root.bar-h;
+                        if !root.compact: Rectangle {
+                            Button {
                                 variant: ButtonVariant.ghost;
                                 icon: Icons.gear;
                                 text: @tr("Settings");
-                                y: (parent.height - self.height) / 2;
+                                width: foot-measure-settings.preferred-width;
+                                x: Space.s2;
+                                y: root.foot-stack ? Space.s2 : (parent.height - self.height) / 2;
                                 clicked => { root.settings-requested(); }
                             }
-                            if !root.narrow: Button {
+                            Button {
                                 variant: ButtonVariant.ghost;
                                 icon: Icons.question;
                                 text: @tr("Help");
-                                y: (parent.height - self.height) / 2;
+                                width: foot-measure-help.preferred-width;
+                                focus-request: root.help-focus;
+                                x: root.foot-stack ? Space.s2 : 2 * Space.s2 + foot-measure-settings.preferred-width;
+                                y: root.foot-stack ? Space.s2 + Space.s1 + self.height : (parent.height - self.height) / 2;
+                                changed has-focus => { root.help-focused = self.has-focus; }
                                 clicked => { root.open-help-menu(); }
                             }
-                            if root.narrow: IconButton {
-                                scaled: true;
-                                icon: Icons.gear;
-                                tooltip: @tr("Settings");
-                                own-tooltip: true;
-                                y: (parent.height - self.height) / 2;
-                                clicked => { root.settings-requested(); }
+                        }
+                        // Not shown and never focused: they only give the buttons' preferred widths.
+                        foot-measure-settings := Button {
+                            variant: ButtonVariant.ghost;
+                            icon: Icons.gear;
+                            text: @tr("Settings");
+                            visible: false;
+                            enabled: false;
+                            accessible-role: none;
+                        }
+                        foot-measure-help := Button {
+                            variant: ButtonVariant.ghost;
+                            icon: Icons.question;
+                            text: @tr("Help");
+                            visible: false;
+                            enabled: false;
+                            accessible-role: none;
+                        }
+                        if root.compact: VerticalLayout {
+                            padding-top: Space.s1;
+                            spacing: Space.s1;
+                            alignment: start;
+                            Rectangle {
+                                height: Space.hit * root.text-scale;
+                                IconButton {
+                                    scaled: true;
+                                    icon: Icons.gear;
+                                    tooltip: @tr("Settings");
+                                    own-tooltip: true;
+                                    x: (parent.width - self.width) / 2;
+                                    clicked => { root.settings-requested(); }
+                                }
                             }
-                            if root.narrow: IconButton {
-                                scaled: true;
-                                icon: Icons.question;
-                                tooltip: @tr("Help");
-                                own-tooltip: true;
-                                y: (parent.height - self.height) / 2;
-                                clicked => { root.open-help-menu(); }
+                            Rectangle {
+                                height: Space.hit * root.text-scale;
+                                IconButton {
+                                    scaled: true;
+                                    icon: Icons.question;
+                                    tooltip: @tr("Help");
+                                    own-tooltip: true;
+                                    focus-request: root.help-focus;
+                                    x: (parent.width - self.width) / 2;
+                                    clicked => { root.open-help-menu(); }
+                                }
                             }
                         }
                     }
@@ -1506,6 +1933,52 @@ export component MainWindow inherits Window {
                     width: 1px;
                     background: Theme.border-subtle;
                 }
+
+                // The splitter's keyboard stop. It sits at the end of the sidebar so Tab reaches it where it is on screen, between
+                // the sidebar and the content (MAIN-58); the strip over the layout below is its 24px target.
+                if !root.narrow: Rectangle {
+                    x: parent.width - root.splitter-w / 2;
+                    width: root.splitter-w;
+                    height: parent.height;
+                    // A press on the strip asks for the focus (the strip is drawn over the layout, above this scope).
+                    property <int> request: root.splitter-focus-request;
+                    changed request => { splitter-scope.focus(); }
+                    splitter-scope := FocusScope {
+                    width: parent.width;
+                    height: parent.height;
+                    accessible-role: AccessibleRole.slider;
+                    accessible-label: @tr("Sidebar width");
+                    accessible-value: root.sidebar-width;
+                    accessible-value-minimum: 200;
+                    accessible-value-maximum: 320;
+                    accessible-value-step: 8;
+                    accessible-action-increment => { root.set-sidebar-width(root.sidebar-width + 8, true); }
+                    accessible-action-decrement => { root.set-sidebar-width(root.sidebar-width - 8, true); }
+                    changed has-focus => { root.splitter-focused = self.has-focus; }
+                    key-pressed(event) => {
+                        if (event.text == Key.LeftArrow) {
+                            root.set-sidebar-width(root.sidebar-width - 8, true);
+                            return accept;
+                        }
+                        if (event.text == Key.RightArrow) {
+                            root.set-sidebar-width(root.sidebar-width + 8, true);
+                            return accept;
+                        }
+                        // Home and End jump to the narrowest and the widest (MAIN-15, like any slider).
+                        if (event.text == Key.Home) {
+                            root.set-sidebar-width(200, true);
+                            return accept;
+                        }
+                        if (event.text == Key.End) {
+                            root.set-sidebar-width(320, true);
+                            return accept;
+                        }
+                        return reject;
+                    }
+                    }
+                }
+
+            }
 
             }
 
@@ -1535,7 +2008,7 @@ export component MainWindow inherits Window {
                         spacing: Space.s2;
                         Rectangle {
                             horizontal-stretch: 1;
-                            min-width: 0px;
+                            min-width: 150px * SystemLook.text-scale;
                             // The same width whatever is typed: the field's own preferred width follows its text.
                             preferred-width: 360px * SystemLook.text-scale;
                             max-width: 360px * SystemLook.text-scale;
@@ -1543,8 +2016,9 @@ export component MainWindow inherits Window {
                                 alignment: center;
                                 search := SearchField {
                                     expanded: suggest.open;
-                                    placeholder: @tr("Search snippets");
-                                    label: @tr("Search snippets");
+                                    placeholder: @tr("Search items");
+                                    label: @tr("Search items");
+                                    description: @tr("Words match anywhere in a title or body. \"Quotes\" match a phrase, -word excludes, and tag:, list:, kind: or is:pinned filter.");
                                     clear-label: @tr("Clear search");
                                     edited(text) => {
                                         root.cursor = 0;
@@ -1561,7 +2035,7 @@ export component MainWindow inherits Window {
                             padding-right: Space.s1;
                             HorizontalLayout {
                                 spacing: 0px;
-                                panel-show := IconButton {
+                                if !root.toolbar-tight: panel-show := IconButton {
                                     scaled: true;
                                     side-override: root.ctl-h;
                                     icon: Icons.picture-in-picture;
@@ -1572,7 +2046,7 @@ export component MainWindow inherits Window {
                                     own-tooltip: true;
                                     clicked => { root.panel-requested(); }
                                 }
-                                Rectangle {
+                                if !root.toolbar-tight: Rectangle {
                                     width: Space.s3;
                                     height: root.ctl-h;
                                     Rectangle {
@@ -1583,7 +2057,7 @@ export component MainWindow inherits Window {
                                         background: Theme.border-subtle;
                                     }
                                 }
-                                HorizontalLayout {
+                                if !root.toolbar-tight: HorizontalLayout {
                                     spacing: Space.s1;
                                     undo-button := IconButton {
                                         scaled: true;
@@ -1604,7 +2078,7 @@ export component MainWindow inherits Window {
                                         clicked => { root.redo-requested(); }
                                     }
                                 }
-                                Rectangle {
+                                if !root.toolbar-tight: Rectangle {
                                     width: Space.s3;
                                     height: root.ctl-h;
                                     Rectangle {
@@ -1643,6 +2117,7 @@ export component MainWindow inherits Window {
                                     caret: true;
                                     tooltip: @tr("View");
                                     active: root.view-menu-open;
+                                    focus-request: root.view-focus;
                                     clicked => { root.open-view-menu(); }
                                 }
                                 Rectangle {
@@ -1674,9 +2149,9 @@ export component MainWindow inherits Window {
                                     icon: Icons.rows;
                                     tooltip: @tr("Comfortable view");
                                     own-tooltip: true;
-                                    active: root.view == MainView.comfortable;
+                                    active: root.drawn-view == MainView.comfortable;
                                     accessible-checkable: true;
-                                    accessible-checked: root.view == MainView.comfortable;
+                                    accessible-checked: root.drawn-view == MainView.comfortable;
                                     clicked => {
                                         root.view = MainView.comfortable;
                                         root.view-changed(MainView.comfortable);
@@ -1688,9 +2163,9 @@ export component MainWindow inherits Window {
                                     icon: Icons.list-bullets;
                                     tooltip: @tr("Compact view");
                                     own-tooltip: true;
-                                    active: root.view == MainView.compact;
+                                    active: root.drawn-view == MainView.compact;
                                     accessible-checkable: true;
-                                    accessible-checked: root.view == MainView.compact;
+                                    accessible-checked: root.drawn-view == MainView.compact;
                                     clicked => {
                                         root.view = MainView.compact;
                                         root.view-changed(MainView.compact);
@@ -1700,7 +2175,7 @@ export component MainWindow inherits Window {
                                     scaled: true;
                                     side-override: root.ctl-h - 2 * Space.s0-5;
                                     icon: Icons.squares-four;
-                                    tooltip: @tr("Tile view");
+                                    tooltip: root.has-groups ? @tr("Tile view is not available while the list has groups") : @tr("Tile view");
                                     own-tooltip: true;
                                     // Groups draw rows, never tiles: the button rests while they show.
                                     enabled: !root.has-groups;
@@ -1723,8 +2198,12 @@ export component MainWindow inherits Window {
                                 horizontal-stretch: 0;
                                 variant: ButtonVariant.primary;
                                 icon: Icons.plus;
-                                text: @tr("New item");
-                                clicked => { root.new-item-requested(); }
+                                text: root.toolbar-tight ? "" : @tr("New item");
+                                a11y-label: @tr("New item");
+                                tooltip: @tr("New item");
+                                // One command with Ctrl+N (the quick-add row in an open list); nothing to add into in the Trash.
+                                enabled: !root.in-trash;
+                                clicked => { root.new-item(); }
                             }
                         }
                     }
@@ -1732,7 +2211,7 @@ export component MainWindow inherits Window {
 
                 // ---- Heading: where the user is -----------------------------------------------
                 Rectangle {
-                    height: max(Space.s8, Type.line-lg + Space.s2);
+                    height: max(root.ctl-h, Type.line-lg + Space.s2);
                     HorizontalLayout {
                         padding-left: root.pad;
                         padding-right: root.pad;
@@ -1749,14 +2228,28 @@ export component MainWindow inherits Window {
                             accessible-role: AccessibleRole.text;
                             accessible-label: root.section-name();
                         }
-                        if root.section == MainSection.list && !root.searching: sort-button := ToolbarButton {
+                        if root.filterable: filter-button := ToolbarButton {
                             horizontal-stretch: 0;
                             h: root.ctl-h;
+                            compact: root.heading-compact;
+                            icon: Icons.funnel;
+                            label: root.filter-count() > 0 ? @tr("Filter ({})", root.filter-count()) : @tr("Filter");
+                            tooltip: @tr("Filter the items");
+                            caret: true;
+                            active: root.filter-menu-open || root.filter-count() > 0;
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.open-filter-menu(self.absolute-position.x, self.absolute-position.y + self.height); }
+                        }
+                        if root.sortable: sort-button := ToolbarButton {
+                            horizontal-stretch: 0;
+                            h: root.ctl-h;
+                            compact: root.heading-compact;
                             icon: Icons.rows;
                             label: @tr("Sort: {}", root.sort-name(root.list-sort));
                             tooltip: @tr("Sort by: {}", root.sort-name(root.list-sort));
                             caret: true;
                             active: root.sort-menu-open;
+                            focus-request: root.sort-focus;
                             y: (parent.height - self.height) / 2;
                             clicked => { root.open-sort-menu(self.absolute-position.x, self.absolute-position.y + self.height); }
                         }
@@ -1772,8 +2265,9 @@ export component MainWindow inherits Window {
                 }
 
                 // ---- Colour-label filter ----------------------------------------------------------
-                if root.label-chips.length > 0 || root.label-filter >= 0: Rectangle {
-                    height: Space.hit + Space.s2;
+                // One chip's height plus its 4 px focus ring on each side (the row scrolls, so it clips) and the bottom gap.
+                if root.label-chips.length > 0 || root.filter-count() > 0: Rectangle {
+                    height: max(Space.hit, Type.line-sm + Space.s2) + 3 * Space.s1;
                     accessible-role: AccessibleRole.groupbox;
                     accessible-label: @tr("Filter by colour label");
                     HorizontalLayout {
@@ -1782,21 +2276,51 @@ export component MainWindow inherits Window {
                         padding-bottom: Space.s1;
                         spacing: Space.s1;
                         alignment: start;
-                        for chip in root.label-chips: LabelChip {
-                            y: (parent.height - self.height) / 2;
-                            text: chip.name;
-                            hue: [ListHue.blue, ListHue.teal, ListHue.green, ListHue.amber, ListHue.orange, ListHue.red, ListHue.violet, ListHue.slate][chip.label];
-                            count: chip.count;
-                            selected: chip.label == root.label-filter;
-                            clicked => { root.label-filter-requested(chip.label == root.label-filter ? -1 : chip.label); }
+                        // The chips scroll sideways when the row is too narrow for them at the text size in use (they
+                        // each keep their words); Clear filter and the count stay in view beside them.
+                        chip-scroll := Flickable {
+                            preferred-width: chip-row.preferred-width;
+                            min-width: Space.hit;
+                            content-width: max(chip-row.preferred-width, self.width);
+                            content-height: self.height;
+                            interactive: false;
+                            function reveal(x: length, w: length) {
+                                if (x + self.content-x < 0px) {
+                                    self.content-x = -x;
+                                } else if (x + w + self.content-x > self.width) {
+                                    self.content-x = self.width - x - w;
+                                }
+                            }
+                            chip-row := HorizontalLayout {
+                                spacing: Space.s1;
+                                alignment: start;
+                                for chip in root.label-chips: chip-l := LabelChip {
+                                    y: (parent.height - self.height) / 2;
+                                    text: chip.name;
+                                    hue: [ListHue.blue, ListHue.teal, ListHue.green, ListHue.amber, ListHue.orange, ListHue.red, ListHue.violet, ListHue.slate][chip.label];
+                                    count: chip.count;
+                                    selected: chip.label == root.label-filter;
+                                    clicked => { root.label-filter-requested(chip.label == root.label-filter ? -1 : chip.label); }
+                                    changed has-focus => { if (self.has-focus) { chip-scroll.reveal(self.x, self.width); } }
+                                }
+                                for chip[i] in root.filter-chips: chip-f := LabelChip {
+                                    y: (parent.height - self.height) / 2;
+                                    text: root.filter-name(chip.kind, chip.name);
+                                    hue: ListHue.slate;
+                                    selected: true;
+                                    accessible-description: @tr("Remove this filter");
+                                    clicked => { root.filter-chip-removed(i); }
+                                    changed has-focus => { if (self.has-focus) { chip-scroll.reveal(self.x, self.width); } }
+                                }
+                            }
                         }
-                        if root.label-filter >= 0: Button {
+                        if root.filter-count() > 0: Button {
                             variant: ButtonVariant.ghost;
                             text: @tr("Clear filter");
                             y: (parent.height - self.height) / 2;
-                            clicked => { root.label-filter-requested(-1); }
+                            clicked => { root.filter-cleared(); }
                         }
-                        if root.label-filter >= 0: Text {
+                        if root.filter-count() > 0 && !root.heading-compact: Text {
                             text: @tr("{n} item" | "{n} items" % root.rows.length);
                             font-family: Fonts.sans;
                             font-size: Type.sm;
@@ -1832,6 +2356,12 @@ export component MainWindow inherits Window {
                     items-scope := FocusScope {
                         width: parent.width;
                         height: parent.height;
+                        // The scope that holds the keyboard focus is what a screen reader meets first, so it is the
+                        // list: named, with the row the cursor is on as its value (MAIN-57). The rows are exposed
+                        // by the list views beside it.
+                        accessible-role: AccessibleRole.list;
+                        accessible-label: @tr("Item list");
+                        accessible-value: root.cur >= 0 && root.cur < root.rows.length ? root.rows[root.cur].title : "";
 
                         changed has-focus => {
                             if (self.has-focus) {
@@ -1849,7 +2379,13 @@ export component MainWindow inherits Window {
                             let ctrl = event.modifiers.control || event.modifiers.meta;
                             if (event.modifiers.alt && !event.modifiers.control && !event.modifiers.shift
                                 && !root.in-trash && (event.text == Key.UpArrow || event.text == Key.DownArrow)) {
-                                root.item-reorder-requested(event.text == Key.UpArrow ? -1 : 1);
+                                // In tiles Up/Down move one row of tiles, Left/Right one place (MAIN-13).
+                                root.item-reorder-requested((event.text == Key.UpArrow ? -1 : 1) * (root.tile ? root.cols : 1));
+                                return accept;
+                            }
+                            if (event.modifiers.alt && !event.modifiers.control && !event.modifiers.shift
+                                && !root.in-trash && root.tile && (event.text == Key.LeftArrow || event.text == Key.RightArrow)) {
+                                root.item-reorder-requested(event.text == Key.LeftArrow ? -1 : 1);
                                 return accept;
                             }
                             if (root.recent-shown && !event.modifiers.alt && !ctrl) {
@@ -1887,6 +2423,31 @@ export component MainWindow inherits Window {
                             // Alt+Enter pastes the selected item as plain text (SPEC 5.1a).
                             if (event.modifiers.alt && !ctrl && !shift && event.text == Key.Return && root.rows.length > 0 && !root.in-trash && !root.use-copies) {
                                 root.act(ItemAction.use-plain, root.cur);
+                                return accept;
+                            }
+                            // Esc clears a selection first, then the search (MAIN-4).
+                            if (event.text == Key.Escape && !event.modifiers.alt) {
+                                if (root.selected-count > 0) {
+                                    root.clear-selection-requested();
+                                    return accept;
+                                }
+                                if (root.searching) {
+                                    root.cursor = 0;
+                                    root.query = "";
+                                    root.query-changed("");
+                                    return accept;
+                                }
+                            }
+                            // Type-to-search: a letter or digit typed in the list starts a search with it (MAIN-4,
+                            // the "Start typing" tip). Special keys are private-use characters: no case, not a digit.
+                            if (!ctrl && !event.modifiers.alt && !root.in-trash && event.text.character-count == 1
+                                && (event.text.to-lowercase() != event.text.to-uppercase() || (event.text.is-float() && event.text != "." && event.text != "-"))) {
+                                root.cursor = 0;
+                                root.query = event.text;
+                                root.query-changed(event.text);
+                                root.suggest-requested(event.text, event.text.character-count);
+                                search.focus();
+                                search.set-cursor(event.text.character-count);
                                 return accept;
                             }
                             if (event.modifiers.alt || root.rows.length == 0) {
@@ -1988,7 +2549,7 @@ export component MainWindow inherits Window {
                                 return reject;
                             }
                             if (event.text == Key.Menu || (shift && event.text == Key.F10)) {
-                                root.open-item-menu(root.cur, root.sidebar-w + root.pad * 2, root.bar-h * 2 + Space.s8);
+                                root.open-item-menu(root.cur, root.cursor-menu-x(), root.cursor-menu-y());
                                 return accept;
                             }
                             // Keyboard reveal: hold Space (a sensitive item only).
@@ -2022,7 +2583,7 @@ export component MainWindow inherits Window {
                             height: parent.height;
                             vertical-scrollbar-policy: ScrollBarPolicy.always-off;
                             horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
-                            accessible-label: @tr("Snippets");
+                            accessible-label: @tr("Items");
                             visible: root.rows.length > 0;
                             scrolled => { root.follow-cursor = false; }
 
@@ -2066,14 +2627,16 @@ export component MainWindow inherits Window {
 
                                         // A group's header takes the place of a card.
                                         if row.is-header: GroupHeader {
-                                            x: root.ring;
+                                            x: root.ring + row.depth * Space.s3;
                                             y: root.ring;
-                                            width: parent.width - 2 * root.ring;
+                                            width: parent.width - 2 * root.ring - row.depth * Space.s3;
                                             height: root.header-h - 2 * root.ring;
                                             name: row.title;
                                             collapsed: row.group-collapsed;
                                             count-text: @tr("{} item" | "{} items" % row.group-count, row.group-count);
-                                            a11y-label: root.group-announcement(row.title, row.group-count);
+                                            a11y-label: root.group-announcement(row.title, row.group-count, row.group-colour);
+                                            dot: row.group-colour >= 0 && row.group-colour < root.group-hues.length ? ListAccent.color(root.group-hues[row.group-colour]) : transparent;
+                                            has-dot: row.group-colour >= 0;
                                             rename-label: @tr("Group name");
                                             selected: i == root.cur && items-scope.has-focus && root.kbd-focus;
                                             rename-request: root.rename-row == i ? root.rename-seq : 0;
@@ -2089,9 +2652,9 @@ export component MainWindow inherits Window {
 
                                         card := MainCard {
                                             visible: !row.is-header;
-                                            x: root.ring + (row.grouped ? Space.s3 : 0px);
+                                            x: root.ring + row.depth * Space.s3;
                                             y: root.ring;
-                                            width: parent.width - 2 * root.ring - (row.grouped ? Space.s3 : 0px);
+                                            width: parent.width - 2 * root.ring - row.depth * Space.s3;
                                             height: self.preferred-height;
                                             variant: root.view == MainView.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
                                             data: row;
@@ -2111,6 +2674,7 @@ export component MainWindow inherits Window {
                                                 root.act(root.in-trash ? ItemAction.restore : ItemAction.use, i);
                                             }
                                             copy => { root.act(ItemAction.copy, i); }
+                                            thumb-wanted => { root.thumb-wanted(i); }
                                             plain-click: !root.in-trash && !root.use-copies;
                                             use-plain => {
                                                 root.cursor = i;
@@ -2189,15 +2753,15 @@ export component MainWindow inherits Window {
                             height: parent.height;
                             vertical-scrollbar-policy: ScrollBarPolicy.always-off;
                             horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
-                            accessible-label: @tr("Snippets");
+                            accessible-label: @tr("Items");
                             visible: root.rows.length > 0;
                             scrolled => { root.follow-cursor = false; }
 
-                            for r in root.grid-row-count: Rectangle {
+                            for r in root.grid-row-count: grid-row := Rectangle {
                                 property <bool> has-cursor: floor(root.cur / root.cols) == r;
                                 // Each cell reports the height its card needs; a grid row takes its tallest card (min 96).
                                 property <[length]> need: [0px, 0px, 0px, 0px, 0px, 0px];
-                                height: max(self.need[0], self.need[1], self.need[2], self.need[3], self.need[4], self.need[5]) + root.tile-gap + (r == root.grid-row-count - 1 ? 2 * root.ring : 0px);
+                                height: max(root.cell-need(r, 0, self.need[0]), root.cell-need(r, 1, self.need[1]), root.cell-need(r, 2, self.need[2]), root.cell-need(r, 3, self.need[3]), root.cell-need(r, 4, self.need[4]), root.cell-need(r, 5, self.need[5])) + root.tile-gap + (r == root.grid-row-count - 1 ? 2 * root.ring : 0px);
 
                                 init => {
                                     if (self.has-cursor && root.follow-cursor) { root.reveal-grid(self.y, self.height); }
@@ -2233,17 +2797,6 @@ export component MainWindow inherits Window {
                                     y: root.ring;
                                     width: root.tile-w;
                                     height: parent.height - root.tile-gap - (r == root.grid-row-count - 1 ? 2 * root.ring : 0px);
-                                    property <length> need: root.tile-index(r, c) < root.rows.length ? tile-probe.preferred-height : 0px;
-                                    init => { parent.need[c] = self.need; }
-                                    changed need => { parent.need[c] = self.need; }
-                                    tile-probe := MainCard {
-                                        visible: false;
-                                        y: -2000px;
-                                        width: parent.width;
-                                        variant: ItemCardVariant.tile;
-                                        inline-tile: true;
-                                        data: root.rows[root.tile-index(r, c)];
-                                    }
                                     if root.tile-index(r, c) < root.rows.length: tile-drop := DropArea {
                                         // The tile being dragged over this one: a drop lands after it when coming from before.
                                         property <int> tile-from: -1;
@@ -2269,6 +2822,8 @@ export component MainWindow inherits Window {
                                         variant: ItemCardVariant.tile;
                                         data: root.rows[root.tile-index(r, c)];
                                         inline-tile: true;
+                                        init => { grid-row.need[c] = self.preferred-height; }
+                                        changed preferred-height => { grid-row.need[c] = self.preferred-height; }
                                         // Use first (Restore in the Trash), then Copy (not when Use already copies), Edit, More.
                                         use-action: true;
                                         use-glyph: root.in-trash ? Icons.arrow-counter-clockwise : Icons.arrow-bend-down-left;
@@ -2287,6 +2842,7 @@ export component MainWindow inherits Window {
                                             root.act(root.in-trash ? ItemAction.restore : ItemAction.use, root.tile-index(r, c));
                                         }
                                         copy => { root.act(ItemAction.copy, root.tile-index(r, c)); }
+                                        thumb-wanted => { root.thumb-wanted(root.tile-index(r, c)); }
                                         plain-click: !root.in-trash && !root.use-copies;
                                         use-plain => {
                                             root.cursor = root.tile-index(r, c);
@@ -2350,30 +2906,6 @@ export component MainWindow inherits Window {
                             x: root.pad;
                             y: parent.height - self.height;
                             width: parent.width - 2 * root.pad;
-                        }
-                    }
-
-                    if root.loading && !root.tile: VerticalLayout {
-                        x: root.pad;
-                        y: Space.s1;
-                        width: parent.width - 2 * root.pad;
-                        alignment: start;
-                        for n in [0, 1, 2, 3, 4, 5, 6, 7]: Skeleton {
-                            kind: SkeletonKind.row;
-                            label: n == 0 ? @tr("Loading") : "";
-                        }
-                    }
-                    if root.loading && root.tile: HorizontalLayout {
-                        x: root.pad;
-                        y: Space.s1;
-                        width: parent.width - 2 * root.pad;
-                        height: 120px * SystemLook.text-scale;
-                        spacing: root.tile-gap;
-                        alignment: start;
-                        for n in [0, 1, 2]: Skeleton {
-                            kind: SkeletonKind.tile;
-                            width: (parent.width - 2 * root.tile-gap) / 3;
-                            label: n == 0 ? @tr("Loading") : "";
                         }
                     }
 
@@ -2465,7 +2997,7 @@ export component MainWindow inherits Window {
                         }
                     }
 
-                    if root.rows.length == 0 && !root.loading && !root.recent-shown: EmptyState {
+                    if root.rows.length == 0 && !root.recent-shown: EmptyState {
                         quiet: true;
                         x: root.pad;
                         width: parent.width - 2 * root.pad;
@@ -2474,34 +3006,44 @@ export component MainWindow inherits Window {
                             : root.section == MainSection.recent || root.in-trash || root.section == MainSection.tag ? EmptyStateKind.inbox
                             : EmptyStateKind.list;
                         heading: root.searching ? @tr("No matches")
-                            : root.section == MainSection.all ? @tr("No snippets yet")
+                            : root.label-filter >= 0 ? @tr("Nothing has this label")
+                            : root.section == MainSection.all ? @tr("No items yet")
                             : root.section == MainSection.pinned ? @tr("Nothing pinned")
                             : root.section == MainSection.recent ? (root.recent-locked ? @tr("Recent copies are locked") : root.recent-on ? @tr("Nothing copied yet") : @tr("No recent items"))
                             : root.in-trash ? @tr("The Trash is empty")
                             : root.section == MainSection.list ? @tr("This list is empty")
                             : @tr("No items with this tag");
                         body: root.searching ? @tr("Nothing matches “{}”.", root.query)
+                            : root.label-filter >= 0 ? @tr("No item in this view carries the chosen colour label.")
                             : root.section == MainSection.all ? @tr("Save what you paste often.")
-                            : root.section == MainSection.pinned ? @tr("Pin the snippets you use most to keep them one click away.")
+                            : root.section == MainSection.pinned ? @tr("Pin the items you use most to keep them one click away.")
                             : root.section == MainSection.recent ? (root.recent-locked ? @tr("Unlock your library to see recent copies. Nothing is collected while it is locked.") : root.recent-on ? @tr("Text you copy appears here, newest first, until you clear it or it is older than {} days.", root.recent-days) : @tr("Turn on clipboard history in Settings to collect what you copy."))
                             : root.in-trash ? @tr("Deleted items stay here for {} days before they are removed.", root.trash-days)
-                            : root.section == MainSection.list ? @tr("Add a snippet, or move items here from another list.")
-                            : @tr("Tag a snippet to see it here.");
-                        action-keys: !root.searching && root.section == MainSection.list ? ["Ctrl", "N"] : [];
+                            : root.section == MainSection.list ? @tr("Add an item, or move items here from another list.")
+                            : @tr("Tag an item to see it here.");
+                        action-keys: !root.searching && root.label-filter < 0 && root.section == MainSection.list ? ["Ctrl", "N"] : [];
                         action-keys-label: @tr("Control N");
-                        secondary-keys: !root.searching && root.section == MainSection.all ? ["Ctrl", "N"] : [];
+                        secondary-keys: !root.searching && root.label-filter < 0 && root.section == MainSection.all ? ["Ctrl", "N"] : [];
                         secondary-keys-label: @tr("Control N");
-                        action-text: root.searching ? ""
+                        action-text: root.searching ? @tr("Clear search")
+                            : root.label-filter >= 0 ? @tr("Clear filter")
                             : root.section == MainSection.all ? @tr("Save from clipboard")
                             : root.section == MainSection.list ? @tr("New item")
                             : root.section == MainSection.recent && root.recent-locked ? @tr("Unlock")
                             : root.section == MainSection.recent && !root.recent-on ? @tr("Open Settings") : "";
-                        secondary-text: !root.searching && root.section == MainSection.all ? @tr("New item") : "";
-                        tertiary-text: !root.searching && root.section == MainSection.all ? @tr("Import…") : "";
+                        secondary-text: !root.searching && root.label-filter < 0 && root.section == MainSection.all ? @tr("New item") : "";
+                        tertiary-text: !root.searching && root.label-filter < 0 && root.section == MainSection.all ? @tr("Import…") : "";
                         secondary => { root.new-item-requested(); }
                         tertiary => { root.import-requested(); }
                         action => {
-                            if (root.section == MainSection.all && !root.searching) {
+                            if (root.searching) {
+                                root.cursor = 0;
+                                root.query = "";
+                                root.query-changed("");
+                                root.focus-search();
+                            } else if (root.label-filter >= 0) {
+                                root.label-filter-requested(-1);
+                            } else if (root.section == MainSection.all) {
                                 root.add-from-clipboard();
                             } else if (root.section == MainSection.recent && root.recent-locked) {
                                 root.recent-unlock-requested();
@@ -2576,14 +3118,22 @@ export component MainWindow inherits Window {
                             icon: Icons.folder;
                             text: @tr("Move");
                             y: (parent.height - self.height) / 2;
-                            clicked => { root.act(ItemAction.move, root.cur); }
+                            clicked => {
+                                root.item-menu-x = self.absolute-position.x;
+                                root.item-menu-y = self.absolute-position.y + self.height;
+                                root.act(ItemAction.move, root.cur);
+                            }
                         }
                         if !root.in-trash: Button {
                             horizontal-stretch: 0;
                             icon: Icons.tag;
                             text: @tr("Tag");
                             y: (parent.height - self.height) / 2;
-                            clicked => { root.act(ItemAction.tag, root.cur); }
+                            clicked => {
+                                root.item-menu-x = self.absolute-position.x;
+                                root.item-menu-y = self.absolute-position.y + self.height;
+                                root.act(ItemAction.tag, root.cur);
+                            }
                         }
                         if !root.in-trash: Button {
                             horizontal-stretch: 0;
@@ -2665,23 +3215,29 @@ export component MainWindow inherits Window {
                     }
                 }
             }
+
+            // ======== Detail ======================================================================
+            if root.detail-shown: DetailPane {
+                horizontal-stretch: 0;
+                width: 360px * root.text-scale;
+                data: root.detail;
+            }
         }
 
-        // The splitter: an 8px strip straddling the sidebar's edge (4px each side), above the layout so it never sits under a sidebar control. Drag it, or focus it and press Left / Right
+        // The splitter: a 24px strip straddling the sidebar's edge (12px each side), above the layout so it never sits under a sidebar control. Drag it, or focus it and press Left / Right
         // (8px a step). It is not there on the rail.
         if !root.narrow: splitter := Rectangle {
             x: root.sidebar-w - root.splitter-w / 2;
             width: root.splitter-w;
             height: parent.height;
             background: transparent;
-            forward-focus: splitter-scope;
 
             // The line that shows it can be grabbed (hover or drag) and, in the focus colour, that it has focus.
             Rectangle {
                 x: (parent.width - self.width) / 2;
-                width: splitter-scope.has-focus ? 3px : 2px;
-                background: splitter-scope.has-focus ? Theme.focus-ring : splitter-touch.pressed ? Theme.accent-text : Theme.border-strong;
-                opacity: (splitter-scope.has-focus || splitter-touch.has-hover || splitter-touch.pressed) ? 1 : 0;
+                width: root.splitter-focused ? 3px : 2px;
+                background: root.splitter-focused ? Theme.focus-ring : splitter-touch.pressed ? Theme.accent-text : Theme.border-strong;
+                opacity: (root.splitter-focused || splitter-touch.has-hover || splitter-touch.pressed) ? 1 : 0;
                 animate opacity { duration: Motion.instant; easing: Motion.out; }
             }
             splitter-touch := TouchArea {
@@ -2693,37 +3249,18 @@ export component MainWindow inherits Window {
                     if (event.kind == PointerEventKind.down) {
                         // How far the pointer is from the sidebar's edge, so the edge does not jump to it.
                         root.splitter-grab = root.sidebar-w - (self.absolute-position.x + self.mouse-x);
+                        root.splitter-focus-request += 1;
                     } else if (event.kind == PointerEventKind.up) {
                         root.sidebar-width-changed(root.sidebar-width);
                     }
                 }
+                // A double click puts the sidebar back at its default width (MAIN-15).
+                double-clicked => { root.set-sidebar-width(232, true); }
                 moved => {
                     if (self.pressed) {
                         let edge = self.absolute-position.x + self.mouse-x + root.splitter-grab;
                         root.set-sidebar-width(((edge - (root.text-scale - 1) * 96px) / 1px).round(), false);
                     }
-                }
-            }
-            splitter-scope := FocusScope {
-                accessible-role: AccessibleRole.slider;
-                accessible-label: @tr("Sidebar width");
-                accessible-value: root.sidebar-width;
-                accessible-value-minimum: 200;
-                accessible-value-maximum: 320;
-                accessible-value-step: 8;
-                accessible-action-increment => { root.set-sidebar-width(root.sidebar-width + 8, true); }
-                accessible-action-decrement => { root.set-sidebar-width(root.sidebar-width - 8, true); }
-                changed has-focus => { root.splitter-focused = self.has-focus; }
-                key-pressed(event) => {
-                    if (event.text == Key.LeftArrow) {
-                        root.set-sidebar-width(root.sidebar-width - 8, true);
-                        return accept;
-                    }
-                    if (event.text == Key.RightArrow) {
-                        root.set-sidebar-width(root.sidebar-width + 8, true);
-                        return accept;
-                    }
-                    return reject;
                 }
             }
         }
@@ -2735,13 +3272,14 @@ export component MainWindow inherits Window {
     // While searching it counts the matches and names the board they were found in.
     property <string> status-text: root.searching
         ? (root.rows.length == 0 ? @tr("No matches in {}", root.board-name)
+            : root.search-capped ? @tr("First {} matches in {}", root.rows.length, root.board-name)
             : @tr("{n} match in {}" | "{n} matches in {}" % root.rows.length, root.board-name))
         : @tr("{n} item" | "{n} items" % root.item-total);
 
     // Keeps the sidebar's cursor row in view. The row's place follows from the row heights, not from measuring
     // the element (a measurement taken before the first layout would scroll the sidebar away).
     property <length> nav-row-h: max(Space.hit, Type.line-base + Space.s2) + Space.s0-5;
-    property <length> nav-head-h: (root.narrow ? Space.s2 : max(Space.hit, Type.line-xs + Space.s2)) + Space.s0-5;
+    property <length> nav-head-h: (root.compact ? Space.s2 : max(Space.hit, Type.line-xs + Space.s2)) + Space.s0-5;
     changed nav-cursor => {
         let y = Space.s1 + root.nav-cursor * root.nav-row-h + (root.nav-cursor >= 4 ? root.nav-head-h : 0px)
             + (root.nav-cursor >= 4 + root.n-lists ? root.nav-head-h : 0px);
@@ -2807,7 +3345,7 @@ export component MainWindow inherits Window {
         dismissed => { root.board-menu-dismissed(); }
     }
 
-    if root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.view-menu-open || root.sort-menu-open || root.chooser-open || root.recent-menu-open || root.recent-save-open: TouchArea {
+    if root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.view-menu-open || root.sort-menu-open || root.filter-menu-open || root.chooser-open || root.recent-menu-open || root.recent-save-open: TouchArea {
         pointer-event(event) => {
             if (event.kind == PointerEventKind.down) {
                 root.close-menus();
@@ -2818,7 +3356,12 @@ export component MainWindow inherits Window {
         menu-max-h: root.height - 2 * Space.s2;
         x: max(0px, min(root.recent-menu-x, root.width - self.width - Space.s2));
         y: max(0px, min(root.recent-menu-y, root.height - self.height - Space.s2));
-        entries: [
+        entries: root.recent-menu-text ? [
+            { text: @tr("Save to…"), icon: Icons.folder },
+            { text: @tr("Save as Sensitive…"), icon: Icons.lock },
+            { text: @tr("Copy"), icon: Icons.copy },
+            { text: @tr("Remove from Recent"), icon: Icons.trash, destructive: true },
+        ] : [
             { text: @tr("Save to…"), icon: Icons.folder },
             { text: @tr("Copy"), icon: Icons.copy },
             { text: @tr("Remove from Recent"), icon: Icons.trash, destructive: true },
@@ -2827,9 +3370,12 @@ export component MainWindow inherits Window {
         init => { self.focus-menu(); }
         activated(i) => {
             root.recent-menu-open = false;
-            if (i == 0) {
+            // The position in the full list [save, sensitive, copy, remove], skipping what is not offered.
+            let a = (i >= 1 && !root.recent-menu-text) ? i + 1 : i;
+            if (a == 0 || a == 1) {
+                root.recent-save-sensitive = a == 1;
                 root.recent-save-open = true;
-            } else if (i == 1) {
+            } else if (a == 2) {
                 root.recent-copied(root.recent-menu-id);
                 root.restore-focus();
             } else {
@@ -2844,7 +3390,7 @@ export component MainWindow inherits Window {
         y: max(0px, min(root.recent-menu-y, root.height - self.height - Space.s2));
         width: min(240px, root.width - 2 * Space.s2);
         entries: root.recent-targets;
-        label: @tr("Save to…");
+        label: root.recent-save-sensitive ? @tr("Save as Sensitive to…") : @tr("Save to…");
         empty-text: @tr("No lists yet");
         init => {
             self.current = 0;
@@ -2852,7 +3398,11 @@ export component MainWindow inherits Window {
         }
         chosen(i) => {
             root.recent-save-open = false;
-            root.recent-saved(root.recent-menu-id, i);
+            if (root.recent-save-sensitive) {
+                root.recent-saved-sensitive(root.recent-menu-id, i);
+            } else {
+                root.recent-saved(root.recent-menu-id, i);
+            }
             root.restore-focus();
         }
         dismissed => { root.close-menus(); }
@@ -2888,11 +3438,13 @@ export component MainWindow inherits Window {
         x: Space.s2;
         y: max(0px, root.height - root.bar-h - self.height);
         entries: [
-            { text: @tr("Troubleshoot…") },
             { text: @tr("User guide"), shortcut: "F1" },
-            { text: @tr("About Snipdeck") },
-            { text: @tr("Show Panel"), shortcut: root.panel-hotkey },
             { text: @tr("Keyboard shortcuts"), shortcut: "Ctrl+/" },
+            { text: @tr("Troubleshoot…") },
+            { text: @tr("About Snipdeck") },
+            { text: @tr("Recent messages") },
+            { separator: true },
+            { text: root.panel-visible ? @tr("Hide Panel") : @tr("Show Panel"), shortcut: root.panel-hotkey },
         ];
         label: @tr("Help");
         icons: false;
@@ -2901,18 +3453,25 @@ export component MainWindow inherits Window {
             self.focus-menu();
         }
         activated(i) => {
+            // Recent messages opens a dialog that takes the focus; closing the menu must not queue a focus
+            // return to the Help button that would run after it. The dialog's `closed` returns it instead.
+            if (i == 4) { root.menu-origin = 0; }
             root.close-menus();
-            // The row order is the `entries` list above.
+            // The row order is the `entries` list above (the separator is row 5).
             if (i == 0) {
-                root.help-requested(HelpPage.troubleshoot);
-            } else if (i == 1) {
                 root.help-requested(HelpPage.guide);
-            } else if (i == 2) {
-                root.help-requested(HelpPage.about);
-            } else if (i == 3) {
-                root.panel-requested();
-            } else {
+            } else if (i == 1) {
                 root.help-requested(HelpPage.shortcuts);
+            } else if (i == 2) {
+                root.help-requested(HelpPage.troubleshoot);
+            } else if (i == 3) {
+                root.help-requested(HelpPage.about);
+            } else if (i == 4) {
+                root.recent-messages-requested();
+                root.menu-origin = 1;
+                root.recent-messages-open = true;
+            } else {
+                root.panel-requested();
             }
         }
         dismissed => { root.close-menus(); }
@@ -2922,14 +3481,17 @@ export component MainWindow inherits Window {
         x: max(0px, min(view-button.absolute-position.x, root.width - self.width - Space.s2));
         y: root.bar-h - Space.s1;
         entries: [
-            { text: @tr("Theme: System"), icon: root.theme-index == 0 ? Icons.check : root.no-icon },
-            { text: @tr("Theme: Light"), icon: root.theme-index == 1 ? Icons.check : root.no-icon },
-            { text: @tr("Theme: Dark"), icon: root.theme-index == 2 ? Icons.check : root.no-icon },
+            { text: @tr("Theme: System"), checked: root.theme-index == 0 },
+            { text: @tr("Theme: Light"), checked: root.theme-index == 1 },
+            { text: @tr("Theme: Dark"), checked: root.theme-index == 2 },
             { separator: true },
-            { text: @tr("Main list density: Comfortable"), icon: root.view == MainView.comfortable ? Icons.check : root.no-icon },
-            { text: @tr("Main list density: Compact"), icon: root.view == MainView.compact ? Icons.check : root.no-icon },
+            { text: @tr("Main list density: Comfortable"), checked: root.drawn-view == MainView.comfortable },
+            { text: @tr("Main list density: Compact"), checked: root.drawn-view == MainView.compact },
             // The same three choices as the toggles beside it, which the toolbar drops when it is narrow.
-            { text: @tr("Tile view"), icon: root.view == MainView.tile && !root.has-groups ? Icons.check : root.no-icon, disabled: root.has-groups },
+            { text: @tr("Tile view"), checked: root.tile, disabled: root.has-groups },
+            { separator: true },
+            // On when chosen, but drawn only while the window is wide enough.
+            { text: @tr("Detail pane"), checked: root.detail-open },
         ];
         label: @tr("View");
         init => {
@@ -2951,6 +3513,9 @@ export component MainWindow inherits Window {
             } else if (i == 6) {
                 root.view = MainView.tile;
                 root.view-changed(MainView.tile);
+            } else if (i == 8) {
+                root.detail-open = !root.detail-open;
+                root.detail-open-changed(root.detail-open);
             }
         }
         dismissed => { root.close-menus(); }
@@ -2960,9 +3525,14 @@ export component MainWindow inherits Window {
         x: max(0px, min(root.sort-menu-x, root.width - self.width - Space.s2));
         y: root.sort-menu-y;
         entries: [
-            { text: @tr("Manual"), icon: root.list-sort == 0 ? Icons.check : root.no-icon },
-            { text: @tr("Most used"), icon: root.list-sort == 1 ? Icons.check : root.no-icon },
-            { text: @tr("Recently used"), icon: root.list-sort == 2 ? Icons.check : root.no-icon },
+            { text: @tr("Manual"), icon: root.no-icon, checked: root.list-sort == 0 },
+            { text: @tr("Name"), icon: root.no-icon, checked: root.list-sort == 1 },
+            { text: @tr("Created"), icon: root.no-icon, checked: root.list-sort == 2 },
+            { text: @tr("Modified"), icon: root.no-icon, checked: root.list-sort == 3 },
+            { text: @tr("Most used"), icon: root.no-icon, checked: root.list-sort == 4 },
+            { text: @tr("Recently used"), icon: root.no-icon, checked: root.list-sort == 5 },
+            { separator: true },
+            { text: @tr("Reverse order"), icon: root.no-icon, checked: root.list-sort-reversed, disabled: root.list-sort == 0 },
         ];
         label: @tr("Sort by");
         init => {
@@ -2971,24 +3541,82 @@ export component MainWindow inherits Window {
         }
         activated(i) => {
             root.close-menus();
-            root.sort-chosen(i);
+            if (i == 7) {
+                root.sort-chosen(root.list-sort, !root.list-sort-reversed);
+            } else {
+                root.sort-chosen(i, false);
+            }
+        }
+        dismissed => { root.close-menus(); }
+    }
+    if root.filter-menu-open: Menu {
+        menu-max-h: root.height - root.filter-menu-y - Space.s2;
+        x: max(0px, min(root.filter-menu-x, root.width - self.width - Space.s2));
+        y: root.filter-menu-y;
+        entries: [
+            { text: @tr("Text"), icon: root.no-icon, checked: root.filter-checked[0] },
+            { text: @tr("Template"), icon: root.no-icon, checked: root.filter-checked[1] },
+            { text: @tr("Code"), icon: root.no-icon, checked: root.filter-checked[2] },
+            { text: @tr("Link"), icon: root.no-icon, checked: root.filter-checked[3] },
+            { text: @tr("Image"), icon: root.no-icon, checked: root.filter-checked[4] },
+            { text: @tr("File"), icon: root.no-icon, checked: root.filter-checked[5] },
+            { separator: true },
+            { text: @tr("Has a trigger"), icon: root.no-icon, checked: root.filter-checked[6] },
+            { text: @tr("Sensitive"), icon: root.no-icon, checked: root.filter-checked[7] },
+            { text: @tr("Untagged"), icon: root.no-icon, checked: root.filter-checked[8] },
+            { text: @tr("Tags…"), icon: Icons.tag },
+            { text: @tr("Items need every chosen tag"), icon: root.no-icon, checked: root.filter-match-all },
+            { separator: true },
+            { text: @tr("Clear filter"), icon: root.no-icon, disabled: root.filter-count() == 0 },
+        ];
+        label: @tr("Filter");
+        init => {
+            self.current = 0;
+            self.focus-menu();
+        }
+        activated(i) => {
+            if (i == 10) {
+                // The tags open in the chooser, where several can be ticked in a row.
+                root.filter-menu-open = false;
+                root.chooser-tags = true;
+                root.chooser-filter = true;
+                root.chooser-paste = false;
+                root.chooser-colour = false;
+                root.chooser-x = min(max(root.filter-menu-x, root.sidebar-w), max(root.sidebar-w, root.width - 240px));
+                root.chooser-y = min(root.filter-menu-y, max(0px, root.height - 300px));
+                root.chooser-open = true;
+            } else if (i == 11) {
+                root.filter-match-all-changed(!root.filter-match-all);
+            } else if (i == 13) {
+                root.close-menus();
+                root.filter-cleared();
+            } else {
+                root.filter-toggled(i < 6 ? i : i - 1);
+            }
         }
         dismissed => { root.close-menus(); }
     }
     if root.chooser-open: Chooser {
-        x: root.chooser-x;
+        // At a large text scale the chooser is wider than the room right of its anchor: it slides left, and is never
+        // wider than the window.
+        x: max(0px, min(root.chooser-x, root.width - self.width));
         y: root.chooser-y;
-        width: 240px * SystemLook.text-scale;
+        width: root.chooser-w;
         multi: root.chooser-tags;
-        entries: root.chooser-paste ? (root.chooser-colour ? root.colour-choices : root.paste-choices) : root.chooser-tags ? root.tag-choices : root.lists;
-        label: root.chooser-paste ? MenuTexts.item-paste-as() : root.chooser-tags ? @tr("Tags") : @tr("Move to list");
-        empty-text: root.chooser-tags ? @tr("No tags yet") : @tr("No lists yet");
+        entries: root.chooser-nest ? root.nest-choices : root.chooser-paste ? (root.chooser-colour ? root.colour-choices : root.paste-choices) : root.chooser-filter ? root.filter-tag-choices : root.chooser-tags ? root.tag-choices : root.move-choices;
+        label: root.chooser-nest ? MenuTexts.group-nest() : root.chooser-paste ? MenuTexts.item-paste-as() : root.chooser-filter ? @tr("Filter by tags") : root.chooser-tags ? @tr("Tags") : @tr("Move to list");
+        empty-text: root.chooser-nest ? @tr("No other group to nest under") : root.chooser-tags ? @tr("No tags yet") : @tr("No lists yet");
         init => {
             self.current = 0;
             self.focus-chooser();
         }
         chosen(i) => {
-            if (root.chooser-paste) {
+            if (root.chooser-nest) {
+                root.chooser-open = false;
+                root.chooser-nest = false;
+                root.group-nest-chosen(i);
+                items-scope.focus();
+            } else if (root.chooser-paste) {
                 root.chooser-open = false;
                 if (root.chooser-colour) {
                     root.colour-chosen(i, self.shift);
@@ -2996,6 +3624,8 @@ export component MainWindow inherits Window {
                     root.paste-as-chosen(i);
                 }
                 items-scope.focus();
+            } else if (root.chooser-filter) {
+                root.filter-tag-toggled(i);
             } else if (root.chooser-tags) {
                 root.tag-toggled(i, !root.tag-choices[i].checked);
             } else {
@@ -3027,14 +3657,15 @@ export component MainWindow inherits Window {
     }
 
     // The board delete confirmation, the only thing "Delete board…" shows.
-    Dialog {
+    cancel-dlg-1 := Dialog {
         title: @tr("Delete board “{}”?", root.board-name);
-        body: @tr("Its lists and {} items move to the Trash. You can restore them for {} days.", root.board-delete-count, root.trash-days);
+        body: @tr("Its lists and {n} item move to the Trash. You can restore them for {} days." | "Its lists and {n} items move to the Trash. You can restore them for {} days." % root.board-delete-count, root.trash-days);
         variant: DialogVariant.destructive;
         open: root.board-delete-open;
         dismissed => { root.board-delete-dismissed(); }
         closed => { root.restore-focus(); }
         Button {
+            focus-request: cancel-dlg-1.cancel-focus;
             text: @tr("Cancel");
             clicked => { root.board-delete-dismissed(); }
         }
@@ -3042,6 +3673,63 @@ export component MainWindow inherits Window {
             variant: ButtonVariant.danger;
             text: @tr("Delete board");
             clicked => { root.board-delete-confirmed(); }
+        }
+    }
+
+    // Help > Recent messages: the last toasts, newest first (MAIN-43).
+    recent-messages := Dialog {
+        title: @tr("Recent messages");
+        body: root.recent-messages-text == "" ? @tr("No messages yet.") : root.recent-messages-text;
+        open: root.recent-messages-open;
+        dismissed => { root.recent-messages-open = false; }
+        accepted => { root.recent-messages-open = false; }
+        closed => { root.restore-focus(); }
+        Button {
+            variant: ButtonVariant.primary;
+            text: @tr("Close");
+            clicked => { root.recent-messages-open = false; }
+        }
+    }
+
+    // A folded group's delete confirmation: the rows it trashes are out of sight.
+    Dialog {
+        title: @tr("Delete group “{}” and its {} items?", root.group-delete-name, root.group-delete-count);
+        body: @tr("The group and its items move to the Trash. You can restore them for {} days.", root.trash-days);
+        variant: DialogVariant.destructive;
+        open: root.group-delete-open;
+        dismissed => { root.group-delete-dismissed(); }
+        closed => { root.restore-focus(); }
+        Button {
+            text: @tr("Cancel");
+            clicked => { root.group-delete-dismissed(); }
+        }
+        Button {
+            variant: ButtonVariant.danger;
+            text: @tr("Delete group");
+            clicked => { root.group-delete-confirmed(); }
+        }
+    }
+
+    // The colour of one group: the nine list hues, applied as they are picked.
+    Dialog {
+        open: root.group-colour-row >= 0;
+        title: @tr("Colour of group “{}”", root.group-colour-row >= 0 && root.group-colour-row < root.rows.length ? root.rows[root.group-colour-row].title : "");
+        body: @tr("Pick a colour: it shows as a dot beside the group name. Esc closes.");
+        fill: true;
+        dismissed => { root.group-colour-row = -1; }
+        closed => { root.restore-focus(); }
+        ColourPicker {
+            horizontal-stretch: 1;
+            hues: root.group-hues;
+            label: @tr("Group colour");
+            none-label: @tr("No colour");
+            names: root.group-colour-names;
+            accent: root.group-colour-row >= 0 && root.group-colour-row < root.rows.length ? root.rows[root.group-colour-row].group-colour : -1;
+            chosen(a) => {
+                let i = root.group-colour-row;
+                root.group-colour-row = -1;
+                root.group-colour-chosen(i, a);
+            }
         }
     }
 
@@ -3057,6 +3745,7 @@ export component MainWindow inherits Window {
             root.restore-focus();
         }
         Button {
+            focus-request: confirm.cancel-focus;
             text: @tr("Cancel");
             clicked => { root.confirm-shown = false; }
         }

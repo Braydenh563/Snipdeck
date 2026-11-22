@@ -12,6 +12,7 @@ First release. Windows 10 (1903 or newer) and 11, 64-bit. Not code-signed, so Wi
 first start.
 
 ### Added
+- HSL and HSB copies keep one decimal (`hsl(214.8, 64.9%, 53.1%)`) so a copied colour pastes back unchanged. Copying the Name of a colour no CSS keyword equals now says why it copied nothing.
 - **The Panel**: a strip at the screen edge that never takes the focus from the app you are typing in. List
   tabs, a pinned strip, search, a row menu (Use, Copy, Edit, Pin, Move, Colour, Sensitive, Delete), and a menu
   of its own (Open Snipdeck, New snippet, Settings, Pause hotkeys, Quit).
@@ -151,6 +152,8 @@ first start.
 - Import notes (a skipped match, a cut title, an unsupported field) are shown in your language.
 - The keyboard shortcuts list has an "Unlock window" group, and the guide's keyboard table gained the rows that were missing (Picker Shift+Tab, Main window Ctrl+Shift+P, F2, Ctrl+Space and Space, the group keys, typed triggers).
 - Tab and Shift+Tab reach every field in the item editor, Settings and the fill form, including text fields inside scrolling areas, dropdowns and template choices, and the focus ring is no longer cut off.
+- A saved `clipboard_clear_secs = 0` (never clear) is now raised to 30 seconds when settings load.
+- Settings, Privacy: a switch "Keep copies from unidentified programs" for Recent, off by default.
 
 ### Fixed
 - **The command palette scrolls with the wheel and a two-finger touchpad swipe.** Each scroll used to snap back: the

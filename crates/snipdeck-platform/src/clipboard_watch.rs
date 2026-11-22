@@ -73,6 +73,8 @@ pub struct RichClip {
     pub html: Option<String>,
     /// The Rich Text Format flavour; only next to text.
     pub rtf: Option<Vec<u8>>,
+    /// The copy carries a "keep me out" marker (see [`excluded_by_markers`]); nothing was read.
+    pub excluded: bool,
 }
 
 // The content may be a secret: never print it.
@@ -82,6 +84,7 @@ impl std::fmt::Debug for RichClip {
             .field("text", &self.text.is_some())
             .field("html", &self.html.is_some())
             .field("rtf", &self.rtf.is_some())
+            .field("excluded", &self.excluded)
             .finish()
     }
 }
@@ -101,12 +104,8 @@ pub fn rich_flavours(html: Option<&[u8]>, rtf: Option<&[u8]>) -> (Option<String>
     )
 }
 
-/// The registered clipboard format that password managers add to say "do not monitor this".
-pub const EXCLUDE_MONITOR_FORMAT: &str = "ExcludeClipboardContentFromMonitorProcessing";
 /// The older marker (older `KeePass` and others): present means "viewers must ignore this".
 pub const VIEWER_IGNORE_FORMAT: &str = "Clipboard Viewer Ignore";
-/// The DWORD format that is 0 when the content must stay out of Windows clipboard history.
-pub const HISTORY_FORMAT: &str = "CanIncludeInClipboardHistory";
 
 /// Which "keep me out of history" markers are on the clipboard, read while it is open.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]

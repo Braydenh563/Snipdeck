@@ -65,6 +65,11 @@ where
         self.update_settings(|s| s.main_sidebar_width = width);
     }
 
+    /// The Detail pane was switched on or off in the Main window's View menu.
+    pub fn set_main_detail_open(&mut self, open: bool) {
+        self.update_settings(|s| s.main_detail_open = open);
+    }
+
     /// The Main sidebar was collapsed to its rail or opened again (Ctrl+B, the collapse button).
     pub fn set_main_sidebar_collapsed(&mut self, collapsed: bool) {
         self.update_settings(|s| s.main_sidebar_collapsed = collapsed);
@@ -139,11 +144,17 @@ where
         self.show_toast(neutral(ToastMessage::PanelOnTop(on_top)));
     }
 
-    /// Sets the words a new list's and a new board's editor name starts from ("New list" gives
-    /// "New list 1"), translated by the window layer: the controller has no `@tr`.
-    pub fn set_new_name_bases(&mut self, list: &str, board: &str) {
-        list.clone_into(&mut self.new_list_base);
-        board.clone_into(&mut self.new_board_base);
+    /// Sets the words a new library starts with and a new list's and a new board's editor name
+    /// starts from ("New list" gives "New list 1"), translated by the window layer: the
+    /// controller has no `@tr`.
+    pub fn set_starter_words(&mut self, words: &crate::starter::StarterWords) {
+        self.starter.clone_from(words);
+    }
+
+    /// Sets how a duplicate is titled: `format` holds `{title}` where the original's title goes
+    /// ("{title} copy"), translated by the window layer.
+    pub fn set_copy_title(&mut self, format: &str) {
+        format.clone_into(&mut self.copy_title);
     }
 
     /// A regular Snipdeck window (Main, Settings, an editor, Help) gained or lost the focus
@@ -171,7 +182,9 @@ where
 
     /// The search text changed.
     pub fn set_query(&mut self, query: &str) {
-        self.model.set_query(query);
+        if self.model.set_query(&self.store, query).is_err() {
+            self.show_toast(failed());
+        }
     }
 
     /// The keyboard selection moved by `delta` rows.
@@ -321,7 +334,7 @@ where
             return;
         }
         if let Some(list) = self.model.list()
-            && list.sort != snipdeck_core::ListSort::Manual
+            && !list.sort.is_manual()
         {
             let id = list.id;
             self.offer_manual_order(id);
@@ -524,7 +537,8 @@ where
     pub fn add_list(&mut self) {
         let now = self.clock.now();
         self.main.mark_stale();
-        let added = crate::starter::add_list(&mut self.store, self.model.board(), now);
+        let added =
+            crate::starter::add_list(&mut self.store, self.model.board(), &self.starter, now);
         let shown = added.and_then(|(board, list)| {
             self.model.select_board(&self.store, board)?;
             self.model.select_list(&self.store, list)

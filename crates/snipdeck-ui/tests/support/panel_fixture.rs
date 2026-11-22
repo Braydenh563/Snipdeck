@@ -192,11 +192,11 @@ pub fn app_menu() -> Vec<MenuEntry> {
         row("Open Snipdeck", ""),
         row("New item", ""),
         row("Take screenshot", ""),
-        row("Pause hotkeys", ""),
+        row("Pause shortcuts", ""),
         // Hidden at 100 % text: the header's pin is there (`render_app_menu` hides the row below 150 %).
         MenuEntry {
             hidden: true,
-            ..checked("Keep panel on top")
+            ..checked("Keep Panel on top")
         },
         row("Select or delete\u{2026}", ""),
         row("Reset size and position", ""),

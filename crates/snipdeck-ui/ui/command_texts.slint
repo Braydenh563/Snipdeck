@@ -1,3 +1,5 @@
+import { MenuTexts } from "menu_texts.slint";
+
 // The words of the command palette, one `CommandText` per command, in the order of `snipdeck-app`'s
 // `Command::ALL` (a test there checks the length). `words` are the synonyms the filter also matches, so
 // "add" finds New item and "hotkeys" finds Settings. The palette itself is drawn from rows the app builds
@@ -8,11 +10,10 @@ export struct CommandText {
 }
 
 export global CommandTexts {
-    // The names the list and board editors start with for a new one ("New list 1"): the host numbers them.
-    out property <string> new-list-name: @tr("New list");
-    out property <string> new-board-name: @tr("New board");
+    // The title of a duplicate: the host passes "{title}" and puts the original's title in its place, so the word order is the translator's.
+    pure public function copy-title(title: string) -> string { return @tr("{} copy", title); }
     out property <[CommandText]> all: [
-        { label: @tr("New item"), words: @tr("add create snippet note write") },
+        { label: @tr("New item"), words: @tr("add create item note write") },
         { label: @tr("New list"), words: @tr("add create") },
         { label: @tr("Search"), words: @tr("find filter look") },
         { label: @tr("Show Panel"), words: @tr("open toggle deck hide") },
@@ -73,6 +74,8 @@ export global CommandTexts {
         { label: @tr("Export library"), words: @tr("save file download copy out") },
         { label: @tr("Back up now"), words: @tr("backup copy save safe") },
         { label: @tr("Empty Trash"), words: @tr("delete everything bin permanently") },
+        { label: MenuTexts.group-colour(), words: @tr("colour color dot tint hue accent section") },
+        { label: MenuTexts.group-nest(), words: @tr("nest under inside child sub subgroup indent parent move out top level section") },
     ];
     // Why a listed command cannot run now (shown dimmed on its row).
     out property <string> hint-symbols-off: @tr("Turn on the Symbols tab in Settings");

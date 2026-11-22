@@ -6,10 +6,11 @@ use std::path::{Path, PathBuf};
 
 use snipdeck_core::Timestamp;
 
+use crate::decoded::Decoded;
 use crate::error::{Error, Result};
 use crate::import::{ImportOptions, board_name, finish};
 use crate::limits::TEXT_LIMIT;
-use crate::plan::{Library, Plan, PlanBoard, PlanItem, PlanList};
+use crate::plan::{Plan, PlanBoard, PlanItem, PlanList};
 use crate::report::{ImportReport, Warning};
 
 use super::{MEMORY_BUDGET, clean_label, decode_text, note_lossy, title_from};
@@ -31,12 +32,11 @@ use super::{MEMORY_BUDGET, clean_label, decode_text, note_lossy, title_from};
 ///
 /// [`Error::File`] if `folder` cannot be listed, and storage errors. Individual unreadable files
 /// are warnings.
-pub fn import_folder<L: Library>(
-    lib: &mut L,
+pub fn decode_folder(
     folder: &Path,
     now: Timestamp,
     options: &ImportOptions<'_>,
-) -> Result<ImportReport> {
+) -> Result<Decoded<'static>> {
     let mut report = ImportReport::default();
     let mut state = Reader {
         budget: MEMORY_BUDGET,
@@ -57,6 +57,7 @@ pub fn import_folder<L: Library>(
     let mut lists = Vec::new();
     let root = read_list(&mut state, &files, board.as_str(), now, &mut report)?;
     lists.extend(root);
+    let mut deeper = 0;
     for dir in dirs {
         if state.stopped {
             break;
@@ -67,7 +68,10 @@ pub fn import_folder<L: Library>(
             .unwrap_or_default();
         // One unreadable subfolder is a warning, like an unreadable file; the rest still import.
         let files = match list(&dir, &mut report) {
-            Ok((files, _)) => files,
+            Ok((files, below)) => {
+                deeper += below.len();
+                files
+            }
             Err(Error::File { source, .. }) => {
                 report.warn(Warning::Unreadable {
                     name: label,
@@ -87,16 +91,21 @@ pub fn import_folder<L: Library>(
         )?);
     }
 
+    if deeper > 0 {
+        report.warn(Warning::DeeperFoldersSkipped { count: deeper });
+    }
     let mut plan = Plan::default();
     if !lists.is_empty() {
         plan.boards.push(PlanBoard {
+            accent: None,
+            icon: None,
             name: board,
             created_at: now,
             updated_at: now,
             lists,
         });
     }
-    finish(lib, plan, options, report)
+    Ok(finish(plan, options, report))
 }
 
 struct Reader {

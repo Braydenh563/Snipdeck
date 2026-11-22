@@ -93,8 +93,8 @@ it. The editor lists the placeholders it understands.
 
 ## Crashes and logs
 
-If Snipdeck closes unexpectedly, the next start shows "Snipdeck closed unexpectedly last time. Open the
-log?". Press the button to open the folder. The reports are `crash-<date>-<time>.txt` in
+If Snipdeck crashes or a part of it fails, it says "Snipdeck ran into a problem. Open the
+log?" (at the next start, or within six hours if it is still running). Press the button to open the folder. The reports are `crash-<date>-<time>.txt` in
 `%LOCALAPPDATA%\Snipdeck\logs`. The newest 10 are kept. A report holds the app version, where it failed
 and a backtrace. It never holds your snippets, and nothing is sent anywhere. You can also run
 `Snipdeck.bat logs --open`.
@@ -129,7 +129,9 @@ later, so delete it once the new version runs well ([`store.md`](store.md)).
 
 **Check the library from a Command Prompt.** With Snipdeck closed, run `app\snipdeck.exe --check-db` to test
 the library for damage (exit code 0 healthy, 1 problems, 2 could not run), or `app\snipdeck.exe --troubleshoot` to
-print the Troubleshoot report. Add `--data-dir <folder>` for a library somewhere else.
+print the Troubleshoot report. Add `--data-dir <folder>` for a library somewhere else. Run it as `start /wait app\snipdeck.exe --check-db`
+so the prompt waits for the text and `echo %ERRORLEVEL%` shows the exit code (Snipdeck has no console of its own;
+see the user guide).
 
 ## Locked library and the master password
 

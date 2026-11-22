@@ -217,6 +217,7 @@ pub fn set_rows(ui: &MainWindow, rows: Vec<MainRow>) -> Rc<VecModel<MainRow>> {
 pub fn populate(ui: &MainWindow) -> Rc<VecModel<MainRow>> {
     ui.set_board_name("Work".into());
     ui.set_lists(ModelRc::new(VecModel::from(lists())));
+    ui.set_move_choices(ModelRc::new(VecModel::from(lists())));
     ui.set_tags(ModelRc::new(VecModel::from(tags())));
     ui.set_board_menu_entries(ModelRc::new(VecModel::from(board_menu())));
     ui.set_count_all(42);

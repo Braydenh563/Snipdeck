@@ -258,7 +258,7 @@ fn item_editor_new_file_with_a_path_problem_a_banner_and_a_restored_draft() {
         .set_source_error("There is no file at that path.".into());
     h.component.set_restored(true);
     h.component.set_banner(
-        "Snipdeck couldn't write to your library. Check that the disk has room.".into(),
+        "Snipdeck couldn’t write to your library. Check that the disk has room.".into(),
     );
     h.component.set_list_names(fixture::list_names());
     h.component.set_tags(fixture::tag_model(Vec::new()));
@@ -294,11 +294,38 @@ fn item_editor_long_values_and_the_inline_limit() {
 /// "More options" open on an item with a trigger: the picture of the Tips card on triggers.
 #[test]
 fn item_editor_more_options_shows_the_trigger() {
-    let h = item((420, 900), false);
+    let h = item((420, 1250), false);
     h.component.set_more_open(true);
     h.component.set_item_title("Email signature".into());
     h.component.set_trigger(";sig".into());
+    h.component.set_trigger_case_index(1);
     assert_golden("item-editor-trigger-light", &render(&h));
+}
+
+/// The Text tools open on a Code item with line numbers on, a search that matches, and an undo step.
+#[test]
+fn item_editor_text_tools_open_with_line_numbers() {
+    let h = item((420, 1250), false);
+    h.component.set_kind_index(1);
+    h.component.set_content(
+        "fn main() {\n    let greeting = \"hello\";\n    println!(\"{greeting}\");\n}\n".into(),
+    );
+    h.component.on_numbered(|text| {
+        (1..=text.matches('\n').count() + 1)
+            .map(|n| n.to_string())
+            .collect::<Vec<_>>()
+            .join("\n")
+            .into()
+    });
+    h.component.on_match_count(|text, find, _| {
+        i32::try_from(text.matches(find.as_str()).count()).unwrap_or(0)
+    });
+    h.component.set_tools_open(true);
+    h.component.set_line_numbers(true);
+    h.component.set_find_text("greeting".into());
+    h.component.set_replace_text("message".into());
+    h.component.set_has_backup(true);
+    assert_golden("item-editor-text-tools-light", &render(&h));
 }
 
 #[test]
@@ -710,7 +737,6 @@ fn help_about_light_and_dark() {
     let h = Harness::new(HelpWindow::new, HELP.0, HELP.1);
     fixture::help(&h.component);
     h.component.set_tab(1);
-    h.component.set_has_notices(true);
     assert_golden("help-about-light", &render(&h));
     drop(h);
 
@@ -738,6 +764,16 @@ fn help_tips_light_and_dark() {
     fixture::tips(&h.component);
     h.component.set_tab(3);
     assert_golden("help-tips-dark", &render(&h));
+}
+
+/// Every tip picture (`TipArt`, one per card), on a window tall enough to show all eleven cards.
+#[test]
+fn help_tips_show_every_picture() {
+    let h = Harness::new(HelpWindow::new, 420, 3600);
+    fixture::help(&h.component);
+    fixture::tips(&h.component);
+    h.component.set_tab(3);
+    assert_golden("help-tips-all-light", &render(&h));
 }
 
 /// The Tips tab at the Help window's smallest size: the cards keep their picture and button and the

@@ -4,7 +4,7 @@ use std::{collections::BTreeMap, time::Duration};
 
 use snipdeck_core::{
     ItemId, UseMode, UseOutcome,
-    template::{Locale, Template, transform::Transform},
+    template::{Template, transform::Transform},
 };
 use snipdeck_platform::{
     pipeline::{Clipboard, Env, Keyboard, Timing},
@@ -23,7 +23,7 @@ use crate::{
     paste_next::{self},
     picker::{PickerModel, Scope},
     toast::{self, Toast, ToastKind, ToastMessage},
-    usecase::{self, UseError, UseRequest},
+    usecase::{self, Retype, UseError, UseRequest},
 };
 
 /// A typed trigger to erase with a paste.
@@ -37,6 +37,8 @@ pub(super) struct Erasing<'a> {
     /// `false` once a key was typed after the trigger (none for a confirmed fill form, whose own
     /// keystrokes the hook also sees).
     pub(super) fresh: Option<&'a dyn Fn() -> bool>,
+    /// What the trigger asks of the text that replaces it.
+    pub(super) retype: Retype,
 }
 
 /// A paste whose key is out and that waits for its target (see [`Controller::paste_tick`]).
@@ -112,7 +114,7 @@ where
             let mut picker = picker.with_list(list);
             picker.set_tag(tag);
             picker.set_scope(scope);
-            picker.set_query(&query);
+            picker.set_query(&self.store, &query).ok();
             picker.move_selection(isize::try_from(at).unwrap_or(0));
             self.picker = Some(picker);
         }
@@ -177,8 +179,11 @@ where
 
     /// The Picker's search text changed.
     pub fn picker_query(&mut self, query: &str) {
-        if let Some(picker) = &mut self.picker {
-            picker.set_query(query);
+        let Some(picker) = &mut self.picker else {
+            return;
+        };
+        if picker.set_query(&self.store, query).is_err() {
+            self.show_toast(failed());
         }
     }
 
@@ -297,13 +302,19 @@ where
         item: ItemId,
         mode: UseMode,
         transform: Option<Transform>,
+        selection: Option<String>,
     ) -> Result<(), UseError> {
         let (title, source) =
             usecase::template_source(&self.store, item)?.ok_or(UseError::NotText)?;
-        let template = Template::parse(&source)?;
+        let template = usecase::parse_template(&self.store, &source)?;
+        let locale = usecase::template_locale(&self.settings.language);
         self.fill_erase = None;
         self.fill_seq += 1;
-        self.fill = Some(FillModel::new(item, mode, title, template).with_transform(transform));
+        self.fill = Some(
+            FillModel::new(item, mode, title, template, locale)
+                .with_transform(transform)
+                .with_selection(selection),
+        );
         Ok(())
     }
 
@@ -320,6 +331,20 @@ where
             // Typing the answers is use: the idle lock must not close the form under the user.
             self.note_activity();
         }
+    }
+
+    /// A day was picked in the month grid of date field `index`: the field takes it in the
+    /// user's date order. Returns the text the field now holds.
+    pub fn fill_date_picked(
+        &mut self,
+        index: usize,
+        year: i32,
+        month: i32,
+        day: i32,
+    ) -> Option<String> {
+        let text = self.fill.as_mut()?.pick_date(index, year, month, day)?;
+        self.note_activity();
+        Some(text)
     }
 
     /// Closes the fill form if it belongs to a sensitive template, as the lock does: the form
@@ -360,6 +385,7 @@ where
             mode: fill.mode(),
             answers: fill.answers(),
             transform: fill.transform(),
+            selection: fill.selection().map(str::to_owned),
             erase: self.fill_erase.take(),
         };
         self.fill = None;
@@ -368,11 +394,13 @@ where
 
     /// Re-runs the use that stopped for answers, now with them.
     pub fn run_fill(&mut self, submission: FillSubmission) -> UseResult {
+        self.selection_for_use = submission.selection;
         let erase = submission.erase.map(|e| Erasing {
             chars: e.chars,
             app: e.app,
             window: e.window,
             fresh: None,
+            retype: e.retype,
         });
         self.run_use_erasing(
             submission.item,
@@ -397,6 +425,11 @@ where
     /// default list (the list the Panel shows), and says so in a toast.
     pub fn quick_capture(&mut self) {
         let clip = self.services.clipboard.read_rich();
+        if clip.excluded {
+            // The source asked to be left out (a password manager): nothing is saved.
+            self.show_toast(neutral(ToastMessage::NothingToSave));
+            return;
+        }
         self.save_rich(
             clip.text.as_deref(),
             clip.html.as_deref(),
@@ -503,12 +536,14 @@ where
                     snipdeck_core::ItemKind::Text,
                     crate::paste_create::kind_of_text,
                 );
+                // Looked up before the save, so the new copy does not find itself.
+                let twin = text.and_then(|t| crate::duplicate::find_text(&self.store, t));
                 let saved = capture::capture_with(
                     &mut self.store,
                     &list,
                     text,
                     (html, rtf),
-                    kind,
+                    capture::Shape::plain(kind),
                     snipdeck_core::Placement::First,
                     self.clock.now(),
                 );
@@ -518,7 +553,13 @@ where
                         self.refresh_logged("a quick save");
                         Toast {
                             kind: ToastKind::Success,
-                            message: ToastMessage::Saved { list },
+                            message: match twin {
+                                Some(twin) => ToastMessage::SavedAgain {
+                                    list,
+                                    was_in: twin.list_name,
+                                },
+                                None => ToastMessage::Saved { list },
+                            },
                         }
                     }
                     Ok(Captured::Empty) => neutral(ToastMessage::NothingToSave),
@@ -728,6 +769,46 @@ where
         self.run_use_erasing(item, mode, answers, transform, None)
     }
 
+    /// What a template reads from outside before it is rendered: the selection (read first, while
+    /// the Target still has the focus, since the fill form takes it, and before the clipboard is
+    /// read, since the copy puts the user's clipboard back), the clipboard text (only a template
+    /// that says `{clipboard}` reads what the user copied, A22) and the clipboard history (only
+    /// one that names a position beyond the first).
+    fn read_use_inputs(
+        &mut self,
+        template: Option<&Template>,
+        mode: UseMode,
+        route: &Route,
+        pasted_into: Option<&str>,
+        first_pass: bool,
+    ) -> (Option<String>, Option<String>, Vec<String>) {
+        let mut selection = self.selection_for_use.take();
+        if selection.is_none()
+            && first_pass
+            && mode != UseMode::Copy
+            && template.is_some_and(Template::uses_selection)
+            && crate::selection::copy_is_safe(route, pasted_into)
+        {
+            let mut env = Env {
+                clipboard: &mut self.services.clipboard,
+                keyboard: &mut self.services.keyboard,
+                timing: &mut self.services.timing,
+            };
+            selection = crate::selection::capture(&mut env);
+        }
+        let clipboard_text = if template.is_some_and(Template::uses_clipboard) {
+            self.services.clipboard.read_text()
+        } else {
+            None
+        };
+        let clipboard_history = if template.is_some_and(|t| t.max_clipboard_position() > 1) {
+            self.services.clipboard.read_history()
+        } else {
+            Vec::new()
+        };
+        (selection, clipboard_text, clipboard_history)
+    }
+
     /// [`run_use`](Self::run_use) that also erases a typed trigger: with the paste key, in one
     /// injection, and only if the user has not typed on or changed window by then. A template
     /// that needs answers erases nothing yet: the erase waits for the confirmed form.
@@ -745,6 +826,17 @@ where
         let route = self.model.route();
         let pasted_into = self.model.target().map(|t| t.app.clone());
         self.refocus_for_paste(mode, &route);
+        let template = usecase::template_source(&self.store, item)
+            .ok()
+            .flatten()
+            .and_then(|(_, src)| usecase::parse_template(&self.store, &src).ok());
+        let (selection, clipboard_text, clipboard_history) = self.read_use_inputs(
+            template.as_ref(),
+            mode,
+            &route,
+            pasted_into.as_deref(),
+            answers.is_empty(),
+        );
         let request = UseRequest {
             item,
             mode,
@@ -754,19 +846,12 @@ where
             transform,
             uuids: None,
             erase: chars,
-            // Only a template that says `{clipboard}` reads what the user copied (A22).
-            clipboard_text: if usecase::template_source(&self.store, item)
-                .ok()
-                .flatten()
-                .and_then(|(_, src)| snipdeck_core::template::Template::parse(&src).ok())
-                .is_some_and(|t| t.uses_clipboard())
-            {
-                self.services.clipboard.read_text()
-            } else {
-                None
-            },
+            retype: erase.as_ref().map_or_else(Retype::default, |e| e.retype),
+            clipboard_text,
+            clipboard_history,
+            selection: selection.clone(),
             tz: self.tz.clone(),
-            locale: Locale::for_tag(&self.settings.language),
+            locale: usecase::template_locale(&self.settings.language),
         };
         let mut env = Env {
             clipboard: &mut self.services.clipboard,
@@ -823,13 +908,14 @@ where
                 UseResult::Cancelled
             }
             Err(UseError::NeedsAnswers(_)) => {
-                match self.open_fill(item, mode, transform) {
+                match self.open_fill(item, mode, transform, selection) {
                     Ok(()) => {
                         // The typed code goes when the form is confirmed, not before.
                         self.fill_erase = erase.filter(|e| e.chars > 0).map(|e| FillErase {
                             chars: e.chars,
                             app: e.app,
                             window: e.window,
+                            retype: e.retype,
                         });
                         UseResult::NeedsAnswers
                     }
@@ -847,7 +933,7 @@ where
     }
 
     /// After a copy of a sensitive item, remembers its content on the clipboard to be cleared
-    /// `clipboard_clear_secs` from now (0 = never). A paste that restored the user's own
+    /// `clipboard_clear_secs` from now (at least 5 seconds: there is no "never"). A paste that restored the user's own
     /// clipboard leaves nothing to clear; one whose snapshot or restore failed
     /// ([`UseOutcome::PastedNotRestored`]) leaves the item there, so it is cleared like a copy.
     pub(super) fn schedule_clipboard_clear(&mut self, item: ItemId, outcome: UseOutcome) {
@@ -861,18 +947,22 @@ where
         let life = Duration::from_secs(u64::from(self.settings.clipboard_clear_secs));
         // The plaintext copies go on the same timer as the clipboard, with or without a master
         // password; the clipboard's own clear below may not apply (a paste that restored it).
-        if self.secret_files_pasted && !life.is_zero() {
+        if self.secret_files_pasted {
             // Keep the earliest: a later use must not postpone the delete.
             if self.secret_files_due.is_none() {
                 self.secret_files_due = self.clock.now().checked_add(life).ok();
             }
         }
-        if life.is_zero()
-            || matches!(outcome, UseOutcome::Pasted)
+        if matches!(outcome, UseOutcome::Pasted)
             || !self.store.item(item).is_ok_and(|i| i.sensitive)
         {
             return;
         }
+        self.arm_clipboard_clear(life);
+    }
+
+    /// Remembers what our latest write left on the clipboard, to be cleared `life` from now.
+    fn arm_clipboard_clear(&mut self, life: Duration) {
         let Ok(due) = self.clock.now().checked_add(life) else {
             return;
         };
@@ -897,6 +987,48 @@ where
             sequence,
             attempts: 0,
         });
+    }
+
+    /// Copies the selected part of a sensitive field to the clipboard (a field of a sensitive
+    /// item or template; the field's own copy would write with no markers and never clear).
+    /// `start` and `end` are byte offsets into `text`, in either order. The copy carries the
+    /// privacy markers and is cleared like a sensitive item's copy. Returns whether it copied.
+    pub fn copy_private_selection(&mut self, text: &str, start: i32, end: i32) -> bool {
+        let Some(range) = selection_range(text, start, end) else {
+            return false;
+        };
+        let Some(payload) =
+            snipdeck_platform::payload::Payload::new(vec![snipdeck_platform::payload::Data::Text(
+                text[range].to_owned(),
+            )])
+        else {
+            return false;
+        };
+        if self
+            .services
+            .clipboard
+            .write_persistent(&payload.private())
+            .is_err()
+        {
+            self.show_toast(failed());
+            return false;
+        }
+        let life = Duration::from_secs(u64::from(self.settings.clipboard_clear_secs));
+        self.arm_clipboard_clear(life);
+        true
+    }
+
+    /// [`copy_private_selection`](Self::copy_private_selection), then the text without the
+    /// selection (what the field shows after a cut). `None` when nothing was cut.
+    pub fn cut_private_selection(&mut self, text: &str, start: i32, end: i32) -> Option<String> {
+        let range = selection_range(text, start, end)?;
+        if !self.copy_private_selection(text, start, end) {
+            return None;
+        }
+        let mut rest = String::with_capacity(text.len() - range.len());
+        rest.push_str(&text[..range.start]);
+        rest.push_str(&text[range.end..]);
+        Some(rest)
     }
 
     /// A paste put the earlier clipboard back, which moved the clipboard's sequence number. If
@@ -947,15 +1079,23 @@ where
         // is on it): it ends first, so the restore is not lost with the event loop.
         self.drain_paste();
         self.clear_clipboard(true);
-        self.forget_secret_files();
+        self.secret_files_due = None;
+        // One started by the lock may still be running (`secret_files_deleting`): wait for it too.
+        let pasted = std::mem::take(&mut self.secret_files_pasted);
+        if std::mem::take(&mut self.secret_files_deleting) || pasted {
+            // The process ends right after: a background deletion would be cut short.
+            self.services.clipboard.forget_pasted_files_waiting();
+        }
     }
 
     /// Deletes the decrypted files a sensitive Files item left in the temp folder when it was
     /// pasted (the lock and the quit call it). A file the target still holds open stays until
-    /// the next start. Nothing to do when no such item was pasted.
+    /// the next start. Nothing to do when no such item was pasted. The deletion runs off the UI
+    /// thread.
     pub(super) fn forget_secret_files(&mut self) {
         self.secret_files_due = None;
         if std::mem::take(&mut self.secret_files_pasted) {
+            self.secret_files_deleting = true;
             self.services.clipboard.forget_pasted_files();
         }
     }
@@ -996,4 +1136,13 @@ where
             self.clipboard_clear = Some(pending);
         }
     }
+}
+
+/// The byte range between two offsets (either order) when it is a non-empty selection on
+/// character boundaries of `text`.
+fn selection_range(text: &str, a: i32, b: i32) -> Option<std::ops::Range<usize>> {
+    let (a, b) = (usize::try_from(a).ok()?, usize::try_from(b).ok()?);
+    let range = a.min(b)..a.max(b);
+    (!range.is_empty() && text.is_char_boundary(range.start) && text.is_char_boundary(range.end))
+        .then_some(range)
 }

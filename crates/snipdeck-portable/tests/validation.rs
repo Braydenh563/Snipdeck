@@ -631,6 +631,10 @@ fn an_oversized_title_and_source_app_are_cut_with_a_warning() {
         .filter(|i| i.title.starts_with('é'))
         .collect();
     assert_eq!(long.len(), 1);
-    assert_eq!(long[0].title.chars().count(), 1000);
+    assert_eq!(
+        long[0].title.chars().count(),
+        snipdeck_core::Item::TITLE_MAX_CHARS,
+        "the same limit as the editor"
+    );
     assert_eq!(long[0].source_app.as_deref().map(str::len), Some(256));
 }

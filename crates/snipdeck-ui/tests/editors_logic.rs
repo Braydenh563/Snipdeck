@@ -330,7 +330,7 @@ ui_tests! {
 
     fn the_trigger_field_speaks_its_helper_then_the_warning_and_the_error_wins() {
         const HELPER: &str =
-            "Type this in any app to insert the snippet. Turn it on in Settings, under Typing.";
+            "Type this in any app to insert the item. Turn it on in Settings, under Typing.";
         const ONE_CHAR: &str = "A one-character trigger fires every time you type it, even inside words. Two or more characters are safer.";
         let (ui, _log) = item_editor();
         ui.set_trigger("".into());
@@ -340,6 +340,7 @@ ui_tests! {
         };
         assert_eq!(desc(&ui).as_deref(), Some(HELPER), "the helper is spoken");
         ui.set_trigger(";".into());
+        ui.set_trigger_warning(ONE_CHAR.into());
         settle();
         assert_eq!(desc(&ui).as_deref(), Some(ONE_CHAR), "the warning replaces it");
         ui.set_trigger_error("That trigger is taken.".into());
@@ -354,10 +355,174 @@ ui_tests! {
         settle();
         let reason = find(
             &ui,
-            "Sensitive items can't be typed in, so they have no trigger.",
+            "Sensitive items can’t be typed in, so they have no trigger.",
             AccessibleRole::Text,
         );
         assert!(reason.accessible_label().is_some(), "the reason is a text node");
+    }
+
+    fn the_trigger_options_show_with_a_trigger_below_its_field() {
+        let (ui, _log) = item_editor();
+        ui.set_trigger("".into());
+        settle();
+        let combo = AccessibleRole::Combobox;
+        assert!(missing(&ui, "Trigger fires", combo), "no trigger, no options");
+        assert!(missing(&ui, "Trigger and letter case", combo));
+        ui.set_trigger(";sig".into());
+        ui.set_trigger_end_index(1);
+        ui.set_trigger_case_index(2);
+        settle();
+        let field = find(&ui, "Trigger", AccessibleRole::TextInput);
+        let fires = find(&ui, "Trigger fires", combo);
+        let case = find(&ui, "Trigger and letter case", combo);
+        assert!(fires.absolute_position().y > field.absolute_position().y + field.size().height - 1.0);
+        assert!(case.absolute_position().y > fires.absolute_position().y);
+        assert_eq!(
+            fires.accessible_value().as_deref(),
+            Some("When a space or punctuation follows"),
+            "the chosen option is spoken"
+        );
+        assert_eq!(
+            case.accessible_value().as_deref(),
+            Some("Ignore case and follow what I typed")
+        );
+        ui.set_sensitive(true);
+        settle();
+        assert!(missing(&ui, "Trigger fires", combo), "a sensitive item has no trigger");
+        assert!(missing(&ui, "Trigger and letter case", combo));
+    }
+
+    fn the_text_tools_open_from_a_row_below_the_content_and_not_for_a_link_or_a_large_text() {
+        let (ui, _log) = item_editor();
+        let show = "Show the text tools";
+        assert!(!missing(&ui, show, AccessibleRole::Button), "a text item has the tools row");
+        assert!(missing(&ui, "Find", AccessibleRole::TextInput), "closed: no fields");
+        find(&ui, show, AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert!(ui.get_tools_open());
+        for label in ["Find", "Replace with"] {
+            find(&ui, label, AccessibleRole::TextInput);
+        }
+        find(&ui, "Replace all", AccessibleRole::Button);
+        find(&ui, "Monospace font", AccessibleRole::Switch);
+        find(&ui, "Line numbers", AccessibleRole::Switch);
+        find(&ui, "Change the text", AccessibleRole::Combobox);
+        ui.set_kind_index(2);
+        settle();
+        assert!(missing(&ui, "Hide the text tools", AccessibleRole::Button), "a link has no text tools");
+        ui.set_kind_index(0);
+        ui.set_content_large(true);
+        settle();
+        assert!(missing(&ui, "Hide the text tools", AccessibleRole::Button), "a read-only text has none");
+    }
+
+    fn replace_all_asks_the_host_counts_matches_and_one_undo_brings_the_text_back() {
+        let (ui, log) = item_editor();
+        ui.set_content("Cat cat\ndog CAT".into());
+        ui.set_tools_open(true);
+        ui.on_match_count(|text, find, match_case| {
+            let (t, f) = if match_case {
+                (text.to_string(), find.to_string())
+            } else {
+                (text.to_lowercase(), find.to_lowercase())
+            };
+            i32::try_from(t.matches(f.as_str()).count()).unwrap()
+        });
+        {
+            let log = log.clone();
+            let weak = ui.as_weak();
+            ui.on_replace_all_requested(move |find, with, match_case| {
+                log.borrow_mut().push(format!("replace:{find}>{with}:{match_case}"));
+                let w = weak.upgrade().unwrap();
+                w.set_content(w.get_content().to_lowercase().replace(find.as_str(), with.as_str()).into());
+            });
+        }
+        settle();
+        let replace = find(&ui, "Replace all", AccessibleRole::Button);
+        assert_eq!(replace.accessible_enabled(), Some(false), "nothing to find yet");
+        ui.set_find_text("cat".into());
+        ui.set_replace_text("fox".into());
+        settle();
+        assert_eq!(replace.accessible_enabled(), Some(true));
+        assert!(!missing(&ui, "3 matches", AccessibleRole::Text));
+        ui.set_match_case(true);
+        settle();
+        assert!(!missing(&ui, "1 match", AccessibleRole::Text), "case now counts: one");
+        ui.set_match_case(false);
+        take(&log);
+        click(&find(&ui, "Replace all", AccessibleRole::Button));
+        assert_eq!(take(&log), ["replace:cat>fox:false", "edited"]);
+        assert_eq!(ui.get_content(), "fox fox\ndog fox");
+        assert!(ui.get_has_backup());
+        assert!(!missing(&ui, "No matches", AccessibleRole::Text), "the text holds no cat now");
+        click(&find(&ui, "Undo the change", AccessibleRole::Button));
+        assert_eq!(ui.get_content(), "Cat cat\ndog CAT", "the text as it was");
+        assert!(!ui.get_has_backup());
+        assert_eq!(take(&log), ["edited"]);
+    }
+
+    fn a_tool_that_changes_nothing_does_not_count_as_an_edit_and_typing_forgets_the_undo() {
+        let (ui, log) = item_editor();
+        ui.set_content("same".into());
+        ui.set_tools_open(true);
+        ui.on_match_count(|_, _, _| 1);
+        ui.on_replace_all_requested(|_, _, _| {});
+        ui.set_find_text("same".into());
+        settle();
+        take(&log);
+        click(&find(&ui, "Replace all", AccessibleRole::Button));
+        assert_eq!(take(&log), Vec::<String>::new(), "no change, no edit");
+        assert!(!ui.get_has_backup());
+        ui.set_has_backup(true);
+        ui.set_tool_backup("old".into());
+        ui.invoke_place_caret(0);
+        settle();
+        type_text(ui.window(), "x");
+        assert!(!ui.get_has_backup(), "typing forgets the undo");
+    }
+
+    fn line_numbers_follow_the_hosts_numbering_and_leave_with_the_switch() {
+        let (ui, _log) = item_editor();
+        ui.set_content("a\nb\nc".into());
+        ui.set_tools_open(true);
+        ui.on_numbered(|text| {
+            (1..=text.matches('\n').count() + 1)
+                .map(|n| n.to_string())
+                .collect::<Vec<_>>()
+                .join("\n")
+                .into()
+        });
+        settle();
+        let gutter = || {
+            ElementQuery::from_root(&ui)
+                .match_id("TextField::gutter-text")
+                .find_all()
+        };
+        assert_eq!(gutter().len(), 0, "off: no column");
+        let switch = find(&ui, "Line numbers", AccessibleRole::Switch);
+        click(&switch);
+        assert!(ui.get_line_numbers());
+        assert_eq!(gutter().len(), 1);
+        assert!(gutter()[0].size().width > 0.0);
+        click(&find(&ui, "Line numbers", AccessibleRole::Switch));
+        assert!(!ui.get_line_numbers());
+        assert_eq!(gutter().len(), 0);
+    }
+
+    fn the_monospace_switch_starts_on_for_code_and_off_for_text_and_flips_either() {
+        let (ui, _log) = item_editor();
+        ui.set_tools_open(true);
+        settle();
+        let state = |ui: &ItemEditor| find(ui, "Monospace font", AccessibleRole::Switch).accessible_checked();
+        assert_eq!(state(&ui), Some(false), "text is in the UI font");
+        click(&find(&ui, "Monospace font", AccessibleRole::Switch));
+        assert_eq!(state(&ui), Some(true));
+        ui.set_mono_flip(false);
+        ui.set_kind_index(1);
+        settle();
+        assert_eq!(state(&ui), Some(true), "code is monospace");
+        click(&find(&ui, "Monospace font", AccessibleRole::Switch));
+        assert_eq!(state(&ui), Some(false), "and the switch turns that off");
     }
 
     fn escape_leaves_a_clean_editor_and_asks_before_discarding_changes() {
@@ -572,18 +737,40 @@ ui_tests! {
         assert!(toggle.accessible_description().unwrap().starts_with("Only text, code, link"));
     }
 
-    fn large_text_is_read_only_with_a_notice() {
+    fn large_text_is_edited_a_part_at_a_time_with_a_pager() {
         let (ui, _log) = item_editor();
         assert_eq!(find(&ui, "Content", AccessibleRole::TextInput).accessible_read_only(), Some(false));
+        assert!(missing(&ui, "Next part", AccessibleRole::Button), "no pager for a short text");
+        let asked = std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
+        let seen = asked.clone();
+        ui.on_part_requested(move |target| seen.borrow_mut().push(target));
         ui.set_content_large(true);
         ui.set_content_size("2.4 MB".into());
+        ui.set_parts(slint::ModelRc::new(slint::VecModel::from(vec![
+            slint::SharedString::from("one"),
+            slint::SharedString::from("two"),
+            slint::SharedString::from("three"),
+        ])));
+        ui.set_part_index(0);
         settle();
-        assert_eq!(find(&ui, "Content", AccessibleRole::TextInput).accessible_read_only(), Some(true));
+        // Still editable; the notice and the pager say where the reader is.
+        assert_eq!(find(&ui, "Content", AccessibleRole::TextInput).accessible_read_only(), Some(false));
         let _ = find(
             &ui,
-            "This text is 2.4 MB. Anything over 16 KB opens read-only here, and the first 16 KB are shown.",
+            "This text is 2.4 MB. It opens a part at a time, so typing stays fast; all the parts are saved together.",
             AccessibleRole::Text,
         );
+        let _ = find(&ui, "Part 1 of 3", AccessibleRole::Text);
+        assert_eq!(find(&ui, "Previous part", AccessibleRole::Button).accessible_enabled(), Some(false));
+        find(&ui, "Next part", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(*asked.borrow(), [1]);
+        // On the last part Next is off and Previous asks for the one before.
+        ui.set_part_index(2);
+        settle();
+        let _ = find(&ui, "Part 3 of 3", AccessibleRole::Text);
+        assert_eq!(find(&ui, "Next part", AccessibleRole::Button).accessible_enabled(), Some(false));
+        find(&ui, "Previous part", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(*asked.borrow(), [1, 1]);
     }
 
     fn a_new_item_may_be_an_image_or_a_file_and_asks_for_its_path() {
@@ -651,12 +838,12 @@ ui_tests! {
         let (ui, _log) = item_editor();
         assert!(missing(&ui, "Restored the changes you had not saved.", AccessibleRole::Text));
         ui.set_restored(true);
-        ui.set_banner("Snipdeck couldn't save this item. Nothing was changed.".into());
+        ui.set_banner("Snipdeck couldn’t save this item. Nothing was changed.".into());
         ui.set_privacy_error("Unlock your library to save this item.".into());
         settle();
         let _ = find(&ui, "Restored the changes you had not saved.", AccessibleRole::Text);
         // Both problems are on screen as text the user can read.
-        let _ = find(&ui, "Snipdeck couldn't save this item. Nothing was changed.", AccessibleRole::Text);
+        let _ = find(&ui, "Snipdeck couldn’t save this item. Nothing was changed.", AccessibleRole::Text);
         ui.invoke_mark_dirty();
         assert!(ui.get_dirty());
         ui.invoke_mark_clean();
@@ -804,6 +991,18 @@ ui_tests! {
         assert_eq!(take(&log), Vec::<String>::new(), "and does nothing else on that press");
         press_key(&ui, Key::Escape);
         assert_eq!(take(&log), ["cancel"]);
+    }
+
+    // PERF-17: the liveness timer wakes ten times a second while a tooltip rests, and the owner answers each
+    // ping, so the tooltip stays. (Cost per wake-up, measured once with a wall clock: docs/PERF.md.)
+    fn a_resting_tooltip_stays_up_across_many_liveness_wake_ups() {
+        let (ui, _log) = item_editor();
+        hover_rest(&ui, &find(&ui, "Save", AccessibleRole::Button));
+        assert_eq!(tips(&ui), 1);
+        for _ in 0..100 {
+            i_slint_backend_testing::mock_elapsed_time(std::time::Duration::from_millis(100));
+        }
+        assert_eq!(tips(&ui), 1, "the owner answers, so the tooltip stays");
     }
 
     fn save_names_its_shortcut_in_a_tooltip() {
@@ -967,16 +1166,31 @@ ui_tests! {
         assert_eq!(ui.get_icon_index(), -1, "No icon is the first stop");
     }
 
-    fn sort_is_a_choice_of_three() {
+    fn sort_is_a_choice_of_six() {
         let (ui, _log) = list_editor();
-        find(&ui, "Most used", AccessibleRole::RadioButton).invoke_accessible_default_action();
-        assert_eq!(ui.get_sort_index(), 1);
-        find(&ui, "Recently used", AccessibleRole::RadioButton).invoke_accessible_default_action();
-        assert_eq!(ui.get_sort_index(), 2);
+        // Tall enough that the open list is on screen (off-screen rows are not in the tree).
+        ui.window().set_size(slint::LogicalSize::new(460.0, 900.0));
+        settle();
+        let combo = find(&ui, "Sort items by", AccessibleRole::Combobox);
+        assert_eq!(combo.accessible_value().as_deref(), Some("Manual"));
+        combo.invoke_accessible_default_action();
+        settle();
+        for name in ["Manual", "Name", "Created", "Modified", "Most used", "Recently used"] {
+            let item = find(&ui, name, AccessibleRole::ListItem);
+            assert!(item.size().height >= MIN_HIT, "{name}");
+        }
+        find(&ui, "Most used", AccessibleRole::ListItem).invoke_accessible_default_action();
+        settle();
+        assert_eq!(ui.get_sort_index(), 4);
+        combo.invoke_accessible_default_action();
+        settle();
+        find(&ui, "Recently used", AccessibleRole::ListItem).invoke_accessible_default_action();
+        settle();
+        assert_eq!(ui.get_sort_index(), 5);
         ui.set_show_sort(false);
         ui.set_show_colour(false);
         settle();
-        assert!(missing(&ui, "Most used", AccessibleRole::RadioButton));
+        assert!(missing(&ui, "Sort items by", AccessibleRole::Combobox));
         assert!(missing(&ui, "Teal", AccessibleRole::RadioButton));
     }
 
@@ -990,14 +1204,22 @@ ui_tests! {
             dialog.accessible_description().as_deref(),
             Some("24 items will move to Trash with it. You can restore them for 30 days.")
         );
+        ui.set_trash_days(90);
+        settle();
+        assert!(find(&ui, "Delete this list?", AccessibleRole::Groupbox)
+            .accessible_description().unwrap().ends_with("for 90 days."));
         ui.set_item_count(1);
         settle();
         assert!(find(&ui, "Delete this list?", AccessibleRole::Groupbox)
             .accessible_description().unwrap().starts_with("1 item will move"));
         ui.set_item_count(24);
 
-        // Enter does nothing in a destructive dialog; Esc closes it and the editor stays.
+        // MAIN-44: focus starts on Cancel, so Enter answers no and the editor stays; Esc does the same.
         press_key(&ui, Key::Return);
+        assert!(!ui.get_delete_open());
+        assert_eq!(take(&log), Vec::<String>::new());
+        find(&ui, "Delete list", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
         assert!(ui.get_delete_open());
         press_key(&ui, Key::Escape);
         assert!(!ui.get_delete_open());
@@ -1157,6 +1379,20 @@ ui_tests! {
         assert_eq!(take(&log), ["delete:2"]);
     }
 
+    // MAIN-39: an unused tag says so instead of "removed from 0 items".
+    fn deleting_an_unused_tag_does_not_say_zero_items() {
+        let ui = TagManager::new().expect("tag manager");
+        fixture::tag_manager(&ui);
+        ui.show().expect("show");
+        settle();
+        find(&ui, "Delete tag unused", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert_eq!(
+            find(&ui, "Delete this tag?", AccessibleRole::Groupbox).accessible_description().as_deref(),
+            Some("No item uses this tag.")
+        );
+    }
+
     fn tag_rows_have_big_enough_targets() {
         let ui = TagManager::new().expect("tag manager");
         fixture::tag_manager(&ui);
@@ -1178,8 +1414,8 @@ ui_tests! {
     fn shortcut_rows_record_clear_and_show_a_conflict() {
         let (ui, log) = settings();
         let names = [
-            "Show or hide the panel",
-            "Open the picker",
+            "Show or hide the Panel",
+            "Open the Picker",
             "Save the clipboard as an item",
             "Paste the next item",
         ];
@@ -1203,7 +1439,7 @@ ui_tests! {
             Some("Another program already uses Ctrl+Alt+K.")
         );
 
-        find(&ui, "Clear the shortcut for Open the picker", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Clear the shortcut for Open the Picker", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["hk-clear:1"]);
         // A shortcut that is not set says so.
         assert_eq!(find(&ui, names[3], AccessibleRole::Button).accessible_value().as_deref(), Some(""));
@@ -1212,7 +1448,7 @@ ui_tests! {
     fn each_set_shortcut_has_a_test_button_and_a_failed_one_offers_its_alternatives() {
         let (ui, log) = settings();
         // Set shortcuts (three of four in the fixture) show "Test"; the empty one shows no health line.
-        find(&ui, "Test Open the picker", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Test Open the Picker", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["hk-test:1"]);
         assert!(missing(&ui, "Test Paste the next item", AccessibleRole::Button));
 
@@ -1225,7 +1461,7 @@ ui_tests! {
         hotkeys[2].alternatives = ModelRc::new(VecModel::from(vec!["Ctrl+Shift+G".into(), "Ctrl+Shift+H".into()]));
         ui.set_hotkeys(ModelRc::new(VecModel::from(hotkeys)));
         settle();
-        find(&ui, "Cancel the test of Open the picker", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Cancel the test of Open the Picker", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["hk-test:1"]);
         assert!(missing(&ui, "Test Save the clipboard as an item", AccessibleRole::Button));
         find(&ui, "Use Ctrl+Shift+H for Save the clipboard as an item", AccessibleRole::Button).invoke_accessible_default_action();
@@ -1321,7 +1557,7 @@ ui_tests! {
 
     fn escape_ends_a_recording_first_and_then_closes_the_page() {
         let (ui, log) = settings();
-        find(&ui, "Open the picker", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Open the Picker", AccessibleRole::Button).invoke_accessible_default_action();
         press_key(&ui, Key::Escape);
         assert!(take(&log).is_empty(), "Esc only cancelled the recording");
         press_key(&ui, Key::Escape);
@@ -1358,7 +1594,7 @@ ui_tests! {
         assert_eq!(taskbar.accessible_checked(), Some(false), "off by default");
         taskbar.invoke_accessible_default_action();
         assert_eq!(take(&log), ["taskbar:true"]);
-        let blur = find(&ui, "Hide the panel when it loses focus", AccessibleRole::Switch);
+        let blur = find(&ui, "Hide the Panel when it loses focus", AccessibleRole::Switch);
         assert_eq!(blur.accessible_checked(), Some(true), "on by default");
         blur.invoke_accessible_default_action();
         assert_eq!(take(&log), ["blur:false"]);
@@ -1379,17 +1615,17 @@ ui_tests! {
         spin.invoke_accessible_decrement_action();
         assert_eq!(take(&log), ["width:330", "width:310"]);
 
-        find(&ui, "Make the panel wider", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Make the Panel wider", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["width:330"]);
 
         ui.set_panel_width(480);
         settle();
         spin.invoke_accessible_increment_action();
         assert!(take(&log).is_empty(), "no step past the maximum");
-        assert_eq!(find(&ui, "Make the panel wider", AccessibleRole::Button).accessible_enabled(), Some(false));
+        assert_eq!(find(&ui, "Make the Panel wider", AccessibleRole::Button).accessible_enabled(), Some(false));
         ui.set_panel_width(260);
         settle();
-        assert_eq!(find(&ui, "Make the panel narrower", AccessibleRole::Button).accessible_enabled(), Some(false));
+        assert_eq!(find(&ui, "Make the Panel narrower", AccessibleRole::Button).accessible_enabled(), Some(false));
     }
 
     fn backups_to_keep_steps_by_one_between_one_and_sixty() {
@@ -1409,7 +1645,7 @@ ui_tests! {
         settle();
         let _ = find(
             &ui,
-            "Snipdeck saves a copy of your library once a day and keeps the newest 12. Restoring adds back what is missing and never removes anything.",
+            "Snipdeck saves a copy of your library once a day and keeps the newest 12, plus the last copy of each of the past four weeks and six months. A backup holds every board, list, item and tag; the Trash is not in it. Restoring adds back what is missing and never removes anything.",
             AccessibleRole::Text,
         );
     }
@@ -1832,14 +2068,17 @@ ui_tests! {
 
     fn each_step_shows_its_own_content() {
         let (ui, _) = onboarding(0);
-        let _ = find(&ui, "The panel", AccessibleRole::Groupbox);
-        let _ = find(&ui, "The picker", AccessibleRole::Groupbox);
+        let _ = find(&ui, "The Panel", AccessibleRole::Groupbox);
+        let _ = find(&ui, "The Picker", AccessibleRole::Groupbox);
+        // MAIN-47: the tour says where to bring other tools' snippets in.
+        let import = find(&ui, "Bring your snippets", AccessibleRole::Groupbox);
+        assert!(import.accessible_description().is_some_and(|d| d.contains("TextExpander") && d.contains("CopyQ")));
         let _ = find(&ui, "Also keep what I copy?", AccessibleRole::Groupbox);
         assert!(missing(&ui, "Start with Windows", AccessibleRole::Switch));
         ui.set_step(1);
         settle();
-        assert!(missing(&ui, "The panel", AccessibleRole::Groupbox));
-        let _ = find(&ui, "Show or hide the panel", AccessibleRole::Button);
+        assert!(missing(&ui, "The Panel", AccessibleRole::Groupbox));
+        let _ = find(&ui, "Show or hide the Panel", AccessibleRole::Button);
         ui.set_step(2);
         settle();
         let _ = find(&ui, "Floating", AccessibleRole::RadioButton);
@@ -1852,7 +2091,7 @@ ui_tests! {
 
     fn the_shortcut_step_records_through_the_settings_recorder() {
         let (ui, log) = onboarding(1);
-        let first = find(&ui, "Show or hide the panel", AccessibleRole::Button);
+        let first = find(&ui, "Show or hide the Panel", AccessibleRole::Button);
         assert_eq!(first.accessible_value().as_deref(), Some("Ctrl+Alt+V"));
         first.invoke_accessible_default_action();
         chord(ui.window(), &[Key::Control, Key::Alt], "k");

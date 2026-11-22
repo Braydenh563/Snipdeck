@@ -36,6 +36,14 @@ pub struct FakeClipboard {
     pub incomplete_snapshot: bool,
     /// What `restore` returns.
     pub restore_result: Option<Result<bool, Error>>,
+    /// What `restore_forced` returns.
+    pub restore_forced_result: Option<Result<(), Error>>,
+    /// Text a Target puts on the clipboard when sent Ctrl+C, once this many text reads have
+    /// passed since the latest write (`ClipboardText::read_text`): the selection of the app.
+    pub copy_arrives: Option<(u32, String)>,
+    /// What the Win+V history holds besides the current text, newest first
+    /// (`ClipboardText::read_history`).
+    pub held_history: Vec<String>,
     /// The clipboard sequence number: it increases with every write and every clear.
     pub sequence: u32,
     /// How many times the text on the clipboard was read (`ClipboardText::read_text`).
@@ -47,6 +55,9 @@ pub struct FakeClipboard {
     pub held_html: Option<String>,
     /// The RTF flavour that rides with the copied text (`ClipboardText::read_rich`).
     pub held_rtf: Option<Vec<u8>>,
+    /// The copy carries a "keep me out" marker (a password manager's copy): `read_rich` then
+    /// returns no text and sets `excluded`.
+    pub held_excluded: bool,
     /// Files copied in Explorer (`ClipboardText::read_files`).
     pub held_files: Vec<String>,
     /// The Explorer copy holds more files than a paste takes (`ClipFiles::TooMany`).
@@ -61,6 +72,9 @@ pub struct FakeClipboard {
     pub never_confirm: bool,
     /// How many times the app asked to delete the files that pastes left in the temp folder.
     pub pasted_files_forgotten: u32,
+    /// How many of those asks waited for the deletion to finish (the quit's) instead of leaving
+    /// it to a background thread.
+    pub pasted_files_forgotten_waited: u32,
 }
 
 impl FakeClipboard {
@@ -126,6 +140,10 @@ impl Clipboard for FakeClipboard {
     fn restore(&mut self, (): (), (): ()) -> Result<bool, Error> {
         self.log.push("restore".into());
         self.restore_result.clone().unwrap_or(Ok(true))
+    }
+    fn restore_forced(&mut self, (): ()) -> Result<(), Error> {
+        self.log.push("restore_forced".into());
+        self.restore_forced_result.clone().unwrap_or(Ok(()))
     }
 }
 
@@ -395,6 +413,13 @@ impl Tray for FakeTray {
         state.model.set_labels(labels);
         Ok(())
     }
+
+    fn set_double_click_opens(&mut self, opens: bool) -> Result<(), ServiceError> {
+        let mut state = lock(&self.state);
+        state.model.set_double_click_opens(opens);
+        state.log.push(format!("double-click-opens:{opens}"));
+        Ok(())
+    }
 }
 
 /// A [`SystemLookSource`] a test sets. Cloning shares the value.
@@ -561,6 +586,7 @@ struct FakeHelloState {
     secret: Vec<u8>,
     jitter: bool,
     prompts: usize,
+    deletions: usize,
 }
 
 impl std::fmt::Debug for FakeHello {
@@ -589,6 +615,7 @@ impl FakeHello {
                 secret: b"fake-credential-1".to_vec(),
                 jitter: false,
                 prompts: 0,
+                deletions: 0,
             }),
         }
     }
@@ -625,6 +652,12 @@ impl FakeHello {
         self.with(|s| s.jitter = on);
     }
 
+    /// How many times the credential was deleted.
+    #[must_use]
+    pub fn deletions(&self) -> usize {
+        self.with(|s| s.deletions)
+    }
+
     /// How many times a signature was asked for.
     #[must_use]
     pub fn prompts(&self) -> usize {
@@ -639,6 +672,13 @@ impl HelloAuthenticator for FakeHello {
 
     fn ensure_credential(&self) -> Result<(), HelloError> {
         self.with(|s| s.ensure)
+    }
+
+    fn delete_credential(&self) -> Result<(), HelloError> {
+        self.with(|s| {
+            s.deletions += 1;
+            Ok(())
+        })
     }
 
     fn sign_challenge(&self, challenge: &[u8]) -> Result<zeroize::Zeroizing<Vec<u8>>, HelloError> {

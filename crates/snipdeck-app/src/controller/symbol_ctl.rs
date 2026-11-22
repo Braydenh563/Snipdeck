@@ -25,12 +25,10 @@ use super::{Controller, Effect, Library, PanelMenu, UseResult, failed};
 use crate::{
     host::ClipboardText,
     item_editor::Origin,
+    settings::{ICON_DARK_INK, ICON_PNG_SIZES},
     toast::{self, Toast, ToastKind, ToastMessage},
     usecase::UseError,
 };
-
-/// The size, in pixels, of an icon copied to the clipboard as a picture.
-pub const ICON_COPY_PX: u32 = 64;
 
 /// What "Save as..." writes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -39,7 +37,7 @@ pub enum IconExport {
     Svg,
     /// A PNG of `px` x `px` pixels in the text colour.
     Png {
-        /// Width and height in pixels (the menu offers 24, 32, 48, 64, 128, 256).
+        /// Width and height in pixels (one of `settings::ICON_PNG_SIZES`).
         px: u32,
         /// The text colour of the theme in force, as `copy_icon_png` takes it.
         rgba: [u8; 4],
@@ -70,6 +68,17 @@ pub enum SymbolMenuEntry {
     SaveAsSvg,
     /// Icons only: save a PNG file (only where the machine has a file dialog).
     SaveAsPng,
+    /// Icons only: the PNG side in pixels now in force; choosing it steps to the next size.
+    PngSize(u32),
+    /// Icons only: whether PNGs are drawn in dark ink (true) or the theme's text colour; choosing
+    /// it flips that.
+    PngInk {
+        /// Dark ink, safe on a white document.
+        dark: bool,
+    },
+    /// An emoji with skin tones: paste it in tone `n` (0 the default yellow, 1 to 5 light to
+    /// dark) and keep that tone for the next ones.
+    Tone(u8),
 }
 
 /// What choosing a row of the symbol menu leaves for the host to do.
@@ -108,7 +117,26 @@ where
     /// Target), raises the usual toast and remembers the symbol. Icons have no text:
     /// [`UseResult::Failed`], nothing written, no toast.
     pub fn use_symbol(&mut self, id: &SymbolId, mode: UseMode) -> UseResult {
-        let Some(text) = Catalog::get().get_symbol(id).and_then(|s| s.text.clone()) else {
+        let tone = self.settings.symbol_tone;
+        self.use_symbol_toned(id, mode, tone)
+    }
+
+    /// The text of `id` in skin tone `tone` (0 the default yellow, 1 to 5 light to dark) when it
+    /// has tones; the plain text otherwise.
+    fn symbol_text(id: &SymbolId, tone: u8) -> Option<String> {
+        let catalog = Catalog::get();
+        let sym = catalog.get_symbol(id)?;
+        if (1..=5).contains(&tone)
+            && let Some(variants) = catalog.index_of(id).and_then(|i| catalog.tone_variants(i))
+        {
+            return variants.get(usize::from(tone) - 1).cloned();
+        }
+        sym.text.clone()
+    }
+
+    /// [`use_symbol`](Self::use_symbol) in an explicit skin tone.
+    pub fn use_symbol_toned(&mut self, id: &SymbolId, mode: UseMode, tone: u8) -> UseResult {
+        let Some(text) = Self::symbol_text(id, tone) else {
             return UseResult::Failed;
         };
         let result = self.use_text(text, mode);
@@ -150,7 +178,8 @@ where
     /// "no list" says so). Returns whether an item was added. Icons are not text: they get the
     /// "Icons can't be added to a list yet" toast and `false`.
     pub fn add_symbol_to_list(&mut self, id: &SymbolId, origin: Origin) -> bool {
-        let Some(text) = Catalog::get().get_symbol(id).and_then(|s| s.text.clone()) else {
+        let tone = self.settings.symbol_tone;
+        let Some(text) = Self::symbol_text(id, tone) else {
             if matches!(id, SymbolId::Icon(_)) {
                 self.show_toast(Toast {
                     kind: ToastKind::Neutral,
@@ -210,6 +239,13 @@ where
                 enabled: !icon,
             },
         ];
+        if Catalog::get()
+            .index_of(id)
+            .is_some_and(|i| Catalog::get().tone_variants(i).is_some())
+        {
+            entries.push(SymbolMenuEntry::Separator);
+            entries.extend((0..=5).map(SymbolMenuEntry::Tone));
+        }
         if icon {
             entries.extend([
                 SymbolMenuEntry::Separator,
@@ -219,6 +255,12 @@ where
             if self.file_picker().is_some() {
                 entries.extend([SymbolMenuEntry::SaveAsSvg, SymbolMenuEntry::SaveAsPng]);
             }
+            entries.extend([
+                SymbolMenuEntry::PngSize(self.settings.symbol_icon_px),
+                SymbolMenuEntry::PngInk {
+                    dark: self.settings.symbol_icon_dark_ink,
+                },
+            ]);
         }
         entries
     }
@@ -270,10 +312,25 @@ where
             SymbolMenuEntry::SaveAsPng => SymbolChoice::Save(
                 id,
                 IconExport::Png {
-                    px: ICON_COPY_PX,
-                    rgba: ink,
+                    px: self.settings.symbol_icon_px,
+                    rgba: self.icon_ink(ink),
                 },
             ),
+            SymbolMenuEntry::PngSize(now) => {
+                let at = ICON_PNG_SIZES.iter().position(|s| *s == now).unwrap_or(0);
+                let next = ICON_PNG_SIZES[(at + 1) % ICON_PNG_SIZES.len()];
+                self.update_settings(|s| s.symbol_icon_px = next);
+                SymbolChoice::Done(Vec::new())
+            }
+            SymbolMenuEntry::PngInk { dark } => {
+                self.update_settings(|s| s.symbol_icon_dark_ink = !dark);
+                SymbolChoice::Done(Vec::new())
+            }
+            SymbolMenuEntry::Tone(tone) => {
+                self.update_settings(|s| s.symbol_tone = tone);
+                let used = self.use_symbol_toned(&id, UseMode::Paste, tone);
+                SymbolChoice::Done(self.after_use(&used))
+            }
             SymbolMenuEntry::AddToList { enabled: false, .. } | SymbolMenuEntry::Separator => {
                 SymbolChoice::None
             }
@@ -289,11 +346,22 @@ where
         self.copy_symbol_data(id, Data::Text(svg))
     }
 
-    /// "Copy PNG": the icon as a `ICON_COPY_PX` picture in `rgba` (the text colour of the
-    /// theme in force), transparent behind. `false` for anything that is not an icon, or when
-    /// the clipboard is busy.
+    /// The ink a PNG of an icon is drawn in: the remembered choice, dark by default (safe on a
+    /// white document) or `theme`, the text colour of the theme in force.
+    fn icon_ink(&self, theme: [u8; 4]) -> [u8; 4] {
+        if self.settings.symbol_icon_dark_ink {
+            ICON_DARK_INK
+        } else {
+            theme
+        }
+    }
+
+    /// "Copy PNG": the icon as a picture of the remembered size and ink (`rgba` is the text colour
+    /// of the theme in force, used when the ink is "theme"), transparent behind. `false` for
+    /// anything that is not an icon, or when the clipboard is busy.
     pub fn copy_icon_png(&mut self, id: &SymbolId, rgba: [u8; 4]) -> bool {
-        let Some(png) = Catalog::get().icon_png(id, ICON_COPY_PX, rgba) else {
+        let (px, ink) = (self.settings.symbol_icon_px, self.icon_ink(rgba));
+        let Some(png) = Catalog::get().icon_png(id, px, ink) else {
             return false;
         };
         self.copy_symbol_data(id, Data::Png(png))
@@ -418,17 +486,11 @@ pub struct IconSave {
 }
 
 impl IconSave {
-    /// Shows the Save dialog (the icon's name filled in) and waits. `owner` is the native window
-    /// handle the dialog belongs to. Call it with no borrow of the controller held.
-    ///
-    /// # Errors
-    ///
-    /// The dialog could not be shown.
-    pub fn ask(
-        &self,
-        owner: Option<isize>,
-    ) -> Result<Option<PathBuf>, snipdeck_platform::error::Error> {
-        self.picker.save(self.kind, &self.name, owner)
+    /// Shows the Save dialog (the icon's name filled in) without blocking and gives the answer
+    /// to `done`, from the dialog's thread (the caller hops back to the UI thread). `owner` is the
+    /// native window handle the dialog belongs to. Call it with no borrow of the controller held.
+    pub fn ask(&self, owner: Option<isize>, done: snipdeck_platform::file_dialog::Done) {
+        self.picker.save(self.kind, &self.name, owner, done);
     }
 }
 

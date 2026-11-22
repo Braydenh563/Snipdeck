@@ -1,9 +1,11 @@
-//! The command-line checks `--check-db` and `--troubleshoot`: the library's integrity check and the
-//! Help window's Troubleshoot list, printed as text without starting the app.
+//! The command-line commands `--check-db`, `--troubleshoot` and `--backup`: the library's integrity
+//! check, the Help window's Troubleshoot list and a backup file, without starting the app.
 //!
-//! Both open the data folder like the app does, so they refuse while Snipdeck is running (the
-//! folder is locked). The words are literal English, like [`crate::doctor`].
+//! All three only read: the library is opened read-only (no folder or database is created, nothing
+//! is migrated, no lock is taken) and the settings file is never set aside, so they are safe beside
+//! a running Snipdeck and a mistyped `--data-dir` is an error, not a new library. The words are literal English, like [`crate::doctor`].
 
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
 use jiff::civil::Date;
@@ -15,7 +17,6 @@ use crate::{
     doctor::{self, DoctorHost, ReportInfo, Status},
     paths,
     settings::{HotkeyAction, Settings},
-    settings_binding::action_name,
 };
 
 /// What a command-line check found: the text to print and the process exit code.
@@ -37,9 +38,10 @@ fn could_not_run(folder: &Path, why: &str) -> Outcome {
     }
 }
 
-/// Opens the library in `folder`; a folder with none gets an empty one, which is healthy.
+/// Opens the library in `folder` for reading only: a diagnostic changes nothing (it may run beside
+/// a running Snipdeck) and a folder with no library is "could not run", not an empty healthy one.
 fn open(folder: &Path) -> Result<Store, Outcome> {
-    Store::open(folder).map_err(|e| could_not_run(folder, &e.to_string()))
+    Store::open_read_only(folder).map_err(|e| could_not_run(folder, &e.to_string()))
 }
 
 /// `--check-db`: the store's integrity check on the library in `folder`.
@@ -70,8 +72,34 @@ pub fn check_db(folder: &Path) -> Outcome {
     }
 }
 
-/// What `--troubleshoot` cannot know from a stopped app.
-const NOT_CHECKED: &str = "Not checked from the command line.";
+/// `--backup <file>`: writes the library in `folder` to `dest` (a `.snipdeck` archive, as Settings'
+/// "Back up now" makes), reading only. Sensitive items are left out: the key ring needs the
+/// master password or Windows Hello, which a command line has not got.
+#[must_use]
+pub fn backup_to(folder: &Path, now: jiff::Timestamp, dest: &Path) -> Outcome {
+    let store = match open(folder) {
+        Ok(store) => store,
+        Err(outcome) => return outcome,
+    };
+    let options = snipdeck_portable::ExportOptions::default();
+    match snipdeck_portable::export_to_path(&store, now, &options, dest) {
+        Ok(report) => {
+            let mut text = format!("ok: wrote {}", dest.display());
+            if report.sensitive_omitted > 0 {
+                let n = report.sensitive_omitted;
+                let _ = write!(
+                    text,
+                    "; {n} sensitive item{} {} left out: the command line has no key for {}",
+                    if n == 1 { "" } else { "s" },
+                    if n == 1 { "was" } else { "were" },
+                    if n == 1 { "it" } else { "them" },
+                );
+            }
+            Outcome { text, code: 0 }
+        }
+        Err(e) => could_not_run(folder, &format!("the backup could not be written: {e}")),
+    }
+}
 
 /// The facts of [`DoctorHost`] for a library that is open but not running.
 struct FolderDoctor<'a> {
@@ -101,7 +129,7 @@ impl DoctorHost for FolderDoctor<'_> {
     }
 
     fn backup_dates(&self) -> Result<Vec<Date>, String> {
-        backup::list_backups(self.folder)
+        backup::list_backups(&self.settings.backup_folder(self.folder))
             .map(|files| files.into_iter().map(|f| f.date).collect())
             .map_err(|e| e.to_string())
     }
@@ -117,7 +145,7 @@ impl DoctorHost for FolderDoctor<'_> {
         self.store.key_ring_exists().map_err(|e| e.to_string())
     }
 
-    fn shortcuts_unset(&self) -> Vec<String> {
+    fn shortcuts_unset(&self) -> Vec<HotkeyAction> {
         let hotkeys = &self.settings.hotkeys;
         HotkeyAction::ALL
             .into_iter()
@@ -130,7 +158,6 @@ impl DoctorHost for FolderDoctor<'_> {
                 };
                 chord.is_empty()
             })
-            .map(|action| action_name(action).to_owned())
             .collect()
     }
 
@@ -160,7 +187,7 @@ pub fn troubleshoot(folder: &Path, today: Date, os: &str) -> Outcome {
         Ok(store) => store,
         Err(outcome) => return outcome,
     };
-    let settings = paths::read_settings(folder).settings;
+    let settings = paths::peek_settings(folder);
     let host = FolderDoctor {
         store: &store,
         folder,
@@ -171,7 +198,7 @@ pub fn troubleshoot(folder: &Path, today: Date, os: &str) -> Outcome {
     // The tray belongs to a running app: say so, rather than warning about an icon that cannot be.
     for c in checks.iter_mut().filter(|c| c.label == doctor::LABELS[5]) {
         c.status = Status::Ok;
-        NOT_CHECKED.clone_into(&mut c.detail);
+        c.detail = doctor::Detail::NotChecked;
     }
     let info = ReportInfo {
         version: env!("CARGO_PKG_VERSION").to_owned(),
@@ -179,6 +206,7 @@ pub fn troubleshoot(folder: &Path, today: Date, os: &str) -> Outcome {
         dpi: "n/a".to_owned(),
         flags: crate::help_binding::report_flags(&settings),
         data_dir: folder.display().to_string(),
+        log_tail: crate::log::tail(folder, crate::log::REPORT_LINES),
     };
     Outcome {
         text: doctor::report(&info, &checks),
@@ -219,20 +247,106 @@ mod tests {
     }
 
     #[test]
-    fn a_fresh_empty_folder_is_healthy() {
+    fn a_folder_with_no_library_is_not_a_healthy_library_and_is_not_created() {
         let dir = tempfile::tempdir().expect("dir");
-        let out = check_db(dir.path());
-        assert_eq!(out.code, 0, "{}", out.text);
-        assert!(dir.path().join("snipdeck.db").exists());
+        let typo = dir.path().join("mistyped");
+        for out in [check_db(&typo), troubleshoot(&typo, TODAY, "TestOS 1")] {
+            assert_eq!(out.code, COULD_NOT_RUN, "{}", out.text);
+            assert!(out.text.contains("no library in"), "{}", out.text);
+        }
+        assert!(!typo.exists(), "a diagnostic must not create the folder");
+        assert!(check_db(dir.path()).text.contains("no library in"));
+        assert!(!dir.path().join("snipdeck.db").exists());
     }
 
     #[test]
-    fn a_running_app_is_named_not_a_panic() {
+    fn a_running_app_does_not_stop_the_check() {
         let dir = library();
         let _held = Store::open(dir.path()).expect("held");
         let out = check_db(dir.path());
-        assert_eq!(out.code, COULD_NOT_RUN);
-        assert!(out.text.contains("already using"), "{}", out.text);
+        assert_eq!(out.code, 0, "{}", out.text);
+    }
+
+    #[test]
+    fn a_damaged_settings_file_is_read_but_never_set_aside() {
+        let dir = library();
+        let file = dir.path().join("settings.json");
+        std::fs::write(&file, "{ not json").expect("write");
+        let _ = troubleshoot(dir.path(), TODAY, "TestOS 1");
+        assert_eq!(std::fs::read_to_string(&file).expect("kept"), "{ not json");
+        assert!(!dir.path().join("settings.json.bad").exists());
+    }
+
+    #[test]
+    fn a_backup_is_written_from_a_library_and_never_from_a_typo() {
+        let dir = library();
+        let out_dir = tempfile::tempdir().expect("dir");
+        let dest = out_dir.path().join("mine.snipdeck");
+        let now = jiff::Timestamp::from_second(1_760_000_000).expect("time");
+        let out = backup_to(dir.path(), now, &dest);
+        assert_eq!(out.code, 0, "{}", out.text);
+        assert!(dest.metadata().expect("written").len() > 0);
+
+        let typo = out_dir.path().join("mistyped");
+        let out = backup_to(&typo, now, &out_dir.path().join("x.snipdeck"));
+        assert_eq!(out.code, COULD_NOT_RUN, "{}", out.text);
+        assert!(!typo.exists());
+    }
+
+    #[test]
+    fn a_backup_says_how_many_sensitive_items_it_left_out() {
+        use snipdeck_core::{
+            Board, Content, Format, Formats, Inline, Item, ItemKind, List, Name, Placement,
+            Timestamp,
+        };
+        use snipdeck_store::{BoardRepo, ListRepo};
+
+        let dir = tempfile::tempdir().expect("dir");
+        let mut store = Store::open(dir.path()).expect("store");
+        let at = Timestamp::from_second(1_800_000_000).expect("time");
+        let board = Board::new(Name::new("Vault").expect("name"), at);
+        store.insert_board(&board, Placement::Last).expect("board");
+        let list = List::new(board.id, Name::new("Cards").expect("name"), at);
+        store.insert_list(&list, Placement::Last).expect("list");
+        for title in ["PIN", "Card"] {
+            let mut item = Item::new(list.id, title.to_owned(), ItemKind::Text, at);
+            item.sensitive = true;
+            let text = Content::Inline(Inline::new(b"secret".to_vec()).expect("inline"));
+            store
+                .insert_item(
+                    &item,
+                    &Formats::new(vec![Format::Text(text)]).expect("formats"),
+                    Placement::Last,
+                )
+                .expect("item");
+        }
+        drop(store);
+
+        let out_dir = tempfile::tempdir().expect("dir");
+        let dest = out_dir.path().join("mine.snipdeck");
+        let now = jiff::Timestamp::from_second(1_760_000_000).expect("time");
+        let out = backup_to(dir.path(), now, &dest);
+        assert_eq!(out.code, 0, "{}", out.text);
+        assert!(
+            out.text.contains("2 sensitive items were left out"),
+            "{}",
+            out.text
+        );
+
+        // No sensitive item, nothing to say.
+        let plain = library();
+        let out = backup_to(plain.path(), now, &out_dir.path().join("plain.snipdeck"));
+        assert!(!out.text.contains("sensitive"), "{}", out.text);
+    }
+
+    #[test]
+    fn the_report_carries_the_last_warnings() {
+        let dir = library();
+        crate::log::append(dir.path(), "2026-10-19T10:00:00Z tray update failed", 1000)
+            .expect("log");
+        let out = troubleshoot(dir.path(), TODAY, "TestOS 1");
+        assert!(out.text.contains("Recent warnings"), "{}", out.text);
+        assert!(out.text.contains("tray update failed"));
     }
 
     #[test]

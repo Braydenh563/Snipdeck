@@ -8,6 +8,11 @@ license.workspace = true
 repository.workspace = true
 publish.workspace = true
 
+[features]
+# A console-subsystem exe on Windows (a console window opens with it), for debugging with
+# `SNIPDECK_LOG=1`. Off in every profile by default: the debug build is a GUI program too.
+console = []
+
 [dependencies]
 snipdeck-colour.workspace = true
 snipdeck-core.workspace = true

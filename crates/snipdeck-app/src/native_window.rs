@@ -491,6 +491,14 @@ pub fn note_window_event(name: &str, window: &slint::Window, event: &winit::even
     if matches!(event, winit::event::WindowEvent::Resized(_)) {
         paint_before_first_frame(window);
     }
+    // The title bar follows Snipdeck's theme: when the window first exists (first size) and each
+    // time it is activated (a theme change made in another window shows then).
+    if matches!(
+        event,
+        winit::event::WindowEvent::Resized(_) | winit::event::WindowEvent::Focused(true)
+    ) {
+        apply_title_theme(window);
+    }
     let winit::event::WindowEvent::Focused(focused) = event else {
         return;
     };
@@ -757,6 +765,8 @@ mod tests {
 thread_local! {
     /// The theme's window colour, kept for windows whose native window does not exist yet.
     static ERASE: std::cell::Cell<Option<(u8, u8, u8)>> = const { std::cell::Cell::new(None) };
+    /// Whether Snipdeck's own theme is dark, for the title bars of the regular windows.
+    static DARK: std::cell::Cell<Option<bool>> = const { std::cell::Cell::new(None) };
 }
 
 /// The theme is `rgb` now (the window colour, `Theme.bg-app`): Windows paints every Snipdeck
@@ -766,6 +776,31 @@ thread_local! {
 pub fn set_erase_colour(window: &slint::Window, rgb: (u8, u8, u8)) {
     ERASE.with(|c| c.set(Some(rgb)));
     paint_before_first_frame(window);
+}
+
+/// The theme is dark (`true`) or light now: the title bars of the regular windows follow it
+/// (PLATFORM-19), not the Windows app mode. Kept for windows that appear later, and applied to
+/// `window` now. Other windows take it when they are next activated ([`note_window_event`]).
+pub fn set_title_theme(window: &slint::Window, dark: bool) {
+    DARK.with(|c| c.set(Some(dark)));
+    apply_title_theme(window);
+}
+
+/// The theme [`set_title_theme`] keeps, if any.
+#[must_use]
+pub fn title_theme() -> Option<bool> {
+    DARK.with(std::cell::Cell::get)
+}
+
+/// Gives the kept theme to the title bar of `window`, once its native window exists. Off Windows
+/// there is no title bar of ours to colour.
+pub fn apply_title_theme(window: &slint::Window) {
+    #[cfg(windows)]
+    if let (Some(dark), Some(hwnd)) = (title_theme(), handle_of(window)) {
+        snipdeck_platform::windows::dwm::set_dark_title_bar(hwnd, dark);
+    }
+    #[cfg(not(windows))]
+    let _ = window;
 }
 
 /// The colour [`set_erase_colour`] keeps, if any.

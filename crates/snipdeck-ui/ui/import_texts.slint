@@ -14,16 +14,19 @@ export global ImportTexts {
         return @tr("{} file in this archive is not known to this version and was left out." | "{} files in this archive are not known to this version and were left out." % count, count);
     }
     pure public function unreferenced-assets(count: int) -> string {
-        return @tr("{} picture or file that no snippet uses was left out." | "{} pictures or files that no snippet uses were left out." % count, count);
+        return @tr("{} picture or file that no item uses was left out." | "{} pictures or files that no item uses were left out." % count, count);
     }
     pure public function sensitive-need-key(count: int) -> string {
         return @tr("{} sensitive item is encrypted with a key this library does not have and was skipped." | "{} sensitive items are encrypted with a key this library does not have and were skipped." % count, count);
     }
     pure public function cannot-decrypt(title: string) -> string {
-        return @tr("The sensitive item \"{}\" cannot be unlocked with this computer's key and was skipped.", title);
+        return @tr("The sensitive item \"{}\" cannot be unlocked with this computer’s key and was skipped.", title);
     }
     pure public function sensitive-omitted-by-export(count: int) -> string {
         return @tr("{} sensitive item was left out when this file was made." | "{} sensitive items were left out when this file was made." % count, count);
+    }
+    pure public function skipped-by-export(count: int) -> string {
+        return @tr("{} item with an attachment that could not be read was left out when this file was made." | "{} items with an attachment that could not be read were left out when this file was made." % count, count);
     }
     pure public function lossy-text(name: string) -> string {
         return @tr("{} is not valid UTF-8, so characters that could not be read were replaced.", name);
@@ -42,6 +45,9 @@ export global ImportTexts {
     }
     pure public function non-text-skipped(count: int) -> string {
         return @tr("{} item that is not text (a picture or file) was skipped." | "{} items that are not text (pictures or files) were skipped." % count, count);
+    }
+    pure public function deeper-folders-skipped(count: int) -> string {
+        return @tr("{} folder inside a subfolder was not read; Snipdeck reads one level of subfolders." | "{} folders inside subfolders were not read; Snipdeck reads one level of subfolders." % count, count);
     }
     pure public function truncated() -> string {
         return @tr("The import stopped early because the source is bigger than Snipdeck reads in one go.");
@@ -63,7 +69,7 @@ export global ImportTexts {
         return @tr("{}: its variables cannot be one Snipdeck template together (for example two cursor marks), so it was kept as plain text.", label);
     }
     pure public function note-trigger-only-one(label: string, triggers: string) -> string {
-        return @tr("{}: {} was not kept as a trigger, because a snippet has one trigger.", label, triggers);
+        return @tr("{}: {} was not kept as a trigger, because an item has one trigger.", label, triggers);
     }
     pure public function note-trigger-needs-separator(label: string, triggers: string) -> string {
         return @tr("{}: {} was not kept as a trigger, because it fires after a separator and a Snipdeck trigger does not wait for one.", label, triggers);
@@ -98,8 +104,11 @@ export global ImportTexts {
     pure public function note-columns-cut(file: string) -> string {
         return @tr("{}: some rows have more than 256 columns, and the extra columns were ignored.", file);
     }
+    pure public function note-trigger-too-short(title: string, trigger: string) -> string {
+        return @tr("{}: the trigger {} is too short (a trigger needs at least two characters), so it was imported without it.", title, trigger);
+    }
     pure public function note-trigger-taken(title: string, trigger: string) -> string {
-        return @tr("{}: the trigger {} is already used by another snippet, so it was imported without it.", title, trigger);
+        return @tr("{}: the trigger {} is already used by another item, so it was imported without it.", title, trigger);
     }
     pure public function note-trigger-overlap(title: string, trigger: string, others: string) -> string {
         return @tr("{}: the trigger {} and {} start alike, so the shorter one fires first.", title, trigger, others);
@@ -110,37 +119,37 @@ export global ImportTexts {
 
     // Why an import could not be previewed. Shown in place of the counts.
     pure public function problem-unreadable() -> string {
-        return @tr("Snipdeck couldn't open that. Check that it still exists.");
+        return @tr("Snipdeck couldn’t open that. Check that it still exists.");
     }
     pure public function problem-not-snipdeck() -> string {
-        return @tr("That isn't a Snipdeck file, or it is damaged.");
+        return @tr("That isn’t a Snipdeck file, or it is damaged.");
     }
     pure public function problem-not-ditto() -> string {
-        return @tr("That isn't a Ditto database.");
+        return @tr("That isn’t a Ditto database.");
     }
     pure public function problem-not-copyq() -> string {
-        return @tr("That isn't a CopyQ export.");
+        return @tr("That isn’t a CopyQ export.");
     }
     pure public function problem-not-folder() -> string {
-        return @tr("Snipdeck couldn't read that folder.");
+        return @tr("Snipdeck couldn’t read that folder.");
     }
     pure public function problem-not-espanso() -> string {
-        return @tr("That isn't an Espanso configuration.");
+        return @tr("That isn’t an Espanso configuration.");
     }
     pure public function problem-not-beeftext() -> string {
-        return @tr("That isn't a Beeftext export.");
+        return @tr("That isn’t a Beeftext export.");
     }
     pure public function problem-not-textexpander() -> string {
-        return @tr("That isn't a TextExpander CSV export.");
+        return @tr("That isn’t a TextExpander CSV export.");
     }
     pure public function problem-not-phraseexpress() -> string {
-        return @tr("That isn't a PhraseExpress CSV export.");
+        return @tr("That isn’t a PhraseExpress CSV export.");
     }
     pure public function problem-too-new() -> string {
         return @tr("That file is from a newer Snipdeck. Update Snipdeck to import it.");
     }
     pure public function problem-failed() -> string {
-        return @tr("Couldn't import that.");
+        return @tr("Couldn’t import that.");
     }
     pure public function problem-history-off() -> string {
         return @tr("Windows clipboard history is turned off. Turn it on in Windows Settings > System > Clipboard, copy some text, then try again.");

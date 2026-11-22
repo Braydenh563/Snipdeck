@@ -114,6 +114,21 @@ fn the_name_row_copies_the_bare_keyword() {
 }
 
 #[test]
+fn more_formats_copy_the_current_colour_as_code_and_never_press_keys() {
+    let mut w = world();
+    let c = Rgba8::rgb(0x41, 0x69, 0xe1);
+    w.ctl.set_colour(c);
+    for (i, f) in snipdeck_colour::ExtraFormat::ALL.iter().enumerate() {
+        w.ctl.copy_extra_format(i);
+        assert_eq!(written(&w, i), snipdeck_colour::extra_text(c, *f));
+    }
+    assert_eq!(w.ctl.services().keyboard.sent.len(), 0);
+    let n = w.ctl.services().clipboard.written.len();
+    w.ctl.copy_extra_format(999);
+    assert_eq!(w.ctl.services().clipboard.written.len(), n);
+}
+
+#[test]
 fn recents_dedupe_newest_first_and_can_be_forgotten() {
     let mut w = world();
     let red = Rgba8::rgb(255, 0, 0);
@@ -179,7 +194,10 @@ fn ctrl_s_makes_the_colours_list_once_at_the_end_and_titles_an_exact_name() {
     assert_eq!(lists.len(), before + 1);
     assert_eq!(lists.last().unwrap().id, list, "at the end of the board");
     assert_eq!(lists.last().unwrap().name.as_str(), "Colours");
-    assert_eq!(items_of(&w, list), [(String::new(), "#3a7bd5".to_owned())]);
+    assert_eq!(
+        items_of(&w, list),
+        [("#3a7bd5 ≈ royalblue".to_owned(), "#3a7bd5".to_owned())]
+    );
 
     assert!(
         w.ctl
@@ -194,20 +212,23 @@ fn ctrl_s_makes_the_colours_list_once_at_the_end_and_titles_an_exact_name() {
 }
 
 #[test]
-fn a_default_format_that_would_round_the_colour_saves_the_hex_instead() {
+fn a_default_format_is_saved_with_the_digits_that_read_back_exactly() {
     let mut w = world();
     w.ctl.set_colour_format(Fmt::Hsl);
     assert!(w.ctl.save_colour(BLUE, SaveTarget::Home));
     let list = colours_list(&w).unwrap();
     assert_eq!(
         items_of(&w, list)[0].1,
-        "#3a7bd5",
-        "hsl(215, 65%, 53%) is not #3a7bd5"
+        "hsl(214.8, 64.9%, 53.1%)",
+        "the shortest digits that still read back as #3a7bd5"
     );
     // An exact format is kept as chosen.
     w.ctl.set_colour_format(Fmt::Rgb);
-    assert!(w.ctl.save_colour(BLUE, SaveTarget::Home));
-    assert_eq!(items_of(&w, list)[1].1, "rgb(58, 123, 213)");
+    assert!(
+        w.ctl
+            .save_colour(Rgba8::rgb(0x41, 0x69, 0xe1), SaveTarget::Home)
+    );
+    assert_eq!(items_of(&w, list)[1].1, "rgb(65, 105, 225)");
 }
 
 #[test]
@@ -241,12 +262,13 @@ fn saved_colours_are_the_colour_items_of_the_home_list() {
     let saved = w.ctl.saved_colours();
     assert_eq!(
         saved.iter().map(|(_, c)| *c).collect::<Vec<_>>(),
-        [BLUE, red]
+        [red, BLUE],
+        "newest first"
     );
-    assert_eq!(w.ctl.colour_of_item(saved[0].0), Some(BLUE));
+    assert_eq!(w.ctl.colour_of_item(saved[1].0), Some(BLUE));
     // A plain snippet is not a colour.
     assert_eq!(w.ctl.colour_of_item(w.ids[0]), None);
-    assert_eq!(w.ctl.colour_view().saved, [BLUE, red]);
+    assert_eq!(w.ctl.colour_view().saved, [red, BLUE]);
 }
 
 #[test]
@@ -307,14 +329,12 @@ fn copy_list_as_css_variables_names_each_colour_and_dedupes() {
     let mut w = world();
     w.ctl
         .save_colour(Rgba8::rgb(0x41, 0x69, 0xe1), SaveTarget::Home);
-    w.ctl
-        .save_colour(Rgba8::rgb(0x41, 0x69, 0xe1), SaveTarget::Home);
     w.ctl.save_colour(BLUE, SaveTarget::Home);
     let list = colours_list(&w).unwrap();
     assert!(w.ctl.copy_list_as_css(list));
     assert_eq!(
         written(&w, 0),
-        ":root {\n  --royalblue: #4169e1;\n  --royalblue-2: #4169e1;\n  --3a7bd5: #3a7bd5;\n}"
+        ":root {\n  --royalblue: #4169e1;\n  --3a7bd5-royalblue: #3a7bd5;\n}"
     );
     // A list with no colour in it copies nothing.
     let n = w.ctl.services().clipboard.written.len();
@@ -325,7 +345,7 @@ fn copy_list_as_css_variables_names_each_colour_and_dedupes() {
 #[test]
 fn a_colour_picked_from_the_screen_is_current_remembered_and_copied_when_asked() {
     let mut w = world();
-    let effects = w.ctl.colour_picked(BLUE, false);
+    let effects = w.ctl.colour_picked(BLUE, false, &[]);
     assert_eq!(effects, [Effect::ShowPanel, Effect::ShowColours]);
     assert_eq!(w.ctl.colour_view().current, BLUE);
     assert_eq!(w.ctl.colour_view().recents, [BLUE]);
@@ -339,7 +359,7 @@ fn a_colour_picked_from_the_screen_is_current_remembered_and_copied_when_asked()
             ..Settings::default()
         },
     );
-    w.ctl.colour_picked(BLUE, false);
+    w.ctl.colour_picked(BLUE, false, &[]);
     assert_eq!(w.ctl.services().clipboard.written.len(), 0);
     assert_eq!(w.ctl.colour_view().recents, [BLUE], "still remembered");
 }
@@ -352,7 +372,9 @@ mod eyedropper {
         atomic::{AtomicUsize, Ordering},
     };
 
-    use snipdeck_platform::eyedrop::{EyedropOutcome, FakeEyedropper};
+    use snipdeck_platform::eyedrop::{
+        EndReason, EyedropNote, EyedropOutcome, FailReason, FakeEyedropper, KeyName,
+    };
 
     use super::*;
 
@@ -375,13 +397,24 @@ mod eyedropper {
         let fake = FakeEyedropper::answering(EyedropOutcome::Picked {
             rgb: [58, 123, 213],
             hdr: false,
+            also: vec![],
         });
         let (mut w, wakes) = with(&fake);
-        assert_eq!(w.ctl.start_eyedropper(), vec![Effect::HidePanel]);
+        assert_eq!(
+            w.ctl.start_eyedropper(),
+            vec![Effect::HidePanel, Effect::HideMainForEyedropper]
+        );
         assert_eq!(fake.starts().len(), 1);
         assert_eq!(wakes.load(Ordering::SeqCst), 1);
         let effects = w.ctl.poll_eyedropper();
-        assert_eq!(effects, vec![Effect::ShowPanel, Effect::ShowColours]);
+        assert_eq!(
+            effects,
+            vec![
+                Effect::ShowPanel,
+                Effect::ShowColours,
+                Effect::RestoreMainAfterEyedropper
+            ]
+        );
         assert_eq!(w.ctl.colour_view().current, BLUE);
         assert_eq!(w.ctl.colour_view().recents.first(), Some(&BLUE));
         assert!(w.ctl.poll_eyedropper().is_empty(), "taken once");
@@ -392,6 +425,7 @@ mod eyedropper {
         let fake = FakeEyedropper::answering(EyedropOutcome::Picked {
             rgb: [58, 123, 213],
             hdr: false,
+            also: vec![],
         });
         let (mut w, _) = with(&fake);
         w.ctl.start_eyedropper();
@@ -407,19 +441,28 @@ mod eyedropper {
         w.ctl.start_eyedropper();
         assert_eq!(
             w.ctl.poll_eyedropper(),
-            vec![Effect::ShowPanel, Effect::ShowColours]
+            vec![
+                Effect::ShowPanel,
+                Effect::ShowColours,
+                Effect::RestoreMainAfterEyedropper
+            ]
         );
         assert_eq!(w.ctl.colour_view().current, before);
     }
 
     #[test]
     fn a_failure_says_so_and_brings_the_panel_back() {
-        let fake = FakeEyedropper::answering(EyedropOutcome::Failed("BitBlt 5".into()));
+        let fake =
+            FakeEyedropper::answering(EyedropOutcome::Failed(FailReason::Other("BitBlt 5".into())));
         let (mut w, _) = with(&fake);
         w.ctl.start_eyedropper();
         assert_eq!(
             w.ctl.poll_eyedropper(),
-            vec![Effect::ShowPanel, Effect::ShowColours]
+            vec![
+                Effect::ShowPanel,
+                Effect::ShowColours,
+                Effect::RestoreMainAfterEyedropper
+            ]
         );
         assert!(matches!(
             w.ctl.view().toast.map(|t| t.message),
@@ -428,10 +471,110 @@ mod eyedropper {
     }
 
     #[test]
+    fn collected_colours_join_the_recents_oldest_first_and_the_last_is_current() {
+        let red = Rgba8::rgb(255, 0, 0);
+        let fake = FakeEyedropper::answering(EyedropOutcome::Picked {
+            rgb: [58, 123, 213],
+            hdr: false,
+            also: vec![[255, 0, 0]],
+        });
+        let (mut w, _) = with(&fake);
+        w.ctl.start_eyedropper();
+        w.ctl.poll_eyedropper();
+        assert_eq!(w.ctl.colour_view().current, BLUE);
+        assert_eq!(w.ctl.colour_view().recents, [BLUE, red]);
+    }
+
+    #[test]
+    fn a_pick_for_the_other_colour_sets_only_that_and_copies_nothing() {
+        let fake = FakeEyedropper::answering(EyedropOutcome::Picked {
+            rgb: [255, 0, 0],
+            hdr: false,
+            also: vec![],
+        });
+        let (mut w, _) = with(&fake);
+        let before = w.ctl.colour_view().current;
+        w.ctl.start_eyedropper_for_other();
+        w.ctl.poll_eyedropper();
+        let view = w.ctl.colour_view();
+        assert_eq!(view.other, Rgba8::rgb(255, 0, 0));
+        assert_eq!(view.current, before);
+        assert_eq!(view.recents.len(), 0, "{:?}", view.recents);
+        assert_eq!(w.ctl.services().clipboard.written.len(), 0);
+        // The next pick is an ordinary one again.
+        w.ctl.colour_picked(BLUE, false, &[]);
+        assert_eq!(w.ctl.colour_view().current, BLUE);
+    }
+
+    #[test]
+    fn an_hdr_pick_that_was_copied_is_one_toast_saying_both() {
+        let fake = FakeEyedropper::answering(EyedropOutcome::Picked {
+            rgb: [58, 123, 213],
+            hdr: true,
+            also: vec![],
+        });
+        let (mut w, _) = with(&fake);
+        w.ctl.start_eyedropper();
+        w.ctl.poll_eyedropper();
+        assert_eq!(
+            w.ctl.view().toast.map(|t| t.message),
+            Some(ToastMessage::EyedropHdrCopied {
+                hex: "#3a7bd5".into()
+            })
+        );
+    }
+
+    #[test]
+    fn a_run_the_system_ended_says_why_and_a_refused_capture_says_so() {
+        for (outcome, want) in [
+            (
+                EyedropOutcome::Ended(EndReason::TimedOut),
+                ToastMessage::EyedropEnded { timed_out: true },
+            ),
+            (
+                EyedropOutcome::Ended(EndReason::DisplayChanged),
+                ToastMessage::EyedropEnded { timed_out: false },
+            ),
+            (
+                EyedropOutcome::Failed(FailReason::CaptureRefused),
+                ToastMessage::EyedropRefused,
+            ),
+        ] {
+            let fake = FakeEyedropper::answering(outcome);
+            let (mut w, _) = with(&fake);
+            w.ctl.start_eyedropper();
+            let effects = w.ctl.poll_eyedropper();
+            assert!(effects.contains(&Effect::ShowPanel));
+            assert_eq!(w.ctl.view().toast.map(|t| t.message), Some(want));
+        }
+    }
+
+    #[test]
+    fn hotkeys_another_app_owns_are_named_in_a_toast() {
+        let fake = FakeEyedropper::answering(EyedropOutcome::Cancelled);
+        fake.set_notes(vec![EyedropNote::KeysNotRegistered(vec![
+            KeyName::Plus,
+            KeyName::Escape,
+        ])]);
+        let (mut w, _) = with(&fake);
+        w.ctl.start_eyedropper();
+        w.ctl.poll_eyedropper();
+        assert_eq!(
+            w.ctl.view().toast.map(|t| t.message),
+            Some(ToastMessage::EyedropKeysBusy {
+                keys: "+, Esc".into()
+            })
+        );
+    }
+
+    #[test]
     fn a_second_start_while_one_runs_does_nothing() {
         let fake = FakeEyedropper::default();
         let (mut w, _) = with(&fake);
-        assert_eq!(w.ctl.start_eyedropper(), vec![Effect::HidePanel]);
+        assert_eq!(
+            w.ctl.start_eyedropper(),
+            vec![Effect::HidePanel, Effect::HideMainForEyedropper]
+        );
         assert_eq!(w.ctl.eyedropper_state(), (true, true));
         assert_eq!(w.ctl.start_eyedropper().len(), 0);
         assert_eq!(fake.starts().len(), 1);
@@ -482,7 +625,8 @@ mod commands {
             .set_eyedropper(Some(Box::new(fake.clone())), std::sync::Arc::new(|| {}));
         w.ctl.run_command(Command::PickColour, 0);
         let effects = w.ctl.take_pending();
-        assert_eq!(effects.last(), Some(&Effect::HidePanel));
+        assert!(effects.contains(&Effect::HidePanel));
+        assert_eq!(effects.last(), Some(&Effect::HideMainForEyedropper));
         assert_eq!(fake.starts().len(), 1);
     }
 
@@ -667,7 +811,10 @@ fn save_to_offers_a_ninth_list() {
 #[test]
 fn save_to_new_list_makes_a_list_named_by_the_translated_default_and_saves_into_it() {
     let mut w = world();
-    w.ctl.set_new_list_base("Neue Liste");
+    w.ctl.set_starter_words(&crate::starter::StarterWords {
+        new_list: "Neue Liste".into(),
+        ..crate::starter::StarterWords::english()
+    });
     let before = w.ctl.colour_save_targets().len();
     assert!(w.ctl.save_colour(BLUE, SaveTarget::NewList));
     let targets = w.ctl.colour_save_targets();
@@ -758,4 +905,137 @@ fn the_saved_strip_is_read_once_until_the_library_changes() {
     assert_eq!(w.ctl.saved_colours().len(), 2);
     w.ctl.main_undo();
     assert_eq!(w.ctl.saved_colours().len(), 1);
+}
+
+#[test]
+fn the_25th_saved_colour_is_the_first_in_the_strip() {
+    let mut w = world();
+    for i in 0..25u8 {
+        assert!(w.ctl.save_colour(Rgba8::rgb(i, 9, 9), SaveTarget::Home));
+    }
+    let strip = w.ctl.colour_view().saved;
+    assert_eq!(strip.len(), 24);
+    assert_eq!(strip[0], Rgba8::rgb(24, 9, 9), "the last save shows");
+    assert_eq!(strip[23], Rgba8::rgb(1, 9, 9));
+}
+
+#[test]
+fn saving_a_colour_twice_selects_the_first_and_says_so() {
+    let mut w = world();
+    assert!(w.ctl.save_colour(BLUE, SaveTarget::Home));
+    w.ctl.save_colour(Rgba8::rgb(1, 2, 3), SaveTarget::Home);
+    assert!(!w.ctl.save_colour(BLUE, SaveTarget::Home));
+    assert_eq!(w.ctl.saved_colours().len(), 2, "no second item");
+    assert_eq!(
+        w.ctl.view().toast.map(|t| t.message),
+        Some(ToastMessage::AlreadySaved {
+            list: "Colours".into()
+        })
+    );
+    // Another alpha is another colour.
+    assert!(
+        w.ctl
+            .save_colour(Rgba8 { a: 128, ..BLUE }, SaveTarget::Home)
+    );
+}
+
+#[test]
+fn a_saved_colour_is_titled_by_its_hex_and_nearest_name() {
+    let mut w = world();
+    w.ctl.save_colour(BLUE, SaveTarget::Home);
+    let list = colours_list(&w).unwrap();
+    let title = &items_of(&w, list)[0].0;
+    assert!(title.starts_with("#3a7bd5 ≈ "), "{title}");
+}
+
+#[test]
+fn a_saved_colour_is_renamed_and_deleted_with_undo_from_the_tab() {
+    let mut w = world();
+    let red = Rgba8::rgb(255, 0, 0);
+    w.ctl.save_colour(BLUE, SaveTarget::Home);
+    w.ctl.save_colour(red, SaveTarget::Home);
+    let list = colours_list(&w).unwrap();
+    let blue_id = w.ctl.saved_colours()[1].0;
+    w.ctl.rename_saved_colour(blue_id, "Brand blue");
+    assert_eq!(items_of(&w, list)[0].0, "Brand blue");
+    w.ctl.delete_saved_colour(blue_id);
+    assert_eq!(w.ctl.colour_view().saved, [red]);
+    assert!(w.ctl.view().toast.is_some_and(|t| t.undo));
+    w.ctl.undo();
+    assert_eq!(w.ctl.colour_view().saved, [red, BLUE]);
+}
+
+#[test]
+fn the_name_row_copies_nothing_for_a_near_keyword_and_offers_the_exact_switch() {
+    let mut w = world();
+    let near = Rgba8::rgb(0x41, 0x69, 0xe0);
+    assert_eq!(
+        w.ctl.use_colour(near, Fmt::Name, UseMode::Copy),
+        UseResult::Failed
+    );
+    assert_eq!(
+        w.ctl.services().clipboard.written.len(),
+        0,
+        "nothing copied"
+    );
+    // Not a bare failure: the toast says the colour is only close to a keyword.
+    assert!(
+        matches!(
+            w.ctl.view().toast.map(|t| t.message),
+            Some(ToastMessage::NameNotExact { ref name, ref hex })
+                if name == "royalblue" && hex == "#4169e1"
+        ),
+        "the toast explains why"
+    );
+    w.ctl.set_colour(near);
+    w.ctl.use_nearest_name();
+    assert_eq!(w.ctl.colour_view().current, Rgba8::rgb(0x41, 0x69, 0xe1));
+    // Alpha is kept: the switch changes the colour, not its opacity.
+    w.ctl.set_colour(Rgba8 { a: 128, ..near });
+    w.ctl.use_nearest_name();
+    assert_eq!(
+        w.ctl.colour_view().current,
+        Rgba8 {
+            a: 128,
+            ..Rgba8::rgb(0x41, 0x69, 0xe1)
+        }
+    );
+}
+
+#[test]
+fn the_previous_colour_is_kept_and_restores_on_request() {
+    let mut w = world();
+    let start = w.ctl.colour_view().current;
+    assert_eq!(w.ctl.colour_view().previous, None);
+    w.ctl.set_colour(BLUE);
+    assert_eq!(w.ctl.colour_view().previous, Some(start));
+    // A drag counts as one change: the colour the gesture began with is kept.
+    w.ctl.set_colour_live(Rgba8::rgb(1, 1, 1));
+    w.ctl.set_colour_live(Rgba8::rgb(2, 2, 2));
+    w.ctl.settle_colour();
+    assert_eq!(w.ctl.colour_view().previous, Some(BLUE));
+    w.ctl.restore_previous_colour();
+    assert_eq!(w.ctl.colour_view().current, BLUE);
+    assert_eq!(
+        w.ctl.colour_view().previous,
+        Some(Rgba8::rgb(2, 2, 2)),
+        "restoring twice goes back"
+    );
+}
+
+#[test]
+fn ctrl_v_takes_the_first_colour_literal_of_the_clipboard_text() {
+    let mut w = build(Opts {
+        clipboard: Some("  background: #3a7bd5;\n"),
+        ..Opts::default()
+    });
+    assert!(w.ctl.paste_colour());
+    assert_eq!(w.ctl.colour_view().current, BLUE);
+    let mut none = build(Opts {
+        clipboard: Some("just words"),
+        ..Opts::default()
+    });
+    let before = none.ctl.colour_view().current;
+    assert!(!none.ctl.paste_colour());
+    assert_eq!(none.ctl.colour_view().current, before);
 }

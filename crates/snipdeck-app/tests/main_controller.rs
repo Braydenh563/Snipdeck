@@ -24,7 +24,7 @@ use snipdeck_app::{
     settings::Settings,
     toast::ToastMessage,
 };
-use snipdeck_core::{ItemLabel, ListAccent, ListIcon, ListSort, Name, Tag, Timestamp};
+use snipdeck_core::{ItemLabel, ListAccent, ListIcon, Name, Sort, Tag, Timestamp};
 use snipdeck_platform::testing::{FakeClipboard, FakeKeyboard, FakeTiming};
 use snipdeck_store::ListRepo as _;
 use snipdeck_store::{BoardRepo, ItemRepo, Store, TagRepo, TrashRepo};
@@ -282,7 +282,11 @@ fn duplicate_copies_each_selected_item_next_to_it_unpinned_and_unused() {
     let copy = &after[place + 1];
     assert_ne!(copy.id, id);
     assert_eq!(after[place].id, id, "the original stays put");
-    assert_eq!(copy.title, original.title);
+    assert_eq!(
+        copy.title,
+        format!("{} copy", original.title),
+        "titled as a copy"
+    );
     assert_eq!(copy.preview, original.preview);
     assert_eq!(copy.tags, original.tags);
     assert_eq!(
@@ -475,7 +479,7 @@ fn renaming_a_tag_changes_it_everywhere() {
 }
 
 #[test]
-fn renaming_to_an_existing_name_is_refused_without_a_toast() {
+fn renaming_to_an_existing_name_asks_to_merge_and_changes_nothing() {
     let mut ctl = rig_with_tags();
     let names = tag_names(&mut ctl);
     // Compared ignoring case, like the store does.
@@ -484,10 +488,57 @@ fn renaming_to_an_existing_name_is_refused_without_a_toast() {
     assert_eq!(tag_names(&mut ctl), names, "nothing changed");
     assert!(
         ctl.main_screen().toast.is_none(),
-        "the editor says it, not a toast"
+        "the manager asks, not a toast"
     );
     // Keeping its own name (only the case differs) is not a clash.
     assert_eq!(ctl.main_rename_tag(0, &names[0].to_uppercase()), Ok(()));
+}
+
+#[test]
+fn merging_tags_moves_the_items_and_removes_the_first_tag() {
+    let mut ctl = rig_with_tags();
+    let screen = ctl.main_screen();
+    let at = row_of(&screen, "Invoice reminder");
+    ctl.main_action(MainAction::Tag, at);
+    ctl.main_toggle_tag(0, true);
+    let names = tag_names(&mut ctl);
+    let before = ctl.main_screen().tags.clone();
+    assert_eq!(before[0].count, 1);
+
+    ctl.main_merge_tag(0, &names[1]).expect("merged");
+    match toast_message(&mut ctl) {
+        Some(ToastMessage::TagMerged { from, into }) => {
+            assert_eq!((from, into), (names[0].clone(), names[1].clone()));
+        }
+        other => panic!("expected a TagMerged toast, got {other:?}"),
+    }
+
+    let after = ctl.main_screen();
+    assert_eq!(tag_names(&mut ctl), [names[1].clone()]);
+    assert_eq!(after.tags[0].count, before[0].count + before[1].count);
+    // Into itself (the only tag left), or from a stale index, does nothing.
+    assert_eq!(
+        ctl.main_merge_tag(0, &names[1]),
+        Err(TagRenameError::Failed)
+    );
+    assert_eq!(ctl.main_merge_tag(7, &names[1]), Ok(()));
+    assert_eq!(tag_names(&mut ctl), [names[1].clone()]);
+}
+
+#[test]
+fn a_new_tag_is_added_unless_the_name_is_bad_or_taken() {
+    let mut ctl = rig_with_tags();
+    let names = tag_names(&mut ctl);
+    assert_eq!(ctl.main_new_tag("  Fresh "), Ok(()));
+    let after = tag_names(&mut ctl);
+    assert_eq!(after.len(), names.len() + 1);
+    assert!(after.contains(&"Fresh".to_owned()), "{after:?}");
+    assert_eq!(ctl.main_new_tag("FRESH"), Err(TagRenameError::Exists));
+    assert_eq!(
+        ctl.main_new_tag("   "),
+        Err(TagRenameError::Name(NameError::Empty))
+    );
+    assert_eq!(tag_names(&mut ctl), after);
 }
 
 #[test]
@@ -652,12 +703,27 @@ fn the_trash_keeps_things_thirty_days_by_the_injected_clock() {
     assert_eq!(ctl.main_screen().counts.trash, 0);
 }
 
+#[test]
+fn the_trash_keeps_things_for_the_days_the_setting_says() {
+    let (mut ctl, clock) = rig();
+    ctl.update_settings(|s| s.trash_days = 7);
+    ctl.main_action(MainAction::Delete, 0);
+    clock.set("2026-10-24T10:29:00Z".parse().unwrap()); // 6 days and a bit later
+    assert_eq!(ctl.purge_expired_trash().expect("purge"), 0);
+    clock.set("2026-10-24T10:31:00Z".parse().unwrap()); // past 7 days
+    assert_eq!(ctl.purge_expired_trash().expect("purge"), 1);
+}
+
 // ---- Lists ----------------------------------------------------------------------------------
 
 #[test]
 fn the_new_list_and_new_board_names_start_from_the_words_the_window_layer_gave() {
     let mut ctl = seeded();
-    ctl.set_new_name_bases("Neue Liste", "Neues Board");
+    ctl.set_starter_words(&snipdeck_app::starter::StarterWords {
+        new_list: "Neue Liste".into(),
+        new_board: "Neues Board".into(),
+        ..snipdeck_app::starter::StarterWords::english()
+    });
     ctl.main_new_list();
     assert_eq!(
         ctl.main_screen().editor.expect("editor").name,
@@ -691,12 +757,12 @@ fn a_new_list_opens_the_editor_and_saving_adds_and_opens_it() {
         "a sample name the editor selects"
     );
 
-    ctl.main_editor_save("   ", None, None, ListSort::Manual);
+    ctl.main_editor_save("   ", None, None, Sort::MANUAL);
     let editor = ctl.main_screen().editor.expect("still open");
     assert_eq!(editor.name_error, Some(NameError::Empty));
     ctl.main_editor_edited();
     assert_eq!(ctl.main_screen().editor.unwrap().name_error, None);
-    ctl.main_editor_save(&"x".repeat(101), None, None, ListSort::Manual);
+    ctl.main_editor_save(&"x".repeat(101), None, None, Sort::MANUAL);
     assert_eq!(
         ctl.main_screen().editor.unwrap().name_error,
         Some(NameError::TooLong { max: 100 })
@@ -706,7 +772,7 @@ fn a_new_list_opens_the_editor_and_saving_adds_and_opens_it() {
         "  Snippets 2 ",
         Some(ListAccent::Rose),
         None,
-        ListSort::MostUsed,
+        Sort::MOST_USED,
     );
     let screen = ctl.main_screen();
     assert!(screen.editor.is_none());
@@ -734,16 +800,22 @@ fn a_parked_list_editor_closes_and_comes_back_with_its_typed_fields() {
     let mut ctl = seeded();
     let index = list_index(&ctl.main_screen(), "Addresses");
     ctl.main_edit_list(index);
-    ctl.main_editor_park("Places (typed)", None, None, ListSort::RecentlyUsed);
+    ctl.main_editor_park("Places (typed)", None, None, Sort::RECENTLY_USED, 0);
     assert!(ctl.main_screen().editor.is_none());
     ctl.main_edit_list(index);
     let editor = ctl.main_screen().editor.expect("editor");
     assert_eq!(editor.name, "Places (typed)");
-    assert_eq!((editor.accent, editor.sort), (None, ListSort::RecentlyUsed));
-    // Cancelling forgets them: the next open shows the saved list.
+    assert!(
+        editor.restored,
+        "MAIN-42: the editor says the fields came back"
+    );
+    assert_eq!((editor.accent, editor.sort), (None, Sort::RECENTLY_USED));
+    // Cancelling forgets them: the next open shows the saved list, with no notice.
     ctl.main_editor_close();
     ctl.main_edit_list(index);
-    assert_eq!(ctl.main_screen().editor.expect("editor").name, "Addresses");
+    let fresh = ctl.main_screen().editor.expect("editor");
+    assert_eq!(fresh.name, "Addresses");
+    assert!(!fresh.restored);
 }
 
 #[test]
@@ -752,9 +824,15 @@ fn a_parked_editor_with_nothing_typed_leaves_no_draft() {
     let index = list_index(&ctl.main_screen(), "Addresses");
     ctl.main_edit_list(index);
     let editor = ctl.main_screen().editor.expect("editor");
-    ctl.main_editor_park(&editor.name, editor.accent, editor.icon, editor.sort);
+    ctl.main_editor_park(
+        &editor.name,
+        editor.accent,
+        editor.icon,
+        editor.sort,
+        editor.board_index,
+    );
     ctl.main_edit_list(index);
-    ctl.main_editor_save("Renamed", None, None, ListSort::Manual);
+    ctl.main_editor_save("Renamed", None, None, Sort::MANUAL);
     ctl.main_edit_list(index);
     assert_eq!(ctl.main_screen().editor.expect("editor").name, "Renamed");
 }
@@ -771,7 +849,7 @@ fn editing_a_list_renames_recolours_and_re_sorts_it() {
         (editor.name.as_str(), editor.accent, editor.item_count),
         ("Addresses", Some(ListAccent::Amber), 2)
     );
-    ctl.main_editor_save("Places", None, None, ListSort::RecentlyUsed);
+    ctl.main_editor_save("Places", None, None, Sort::RECENTLY_USED);
     let screen = ctl.main_screen();
     let list = &screen.lists[index];
     assert_eq!((list.name.as_str(), list.accent), ("Places", None));
@@ -784,7 +862,7 @@ fn a_list_saved_with_an_icon_reads_back_with_it_and_none_clears_it() {
     let index = list_index(&ctl.main_screen(), "Addresses");
     ctl.main_edit_list(index);
     assert_eq!(ctl.main_screen().editor.unwrap().icon, None);
-    ctl.main_editor_save("Addresses", None, Some(ListIcon::House), ListSort::Manual);
+    ctl.main_editor_save("Addresses", None, Some(ListIcon::House), Sort::MANUAL);
     assert_eq!(ctl.main_screen().lists[index].icon, Some(ListIcon::House));
     assert_eq!(ctl.view().tabs[index].icon, Some(ListIcon::House));
     ctl.main_edit_list(index);
@@ -793,7 +871,7 @@ fn a_list_saved_with_an_icon_reads_back_with_it_and_none_clears_it() {
         Some(ListIcon::House),
         "the editor opens with it"
     );
-    ctl.main_editor_save("Addresses", None, None, ListSort::Manual);
+    ctl.main_editor_save("Addresses", None, None, Sort::MANUAL);
     assert_eq!(ctl.main_screen().lists[index].icon, None);
     assert_eq!(ctl.view().tabs[index].icon, None);
 }
@@ -960,11 +1038,8 @@ fn the_list_menu_edits_the_list_it_was_opened_on() {
     let editor = ctl.main_screen().editor.expect("editor");
     assert_eq!(editor.name, "Code");
     assert!(!editor.is_new && editor.can_delete);
-    ctl.main_editor_save("Snippets", None, None, ListSort::Manual);
-    assert_eq!(
-        ctl.view().tabs[tab_index(&ctl, "Snippets")].name,
-        "Snippets"
-    );
+    ctl.main_editor_save("Items", None, None, Sort::MANUAL);
+    assert_eq!(ctl.view().tabs[tab_index(&ctl, "Items")].name, "Items");
 }
 
 #[test]
@@ -1043,7 +1118,7 @@ fn a_new_board_is_made_through_the_menu_and_opened() {
     assert_eq!(editor.kind, EditorKind::Board);
     assert!(editor.is_new);
     assert_eq!(editor.name, "New board 1");
-    ctl.main_editor_save("Side projects", None, None, ListSort::Manual);
+    ctl.main_editor_save("Side projects", None, None, Sort::MANUAL);
     let screen = ctl.main_screen();
     assert_eq!(screen.board_name, "Side projects");
     assert_eq!(screen.lists.len(), 0);
@@ -1072,7 +1147,7 @@ fn renaming_the_open_board_uses_the_board_editor() {
     assert_eq!(editor.name, "Work");
     assert_eq!(editor.item_count, 10, "the lists of the open board");
     assert!(editor.can_delete);
-    ctl.main_editor_save("Office", None, None, ListSort::Manual);
+    ctl.main_editor_save("Office", None, None, Sort::MANUAL);
     assert_eq!(ctl.main_screen().board_name, "Office");
     assert_eq!(ctl.view().board_name, "Office");
 }
@@ -1151,7 +1226,7 @@ fn a_deleted_board_comes_back_from_the_trash_however_many_boards_there_are() {
     for n in 0..8 {
         let new = menu_index(&mut ctl, &BoardMenuEntry::New);
         ctl.main_board_menu_activate(new);
-        ctl.main_editor_save(&format!("Extra {n}"), None, None, ListSort::Manual);
+        ctl.main_editor_save(&format!("Extra {n}"), None, None, Sort::MANUAL);
     }
     let many = ctl.store().boards().unwrap().len();
     assert_eq!(many, 10);
@@ -1162,7 +1237,7 @@ fn a_deleted_board_comes_back_from_the_trash_however_many_boards_there_are() {
     let gone = ctl.store().trashed().unwrap()[0].target;
     let new = menu_index(&mut ctl, &BoardMenuEntry::New);
     ctl.main_board_menu_activate(new);
-    ctl.main_editor_save("Replacement", None, None, ListSort::Manual);
+    ctl.main_editor_save("Replacement", None, None, Sort::MANUAL);
     assert_eq!(ctl.store().boards().unwrap().len(), many);
     ctl.main_open(Section::Trash);
     let at = ctl
@@ -1209,6 +1284,24 @@ fn alt_arrows_move_an_item_within_its_list_and_the_cursor_follows() {
 }
 
 #[test]
+fn alt_arrows_move_a_multi_selection_as_a_block() {
+    // MAIN-11: a drag moves the whole selection, so the keys must too (WCAG 2.5.7).
+    let mut ctl = seeded();
+    open_list(&mut ctl, "Email replies");
+    let before = titles(&ctl.main_screen());
+    ctl.main_select(1, SelectMode::Replace);
+    ctl.main_select(2, SelectMode::Extend);
+    ctl.main_reorder_items(-1);
+    let after = titles(&ctl.main_screen());
+    assert_eq!(
+        after[..3],
+        [before[1].clone(), before[2].clone(), before[0].clone()],
+        "the two selected items moved up past the first"
+    );
+    assert_eq!(ctl.main_screen().selected_count, 2, "the selection stays");
+}
+
+#[test]
 fn moving_an_item_by_the_keyboard_says_where_it_went_and_the_ends_say_nothing() {
     let mut ctl = seeded();
     open_list(&mut ctl, "Email replies");
@@ -1251,19 +1344,9 @@ fn keyboard_moves_under_a_label_filter_swap_with_the_next_shown_row() {
 }
 
 #[test]
-fn a_keyboard_move_does_not_move_a_multi_selection_or_replace_an_undo_toast() {
+fn a_keyboard_move_of_a_block_does_not_replace_an_undo_toast() {
     let mut ctl = seeded();
     open_list(&mut ctl, "Email replies");
-    let before = titles(&ctl.main_screen());
-    ctl.main_select(0, SelectMode::Replace);
-    ctl.main_select(1, SelectMode::Toggle);
-    ctl.main_reorder_items(1);
-    assert_eq!(
-        titles(&ctl.main_screen()),
-        before,
-        "several rows are selected"
-    );
-
     ctl.main_select(2, SelectMode::Replace);
     ctl.main_action(MainAction::Delete, 2);
     assert!(ctl.main_screen().toast.as_ref().is_some_and(|t| t.undo));
@@ -1376,7 +1459,7 @@ fn the_panels_move_entries_are_disabled_in_a_search_and_in_a_list_sorted_by_use(
         .unwrap();
     let index = list_index(&ctl.main_screen(), "Code");
     ctl.main_edit_list(index);
-    ctl.main_editor_save("Code", Some(ListAccent::Violet), None, ListSort::MostUsed);
+    ctl.main_editor_save("Code", Some(ListAccent::Violet), None, Sort::MOST_USED);
     ctl.select_tab(tab);
     ctl.open_item_menu(0, false);
     let menu = ctl.view().item_menu.expect("the item menu");
@@ -1757,7 +1840,7 @@ fn panel_rows_do_not_move_in_a_list_sorted_by_use() {
         .unwrap();
     let index = list_index(&ctl.main_screen(), "Code");
     ctl.main_edit_list(index);
-    ctl.main_editor_save("Code", Some(ListAccent::Violet), None, ListSort::MostUsed);
+    ctl.main_editor_save("Code", Some(ListAccent::Violet), None, Sort::MOST_USED);
     ctl.select_tab(tab);
     assert!(!ctl.view().rows_reorderable);
     let before = panel_titles(&ctl);
@@ -1775,7 +1858,7 @@ fn items_do_not_move_in_a_sorted_list_a_search_or_a_system_view() {
     open_list(&mut ctl, "Code");
     let index = list_index(&ctl.main_screen(), "Code");
     ctl.main_edit_list(index);
-    ctl.main_editor_save("Code", Some(ListAccent::Violet), None, ListSort::MostUsed);
+    ctl.main_editor_save("Code", Some(ListAccent::Violet), None, Sort::MOST_USED);
     let before = titles(&ctl.main_screen());
     ctl.main_reorder_items(1);
     assert_eq!(titles(&ctl.main_screen()), before, "sorted by use");
@@ -1827,6 +1910,25 @@ fn lists_and_boards_reorder_with_the_same_steps() {
 }
 
 #[test]
+fn moving_a_list_or_a_board_says_where_it_went_and_the_board_menu_stays_open() {
+    // MAIN-12: the same announcement as an item move; three board moves need no three menu openings.
+    use snipdeck_app::controller::BoardMenuEntry;
+    let mut ctl = seeded();
+    let total = ctl.main_screen().lists.len();
+    ctl.main_reorder_list(2, -1);
+    assert_eq!(
+        message(&ctl.main_screen()),
+        ToastMessage::ItemPlaced { position: 2, total }
+    );
+    let down = menu_index(&mut ctl, &BoardMenuEntry::MoveDown { enabled: true });
+    ctl.main_board_menu_activate(down);
+    assert!(
+        ctl.main_screen().board_menu.is_some(),
+        "the menu stays open"
+    );
+}
+
+#[test]
 fn an_empty_view_has_nothing_to_act_on() {
     let mut ctl = seeded();
     ctl.main_open(Section::Recent);
@@ -1851,7 +1953,12 @@ fn maintenance_reports_a_damaged_library_and_a_crash_as_toasts() {
     );
     assert_eq!(message(&screen), ToastMessage::LibraryProblem);
 
+    // The plain crash notice waits behind the fresh error and takes over when its guard ends.
     ctl.report_maintenance(MaintenanceOutcome::CrashedLastTime);
+    assert_eq!(message(&ctl.main_screen()), ToastMessage::LibraryProblem);
+    let error = ctl.main_screen().toast.expect("the error").seq;
+    ctl.toast_tick(error);
+    ctl.toast_tick(error);
     assert_eq!(message(&ctl.main_screen()), ToastMessage::CrashedLastTime);
 }
 
@@ -1886,17 +1993,20 @@ fn the_real_jobs_back_up_purge_and_check_the_library_on_the_injected_clock() {
     // the blobs are swept (four outcomes: backup, purge, sweep, check).
     clock.set("2026-11-17T10:31:00Z".parse().unwrap());
     let mut m = Maintenance::new(dir.path(), Box::new(clock.clone()));
-    assert_eq!(maintenance::run(&mut m, &mut ctl), 4);
+    assert_eq!(maintenance::run(&mut m, &mut ctl).outcomes, 4);
     assert_eq!(ctl.main_screen().counts.trash, 0);
-    let backups = snipdeck_portable::backup::list_backups(dir.path()).unwrap();
+    let backups = snipdeck_portable::backup::list_backups(&snipdeck_portable::backup::backups_dir(
+        dir.path(),
+    ))
+    .unwrap();
     assert_eq!(backups.len(), 1);
     assert!(dir.path().join("maintenance.json").exists());
 
     // An hour later nothing is due; a restart does not change that.
     clock.set("2026-11-17T11:31:00Z".parse().unwrap());
-    assert_eq!(maintenance::run(&mut m, &mut ctl), 0);
+    assert_eq!(maintenance::run(&mut m, &mut ctl).outcomes, 0);
     let mut restarted = Maintenance::new(dir.path(), Box::new(clock.clone()));
-    assert_eq!(maintenance::run(&mut restarted, &mut ctl), 0);
+    assert_eq!(maintenance::run(&mut restarted, &mut ctl).outcomes, 0);
 }
 
 #[test]
@@ -2041,9 +2151,11 @@ fn the_palette_duplicate_command_puts_a_copy_after_the_row_under_the_cursor() {
     );
     assert_eq!(
         titles(&after).iter().filter(|t| **t == target).count(),
-        2,
-        "the copy keeps the title"
+        1,
+        "the original keeps its title"
     );
+    assert_eq!(after.rows[2].title, format!("{target} copy"));
+    assert_eq!(after.cursor, 2, "the cursor is on the copy");
     assert_eq!(
         after.rows[1].key, before.rows[1].key,
         "the original stays where it was, the copy goes after it"
@@ -2218,7 +2330,7 @@ fn dragging_a_row_in_manual_order_announces_where_it_went() {
 fn saving_a_new_list_or_board_from_the_editor_says_so() {
     let mut ctl = seeded();
     ctl.main_new_list();
-    ctl.main_editor_save("Fresh list", None, None, ListSort::Manual);
+    ctl.main_editor_save("Fresh list", None, None, Sort::MANUAL);
     assert_eq!(toast_message(&mut ctl), Some(ToastMessage::ListSaved));
     ctl.main_board_menu_open();
     let new = ctl
@@ -2229,7 +2341,7 @@ fn saving_a_new_list_or_board_from_the_editor_says_so() {
         .position(|e| *e == snipdeck_app::controller::BoardMenuEntry::New)
         .unwrap();
     ctl.main_board_menu_activate(new);
-    ctl.main_editor_save("Fresh board", None, None, ListSort::Manual);
+    ctl.main_editor_save("Fresh board", None, None, Sort::MANUAL);
     assert_eq!(toast_message(&mut ctl), Some(ToastMessage::BoardSaved));
 }
 
@@ -2239,26 +2351,26 @@ fn saving_a_new_list_or_board_from_the_editor_says_so() {
 fn sorting_from_the_header_matches_the_editor() {
     let mut ctl = seeded();
     open_list(&mut ctl, "Code");
-    assert_eq!(ctl.main_screen().list_sort, ListSort::Manual);
-    ctl.main_set_list_sort(ListSort::RecentlyUsed);
+    assert_eq!(ctl.main_screen().sort, Sort::MANUAL);
+    ctl.main_set_sort(Sort::RECENTLY_USED);
     let screen = ctl.main_screen();
-    assert_eq!(screen.list_sort, ListSort::RecentlyUsed);
+    assert_eq!(screen.sort, Sort::RECENTLY_USED);
     assert!(!screen.reorderable);
     // The List editor opens on the same value, and saving it unchanged keeps it.
     let index = list_index(&screen, "Code");
     ctl.main_edit_list(index);
     let editor = ctl.main_screen().editor.expect("the editor");
-    assert_eq!(editor.sort, ListSort::RecentlyUsed);
+    assert_eq!(editor.sort, Sort::RECENTLY_USED);
     ctl.main_editor_close();
     // A list the header did not touch is as it was.
     open_list(&mut ctl, "Addresses");
-    assert_eq!(ctl.main_screen().list_sort, ListSort::Manual);
+    assert_eq!(ctl.main_screen().sort, Sort::MANUAL);
     // And the rows follow the choice, exactly as when the editor makes it.
     let mut other = seeded();
     open_list(&mut other, "Code");
     let index = list_index(&other.main_screen(), "Code");
     other.main_edit_list(index);
-    other.main_editor_save("Code", None, None, ListSort::RecentlyUsed);
+    other.main_editor_save("Code", None, None, Sort::RECENTLY_USED);
     open_list(&mut ctl, "Code");
     assert_eq!(titles(&ctl.main_screen()), titles(&other.main_screen()));
 }
@@ -2271,7 +2383,7 @@ fn dragging_in_a_sorted_list_offers_manual() {
         Section::List(id) => id,
         other => panic!("{other:?}"),
     };
-    ctl.main_set_list_sort(ListSort::MostUsed);
+    ctl.main_set_sort(Sort::MOST_USED);
     let before = titles(&ctl.main_screen());
     ctl.main_drop_row(0, 1);
     let screen = ctl.main_screen();
@@ -2279,15 +2391,11 @@ fn dragging_in_a_sorted_list_offers_manual() {
     assert_eq!(message(&screen), ToastMessage::SwitchToManual { list: id });
     ctl.toast_action();
     let screen = ctl.main_screen();
-    assert_eq!(
-        screen.list_sort,
-        ListSort::Manual,
-        "the toast's button switched it"
-    );
+    assert_eq!(screen.sort, Sort::MANUAL, "the toast's button switched it");
     assert!(screen.reorderable);
     assert_eq!(message(&screen), ToastMessage::ListSaved);
     // Alt+Down offers it the same way.
-    ctl.main_set_list_sort(ListSort::MostUsed);
+    ctl.main_set_sort(Sort::MOST_USED);
     ctl.main_reorder_items(1);
     assert_eq!(
         message(&ctl.main_screen()),
@@ -2296,7 +2404,7 @@ fn dragging_in_a_sorted_list_offers_manual() {
     // Alt+Up on the first row and Alt+Down on the last offer it alike.
     for delta in [-1, 1] {
         ctl.toast_action();
-        ctl.main_set_list_sort(ListSort::MostUsed);
+        ctl.main_set_sort(Sort::MOST_USED);
         let last = ctl.main_screen().rows.len() - 1;
         ctl.main_select(if delta < 0 { 0 } else { last }, SelectMode::Replace);
         ctl.main_reorder_items(delta);
@@ -2325,10 +2433,10 @@ fn the_panel_list_menu_sorts_and_a_panel_drag_in_a_sorted_list_offers_manual() {
     let tab = tab_index(&ctl, "Code");
     ctl.select_tab(tab);
     ctl.open_list_menu(tab);
-    assert_eq!(ctl.view().list_menu_sort, ListSort::Manual);
+    assert_eq!(ctl.view().list_menu_sort, Sort::MANUAL);
     let at = LIST_MENU
         .iter()
-        .position(|e| *e == ListMenuEntry::SortBy(ListSort::MostUsed))
+        .position(|e| *e == ListMenuEntry::SortBy(Sort::MOST_USED))
         .expect("a Sort by row");
     assert_eq!(ctl.choose_list_menu(at), vec![]);
     assert_eq!(ctl.view().list_menu, None, "the menu closes");
@@ -2342,7 +2450,369 @@ fn the_panel_list_menu_sorts_and_a_panel_drag_in_a_sorted_list_offers_manual() {
     };
     ctl.toast_action();
     assert!(ctl.view().rows_reorderable);
-    assert_eq!(ctl.store().list(list).unwrap().sort, ListSort::Manual);
+    assert_eq!(ctl.store().list(list).unwrap().sort, Sort::MANUAL);
+}
+
+/// MAIN-25: a text export that leaves items out says how many were written.
+#[test]
+fn an_export_that_leaves_sensitive_items_out_says_how_many_were_written() {
+    let mut ctl = seeded();
+    let screen = ctl.main_screen();
+    let with_secret = (0..screen.lists.len())
+        .find(|&i| {
+            ctl.store()
+                .items(screen.lists[i].id)
+                .unwrap()
+                .iter()
+                .any(|item| item.sensitive)
+        })
+        .expect("the demo library has a list with a sensitive item");
+    let dir = tempfile::tempdir().expect("dir");
+    ctl.main_export_list(with_secret, dir.path())
+        .expect("a file");
+    match message(&ctl.main_screen()) {
+        ToastMessage::ExportedSome { written, total, .. } => assert!(written < total),
+        other => panic!("expected a partial export toast, got {other:?}"),
+    }
+}
+
+/// MAIN-24: ticking a tag on several selected rows says how many changed; a tag delete says which.
+#[test]
+fn a_tag_on_several_rows_and_a_tag_delete_are_announced() {
+    let mut ctl = rig_with_tags();
+    ctl.main_select(0, SelectMode::Replace);
+    ctl.main_select(2, SelectMode::Extend);
+    ctl.main_action(MainAction::Tag, 0);
+    ctl.main_toggle_tag(0, true);
+    match toast_message(&mut ctl) {
+        Some(ToastMessage::ItemsTagged { count, added: true }) => assert_eq!(count, 3),
+        other => panic!("expected an ItemsTagged toast, got {other:?}"),
+    }
+    ctl.main_toggle_tag(0, false);
+    assert!(matches!(
+        toast_message(&mut ctl),
+        Some(ToastMessage::ItemsTagged { added: false, .. })
+    ));
+    let name = tag_names(&mut ctl)[0].clone();
+    ctl.main_delete_tag(0);
+    match toast_message(&mut ctl) {
+        Some(ToastMessage::TagDeleted { name: said }) => assert_eq!(said, name),
+        other => panic!("expected a TagDeleted toast, got {other:?}"),
+    }
+}
+
+// ---- Dropping rows on the sidebar's Trash and tags (MAIN-15) --------------------------------
+
+#[test]
+fn dropping_a_row_on_the_trash_trashes_it_with_an_undo() {
+    let mut ctl = seeded();
+    let at = row_of(&ctl.main_screen(), "Out of office");
+    ctl.main_drop_on_trash(at);
+    let screen = ctl.main_screen();
+    assert!(!titles(&screen).contains(&"Out of office".to_owned()));
+    assert_eq!(screen.counts.trash, 1);
+    assert_eq!(message(&screen), ToastMessage::ItemsTrashed { count: 1 });
+    assert!(screen.toast.as_ref().unwrap().undo);
+}
+
+#[test]
+fn dropping_a_selection_on_the_trash_takes_every_selected_row() {
+    let mut ctl = seeded();
+    ctl.main_select_all();
+    ctl.main_drop_on_trash(0);
+    let screen = ctl.main_screen();
+    assert_eq!(screen.counts.all, 0);
+    assert_eq!(screen.counts.trash, 11);
+}
+
+#[test]
+fn dropping_in_the_trash_itself_does_nothing() {
+    let mut ctl = seeded();
+    ctl.main_action(MainAction::Delete, 0);
+    ctl.main_open(Section::Trash);
+    ctl.main_drop_on_trash(0);
+    assert_eq!(ctl.main_screen().counts.trash, 1);
+    assert_eq!(ctl.main_screen().rows.len(), 1);
+}
+
+#[test]
+fn dropping_a_row_on_a_tag_tags_it_and_says_so() {
+    let tag = Tag::new(Name::new("invoices").unwrap());
+    let mut store = demo::store(now()).unwrap();
+    store.insert_tag(&tag).unwrap();
+    let (mut ctl, _) = rig_on(store);
+    let at = row_of(&ctl.main_screen(), "Invoice reminder");
+    ctl.main_drop_on_tag(at, 0);
+    let screen = ctl.main_screen();
+    assert_eq!(screen.tags[0].count, 1);
+    assert_eq!(
+        message(&screen),
+        ToastMessage::ItemsTagged {
+            count: 1,
+            added: true
+        }
+    );
+    // A second drop changes nothing and says nothing new.
+    ctl.main_drop_on_tag(at, 0);
+    assert_eq!(ctl.main_screen().tags[0].count, 1);
+    // Out of range targets are ignored.
+    ctl.main_drop_on_tag(at, 9);
+    ctl.main_drop_on_tag(99, 0);
+    assert_eq!(ctl.main_screen().tags[0].count, 1);
+}
+
+#[test]
+fn a_tag_drop_is_one_undo_step() {
+    let tag = Tag::new(Name::new("invoices").unwrap());
+    let mut store = demo::store(now()).unwrap();
+    store.insert_tag(&tag).unwrap();
+    let (mut ctl, _) = rig_on(store);
+    ctl.main_select_all();
+    ctl.main_drop_on_tag(0, 0);
+    assert_eq!(ctl.main_screen().tags[0].count, 11);
+    ctl.undo();
+    assert_eq!(ctl.main_screen().tags[0].count, 0);
+}
+
+// ---- Moving a list to another board (MAIN-23) -------------------------------------------------
+
+/// Whether the board `board` holds a list called `list`.
+fn board_has_list(ctl: &Ctl, board: &str, list: &str) -> bool {
+    let boards = ctl.store().boards().expect("boards");
+    let board = boards
+        .iter()
+        .find(|b| b.name.as_str() == board)
+        .unwrap_or_else(|| panic!("no board {board}"));
+    ctl.store()
+        .lists(board.id)
+        .expect("lists")
+        .iter()
+        .any(|l| l.name.as_str() == list)
+}
+
+#[test]
+fn the_list_editor_moves_a_list_to_another_board_and_opens_it_there() {
+    let mut ctl = seeded();
+    let screen = ctl.main_screen();
+    let index = list_index(&screen, "Addresses");
+    let list = screen.lists[index].id;
+    ctl.main_edit_list(index);
+    let editor = ctl.main_screen().editor.expect("editor");
+    assert_eq!(editor.boards.len(), 2);
+    assert_eq!(editor.boards[editor.board_index].1, "Work");
+    let other = 1 - editor.board_index;
+    let other_name = editor.boards[other].1.clone();
+    ctl.main_editor_set_board(other);
+    ctl.main_editor_save("Addresses", None, None, Sort::MANUAL);
+    let screen = ctl.main_screen();
+    assert_eq!(screen.board_name, other_name, "the other board is open");
+    assert_eq!(screen.section, Section::List(list), "and the list with it");
+    assert_eq!(screen.rows.len(), 2, "its items went along");
+    assert!(screen.editor.is_none());
+    assert!(!board_has_list(&ctl, "Work", "Addresses"));
+    assert!(board_has_list(&ctl, &other_name, "Addresses"));
+}
+
+#[test]
+fn a_list_saved_on_its_own_board_stays_and_a_new_list_lands_on_the_chosen_board() {
+    let mut ctl = seeded();
+    let screen = ctl.main_screen();
+    let index = list_index(&screen, "Code");
+    ctl.main_edit_list(index);
+    ctl.main_editor_save("Code", None, None, Sort::MANUAL);
+    assert_eq!(ctl.main_screen().board_name, "Work");
+    assert!(board_has_list(&ctl, "Work", "Code"));
+    ctl.main_new_list();
+    let editor = ctl.main_screen().editor.expect("new list editor");
+    assert!(editor.is_new);
+    let other = 1 - editor.board_index;
+    let other_name = editor.boards[other].1.clone();
+    ctl.main_editor_set_board(other);
+    ctl.main_editor_save("Fresh", None, None, Sort::MANUAL);
+    assert!(board_has_list(&ctl, &other_name, "Fresh"));
+    assert!(!board_has_list(&ctl, "Work", "Fresh"));
+}
+
+#[test]
+fn a_parked_list_editor_keeps_the_board_that_was_picked() {
+    let mut ctl = seeded();
+    let screen = ctl.main_screen();
+    let index = list_index(&screen, "Code");
+    ctl.main_edit_list(index);
+    let editor = ctl.main_screen().editor.expect("editor");
+    let other = 1 - editor.board_index;
+    ctl.main_editor_park("Code", None, None, Sort::MANUAL, other);
+    ctl.main_edit_list(index);
+    let back = ctl.main_screen().editor.expect("editor again");
+    assert_eq!(back.board_index, other, "the typed board comes back");
+}
+
+#[test]
+fn the_move_chooser_lists_the_open_board_first_then_the_others_with_their_board() {
+    let mut ctl = seeded();
+    let screen = ctl.main_screen();
+    let labels: Vec<&str> = screen
+        .move_targets
+        .iter()
+        .map(|t| t.label.as_str())
+        .collect();
+    assert_eq!(labels[..3], ["Email replies", "Addresses", "Code"]);
+    assert!(
+        labels.len() > 3,
+        "the other board's lists follow: {labels:?}"
+    );
+    assert_ne!(screen.move_targets[3].board, screen.move_targets[0].board);
+    assert_ne!(
+        labels[3], "",
+        "a list of another board is named with its board"
+    );
+    let far = screen.move_targets[3].list;
+    let row = row_of(&screen, "Out of office");
+    ctl.main_select(row, SelectMode::Replace);
+    assert!(ctl.main_action(MainAction::Move, row).is_none());
+    ctl.main_move_to(3);
+    let moved = ctl.main_screen();
+    assert!(matches!(
+        message(&moved),
+        ToastMessage::ItemsMoved { count: 1, .. }
+    ));
+    let items = ctl.store().items(far).expect("items");
+    assert!(items.iter().any(|i| i.title == "Out of office"));
+}
+
+// ---- Picture thumbnails of image rows (MAIN-21) and the Detail pane (MAIN-22) -------------------
+
+fn png_of(width: u32, height: u32) -> Vec<u8> {
+    let mut png = Vec::new();
+    let mut encoder = png::Encoder::new(&mut png, width, height);
+    encoder.set_color(png::ColorType::Rgba);
+    encoder.set_depth(png::BitDepth::Eight);
+    let pixels = vec![200_u8; (width * height * 4) as usize];
+    encoder
+        .write_header()
+        .and_then(|mut w| w.write_image_data(&pixels))
+        .expect("png");
+    png
+}
+
+fn store_with_pictures(count: usize) -> Store {
+    let mut store = demo::store(now()).expect("demo store");
+    let board = store.boards().expect("boards")[0].id;
+    let list = store.lists(board).expect("lists")[0].clone();
+    let to = snipdeck_app::capture::Destination {
+        id: list.id,
+        name: list.name.as_str().to_owned(),
+    };
+    for n in 0..count {
+        snipdeck_app::capture::capture_image(
+            &mut store,
+            &to,
+            png_of(4, 2),
+            &format!("Shot {n}"),
+            now(),
+        )
+        .expect("captured");
+    }
+    store
+}
+
+#[test]
+fn an_image_row_gets_its_thumbnail_once_and_only_when_asked() {
+    let (mut ctl, _) = rig_on(store_with_pictures(2));
+    let screen = ctl.main_screen();
+    let row = row_of(&screen, "Shot 0");
+    assert!(screen.rows[row].image_stamp.is_some());
+    assert!(
+        screen.rows[row].thumb.is_none(),
+        "nothing is decoded unasked"
+    );
+    assert_eq!(ctl.main_thumbnails_kept(), 0);
+    assert!(ctl.main_thumbnail(row));
+    assert!(!ctl.main_thumbnail(row), "a second ask finds it kept");
+    assert_eq!(ctl.main_thumbnails_kept(), 1);
+    let screen = ctl.main_screen();
+    let thumb = screen.rows[row].thumb.as_ref().expect("thumbnail");
+    assert_eq!(
+        (thumb.pixels().width, thumb.pixels().height),
+        (4, 2),
+        "a small picture is not enlarged"
+    );
+    assert!(screen.rows[row_of(&screen, "Shot 1")].thumb.is_none());
+}
+
+#[test]
+fn the_thumbnail_cache_never_grows_past_its_bound() {
+    let bound = snipdeck_app::thumb_cache::ROW_CAPACITY;
+    let (mut ctl, _) = rig_on(store_with_pictures(bound + 5));
+    let screen = ctl.main_screen();
+    let rows: Vec<usize> = (0..bound + 5)
+        .map(|n| row_of(&screen, &format!("Shot {n}")))
+        .collect();
+    for row in rows {
+        ctl.main_thumbnail(row);
+        assert!(ctl.main_thumbnails_kept() <= bound);
+    }
+    assert_eq!(ctl.main_thumbnails_kept(), bound);
+}
+
+#[test]
+fn the_detail_pane_shows_the_item_under_the_cursor_with_its_metadata() {
+    let mut ctl = seeded();
+    let screen = ctl.main_screen();
+    let row = row_of(&screen, "Out of office");
+    ctl.main_select(row, SelectMode::Replace);
+    let screen = ctl.main_screen();
+    assert!(screen.detail_open);
+    let detail = screen.detail.expect("detail");
+    assert_eq!(detail.title, "Out of office");
+    assert_ne!(detail.text.len(), 0);
+    assert!(!detail.text_cut);
+    assert!(detail.formats.contains(&snipdeck_core::FormatKind::Text));
+    assert_eq!(detail.created.len(), 16, "{}", detail.created);
+    assert!(
+        detail.created.starts_with("2026-10-1"),
+        "{}",
+        detail.created
+    );
+    assert_ne!(detail.list_name, "");
+}
+
+#[test]
+fn the_detail_pane_masks_a_secret_until_it_is_held_revealed_and_follows_a_picture() {
+    let (mut ctl, _) = rig_on(store_with_pictures(1));
+    let screen = ctl.main_screen();
+    let secret = screen
+        .rows
+        .iter()
+        .position(|r| r.sensitive)
+        .expect("the demo has a secret");
+    ctl.main_select(secret, SelectMode::Replace);
+    let shown = ctl.main_screen().detail.expect("detail").text;
+    assert_eq!(shown, "••••••••••••");
+    ctl.main_reveal(secret, true);
+    let real = ctl.main_screen().detail.expect("detail").text;
+    assert_ne!(real, shown, "held revealed it shows the text");
+    ctl.main_reveal(secret, false);
+    let screen = ctl.main_screen();
+    let shot = row_of(&screen, "Shot 0");
+    ctl.main_select(shot, SelectMode::Replace);
+    let detail = ctl.main_screen().detail.expect("detail");
+    assert!(detail.thumb.is_some(), "a picture item shows its picture");
+    assert_eq!(detail.formats, [snipdeck_core::FormatKind::Png]);
+}
+
+#[test]
+fn the_detail_pane_reads_nothing_while_it_is_switched_off() {
+    let mut ctl = seeded();
+    let screen = ctl.main_screen();
+    let row = row_of(&screen, "Out of office");
+    ctl.main_select(row, SelectMode::Replace);
+    ctl.set_main_detail_open(false);
+    let screen = ctl.main_screen();
+    assert!(!screen.detail_open);
+    assert!(screen.detail.is_none());
+    ctl.set_main_detail_open(true);
+    assert!(ctl.main_screen().detail.is_some());
 }
 
 #[test]

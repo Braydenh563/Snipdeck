@@ -1,8 +1,8 @@
-//! The Tips tab of the Help window: ten cards, each with a picture and a "Try it" that runs one
+//! The Tips tab of the Help window: one card per feature, each with a picture and a "Try it" that runs one
 //! [`Command`]. Slint-free and pure. The words (title, two lines, the button and the picture's
 //! description) live in the UI crate's `TipTexts` global in the order of [`TIPS`], so they are
-//! translated there; the pictures are crops of the golden renders under
-//! `crates/snipdeck-ui/ui/images/tips/` (`scripts/tips_images.py` regenerates them).
+//! translated there; the pictures are drawn in the UI crate's `tip_art.slint`
+//! (wordless, in the theme's colours), the card at index `i` showing art `i`.
 
 use crate::commands::Command;
 
@@ -60,8 +60,6 @@ impl TipAction {
 /// One card.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Tip {
-    /// The picture's file name under `snipdeck-ui/ui/images/tips/`.
-    pub image: &'static str,
     /// What "Try it" does.
     pub action: TipAction,
 }
@@ -69,71 +67,43 @@ pub struct Tip {
 /// The cards, in the order a new user meets the features (the order of `TipTexts`).
 pub const TIPS: [Tip; 11] = [
     Tip {
-        image: "01-open-panel.png",
         action: TipAction::ShowPanel,
     },
     Tip {
-        image: "02-search.png",
         action: TipAction::Browse,
     },
     Tip {
-        image: "03-pinned.png",
         action: TipAction::GoPinned,
     },
     Tip {
-        image: "04-paste-next.png",
         action: TipAction::PasteNext,
     },
     Tip {
-        image: "05-templates.png",
         action: TipAction::NewItem,
     },
     Tip {
-        image: "06-capture.png",
         action: TipAction::QuickCapture,
     },
     Tip {
-        image: "07-symbols.png",
         action: TipAction::Symbols,
     },
     Tip {
-        image: "08-commands.png",
         action: TipAction::Shortcuts,
     },
     Tip {
-        image: "09-view.png",
         action: TipAction::ViewTile,
     },
     Tip {
-        image: "10-sensitive.png",
         action: TipAction::Settings,
     },
     Tip {
-        image: "11-trigger.png",
         action: TipAction::Settings,
     },
 ];
 
 #[cfg(test)]
 mod tests {
-    use std::path::Path;
-
     use super::*;
-
-    #[test]
-    fn every_tip_has_an_image_that_exists() {
-        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../snipdeck-ui/ui/images/tips");
-        let mut seen = Vec::new();
-        for tip in TIPS {
-            assert!(
-                dir.join(tip.image).is_file(),
-                "missing picture {}",
-                tip.image
-            );
-            assert!(!seen.contains(&tip.image), "{} is used twice", tip.image);
-            seen.push(tip.image);
-        }
-    }
 
     #[test]
     fn every_action_maps_to_a_command() {

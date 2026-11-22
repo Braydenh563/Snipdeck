@@ -8,6 +8,10 @@ use std::path::PathBuf;
 
 use snipdeck_store::crypto::CryptoError;
 
+/// What [`Error::LimitExceeded`] names when the archive as a whole, not one entry, is over its size
+/// limit. Callers tell that limit apart by it, so it is one constant and not a repeated string.
+pub const TOTAL_SIZE: &str = "total uncompressed size";
+
 /// Shorthand for results of portability calls.
 pub type Result<T, E = Error> = core::result::Result<T, E>;
 
@@ -123,10 +127,6 @@ pub enum Error {
         /// The repeated id.
         id: String,
     },
-    /// Internal: rolls a dry-run import back. Never returned to callers.
-    #[doc(hidden)]
-    #[error("dry run")]
-    DryRun,
     /// The input is not a Ditto database.
     #[error("`{}` is not a Ditto database ({reason})", path.display())]
     NotDitto {

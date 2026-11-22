@@ -44,13 +44,14 @@ use rusqlite::types::ValueRef;
 use rusqlite::{Connection, OpenFlags, OptionalExtension, Row};
 use snipdeck_core::Timestamp;
 
+use crate::decoded::Decoded;
 use crate::error::{Error, Result};
 use crate::import::{ImportOptions, board_name, finish};
 use crate::limits::TEXT_LIMIT;
-use crate::plan::{Library, Plan, PlanBoard, PlanItem, PlanList};
+use crate::plan::{Plan, PlanBoard, PlanItem, PlanList};
 use crate::report::{ImportReport, Warning};
 
-use super::{Decoded, MEMORY_BUDGET, clean_label, decode_text, note_lossy, title_from};
+use super::{MEMORY_BUDGET, TextDecoding, clean_label, decode_text, note_lossy, title_from};
 
 /// Required columns, by table. Anything else Ditto added over the years is ignored.
 const REQUIRED: [(&str, &[&str]); 2] = [
@@ -97,12 +98,11 @@ const MAX_GROUP_DEPTH: usize = 8;
 ///
 /// [`Error::File`] if the file does not exist, [`Error::NotDitto`] if it is not a Ditto
 /// database, [`Error::Sqlite`] for a damaged one, and storage errors.
-pub fn import_ditto<L: Library>(
-    lib: &mut L,
+pub fn decode_ditto(
     db_path: &Path,
     now: Timestamp,
     options: &ImportOptions<'_>,
-) -> Result<ImportReport> {
+) -> Result<Decoded<'static>> {
     let conn = open_read_only(db_path)?;
     check_schema(&conn, db_path)?;
 
@@ -178,6 +178,8 @@ pub fn import_ditto<L: Library>(
     let mut plan = Plan::default();
     if !lists.is_empty() {
         plan.boards.push(PlanBoard {
+            accent: None,
+            icon: None,
             name: board_name(
                 options
                     .board_name
@@ -190,7 +192,7 @@ pub fn import_ditto<L: Library>(
             lists,
         });
     }
-    finish(lib, plan, options, report)
+    Ok(finish(plan, options, report))
 }
 
 fn open_read_only(path: &Path) -> Result<Connection> {
@@ -495,7 +497,7 @@ fn fill_texts(
     Ok(())
 }
 
-fn utf16le(data: &[u8]) -> (String, Decoded) {
+fn utf16le(data: &[u8]) -> (String, TextDecoding) {
     let units: Vec<u16> = data
         .as_chunks::<2>()
         .0
@@ -506,9 +508,9 @@ fn utf16le(data: &[u8]) -> (String, Decoded) {
     (
         String::from_utf16_lossy(&units),
         if exact {
-            Decoded::Utf16
+            TextDecoding::Utf16
         } else {
-            Decoded::Lossy
+            TextDecoding::Lossy
         },
     )
 }

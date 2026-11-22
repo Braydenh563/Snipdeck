@@ -291,7 +291,7 @@ fn a_sensitive_copy_is_still_cleared_after_another_item_was_pasted_over_it() {
 }
 
 #[test]
-fn the_clipboard_clear_time_is_the_setting_and_zero_turns_it_off() {
+fn the_clipboard_clear_time_is_the_setting_and_never_zero() {
     let mut w = world();
     let id = w.ids[0];
     make_sensitive(&mut w, id);
@@ -302,9 +302,63 @@ fn the_clipboard_clear_time_is_the_setting_and_zero_turns_it_off() {
     w.ctl.clear_clipboard_if_due();
     assert_eq!(w.ctl.services.clipboard.read_text(), None);
 
+    // 0 ("never") is not a choice any more: a sensitive copy always clears.
     w.ctl.update_settings(|s| s.clipboard_clear_secs = 0);
     w.ctl.activate_row(0, UseMode::Copy);
-    assert_eq!(w.ctl.clipboard_clear_wait(), None, "0 = never clear");
+    assert!(
+        w.ctl.clipboard_clear_wait().is_some(),
+        "a sensitive copy always clears"
+    );
+}
+
+#[test]
+fn copying_from_a_sensitive_field_carries_the_markers_and_clears() {
+    let mut w = world();
+    assert!(w.ctl.copy_private_selection("pass\u{e9}word", 6, 0));
+    let written = w.ctl.services.clipboard.written.last().expect("written");
+    assert!(written.is_private(), "the markers ride along");
+    assert_eq!(
+        w.ctl.services.clipboard.read_text().as_deref(),
+        Some("pass\u{e9}")
+    );
+    assert_eq!(w.ctl.clipboard_clear_wait(), Some(Duration::from_secs(30)));
+    w.clock.set(at("2026-10-17T10:30:30Z"));
+    w.ctl.clear_clipboard_if_due();
+    assert_eq!(w.ctl.services.clipboard.read_text(), None);
+}
+
+#[test]
+fn cutting_from_a_sensitive_field_returns_the_rest_and_an_empty_selection_copies_nothing() {
+    let mut w = world();
+    assert_eq!(
+        w.ctl.cut_private_selection("hunter2", 1, 4).as_deref(),
+        Some("her2")
+    );
+    assert_eq!(w.ctl.services.clipboard.read_text().as_deref(), Some("unt"));
+    let before = w.ctl.services.clipboard.written.len();
+    assert!(!w.ctl.copy_private_selection("hunter2", 3, 3));
+    assert_eq!(w.ctl.cut_private_selection("hunter2", 3, 3), None);
+    // Not on a character boundary: nothing is copied.
+    assert!(!w.ctl.copy_private_selection("\u{e9}x", 0, 1));
+    assert_eq!(w.ctl.services.clipboard.written.len(), before);
+}
+
+#[test]
+fn locking_clears_a_pending_sensitive_copy_at_once() {
+    let mut w = world();
+    let id = w.ids[0];
+    make_sensitive(&mut w, id);
+    w.ctl.activate_row(0, UseMode::Copy);
+    assert!(w.ctl.services.clipboard.read_text().is_some());
+    w.ctl.lock.set = true;
+    w.clock.set(at("2026-10-17T10:30:01Z"));
+    w.ctl.lock_now();
+    assert_eq!(
+        w.ctl.services.clipboard.read_text(),
+        None,
+        "the secret does not outlive the lock"
+    );
+    assert_eq!(w.ctl.clipboard_clear_wait(), None);
 }
 
 #[test]
@@ -848,7 +902,8 @@ fn the_setting_off_keeps_the_panel_open_and_a_failed_use_never_hides() {
 // ---- Typed-trigger expansion (slice 5b) --------------------------------------------------------
 
 use crate::typing_worker::Typed;
-use snipdeck_core::{Fired, Trigger};
+use crate::usecase::Retype;
+use snipdeck_core::{CaseMode, CaseShape, Fired, Trigger, TriggerEnd, TriggerOptions};
 use snipdeck_store::TriggerRepo;
 
 /// A world where typing expansion is on and item `n` has the trigger `code`.
@@ -906,6 +961,42 @@ fn a_typed_trigger_backspaces_then_pastes() {
     );
     w.ctl.drain_paste();
     assert_eq!(uses(&w, w.ids[1]), 1);
+}
+
+#[test]
+fn a_delimiter_trigger_that_adapts_to_case_types_the_text_back_with_the_delimiter() {
+    let mut w = world();
+    w.ctl.update_settings(|s| s.expand_triggers = true);
+    let trigger = Trigger::new("tw")
+        .expect("trigger")
+        .with_options(TriggerOptions {
+            end: TriggerEnd::Delimiter,
+            case: CaseMode::Adapt,
+        });
+    w.ctl
+        .store
+        .set_trigger(w.ids[1], Some(&trigger))
+        .expect("set trigger");
+    let fired = typed(&w, "TW ");
+    assert_eq!(fired.shape, CaseShape::Upper);
+    assert_eq!(fired.delimiter, Some(' '));
+    let out = w
+        .ctl
+        .expand_typed(&Typed::new(fired.clone(), false, || true));
+    assert_eq!(
+        out,
+        TypedOutcome::Expanded(UseResult::Done(UseOutcome::Pasted))
+    );
+    let sent = backspaces_sent(&mut w);
+    assert!(
+        sent[0].starts_with(&snipdeck_platform::keys::backspaces(3)),
+        "the code and the delimiter are erased"
+    );
+    assert_eq!(
+        w.ctl.services().clipboard.written[0].data(),
+        [Data::Text("SECOND ".into())],
+        "adapted to the capitals typed, with the delimiter put back"
+    );
 }
 
 #[test]
@@ -1249,6 +1340,8 @@ fn suggestion(w: &World, code: &str, chars: usize, password: bool) -> Typed {
         item: w.ids[1],
         trigger: Trigger::new(code).expect("trigger"),
         chars,
+        delimiter: None,
+        shape: CaseShape::AsIs,
     };
     Typed::new(fired, password, || true)
 }
@@ -1506,6 +1599,33 @@ fn quitting_deletes_the_files_a_sensitive_files_item_left_in_the_temp_folder() {
     assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten, 1);
     w.ctl.clear_pending_clipboard_now();
     assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten, 1, "once");
+    assert_eq!(
+        w.ctl.services.clipboard.pasted_files_forgotten_waited, 1,
+        "the quit waits for the deletion"
+    );
+}
+
+#[test]
+fn a_quit_after_the_timer_deleted_the_paste_files_waits_for_that_deletion() {
+    let mut w = world();
+    let id = w.ids[0];
+    let mut item = w.ctl.store.item(id).expect("item");
+    item.sensitive = true;
+    item.kind = snipdeck_core::ItemKind::File;
+    item.preview.clear();
+    w.ctl.store.update_item(&item, None).expect("update");
+    w.ctl.activate_row(0, UseMode::Paste);
+    // The background deletion starts (the lock, or the timer) and clears the "pasted" flag.
+    w.ctl.forget_secret_files();
+    assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten_waited, 0);
+    // The quit still joins it: the process would end under a deletion in flight.
+    w.ctl.clear_pending_clipboard_now();
+    assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten_waited, 1);
+    w.ctl.clear_pending_clipboard_now();
+    assert_eq!(
+        w.ctl.services.clipboard.pasted_files_forgotten_waited, 1,
+        "once"
+    );
 }
 
 #[test]
@@ -1530,6 +1650,10 @@ fn a_sensitive_files_paste_deletes_its_temp_files_on_the_clear_timer_without_a_l
     w.clock.set(at("2026-10-17T10:30:30Z"));
     w.ctl.clear_clipboard_if_due();
     assert_eq!(w.ctl.services.clipboard.pasted_files_forgotten, 1);
+    assert_eq!(
+        w.ctl.services.clipboard.pasted_files_forgotten_waited, 0,
+        "the timer's deletion runs in the background"
+    );
     assert_eq!(w.ctl.clipboard_clear_wait(), None, "no timer left");
 }
 
@@ -1560,6 +1684,7 @@ fn a_called_off_sensitive_files_paste_still_deletes_its_temp_files_on_the_timer(
             app: None,
             window: 0,
             fresh: Some(&stale),
+            retype: Retype::default(),
         }),
     );
     assert_eq!(result, UseResult::Cancelled);

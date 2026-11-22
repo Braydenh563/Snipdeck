@@ -15,6 +15,23 @@ and publishes the GitHub Release with that changelog section as the notes. It th
 attaches `Snipdeck-Setup-1.1.0.exe`, the portable zip, their `.sha256` files and build attestations. The
 Store MSIX is kept as a workflow artifact when the MSIX variables are set (section 1).
 
+### Pin the release (launcher trust)
+
+`Snipdeck.bat update` checks a downloaded zip against a hash pinned in
+[`tools/launcher/release-sha256.txt`](../tools/launcher/release-sha256.txt). With no pin it can only compare with
+the `.sha256` file from the same release, and asks the user to accept that. So committing the pin is a step of
+every release, not an afterthought:
+
+1. After the release is published, download the zips (`snipdeck-v<version>-windows-x64.zip`, and `-arm64` once
+   that build ships) and run
+   `python3 scripts/check_release_pin.py add --tag v<version> --zip <zip> [--zip <zip>]`.
+   It appends `<sha256>  <zip name>` lines. Use the zip that was **signed**, if signing is on (section 2).
+2. Commit `tools/launcher/release-sha256.txt` to `main` (`Pin v<version>`).
+3. Check: `python3 scripts/check_release_pin.py check --tag v<version> [--arch arm64] --zip <zip>` exits 0.
+   It fails when a pin is missing or differs from the zip. The exact workflow job that does steps 1 to 3
+   after the upload is in `.claude/remaining/fix-packaging.md` (the file under `.github/workflows` is the
+   owner's to change).
+
 It refuses a version lower than the current one, an existing tag, and a run from any branch but `main`.
 If `main` is protected against direct pushes, let `github-actions` bypass the rule, or bump the version
 in a PR first (the workflow then has nothing to commit). Pushing a tag `v1.1.0` yourself still works when
@@ -27,16 +44,43 @@ The normal download for a home user is `Snipdeck-Setup-<version>.exe`, built wit
 
 - **No admin.** It installs for the current user only, into `%LOCALAPPDATA%\Programs\Snipdeck`
   (the wizard lets you pick another folder). It adds a Start menu shortcut, an optional desktop shortcut
-  and an entry in Settings > Apps. Windows 10 version 1903 or newer, 64-bit.
+  and an entry in Settings > Apps. Windows 10 version 1903 or newer, 64-bit. The default Setup carries the x64
+  exe, which also runs (emulated) on ARM64 Windows 11; `iscc /DArm64=1` builds an ARM64-only Setup around the
+  native `aarch64-pc-windows-msvc` exe, and `scripts/msix_manifest.py --arch arm64` does the same for the MSIX.
+- **File type and link.** Setup registers `.snipdeck` files (open with a double-click) and the `snipdeck:` URL
+  scheme for the current user, both running `snipdeck.exe "<file or link>"`. The MSIX declares the same file type
+  and scheme plus an app execution alias, so `snipdeck` also works on the command line there. One table,
+  [`packaging/registration.json`](../packaging/registration.json), drives all of it, and
+  `scripts/installer_check.py` fails when the `.iss`, the manifest or the launcher disagrees. What the app does
+  with the file or link it is handed is the app's side (see `docs/HANDOVER.md`).
 - **Start with Windows** is not an installer option. The app owns that setting (first run or Settings).
 - **Your library is never moved.** Cards, settings and backups live in `%LOCALAPPDATA%\Snipdeck`
   whatever the install folder is.
 - **Upgrade.** Run a newer Setup over the old one. It asks a running Snipdeck to quit (`snipdeck.exe --quit`,
   the same as tray > Quit) and waits up to 15 seconds. If it is still running, Setup stops with a message
   telling you to quit it from the tray icon. A silent upgrade (`/VERYSILENT`) starts Snipdeck again afterwards
-  if it was running. An old version that does not know `--quit` just times out the same way.
-- **Uninstall** (Settings > Apps) removes the program and the "Start with Windows" entry. It then asks whether
-  to also erase the library in `%LOCALAPPDATA%\Snipdeck` (default No). A silent uninstall never erases it.
+  if it was running. An old version that does not know `--quit` just times out the same way. If it was running,
+  the "Start Snipdeck" box at the end of the wizard starts it with `--hidden`, so it comes back in the tray.
+- **Older over newer.** A Setup whose version is lower than the installed one warns that the library may already
+  be in a newer format and asks (default No); a silent run answers No. The comparison uses the numbers only
+  (`1.2.0-beta` counts as `1.2.0`).
+- **Language.** The wizard and the custom messages are translated for German, Spanish, French, Japanese and
+  Brazilian Portuguese; Inno has no Chinese Simplified, which shows English. Every custom message needs a line
+  for each of the six Setup languages (`installer_check.py` fails otherwise); the `.iss` is UTF-8 with a byte-order
+  mark for that reason.
+- **Uninstall** (Settings > Apps) removes the program, the "Start with Windows" entry (and its Startup-apps
+  flag), the file type, the link scheme and the data-folder record. It then asks whether to also erase the library
+  (default No). A silent uninstall never erases it. The question lists every folder it would delete:
+  `%LOCALAPPDATA%\Snipdeck`, and each folder given with `--data-dir` (the app keeps a list of them in
+  `HKCU\Software\Snipdeck`, multi-string value `DataDirs`, never the default folder, and writes
+  `snipdeck-data-folder.txt` into every data folder it uses). A recorded folder is cleaned only if that marker file
+  is in it and the path is below a drive root and not the profile or a well-known folder (Documents, Desktop,
+  Downloads, ...); Setup then deletes only Snipdeck's own names (database, `-wal`, `-shm`, lock, `blobs`,
+  settings, `drafts`, `backups`, `logs`, the marker) and removes the folder only if that left it empty, so
+  `--data-dir D:\Documents` loses nothing else. The tables are in `crates/snipdeck-platform/src/data_record.rs`
+  and the same list is in the `.iss`; `scripts/installer_check.py` compares them. An unset `USERPROFILE` or `TEMP` skips the temp
+  deletions instead of aiming at the drive root. The shared list of leftovers is `registry_leftovers` in
+  `packaging/registration.json`; the launcher's uninstall removes the same ones.
 - **SmartScreen.** Until the installer is signed (section 2, SignPath is the plan), Windows shows "Windows
   protected your PC": choose More info > Run anyway. Check the download against the `.sha256` file.
 - **Build locally** (Windows, Inno Setup 6 installed): build the release exe, then
@@ -133,9 +177,23 @@ unless the owner asks):
 | File | Size |
 |---|---|
 | `StoreLogo.png` | 50x50 |
-| `Square44x44Logo.png` | 44x44 (also add `Square44x44Logo.targetsize-24_altform-unplated.png` at 24x24 so the taskbar icon is not boxed) |
+| `Square44x44Logo.png` | 44x44 |
+| `Square44x44Logo.targetsize-N.png` and `..._altform-unplated.png` | N = 16, 24, 32, 48 and 256, square (the sizes Windows asks for in the title bar, taskbar, Start list and Alt+Tab; the unplated copy has no coloured backplate on the taskbar) |
 | `Square150x150Logo.png` | 150x150 |
 | Scale variants | `.scale-125`, `.scale-150`, `.scale-200`, `.scale-400` of each, if you want sharp icons on high-DPI screens |
+
+`scripts/make_msix_assets.py` writes the whole set. Windows only finds the scale and target-size files through a
+resource index, so the package needs a `resources.pri` made by `makepri` from the staged folder (the manifest
+still names plain `Assets\Square44x44Logo.png`):
+
+```powershell
+makepri createconfig /cf dist\priconfig.xml /dq en-US /o
+makepri new /pr dist\msix-stage /cf dist\priconfig.xml /mn dist\msix-stage\AppxManifest.xml /of dist\msix-stage\resources.pri /o
+```
+
+Keep `priconfig.xml` outside the staged folder (it must not end up in the package), run `makepri new` after the
+manifest and `Assets\` are in place, and run `makeappx pack` last. `installer_check.py` checks that this page
+and `packaging/msix/README.md` still describe the step.
 
 The Store listing also asks for its own images (screenshots, and a 300x300 logo at the time of
 writing). *Check before relying on it.* Use `docs/images/` for screenshots.
@@ -162,7 +220,34 @@ kept as the workflow artifact `windows-msix` for 30 days. It is **not** attached
 2. Stage a folder `dist\msix\` with `snipdeck.exe` (the renamed exe), `Assets\*.png`
    (`python3 scripts/make_msix_assets.py`) and the filled manifest:
    `python3 scripts/msix_manifest.py --identity-name ... --publisher "CN=..." --publisher-display-name ... --version 1.0.0 --out dist\msix\AppxManifest.xml`.
-3. `MakeAppx.exe pack /o /d dist\msix /p dist\Snipdeck.msix`.
+3. `makepri.exe createconfig /cf dist\priconfig.xml /dq en-US /o`, then
+   `makepri.exe new /pr dist\msix /cf dist\priconfig.xml /mn dist\msix\AppxManifest.xml /of dist\msix\resources.pri /o`
+   (this builds `resources.pri`; without it the target-size icons are ignored).
+4. `MakeAppx.exe pack /o /d dist\msix /p dist\Snipdeck.msix`.
+
+### Where the Store build keeps your data (one rule)
+
+Windows redirects the packaged app's writes under `%LOCALAPPDATA%` into the package's own folder
+(`%LOCALAPPDATA%\Packages\<family>\LocalCache\Local\Snipdeck`), and a Store uninstall deletes that folder
+with no question. Snipdeck does not fight this (no `unvirtualizedResources`; it needs a restricted capability the
+Store reviews). The rule is:
+
+- **The Store build's library lives with the package.** Uninstalling it removes the library. Backups the app
+  makes on its own (`backups\` in the data folder) go with it.
+- **Before uninstalling, export.** Use Settings > Back up now / Export, and choose a folder outside the package
+  (Documents). A `.snipdeck` file is the only copy that survives.
+- **Setup and Store are separate libraries.** Neither installs over, reads or removes the other's data. To move
+  from one to the other, export in the old one and import in the new one. (Whether Windows shows the Setup
+  library to the packaged app through its merged view has not been run; do not rely on it.)
+- **Built (unverified on a real Store build):** the first time the Panel comes up in the packaged build, a toast
+  says that uninstalling removes the library (once, remembered in the settings as `store_data_reminded`), and
+  Back up now also saves an export in `Documents\Snipdeck backups`, outside the package. Code: `store_data.rs`.
+  Copy this paragraph into the Store description's notes as well.
+
+**Tested Windows builds.** Only Windows 11 build 26300 has been run. The installer floor (10.0.18362, Windows 10
+1903) and the MSIX `MinVersion` are unchanged: every build-dependent call (dark title bar attributes 19 and 20,
+the corner preference from build 22000) is gated by build number and fails soft. Windows 10 is untested until the
+owner runs the list in `.claude/remaining/fix-misc.md`.
 
 ### Sideload test with a self-signed certificate
 
@@ -288,7 +373,14 @@ Nothing in this page has been run. Tick each when the owner has done it.
 - [ ] `MakeAppx pack` accepts the manifest and produces `Snipdeck.msix`.
 - [ ] The test-signed package installs, starts, and shows the right name and icon in Start, the taskbar and Settings > Apps.
 - [ ] Tray icon, global hotkeys, single-instance lock and paste into other apps work inside the package (full trust).
-- [ ] Where the packaged app keeps its data folder, and what survives uninstall and update.
+- [ ] Where the packaged app keeps its data folder, and what survives uninstall and update (the one rule above:
+      install the Setup build, add items, install the MSIX, check where the items are; uninstall the MSIX and list what remains).
+- [ ] MSIX icons: `makepri new` succeeds, and Start and the taskbar show sharp icons at 100, 150 and 200 percent with no coloured plate on the taskbar.
+- [ ] MSIX file type, `snipdeck:` scheme and the `snipdeck` command-line alias work after install (the app hand-over is separate).
+- [ ] Setup: `.snipdeck` double-click and `snipdeck:` links reach the app; uninstall removes both keys; `reg query HKCU\Software\Snipdeck` after a `--data-dir` start shows `DataDirs` with that folder, and the erase question lists it; after Yes only Snipdeck's files are gone (put an unrelated file in the folder first: it and the folder stay).
+- [ ] Setup: an older Setup over a newer install warns (silent run: refuses); upgrading while Snipdeck sits hidden in the tray brings it back hidden.
+- [ ] Setup in German, Spanish, French, Japanese and Portuguese: no English sentence in the wizard or the uninstall question (Chinese shows English).
+- [ ] ARM64: `iscc /DArm64=1` and `msix_manifest.py --arch arm64` build; on an ARM64 device the native exe starts, the hotkey, paste and tray work.
 - [ ] Start with Windows in the package: the `StartupTask` `SnipdeckStartup` toggles from the app and Settings > Apps > Startup.
 - [ ] Setup .exe: installs without a prompt, upgrades over an older version (and over one that ignores `--quit`), restarts Snipdeck after a silent upgrade, uninstalls, and the erase question deletes only `%LOCALAPPDATA%\Snipdeck`. `iscc` has never been run on this script.
 - [ ] The update check is off in the packaged build.

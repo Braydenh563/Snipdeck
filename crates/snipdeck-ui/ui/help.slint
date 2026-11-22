@@ -8,6 +8,7 @@
 import { Theme, Type, Space, Radius, Fonts, Palette, SystemLook } from "theme.slint";
 import { Icons } from "icons.slint";
 import { Icon } from "components/icon.slint";
+import { TipArt } from "tip_art.slint";
 import { Button, ButtonSize, ButtonVariant } from "components/button.slint";
 import { Toast, ToastKind, ToastPhase } from "components/feedback.slint";
 import { Dialog, DialogVariant } from "components/dialog.slint";
@@ -18,15 +19,15 @@ import { ShortcutTexts } from "shortcut_texts.slint";
 
 export { ShortcutGroup, ShortcutLineData }
 
-// One card of the Tips tab, already in words and with its picture (the app builds it from `TipTexts`).
+// One card of the Tips tab, already in words and with the index of its picture (`TipArt`) (the app builds it from `TipTexts`).
 export struct TipCard {
     title: string,
     first-line: string,
     second-line: string,
-    picture: image,
+    art: int,
 }
 
-// One line of the Troubleshoot list, already in words (the doctor's English; see snipdeck-app `doctor`).
+// One line of the Troubleshoot list, already in words (the host words it with `DoctorTexts`).
 export struct HelpCheck {
     label: string,
     detail: string,
@@ -54,6 +55,8 @@ export component HelpWindow inherits Window {
     // 0 Troubleshoot, 1 About, 2 Shortcuts, 3 Tips.
     in-out property <int> tab: 0;
     in property <[HelpCheck]> checks;
+    // A backup, export or rebuild is running: the buttons that start one wait.
+    in property <bool> archive-busy: false;
     // The Shortcuts tab: the groups of lines that match the search box (the host builds them: it holds the
     // configured global hotkeys and the filter), and the box's text.
     in property <[ShortcutGroup]> shortcut-groups;
@@ -68,9 +71,6 @@ export component HelpWindow inherits Window {
     in property <string> version: "0.1.0";
     in property <string> build-date;
     in property <string> source-url;
-    // The Microsoft Store link and the third-party notices are hidden until the host has them.
-    in property <bool> show-store-link: false;
-    in property <bool> has-notices: false;
     callback toast-dismissed();
     in property <string> toast-text;
     in property <ToastKind> toast-kind: ToastKind.neutral;
@@ -92,7 +92,6 @@ export component HelpWindow inherits Window {
     callback tour-requested();
     callback source-requested();
     callback releases-requested();
-    callback store-requested();
     // "Support Snipdeck": the host opens the optional donation page in the browser.
     callback support-requested();
     callback notices-requested();
@@ -100,6 +99,8 @@ export component HelpWindow inherits Window {
 
     // How many checks are not fine, for the summary line.
     in property <int> problems: 0;
+    // The checks are being run on a worker; the list fills when they are done.
+    in property <bool> checking: false;
 
     pure function status-word(status: int) -> string {
         return status == 0 ? @tr("OK") : (status == 1 ? @tr("Warning") : @tr("Problem"));
@@ -153,9 +154,11 @@ export component HelpWindow inherits Window {
                     alignment: start;
 
                     Text {
-                        text: root.problems == 0
-                            ? @tr("Everything checks out.")
-                            : @tr("{} of the checks need a look.", root.problems);
+                        text: root.checking
+                            ? @tr("Checking…")
+                            : (root.problems == 0
+                                ? @tr("Everything checks out.")
+                                : @tr("{} of the checks need a look.", root.problems));
                         color: Theme.text-primary;
                         font-family: Fonts.sans;
                         font-size: Type.md;
@@ -210,6 +213,7 @@ export component HelpWindow inherits Window {
                                     alignment: center;
                                     Button {
                                         text: root.fix-text(c.fix);
+                                        enabled: !root.archive-busy || (c.fix != 1 && c.fix != 4);
                                         clicked => { root.fix-requested(c.fix); }
                                     }
                                 }
@@ -225,6 +229,7 @@ export component HelpWindow inherits Window {
                             alignment: start;
                             Button {
                                 text: @tr("Check again");
+                                enabled: !root.checking;
                                 variant: ButtonVariant.primary;
                                 clicked => { root.check-again-requested(); }
                             }
@@ -233,23 +238,34 @@ export component HelpWindow inherits Window {
 
                     FormSection {
                         title: @tr("Tools");
-                        HorizontalLayout {
+                        // One under the other: three side by side run past the window in the
+                        // languages whose button names are long (audit EXTRAS-15).
+                        VerticalLayout {
                             padding-top: Space.s2;
                             spacing: Space.s2;
                             alignment: start;
-                            Button {
-                                text: @tr("Copy diagnostic report");
-                                clicked => { root.copy-report-requested(); }
+                            HorizontalLayout {
+                                alignment: start;
+                                Button {
+                                    text: @tr("Copy diagnostic report");
+                                    clicked => { root.copy-report-requested(); }
+                                }
                             }
-                            Button {
-                                text: @tr("Open data folder");
-                                enabled: root.has-data-folder;
-                                clicked => { root.open-data-folder-requested(); }
+                            HorizontalLayout {
+                                alignment: start;
+                                Button {
+                                    text: @tr("Open data folder");
+                                    enabled: root.has-data-folder;
+                                    clicked => { root.open-data-folder-requested(); }
+                                }
                             }
-                            Button {
-                                text: @tr("Open logs folder");
-                                enabled: root.has-data-folder;
-                                clicked => { root.open-logs-folder-requested(); }
+                            HorizontalLayout {
+                                alignment: start;
+                                Button {
+                                    text: @tr("Open logs folder");
+                                    enabled: root.has-data-folder;
+                                    clicked => { root.open-logs-folder-requested(); }
+                                }
                             }
                         }
                         Text {
@@ -355,10 +371,10 @@ export component HelpWindow inherits Window {
                                     accessible-role: none;
                                 }
                             }
-                            // The picture is a crop of the app drawn in the light theme, so it keeps a hairline of its own
-                            // in the dark one. The words around it say everything it shows.
+                            // The picture is drawn in the theme's own colours and holds no words; the words around it say
+                            // everything it shows.
                             Rectangle {
-                                height: min(self.width, 320px) * tip.picture.height / tip.picture.width;
+                                height: min(self.width, 320px) * 150 / 320;
                                 horizontal-stretch: 1;
                                 min-width: 0px;
                                 Rectangle {
@@ -369,12 +385,10 @@ export component HelpWindow inherits Window {
                                     border-color: Theme.border-default;
                                     border-radius: Radius.md;
                                     clip: true;
-                                    Image {
-                                        source: tip.picture;
+                                    TipArt {
+                                        art: tip.art;
                                         width: parent.width;
                                         height: parent.height;
-                                        image-fit: contain;
-                                        accessible-role: none;
                                     }
                                 }
                             }
@@ -440,7 +454,8 @@ export component HelpWindow inherits Window {
                             title: @tr("User guide");
                             description: @tr("Opens in your browser.");
                             Button {
-                                text: @tr("Open");
+                                min-width: 160px * SystemLook.text-scale;
+                                text: @tr("Open guide");
                                 a11y-label: @tr("Open the user guide");
                                 clicked => { root.guide-requested(); }
                             }
@@ -449,6 +464,7 @@ export component HelpWindow inherits Window {
                             title: @tr("Welcome tour");
                             description: @tr("Walk through the basics again.");
                             Button {
+                                min-width: 160px * SystemLook.text-scale;
                                 text: @tr("Show");
                                 a11y-label: @tr("Show the welcome tour again");
                                 clicked => { root.tour-requested(); }
@@ -458,7 +474,8 @@ export component HelpWindow inherits Window {
                             title: @tr("Source code");
                             description: root.source-url;
                             Button {
-                                text: @tr("Open");
+                                min-width: 160px * SystemLook.text-scale;
+                                text: @tr("Open source code");
                                 a11y-label: @tr("Open the source code");
                                 clicked => { root.source-requested(); }
                             }
@@ -467,7 +484,8 @@ export component HelpWindow inherits Window {
                             title: @tr("Check for updates");
                             description: @tr("Snipdeck never checks by itself. This opens the releases page in your browser.");
                             Button {
-                                text: @tr("Open");
+                                min-width: 160px * SystemLook.text-scale;
+                                text: @tr("Open releases page");
                                 a11y-label: @tr("Open the releases page");
                                 clicked => { root.releases-requested(); }
                             }
@@ -476,28 +494,22 @@ export component HelpWindow inherits Window {
                             title: @tr("Support Snipdeck");
                             description: @tr("Optional. Snipdeck is free and stays free. This opens a donation page in your browser and unlocks nothing.");
                             Button {
-                                text: @tr("Open");
+                                min-width: 160px * SystemLook.text-scale;
+                                text: @tr("Open donation page");
                                 a11y-label: @tr("Open the Support Snipdeck page in your browser");
                                 clicked => { root.support-requested(); }
-                            }
-                        }
-                        if root.show-store-link: SettingRow {
-                            title: @tr("Microsoft Store");
-                            Button {
-                                text: @tr("Open");
-                                a11y-label: @tr("Open the Microsoft Store page");
-                                clicked => { root.store-requested(); }
                             }
                         }
                         SettingRow {
                             title: @tr("Symbols data");
                             description: @tr("Emoji art: Microsoft Fluent Emoji (MIT). Icons: Phosphor (MIT). Emoji names and keywords: Unicode CLDR (Unicode-3.0).");
                         }
-                        if root.has-notices: SettingRow {
+                        SettingRow {
                             title: @tr("Third-party notices");
                             description: @tr("The licences of the libraries Snipdeck is built from.");
                             Button {
-                                text: @tr("Open");
+                                min-width: 160px * SystemLook.text-scale;
+                                text: @tr("Open notices");
                                 a11y-label: @tr("Open the third-party notices");
                                 clicked => { root.notices-requested(); }
                             }
@@ -511,7 +523,7 @@ export component HelpWindow inherits Window {
     Dialog {
         open: root.rebuild-open;
         title: @tr("Rebuild from the newest backup?");
-        body: @tr("The newest backup is from {} and holds {} items on {} boards. Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read.", root.rebuild-date, root.rebuild-items, root.rebuild-boards);
+        body: @tr("The newest backup is from {}.", root.rebuild-date) + " " + @tr("It holds {n} item" | "It holds {n} items" % root.rebuild-items) + " " + @tr("on {n} board." | "on {n} boards." % root.rebuild-boards) + " " + @tr("Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read.");
         dismissed => { root.rebuild-dismissed(); }
         Button {
             text: @tr("Cancel");

@@ -281,8 +281,6 @@ export component PanelWindow inherits Window {
     // from a menu in the header instead of a tab row.
     in property <bool> search-always: false;
     in property <bool> lists-in-menu: false;
-    // True while the app is loading: skeleton rows replace the empty state.
-    in property <bool> loading: false;
     // The sensitive row held revealed by the app (-1 = none).
     in property <int> revealed-index: -1;
     // The window that will receive a paste: empty means a click copies. `target-title` is its caption.
@@ -428,6 +426,8 @@ export component PanelWindow inherits Window {
     callback recent-plain(int);
     callback recent-deleted(int);
     callback recent-saved(int, int);
+    // "Save as Sensitive…": the same chooser, and the item is saved as Sensitive (text entries only).
+    callback recent-saved-sensitive(int, int);
     callback recent-unlock-requested();
     callback add-list-requested();
     callback settings-requested();
@@ -668,6 +668,10 @@ export component PanelWindow inherits Window {
     property <int> rsel: root.recent-rows.length == 0 ? -1 : min(max(root.recent-selected, 0), root.recent-rows.length - 1);
     property <bool> recent-menu-open: false;
     property <bool> recent-save-open: false;
+    // The open "Save to…" chooser saves as Sensitive.
+    property <bool> recent-save-sensitive: false;
+    // The entry the menu is on is text, so "Save as Sensitive…" is offered.
+    property <bool> recent-menu-text: true;
     property <int> recent-menu-row: 0;
     // The entry the open menu acts on, by id (the rows may shift while it is open).
     property <int> recent-menu-id: 0;
@@ -799,6 +803,8 @@ export component PanelWindow inherits Window {
     property <string> symbol-hover-name: "";
     property <string> symbol-typed: "";
     property <int> symbol-typed-ticks: 0;
+    // Bump to hand the keyboard to the Symbols grid (Down in the search field; see SymbolsView.enter-grid-ticks).
+    in-out property <int> symbol-enter-grid-ticks: 0;
     changed scroll-y => { root.row-tips-close(); }
 
     property <bool> narrow: false;
@@ -1048,7 +1054,7 @@ export component PanelWindow inherits Window {
     }
 
     function step-symbol-kind(dir: int) {
-        root.symbol-kind = mod(root.symbol-kind + dir + 4, 4);
+        root.symbol-kind = mod(root.symbol-kind + dir + 5, 5);
         root.symbol-kind-changed(root.symbol-kind);
     }
 
@@ -1081,6 +1087,7 @@ export component PanelWindow inherits Window {
 
     function recent-menu-at(row: int, x: length, y: length) {
         root.recent-menu-row = row;
+        root.recent-menu-text = root.recent-rows[row].kind != ItemKind.image && root.recent-rows[row].kind != ItemKind.file;
         root.recent-menu-id = root.recent-rows[row].id;
         root.recent-menu-x = x;
         root.recent-menu-y = y;
@@ -1089,6 +1096,7 @@ export component PanelWindow inherits Window {
     }
 
     function recent-save-at(row: int, x: length, y: length) {
+        root.recent-save-sensitive = false;
         root.recent-menu-row = row;
         root.recent-menu-id = root.recent-rows[row].id;
         root.recent-menu-x = x;
@@ -1369,6 +1377,11 @@ export component PanelWindow inherits Window {
                         ColourState.copy-current();
                         return accept;
                     }
+                    // Ctrl+V on the Colours tab (outside a field) takes the first colour literal in the clipboard text.
+                    if (root.colours-open && (event.text == "v" || event.text == "V") && !event.modifiers.shift && !ColourState.text-focused) {
+                        ColourState.paste-colour();
+                        return accept;
+                    }
                     if ((event.text == "a" || event.text == "A") && !root.searching && !root.list-hidden) {
                         root.select-all-requested();
                         return accept;
@@ -1492,7 +1505,10 @@ export component PanelWindow inherits Window {
                 }
                 if (root.symbols-open && !switcher.has-focus && (root.symbol-search-focused || rest.has-focus)) {
                     // The grid has one selection; the search field keeps the focus and the arrows drive the grid.
-                    if (event.text == Key.DownArrow) { root.symbol-move(3); return accept; }
+                    if (event.text == Key.DownArrow) {
+                        if (root.symbol-search-focused) { root.symbol-enter-grid-ticks += 1; } else { root.symbol-move(3); }
+                        return accept;
+                    }
                     if (event.text == Key.UpArrow) { root.symbol-move(2); return accept; }
                     if (event.text == Key.PageDown) { root.symbol-move(7); return accept; }
                     if (event.text == Key.PageUp) { root.symbol-move(6); return accept; }
@@ -1853,8 +1869,8 @@ export component PanelWindow inherits Window {
                             size: IconButtonSize.sm;
                             side-override: Space.s8 * root.chrome-k;
                             glyph-scale: root.glyph-k;
-                            tooltip: root.on-top ? @tr("Keep panel on top: on") : @tr("Keep panel on top");
-                            a11y-name: @tr("Keep panel on top");
+                            tooltip: root.on-top ? @tr("Keep Panel on top: on") : @tr("Keep Panel on top");
+                            a11y-name: @tr("Keep Panel on top");
                             active: root.on-top;
                             accessible-checkable: true;
                             accessible-checked: root.on-top;
@@ -1882,8 +1898,8 @@ export component PanelWindow inherits Window {
                             size: IconButtonSize.sm;
                             side-override: Space.s8 * root.chrome-k;
                             glyph-scale: root.glyph-k;
-                            tooltip: @tr("Close panel (Esc)");
-                            a11y-name: @tr("Close panel");
+                            tooltip: @tr("Close Panel (Esc)");
+                            a11y-name: @tr("Close Panel");
                             a11y-description: @tr("Escape");
                             y: (parent.height - self.height) / 2;
                             clicked => { root.close-requested(); }
@@ -1911,14 +1927,14 @@ export component PanelWindow inherits Window {
                             size: ButtonSize.sm;
                             variant: root.select-mode ? ButtonVariant.primary : ButtonVariant.secondary;
                             text: @tr("Select");
-                            a11y-label: @tr("Select snippets");
+                            a11y-label: @tr("Select items");
                             clicked => { root.select-mode-changed(true); }
                         }
                         Button {
                             size: ButtonSize.sm;
                             variant: root.delete-mode ? ButtonVariant.primary : ButtonVariant.secondary;
                             text: @tr("Delete");
-                            a11y-label: @tr("Delete snippets");
+                            a11y-label: @tr("Delete items");
                             clicked => { root.delete-mode-changed(true); }
                         }
                         if root.delete-mode: Button {
@@ -1987,8 +2003,9 @@ export component PanelWindow inherits Window {
                         height: self.box-height;
                         min-box-h: Space.s8 + Space.s1;
                         clearable: root.search-always;
-                        placeholder: @tr("Search snippets");
-                        label: @tr("Search snippets");
+                        placeholder: @tr("Search items");
+                        label: @tr("Search items");
+                        description: @tr("Words match anywhere in a title or body. \"Quotes\" match a phrase, -word excludes, and tag:, list:, kind: or is:pinned filter.");
                         clear-label: @tr("Clear search");
                         release-on-blur: true;
                         edited(text) => {
@@ -2156,7 +2173,7 @@ export component PanelWindow inherits Window {
                     items: root.pinned;
                     more-label: @tr("+{} more", root.pinned.length - 2);
                     accessible-role: AccessibleRole.list;
-                    accessible-label: @tr("Pinned snippets");
+                    accessible-label: @tr("Pinned items");
                     use(i) => { root.pinned-used(i); }
                     copy(i) => { root.pinned-copied(i); }
                     context-menu-requested(i, x, y) => {
@@ -2187,7 +2204,7 @@ export component PanelWindow inherits Window {
                         height: parent.height - quick.box-h - Space.s1;
                         vertical-scrollbar-policy: ScrollBarPolicy.always-off;
                         horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
-                        accessible-label: @tr("Snippets");
+                        accessible-label: @tr("Items");
                         visible: root.rows.length > 0 && !root.list-hidden;
                         scrolled => { root.follow-sel = false; }
 
@@ -2488,7 +2505,7 @@ export component PanelWindow inherits Window {
                     // The "+ New item" row: directly under the last item (or at the bottom of a short or empty list).
                     quick := QuickAdd {
                         // An empty list shows its empty state's two create actions instead; "New note" opens the box.
-                        visible: !root.list-hidden && !root.loading && !root.searching && !root.no-lists && (root.rows.length > 0 || self.expanded);
+                        visible: !root.list-hidden && !root.searching && !root.no-lists && (root.rows.length > 0 || self.expanded);
                         x: Space.s2;
                         width: parent.width - 2 * Space.s2;
                         y: min(parent.height - self.box-h - Space.s1, root.rows.length == 0 ? parent.height : list.content-height + Space.s1);
@@ -2638,6 +2655,7 @@ export component PanelWindow inherits Window {
                         use-hint: root.pastes ? @tr("Click pastes into {} · Shift+click copies", root.target-name) : @tr("Click copies");
                         typed: root.symbol-typed;
                         typed-ticks: root.symbol-typed-ticks;
+                        enter-grid-ticks: root.symbol-enter-grid-ticks;
                         art(i) => { root.symbol-art(i) }
                         query-edited(text) => { root.symbol-query-changed(text); }
                         kind-picked(k) => {
@@ -2661,38 +2679,26 @@ export component PanelWindow inherits Window {
                         }
                         composing-changed(on) => { root.symbol-composing = on; }
                         hover-name(name) => { root.symbol-hover-name = name; }
+                        grid-move(code) => { root.symbol-move(code); }
                         tip(text, left, top, w, h, on) => {
                             root.tip-set(text, left, top, w, h, on);
                             root.row-tip-text = on ? text : "";
                         }
                     }
 
-                    if root.loading: VerticalLayout {
-                        x: Space.s2;
-                        y: Space.s1;
-                        width: parent.width - 2 * Space.s2;
-                        alignment: start;
-                        for n in [0, 1, 2, 3, 4, 5]: Skeleton {
-                            kind: SkeletonKind.row;
-                            // The layout's row height (spec 2.7).
-                            height: root.layout-row-h + root.row-gap;
-                            label: n == 0 ? @tr("Loading") : "";
-                        }
-                    }
-
-                    if root.rows.length == 0 && !root.loading && !root.list-hidden && !(quick.expanded && !root.no-lists && !root.searching): EmptyState {
+                    if root.rows.length == 0 && !root.list-hidden && !(quick.expanded && !root.no-lists && !root.searching): EmptyState {
                         quiet: true;
                         x: Space.s2;
                         width: parent.width - 2 * Space.s2;
                         height: parent.height;
                         kind: root.no-lists ? EmptyStateKind.board : root.searching ? EmptyStateKind.search : EmptyStateKind.list;
                         heading: root.no-lists ? @tr("No lists yet")
-                            : root.searching ? @tr("Nothing matches “{}”", root.query) : @tr("This list is empty");
-                        body: root.no-lists ? @tr("Lists hold your snippets.")
+                            : root.searching ? @tr("Nothing matches “{}”.", root.query) : @tr("This list is empty");
+                        body: root.no-lists ? @tr("Lists hold your items.")
                             : root.searching ? @tr("Searched every board and list.")
                             : @tr("Copy something, then save it here.");
                         action-text: root.no-lists ? @tr("New list") : root.searching ? @tr("Create “{}”", root.query) : @tr("Save from clipboard");
-                        caption: root.searching && !root.no-lists ? @tr("Adds a text snippet to {}", root.add-list-name) : "";
+                        caption: root.searching && !root.no-lists ? @tr("Adds a text item to {}", root.add-list-name) : "";
                         secondary-text: root.no-lists ? "" : root.searching ? @tr("Clear search") : @tr("New note");
                         action => {
                             if (root.no-lists) {
@@ -3165,7 +3171,7 @@ export component PanelWindow inherits Window {
             y: max(Space.s2, min(root.pinned-menu-y - Space.s1, root.height - self.height - Space.s2 - Space.menu-clear));
             menu-max-h: root.height - 2 * Space.s2 - Space.menu-clear;
             entries: root.pinned-more-entries;
-            label: @tr("More pinned snippets");
+            label: @tr("More pinned items");
             icons: false;
             init => { self.focus-menu(); }
             activated(i) => {
@@ -3222,25 +3228,40 @@ export component PanelWindow inherits Window {
             x: max(Space.s2, min(root.recent-menu-x, root.width - self.width - Space.s2));
             y: max(Space.s2, min(root.recent-menu-y, root.height - self.height - Space.s2 - Space.menu-clear));
             menu-max-h: root.height - 2 * Space.s2 - Space.menu-clear;
-            entries: root.pastes ? [
+            entries: root.pastes ? (root.recent-menu-text ? [
                 { text: @tr("Save to…"), icon: Icons.folder },
+                { text: @tr("Save as Sensitive…"), icon: Icons.lock },
                 { text: @tr("Copy"), icon: Icons.copy },
                 { text: @tr("Paste as plain text"), icon: Icons.clipboard },
                 { text: @tr("Remove from Recent"), icon: Icons.trash, destructive: true },
             ] : [
                 { text: @tr("Save to…"), icon: Icons.folder },
                 { text: @tr("Copy"), icon: Icons.copy },
+                { text: @tr("Paste as plain text"), icon: Icons.clipboard },
                 { text: @tr("Remove from Recent"), icon: Icons.trash, destructive: true },
-            ];
+            ]) : (root.recent-menu-text ? [
+                { text: @tr("Save to…"), icon: Icons.folder },
+                { text: @tr("Save as Sensitive…"), icon: Icons.lock },
+                { text: @tr("Copy"), icon: Icons.copy },
+                { text: @tr("Remove from Recent"), icon: Icons.trash, destructive: true },
+            ] : [
+                { text: @tr("Save to…"), icon: Icons.folder },
+                { text: @tr("Copy"), icon: Icons.copy },
+                { text: @tr("Remove from Recent"), icon: Icons.trash, destructive: true },
+            ]);
             label: @tr("Recent entry actions");
             init => { self.focus-menu(); }
             activated(i) => {
                 root.recent-menu-open = false;
-                if (i == 0) {
+                // The position in the full list [save, sensitive, copy, plain, remove], skipping what is not offered.
+                let skipped-sensitive = (i >= 1 && !root.recent-menu-text) ? i + 1 : i;
+                let a = (skipped-sensitive >= 3 && !root.pastes) ? skipped-sensitive + 1 : skipped-sensitive;
+                if (a == 0 || a == 1) {
+                    root.recent-save-sensitive = a == 1;
                     root.recent-save-open = true;
-                } else if (i == 1) {
+                } else if (a == 2) {
                     root.recent-copied(root.recent-menu-id);
-                } else if (i == 2 && root.pastes) {
+                } else if (a == 3) {
                     root.recent-plain(root.recent-menu-id);
                 } else {
                     root.recent-deleted(root.recent-menu-id);
@@ -3253,7 +3274,7 @@ export component PanelWindow inherits Window {
             y: max(Space.s2, min(root.recent-menu-y, root.height - self.height - Space.s2));
             width: min(240px, root.width - 2 * Space.s2);
             entries: root.recent-targets;
-            label: @tr("Save to…");
+            label: root.recent-save-sensitive ? @tr("Save as Sensitive to…") : @tr("Save to…");
             empty-text: @tr("No lists yet");
             init => {
                 self.current = 0;
@@ -3261,20 +3282,25 @@ export component PanelWindow inherits Window {
             }
             chosen(i) => {
                 root.recent-save-open = false;
-                root.recent-saved(root.recent-menu-id, i);
+                if (root.recent-save-sensitive) {
+                    root.recent-saved-sensitive(root.recent-menu-id, i);
+                } else {
+                    root.recent-saved(root.recent-menu-id, i);
+                }
             }
             dismissed => { root.recent-save-open = false; }
         }
 
         // ---- The list delete confirmation: over everything but the tooltip and the grips. The only thing "Delete
         // list…" shows; the list and its items move to the Trash with an Undo toast.
-        Dialog {
+        cancel-dlg-1 := Dialog {
             open: root.list-delete-open;
             variant: DialogVariant.destructive;
             title: @tr("Delete list “{}”?", root.list-delete-name);
             body: @tr("The list and its {} items move to the Trash. You can restore them for {} days.", root.list-delete-count, root.trash-days);
             dismissed => { root.list-delete-dismissed(); }
             Button {
+                focus-request: cancel-dlg-1.cancel-focus;
                 text: @tr("Cancel");
                 clicked => { root.list-delete-dismissed(); }
             }
@@ -3286,13 +3312,14 @@ export component PanelWindow inherits Window {
         }
 
         // "Clear list…" (the kebab): asks once, with the count; the Undo toast brings every item back in one step.
-        Dialog {
+        cancel-dlg-2 := Dialog {
             open: root.clear-list-open;
             variant: DialogVariant.destructive;
             title: @tr("Clear list “{}”?", root.clear-list-name);
             body: @tr("All {n} item moves to the Trash. You can restore it for {} days." | "All {n} items move to the Trash. You can restore them for {} days." % root.clear-list-count, root.trash-days);
             dismissed => { root.clear-list-dismissed(); }
             Button {
+                focus-request: cancel-dlg-2.cancel-focus;
                 text: @tr("Cancel");
                 clicked => { root.clear-list-dismissed(); }
             }
@@ -3304,13 +3331,14 @@ export component PanelWindow inherits Window {
         }
 
         // The board delete confirmation: the board, its lists and their items move to the Trash with an Undo toast.
-        Dialog {
+        cancel-dlg-3 := Dialog {
             open: root.board-delete-open;
             variant: DialogVariant.destructive;
             title: @tr("Delete board “{}”?", root.board-delete-name);
             body: @tr("Its lists and {} items move to the Trash. You can restore them for {} days.", root.board-delete-count, root.trash-days);
             dismissed => { root.board-delete-dismissed(); }
             Button {
+                focus-request: cancel-dlg-3.cancel-focus;
                 text: @tr("Cancel");
                 clicked => { root.board-delete-dismissed(); }
             }

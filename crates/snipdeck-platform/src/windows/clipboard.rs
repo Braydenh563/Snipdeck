@@ -154,6 +154,8 @@ pub struct WinClipboard {
     /// The clipboard sequence number read on the clipboard thread right after the latest write.
     written_sequence: Option<u32>,
     thread: Option<JoinHandle<()>>,
+    /// The background deletion of decrypted paste files, if one was started: the quit joins it.
+    forgetting: Option<JoinHandle<()>>,
     exited: Receiver<()>,
     /// Whether Windows accepted the clipboard-change listener (without it Recent sees nothing).
     listening: Arc<AtomicBool>,
@@ -187,11 +189,6 @@ impl Snapshot {
     /// Whether a format the clipboard offered had to be left out.
     pub fn is_incomplete(&self) -> bool {
         self.data.incomplete
-    }
-
-    /// How many formats were captured.
-    pub fn format_count(&self) -> usize {
-        self.data.formats.len()
     }
 }
 
@@ -251,6 +248,7 @@ impl WinClipboard {
                 latest_snapshot: Weak::new(),
                 written_sequence: None,
                 thread: Some(thread),
+                forgetting: None,
                 exited,
                 listening,
             }),
@@ -343,6 +341,27 @@ impl WinClipboard {
     /// ordinary file items stay: the clipboard may still point to them. Called when the
     /// clipboard clear is due, on lock and on quit.
     pub fn forget_pasted_files(&mut self) {
+        // Deleting folders can take a while (a big file, a busy disk): not on the UI thread.
+        match std::thread::Builder::new()
+            .name("forget-paste-files".into())
+            .spawn(forget_sensitive_paste_files)
+        {
+            // Kept so the quit can wait for it: the process would end under the deletion.
+            Ok(handle) => {
+                if let Some(earlier) = self.forgetting.replace(handle) {
+                    let _ = earlier.join();
+                }
+            }
+            Err(_) => forget_sensitive_paste_files(),
+        }
+    }
+
+    /// [`forget_pasted_files`](Self::forget_pasted_files), returning once the files are gone (the
+    /// quit calls it, as the process would end under a background deletion).
+    pub fn forget_pasted_files_waiting(&mut self) {
+        if let Some(handle) = self.forgetting.take() {
+            let _ = handle.join();
+        }
         forget_sensitive_paste_files();
     }
 
@@ -493,6 +512,11 @@ impl Clipboard for WinClipboard {
         let formats = self.formats;
         self.call(move || restore_job(&snapshot, written, formats))?
     }
+
+    fn restore_forced(&mut self, snapshot: Snapshot) -> Result<(), Error> {
+        let formats = self.formats;
+        self.call(move || restore_forced_job(&snapshot, formats))?
+    }
 }
 
 impl Drop for WinClipboard {
@@ -565,8 +589,15 @@ impl Formats {
         }
     }
 
-    fn markers(self) -> [u32; 3] {
-        [self.exclude_monitor, self.history, self.cloud]
+    /// The four "keep me out" markers, `Clipboard Viewer Ignore` included (older viewers and
+    /// managers read only that one).
+    fn markers(self) -> [u32; 4] {
+        [
+            self.exclude_monitor,
+            self.viewer_ignore,
+            self.history,
+            self.cloud,
+        ]
     }
 }
 
@@ -702,7 +733,7 @@ fn write_paste_files(files: &[FilePayload], sensitive: bool) -> Result<Vec<Vec<u
     win_formats::remove_paste_dirs(&root, previous.as_deref());
     let dir = win_formats::claim_paste_dir(&root, win_formats::os_random).map_err(io)?;
     if sensitive && let Ok(mut list) = SENSITIVE_PASTE_DIRS.lock() {
-        list.push(dir.clone());
+        list.push((root.clone(), dir.clone()));
     }
     let mut paths = Vec::with_capacity(files.len());
     // Two files of the same name (from different folders) must both paste.
@@ -723,7 +754,7 @@ fn write_paste_files(files: &[FilePayload], sensitive: bool) -> Result<Vec<Vec<u
 
 /// The paste folders that hold a sensitive item's decrypted files; only these are deleted when
 /// the clipboard clear is due, so a plain file item the clipboard still points to keeps its files.
-static SENSITIVE_PASTE_DIRS: std::sync::Mutex<Vec<std::path::PathBuf>> =
+static SENSITIVE_PASTE_DIRS: std::sync::Mutex<Vec<win_formats::ListedPasteDir>> =
     std::sync::Mutex::new(Vec::new());
 
 /// Deletes the folders of sensitive pastes (see [`SENSITIVE_PASTE_DIRS`]).
@@ -731,7 +762,7 @@ fn forget_sensitive_paste_files() {
     let Ok(mut list) = SENSITIVE_PASTE_DIRS.lock() else {
         return;
     };
-    win_formats::remove_listed_paste_dirs(&std::env::temp_dir().join("Snipdeck"), &mut list);
+    win_formats::remove_listed_paste_dirs(&mut list);
 }
 
 /// Removes every pasted-file folder at the next start (not on exit: a persistent `CF_HDROP` may
@@ -1259,6 +1290,26 @@ fn restore_job(snapshot: &Snapshot, written: Written, formats: Formats) -> Resul
     Ok(true)
 }
 
+/// Puts `snapshot` back although the clipboard changed since (the Target copied the selection at
+/// our request). Unverified on Windows.
+fn restore_forced_job(snapshot: &Snapshot, formats: Formats) -> Result<(), Error> {
+    let hwnd = owner_hwnd().ok_or_else(stopped)?;
+    let open = OpenGuard::open(hwnd, RESTORE_OPEN_BUDGET).ok_or_else(busy)?;
+    drain_clipboard_updates(hwnd);
+    // SAFETY: the clipboard is open by this thread with our window as the owner.
+    unsafe { EmptyClipboard() }.map_err(|e| os_error("EmptyClipboard", &e))?;
+    with_owner(|owner| owner.ledger.begin_write());
+    let whole = put_back(&snapshot.data, formats);
+    drop(open);
+    if whole {
+        Ok(())
+    } else {
+        Err(Error::Clipboard(
+            "a format of the earlier clipboard could not be put back".into(),
+        ))
+    }
+}
+
 /// Places `snapshot`'s formats now, with the markers (unless it is empty). The clipboard must be
 /// open by this thread and emptied. `false` if any format failed to write.
 fn put_back(snapshot: &SnapshotData, formats: Formats) -> bool {
@@ -1302,6 +1353,11 @@ fn read_rich_job(formats: &Formats) -> clipboard_watch::RichClip {
         return clipboard_watch::RichClip::default();
     };
     let mut clip = clipboard_watch::RichClip::default();
+    // The markers are read first: a password manager's copy is never read (UNVERIFIED on Windows).
+    if clipboard_watch::excluded_by_markers(read_markers(formats)) {
+        clip.excluded = true;
+        return clip;
+    }
     // SAFETY: the clipboard is open by this thread; the handle stays owned by the system.
     if let Ok(handle) = unsafe { GetClipboardData(u32::from(CF_UNICODETEXT.0)) }
         && let Some(mut bytes) = read_global(HGLOBAL(handle.0), READ_TEXT_LIMIT)
@@ -1643,6 +1699,29 @@ mod tests {
         for marker in clipboard.formats.markers() {
             assert!(has_format(&clipboard, marker));
         }
+    }
+
+    /// PRIVACY-11. UNVERIFIED on Windows (needs the real clipboard).
+    #[test]
+    #[ignore = "uses the real Windows clipboard"]
+    fn a_private_copy_carries_the_viewer_ignore_marker() {
+        let _lock = CLIPBOARD.lock().unwrap_or_else(PoisonError::into_inner);
+        let mut clipboard = WinClipboard::new().unwrap();
+        assert!(
+            clipboard
+                .formats
+                .markers()
+                .contains(&clipboard.formats.viewer_ignore)
+        );
+        clipboard
+            .write_persistent(&text("secret").private())
+            .unwrap();
+        assert!(has_format(&clipboard, clipboard.formats.viewer_ignore));
+        let written = clipboard
+            .write_transient(&text("secret").private())
+            .unwrap();
+        let _ = written;
+        assert!(has_format(&clipboard, clipboard.formats.viewer_ignore));
     }
 
     #[test]
