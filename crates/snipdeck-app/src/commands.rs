@@ -296,7 +296,7 @@ pub struct KeyWords {
 
 /// The spoken forms of the shortcut rows that are not one chord, and the two words shown instead
 /// of keys, in English; the English text is what the shortcut catalogue names a phrase by.
-pub const PHRASES: [&str; 18] = [
+pub const PHRASES: [&str; 19] = [
     "The item’s trigger",
     "Tab while the suggestion hint shows",
     "Alt+Up or Alt+Down",
@@ -315,6 +315,7 @@ pub const PHRASES: [&str; 18] = [
     "Trigger",
     "Hello",
     "Ctrl+Y or Ctrl+Shift+Z",
+    "Slash",
 ];
 
 impl KeyWords {

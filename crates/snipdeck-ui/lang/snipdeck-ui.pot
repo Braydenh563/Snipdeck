@@ -4166,7 +4166,7 @@ msgstr ""
 msgid "Skip"
 msgstr ""
 
-#: ui/name_texts.slint:54
+#: ui/name_texts.slint:54 ui/name_texts.slint:80
 msgid "Slash"
 msgstr ""
 
