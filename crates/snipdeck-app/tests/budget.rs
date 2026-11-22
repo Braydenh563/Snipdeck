@@ -179,6 +179,36 @@ fn measure_search_and_panel_load_budgets() {
     let cache = IndexCache::new();
     let watch = Wall;
 
+    // Where the cold load goes, phase by phase (the phases `IndexCache::snapshot` runs).
+    let (all, read_ms) = watch.measure(|| store.all_items().unwrap());
+    let (tags, tags_ms) = watch.measure(|| store.tags().unwrap());
+    let names: std::collections::HashMap<_, _> = tags
+        .iter()
+        .map(|t| (t.id, t.name.as_str().to_owned()))
+        .collect();
+    let (_, search_ms) = watch.measure(|| {
+        let mut index = snipdeck_core::search::SearchIndex::default();
+        for item in &all {
+            index.upsert_with_tags(
+                item,
+                item.tags
+                    .iter()
+                    .filter_map(|t| names.get(t).map(String::as_str)),
+            );
+        }
+        index
+    });
+    let (_, suggest_ms) = watch.measure(|| {
+        snipdeck_app::search_suggest::Index::build(
+            &all,
+            tags.iter().map(|t| t.name.as_str()),
+            std::iter::empty(),
+        )
+    });
+    println!(
+        "cold load phases: read items {read_ms:.1} ms, tags {tags_ms:.1} ms, search index {search_ms:.1} ms, suggestions {suggest_ms:.1} ms"
+    );
+
     let (_, cold_ms) =
         watch.measure(|| PanelModel::load_cached(&store, None, None, &cache).unwrap());
     let (_, warm_ms) =

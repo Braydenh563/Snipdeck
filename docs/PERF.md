@@ -48,9 +48,29 @@ CARGO_PROFILE_DEV_OPT_LEVEL=3 CARGO_PROFILE_DEV_DEBUG=0 \
 (The test profile is built
 with optimisations instead of a release build.) This builds a 10,000 item library and prints the cold and warm Panel load and five searches,
 and fails if one is over budget. Do not drop the opt-level: an unoptimised build is many times slower.
-Numbers depend on the machine, so compare runs on the same one. One run on a Linux VM
-(optimised, 10,000 items, 2026-10-19): Panel load cold 26 ms (builds the index), warm 19 ms;
-searches 0.8 to 12 ms, the slowest being a query that matches one item deep in the library.
+Numbers depend on the machine, so compare runs on the same one. The probe now uses the audit
+seed (5 boards, 50 lists, 200 tags, 10,000 items, each in a seeded-random list with one to
+three tags) and also measures the Picker and the command palette.
+
+Run on a 4-core Linux VM (optimised test profile, 2026-11-22, three to five runs each):
+
+| What | Measured | Budget |
+|---|---|---|
+| Picker open (warm index) | 4.5 ms | 80 ms |
+| Picker, worst key of "reply template 9999" | 8.4 ms | 16 ms |
+| Picker, clearing the query / changing scope | 0.05 ms | 16 ms |
+| Command palette filter, worst of six queries | 0.24 ms | 16 ms |
+| Search (index only), five queries | 0.7 to 4.1 ms | 16 ms |
+| Panel load, warm | 0.7 to 1.7 ms | 50 ms |
+| **Panel load, cold (builds the index)** | **89 to 121 ms** | **50 ms: over** |
+
+The cold load is the open finding: it is about twice its budget on this seed (the earlier
+26 ms figure, 2026-10-19, was a simpler library). Where it goes, from the phase line the probe
+prints: reading all 10,000 items with their tags about 55 ms, the typing-suggestion index about
+25 ms, the search index about 9 ms. It is paid once per start and after a write that is not an
+edit or a use (`IndexCache`), not on every open. The Picker's open budget holds because it
+opens on the warm index. Not changed here: a fix would read items faster (`fetch` in
+`snipdeck-store/src/items.rs`) or build the suggestion index off the load path.
 
 ## Release size and idle RAM
 
