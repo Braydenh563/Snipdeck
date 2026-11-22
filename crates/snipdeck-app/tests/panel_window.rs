@@ -2462,7 +2462,7 @@ fn ctrl_g_groups_the_marked_rows() {
         let header = rows.row_data(0).expect("row");
         assert!(header.is_header);
         assert_eq!(header.group_count, 2);
-        assert!(rows.row_data(1).expect("row").depth == 1);
+        assert_eq!(rows.row_data(1).expect("row").depth, 1);
     });
 }
 
@@ -2738,7 +2738,7 @@ fn enter_and_space_fold_and_unfold_a_header_and_up_down_walk_into_its_rows() {
         press(r.window(), &key(Key::RightArrow));
         press(r.window(), &key(Key::DownArrow));
         assert_eq!(r.ui.get_selected_index(), 1, "into the first member");
-        assert!(r.ui.get_rows().row_data(1).expect("row").depth == 1);
+        assert_eq!(r.ui.get_rows().row_data(1).expect("row").depth, 1);
         press(r.window(), &key(Key::UpArrow));
         assert_eq!(r.ui.get_selected_index(), 0, "and back to the header");
     });
