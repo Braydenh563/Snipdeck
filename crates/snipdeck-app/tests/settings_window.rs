@@ -1956,7 +1956,7 @@ fn note_labels_are_translated_too() {
         slint::select_bundled_translation("de").expect("de is bundled");
         let (matched, clip) = (text("base.yml, match 3"), text("Ditto clip 7"));
         slint::select_bundled_translation("").expect("back to the source language");
-        assert!(matched.contains("base.yml, Eintrag 3"), "{matched}");
+        assert!(matched.contains("base.yml, Textbaustein 3"), "{matched}");
         assert!(
             !matched.contains("match") && !clip.contains("Ditto clip"),
             "{matched} {clip}"

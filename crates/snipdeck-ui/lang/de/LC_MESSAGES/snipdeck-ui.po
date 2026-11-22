@@ -4732,7 +4732,7 @@ msgid "{}, colour {}"
 msgstr "{}, Farbe {}"
 
 msgid "{}, match {}"
-msgstr "{}, Treffer {}"
+msgstr "{}, Textbaustein {}"
 
 msgid "{}, {}"
 msgstr "{}, {}"
