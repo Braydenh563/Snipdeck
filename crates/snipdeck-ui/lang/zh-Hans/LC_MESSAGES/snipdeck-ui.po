@@ -1933,6 +1933,9 @@ msgstr "在此颜色上（在白色上）"
 msgid "On white"
 msgstr "在白色上"
 
+msgid "Only text that has been typed counts: while an input method (Japanese, Chinese) is still composing, nothing expands until you commit the text."
+msgstr "只有已输入的文字才会生效：输入法（日语、中文）还在组字时，需先确认文字，才会展开。"
+
 msgid "Only text, code, link and template items can be sensitive."
 msgstr "只有文本、代码、链接和模板类型的片段可以设为敏感。"
 

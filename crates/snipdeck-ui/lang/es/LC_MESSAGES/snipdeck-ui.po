@@ -1939,6 +1939,9 @@ msgstr "Sobre este color (sobre blanco)"
 msgid "On white"
 msgstr "Sobre blanco"
 
+msgid "Only text that has been typed counts: while an input method (Japanese, Chinese) is still composing, nothing expands until you commit the text."
+msgstr "Solo cuenta el texto ya escrito: mientras un método de entrada (japonés, chino) sigue componiendo, no se expande nada hasta que confirmes el texto."
+
 msgid "Only text, code, link and template items can be sensitive."
 msgstr "Solo los fragmentos de texto, código, enlace y plantilla pueden ser sensibles."
 

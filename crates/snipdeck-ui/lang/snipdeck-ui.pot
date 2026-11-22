@@ -174,7 +174,7 @@ msgstr ""
 msgid "Add a snippet, or move items here from another list."
 msgstr ""
 
-#: ui/picker.slint:684
+#: ui/picker.slint:687
 msgid "Add a tag to a snippet to find it here."
 msgstr ""
 
@@ -238,7 +238,7 @@ msgstr ""
 msgid "After you type the first two characters of a trigger, a small hint at the text cursor offers the item. Press Tab to insert it; any other key carries on as usual. Tab is taken only while the hint shows."
 msgstr ""
 
-#: ui/picker.slint:538 ui/symbols.slint:195
+#: ui/picker.slint:541 ui/symbols.slint:195
 msgid "All"
 msgstr ""
 
@@ -268,7 +268,7 @@ msgstr ""
 msgid "Also keep what I copy?"
 msgstr ""
 
-#: ui/picker.slint:764
+#: ui/picker.slint:767
 msgid "Alt 1 to 9"
 msgstr ""
 
@@ -588,7 +588,7 @@ msgstr ""
 msgid "Clear recent history?"
 msgstr ""
 
-#: ui/components/command-palette.slint:223 ui/help.slint:271 ui/main_window.slint:1548 ui/panel.slint:1992 ui/panel.slint:2696 ui/picker.slint:516 ui/symbols.slint:173
+#: ui/components/command-palette.slint:223 ui/help.slint:271 ui/main_window.slint:1548 ui/panel.slint:1992 ui/panel.slint:2696 ui/picker.slint:519 ui/symbols.slint:173
 msgid "Clear search"
 msgstr ""
 
@@ -652,7 +652,7 @@ msgstr ""
 msgid "Clipboard clear time"
 msgstr ""
 
-#: ui/editors.slint:2269 ui/panel.slint:2030 ui/picker.slint:780 ui/settings.slint:1672 ui/shortcut_texts.slint:101 ui/shortcut_texts.slint:105 ui/template_fill.slint:200
+#: ui/editors.slint:2269 ui/panel.slint:2030 ui/picker.slint:784 ui/settings.slint:1672 ui/shortcut_texts.slint:101 ui/shortcut_texts.slint:105 ui/template_fill.slint:200
 msgid "Close"
 msgstr ""
 
@@ -756,7 +756,7 @@ msgstr ""
 msgid "Control N"
 msgstr ""
 
-#: ui/picker.slint:759
+#: ui/picker.slint:762
 msgid "Control O"
 msgstr ""
 
@@ -784,7 +784,7 @@ msgstr ""
 msgid "Copied. {} runs as administrator, so Snipdeck can't paste into it."
 msgstr ""
 
-#: ui/colours.slint:614 ui/colours.slint:1646 ui/components/item-card.slint:925 ui/components/text_field.slint:229 ui/main_window.slint:963 ui/main_window.slint:2823 ui/menu_texts.slint:157 ui/panel.slint:607 ui/panel.slint:3227 ui/panel.slint:3232 ui/picker.slint:207 ui/picker.slint:750 ui/template_fill.slint:66
+#: ui/colours.slint:614 ui/colours.slint:1646 ui/components/item-card.slint:925 ui/components/text_field.slint:229 ui/main_window.slint:963 ui/main_window.slint:2823 ui/menu_texts.slint:157 ui/panel.slint:607 ui/panel.slint:3227 ui/panel.slint:3232 ui/picker.slint:207 ui/picker.slint:753 ui/template_fill.slint:66
 msgid "Copy"
 msgstr ""
 
@@ -828,7 +828,7 @@ msgstr ""
 msgid "Copy selected item"
 msgstr ""
 
-#: ui/picker.slint:685
+#: ui/picker.slint:688
 msgid "Copy something, then save it from the Panel."
 msgstr ""
 
@@ -1384,7 +1384,7 @@ msgstr ""
 msgid "End stack"
 msgstr ""
 
-#: ui/picker.slint:744
+#: ui/picker.slint:747
 msgid "Enter"
 msgstr ""
 
@@ -1416,7 +1416,7 @@ msgstr ""
 msgid "Erase library…"
 msgstr ""
 
-#: ui/panel.slint:1887 ui/picker.slint:779
+#: ui/panel.slint:1887 ui/picker.slint:783
 msgid "Escape"
 msgstr ""
 
@@ -1460,7 +1460,7 @@ msgstr ""
 msgid "Export library"
 msgstr ""
 
-#: ui/picker.slint:769
+#: ui/picker.slint:773
 msgid "F3"
 msgstr ""
 
@@ -1680,7 +1680,7 @@ msgstr ""
 msgid "Hidden. Hold Space to reveal."
 msgstr ""
 
-#: ui/picker.slint:631
+#: ui/picker.slint:634
 msgid "Hidden. Open it in the Panel to reveal."
 msgstr ""
 
@@ -2378,7 +2378,7 @@ msgstr ""
 msgid "No lists yet"
 msgstr ""
 
-#: ui/main_window.slint:2476 ui/picker.slint:672
+#: ui/main_window.slint:2476 ui/picker.slint:675
 msgid "No matches"
 msgstr ""
 
@@ -2410,7 +2410,7 @@ msgstr ""
 msgid "No shortcut matches"
 msgstr ""
 
-#: ui/main_window.slint:2477 ui/picker.slint:675
+#: ui/main_window.slint:2477 ui/picker.slint:678
 msgid "No snippets yet"
 msgstr ""
 
@@ -2418,7 +2418,7 @@ msgstr ""
 msgid "No symbols match “{}”"
 msgstr ""
 
-#: ui/picker.slint:675
+#: ui/picker.slint:678
 msgid "No tagged snippets"
 msgstr ""
 
@@ -2446,7 +2446,7 @@ msgstr ""
 msgid "No target: click copies"
 msgstr ""
 
-#: ui/picker.slint:719
+#: ui/picker.slint:722
 msgid "No text to show"
 msgstr ""
 
@@ -2474,7 +2474,7 @@ msgstr ""
 msgid "Nothing matches “{}”"
 msgstr ""
 
-#: ui/main_window.slint:2483 ui/picker.slint:677
+#: ui/main_window.slint:2483 ui/picker.slint:680
 msgid "Nothing matches “{}”."
 msgstr ""
 
@@ -2482,7 +2482,7 @@ msgstr ""
 msgid "Nothing new to import."
 msgstr ""
 
-#: ui/picker.slint:678
+#: ui/picker.slint:681
 msgid "Nothing on this board matches “{}”."
 msgstr ""
 
@@ -2490,11 +2490,11 @@ msgstr ""
 msgid "Nothing pinned"
 msgstr ""
 
-#: ui/picker.slint:681
+#: ui/picker.slint:684
 msgid "Nothing pinned matches “{}”."
 msgstr ""
 
-#: ui/picker.slint:673
+#: ui/picker.slint:676
 msgid "Nothing pinned yet"
 msgstr ""
 
@@ -2518,11 +2518,11 @@ msgstr ""
 msgid "Nothing to undo"
 msgstr ""
 
-#: ui/picker.slint:679
+#: ui/picker.slint:682
 msgid "Nothing used recently matches “{}”."
 msgstr ""
 
-#: ui/picker.slint:674
+#: ui/picker.slint:677
 msgid "Nothing used yet"
 msgstr ""
 
@@ -2530,7 +2530,7 @@ msgstr ""
 msgid "Nothing was added. Folders, and files or pictures that are empty, too large or unreadable, are skipped."
 msgstr ""
 
-#: ui/picker.slint:680
+#: ui/picker.slint:683
 msgid "Nothing with this tag matches “{}”."
 msgstr ""
 
@@ -2578,6 +2578,10 @@ msgstr ""
 msgid "On white"
 msgstr ""
 
+#: ui/settings.slint:1343
+msgid "Only text that has been typed counts: while an input method (Japanese, Chinese) is still composing, nothing expands until you commit the text."
+msgstr ""
+
 #: ui/editors.slint:933
 msgid "Only text, code, link and template items can be sensitive."
 msgstr ""
@@ -2602,7 +2606,7 @@ msgstr ""
 msgid "Open Settings"
 msgstr ""
 
-#: ui/menu_texts.slint:8 ui/panel.slint:2972 ui/panel.slint:2977 ui/panel.slint:2992 ui/picker.slint:690 ui/tray_texts.slint:7
+#: ui/menu_texts.slint:8 ui/panel.slint:2972 ui/panel.slint:2977 ui/panel.slint:2992 ui/picker.slint:693 ui/tray_texts.slint:7
 msgid "Open Snipdeck"
 msgstr ""
 
@@ -2958,7 +2962,7 @@ msgstr ""
 msgid "Pin"
 msgstr ""
 
-#: ui/picker.slint:682
+#: ui/picker.slint:685
 msgid "Pin a snippet from the Panel to find it here."
 msgstr ""
 
@@ -2978,7 +2982,7 @@ msgstr ""
 msgid "Pin the snippets you use most; they stay at the top of the Panel."
 msgstr ""
 
-#: ui/main_window.slint:1113 ui/main_window.slint:1331 ui/picker.slint:553
+#: ui/main_window.slint:1113 ui/main_window.slint:1331 ui/picker.slint:556
 msgid "Pinned"
 msgstr ""
 
@@ -3018,7 +3022,7 @@ msgstr ""
 msgid "Press your Panel shortcut in any app to bring up your snippets."
 msgstr ""
 
-#: ui/editors.slint:633 ui/editors.slint:1044 ui/editors.slint:1051 ui/picker.slint:724 ui/picker.slint:770 ui/shortcut_texts.slint:104 ui/template_fill.slint:267 ui/template_fill.slint:282
+#: ui/editors.slint:633 ui/editors.slint:1044 ui/editors.slint:1051 ui/picker.slint:727 ui/picker.slint:774 ui/shortcut_texts.slint:104 ui/template_fill.slint:267 ui/template_fill.slint:282
 msgid "Preview"
 msgstr ""
 
@@ -3106,7 +3110,7 @@ msgstr ""
 msgid "Rebuild from the newest backup?"
 msgstr ""
 
-#: ui/main_window.slint:1114 ui/main_window.slint:1342 ui/panel.slint:663 ui/panel.slint:2096 ui/panel.slint:3068 ui/picker.slint:558
+#: ui/main_window.slint:1114 ui/main_window.slint:1342 ui/panel.slint:663 ui/panel.slint:2096 ui/panel.slint:3068 ui/picker.slint:561
 msgid "Recent"
 msgstr ""
 
@@ -3290,7 +3294,7 @@ msgstr[1] ""
 msgid "Result with sample values"
 msgstr ""
 
-#: ui/picker.slint:605
+#: ui/picker.slint:608
 msgid "Results"
 msgstr ""
 
@@ -3426,7 +3430,7 @@ msgstr ""
 msgid "Schemes"
 msgstr ""
 
-#: ui/picker.slint:775
+#: ui/picker.slint:779
 msgid "Scope"
 msgstr ""
 
@@ -3446,11 +3450,11 @@ msgstr ""
 msgid "Search (Ctrl+F)"
 msgstr ""
 
-#: ui/picker.slint:689
+#: ui/picker.slint:692
 msgid "Search all boards"
 msgstr ""
 
-#: ui/picker.slint:514 ui/picker.slint:515
+#: ui/picker.slint:517 ui/picker.slint:518
 msgid "Search all snippets"
 msgstr ""
 
@@ -3466,7 +3470,7 @@ msgstr ""
 msgid "Search field"
 msgstr ""
 
-#: ui/picker.slint:529
+#: ui/picker.slint:532
 msgid "Search in"
 msgstr ""
 
@@ -3486,7 +3490,7 @@ msgstr ""
 msgid "Search snippets"
 msgstr ""
 
-#: ui/main_window.slint:2791 ui/panel.slint:3035 ui/picker.slint:791
+#: ui/main_window.slint:2791 ui/panel.slint:3035 ui/picker.slint:795
 msgid "Search suggestions"
 msgstr ""
 
@@ -3566,7 +3570,7 @@ msgstr ""
 msgid "Sensitive items in a backup or export can only be restored by this Windows account on this PC. On another PC, or after Windows is reinstalled, they are skipped. Keep your own copy of anything sensitive you cannot lose."
 msgstr ""
 
-#: ui/picker.slint:719
+#: ui/picker.slint:722
 msgid "Sensitive: the text is not shown here"
 msgstr ""
 
@@ -3590,11 +3594,11 @@ msgstr ""
 msgid "Settings…"
 msgstr ""
 
-#: ui/picker.slint:749
+#: ui/picker.slint:752
 msgid "Shift Enter"
 msgstr ""
 
-#: ui/picker.slint:754
+#: ui/picker.slint:757
 msgid "Shift F10"
 msgstr ""
 
@@ -3678,7 +3682,7 @@ msgstr ""
 msgid "Show title, colour, tags, trigger and privacy"
 msgstr ""
 
-#: ui/picker.slint:579
+#: ui/picker.slint:582
 msgid "Showing the first {}"
 msgstr ""
 
@@ -3814,7 +3818,7 @@ msgstr ""
 msgid "Snippets"
 msgstr ""
 
-#: ui/picker.slint:683
+#: ui/picker.slint:686
 msgid "Snippets you paste show up here."
 msgstr ""
 
@@ -3946,7 +3950,7 @@ msgstr ""
 msgid "Symbols data"
 msgstr ""
 
-#: ui/picker.slint:774
+#: ui/picker.slint:778
 msgid "Tab"
 msgstr ""
 
@@ -3958,7 +3962,7 @@ msgstr ""
 msgid "Tabs put each list of the board in a row under the header. Menu moves them into the board picker and gives the space back to your items."
 msgstr ""
 
-#: ui/main_window.slint:2584 ui/picker.slint:563
+#: ui/main_window.slint:2584 ui/picker.slint:566
 msgid "Tag"
 msgstr ""
 
@@ -4238,7 +4242,7 @@ msgstr ""
 msgid "Third-party notices"
 msgstr ""
 
-#: ui/picker.slint:543
+#: ui/picker.slint:546
 msgid "This board"
 msgstr ""
 
@@ -4270,7 +4274,7 @@ msgstr ""
 msgid "This item was deleted. Nothing was saved."
 msgstr ""
 
-#: ui/picker.slint:548
+#: ui/picker.slint:551
 msgid "This list"
 msgstr ""
 
@@ -4550,7 +4554,7 @@ msgstr ""
 msgid "Use just the program's file name, like notepad.exe."
 msgstr ""
 
-#: ui/picker.slint:765
+#: ui/picker.slint:768
 msgid "Use result N"
 msgstr ""
 
