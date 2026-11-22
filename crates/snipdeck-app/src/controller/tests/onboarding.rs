@@ -61,28 +61,33 @@ fn showing_the_tour_again_starts_at_the_welcome() {
 }
 
 #[test]
-fn next_and_back_walk_the_four_steps_and_stop_at_the_first() {
+fn next_and_back_walk_the_five_steps_and_stop_at_the_first() {
     let mut ctl = first_run(Settings::new_install());
     ctl.show_welcome_tour();
     ctl.tour_back();
     assert_eq!(ctl.tour_step(), Some(TourStep::Welcome));
-    for expected in [TourStep::Shortcuts, TourStep::Panel, TourStep::Startup] {
+    for expected in [
+        TourStep::Shortcuts,
+        TourStep::Panel,
+        TourStep::Startup,
+        TourStep::FirstItems,
+    ] {
         ctl.tour_next();
         assert_eq!(ctl.tour_step(), Some(expected));
         assert!(!ctl.settings().onboarded, "{expected:?} is not the end");
     }
     ctl.tour_back();
-    assert_eq!(ctl.tour_step(), Some(TourStep::Panel));
+    assert_eq!(ctl.tour_step(), Some(TourStep::Startup));
 }
 
 #[test]
 fn next_on_the_last_step_finishes_and_records_it() {
     let mut ctl = first_run(Settings::new_install());
     ctl.show_welcome_tour();
-    for _ in 0..3 {
+    for _ in 0..4 {
         ctl.tour_next();
     }
-    assert_eq!(ctl.tour_step(), Some(TourStep::Startup));
+    assert_eq!(ctl.tour_step(), Some(TourStep::FirstItems));
     ctl.tour_next();
     assert_eq!(ctl.tour_step(), None);
     assert!(ctl.settings().onboarded);

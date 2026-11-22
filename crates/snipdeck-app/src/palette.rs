@@ -291,21 +291,65 @@ mod tests {
         }
     }
 
-    /// MAIN-59: the sidebar and chooser counts (secondary text) read at 4.5:1 on every surface they sit on,
-    /// the selected row included.
+    /// The backgrounds a control or a label can sit on.
+    const SURFACES: [&str; 7] = [
+        "bg.app",
+        "bg.surface",
+        "bg.sunken",
+        "bg.hover",
+        "bg.selected",
+        "bg.overlay",
+        "bg.overlay-hover",
+    ];
+
+    /// UX-32: every token drawn as TEXT reaches 4.5:1 on every surface. `text.tertiary` is for glyphs,
+    /// dots and disabled labels (1.4.3 exempts disabled text), never for text that has to be read.
     #[test]
-    fn counts_read_at_four_and_a_half_to_one_on_every_surface() {
+    fn every_text_token_reads_on_every_surface_in_both_themes() {
         for theme in ["light", "dark"] {
-            for bg in [
-                "bg.app",
-                "bg.surface",
-                "bg.sunken",
-                "bg.hover",
-                "bg.selected",
-                "bg.overlay",
+            for token in [
+                "text.primary",
+                "text.secondary",
+                "accent.text",
+                "danger.fg",
+                "success.fg",
+                "warning.fg",
+                "info.fg",
             ] {
-                let ratio = contrast(theme, "text.secondary", bg);
-                assert!(ratio >= 4.5, "{theme} count on {bg}: {ratio:.2}");
+                for bg in SURFACES {
+                    let ratio = contrast(theme, token, bg);
+                    assert!(ratio >= 4.5, "{theme} {token} on {bg} is {ratio:.2}:1");
+                }
+            }
+        }
+    }
+
+    /// UX-33: every token drawn as a boundary, a glyph or a focus ring reaches 3:1 on every surface it
+    /// can be drawn on. The pairs in `NOT_DRAWN` do not occur: a selected row and a hovered overlay row
+    /// draw their accent as `accent.text` (`Theme.accent-on-selected`) and their danger as `danger.fg`.
+    #[test]
+    fn every_non_text_token_keeps_three_to_one_where_it_is_drawn() {
+        const NOT_DRAWN: [(&str, &str, &str); 5] = [
+            ("dark", "accent.default", "bg.selected"),
+            ("dark", "accent.default", "bg.overlay-hover"),
+            ("dark", "danger.solid", "bg.selected"),
+            ("dark", "danger.solid", "bg.overlay-hover"),
+            ("dark", "border.strong", "bg.selected"),
+        ];
+        for theme in ["light", "dark"] {
+            for token in [
+                "accent.default",
+                "danger.solid",
+                "border.strong",
+                "focus.ring",
+            ] {
+                for bg in SURFACES {
+                    if NOT_DRAWN.contains(&(theme, token, bg)) {
+                        continue;
+                    }
+                    let ratio = contrast(theme, token, bg);
+                    assert!(ratio >= 3.0, "{theme} {token} on {bg} is {ratio:.2}:1");
+                }
             }
         }
     }

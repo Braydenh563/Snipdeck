@@ -10,7 +10,7 @@ use snipdeck_store::{ItemRepo, TrashRepo, Trashable};
 
 use super::{
     Controller, Library, PanelMenu, UseResult, failed, neutral,
-    views::{ChooseEntry, ChooseLabel, ChooseMenu, ClearListView},
+    views::{ChooseEntry, ChooseLabel, ChooseMenu},
 };
 use crate::{
     host::ClipboardText,
@@ -203,59 +203,28 @@ where
         }
     }
 
-    // ---- Clear list… -----------------------------------------------------------------------------------
+    // ---- Clear list -------------------------------------------------------------------------------------
 
-    /// The strip's "Clear list…" (Delete mode): asks first (nothing to ask about in an empty list or a search).
-    pub fn panel_open_clear_list(&mut self) {
+    /// The strip's "Clear list" (Delete mode): every item of the list goes to the Trash as one
+    /// history step, with an Undo toast (nothing to clear in an empty list or a search).
+    pub fn panel_clear_list(&mut self) {
         if self.model.searching() {
             return;
         }
-        if let Some(list) = self.model.list()
-            && !self.model.list_item_ids().is_empty()
-        {
-            self.menu = PanelMenu::ClearList(list.id);
-        }
-    }
-
-    /// The "Clear list…" confirmation's view: the list's name and how many items go.
-    pub(super) fn clear_list_view(&self) -> Option<ClearListView> {
-        let PanelMenu::ClearList(id) = self.menu else {
-            return None;
-        };
-        let list = self.store.list(id).ok()?;
-        Some(ClearListView {
-            name: list.name.as_str().to_owned(),
-            // The shown list's items are in the model: no store read on each redraw.
-            count: if self.model.list().is_some_and(|l| l.id == id) {
-                self.model.list_item_ids().len()
-            } else {
-                self.store.items(id).map_or(0, |items| items.len())
-            },
-        })
-    }
-
-    /// "Clear list" in the confirmation: every item of the list goes to the Trash as one history
-    /// step, with an Undo toast.
-    pub fn panel_clear_list(&mut self) {
-        let PanelMenu::ClearList(id) = self.menu else {
+        let Some(list) = self.model.list() else {
             return;
         };
-        self.menu = PanelMenu::None;
         let ids: Vec<ItemId> = self
             .store
-            .items(id)
+            .items(list.id)
             .map(|items| items.iter().map(|i| i.id).collect())
             .unwrap_or_default();
+        if ids.is_empty() {
+            return;
+        }
         self.end_delete_mode();
         self.model.clear_marks();
         self.trash_with_undo(&ids);
-    }
-
-    /// Cancel, Esc or a click on the scrim: the confirmation closes and nothing is deleted.
-    pub fn cancel_clear_list(&mut self) {
-        if matches!(self.menu, PanelMenu::ClearList(_)) {
-            self.menu = PanelMenu::None;
-        }
     }
 
     // ---- The bulk bar ------------------------------------------------------------------------------

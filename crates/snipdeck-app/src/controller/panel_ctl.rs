@@ -6,8 +6,7 @@ use snipdeck_core::{BoardId, ItemId, Placement, UseMode};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 
 use super::{
-    BoardDeleteView, BoardMenuEntry, Controller, Effect, Library, PanelMenu, UseResult, failed,
-    neutral, policy_of,
+    BoardMenuEntry, Controller, Effect, Library, PanelMenu, UseResult, failed, neutral, policy_of,
 };
 use crate::{
     host::ClipboardText,
@@ -450,8 +449,8 @@ where
     }
 
     /// The user chose row `index` of the board menu: a board to switch to, or an action. New and
-    /// Rename open the board editor (its own window, shared with the Main window); Delete only
-    /// asks, and [`confirm_board_delete`](Self::confirm_board_delete) moves the board to the Trash.
+    /// Rename open the board editor (its own window, shared with the Main window); Delete moves
+    /// the board to the Trash at once, with an Undo toast.
     pub fn choose_board(&mut self, index: usize) -> Vec<Effect> {
         self.menu = PanelMenu::None;
         let Some(entry) = self.panel_board_menu_entries().into_iter().nth(index) else {
@@ -478,7 +477,7 @@ where
             }
             BoardMenuEntry::Delete { enabled: true } => {
                 if let Some(id) = self.model.board() {
-                    self.menu = PanelMenu::DeleteBoard(id);
+                    self.panel_delete_board(id);
                 }
                 Vec::new()
             }
@@ -486,41 +485,14 @@ where
         }
     }
 
-    /// The board delete confirmation's view while it asks.
-    pub(super) fn board_delete_view(&self) -> Option<BoardDeleteView> {
-        let PanelMenu::DeleteBoard(id) = self.menu else {
-            return None;
-        };
-        let board = self.store.board(id).ok()?;
-        let count = self.store.lists(id).ok()?.iter().fold(0, |n, l| {
-            n + self.store.items(l.id).map_or(0, |items| items.len())
-        });
-        Some(BoardDeleteView {
-            name: board.name.as_str().to_owned(),
-            count,
-        })
-    }
-
-    /// "Delete board" in the Panel's confirmation: the board, its lists and their items move to
-    /// the Trash, with an Undo toast.
-    pub fn confirm_board_delete(&mut self) {
-        let PanelMenu::DeleteBoard(id) = self.menu else {
-            return;
-        };
-        self.menu = PanelMenu::None;
+    /// The board, its lists and their items move to the Trash, with an Undo toast.
+    fn panel_delete_board(&mut self, id: BoardId) {
         match self.store.board(id) {
             Ok(board) if self.model.boards().len() > 1 => {
                 self.trash_board(id, board.name.as_str().to_owned());
             }
             Ok(_) => {}
             Err(_) => self.show_toast(failed()),
-        }
-    }
-
-    /// Cancel, Esc or a click on the scrim: the confirmation closes and the board stays.
-    pub fn cancel_board_delete(&mut self) {
-        if matches!(self.menu, PanelMenu::DeleteBoard(_)) {
-            self.menu = PanelMenu::None;
         }
     }
 

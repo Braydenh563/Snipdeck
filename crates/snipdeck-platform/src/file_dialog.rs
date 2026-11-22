@@ -49,7 +49,7 @@ impl PickKind {
             Self::Image => &[("PNG pictures", "*.png"), ALL],
             Self::Any => &[ALL],
             Self::Snipdeck => &[("Snipdeck files", "*.snipdeck"), ALL],
-            Self::Ditto => &[("Ditto databases", "*.db"), ALL],
+            Self::Ditto => &[("Ditto files", "*.db"), ALL],
             Self::CopyQ => &[("CopyQ exports", "*.json"), ALL],
             Self::Beeftext => &[("Beeftext exports", "*.json"), ALL],
             Self::Csv => &[("CSV exports", "*.csv;*.txt"), ALL],

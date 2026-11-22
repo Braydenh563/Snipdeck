@@ -434,35 +434,21 @@ where
             }
             BoardMenuEntry::Delete { enabled } => {
                 if enabled {
-                    self.board_delete = self.main.board();
+                    self.main_board_delete();
                 }
             }
         }
     }
 
-    /// How many items the open board holds while its delete confirmation asks.
-    pub(super) fn board_delete_count(&self) -> Option<usize> {
-        let id = self.board_delete?;
-        (self.main.board() == Some(id))
-            .then(|| self.main.side_lists().iter().map(|l| l.count).sum())
-    }
-
-    /// "Delete board" in the Main window's confirmation: the open board, its lists and their
-    /// items move to the Trash, with an Undo toast.
-    pub fn main_board_delete_confirm(&mut self) {
-        self.main_fresh();
-        let Some(id) = self.board_delete.take() else {
-            return;
-        };
-        if self.main.board() == Some(id) && self.main.boards().len() > 1 {
+    /// "Delete board…": the open board, its lists and their items move to the Trash at once, with
+    /// an Undo toast (the last board cannot go).
+    fn main_board_delete(&mut self) {
+        if let Some(id) = self.main.board()
+            && self.main.boards().len() > 1
+        {
             let name = self.main.board_name().to_owned();
             self.trash_board(id, name);
         }
-    }
-
-    /// Cancel, Esc or a click on the scrim: the board stays.
-    pub fn main_board_delete_cancel(&mut self) {
-        self.board_delete = None;
     }
 
     /// Opens board `id` in the sidebar.

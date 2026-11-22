@@ -13,11 +13,19 @@ pub enum TourStep {
     Panel,
     /// Start with Windows and keep running in the tray.
     Startup,
+    /// Boards, lists, tags and how to add a first snippet; the last step.
+    FirstItems,
 }
 
 impl TourStep {
     /// Every step, first to last.
-    pub const ALL: [Self; 4] = [Self::Welcome, Self::Shortcuts, Self::Panel, Self::Startup];
+    pub const ALL: [Self; 5] = [
+        Self::Welcome,
+        Self::Shortcuts,
+        Self::Panel,
+        Self::Startup,
+        Self::FirstItems,
+    ];
 
     /// Where the step is in [`ALL`](Self::ALL), from 0.
     #[must_use]
@@ -27,6 +35,7 @@ impl TourStep {
             Self::Shortcuts => 1,
             Self::Panel => 2,
             Self::Startup => 3,
+            Self::FirstItems => 4,
         }
     }
 
@@ -57,7 +66,8 @@ mod tests {
         assert_eq!(TourStep::Welcome.next(), Some(TourStep::Shortcuts));
         assert_eq!(TourStep::Panel.back(), Some(TourStep::Shortcuts));
         assert_eq!(TourStep::Panel.next(), Some(TourStep::Startup));
-        assert_eq!(TourStep::Startup.next(), None);
+        assert_eq!(TourStep::Startup.next(), Some(TourStep::FirstItems));
+        assert_eq!(TourStep::FirstItems.next(), None);
         for (at, step) in TourStep::ALL.into_iter().enumerate() {
             assert_eq!(step.index(), at);
         }

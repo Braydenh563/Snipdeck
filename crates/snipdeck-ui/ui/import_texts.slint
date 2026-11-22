@@ -125,7 +125,7 @@ export global ImportTexts {
         return @tr("That isn’t a Snipdeck file, or it is damaged.");
     }
     pure public function problem-not-ditto() -> string {
-        return @tr("That isn’t a Ditto database.");
+        return @tr("That isn't a Ditto file.");
     }
     pure public function problem-not-copyq() -> string {
         return @tr("That isn’t a CopyQ export.");
@@ -155,7 +155,7 @@ export global ImportTexts {
         return @tr("Windows clipboard history is turned off. Turn it on in Windows Settings > System > Clipboard, copy some text, then try again.");
     }
     pure public function problem-history-unavailable() -> string {
-        return @tr("Windows did not let Snipdeck read the clipboard history on this PC.");
+        return @tr("Windows did not let Snipdeck read Windows clipboard history on this PC.");
     }
     pure public function problem-history-empty() -> string {
         return @tr("The Windows clipboard history has no text in it yet. Copy some text, then try again.");

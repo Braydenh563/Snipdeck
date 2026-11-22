@@ -14,8 +14,8 @@ use std::time::Duration;
 
 use snipdeck_app::{
     controller::{
-        Controller, Effect, ItemMenuEntry, LIST_MENU, ListDeleteView, ListMenuEntry, MainAction,
-        MainScreen, Services, TOAST_ENTER, TOAST_EXIT, TOAST_HOLD, TOAST_UNDO_HOLD, TagRenameError,
+        Controller, Effect, ItemMenuEntry, LIST_MENU, ListMenuEntry, MainAction, MainScreen,
+        Services, TOAST_ENTER, TOAST_EXIT, TOAST_HOLD, TOAST_UNDO_HOLD, TagRenameError,
     },
     demo,
     host::{FakeTargets, FixedClock},
@@ -840,8 +840,8 @@ fn editing_a_list_renames_recolours_and_re_sorts_it() {
     let editor = ctl.main_screen().editor.expect("editor");
     assert!(!editor.is_new && editor.can_delete);
     assert_eq!(
-        (editor.name.as_str(), editor.accent, editor.item_count),
-        ("Addresses", Some(ListAccent::Amber), 2)
+        (editor.name.as_str(), editor.accent),
+        ("Addresses", Some(ListAccent::Amber))
     );
     ctl.main_editor_save("Places", None, None, ListSort::RecentlyUsed);
     let screen = ctl.main_screen();
@@ -1037,13 +1037,12 @@ fn the_list_menu_edits_the_list_it_was_opened_on() {
 }
 
 #[test]
-fn the_list_menu_delete_shows_only_the_panel_confirmation_then_trashes_with_undo() {
-    // O52: "Delete list…" asked inside the list editor, which then appeared behind the
-    // confirmation. Delete asks in the Panel and never opens the editor.
+fn the_list_menu_delete_trashes_at_once_with_undo_and_opens_nothing() {
+    // UX-20: a list goes to the Trash, so Delete acts at once and offers Undo: no dialog, and
+    // never the list editor (O52).
     let mut ctl = seeded();
     let tabs = ctl.view().tabs.len();
     let code = tab_index(&ctl, "Code");
-    let count = ctl.store().items(ctl.view().tabs[code].id).unwrap().len();
     ctl.open_list_menu(code);
     assert_eq!(ctl.choose_list_menu(1), vec![], "no window opens");
     assert!(
@@ -1051,38 +1050,10 @@ fn the_list_menu_delete_shows_only_the_panel_confirmation_then_trashes_with_undo
         "the list editor stays shut"
     );
     assert_eq!(ctl.view().list_menu, None, "the menu closed");
-    assert_eq!(
-        ctl.view().list_delete,
-        Some(ListDeleteView {
-            name: "Code".into(),
-            count
-        })
-    );
-    assert_eq!(ctl.view().tabs.len(), tabs, "nothing is deleted before it");
-    ctl.confirm_list_delete();
-    assert_eq!(ctl.view().list_delete, None);
-    assert!(ctl.main_screen().editor.is_none());
-    assert_eq!(ctl.view().tabs.len(), tabs - 1);
+    assert_eq!(ctl.view().tabs.len(), tabs - 1, "gone at once");
     assert!(ctl.view().toast.expect("toast").undo);
     ctl.main_undo();
     assert_eq!(ctl.view().tabs.len(), tabs);
-}
-
-#[test]
-fn cancelling_the_list_delete_keeps_the_list_and_opens_nothing() {
-    let mut ctl = seeded();
-    let tabs = ctl.view().tabs.len();
-    ctl.open_list_menu(tab_index(&ctl, "Code"));
-    ctl.choose_list_menu(1);
-    ctl.cancel_list_delete();
-    assert_eq!(ctl.view().list_delete, None);
-    ctl.confirm_list_delete();
-    assert_eq!(
-        ctl.view().tabs.len(),
-        tabs,
-        "a late confirm after Cancel does nothing"
-    );
-    assert!(ctl.main_screen().editor.is_none());
 }
 
 #[test]
@@ -1139,7 +1110,6 @@ fn renaming_the_open_board_uses_the_board_editor() {
     ctl.main_board_menu_activate(rename);
     let editor = ctl.main_screen().editor.unwrap();
     assert_eq!(editor.name, "Work");
-    assert_eq!(editor.item_count, 10, "the lists of the open board");
     assert!(editor.can_delete);
     ctl.main_editor_save("Office", None, None, ListSort::Manual);
     assert_eq!(ctl.main_screen().board_name, "Office");
@@ -1147,7 +1117,7 @@ fn renaming_the_open_board_uses_the_board_editor() {
 }
 
 #[test]
-fn deleting_a_board_asks_with_the_item_count_trashes_it_and_undo_restores_it() {
+fn deleting_a_board_trashes_it_at_once_and_undo_restores_it() {
     use snipdeck_app::controller::BoardMenuEntry;
     let mut ctl = seeded();
     let delete = menu_index(&mut ctl, &BoardMenuEntry::Delete { enabled: true });
@@ -1157,16 +1127,6 @@ fn deleting_a_board_asks_with_the_item_count_trashes_it_and_undo_restores_it() {
         screen.editor.is_none(),
         "O52: Delete never opens the board editor"
     );
-    assert_eq!(
-        screen.board_delete,
-        Some(10),
-        "the confirmation counts the items"
-    );
-    assert_eq!(screen.board_name, "Work", "nothing is deleted before it");
-    ctl.main_board_delete_confirm();
-    let screen = ctl.main_screen();
-    assert_eq!(screen.board_delete, None);
-    assert!(screen.editor.is_none());
     assert_eq!(
         screen.board_name, "Personal",
         "falls back to the next board"
@@ -1185,31 +1145,16 @@ fn deleting_a_board_asks_with_the_item_count_trashes_it_and_undo_restores_it() {
 }
 
 #[test]
-fn cancelling_the_board_delete_keeps_the_board() {
-    use snipdeck_app::controller::BoardMenuEntry;
-    let mut ctl = seeded();
-    let delete = menu_index(&mut ctl, &BoardMenuEntry::Delete { enabled: true });
-    ctl.main_board_menu_activate(delete);
-    ctl.main_board_delete_cancel();
-    assert_eq!(ctl.main_screen().board_delete, None);
-    ctl.main_board_delete_confirm();
-    assert_eq!(ctl.store().boards().unwrap().len(), 2);
-}
-
-#[test]
 fn the_last_board_cannot_be_deleted() {
     use snipdeck_app::controller::BoardMenuEntry;
     let mut ctl = seeded();
     // Delete Work, leaving Personal.
     let delete = menu_index(&mut ctl, &BoardMenuEntry::Delete { enabled: true });
     ctl.main_board_menu_activate(delete);
-    ctl.main_board_delete_confirm();
     let delete = menu_index(&mut ctl, &BoardMenuEntry::Delete { enabled: false });
     ctl.main_board_menu_activate(delete);
     let screen = ctl.main_screen();
-    assert_eq!(screen.board_delete, None, "the entry is off: nothing asks");
     assert!(screen.editor.is_none());
-    ctl.main_board_delete_confirm();
     assert_eq!(ctl.store().boards().unwrap().len(), 1);
 }
 
@@ -1227,7 +1172,6 @@ fn a_deleted_board_comes_back_from_the_trash_however_many_boards_there_are() {
     // Delete the open board, add another, then restore the first from the Trash.
     let delete = menu_index(&mut ctl, &BoardMenuEntry::Delete { enabled: true });
     ctl.main_board_menu_activate(delete);
-    ctl.main_board_delete_confirm();
     let gone = ctl.store().trashed().unwrap()[0].target;
     let new = menu_index(&mut ctl, &BoardMenuEntry::New);
     ctl.main_board_menu_activate(new);
@@ -2244,21 +2188,18 @@ fn the_panel_rename_entry_opens_the_editor_for_the_shown_board() {
 }
 
 #[test]
-fn the_panel_delete_entry_asks_then_trashes_and_is_off_for_the_last_board() {
+fn the_panel_delete_entry_trashes_at_once_and_is_off_for_the_last_board() {
     use snipdeck_app::controller::BoardMenuEntry;
     let mut ctl = seeded();
     ctl.open_board_menu();
     let delete = ctl.view().board_menu.unwrap().len() - 1;
     ctl.choose_board(delete);
-    let ask = ctl.view().board_delete.expect("asks first");
-    assert_eq!(ask.name, ctl.view().board_name);
-    assert_eq!(ctl.store().boards().unwrap().len(), 2);
-    ctl.cancel_board_delete();
-    assert!(ctl.view().board_delete.is_none());
+    assert_eq!(ctl.store().boards().unwrap().len(), 1, "gone at once");
+    assert!(ctl.view().toast.expect("toast").undo);
+    ctl.main_undo();
+    assert_eq!(ctl.store().boards().unwrap().len(), 2, "Undo restores it");
     ctl.open_board_menu();
     ctl.choose_board(delete);
-    ctl.confirm_board_delete();
-    assert!(ctl.view().board_delete.is_none());
     assert_eq!(ctl.store().boards().unwrap().len(), 1);
 
     ctl.open_board_menu();
@@ -2268,7 +2209,7 @@ fn the_panel_delete_entry_asks_then_trashes_and_is_off_for_the_last_board() {
         Some(&BoardMenuEntry::Delete { enabled: false })
     );
     ctl.choose_board(menu.len() - 1);
-    assert!(ctl.view().board_delete.is_none(), "the entry is off");
+    assert_eq!(ctl.store().boards().unwrap().len(), 1, "the entry is off");
 }
 
 fn toast_message(ctl: &mut Ctl) -> Option<ToastMessage> {

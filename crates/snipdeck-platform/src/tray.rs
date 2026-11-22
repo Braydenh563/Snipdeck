@@ -30,6 +30,10 @@ pub enum TrayEntry {
     OpenSnipdeck,
     /// Open Help on its Tips tab.
     Tips,
+    /// Open Settings (the way to the hotkey settings when a hotkey does not work).
+    Settings,
+    /// Open Help on its Troubleshoot tab.
+    Help,
     /// Start a screenshot: the snipping overlay opens and the Panel steps aside.
     TakeScreenshot,
     /// Switch the global hotkeys off or on (a check mark shows when they are off).
@@ -43,10 +47,12 @@ pub enum TrayEntry {
 
 impl TrayEntry {
     /// Every entry, in menu order.
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 10] = [
         Self::OpenPanel,
         Self::OpenPicker,
         Self::OpenSnipdeck,
+        Self::Settings,
+        Self::Help,
         Self::Tips,
         Self::TakeScreenshot,
         Self::PauseHotkeys,
@@ -60,11 +66,13 @@ impl TrayEntry {
         match self {
             Self::OpenPanel => "Open Panel",
             Self::OpenPicker => "Open Picker",
-            Self::OpenSnipdeck => "Open Snipdeck",
+            Self::OpenSnipdeck => "Open Main window",
             Self::Tips => "Tips",
+            Self::Settings => "Settings…",
+            Self::Help => "Troubleshoot…",
             Self::TakeScreenshot => "Take screenshot",
             Self::PauseHotkeys => "Pause hotkeys",
-            Self::PauseHistory => "Pause history",
+            Self::PauseHistory => "Pause Recent",
             Self::Quit => "Quit",
         }
     }
@@ -81,6 +89,8 @@ impl TrayEntry {
             Self::TakeScreenshot => 6,
             Self::OpenPicker => 7,
             Self::Tips => 8,
+            Self::Settings => 9,
+            Self::Help => 10,
         }
     }
 
@@ -104,6 +114,10 @@ pub struct TrayLabels {
     pub open_snipdeck: String,
     /// [`TrayEntry::Tips`].
     pub tips: String,
+    /// [`TrayEntry::Settings`].
+    pub settings: String,
+    /// [`TrayEntry::Help`].
+    pub help: String,
     /// [`TrayEntry::TakeScreenshot`].
     pub take_screenshot: String,
     /// [`TrayEntry::PauseHotkeys`].
@@ -124,6 +138,8 @@ impl Default for TrayLabels {
             open_picker: english(TrayEntry::OpenPicker),
             open_snipdeck: english(TrayEntry::OpenSnipdeck),
             tips: english(TrayEntry::Tips),
+            settings: english(TrayEntry::Settings),
+            help: english(TrayEntry::Help),
             take_screenshot: english(TrayEntry::TakeScreenshot),
             pause_hotkeys: english(TrayEntry::PauseHotkeys),
             pause_history: english(TrayEntry::PauseHistory),
@@ -142,6 +158,8 @@ impl TrayLabels {
             TrayEntry::OpenPicker => &self.open_picker,
             TrayEntry::OpenSnipdeck => &self.open_snipdeck,
             TrayEntry::Tips => &self.tips,
+            TrayEntry::Settings => &self.settings,
+            TrayEntry::Help => &self.help,
             TrayEntry::TakeScreenshot => &self.take_screenshot,
             TrayEntry::PauseHotkeys => &self.pause_hotkeys,
             TrayEntry::PauseHistory => &self.pause_history,
@@ -159,15 +177,19 @@ pub enum TrayEvent {
     OpenPanel,
     /// "Open Picker".
     OpenPicker,
-    /// "Open Snipdeck", or a double click on the icon.
+    /// "Open Main window", or a double click on the icon.
     OpenSnipdeck,
     /// "Tips": Help on its Tips tab.
     Tips,
+    /// "Settings…".
+    Settings,
+    /// "Help…": Help on its Troubleshoot tab.
+    Help,
     /// "Take screenshot".
     TakeScreenshot,
     /// "Pause hotkeys" was toggled; `true` = the hotkeys should now be off.
     HotkeysPaused(bool),
-    /// "Pause history" was toggled; `true` = collecting should now be paused.
+    /// "Pause Recent" was toggled; `true` = collecting should now be paused.
     HistoryPaused(bool),
     /// "Quit".
     Quit,
@@ -356,7 +378,7 @@ pub trait Tray {
     /// The backend is not running.
     fn set_hotkeys_paused(&mut self, paused: bool) -> Result<(), Error>;
 
-    /// Tells the tray whether clipboard history is on (`available`: "Pause history" is in the
+    /// Tells the tray whether clipboard history is on (`available`: "Pause Recent" is in the
     /// menu) and whether it is paused (the entry is checked).
     ///
     /// # Errors
@@ -391,7 +413,7 @@ pub struct TrayModel {
     double_click_opens: bool,
 }
 
-/// "Pause history" in the menu: not offered (clipboard history is off), offered, or offered and
+/// "Pause Recent" in the menu: not offered (clipboard history is off), offered, or offered and
 /// checked (collecting is paused).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum History {
@@ -484,13 +506,13 @@ impl TrayModel {
         self.hotkeys_paused = paused;
     }
 
-    /// Whether "Pause history" is checked.
+    /// Whether "Pause Recent" is checked.
     #[must_use]
     pub fn history_paused(&self) -> bool {
         self.history == History::Paused
     }
 
-    /// Whether the menu offers "Pause history" (clipboard history is on).
+    /// Whether the menu offers "Pause Recent" (clipboard history is on).
     #[must_use]
     pub fn history_available(&self) -> bool {
         self.history != History::Off
@@ -556,6 +578,8 @@ impl TrayModel {
             TrayEntry::OpenPicker => TrayEvent::OpenPicker,
             TrayEntry::OpenSnipdeck => TrayEvent::OpenSnipdeck,
             TrayEntry::Tips => TrayEvent::Tips,
+            TrayEntry::Settings => TrayEvent::Settings,
+            TrayEntry::Help => TrayEvent::Help,
             TrayEntry::TakeScreenshot => TrayEvent::TakeScreenshot,
             TrayEntry::PauseHotkeys => {
                 self.hotkeys_paused = !self.hotkeys_paused;
@@ -709,7 +733,9 @@ mod tests {
             [
                 "Open Panel",
                 "Open Picker",
-                "Open Snipdeck",
+                "Open Main window",
+                "Settings…",
+                "Troubleshoot…",
                 "Tips",
                 "Take screenshot",
                 "Pause hotkeys",
@@ -741,24 +767,16 @@ mod tests {
     fn pause_history_is_in_the_menu_only_while_clipboard_history_is_on() {
         let mut m = model();
         assert!(!m.history_available());
-        assert!(
-            menu_labels(&mut m)
-                .iter()
-                .all(|(l, _)| l != "Pause history")
-        );
+        assert!(menu_labels(&mut m).iter().all(|(l, _)| l != "Pause Recent"));
         m.set_history(true, false);
         let labels = menu_labels(&mut m);
-        let at = labels.iter().position(|(l, _)| l == "Pause history");
+        let at = labels.iter().position(|(l, _)| l == "Pause Recent");
         // Right after "Pause hotkeys", before "Quit".
-        assert_eq!(at, Some(6));
+        assert_eq!(at, Some(8));
         assert_eq!(labels.last().map(|(l, _)| l.as_str()), Some("Quit"));
         assert!(labels.iter().all(|(_, checked)| !checked));
         m.set_history(false, false);
-        assert!(
-            menu_labels(&mut m)
-                .iter()
-                .all(|(l, _)| l != "Pause history")
-        );
+        assert!(menu_labels(&mut m).iter().all(|(l, _)| l != "Pause Recent"));
     }
 
     #[test]
@@ -776,7 +794,7 @@ mod tests {
         m.set_history(true, true);
         assert!(m.history_paused());
         let labels = menu_labels(&mut m);
-        assert!(labels.contains(&("Pause history".to_owned(), true)));
+        assert!(labels.contains(&("Pause Recent".to_owned(), true)));
         // The hotkeys check mark is a separate one.
         assert!(labels.contains(&("Pause hotkeys".to_owned(), false)));
         assert_eq!(
@@ -820,6 +838,8 @@ mod tests {
             open_picker: "Picker öffnen".into(),
             open_snipdeck: "Snipdeck öffnen".into(),
             tips: "Tipps".into(),
+            settings: "Einstellungen…".into(),
+            help: "Hilfe…".into(),
             take_screenshot: "Bildschirmfoto aufnehmen".into(),
             pause_hotkeys: "Tastenkürzel pausieren".into(),
             pause_history: "Verlauf pausieren".into(),
@@ -842,6 +862,8 @@ mod tests {
                 "Panel öffnen",
                 "Picker öffnen",
                 "Snipdeck öffnen",
+                "Einstellungen…",
+                "Hilfe…",
                 "Tipps",
                 "Bildschirmfoto aufnehmen",
                 "Tastenkürzel pausieren",

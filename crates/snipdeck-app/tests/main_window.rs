@@ -875,7 +875,6 @@ fn edit_list_shows_its_fields_and_saving_renames_it() {
         assert_eq!(editor.get_name(), "Addresses");
         assert_eq!(editor.get_accent(), 3, "amber");
         assert_eq!(editor.get_sort_index(), 0);
-        assert_eq!(editor.get_item_count(), 2);
         assert!(editor.get_can_delete());
         editor.set_name("Places".into());
         editor.invoke_save_requested();
@@ -885,7 +884,7 @@ fn edit_list_shows_its_fields_and_saving_renames_it() {
 }
 
 #[test]
-fn deleting_a_list_names_the_item_count_trashes_it_and_offers_undo() {
+fn deleting_a_list_trashes_it_at_once_and_offers_undo() {
     on_ui_thread(|| {
         let r = rig();
         assert_eq!(r.ui.get_lists().row_data(0).unwrap().count, 6);
@@ -904,16 +903,17 @@ fn deleting_a_list_names_the_item_count_trashes_it_and_offers_undo() {
 }
 
 #[test]
-fn the_editors_delete_goes_through_its_own_confirmation_with_the_item_count() {
+fn the_editors_delete_trashes_at_once_closes_the_editor_and_offers_undo() {
     on_ui_thread(|| {
         let r = rig();
         r.ui.invoke_list_edit_requested(2);
         let editor = r.binding.list_editor().unwrap();
-        assert_eq!(editor.get_item_count(), 2);
         editor.invoke_delete_confirmed();
         assert!(!editor.window().is_visible());
         assert_eq!(r.list_names(), ["Email replies", "Addresses"]);
         assert_eq!(r.ui.get_toast_undo_label(), "Undo");
+        r.ui.invoke_toast_undo();
+        assert_eq!(r.list_names(), ["Email replies", "Addresses", "Code"]);
     });
 }
 
@@ -940,7 +940,7 @@ fn the_board_menu_lists_boards_and_actions_and_switches_boards() {
                 "Rename board\u{2026}",
                 "Move board up",
                 "Move board down",
-                "Delete board\u{2026}"
+                "Delete board"
             ]
         );
         assert!(r.ui.get_board_menu_entries().row_data(2).unwrap().separator);
@@ -989,15 +989,10 @@ fn new_board_rename_and_delete_use_the_board_editor() {
         editor.invoke_save_requested();
         assert_eq!(r.ui.get_board_name(), "Projects");
 
-        // Delete it: only the Main window's confirmation asks, naming the item count; the
-        // editor stays shut (O52).
+        // Delete it: it goes to the Trash at once (UX-20, no dialog) and the editor stays shut
+        // (O52).
         r.ui.invoke_board_menu_requested();
         r.ui.invoke_board_menu_activated(4 + 4);
-        assert!(!editor.window().is_visible());
-        assert!(r.ui.get_board_delete_open());
-        assert_eq!(r.ui.get_board_delete_count(), 0);
-        r.ui.invoke_board_delete_confirmed();
-        assert!(!r.ui.get_board_delete_open());
         assert!(!editor.window().is_visible());
         assert_eq!(r.ctl.borrow().store().boards().unwrap().len(), 2);
         assert_eq!(
@@ -1016,32 +1011,17 @@ fn the_last_board_cannot_be_deleted_and_its_menu_entry_is_off() {
         // Leave one board.
         r.ui.invoke_board_menu_requested();
         r.ui.invoke_board_menu_activated(3 + 4);
-        assert!(r.ui.get_board_delete_open());
-        r.ui.invoke_board_delete_confirmed();
         assert_eq!(r.ctl.borrow().store().boards().unwrap().len(), 1);
         r.ui.invoke_board_menu_requested();
         let delete = r.ui.get_board_menu_entries().row_data(1 + 1 + 4).unwrap();
         assert!(delete.destructive && delete.disabled);
         r.ui.invoke_board_menu_activated(1 + 1 + 4);
-        assert!(!r.ui.get_board_delete_open());
         assert!(
             r.binding
                 .board_editor()
                 .is_none_or(|e| !e.window().is_visible())
         );
         assert_eq!(r.ctl.borrow().store().boards().unwrap().len(), 1);
-    });
-}
-
-#[test]
-fn cancelling_the_board_delete_keeps_the_board() {
-    on_ui_thread(|| {
-        let r = rig();
-        r.ui.invoke_board_menu_requested();
-        r.ui.invoke_board_menu_activated(3 + 4);
-        r.ui.invoke_board_delete_dismissed();
-        assert!(!r.ui.get_board_delete_open());
-        assert_eq!(r.ctl.borrow().store().boards().unwrap().len(), 2);
     });
 }
 

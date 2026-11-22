@@ -59,6 +59,16 @@ fn the_tray_menu_opens_help_on_the_tips_tab() {
 }
 
 #[test]
+fn the_tray_menu_reaches_settings_and_troubleshooting() {
+    let mut w = world();
+    assert_eq!(w.ctl.on_tray(TrayEvent::Settings), [Effect::OpenSettings]);
+    assert_eq!(
+        w.ctl.on_tray(TrayEvent::Help),
+        [Effect::OpenHelp(crate::controller::HelpTopic::Troubleshoot)]
+    );
+}
+
+#[test]
 fn the_tray_menu_opens_snipdeck_and_quits() {
     let mut w = world();
     assert_eq!(

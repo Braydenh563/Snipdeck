@@ -8,7 +8,7 @@
 use std::time::Duration;
 
 use snipdeck_core::{
-    BoardId, ItemId, ListId, Timestamp,
+    ItemId, ListId, Timestamp,
     template::{Locale, TimeZone},
 };
 use snipdeck_platform::{
@@ -27,6 +27,8 @@ mod editor_ctl;
 mod eyedrop_ctl;
 mod group_ctl;
 mod history_ctl;
+#[cfg(test)]
+mod item_menu;
 mod library;
 mod lock_ctl;
 mod main_ctl;
@@ -60,8 +62,8 @@ pub use settings_ctl::{ImportKind, ImportPreview, ImportProblem, ImportSource};
 pub use symbol_ctl::{IconExport, IconSave, SaveOutcome, SymbolChoice, SymbolMenuEntry};
 pub use trigger_ctl::{HintOutcome, TypedOutcome};
 pub use views::{
-    BoardDeleteView, ChooseEntry, ChooseLabel, ChooseMenu, ClearListView, Effect, FillSubmission,
-    FillView, ListDeleteView, PickerView, StackView, ToastPhase, ToastView, UseResult, View,
+    ChooseEntry, ChooseLabel, ChooseMenu, Effect, FillSubmission, FillView, PickerView, StackView,
+    ToastPhase, ToastView, UseResult, View,
 };
 
 use crate::{
@@ -290,9 +292,6 @@ pub struct Controller<S, C, K, T> {
     /// The list or board editor, while one is open.
     editor: Option<main_ctl::EditorSlot>,
     editor_seq: u64,
-    /// The board menu's delete confirmation is asking about this board (the Main window draws
-    /// it; no editor opens).
-    board_delete: Option<BoardId>,
     /// List and board editors closed with the window that opened them: what was typed in each,
     /// for the next time it opens (this app session only).
     parked_editors: Vec<(main_ctl::EditorTarget, crate::main_window::EditorView)>,
@@ -321,6 +320,8 @@ pub struct Controller<S, C, K, T> {
     revealed: Option<snipdeck_core::ItemId>,
     /// A sensitive item held revealed in the Panel (its own: the two windows hold separately).
     panel_revealed: Option<snipdeck_core::ItemId>,
+    /// The Picker's sensitive row held revealed (Space held on it); only shown while the Picker is open.
+    picker_revealed: Option<snipdeck_core::ItemId>,
     /// What Windows says about light / dark and high contrast.
     os_look: SystemLook,
     /// The words a new library starts with and a new list's and board's editor name starts from,
@@ -444,12 +445,6 @@ enum PanelMenu {
     PasteAs(ItemId),
     /// The context menu of a list tab.
     List(ListId),
-    /// The list menu's delete confirmation, asking about this list.
-    DeleteList(ListId),
-    /// The kebab's "Clear list…" confirmation, asking about this list.
-    ClearList(ListId),
-    /// The board menu's delete confirmation, asking about this board.
-    DeleteBoard(BoardId),
 }
 
 /// Facts about the running app that are not settings and not on screen.
@@ -568,7 +563,6 @@ where
             main,
             editor: None,
             editor_seq: 0,
-            board_delete: None,
             parked_editors: Vec::new(),
             thumbs: crate::thumb_cache::ThumbCache::new(crate::thumb_cache::ROW_CAPACITY),
             detail_body: None,
@@ -583,6 +577,7 @@ where
             timer_seq: 0,
             revealed: None,
             panel_revealed: None,
+            picker_revealed: None,
             os_look: SystemLook::default(),
             starter: crate::starter::StarterWords::english(),
             colour,
@@ -749,7 +744,6 @@ where
             rename_seq: self.rename_panel.seq,
             select_mode: self.select_mode,
             delete_mode: self.delete_mode,
-            clear_list: self.clear_list_view(),
             show_numbers: self.settings.show_numbers,
             symbols_available: self.settings.show_symbols_tab,
             colours_available: self.settings.show_colours_tab,
@@ -759,11 +753,12 @@ where
             list_menu: matches!(self.menu, PanelMenu::List(_)).then(|| LIST_MENU.to_vec()),
             list_menu_sort: self.list_menu_sort(),
             list_menu_css: matches!(self.menu, PanelMenu::List(id) if self.list_has_colours(id)),
-            list_delete: self.list_delete_view(),
-            board_delete: self.board_delete_view(),
             hotkeys_paused: self.session.hotkeys_paused,
             picker: self.picker.as_ref().map(|p| PickerView {
                 rows: p.rows(),
+                revealed: self
+                    .picker_revealed
+                    .and_then(|id| p.rows().iter().position(|r| r.id == id)),
                 scope: p.scope(),
                 query: p.query().to_owned(),
                 selected: p.selected(),
@@ -1160,6 +1155,8 @@ where
             }
             TrayEvent::OpenSnipdeck => vec![Effect::OpenMainWindow],
             TrayEvent::Tips => vec![Effect::OpenHelp(HelpTopic::Tips)],
+            TrayEvent::Settings => vec![Effect::OpenSettings],
+            TrayEvent::Help => vec![Effect::OpenHelp(HelpTopic::Troubleshoot)],
             TrayEvent::HotkeysPaused(paused) => {
                 self.set_hotkeys_paused(paused);
                 vec![Effect::SetHotkeysPaused(paused)]

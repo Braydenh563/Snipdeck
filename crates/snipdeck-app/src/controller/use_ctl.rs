@@ -63,6 +63,7 @@ where
     /// the focus: the Picker takes the foreground to type into, and the paste goes back to
     /// the window it came from.
     pub fn open_picker(&mut self) {
+        self.picker_revealed = None;
         self.fill = None;
         self.fill_erase = None;
         self.on_target_changed();
@@ -117,6 +118,22 @@ where
         if let Some(picker) = &mut self.picker {
             picker.set_scope(scope);
         }
+    }
+
+    /// Holding Space on sensitive result row `index` reveals its text in the Picker; letting go
+    /// hides it again. The same rule as the Panel's [`reveal_row`](Self::reveal_row): only a
+    /// sensitive row reveals, and only while nothing locks the library.
+    pub fn picker_reveal(&mut self, index: usize, on: bool) {
+        let id = on
+            .then(|| {
+                self.picker
+                    .as_ref()
+                    .and_then(|p| p.rows().into_iter().nth(index))
+                    .filter(|r| r.sensitive)
+                    .map(|r| r.id)
+            })
+            .flatten();
+        self.picker_revealed = id.filter(|_| self.reveal_allowed());
     }
 
     /// The Picker's keyboard selection moved by `delta` rows.

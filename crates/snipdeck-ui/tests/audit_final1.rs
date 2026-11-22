@@ -118,6 +118,7 @@ fn template(c: &ItemEditor) {
 }
 
 #[test]
+#[ignore = "writes PNGs for a person to read when SNIPDECK_AUDIT_DIR is set; asserts nothing"]
 fn dump_item_editor_scenes() {
     for (dark, s, w, h) in [
         (false, 1.0, 560, 900),
@@ -154,6 +155,7 @@ fn dump_item_editor_scenes() {
 }
 
 #[test]
+#[ignore = "writes PNGs for a person to read when SNIPDECK_AUDIT_DIR is set; asserts nothing"]
 fn dump_fill_scenes() {
     for (dark, s, w) in [
         (false, 1.0, 440),
@@ -180,6 +182,7 @@ fn dump_fill_scenes() {
 }
 
 #[test]
+#[ignore = "writes PNGs for a person to read when SNIPDECK_AUDIT_DIR is set; asserts nothing"]
 fn dump_help_scenes() {
     for (tab, dark, s, w, h) in [
         (0, false, 1.0, 420, 360),
@@ -211,6 +214,7 @@ fn dump_help_scenes() {
 }
 
 #[test]
+#[ignore = "writes PNGs for a person to read when SNIPDECK_AUDIT_DIR is set; asserts nothing"]
 fn dump_settings_scenes() {
     for (dark, s, w, h) in [
         (false, 1.0, 420, 360),
@@ -234,6 +238,7 @@ fn dump_settings_scenes() {
 }
 
 #[test]
+#[ignore = "writes PNGs for a person to read when SNIPDECK_AUDIT_DIR is set; asserts nothing"]
 fn dump_toast_panel_palette() {
     for (dark, kind, name) in [
         (false, ToastKind::Neutral, "n"),
@@ -296,6 +301,7 @@ fn dump_toast_panel_palette() {
 }
 
 #[test]
+#[ignore = "writes PNGs for a person to read when SNIPDECK_AUDIT_DIR is set; asserts nothing"]
 fn dump_width_sweep_at_225() {
     for w in [600u32, 700, 800, 945] {
         let hn = Harness::new(HelpWindow::new, w, 700);

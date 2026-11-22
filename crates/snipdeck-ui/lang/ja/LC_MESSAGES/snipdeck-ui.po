@@ -46,6 +46,9 @@ msgstr "PNG画像。Snipdeckが独自のコピーを保存します。"
 msgid "A Panel that a shortcut or the tray showed hides after a paste or copy. A pinned Panel stays, and a docked one tucks back into its tab after a paste."
 msgstr "ショートカットまたはトレイから表示したパネルは、貼り付けやコピーの後に隠れます。ピン留めしたパネルはそのまま残り、固定したパネルは貼り付けの後にタブへ収まります。"
 
+msgid "A board is a set of lists, one for each part of your work. A list holds your snippets."
+msgstr "ボードはリストの集まりで、仕事の区分ごとに 1 つずつ作ります。リストにはスニペットが入ります。"
+
 msgid "A docked Panel opens at its edge. Set Dock to Floating to choose where it opens."
 msgstr "固定したパネルは端に開きます。開く場所を選ぶには、固定先を「フローティング」にします。"
 
@@ -85,7 +88,7 @@ msgstr "好きな場所にドラッグできる小さなウィンドウです。
 msgid "A smiley tab next to Recent with emoji, kaomoji and icons to paste. Turn it off to hide the tab and its Ctrl+K command."
 msgstr "「最近」の隣にある顔アイコンのタブで、貼り付け用の絵文字、顔文字、アイコンを使えます。オフにするとタブと Ctrl+K のコマンドが非表示になります。"
 
-msgid "A strip of your items beside the app you are working in. Click one to paste it there."
+msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
 msgstr "作業中のアプリの横に、スニペットを並べた帯が表示されます。クリックすると、そのアプリに貼り付けます。"
 
 msgid "A tag with that name already exists."
@@ -139,6 +142,9 @@ msgstr "アクティビティ"
 msgid "Add"
 msgstr "追加"
 
+msgid "Add Ctrl, Alt or Win to this key."
+msgstr "このキーに Ctrl、Alt、Win のいずれかを加えてください。"
+
 msgid "Add an item, or move items here from another list."
 msgstr "ここにスニペットを追加するか、別のリストから移動します。"
 
@@ -163,7 +169,7 @@ msgstr "貼り付けスタックに追加"
 msgid "Add to “{}”"
 msgstr "「{}」に追加"
 
-msgid "Add {} or {} to an item."
+msgid "Add {} or {} to a snippet."
 msgstr "スニペットに {} や {} を追加します。"
 
 msgid "Add, rename, merge or delete tags. A new name another tag already has merges the two. Deleting a tag removes it from its items; the items stay."
@@ -199,9 +205,8 @@ msgstr "すべてのグローバルショートカットが設定されていま
 msgid "All items"
 msgstr "すべてのスニペット"
 
-msgid "All {n} item moves to the Trash. You can restore it for {} days."
-msgid_plural "All {n} items move to the Trash. You can restore them for {} days."
-msgstr[0] "{n}件のスニペットがごみ箱に移動します。{}日間は元に戻せます。"
+msgid "All {} entries in Recent are removed. This can't be undone."
+msgstr "「最近」の {} 件をすべて削除します。元に戻せません。"
 
 msgid "Alpha"
 msgstr "アルファ"
@@ -308,8 +313,8 @@ msgstr "テキストカーソルの位置"
 msgid "Back"
 msgstr "戻る"
 
-msgid "Back to editing (Ctrl+P)"
-msgstr "編集に戻る (Ctrl+P)"
+msgid "Back to editing (Alt+P)"
+msgstr "編集に戻る (Alt+P)"
 
 msgid "Back up now"
 msgstr "今すぐバックアップ"
@@ -390,7 +395,7 @@ msgstr "明度"
 msgid "Bring in items from a Snipdeck file or another clipboard manager. You see what will be added before anything is written."
 msgstr "Snipdeck ファイルや別のクリップボード管理ツールからスニペットを取り込みます。書き込み前に、追加される内容を確認できます。"
 
-msgid "Bring up the Panel, open the Picker, save the clipboard or paste the next item from any app."
+msgid "Bring up the panel, open the picker, save the clipboard or paste the next item from any app."
 msgstr "どのアプリからでも、パネルを表示、ピッカーを開く、クリップボードを保存、次のスニペットを貼り付けできます。"
 
 msgid "Bring your snippets"
@@ -492,32 +497,26 @@ msgstr "取り込む内容を選択"
 msgid "Clear"
 msgstr "クリア"
 
+msgid "Clear Recent"
+msgstr "「最近」を消去"
+
+msgid "Clear Recent?"
+msgstr "「最近」を消去しますか？"
+
+msgid "Clear a recorded hotkey"
+msgstr "記録したホットキーを消去"
+
 msgid "Clear emoji and colours"
 msgstr "絵文字と色を消去"
 
 msgid "Clear filter"
 msgstr "フィルターをクリア"
 
-msgid "Clear history"
-msgstr "履歴を消去"
-
 msgid "Clear list"
 msgstr "リストを空にする"
 
-msgid "Clear list “{}”?"
-msgstr "リスト「{}」を空にしますか？"
-
-msgid "Clear list…"
-msgstr "リストを空にする…"
-
 msgid "Clear recent emoji and colours"
 msgstr "最近使った絵文字と色を消去"
-
-msgid "Clear recent history"
-msgstr "最近の履歴を消去"
-
-msgid "Clear recent history?"
-msgstr "最近の履歴を消去しますか？"
 
 msgid "Clear search"
 msgstr "検索をクリア"
@@ -720,6 +719,9 @@ msgstr "何かをコピーしてから、パネルで保存できます。"
 msgid "Copy something, then save it here."
 msgstr "何かをコピーして、ここに保存します。"
 
+msgid "Copy the colour (Colours tab)"
+msgstr "色をコピー(「色」タブ)"
+
 msgid "Copy the item"
 msgstr "スニペットをコピー"
 
@@ -732,8 +734,32 @@ msgstr "{} {} をコピー"
 msgid "CopyQ export"
 msgstr "CopyQ エクスポート"
 
-msgid "Couldn’t change the Windows start-up entry."
-msgstr "Windows のスタートアップ項目を変更できませんでした。"
+msgid "Couldn't change the Windows start-up entry"
+msgstr "Windows のスタートアップ項目を変更できませんでした"
+
+msgid "Couldn't open that window"
+msgstr "そのウィンドウを開けませんでした"
+
+msgid "Couldn't open the folder"
+msgstr "フォルダーを開けませんでした"
+
+msgid "Couldn't open the link"
+msgstr "リンクを開けませんでした"
+
+msgid "Couldn't open the log folder"
+msgstr "ログフォルダーを開けませんでした"
+
+msgid "Couldn't open this item"
+msgstr "このスニペットを開けませんでした"
+
+msgid "Couldn't pick a colour from the screen"
+msgstr "画面から色を選べませんでした"
+
+msgid "Couldn't save a draft of what you typed"
+msgstr "入力中の内容の下書きを保存できませんでした"
+
+msgid "Couldn't start the screenshot tool"
+msgstr "スクリーンショットのツールを起動できませんでした"
 
 msgid "Couldn’t clear old items out of the Trash. Restart Snipdeck to try again; if it keeps failing, check that the data folder can be written to."
 msgstr "ごみ箱の古いスニペットを削除できませんでした。Snipdeck を再起動して再試行してください。失敗が続く場合は、データフォルダーに書き込めるか確認してください。"
@@ -831,26 +857,8 @@ msgstr "今日のバックアップを作成できませんでした。バック
 msgid "Couldn’t make today’s backup: the disk is full. Free up some space, then use Back up now in Settings."
 msgstr "今日のバックアップを作成できませんでした。ディスクがいっぱいです。空き容量を確保し、設定の「今すぐバックアップ」をお使いください。"
 
-msgid "Couldn’t open that window."
-msgstr "そのウィンドウを開けませんでした。"
-
 msgid "Couldn’t open the encryption key. Nothing was saved."
 msgstr "暗号化キーを開けませんでした。何も保存されていません。"
-
-msgid "Couldn’t open the folder."
-msgstr "フォルダーを開けませんでした。"
-
-msgid "Couldn’t open the link."
-msgstr "リンクを開けませんでした。"
-
-msgid "Couldn’t open the log folder."
-msgstr "ログフォルダーを開けませんでした。"
-
-msgid "Couldn’t open this item."
-msgstr "このスニペットを開けませんでした。"
-
-msgid "Couldn’t pick a colour from the screen."
-msgstr "画面から色を選べませんでした。"
 
 msgid "Couldn’t reach the clipboard. Another app may be using it."
 msgstr "クリップボードにアクセスできませんでした。別のアプリが使用中の可能性があります。"
@@ -888,17 +896,11 @@ msgstr "バックアップを復元できませんでした。ディスクがい
 msgid "Couldn’t restore that backup: your library is locked. Unlock it, then try again."
 msgstr "バックアップを復元できませんでした。ライブラリがロックされています。ロックを解除して、もう一度お試しください。"
 
-msgid "Couldn’t save a draft of what you typed."
-msgstr "入力中の内容の下書きを保存できませんでした。"
-
 msgid "Couldn’t save this item. Nothing was changed."
 msgstr "このスニペットを保存できませんでした。何も変更されていません。"
 
 msgid "Couldn’t save your settings. Snipdeck will try again."
 msgstr "設定を保存できませんでした。Snipdeck が再試行します。"
-
-msgid "Couldn’t start the screenshot tool."
-msgstr "スクリーンショットのツールを起動できませんでした。"
 
 msgid "Couldn’t start typing triggers. Nothing will be expanded or suggested."
 msgstr "入力トリガーを開始できませんでした。展開も提案も行われません。"
@@ -966,12 +968,6 @@ msgstr "データフォルダー"
 msgid "Database"
 msgstr "データベース"
 
-msgid "Database rebuilt: {} items restored, {} recovered."
-msgstr "データベースを再構築しました。スニペット {} 件を復元、{} 件を回復しました。"
-
-msgid "Database rebuilt: {} items restored. Newer items could not be read."
-msgstr "データベースを再構築しました。{} 件を復元しました。新しいスニペットは読み取れませんでした。"
-
 msgid "Date and time in a format you choose"
 msgstr "任意の形式の日付と時刻"
 
@@ -993,12 +989,6 @@ msgstr "グループとそのスニペットを削除"
 msgid "Delete board"
 msgstr "ボードを削除"
 
-msgid "Delete board “{}”?"
-msgstr "ボード「{}」を削除しますか？"
-
-msgid "Delete board…"
-msgstr "ボードを削除…"
-
 msgid "Delete for good"
 msgstr "完全に削除"
 
@@ -1011,17 +1001,8 @@ msgstr "完全に削除…"
 msgid "Delete group"
 msgstr "グループを削除"
 
-msgid "Delete items"
-msgstr "スニペットを削除"
-
 msgid "Delete list"
 msgstr "リストを削除"
-
-msgid "Delete list “{}”?"
-msgstr "リスト「{}」を削除しますか？"
-
-msgid "Delete list…"
-msgstr "リストを削除…"
 
 msgid "Delete tag"
 msgstr "タグを削除"
@@ -1034,15 +1015,6 @@ msgstr "タグ「{}」を削除しますか？"
 
 msgid "Delete tag…"
 msgstr "タグを削除…"
-
-msgid "Delete this board?"
-msgstr "このボードを削除しますか？"
-
-msgid "Delete this list?"
-msgstr "このリストを削除しますか？"
-
-msgid "Delete this tag?"
-msgstr "このタグを削除しますか？"
 
 msgid "Delete what Recent has kept?"
 msgstr "「最近」に残っているものを削除しますか？"
@@ -1068,14 +1040,11 @@ msgstr "リスト「{}」を削除しました"
 msgid "Deleted the tag “{}”"
 msgstr "タグ「{}」を削除しました"
 
-msgid "Deleted “{}”"
-msgstr "削除しました：「{}」"
-
 msgid "Deletes every board, list, item and backup on this PC. This cannot be undone."
 msgstr "このPCにあるすべてのボード、リスト、スニペット、バックアップを削除します。元に戻すことはできません。"
 
-msgid "Deletes everything in the Recent inbox now."
-msgstr "「最近」の受信箱の内容をすべて今すぐ削除します。"
+msgid "Deletes everything in Recent now."
+msgstr "「最近」の内容をすべて今すぐ削除します。"
 
 msgid "Detail pane"
 msgstr "詳細ペイン"
@@ -1092,8 +1061,8 @@ msgstr "変更を破棄しますか？"
 msgid "Dismiss"
 msgstr "閉じる"
 
-msgid "Ditto database"
-msgstr "Ditto データベース"
+msgid "Ditto"
+msgstr "Ditto"
 
 msgid "Dock to"
 msgstr "固定先"
@@ -1245,11 +1214,14 @@ msgstr "すべてのコマンドが検索ひとつで見つかる"
 msgid "Everything checks out."
 msgstr "問題ありません。"
 
-msgid "Everything in the Trash is deleted for good. This can’t be undone."
-msgstr "ごみ箱のすべてが完全に削除されます。この操作は元に戻せません。"
+msgid "Everything in the Trash is deleted for good. This can't be undone."
+msgstr "ごみ箱の中身はすべて完全に削除されます。この操作は元に戻せません。"
 
 msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings stay. Deleted files may still be recoverable with disk tools unless your disk is encrypted."
 msgstr "ライブラリのすべて（ボード、リスト、スニペット、画像、下書き、バックアップ）が削除されます。コピーが必要なら先にエクスポートしてください。設定は残ります。ディスクが暗号化されていない場合、削除したファイルはディスクツールで復元できることがあります。"
+
+msgid "Everything lives in your library. You can add a first snippet in a minute:"
+msgstr "すべてはライブラリに保存されます。最初のスニペットは1分で追加できます："
 
 msgid "Expand abbreviations as I type"
 msgstr "入力中に略語を展開する"
@@ -1344,6 +1316,9 @@ msgstr "形式"
 msgid "Formatted"
 msgstr "書式あり"
 
+msgid "Function keys need Ctrl, Alt or Win too."
+msgstr "ファンクションキーには Ctrl、Alt、Win も必要です。"
+
 msgid "Get started"
 msgstr "はじめる"
 
@@ -1401,8 +1376,8 @@ msgstr "グループ化…"
 msgid "HDR is on for this screen: values are approximate"
 msgstr "この画面では HDR がオンです：値はおおよそです"
 
-msgid "HDR is on for this screen: {} is approximate."
-msgstr "この画面では HDR がオンです。{} はおおよその値です。"
+msgid "HDR is on for this screen: {} is approximate"
+msgstr "この画面では HDR がオンです。{} はおおよその値です"
 
 msgid "HEX"
 msgstr "HEX"
@@ -1434,14 +1409,11 @@ msgstr "ヘルプ > ヒントには、画像と「試してみる」ボタン付
 msgid "Help sections"
 msgstr "ヘルプのセクション"
 
-msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard a little after you copy it (the time is in Settings)."
-msgstr "スペースキーを押し続けるまでリストで非表示になり、クリップボード履歴には残りません。コピーしてから少し後にクリップボードから消去されます（時間は設定で変更できます）。"
+msgid "Hidden in lists until you hold Space, kept out of Recent, and cleared from the clipboard a little after you copy it (the time is in Settings)."
+msgstr "スペースキーを押し続けるまでリストで非表示になり、「最近」には残りません。コピーしてから少し後にクリップボードから消去されます（時間は設定で変更できます）。"
 
 msgid "Hidden. Hold Space to reveal."
 msgstr "非表示。スペースキーを押し続けると表示されます。"
-
-msgid "Hidden. Open it in the Panel to reveal."
-msgstr "非表示。パネルで開くと表示されます。"
 
 msgid "Hide Panel"
 msgstr "パネルを隠す"
@@ -1515,8 +1487,8 @@ msgstr "アイコン"
 msgid "Icons"
 msgstr "アイコン"
 
-msgid "Icons can’t be added to a list yet."
-msgstr "アイコンはまだリストに追加できません。"
+msgid "Icons can't be added to a list yet"
+msgstr "アイコンはまだリストに追加できません"
 
 msgid "If you forget this password, your sensitive items can never be opened again. Snipdeck cannot reset it and keeps no recovery key. Your other items are not affected."
 msgstr "このパスワードを忘れると、機密スニペットは二度と開けなくなります。Snipdeck はパスワードをリセットできず、復旧キーも保存しません。それ以外のスニペットには影響しません。"
@@ -1590,17 +1562,6 @@ msgstr "スニペット"
 msgid "Items are removed after {} days."
 msgstr "スニペットは{}日後に削除されます。"
 
-msgid "Its lists and {n} item move to the Trash. You can restore them for {} days."
-msgid_plural "Its lists and {n} items move to the Trash. You can restore them for {} days."
-msgstr[0] "このボードのリストと {n} 件のスニペットをごみ箱に移動します。{} 日間は元に戻せます。"
-
-msgid "Its lists and {n} item will move to Trash. You can restore them for {} days."
-msgid_plural "Its lists and {n} items will move to Trash. You can restore them for {} days."
-msgstr[0] "そのリストと{n}件のスニペットはごみ箱に移動します。{}日間復元できます。"
-
-msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
-msgstr "このボードのリストと{}件のスニペットがごみ箱に移動します。{}日間は復元できます。"
-
 msgid "Jump to a section"
 msgstr "セクションへ移動"
 
@@ -1610,20 +1571,14 @@ msgstr "たった今"
 msgid "Kaomoji"
 msgstr "顔文字"
 
-msgid "Keep Panel on top"
-msgstr "パネルを手前に表示"
+msgid "Keep Panel open"
+msgstr "パネルを開いたままにする"
 
 msgid "Keep Panel visible during screenshots"
 msgstr "スクリーンショット中もパネルを表示したままにする"
 
 msgid "Keep Recent on"
 msgstr "「最近」をオンのままにする"
-
-msgid "Keep a Recent inbox of what you copy"
-msgstr "コピーした内容を「最近」の受信箱に残す"
-
-msgid "Keep a Recent list of what you copy?"
-msgstr "コピーした内容の「最近」リストを残しますか？"
 
 msgid "Keep copies for fewer days"
 msgstr "コピーを残す日数を減らす"
@@ -1666,6 +1621,12 @@ msgstr "秘密は秘密のままに"
 
 msgid "Keep the Panel open"
 msgstr "パネルを開いたままにする"
+
+msgid "Keep what you copy in Recent"
+msgstr "コピーした内容を「最近」に残す"
+
+msgid "Keep what you copy in Recent?"
+msgstr "コピーした内容を「最近」に残しますか？"
 
 msgid "Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Sensitive items, password managers and the apps you exclude are never kept."
 msgstr "コピーしたテキストを、直近 {} 回のコピーまたは {} 日間のどちらか早い方まで保持します。あとで見つけたり、リストに保存したりできます。機密スニペット、パスワードマネージャー、除外したアプリのテキストは保持されません。"
@@ -1716,8 +1677,14 @@ msgstr "ポイントの待ち時間を長くする"
 msgid "Lengthen the leave delay"
 msgstr "離れたときの待ち時間を長くする"
 
-msgid "Library unlocked."
-msgstr "ライブラリのロックを解除しました。"
+msgid "Library rebuilt: {} items restored, {} recovered."
+msgstr "ライブラリを再構築しました：{} 件のスニペットを復元し、{} 件を回復しました。"
+
+msgid "Library rebuilt: {} items restored. Newer items could not be read."
+msgstr "ライブラリを再構築しました：{} 件のスニペットを復元しました。新しいスニペットは読み取れませんでした。"
+
+msgid "Library unlocked"
+msgstr "ライブラリのロックを解除しました"
 
 msgid "Light"
 msgstr "ライト"
@@ -1815,20 +1782,20 @@ msgstr "スニペットを機密にすると、表示するまで隠せます。
 msgid "Master password"
 msgstr "マスターパスワード"
 
-msgid "Master password changed."
-msgstr "マスターパスワードを変更しました。"
+msgid "Master password changed"
+msgstr "マスターパスワードを変更しました"
 
 msgid "Master password changed. Snipdeck couldn’t open the library just now. Unlock it with the new password."
 msgstr "マスターパスワードを変更しました。Snipdeck は今ライブラリを開けませんでした。新しいパスワードでロックを解除してください。"
 
-msgid "Master password removed."
-msgstr "マスターパスワードを削除しました。"
+msgid "Master password removed"
+msgstr "マスターパスワードを削除しました"
 
 msgid "Master password removed. Snipdeck couldn’t open the library just now. Restart Snipdeck to use your sensitive items."
 msgstr "マスターパスワードを削除しました。Snipdeck は今ライブラリを開けませんでした。機密スニペットを使うには Snipdeck を再起動してください。"
 
-msgid "Master password set."
-msgstr "マスターパスワードを設定しました。"
+msgid "Master password set"
+msgstr "マスターパスワードを設定しました"
 
 msgid "Menu"
 msgstr "メニュー"
@@ -1875,9 +1842,6 @@ msgstr "「最近」に残すコピーの最大数"
 msgid "Most used"
 msgstr "よく使う順"
 
-msgid "Move"
-msgstr "移動"
-
 msgid "Move a page at a time"
 msgstr "1ページずつ移動"
 
@@ -1923,9 +1887,6 @@ msgstr "リストに移動"
 msgid "Move to list…"
 msgstr "リストに移動…"
 
-msgid "Move to…"
-msgstr "移動先…"
-
 msgid "Move up"
 msgstr "上へ移動"
 
@@ -1939,6 +1900,9 @@ msgstr[0] "{} 件のスニペットをごみ箱へ移動しました"
 msgid "Moved {} item to {}"
 msgid_plural "Moved {} items to {}"
 msgstr[0] "{} 件のスニペットを {} に移動しました"
+
+msgid "Moved “{}” to the Trash"
+msgstr "「{}」をごみ箱に移動しました"
 
 msgid "Music"
 msgstr "音楽"
@@ -2060,9 +2024,6 @@ msgstr "このビューに、選択した色ラベルのスニペットはあり
 msgid "No item is marked sensitive."
 msgstr "機密に設定されたスニペットはありません。"
 
-msgid "No item uses this tag."
-msgstr "このタグを使っているスニペットはありません。"
-
 msgid "No items with this tag"
 msgstr "このタグのスニペットはありません"
 
@@ -2083,9 +2044,6 @@ msgstr "すべてのボードに一致する項目はありません"
 
 msgid "No matches in {}"
 msgstr "{} に一致するものはありません"
-
-msgid "No messages yet."
-msgstr "メッセージはまだありません。"
 
 msgid "No programs yet."
 msgstr "まだプログラムがありません。"
@@ -2150,8 +2108,8 @@ msgstr "「はい」を選ぶまで何も保存されず、設定でいつでも
 msgid "Nothing matches “{}”."
 msgstr "「{}」に一致するものはありません。"
 
-msgid "Nothing new to import."
-msgstr "新しく取り込むものはありません。"
+msgid "Nothing new to import"
+msgstr "新しく取り込むものはありません"
 
 msgid "Nothing on this board matches “{}”."
 msgstr "このボードに「{}」に一致するものはありません。"
@@ -2174,8 +2132,8 @@ msgstr "プレビューするものがありません。"
 msgid "Nothing to redo"
 msgstr "やり直す操作はありません"
 
-msgid "Nothing to restore: your library already has everything in that backup."
-msgstr "復元するものがありません。ライブラリにはそのバックアップの内容がすでにすべてあります。"
+msgid "Nothing to restore: your library already has everything in that backup"
+msgstr "復元するものがありません。ライブラリにはそのバックアップの内容がすでにすべてあります"
 
 msgid "Nothing to save. Copy some text first."
 msgstr "保存するものがありません。先にテキストをコピーしてください。"
@@ -2186,8 +2144,8 @@ msgstr "元に戻す操作はありません"
 msgid "Nothing was added. Folders, and files or pictures that are empty, too large or unreadable, are skipped."
 msgstr "何も追加されませんでした。フォルダー、および空・大きすぎる・読み取れないファイルや画像はスキップされます。"
 
-msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program’s file name, for example keepass.exe."
-msgstr "これらのプログラムでコピーした内容は「最近」の受信箱に入りません。プログラムのファイル名を使ってください（例：keepass.exe）。"
+msgid "Nothing you copy in these programs is kept in Recent. Use the program's file name, for example keepass.exe."
+msgstr "これらのプログラムでコピーした内容は「最近」に保存されません。プログラムのファイル名を使ってください（例：keepass.exe）。"
 
 msgid "Numbers the first nine rows so pressing Alt+1 to 9 uses that item."
 msgstr "最初の 9 行に番号を付け、Alt+1～9 キーでそのスニペットを使えるようにします。"
@@ -2228,6 +2186,9 @@ msgstr "先頭部分のみ表示しています。"
 msgid "Only with Start with Windows: wait in the tray, or open the Panel as well."
 msgstr "「Windows の起動時に開始」の場合のみ：トレイで待機するか、パネルも開きます。"
 
+msgid "Open Main window"
+msgstr "メインウィンドウを開く"
+
 msgid "Open Panel"
 msgstr "パネルを開く"
 
@@ -2236,9 +2197,6 @@ msgstr "ピッカーを開く"
 
 msgid "Open Settings"
 msgstr "設定を開く"
-
-msgid "Open Snipdeck"
-msgstr "Snipdeck を開く"
 
 msgid "Open a docked Panel by"
 msgstr "固定したパネルを開く操作"
@@ -2288,8 +2246,20 @@ msgstr "カーソル位置でピッカーを開く"
 msgid "Open the Support Snipdeck page in your browser"
 msgstr "Snipdeck を応援するページをブラウザーで開く"
 
+msgid "Open the colour in the Colours tab"
+msgstr "「色」タブで色を開く"
+
+msgid "Open the full editor from quick add"
+msgstr "クイック追加から完全なエディターを開く"
+
+msgid "Open the item's menu"
+msgstr "スニペットのメニューを開く"
+
 msgid "Open the item’s menu"
 msgstr "スニペットのメニューを開く"
+
+msgid "Open the picker"
+msgstr "ピッカーを開く"
 
 msgid "Open the releases page"
 msgstr "リリースのページを開く"
@@ -2402,6 +2372,9 @@ msgstr "{} に貼り付け"
 msgid "Paste key for {}"
 msgstr "{} の貼り付けキー"
 
+msgid "Paste next"
+msgstr "次を貼り付け"
+
 msgid "Paste next item"
 msgstr "次のスニペットを貼り付け"
 
@@ -2429,14 +2402,11 @@ msgstr "貼り付けスタック：{} 件選択中"
 msgid "Paste the Nth result"
 msgstr "N番目の結果を貼り付け"
 
+msgid "Paste the clipboard as a new item"
+msgstr "クリップボードを新しいスニペットとして貼り付け"
+
 msgid "Paste the item as plain text"
 msgstr "スニペットをプレーンテキストで貼り付けます"
-
-msgid "Paste the next item"
-msgstr "次のスニペットを貼り付け"
-
-msgid "Paste the next item of a stack"
-msgstr "スタックの次のスニペットを貼り付け"
 
 msgid "Paste the result"
 msgstr "結果を貼り付け"
@@ -2492,8 +2462,11 @@ msgstr "貼り付け中"
 msgid "Path to the file"
 msgstr "ファイルのパス"
 
-msgid "Pause history"
-msgstr "履歴を一時停止"
+msgid "Pause Recent"
+msgstr "「最近」を一時停止"
+
+msgid "Pause hotkeys"
+msgstr "ホットキーを一時停止"
 
 msgid "Pause shortcuts"
 msgstr "ショートカットを一時停止"
@@ -2519,10 +2492,13 @@ msgstr "選ぶ"
 msgid "Pick a colour from the screen"
 msgstr "画面から色を選ぶ"
 
+msgid "Pick a colour from the screen (Colours tab)"
+msgstr "画面から色を取得(「色」タブ)"
+
 msgid "Pick a colour from the screen (Ctrl+I)"
 msgstr "画面から色を選ぶ (Ctrl+I)"
 
-msgid "Pick how the Panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button."
+msgid "Pick how the panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button."
 msgstr "パネルの配置を選びます。設定でいつでも変更でき、他の端、アプリを切り替えたときの非表示、タスクバーのボタンも設定できます。"
 
 msgid "Pick one and it pastes where you were typing."
@@ -2558,11 +2534,11 @@ msgstr "スニペットのピン留めを切り替え"
 msgid "Pin selected item"
 msgstr "選択したスニペットをピン留め"
 
-msgid "Pin the items you use most to keep them one click away."
-msgstr "よく使うスニペットをピン留めすると、ワンクリックですぐに使えます。"
-
 msgid "Pin the items you use most; they stay at the top of the Panel."
 msgstr "よく使うスニペットをピン留めすると、パネルの上部に残ります。"
+
+msgid "Pin the snippets you use most to keep them one click away."
+msgstr "よく使うスニペットをピン留めすると、ワンクリックですぐに使えます。"
 
 msgid "Pinned"
 msgstr "ピン留め"
@@ -2585,6 +2561,9 @@ msgstr "プラス"
 msgid "Press Ctrl+K in Main to find any action by name."
 msgstr "メインウィンドウで Ctrl+K を押すと、名前で操作を探せます。"
 
+msgid "Press Ctrl+N in the Main window, or choose New item in the Panel menu, then type or paste your text."
+msgstr "メインウィンドウで Ctrl+N を押すか、パネルのメニューで「新しいスニペット」を選び、テキストを入力または貼り付けます。"
+
 msgid "Press the new shortcut"
 msgstr "新しいショートカットを押してください"
 
@@ -2597,8 +2576,8 @@ msgstr "どのアプリでもパネルのショートカットを押すと、ス
 msgid "Preview"
 msgstr "プレビュー"
 
-msgid "Preview how this item will look (Ctrl+P)"
-msgstr "このスニペットの表示をプレビュー (Ctrl+P)"
+msgid "Preview how this item will look (Alt+P)"
+msgstr "このスニペットの表示をプレビュー (Alt+P)"
 
 msgid "Previous colour {}. Click to go back."
 msgstr "前の色 {}。クリックで戻ります。"
@@ -2639,9 +2618,6 @@ msgstr "クイックキャプチャ"
 msgid "Quick capture saves what you copied as a new item."
 msgstr "クイックキャプチャは、コピーした内容を新しいスニペットとして保存します。"
 
-msgid "Quick capture the clipboard"
-msgstr "クリップボードをクイックキャプチャ"
-
 msgid "Quick-use numbers"
 msgstr "クイック入力番号"
 
@@ -2653,6 +2629,9 @@ msgstr "RGB"
 
 msgid "RTF"
 msgstr "RTF"
+
+msgid "Reach the notification's buttons"
+msgstr "通知のボタンへ移動"
 
 msgid "Ready. Press Test to check it."
 msgstr "準備完了。「テスト」を押して確認します。"
@@ -2669,20 +2648,17 @@ msgstr "最新のバックアップから再構築しますか？"
 msgid "Recent"
 msgstr "最近"
 
-msgid "Recent copies"
-msgstr "最近のコピー"
-
-msgid "Recent copies are locked"
-msgstr "最近のコピーはロックされています"
+msgid "Recent cleared"
+msgstr "「最近」を消去しました"
 
 msgid "Recent entry actions"
 msgstr "最近の項目の操作"
 
-msgid "Recent history cleared"
-msgstr "最近の履歴を消去しました"
-
 msgid "Recent holds {} copies. Turning it off deletes them, unless you choose to keep them hidden; kept copies show again if you turn Recent back on."
 msgstr "「最近」には{}件のコピーがあります。オフにすると削除されます（非表示のまま残すこともできます。残したコピーは「最近」をオンに戻すと再表示されます）。"
+
+msgid "Recent is locked"
+msgstr "「最近」はロックされています"
 
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
 msgstr "「最近」は、コピーしたテキストをこのコンピューターにのみ、直近 {} 回のコピーまたは {} 日間のどちらか早い方まで保持します。パスワードマネージャーのパスワードと機密スニペットは保持されません。設定でいつでも変更できます。"
@@ -2860,8 +2836,11 @@ msgstr "機密として保存…"
 msgid "Save from clipboard"
 msgstr "クリップボードから保存"
 
-msgid "Save the clipboard as an item"
-msgstr "クリップボードをスニペットとして保存"
+msgid "Save the colour to a list (Colours tab)"
+msgstr "色をリストに保存(「色」タブ)"
+
+msgid "Save the symbol or the colour (Symbols and Colours tabs)"
+msgstr "記号または色を保存(「記号」「色」タブ)"
 
 msgid "Save to"
 msgstr "保存先"
@@ -2889,6 +2868,9 @@ msgstr "保存した色"
 
 msgid "Saved to {}"
 msgstr "{} に保存しました"
+
+msgid "Saved {}"
+msgstr "{} を保存しました"
 
 msgid "Saved {}, but {} item could not be included: \"{}\". Its attachment could not be read."
 msgid_plural "Saved {}, but {} items could not be included, such as \"{}\". Their attachments could not be read."
@@ -2999,17 +2981,11 @@ msgstr "すべてのスニペットを選択"
 msgid "Select an item to see its details."
 msgstr "スニペットを選ぶと詳細が表示されます。"
 
-msgid "Select and delete"
-msgstr "選択と削除"
-
 msgid "Select every item"
 msgstr "すべてのスニペットを選択"
 
 msgid "Select items"
 msgstr "スニペットを選択"
-
-msgid "Select or delete…"
-msgstr "選択または削除…"
 
 msgid "Select or unselect the row"
 msgstr "行の選択を切り替える"
@@ -3112,6 +3088,9 @@ msgstr "サイドバーの表示/非表示"
 
 msgid "Show or hide the Panel"
 msgstr "パネルの表示／非表示"
+
+msgid "Show or hide the panel"
+msgstr "パネルを表示または非表示"
 
 msgid "Show or hide the sidebar"
 msgstr "サイドバーの表示/非表示"
@@ -3236,8 +3215,8 @@ msgstr "Snipdeck はサインイン後にショートカットが使えるよう
 msgid "Snippets"
 msgstr "スニペット"
 
-msgid "Some files were left out: together they are over 64 MB."
-msgstr "一部のファイルを除外しました。合計が 64 MB を超えています。"
+msgid "Some files were left out: together they are over 64 MB"
+msgstr "一部のファイルを除外しました。合計が 64 MB を超えています"
 
 msgid "Sort by"
 msgstr "並べ替え"
@@ -3256,9 +3235,6 @@ msgstr "並べ替え：{}"
 
 msgid "Sort items by"
 msgstr "スニペットの並べ替え"
-
-msgid "Sort: {}"
-msgstr "並べ替え：{}"
 
 msgid "Source"
 msgstr "取得元"
@@ -3353,6 +3329,9 @@ msgstr "タブはボードの各リストをヘッダーの下の 1 行に並べ
 msgid "Tag"
 msgstr "タグ"
 
+msgid "Tag a snippet to find it from any list. Manage tags in the Main window."
+msgstr "スニペットにタグを付けると、どのリストからでも見つけられます。タグはメインウィンドウで管理します。"
+
 msgid "Tag added to {} item"
 msgid_plural "Tag added to {} items"
 msgstr[0] "{} 件のスニペットにタグを追加しました"
@@ -3430,17 +3409,17 @@ msgstr "このファイルは新しいバージョンの Snipdeck で作成さ�
 msgid "That file is over {} MB, the most an item can hold."
 msgstr "そのファイルは {} MB を超えています。スニペットに入れられる上限です。"
 
-msgid "That is too many files to add at once."
-msgstr "一度に追加するファイルが多すぎます。"
+msgid "That is too many files to add at once"
+msgstr "一度に追加するファイルが多すぎます"
+
+msgid "That isn't a Ditto file."
+msgstr "Ditto のファイルではありません。"
 
 msgid "That isn’t a Beeftext export."
 msgstr "これは Beeftext のエクスポートではありません。"
 
 msgid "That isn’t a CopyQ export."
 msgstr "CopyQ のエクスポートファイルではありません。"
-
-msgid "That isn’t a Ditto database."
-msgstr "Ditto のデータベースではありません。"
 
 msgid "That isn’t a PhraseExpress CSV export."
 msgstr "これは PhraseExpress の CSV エクスポートではありません。"
@@ -3463,17 +3442,11 @@ msgstr "パスワードが正しくありません。もう一度お試しくだ
 msgid "That path is a folder, not a file."
 msgstr "そのパスはファイルではなくフォルダーです。"
 
-msgid "That text is too large to save."
-msgstr "そのテキストは大きすぎて保存できません。"
+msgid "That text is too large to save"
+msgstr "そのテキストは大きすぎて保存できません"
 
 msgid "That was the last one. Paste next starts again from the first."
 msgstr "これが最後の1件です。次の貼り付けは最初から始まります。"
-
-msgid "The Panel"
-msgstr "パネル"
-
-msgid "The Picker"
-msgstr "ピッカー"
 
 msgid "The Store version keeps your library inside the app, so uninstalling removes it. Back up now also saves a copy in Documents > Snipdeck backups."
 msgstr "Store 版ではライブラリがアプリ内に保存されるため、アンインストールすると削除されます。「今すぐバックアップ」を押すと、ドキュメント > Snipdeck backups にもコピーが保存されます。"
@@ -3529,13 +3502,6 @@ msgstr "ライブラリのロックを解除または変更できませんでし
 msgid "The licences of the libraries Snipdeck is built from."
 msgstr "Snipdeck のビルドに使われているライブラリのライセンスです。"
 
-msgid "The list and its {n} item move to the Trash. You can restore them for {} days."
-msgid_plural "The list and its {n} items move to the Trash. You can restore them for {} days."
-msgstr[0] "リストと {n} 件のスニペットをごみ箱に移動します。{} 日間は元に戻せます。"
-
-msgid "The list and its {} items move to the Trash. You can restore them for {} days."
-msgstr "リストとその{}件のスニペットはごみ箱に移動します。{}日間復元できます。"
-
 msgid "The list holds at most {} programs."
 msgstr "リストには最大 {} 個のプログラムを登録できます。"
 
@@ -3548,24 +3514,26 @@ msgstr "最新のバックアップは {} のものです。"
 msgid "The newest crash report is {}."
 msgstr "最新のクラッシュレポートは {} です。"
 
+msgid "The panel"
+msgstr "パネル"
+
+msgid "The picker"
+msgstr "ピッカー"
+
 msgid "The report holds versions and settings switches, never your items."
 msgstr "レポートにはバージョンと設定のスイッチが含まれ、スニペットは含まれません。"
 
 msgid "The screen changed, so the colour pick ended."
 msgstr "画面が変わったため、色の選択を終了しました。"
 
-msgid "The selected item is deleted for good. This can’t be undone."
-msgid_plural "The selected items are deleted for good. This can’t be undone."
-msgstr[0] "選択したスニペットを完全に削除します。この操作は元に戻せません。"
+msgid "The selected items are deleted for good. This can't be undone."
+msgstr "選択したスニペットは完全に削除されます。この操作は元に戻せません。"
 
 msgid "The sensitive item \"{}\" cannot be unlocked with this computer’s key and was skipped."
 msgstr "機密スニペット「{}」は、このコンピューターのキーではロックを解除できないため、スキップされました。"
 
 msgid "The shortcut for each is shown beside it."
 msgstr "それぞれのショートカットが横に表示されます。"
-
-msgid "The tag is removed from its items. The items themselves stay."
-msgstr "タグはスニペットから外されます。スニペット自体は残ります。"
 
 msgid "The taskbar is on that edge. Pick another edge, or move the taskbar."
 msgstr "その端にはタスクバーがあります。別の端を選ぶか、タスクバーを移動してください。"
@@ -3575,10 +3543,6 @@ msgstr "現在時刻"
 
 msgid "The two passwords are not the same."
 msgstr "2つのパスワードが一致しません。"
-
-msgid "The {n} recent copy is removed. This can’t be undone."
-msgid_plural "All {n} recent copies are removed. This can’t be undone."
-msgstr[0] "最近のコピー {n} 件を削除します。この操作は元に戻せません。"
 
 msgid "Theme"
 msgstr "テーマ"
@@ -3644,6 +3608,9 @@ msgstr "このスニペットは削除されたため、何も保存されませ
 msgid "This item was deleted. Nothing was saved."
 msgstr "このスニペットは削除されました。何も保存されていません。"
 
+msgid "This key cannot be part of a shortcut."
+msgstr "このキーはショートカットに使えません。"
+
 msgid "This list is empty"
 msgstr "このリストは空です"
 
@@ -3704,9 +3671,6 @@ msgstr "今日は{}で、時刻は{}です。波かっこ内のプレースホ�
 msgid "Today’s date"
 msgstr "今日の日付"
 
-msgid "Toggle keep Panel open"
-msgstr "パネルを開いたままにする（切り替え）"
-
 msgid "Too many wrong passwords. Wait a few seconds and try again."
 msgstr "パスワードの誤りが続きました。数秒待ってからもう一度お試しください。"
 
@@ -3758,8 +3722,8 @@ msgstr "オフにして削除"
 msgid "Turn off, keep them"
 msgstr "オフにして残す"
 
-msgid "Turn on clipboard history in Settings to collect what you copy."
-msgstr "設定でクリップボード履歴をオンにすると、コピーした内容が保存されます。"
+msgid "Turn on “Keep what you copy in Recent” in Settings."
+msgstr "設定で「コピーした内容を「最近」に残す」をオンにしてください。"
 
 msgid "Turn this off and closing the Panel or the Main window quits Snipdeck."
 msgstr "オフにすると、パネルまたはメインウィンドウを閉じたときに Snipdeck が終了します。"
@@ -3842,11 +3806,11 @@ msgstr "機密スニペットを含めるため、先にライブラリのロッ
 msgid "Unlock your library to save this item."
 msgstr "このスニペットを保存するには、ライブラリのロックを解除してください。"
 
-msgid "Unlock your library to see recent copies. Nothing is collected while it is locked."
-msgstr "最近のコピーを見るにはライブラリのロックを解除してください。ロック中は何も収集されません。"
+msgid "Unlock your library to see Recent. Nothing is collected while it is locked."
+msgstr "「最近」を見るにはライブラリのロックを解除してください。ロック中は何も収集されません。"
 
-msgid "Unlock your library to use this item."
-msgstr "このスニペットを使うには、ライブラリのロックを解除してください。"
+msgid "Unlock your library to use this item"
+msgstr "このスニペットを使うには、ライブラリのロックを解除してください"
 
 msgid "Unlock your sensitive items"
 msgstr "機密スニペットのロックを解除"
@@ -3980,7 +3944,7 @@ msgstr "他のプログラムでスニペットのトリガーを入力すると
 msgid "Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none."
 msgstr "ショートカットまたはトレイでパネルを表示する位置です。アプリにテキストカーソルがない場合、「テキストカーソルの位置」はマウスの位置になります。"
 
-msgid "Where the Panel sits"
+msgid "Where the panel sits"
 msgstr "パネルの位置"
 
 msgid "Where the text cursor lands after pasting"
@@ -4007,8 +3971,8 @@ msgstr "Windows"
 msgid "Windows Hello did not unlock Snipdeck. Use your master password."
 msgstr "Windows Hello では Snipdeck のロックを解除できませんでした。マスターパスワードを使ってください。"
 
-msgid "Windows Hello didn’t work, so it was not turned on."
-msgstr "Windows Hello が動作しなかったため、オンにしませんでした。"
+msgid "Windows Hello didn't work, so it was not turned on"
+msgstr "Windows Hello が動作しなかったため、オンにしませんでした"
 
 msgid "Windows Hello didn’t work, so it was turned off. You can turn it on again in Settings."
 msgstr "Windows Hello が動作しなかったため、オフにしました。設定からもう一度オンにできます。"
@@ -4016,8 +3980,8 @@ msgstr "Windows Hello が動作しなかったため、オフにしました。�
 msgid "Windows Hello was cancelled. Use your master password."
 msgstr "Windows Hello がキャンセルされました。マスターパスワードを使用してください。"
 
-msgid "Windows Hello was not turned on."
-msgstr "Windows Hello はオンになっていません。"
+msgid "Windows Hello was not turned on"
+msgstr "Windows Hello はオンになっていません"
 
 msgid "Windows accent"
 msgstr "Windows のアクセント"
@@ -4031,7 +3995,7 @@ msgstr "クリップボードの履歴"
 msgid "Windows clipboard history is turned off. Turn it on in Windows Settings > System > Clipboard, copy some text, then try again."
 msgstr "クリップボードの履歴はオフになっています。Windows の設定 > システム > クリップボード でオンにして、テキストをコピーしてから、もう一度お試しください。"
 
-msgid "Windows did not let Snipdeck read the clipboard history on this PC."
+msgid "Windows did not let Snipdeck read Windows clipboard history on this PC."
 msgstr "Windows により、この PC で Snipdeck がクリップボードの履歴を読み取ることが許可されていません。"
 
 msgid "Windows doesn’t allow {} as a shortcut."
@@ -4058,8 +4022,8 @@ msgstr "Windows が {} を受け付けませんでした (Windows エラー {})�
 msgid "Windows won’t let Snipdeck read this screen."
 msgstr "Windows が Snipdeck によるこの画面の読み取りを許可していません。"
 
-msgid "With clipboard history on, Recent keeps what you copy in other programs."
-msgstr "クリップボード履歴をオンにすると、「最近」に他のプログラムでコピーした内容が残ります。"
+msgid "With Recent turned on, it keeps what you copy in other programs."
+msgstr "「最近」をオンにすると、他のプログラムでコピーした内容が残ります。"
 
 msgid "Wrench"
 msgstr "レンチ"
@@ -4079,8 +4043,11 @@ msgstr "はい"
 msgid "Your Windows Hello PIN, face or fingerprint changed. Unlock with your password once to set Windows Hello up again."
 msgstr "Windows Hello の PIN、顔、または指紋が変更されました。パスワードで一度ロック解除すると、Windows Hello を再設定できます。"
 
-msgid "Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read."
-msgstr "現在のデータベースは削除されず、脇に置かれます。このバックアップ以降に追加したスニペットは、読める範囲で復元されます。"
+msgid "Your current library is set aside, not deleted. Items added after this backup are recovered where they can be read."
+msgstr "現在のライブラリは削除されず、脇に置かれます。このバックアップ以降に追加したスニペットは、読める範囲で復元されます。"
+
+msgid "Your first snippet"
+msgstr "最初のスニペット"
 
 msgid "Your library couldn’t be opened, so it was moved aside to {} in your Snipdeck data folder. Settings > Rebuild from backup restores your newest backup."
 msgstr "ライブラリを開けなかったため、Snipdeck のデータフォルダー内の {} に移動しました。設定 > バックアップから再構築 で最新のバックアップを復元できます。"
@@ -4100,17 +4067,17 @@ msgstr "しばらくするとライブラリがロックされました。編集
 msgid "Your library locked. What you were typing in the sensitive item is kept, and comes back when you unlock."
 msgstr "ライブラリがロックされました。機密スニペットに入力していた内容は保持され、ロック解除後に戻ります。"
 
-msgid "Your library was erased."
-msgstr "ライブラリを削除しました。"
+msgid "Your library was erased"
+msgstr "ライブラリを削除しました"
 
 msgid "Your library was rebuilt, but the cleanup failed. Snipdeck will finish it the next time it starts."
 msgstr "ライブラリを再構築しましたが、後片付けに失敗しました。次回の起動時に Snipdeck が完了します。"
 
-msgid "Your old database is kept in the folder {}."
-msgstr "以前のデータベースはフォルダー {} に残してあります。"
+msgid "Your old library is kept in the folder {}."
+msgstr "以前のライブラリはフォルダー {} に残してあります。"
 
-msgid "Your organisation’s policy keeps Snipdeck from starting with Windows."
-msgstr "組織のポリシーにより、Snipdeck は Windows と同時に起動できません。"
+msgid "Your organisation's policy keeps Snipdeck from starting with Windows"
+msgstr "組織のポリシーにより、Snipdeck は Windows と同時に起動できません"
 
 msgid "Your sensitive items will be protected by Windows alone."
 msgstr "機密スニペットは Windows だけで保護されます。"
@@ -4481,10 +4448,6 @@ msgstr[0] "{n} 件のスニペットが追加されます"
 msgid "{n} item will carry \"{}\" instead of \"{}\"."
 msgid_plural "{n} items will carry \"{}\" instead of \"{}\"."
 msgstr[0] "{n} 件のスニペットが「{}」の代わりに「{}」を持つようになります。"
-
-msgid "{n} item will move to Trash with it. You can restore them for {} days."
-msgid_plural "{n} items will move to Trash with it. You can restore them for {} days."
-msgstr[0] "{n}件のスニペットも一緒にごみ箱に移動します。{}日間復元できます。"
 
 msgid "{n} match in {}"
 msgid_plural "{n} matches in {}"

@@ -251,7 +251,9 @@ export component SettingsPage inherits Window {
     // Grows with the text size: at 225% a row needs about 760 px or its title wraps one word per line.
     out property <length> min-window-width: max(420px, 340px * SystemLook.text-scale);
     min-width: root.min-window-width;
-    min-height: 360px;
+    // Grows with the text size too: the tab strip, a few rows and the footer need more room at 225%.
+    out property <length> min-window-height: max(380px, 240px * SystemLook.text-scale);
+    min-height: root.min-window-height;
     preferred-width: root.wanted-width;
     preferred-height: root.wanted-height;
 
@@ -407,6 +409,9 @@ export component SettingsPage inherits Window {
     in property <bool> master-busy: false;
     // A backup or an export is being written on a worker; both buttons wait for it.
     in property <bool> backup-busy: false;
+    // Which job runs while `backup-busy`: 1 "Back up now", 2 "Export library", 3 an import or a restore reading its source.
+    // That job's button shows it is working (and keeps the focus); the others wait.
+    in property <int> backup-busy-op: 0;
     // Which form is open under the row. The host sets it back to `closed` after a change worked.
     in-out property <MasterMode> master-mode: MasterMode.closed;
     // Go up to put the focus on the form's first field, and back on the row's button when the form closes.
@@ -500,10 +505,10 @@ export component SettingsPage inherits Window {
     callback help-requested();
 
     property <[string]> hotkey-names: [
-        @tr("Show or hide the Panel"),
-        @tr("Open the Picker"),
-        @tr("Save the clipboard as an item"),
-        @tr("Paste the next item"),
+        @tr("Show or hide the panel"),
+        @tr("Open the picker"),
+        @tr("Quick capture"),
+        @tr("Paste next"),
     ];
     property <[string]> hotkey-help: [
         @tr("Brings the Panel up beside the app you are working in."),
@@ -522,7 +527,7 @@ export component SettingsPage inherits Window {
     // Titles of section 3 (Opening the Panel), for the search. A test checks that every row title is in here.
     property <string> keys-3: @tr("Opening the Panel") + " " + @tr("Tray icon click opens") + " " + @tr("Double-click opens the Main window") + " " + @tr("Panel opens") + " " + @tr("After a paste or copy") + " " + @tr("Hide the Panel when it loses focus") + " " + @tr("Show the Panel in the taskbar and Alt+Tab") + " " + @tr("Keep Panel visible during screenshots") + " " + @tr("Dock to") + " " + @tr("Docked Panel uses the full edge") + " " + @tr("Open a docked Panel by") + " " + @tr("Hover delay") + " " + @tr("Leave delay") + " " + @tr("Picker position") + " " + @tr("Start with Windows") + " " + @tr("When Windows starts") + " " + @tr("Keep running in the tray when the window closes");
     // Titles of section 4 (Privacy), for the search. A test checks that every row title is in here.
-    property <string> keys-4: @tr("Privacy") + " " + @tr("fingerprint face PIN biometric lock") + " " + @tr("Keep a Recent inbox of what you copy") + " " + @tr("Clear recent history") + " " + @tr("Clear recent emoji and colours") + " " + @tr("Clear the clipboard after copying a sensitive item") + " " + @tr("Master password") + " " + @tr("Unlock with Windows Hello") + " " + @tr("Recent: most copies kept") + " " + @tr("Recent: days kept") + " " + @tr("Keep copies from unknown sources") + " " + @tr("Lock after");
+    property <string> keys-4: @tr("Privacy") + " " + @tr("fingerprint face PIN biometric lock") + " " + @tr("Keep what you copy in Recent") + " " + @tr("Clear Recent") + " " + @tr("Clear recent emoji and colours") + " " + @tr("Clear the clipboard after copying a sensitive item") + " " + @tr("Master password") + " " + @tr("Unlock with Windows Hello") + " " + @tr("Recent: most copies kept") + " " + @tr("Recent: days kept") + " " + @tr("Keep copies from unknown sources") + " " + @tr("Lock after");
     // Titles of section 5 (Programs), for the search. A test checks that every row title is in here.
     property <string> keys-5: @tr("Programs") + " " + @tr("never paste excluded apps");
     // Titles of section 6 (Typing), for the search. A test checks that every row title is in here.
@@ -579,10 +584,15 @@ export component SettingsPage inherits Window {
         root.master-focus += 1;
     }
 
-    init => { Palette.dark = root.dark; }
+    init => {
+        Palette.dark = root.dark;
+        scope.focus();
+    }
     changed dark => { Palette.dark = root.dark; }
 
     scope := FocusScope {
+        // The key scope is not a Tab stop: it has no ring, so a Tab onto it would change nothing on screen.
+        focus-on-tab-navigation: false;
         // Esc first closes a tooltip on screen, and does nothing else on that press, before a focused field sees it
         // (an open drop-down list holds tooltips off, so its Esc still closes the list).
         capture-key-pressed(event) => {
@@ -594,6 +604,14 @@ export component SettingsPage inherits Window {
         key-pressed(event) => {
             if (event.text == Key.F1) {
                 root.help-requested();
+                return accept;
+            }
+            if ((event.text == "f" || event.text == "F" || event.text == "\u{6}") && event.modifiers.control && !event.modifiers.alt && !root.import-open) {
+                settings-search.focus();
+                return accept;
+            }
+            if ((event.text == "w" || event.text == "W" || event.text == "\u{17}") && event.modifiers.control && !event.modifiers.alt && !root.import-open && !root.import-choosing) {
+                root.close-requested();
                 return accept;
             }
             if (event.text == Key.Escape) {
@@ -646,7 +664,7 @@ export component SettingsPage inherits Window {
                         font-size: Type.sm;
                         accessible-role: none;
                     }
-                    SearchField {
+                    settings-search := SearchField {
                         text <=> SettingsFilter.query;
                         label: @tr("Search settings");
                         placeholder: @tr("Search settings");
@@ -1156,10 +1174,10 @@ export component SettingsPage inherits Window {
                     search-text: root.keys-4;
                     located(y) => { page.scroll-to(y - body.absolute-position.y); }
                     SettingRow {
-                        title: @tr("Keep a Recent inbox of what you copy");
+                        title: @tr("Keep what you copy in Recent");
                         description: @tr("Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Sensitive items, password managers and the apps you exclude are never kept.", root.recent-max-entries, root.recent-max-days);
                         Toggle {
-                            a11y-label: @tr("Keep a Recent inbox of what you copy");
+                            a11y-label: @tr("Keep what you copy in Recent");
                             checked <=> root.recent-history;
                             toggled(on) => {
                                 if (!on && root.recent-count > 0) {
@@ -1253,10 +1271,10 @@ export component SettingsPage inherits Window {
                         }
                     }
                     SettingRow {
-                        title: @tr("Clear recent history");
-                        description: @tr("Deletes everything in the Recent inbox now.");
+                        title: @tr("Clear Recent");
+                        description: @tr("Deletes everything in Recent now.");
                         if !root.clear-recent-ask: Button {
-                            text: @tr("Clear recent history");
+                            text: @tr("Clear Recent");
                             variant: ButtonVariant.ghost;
                             clicked => { root.clear-recent-ask = true; }
                             changed has-focus => {
@@ -1273,7 +1291,7 @@ export component SettingsPage inherits Window {
                                 }
                             }
                             Button {
-                                text: @tr("Clear history");
+                                text: @tr("Clear Recent");
                                 variant: ButtonVariant.danger;
                                 clicked => {
                                     root.clear-recent-ask = false;
@@ -1322,7 +1340,7 @@ export component SettingsPage inherits Window {
                         accessible-role: none;
                     }
                     Text {
-                        text: @tr("Nothing you copy in these programs reaches the Recent inbox. Use the program’s file name, for example keepass.exe.");
+                        text: @tr("Nothing you copy in these programs is kept in Recent. Use the program's file name, for example keepass.exe.");
                         color: Theme.text-secondary;
                         font-family: Fonts.sans;
                         font-size: Type.sm;
@@ -1700,7 +1718,8 @@ export component SettingsPage inherits Window {
                         alignment: start;
                         Button {
                             text: @tr("Back up now");
-                            enabled: root.has-data-folder && !root.backup-busy;
+                            enabled: root.has-data-folder && (!root.backup-busy || root.backup-busy-op == 1);
+                            loading: root.backup-busy && root.backup-busy-op == 1;
                             clicked => { root.backup-now-requested(); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
@@ -1730,7 +1749,8 @@ export component SettingsPage inherits Window {
                         description: @tr("Saves every board, list and item as one .snipdeck file in a folder you choose.");
                         Button {
                             text: @tr("Export library");
-                            enabled: root.has-data-folder && !root.backup-busy;
+                            enabled: root.has-data-folder && (!root.backup-busy || root.backup-busy-op == 2);
+                            loading: root.backup-busy && root.backup-busy-op == 2;
                             clicked => { root.export-requested(); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
@@ -1742,7 +1762,8 @@ export component SettingsPage inherits Window {
                         description: @tr("Bring in items from a Snipdeck file or another clipboard manager. You see what will be added before anything is written.");
                         Button {
                             text: @tr("Import…");
-                            enabled: root.has-data-folder && !root.import-open && !root.backup-busy;
+                            enabled: root.has-data-folder && !root.import-open && (!root.backup-busy || root.backup-busy-op == 3);
+                            loading: root.backup-busy && root.backup-busy-op == 3;
                             a11y-label: @tr("Import into your library, see a preview first");
                             clicked => { root.import-choosing = !root.import-choosing; }
                             changed has-focus => {
@@ -1756,7 +1777,7 @@ export component SettingsPage inherits Window {
                         accessible-label: @tr("Choose what to import");
                         for choice[i] in [
                             @tr(".snipdeck file"),
-                            @tr("Ditto database"),
+                            @tr("Ditto"),
                             @tr("CopyQ export"),
                             @tr("Folder of .txt and .md files"),
                             @tr("Espanso (folder)"),
@@ -1887,7 +1908,7 @@ export component SettingsPage inherits Window {
                             }
                         }
                         if root.import-problem == "" && root.import-items == 0 && root.import-boards == 0: Text {
-                            text: @tr("Nothing new to import.");
+                            text: @tr("Nothing new to import");
                             color: Theme.text-secondary;
                             font-family: Fonts.sans;
                             font-size: Type.base;

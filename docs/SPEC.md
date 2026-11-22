@@ -131,7 +131,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
   - Forgetting it loses the sensitive items for good: while a password is set the data key exists only sealed under it inside the OS-wrapped record, there is no recovery key, and the form says so before the password is set. Other items are not affected.
 
 ### 5.7a Deletion & recovery
-- Items delete instantly with a 5 s **Undo** toast; lists and boards ask for confirmation (showing the item count). A destructive confirmation starts with focus on **Cancel**: Enter or Space answers no, the destructive button is the next Tab stop, Esc cancels.
+- Items, groups, lists and boards delete at once with an **Undo** toast (they go to the Trash); only irreversible acts (Empty Trash, tag delete, erase all) ask first (DESIGN.md "Confirm and undo"). A destructive confirmation starts with focus on **Cancel**: Enter or Space answers no, the destructive button is the next Tab stop, Esc cancels.
 - Toasts are held by the length of their text (at least 1 s plus 60 ms a character, at most 20 s, never less than the base hold: 2.5 s plain, 4.9 s with Undo, 10 s for an error) and wait while the pointer is on them or one of their buttons has keyboard focus. A plain message does not replace an error in its first 4 s (it shows after them); an Undo toast always shows at once. **Help > Recent messages** lists the last ten toasts, newest first, in a dialog, so a message that went before it was read can be read again; the toast window itself never takes focus, so the paste flow is unchanged.
 - **Undo checks that stored bytes exist, not that they are intact.** Before restoring a deleted item (or a replaced one) Undo checks that every blob file it needs is still stored (by file length). It does not read and hash the blob: that would stall the UI thread on a big image. Trade-off: a blob damaged on disk without changing its length is restored as it is, and the next integrity check reports it.
 - **Archives run off the UI thread, one at a time.** Backup, export and a rebuild's salvage copy read one snapshot of the library taken when the step begins. Blob files that edits orphan meanwhile are kept until the step ends. A second backup, export, restore, import or master-password step is refused with a toast while one runs. Quitting mid-export removes that export's `<name>.part`.
@@ -144,7 +144,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 Seeds a **Getting started** list whose cards teach by doing ("Click me to paste", "Shift+click to copy", "Try a template").
 
 ### 5.8 System integration
-- Tray icon (ADR-0008): a left click toggles the Panel; the menu is Open Panel, Open Snipdeck, Pause hotkeys (check mark), Quit. The Picker and quick capture are hotkeys, not menu entries. "Pause history" joins the menu when clipboard history exists. Closing the Panel hides it to the tray while an icon is in the notification area (`close_to_tray`), otherwise it quits.
+- Tray icon (ADR-0008): a left click toggles the Panel; the menu is Open Panel, Open Main window, Pause hotkeys (check mark), Quit. The Picker and quick capture are hotkeys, not menu entries. "Pause history" joins the menu when clipboard history exists. Closing the Panel hides it to the tray while an icon is in the notification area (`close_to_tray`), otherwise it quits.
 - Start with Windows (opt-in during onboarding). Single instance.
 - Per-app exclusions: no history capture and/or no auto-paste in listed apps.
 - All hotkeys rebindable; conflicts detected and reported.

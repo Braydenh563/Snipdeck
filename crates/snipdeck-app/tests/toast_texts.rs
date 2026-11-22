@@ -428,6 +428,29 @@ fn every_toast_message_has_words() {
     });
 }
 
+/// DESIGN.md "Names": a toast of one clause has no full stop; one of several sentences ends
+/// every sentence with one, the last included. Nothing ends in an exclamation mark.
+#[test]
+fn toast_punctuation_follows_the_one_clause_rule() {
+    on_ui_thread(|| {
+        let ui = ui();
+        let mut bad: Vec<String> = Vec::new();
+        for message in samples() {
+            let text = toast_text(&ui, &message);
+            let text = text.trim();
+            let sentences = text.matches(". ").count() + text.matches("? ").count();
+            let ends_stop = text.ends_with('.');
+            if text.ends_with('!')
+                || (sentences == 0 && ends_stop)
+                || (sentences > 0 && !ends_stop && !text.ends_with('?'))
+            {
+                bad.push(format!("{message:?}: {text}"));
+            }
+        }
+        assert_eq!(bad.len(), 0, "{bad:#?}");
+    });
+}
+
 #[test]
 #[allow(
     clippy::too_many_lines,
@@ -499,11 +522,11 @@ fn what_a_toast_carries_reaches_its_sentence() {
         };
         assert_eq!(
             said(rebuilt(2, false, 0)),
-            "Database rebuilt: 5 items restored, 2 recovered. Your old database is kept in the folder old."
+            "Library rebuilt: 5 items restored, 2 recovered. Your old library is kept in the folder old."
         );
         assert_eq!(
             said(rebuilt(0, true, 1)),
-            "Database rebuilt: 5 items restored. Newer items could not be read. Your old database is kept in the folder old. 1 sensitive item was not in the backup."
+            "Library rebuilt: 5 items restored. Newer items could not be read. Your old library is kept in the folder old. 1 sensitive item was not in the backup."
         );
         assert_eq!(
             said(ToastMessage::Undone {
@@ -537,7 +560,7 @@ fn what_a_toast_carries_reaches_its_sentence() {
         );
         assert_eq!(
             said(ToastMessage::BackupRestored { items: 0 }),
-            "Nothing to restore: your library already has everything in that backup."
+            "Nothing to restore: your library already has everything in that backup"
         );
         assert_eq!(said(ToastMessage::Imported { items: 1 }), "Imported 1 item");
         assert_eq!(said(ToastMessage::ThemeSet(Theme::System)), "Theme: System");
@@ -557,7 +580,7 @@ fn what_a_toast_carries_reaches_its_sentence() {
         );
         assert_eq!(said(ToastMessage::BoardSaved), "Board saved");
         assert_eq!(said(ToastMessage::RecentDeleted), "Removed from Recent");
-        assert_eq!(said(ToastMessage::RecentCleared), "Recent history cleared");
+        assert_eq!(said(ToastMessage::RecentCleared), "Recent cleared");
         assert_eq!(
             said(ToastMessage::PickerRecentsCleared),
             "Recently used emoji and colours cleared"
@@ -565,7 +588,7 @@ fn what_a_toast_carries_reaches_its_sentence() {
         assert_eq!(said(ToastMessage::FileMoved), "File moved or deleted");
         assert_eq!(
             said(ToastMessage::FilesTooLarge),
-            "Some files were left out: together they are over 64 MB."
+            "Some files were left out: together they are over 64 MB"
         );
         assert_eq!(
             said(ToastMessage::TriggerOverlaps {
@@ -599,7 +622,7 @@ fn what_a_toast_carries_reaches_its_sentence() {
         );
         assert_eq!(
             said(ToastMessage::Imported { items: 0 }),
-            "Nothing new to import."
+            "Nothing new to import"
         );
         let panel = said(ToastMessage::PanelHidden {
             chord: Some(s("Ctrl+Shift+Space")),

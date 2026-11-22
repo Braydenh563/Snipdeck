@@ -20,19 +20,19 @@ fn the_tray_words_follow_the_selected_translation() {
     let ui = I18nProbe::new().expect("probe");
     assert_eq!(
         words(&ui),
-        ["Open Panel", "Open Snipdeck", "Pause shortcuts", "Quit"]
+        ["Open Panel", "Open Main window", "Pause hotkeys", "Quit"]
     );
     // The history entry's word (it joins the menu only while clipboard history is on).
     assert_eq!(
         TrayTexts::get(&ui).get_pause_history().as_str(),
-        "Pause history"
+        "Pause Recent"
     );
     slint::select_bundled_translation("de").expect("de is bundled");
     assert_eq!(
         words(&ui),
         [
             "Panel öffnen",
-            "Snipdeck öffnen",
+            "Hauptfenster öffnen",
             "Tastenkürzel pausieren",
             "Beenden"
         ]

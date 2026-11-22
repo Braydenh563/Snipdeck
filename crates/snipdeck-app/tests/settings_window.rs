@@ -51,7 +51,7 @@ use snipdeck_store::{
     BoardRepo, ItemRepo, Store,
     crypto::{KeyRing, MemoryKeyProvider},
 };
-use snipdeck_ui::{SettingsPage, ToastKind};
+use snipdeck_ui::{SettingsFilter, SettingsPage, ToastKind};
 
 #[path = "support/mod.rs"]
 mod support;
@@ -1091,7 +1091,7 @@ fn start_with_windows_that_cannot_be_changed_says_so_and_keeps_the_old_value() {
         assert!(!r.ui.get_autostart(), "the switch went back");
         assert_eq!(
             r.ui.get_toast_text(),
-            "Couldn’t change the Windows start-up entry."
+            "Couldn't change the Windows start-up entry"
         );
         assert_eq!(r.ui.get_toast_kind(), ToastKind::Danger);
         r.host.autostart_fails.set(false);
@@ -1337,7 +1337,7 @@ fn restoring_a_backup_round_trips_the_demo_library() {
         b.ui.invoke_import_confirmed();
         assert_eq!(
             b.ui.get_toast_text(),
-            "Nothing to restore: your library already has everything in that backup."
+            "Nothing to restore: your library already has everything in that backup"
         );
         assert_eq!(titles(b.ctl.borrow().store(), false), plain);
     });
@@ -1492,7 +1492,7 @@ fn erasing_the_library_needs_exactly_the_word_delete() {
         assert!(!r.ui.get_toast_text().contains("erased"));
 
         r.ui.invoke_erase_confirmed("DELETE".into(), true);
-        assert_eq!(r.ui.get_toast_text(), "Your library was erased.");
+        assert_eq!(r.ui.get_toast_text(), "Your library was erased");
         assert_eq!(r.ui.get_toast_kind(), ToastKind::Success);
         // A new empty library with the starter board is running.
         assert_eq!(board_names(r.ctl.borrow().store()), ["My snippets"]);
@@ -1646,6 +1646,29 @@ fn the_main_windows_settings_button_opens_the_page_once_and_shows_it_again() {
     });
 }
 
+/// UX-37: the Recent empty state's "Open Settings" lands on the Privacy section, where the Recent switch is.
+#[test]
+fn the_recent_empty_states_link_opens_settings_at_the_privacy_section() {
+    on_ui_thread(|| {
+        let clock = FixedClock::new(now());
+        let ctl = controller_on(demo::store(now()).unwrap(), &clock);
+        let host: Rc<dyn SettingsHost> = Rc::new(FakeHost::default());
+        let settings_ui = SettingsUi::new(&ctl, None, host);
+        let main_ui = MainUi::new(&ctl);
+        main_ui.open().unwrap();
+        main_ui
+            .window()
+            .unwrap()
+            .invoke_privacy_settings_requested();
+        let page = settings_ui.window().expect("created");
+        assert!(page.window().is_visible());
+        let filter = page.global::<SettingsFilter<'_>>();
+        assert_eq!(filter.get_jump_target(), settings_binding::SECTION_PRIVACY);
+        assert_eq!(filter.get_jump_seq(), 1);
+        assert_eq!(filter.get_query().as_str(), "");
+    });
+}
+
 // ---- Import ---------------------------------------------------------------------------------
 
 #[test]
@@ -1704,11 +1727,11 @@ fn a_file_that_cannot_be_imported_shows_a_problem_and_nothing_to_confirm() {
             true,
         );
         let junk = r.dir.path().join("junk.db");
-        std::fs::write(&junk, b"not a database").unwrap();
+        std::fs::write(&junk, b"not a Ditto file").unwrap();
         *r.host.import_pick.borrow_mut() = Some(junk);
         r.ui.invoke_import_source_chosen(1);
         assert!(r.ui.get_import_open());
-        assert_eq!(r.ui.get_import_problem(), "That isn’t a Ditto database.");
+        assert_eq!(r.ui.get_import_problem(), "That isn't a Ditto file.");
         // Confirming a problem writes nothing.
         r.ui.invoke_import_confirmed();
         assert!(!r.ui.get_import_open());
@@ -2099,7 +2122,7 @@ fn import_choices_list_nine_sources() {
         .invoke_accessible_default_action();
         for name in [
             ".snipdeck file",
-            "Ditto database",
+            "Ditto",
             "CopyQ export",
             "Folder of .txt and .md files",
             "Espanso (folder)",
@@ -2216,14 +2239,12 @@ fn the_clear_recent_button_asks_first_and_cancel_clears_nothing() {
         let seen = std::rc::Rc::clone(&cleared);
         // The window's own handler is replaced: only the click path is under test.
         r.ui.on_recent_history_cleared(move || seen.set(seen.get() + 1));
-        element(&r.ui, "Clear recent history", AccessibleRole::Button)
-            .invoke_accessible_default_action();
+        element(&r.ui, "Clear Recent", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(cleared.get(), 0, "one click asks, it does not clear");
         element(&r.ui, "Cancel", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(cleared.get(), 0, "Cancel clears nothing");
-        element(&r.ui, "Clear recent history", AccessibleRole::Button)
-            .invoke_accessible_default_action();
-        element(&r.ui, "Clear history", AccessibleRole::Button).invoke_accessible_default_action();
+        element(&r.ui, "Clear Recent", AccessibleRole::Button).invoke_accessible_default_action();
+        element(&r.ui, "Clear Recent", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(cleared.get(), 1, "the second button clears");
     });
 }
@@ -2704,11 +2725,11 @@ fn a_history_that_is_off_empty_or_refused_says_so_without_an_error_toast() {
             ),
             (
                 Some(HistoryRead::AccessDenied),
-                "Windows did not let Snipdeck read the clipboard history on this PC.",
+                "Windows did not let Snipdeck read Windows clipboard history on this PC.",
             ),
             (
                 Some(HistoryRead::Unsupported),
-                "Windows did not let Snipdeck read the clipboard history on this PC.",
+                "Windows did not let Snipdeck read Windows clipboard history on this PC.",
             ),
         ];
         for (read, sentence) in cases {
@@ -2919,7 +2940,7 @@ fn a_browser_that_will_not_open_says_so_in_a_toast() {
         let r = rig();
         r.host.url_fails.set(true);
         r.ui.invoke_support_requested();
-        assert_eq!(r.ui.get_toast_text(), "Couldn’t open the link.");
+        assert_eq!(r.ui.get_toast_text(), "Couldn't open the link");
         assert_eq!(r.ui.get_toast_kind(), ToastKind::Danger);
     });
 }

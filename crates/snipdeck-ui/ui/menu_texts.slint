@@ -5,7 +5,7 @@
 export global MenuTexts {
     // The kebab menu.
     pure public function app-open() -> string {
-        return @tr("Open Snipdeck");
+        return @tr("Open Main window");
     }
     pure public function app-commands() -> string {
         return @tr("Commands…");
@@ -48,10 +48,10 @@ export global MenuTexts {
         return @tr("Pause shortcuts");
     }
     pure public function app-keep-on-top() -> string {
-        return @tr("Keep Panel on top");
+        return @tr("Keep Panel open");
     }
     pure public function app-select-or-delete() -> string {
-        return @tr("Select or delete…");
+        return @tr("Select items");
     }
     pure public function app-reset-geometry() -> string {
         return @tr("Reset size and position");
@@ -82,7 +82,7 @@ export global MenuTexts {
         return @tr("slug-like-this");
     }
     pure public function item-move-to() -> string {
-        return @tr("Move to…");
+        return @tr("Move to list…");
     }
     pure public function item-colour() -> string {
         return @tr("Colour");
@@ -193,7 +193,7 @@ export global MenuTexts {
         return @tr("Delete group");
     }
     pure public function item-trash() -> string {
-        return @tr("Delete");
+        return @tr("Move to Trash");
     }
 
     // The board menu.
@@ -210,6 +210,6 @@ export global MenuTexts {
         return @tr("Move board down");
     }
     pure public function board-delete() -> string {
-        return @tr("Delete board…");
+        return @tr("Delete board");
     }
 }

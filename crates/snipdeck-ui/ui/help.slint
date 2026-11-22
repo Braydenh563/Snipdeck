@@ -43,7 +43,9 @@ export component HelpWindow inherits Window {
     // Grows with the text size: at 225% the tab bar and the shortcut rows need about 600 px (final audit 1).
     out property <length> min-window-width: max(420px, 270px * SystemLook.text-scale);
     min-width: root.min-window-width;
-    min-height: 360px;
+    // Grows with the text size too: the tab strip, a few rows and the footer need more room at 225%.
+    out property <length> min-window-height: max(380px, 240px * SystemLook.text-scale);
+    min-height: root.min-window-height;
     preferred-width: root.wanted-width;
     preferred-height: root.wanted-height;
 
@@ -57,6 +59,9 @@ export component HelpWindow inherits Window {
     in property <[HelpCheck]> checks;
     // A backup, export or rebuild is running: the buttons that start one wait.
     in property <bool> archive-busy: false;
+    // Which job runs while `archive-busy`: 1 a backup, 3 a rebuild (or an import) reading its source, 2 an export. The
+    // button that started it shows it is working and keeps the focus; the others wait.
+    in property <int> archive-busy-op: 0;
     // The Shortcuts tab: the groups of lines that match the search box (the host builds them: it holds the
     // configured global hotkeys and the filter), and the box's text.
     in property <[ShortcutGroup]> shortcut-groups;
@@ -111,6 +116,11 @@ export component HelpWindow inherits Window {
     pure function status-color(status: int) -> color {
         return status == 0 ? Theme.success-fg : (status == 1 ? Theme.warning-fg : Theme.danger-fg);
     }
+    // The fix button that started the job running now: "Back up now" (fix 1) for a backup, "Rebuild from backup" (fix 4)
+    // while the rebuild reads its backup.
+    pure function mine(fix: int) -> bool {
+        return (fix == 1 && root.archive-busy-op == 1) || (fix == 4 && root.archive-busy-op == 3);
+    }
     pure function fix-text(fix: int) -> string {
         return fix == 1 ? @tr("Back up now") : (fix == 2 ? @tr("Open Settings")
             : (fix == 4 ? @tr("Rebuild from backup…") : (fix == 5 ? @tr("Open data folder") : @tr("Open logs folder"))));
@@ -125,8 +135,13 @@ export component HelpWindow inherits Window {
 
     scope := FocusScope {
         key-pressed(event) => {
-            if (event.text == Key.Escape) {
+            if (event.text == Key.Escape || ((event.text == "w" || event.text == "W" || event.text == "\u{17}") && event.modifiers.control && !event.modifiers.alt)) {
                 root.close-requested();
+                return accept;
+            }
+            // Ctrl+F: the Shortcuts tab, whose search box takes the focus when it appears.
+            if ((event.text == "f" || event.text == "F" || event.text == "\u{6}") && event.modifiers.control && !event.modifiers.alt) {
+                root.tab = 2;
                 return accept;
             }
             return reject;
@@ -213,7 +228,8 @@ export component HelpWindow inherits Window {
                                     alignment: center;
                                     Button {
                                         text: root.fix-text(c.fix);
-                                        enabled: !root.archive-busy || (c.fix != 1 && c.fix != 4);
+                                        enabled: !root.archive-busy || (c.fix != 1 && c.fix != 4) || root.mine(c.fix);
+                                        loading: root.archive-busy && root.mine(c.fix);
                                         clicked => { root.fix-requested(c.fix); }
                                     }
                                 }
@@ -523,8 +539,10 @@ export component HelpWindow inherits Window {
     Dialog {
         open: root.rebuild-open;
         title: @tr("Rebuild from the newest backup?");
-        body: @tr("The newest backup is from {}.", root.rebuild-date) + " " + @tr("It holds {n} item" | "It holds {n} items" % root.rebuild-items) + " " + @tr("on {n} board." | "on {n} boards." % root.rebuild-boards) + " " + @tr("Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read.");
+        body: @tr("The newest backup is from {}.", root.rebuild-date) + " " + @tr("It holds {n} item" | "It holds {n} items" % root.rebuild-items) + " " + @tr("on {n} board." | "on {n} boards." % root.rebuild-boards) + " " + @tr("Your current library is set aside, not deleted. Items added after this backup are recovered where they can be read.");
         dismissed => { root.rebuild-dismissed(); }
+        // The dialog took the focus when it opened: give it back so Esc and F1 keep working after Cancel.
+        closed => { scope.focus(); }
         Button {
             text: @tr("Cancel");
             clicked => { root.rebuild-dismissed(); }

@@ -2,11 +2,11 @@
 //! edit / rename / delete do to a row, and how a resize or a move is clamped and remembered per
 //! monitor (DESIGN.md §5 Panel). Part of the [`Controller`]; the window is the host's.
 
-use snipdeck_core::{ItemId, UseMode, template::transform::Transform};
+use snipdeck_core::{ItemId, ListId, UseMode, template::transform::Transform};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::ItemRepo;
 
-use super::{Controller, Effect, Library, ListDeleteView, PanelMenu, UseResult, failed, success};
+use super::{Controller, Effect, Library, PanelMenu, UseResult, failed, success};
 use crate::{
     frame::{self, Edge, Monitor, Rect},
     host::ClipboardText,
@@ -569,9 +569,8 @@ where
 
     /// The user chose row `index` of [`LIST_MENU`]. A line stays open. Sort by changes the sort of the list
     /// (the field the List editor edits). Edit opens the list editor (its own window,
-    /// shared with the Main window). Delete only asks: the Panel shows its confirmation and
-    /// nothing else (O52), and [`confirm_list_delete`](Self::confirm_list_delete) moves the list
-    /// and its items to the Trash with an Undo toast.
+    /// shared with the Main window). Delete moves the list and its items to the Trash at once,
+    /// with an Undo toast.
     pub fn choose_list_menu(&mut self, index: usize) -> Vec<Effect> {
         let PanelMenu::List(id) = self.menu else {
             return Vec::new();
@@ -583,7 +582,7 @@ where
                 vec![Effect::OpenListEditor]
             }
             Some(ListMenuEntry::Delete) => {
-                self.menu = PanelMenu::DeleteList(id);
+                self.panel_delete_list(id);
                 Vec::new()
             }
             Some(ListMenuEntry::SortBy(sort)) => {
@@ -602,36 +601,11 @@ where
         }
     }
 
-    /// The list delete confirmation's view while it asks: the list's name and how many items
-    /// go to the Trash with it.
-    pub(super) fn list_delete_view(&self) -> Option<ListDeleteView> {
-        let PanelMenu::DeleteList(id) = self.menu else {
-            return None;
-        };
-        let list = self.store.list(id).ok()?;
-        Some(ListDeleteView {
-            name: list.name.as_str().to_owned(),
-            count: self.store.items(id).map_or(0, |items| items.len()),
-        })
-    }
-
-    /// "Delete list" in the Panel's confirmation: the list and its items move to the Trash,
-    /// with an Undo toast.
-    pub fn confirm_list_delete(&mut self) {
-        let PanelMenu::DeleteList(id) = self.menu else {
-            return;
-        };
-        self.menu = PanelMenu::None;
+    /// The list and its items move to the Trash, with an Undo toast.
+    fn panel_delete_list(&mut self, id: ListId) {
         match self.store.list(id) {
             Ok(list) => self.trash_list(id, list.name.as_str().to_owned()),
             Err(_) => self.show_toast(failed()),
-        }
-    }
-
-    /// Cancel, Esc or a click on the scrim: the confirmation closes and the list stays.
-    pub fn cancel_list_delete(&mut self) {
-        if matches!(self.menu, PanelMenu::DeleteList(_)) {
-            self.menu = PanelMenu::None;
         }
     }
 

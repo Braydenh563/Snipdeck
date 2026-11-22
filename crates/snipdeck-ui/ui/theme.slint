@@ -92,6 +92,8 @@ export global Space {
 
 // DESIGN.md §5: locked, no other radii.
 export global Radius {
+    // Bars and pips only (a 2px mark cannot take a 4px corner).
+    out property <length> xs: 3px;
     out property <length> sm: 4px;
     out property <length> md: 6px;
     out property <length> lg: 8px;

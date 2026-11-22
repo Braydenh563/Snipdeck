@@ -72,7 +72,12 @@ fn by_label(ui: &impl ComponentHandle, label: &str, role: AccessibleRole) -> Ele
 /// The toast container itself (the only element with that label that is a live region).
 fn toast(ui: &impl ComponentHandle, label: &str) -> ElementHandle {
     ElementHandle::find_by_accessible_label(ui, label)
-        .find(|e| e.accessible_live_region() == Some(AccessibleLiveness::Polite))
+        .find(|e| {
+            matches!(
+                e.accessible_live_region(),
+                Some(AccessibleLiveness::Polite | AccessibleLiveness::Assertive)
+            )
+        })
         .unwrap_or_else(|| panic!("no toast labelled {label:?}"))
 }
 
@@ -267,6 +272,27 @@ fn tag_clicks_and_removes() {
 }
 
 #[test]
+fn tag_chip_and_remove_cell_keep_a_touch_width_at_large_text_sizes() {
+    on_ui(|| {
+        let ui = gallery();
+        for scale in [1.0_f32, 2.25] {
+            ui.global::<SystemLook<'_>>().set_text_scale(scale);
+            let min = 24.0 * scale - 0.5;
+            for label in ["work", "Remove tag snippets"] {
+                let size = by_label(&ui, label, AccessibleRole::Button).size();
+                assert!(
+                    size.width >= min && size.height >= min,
+                    "{label} at scale {scale}: {}x{} is under {min}",
+                    size.width,
+                    size.height
+                );
+            }
+        }
+        ui.global::<SystemLook<'_>>().set_text_scale(1.0);
+    });
+}
+
+#[test]
 fn tag_delete_key_removes_a_removable_chip() {
     on_ui(|| {
         let ui = gallery();
@@ -450,13 +476,13 @@ fn surfaces() -> SurfacesGallery {
 }
 
 #[test]
-fn toast_is_a_polite_live_region_and_undo_works() {
+fn a_failure_toast_is_an_assertive_live_region_and_undo_works() {
     on_ui(|| {
         let ui = surfaces();
         let toast = toast(&ui, "Could not paste");
         assert_eq!(
             toast.accessible_live_region(),
-            Some(AccessibleLiveness::Polite)
+            Some(AccessibleLiveness::Assertive)
         );
         by_label(&ui, "Undo", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(ui.get_undos(), 1);

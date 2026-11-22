@@ -107,6 +107,17 @@ pub(super) struct ImportRun {
     pub(super) counter: u64,
 }
 
+/// The number a window uses for a running archive step: 1 a backup (the daily one or "Back up now"), 2 an export,
+/// 3 the salvage copy of a rebuild or the reading of an import or restore source.
+#[must_use]
+pub const fn busy_op_of(op: ArchiveOp) -> i32 {
+    match op {
+        ArchiveOp::DailyBackup | ArchiveOp::BackupNow => 1,
+        ArchiveOp::Export => 2,
+        ArchiveOp::Salvage | ArchiveOp::Decode => 3,
+    }
+}
+
 /// The archive step running now, if any.
 #[derive(Default)]
 pub(super) struct ArchiveState {
@@ -133,6 +144,16 @@ where
     #[must_use]
     pub fn archive_busy(&self) -> bool {
         self.archive.running.is_some()
+    }
+
+    /// Which job runs now, as the windows number it so the button that started it can show it is working:
+    /// 0 none, 1 a backup, 2 an export, 3 a rebuild or an import reading its source (see `busy_op_of`).
+    #[must_use]
+    pub fn archive_busy_op(&self) -> i32 {
+        self.archive
+            .running
+            .as_ref()
+            .map_or(0, |(op, _)| busy_op_of(*op))
     }
 
     /// Whether a new archive step must not start now: one is running (the toast says so) or the
