@@ -655,8 +655,8 @@ pub(crate) fn arm_settings_save<C, K, T>(
 /// English by design. The words a person sees come from [`action_text`].
 pub(crate) const fn action_name(action: HotkeyAction) -> &'static str {
     match action {
-        HotkeyAction::TogglePanel => "Show or hide the panel",
-        HotkeyAction::Picker => "Open the picker",
+        HotkeyAction::TogglePanel => "Show or hide the Panel",
+        HotkeyAction::Picker => "Open the Picker",
         HotkeyAction::Capture => "Quick capture",
         HotkeyAction::PasteNext => "Paste next",
     }

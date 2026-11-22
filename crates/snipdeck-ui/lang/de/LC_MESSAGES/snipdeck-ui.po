@@ -948,6 +948,9 @@ msgstr "Ctrl+Shift+V"
 msgid "Ctrl+V"
 msgstr "Ctrl+V"
 
+msgid "Ctrl+Y or Ctrl+Shift+Z"
+msgstr "Ctrl+Y oder Ctrl+Shift+Z"
+
 msgid "Current password"
 msgstr "Aktuelles Passwort"
 

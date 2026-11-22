@@ -1260,6 +1260,10 @@ msgstr ""
 msgid "Ctrl+V"
 msgstr ""
 
+#: ui/name_texts.slint:79
+msgid "Ctrl+Y or Ctrl+Shift+Z"
+msgstr ""
+
 #: ui/master_password.slint:278 ui/master_password.slint:279
 msgid "Current password"
 msgstr ""
