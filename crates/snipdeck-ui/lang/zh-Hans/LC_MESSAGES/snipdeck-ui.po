@@ -1391,6 +1391,9 @@ msgstr[0] "其列表及其中的 {n} 个片段将移至回收站。你可以在 
 msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
 msgstr "它的列表和 {} 个项目将移到回收站。你可以在 {} 天内恢复。"
 
+msgid "JSON string"
+msgstr "JSON 字符串"
+
 msgid "Joy"
 msgstr "喜悦"
 
@@ -1570,6 +1573,12 @@ msgstr "手动"
 
 msgid "Mark a snippet Sensitive to hide it until you reveal it."
 msgstr "将片段标记为敏感，在你显示之前它会保持隐藏。"
+
+msgid "Markdown code block"
+msgstr "Markdown 代码块"
+
+msgid "Markdown quote"
+msgstr "Markdown 引用"
 
 msgid "Master password"
 msgstr "主密码"

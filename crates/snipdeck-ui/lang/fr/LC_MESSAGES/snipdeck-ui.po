@@ -1395,6 +1395,9 @@ msgstr[1] "Ses listes et {n} extraits seront déplacés dans la corbeille. Vous 
 msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
 msgstr "Ses listes et {} éléments vont à la corbeille. Vous pouvez les restaurer pendant {} jours."
 
+msgid "JSON string"
+msgstr "Chaîne JSON"
+
 msgid "Joy"
 msgstr "Joie"
 
@@ -1574,6 +1577,12 @@ msgstr "Manuel"
 
 msgid "Mark a snippet Sensitive to hide it until you reveal it."
 msgstr "Marquez un extrait comme confidentiel pour le masquer jusqu'à ce que vous l'affichiez."
+
+msgid "Markdown code block"
+msgstr "Bloc de code Markdown"
+
+msgid "Markdown quote"
+msgstr "Citation Markdown"
 
 msgid "Master password"
 msgstr "Mot de passe principal"

@@ -1395,6 +1395,9 @@ msgstr[1] "Sus listas y {n} elementos se moverán a la papelera. Puedes restaura
 msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
 msgstr "Sus listas y {} elementos pasan a la papelera. Puedes restaurarlos durante {} días."
 
+msgid "JSON string"
+msgstr "Cadena JSON"
+
 msgid "Joy"
 msgstr "Alegría"
 
@@ -1574,6 +1577,12 @@ msgstr "Manual"
 
 msgid "Mark a snippet Sensitive to hide it until you reveal it."
 msgstr "Marca un elemento como confidencial para ocultarlo hasta que lo muestres."
+
+msgid "Markdown code block"
+msgstr "Bloque de código Markdown"
+
+msgid "Markdown quote"
+msgstr "Cita de Markdown"
 
 msgid "Master password"
 msgstr "Contraseña maestra"

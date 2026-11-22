@@ -1391,6 +1391,9 @@ msgstr[0] "そのリストと{n}件のスニペットはゴミ箱に移動しま
 msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
 msgstr "このボードのリストと{}件の項目がごみ箱に移動します。{}日間は復元できます。"
 
+msgid "JSON string"
+msgstr "JSON 文字列"
+
 msgid "Joy"
 msgstr "喜び"
 
@@ -1570,6 +1573,12 @@ msgstr "手動"
 
 msgid "Mark a snippet Sensitive to hide it until you reveal it."
 msgstr "スニペットを機密にすると、表示するまで隠せます。"
+
+msgid "Markdown code block"
+msgstr "Markdown のコードブロック"
+
+msgid "Markdown quote"
+msgstr "Markdown の引用"
 
 msgid "Master password"
 msgstr "マスターパスワード"

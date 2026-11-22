@@ -642,6 +642,9 @@ pub fn transform_name(
         Transform::Title => t.invoke_paste_as_title(),
         Transform::Trimmed => t.invoke_paste_as_trimmed(),
         Transform::Slug => t.invoke_paste_as_slug(),
+        Transform::Json => t.invoke_paste_as_json(),
+        Transform::Quote => t.invoke_paste_as_quote(),
+        Transform::Code => t.invoke_paste_as_code(),
     }
     .into()
 }

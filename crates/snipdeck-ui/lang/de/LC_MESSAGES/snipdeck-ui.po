@@ -1395,6 +1395,9 @@ msgstr[1] "Seine Listen und {n} Textbausteine werden in den Papierkorb verschobe
 msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
 msgstr "Seine Listen und {} Elemente kommen in den Papierkorb. Du kannst sie {} Tage lang wiederherstellen."
 
+msgid "JSON string"
+msgstr "JSON-Zeichenfolge"
+
 msgid "Joy"
 msgstr "Freude"
 
@@ -1574,6 +1577,12 @@ msgstr "Manuell"
 
 msgid "Mark a snippet Sensitive to hide it until you reveal it."
 msgstr "Markiere einen Textbaustein als vertraulich, um ihn bis zum Einblenden zu verbergen."
+
+msgid "Markdown code block"
+msgstr "Markdown-Codeblock"
+
+msgid "Markdown quote"
+msgstr "Markdown-Zitat"
 
 msgid "Master password"
 msgstr "Hauptpasswort"

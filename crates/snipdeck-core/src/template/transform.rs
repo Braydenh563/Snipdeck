@@ -23,17 +23,26 @@ pub enum Transform {
     /// `a-url-friendly-slug`: lower case, letters and digits of any script kept, every other
     /// run of characters one `-`, none at the ends.
     Slug,
+    /// A JSON string literal: quoted, with `"`, `\`, line breaks and control characters escaped.
+    Json,
+    /// A Markdown block quote: every line starts with `> `.
+    Quote,
+    /// A Markdown fenced code block (the fence is longer than any run of backticks inside).
+    Code,
 }
 
 impl Transform {
     /// Every choice, in the order the menu lists them.
-    pub const ALL: [Self; 6] = [
+    pub const ALL: [Self; 9] = [
         Self::Plain,
         Self::Upper,
         Self::Lower,
         Self::Title,
         Self::Trimmed,
         Self::Slug,
+        Self::Json,
+        Self::Quote,
+        Self::Code,
     ];
 }
 
@@ -47,7 +56,63 @@ pub fn apply(transform: Transform, text: &str) -> String {
         Transform::Trimmed => text.trim().to_owned(),
         Transform::Title => title(text),
         Transform::Slug => slug(text),
+        Transform::Json => json(text),
+        Transform::Quote => quote(text),
+        Transform::Code => code(text),
     }
+}
+
+fn json(text: &str) -> String {
+    use std::fmt::Write as _;
+    let mut out = String::with_capacity(text.len() + 2);
+    out.push('"');
+    for c in text.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if c < ' ' => {
+                let _ = write!(out, "\\u{:04x}", u32::from(c));
+            }
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
+}
+
+/// The line break `text` uses (`\r\n` if it has one, else `\n`).
+fn newline(text: &str) -> &'static str {
+    if text.contains("\r\n") { "\r\n" } else { "\n" }
+}
+
+fn quote(text: &str) -> String {
+    let mut out = String::with_capacity(text.len() + 8);
+    // `split_inclusive` keeps each line's own break; a text that ends in a break has no last line.
+    for line in text.split_inclusive('\n') {
+        let body = line.trim_end_matches(['\r', '\n']);
+        out.push_str(if body.is_empty() { ">" } else { "> " });
+        out.push_str(line);
+    }
+    if text.is_empty() {
+        out.push('>');
+    }
+    out
+}
+
+fn code(text: &str) -> String {
+    let longest = text
+        .split(|c| c != '`')
+        .map(str::len)
+        .max()
+        .unwrap_or(0)
+        .max(2);
+    let fence = "`".repeat(longest + 1);
+    let nl = newline(text);
+    let body = text.trim_end_matches(['\r', '\n']);
+    format!("{fence}{nl}{body}{nl}{fence}")
 }
 
 fn title(text: &str) -> String {
@@ -125,6 +190,18 @@ mod tests {
             (Slug, "\u{301}a", "a"),
             (Title, "cafe\u{301} au lait", "Café Au Lait"),
             (Slug, "", ""),
+            (Json, "plain", "\"plain\""),
+            (Json, "a \"b\" \\ c\r\nd\te", "\"a \\\"b\\\" \\\\ c\\r\\nd\\te\""),
+            (Json, "bell\u{7} é 👋", "\"bell\\u0007 é 👋\""),
+            (Json, "", "\"\""),
+            (Quote, "one", "> one"),
+            (Quote, "one\ntwo\n", "> one\n> two\n"),
+            (Quote, "a\r\n\r\nb", "> a\r\n>\r\n> b"),
+            (Quote, "", ">"),
+            (Code, "let a = 1;", "```\nlet a = 1;\n```"),
+            (Code, "x\r\ny\r\n", "```\r\nx\r\ny\r\n```"),
+            (Code, "use ``` inside", "````\nuse ``` inside\n````"),
+            (Code, "", "```\n\n```"),
         ] {
             assert_eq!(apply(transform, input), want, "{transform:?} {input:?}");
         }
