@@ -470,6 +470,7 @@ fn expected_trash(m: &Model) -> Vec<TrashEntry> {
             out.push(TrashEntry {
                 target: Trashable::Board(b.id),
                 label: label("B"),
+                preview: String::new(),
                 deleted_at: at(t),
             });
             continue;
@@ -479,6 +480,7 @@ fn expected_trash(m: &Model) -> Vec<TrashEntry> {
                 out.push(TrashEntry {
                     target: Trashable::List(l.id),
                     label: label("L"),
+                    preview: String::new(),
                     deleted_at: at(t),
                 });
                 continue;
@@ -488,6 +490,10 @@ fn expected_trash(m: &Model) -> Vec<TrashEntry> {
                     out.push(TrashEntry {
                         target: Trashable::Item(i.id),
                         label: format!("q{}q", i.n),
+                        preview: Item::preview_of(
+                            &format!("b{}b common words", i.n),
+                            i.spec.sensitive,
+                        ),
                         deleted_at: at(t),
                     });
                 }
@@ -560,8 +566,8 @@ fn check(store: &Store, m: &Model) {
         .map(|i| (i.id, i))
         .collect();
     for created in &m.created {
-        let by_title = store.search(&format!("q{}q", created.n), 5).unwrap();
-        let by_body = store.search(&format!("b{}b", created.n), 5).unwrap();
+        let by_title = found(store, &format!("q{}q", created.n));
+        let by_body = found(store, &format!("b{}b", created.n));
         match live.get(&created.id) {
             None => assert!(by_title.is_empty() && by_body.is_empty(), "dead item found"),
             Some(entry) => {

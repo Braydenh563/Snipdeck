@@ -7,19 +7,20 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use crate::{
+    group_walk::GroupWalk,
     index_cache::{IndexCache, Snapshot},
     main_window::SelectMode,
     search_mark,
 };
+use snipdeck_core::search::{BodyMatches, Query};
 use snipdeck_core::{
     Board, BoardId, GroupId, Item, ItemId, ItemKind, ItemLabel, List, ListAccent, ListIcon, ListId,
-    ListSort,
 };
 use snipdeck_platform::{
     keys::{PasteRule, builtin_paste_rules},
     route::{Policy, Route, Target, decide_with},
 };
-use snipdeck_store::{BoardRepo, GroupRepo, GroupRun, ItemRepo, ListRepo, TagRepo};
+use snipdeck_store::{BoardRepo, GroupRepo, GroupRun, ItemRepo, ListRepo, TagRepo, TriggerRepo};
 
 /// How many search results the Panel shows.
 const SEARCH_LIMIT: usize = 50;
@@ -90,6 +91,10 @@ pub struct GroupHeader {
     pub count: usize,
     /// The items are hidden under the header.
     pub collapsed: bool,
+    /// The group's colour, if it has one (the Main window shows it as a dot).
+    pub colour: Option<snipdeck_core::ListAccent>,
+    /// How many groups it is nested in (0: at the top level). The Main window indents by it.
+    pub depth: usize,
 }
 
 /// A list's name and accent, shown on rows in mixed views.
@@ -156,6 +161,9 @@ pub struct PanelModel {
     list_labels: HashMap<ListId, ListLabel>,
     cache: IndexCache,
     query: String,
+    /// The items whose full content holds each word of the query (the store's full-text
+    /// index), read when the query is set and when the library is read again.
+    body: BodyMatches,
     selected: usize,
     /// The multi-selection, as Main's `pick-mode` keeps one: the items marked with Ctrl+click,
     /// Shift+click, Ctrl+A or Shift+Up/Down. Separate from the keyboard cursor `selected`.
@@ -217,7 +225,7 @@ impl PanelModel {
         cache: &IndexCache,
     ) -> snipdeck_store::Result<Self>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo + GroupRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + TriggerRepo + GroupRepo,
     {
         let snapshot = cache.snapshot(store)?;
         let boards: Vec<Board> = snapshot.boards.iter().map(|(b, _)| b.clone()).collect();
@@ -264,6 +272,7 @@ impl PanelModel {
             list_labels,
             cache: cache.clone(),
             query: String::new(),
+            body: BodyMatches::default(),
             selected: 0,
             ghosts: Vec::new(),
             rows_cache: RefCell::default(),
@@ -284,7 +293,7 @@ impl PanelModel {
     /// Any store error; the model is left as it was.
     pub fn refresh<S>(&mut self, store: &S) -> snipdeck_store::Result<()>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo + GroupRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + TriggerRepo + GroupRepo,
     {
         self.reload(store, self.board, self.list, true)
     }
@@ -297,7 +306,7 @@ impl PanelModel {
     /// Any store error; the model is left as it was.
     pub fn select_list<S>(&mut self, store: &S, list: ListId) -> snipdeck_store::Result<()>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo + GroupRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + TriggerRepo + GroupRepo,
     {
         self.reload(store, self.board, Some(list), false)
     }
@@ -309,7 +318,7 @@ impl PanelModel {
     /// Any store error; the model is left as it was.
     pub fn select_board<S>(&mut self, store: &S, board: BoardId) -> snipdeck_store::Result<()>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo + GroupRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + TriggerRepo + GroupRepo,
     {
         self.reload(store, Some(board), None, false)
     }
@@ -322,13 +331,16 @@ impl PanelModel {
         keep_search: bool,
     ) -> snipdeck_store::Result<()>
     where
-        S: BoardRepo + ListRepo + ItemRepo + TagRepo + GroupRepo,
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo + TriggerRepo + GroupRepo,
     {
         let mut next = Self::load_cached(store, board, list, &self.cache)?;
         next.target = self.target.take();
         next.policy = std::mem::take(&mut self.policy);
         if keep_search {
             next.query = std::mem::take(&mut self.query);
+            if next.searching() {
+                next.body = store.search(&Query::parse(&next.query))?;
+            }
             next.selected = self.selected;
             // A refresh (an item added, moved, trashed) keeps the marks of items still shown here.
             let here: HashSet<ItemId> = next.items.iter().map(|i| i.id).collect();
@@ -384,7 +396,7 @@ impl PanelModel {
     /// refusal offers to switch the list to manual order.
     #[must_use]
     pub fn sorts_itself(&self) -> bool {
-        !self.searching() && self.list().is_some_and(|l| l.sort != ListSort::Manual)
+        !self.searching() && self.list().is_some_and(|l| !l.sort.is_manual())
     }
 
     /// Whether a search is active.
@@ -397,7 +409,7 @@ impl PanelModel {
     /// search is running.
     #[must_use]
     pub fn reorderable(&self) -> bool {
-        !self.searching() && self.list().is_some_and(|l| l.sort == ListSort::Manual)
+        !self.searching() && self.list().is_some_and(|l| l.sort.is_manual())
     }
 
     /// The shown list's items in manual order.
@@ -413,11 +425,21 @@ impl PanelModel {
         self.all.suggest()
     }
 
-    /// Sets the search text; the selection returns to the first row.
-    pub fn set_query(&mut self, query: &str) {
+    /// Sets the search text and looks its words up in the full content (the store's full-text
+    /// index); the selection returns to the first row.
+    ///
+    /// # Errors
+    ///
+    /// Any store error from the lookup; the text is kept and only the in-memory fields match.
+    pub fn set_query<S: ItemRepo>(&mut self, store: &S, query: &str) -> snipdeck_store::Result<()> {
         query.clone_into(&mut self.query);
         self.selected = 0;
         self.clear_marks();
+        self.body = BodyMatches::default();
+        if self.searching() {
+            self.body = store.search(&Query::parse(&self.query))?;
+        }
+        Ok(())
     }
 
     /// Item `id` as the library snapshot holds it, without a store read.
@@ -463,7 +485,10 @@ impl PanelModel {
             self.place_ghosts(&mut rows);
             return rows;
         }
-        let found = self.all.index().query(&self.query, SEARCH_LIMIT);
+        let found = self
+            .all
+            .index()
+            .query(&Query::parse(&self.query), &self.body, SEARCH_LIMIT);
         let hits: Vec<(&Item, Option<&str>)> = found
             .iter()
             .filter_map(|hit| {
@@ -471,7 +496,7 @@ impl PanelModel {
                 Some((item, hit.tag.as_deref()))
             })
             .collect();
-        let manual = self.list().is_some_and(|l| l.sort == ListSort::Manual);
+        let manual = self.list().is_some_and(|l| l.sort.is_manual());
         let mut rows = Vec::new();
         let mut shown: Vec<GroupId> = Vec::new();
         let mut number = 0;
@@ -496,7 +521,7 @@ impl PanelModel {
                 .iter()
                 .filter(|(i, _)| run.items.contains(&i.id))
                 .collect();
-            let mut header = Self::header_row(run);
+            let mut header = Self::header_row(run, 0);
             header.header = header.header.map(|h| GroupHeader {
                 count: mine.len(),
                 collapsed: false,
@@ -517,29 +542,22 @@ impl PanelModel {
     /// left out while it is collapsed). Quick numbers count item rows only. A list that orders
     /// itself shows no groups: a group is a run of the manual order.
     fn list_rows(&self) -> Vec<Row> {
-        let manual = self.list().is_some_and(|l| l.sort == ListSort::Manual);
-        let runs: HashMap<ItemId, &GroupRun> = if manual {
-            self.groups
-                .iter()
-                .flat_map(|run| run.items.iter().map(move |i| (*i, run)))
-                .collect()
-        } else {
-            HashMap::new()
-        };
+        let manual = self.list().is_some_and(|l| l.sort.is_manual());
+        let mut walk = GroupWalk::new(if manual { &self.groups } else { &[] });
         let mut rows = Vec::new();
-        let mut open: Option<GroupId> = None;
         let mut number = 0;
         for item in self.list_items() {
-            let run = runs.get(&item.id).copied();
-            if let Some(run) = run.filter(|r| open != Some(r.group.id)) {
-                rows.push(Self::header_row(run));
+            // A folded group hides the groups nested in it, and a nested group shows its header
+            // below its parent's.
+            let step = walk.step(item.id);
+            for (run, depth) in step.headers {
+                rows.push(Self::header_row(run, depth));
             }
-            open = run.map(|r| r.group.id);
-            if run.is_some_and(|r| r.group.collapsed) {
+            if step.hidden {
                 continue;
             }
             let mut row = self.row(item, number, false, None);
-            row.grouped = run.is_some();
+            row.grouped = step.depth > 0;
             rows.push(row);
             number += 1;
         }
@@ -547,7 +565,7 @@ impl PanelModel {
     }
 
     /// The header row of `run`.
-    fn header_row(run: &GroupRun) -> Row {
+    fn header_row(run: &GroupRun, depth: usize) -> Row {
         Row {
             id: ItemId::from_uuid(*run.group.id.as_uuid()),
             number: 0,
@@ -567,8 +585,10 @@ impl PanelModel {
             header: Some(GroupHeader {
                 group: run.group.id,
                 name: run.group.name.as_str().to_owned(),
-                count: run.items.len(),
+                count: run.run.len(),
                 collapsed: run.group.collapsed,
+                colour: run.group.colour,
+                depth,
             }),
             grouped: false,
         }
@@ -734,12 +754,8 @@ impl PanelModel {
     /// The shown list's items in its sort order, whatever the search says.
     fn list_items(&self) -> Vec<&Item> {
         let mut items: Vec<&Item> = self.items.iter().collect();
-        match self.list().map(|l| l.sort) {
-            Some(ListSort::MostUsed) => items.sort_by_key(|i| std::cmp::Reverse(i.use_count)),
-            Some(ListSort::RecentlyUsed) => {
-                items.sort_by_key(|i| std::cmp::Reverse(i.last_used_at));
-            }
-            _ => {}
+        if let Some(list) = self.list() {
+            list.sort.apply(&mut items);
         }
         items
     }
@@ -1022,7 +1038,7 @@ pub fn friendly_app_name(exe: &str) -> String {
 mod tests {
     use super::*;
     use crate::controller::Library as _;
-    use snipdeck_core::{Content, Format, Formats, Inline, Name, Placement, Tag, Timestamp};
+    use snipdeck_core::{Content, Format, Formats, Inline, Name, Placement, Sort, Tag, Timestamp};
     use snipdeck_platform::route::Focus;
     use snipdeck_store::Store;
     use snipdeck_store::TrashRepo as _;
@@ -1109,10 +1125,10 @@ mod tests {
         assert!(model.rows()[2].marked, "the new mark shows");
         // One build inside `mark` (it reads the rows to find the item), one after it.
         assert_eq!(model.rows_built(), 3);
-        model.set_query("Item 1");
+        model.set_query(&f.store, "Item 1").unwrap();
         assert!(model.rows().len() < 30, "the search narrowed the rows");
         assert_eq!(model.rows_built(), 4);
-        model.set_query("");
+        model.set_query(&f.store, "").unwrap();
         model.mark_all();
         assert!(model.rows().iter().all(|r| r.marked));
         model.clear_marks();
@@ -1256,7 +1272,7 @@ mod tests {
             "nothing is built before the first load"
         );
         let mut model = PanelModel::load_cached(&f.store, None, None, &cache).expect("model");
-        model.set_query("thank");
+        model.set_query(&f.store, "thank").unwrap();
         let rows = model.rows();
         assert_eq!(rows.first().map(|r| r.id), Some(id));
     }
@@ -1268,7 +1284,7 @@ mod tests {
         let link = add_to(&mut f, Which::Links, "Docs", "https://example.com/thanks");
         let mut model =
             PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
-        model.set_query("docs");
+        model.set_query(&f.store, "docs").unwrap();
         let rows = model.rows();
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].id, link);
@@ -1285,7 +1301,7 @@ mod tests {
             rows[0].list.as_ref().is_some_and(|l| !l.board.is_empty()),
             "a result says which board it lives on"
         );
-        model.set_query("   ");
+        model.set_query(&f.store, "   ").unwrap();
         assert!(!model.searching());
         assert!(
             model
@@ -1319,7 +1335,7 @@ mod tests {
         }
         let mut model =
             PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
-        model.set_query("invoice");
+        model.set_query(&f.store, "invoice").unwrap();
         let rows = model.rows();
         let row = |id| rows.iter().find(|r| r.id == id).expect("row");
         assert_eq!(
@@ -1335,7 +1351,7 @@ mod tests {
             "a sensitive row shows no mark"
         );
         assert_eq!(row(secret).tag_hit, None, "nor the tag that matched");
-        model.set_query("");
+        model.set_query(&f.store, "").unwrap();
         assert!(
             model
                 .rows()
@@ -1357,7 +1373,7 @@ mod tests {
         model.move_selection(-9);
         assert_eq!(model.selected(), Some(a));
         model.move_selection(1);
-        model.set_query("a");
+        model.set_query(&f.store, "a").unwrap();
         assert_eq!(model.selected(), Some(a));
         assert_eq!(model.quick_use(1), Some(a));
         assert_eq!(model.quick_use(0), None);
@@ -1374,7 +1390,7 @@ mod tests {
         }
         f.store.record_use(quiet, at()).expect("use");
         let mut list = f.store.list(f.replies).expect("list");
-        list.sort = ListSort::MostUsed;
+        list.sort = Sort::MOST_USED;
         f.store.update_list(&list).expect("update");
         let rows = PanelModel::load_cached(&f.store, None, None, &IndexCache::new())
             .expect("model")
@@ -1460,7 +1476,7 @@ mod tests {
         let mut model =
             PanelModel::load_cached(&f.store, None, None, &IndexCache::new()).expect("model");
         model.set_target(Some(target("OUTLOOK.EXE", Focus::Caret)));
-        model.set_query("thanks");
+        model.set_query(&f.store, "thanks").unwrap();
         model.select_list(&f.store, f.links).expect("select");
         assert_eq!(model.list().map(|l| l.id), Some(f.links));
         assert!(!model.searching());
@@ -1502,7 +1518,7 @@ mod tests {
         model.move_selection(1);
         assert_eq!(model.selected(), Some(b));
         let mut list = f.store.list(f.replies).expect("list");
-        list.sort = ListSort::MostUsed;
+        list.sort = Sort::MOST_USED;
         f.store.update_list(&list).expect("update");
         f.store.record_use(a, at()).expect("use");
         model.refresh(&f.store).expect("refresh");
@@ -1515,7 +1531,7 @@ mod tests {
             Some(1),
             "the selection stays put"
         );
-        model.set_query("alp");
+        model.set_query(&f.store, "alp").unwrap();
         model.refresh(&f.store).expect("refresh");
         assert!(model.searching(), "the search survives a refresh");
         assert_eq!(model.selected_position(), Some(0));
@@ -1593,7 +1609,7 @@ mod tests {
         model.clear_marks();
         assert_eq!(model.marked_count(), 0);
         model.mark_all();
-        model.set_query("Item 2");
+        model.set_query(&f.store, "Item 2").unwrap();
         assert_eq!(model.marked_count(), 0, "typing a query clears the marks");
     }
 

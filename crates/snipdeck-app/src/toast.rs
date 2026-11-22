@@ -108,6 +108,14 @@ pub enum ToastMessage {
         /// That keyword's colour, as hex.
         hex: String,
     },
+    /// "Saved to `list`. The same text was already in `was_in`." (a capture or a Ctrl+V of text
+    /// another item holds): it is saved anyway, and Undo takes it back.
+    SavedAgain {
+        /// The list the copy went to.
+        list: String,
+        /// The list that holds the same text.
+        was_in: String,
+    },
     /// "Added to {list}" / "Added {count} items to {list}" (Ctrl+V on a list), with Undo and Edit.
     AddedTo {
         /// The list's name.
@@ -239,6 +247,32 @@ pub enum ToastMessage {
         /// What was taken back.
         action: crate::history::Action,
     },
+    /// "Open a list to group its items": Ctrl+G in a search or a view of several lists.
+    GroupNeedsList,
+    /// "Clear the colour filter to group items": the rows show no group headers under it.
+    GroupColourFilter,
+    /// "Select the items to group first".
+    GroupNothing,
+    /// "Groups nest three levels deep at most": a nest or a new group inside a group would go
+    /// deeper.
+    GroupTooDeep,
+    /// "Deleted tag work": the items keep their other tags.
+    TagDeleted {
+        /// The tag's name.
+        name: String,
+    },
+    /// "Merged tag work into Work": the items of the first carry the second now.
+    TagMerged {
+        /// The tag that went.
+        from: String,
+        /// The tag its items moved to.
+        into: String,
+    },
+    /// "That edit of a sensitive item cannot be undone": Undo stopped at an edit whose text is
+    /// not kept.
+    UndoStopped,
+    /// "That step cannot be undone any more: what it changed is gone for good."
+    HistoryStepLost,
     /// "Redid delete": the history brought a step back.
     Redone {
         /// What was brought back.
@@ -362,18 +396,6 @@ pub enum ToastMessage {
         count: usize,
         /// Whether the tag was added (otherwise removed).
         added: bool,
-    },
-    /// "Deleted the tag Work".
-    TagDeleted {
-        /// The tag's name.
-        name: String,
-    },
-    /// "Merged the tag Work into Office".
-    TagMerged {
-        /// The tag that went away.
-        from: String,
-        /// The tag its items carry now.
-        into: String,
     },
     /// "Couldn't export your library: ..."
     ExportFailed(Cause),

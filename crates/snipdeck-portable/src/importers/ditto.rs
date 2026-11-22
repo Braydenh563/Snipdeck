@@ -178,6 +178,8 @@ pub fn decode_ditto(
     let mut plan = Plan::default();
     if !lists.is_empty() {
         plan.boards.push(PlanBoard {
+            accent: None,
+            icon: None,
             name: board_name(
                 options
                     .board_name

@@ -2,24 +2,32 @@
 //! rename, ungroup, delete and move. Both windows use these paths; a [`Surface`] says whose rows an index
 //! points at. Each change that is not a view setting is one history step.
 
-use snipdeck_core::{Group, ItemId, ListId, Name, Placement};
+use snipdeck_core::{Group, GroupId, GroupTree, ItemId, ListId, MAX_GROUP_DEPTH, Name, Placement};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::{GroupDelete, GroupRepo, GroupRun};
 
-use super::{Controller, Library, failed};
+use super::{Controller, Library, failed, neutral};
 use crate::main_window::Key as MainKey;
+use crate::toast::ToastMessage;
 use crate::{
-    history::{Action, Change},
+    history::{Action, Change, Membership},
     host::ClipboardText,
 };
 
 /// What a shown row is, for stepping a group past its neighbours.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum RowMark {
-    Header(snipdeck_core::GroupId),
-    Member,
-    Loose(ItemId),
+    Header(GroupId),
+    Item(ItemId),
     Other,
+}
+
+/// One block among the siblings of a group: a group (with all it holds) or an item that is a
+/// member of the parent itself (a loose item at the top level).
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Block {
+    Group(GroupId),
+    Item(ItemId),
 }
 
 /// A window's request to open a header's inline rename, and a counter that tells the window it
@@ -30,11 +38,33 @@ pub(super) struct Rename {
     pub(super) seq: u64,
 }
 
+/// What the Main window's "Nest under…" chooser is offering: the group it moves and where it may go.
+#[derive(Debug, Clone)]
+pub(super) struct NestChooser {
+    group: GroupId,
+    /// The choices in the order shown: `None` is the top level.
+    options: Vec<Option<GroupId>>,
+}
+
 /// Whose rows a group operation reads: the Panel's or the Main window's.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Surface {
     Panel,
     Main,
+}
+
+/// The group every one of `members` sits in directly, when there is one.
+fn common_group(runs: &[GroupRun], members: &[ItemId]) -> Option<GroupId> {
+    let own = |id: &ItemId| {
+        runs.iter()
+            .find(|r| r.items.contains(id))
+            .map(|r| r.group.id)
+    };
+    let first = members.first().and_then(own)?;
+    members
+        .iter()
+        .all(|id| own(id) == Some(first))
+        .then_some(first)
 }
 
 impl<S, C, K, T> Controller<S, C, K, T>
@@ -59,17 +89,25 @@ where
 
     fn group_marked_on(&mut self, s: Surface, cursor: usize) {
         let Some(list) = self.group_list(s) else {
+            self.show_toast(neutral(ToastMessage::GroupNeedsList));
             return;
         };
+        // Under a filter the rows show no headers: a group made now would be invisible.
+        if s == Surface::Main
+            && self.main.open_list().is_some()
+            && !self.main.searching()
+            && !self.main.shows_groups()
+        {
+            self.show_toast(neutral(ToastMessage::GroupColourFilter));
+            return;
+        }
         if !self.group_reorderable(s) {
             self.offer_manual_for_group(s);
             return;
         }
-        // Under a colour filter the rows show no headers: a group made now would be invisible.
-        if s == Surface::Main && !self.main.shows_groups() {
-            return;
-        }
-        let Ok(name) = Name::new(&self.group_name) else {
+        // A window text that is no valid name (empty, too long) must not stop the group: it takes
+        // the plain word, and its header starts renaming anyway.
+        let Ok(name) = Name::new(&self.group_name).or_else(|_| Name::new("Group")) else {
             return;
         };
         let members = self.group_targets(s, cursor);
@@ -77,25 +115,36 @@ where
             // On a header with nothing marked there is nothing to gather: rename its group.
             if let Some(run) = self.group_row(s, cursor) {
                 self.start_group_rename(s, run.group.id);
+            } else {
+                self.show_toast(neutral(ToastMessage::GroupNothing));
             }
             return;
         }
-        let group = Group::new(list, name);
+        let mut group = Group::new(list, name);
         let order = self.group_order(s, list);
         // Each member's group now: Undo puts every one back exactly, whatever the moves did.
         let Ok(runs) = self.store.groups_of(list) else {
             self.show_toast(failed());
             return;
         };
+        // Rows that all sit in one group make a group nested in it (a mixed selection makes one at
+        // the top level, as it always did).
+        if let Some(parent) = common_group(&runs, &members) {
+            let tree = GroupTree::new(runs.iter().map(|r| &r.group));
+            if tree.depth(parent) + 2 > MAX_GROUP_DEPTH {
+                self.show_toast(neutral(ToastMessage::GroupTooDeep));
+                return;
+            }
+            group.parent = Some(parent);
+        }
         let mut changes: Vec<Change> = members
             .iter()
             .filter_map(|id| {
-                runs.iter()
-                    .find(|r| r.items.contains(id))
-                    .map(|r| Change::Regroup {
-                        item: *id,
-                        group: Some(r.group.clone()),
-                    })
+                let run = runs.iter().find(|r| r.items.contains(id))?;
+                Some(Change::Regroup {
+                    item: *id,
+                    group: Membership::of(&runs, run.group.id),
+                })
             })
             .collect();
         let made = self.store.atomically(|b| {
@@ -128,6 +177,7 @@ where
             changes.push(Change::Group {
                 group: group.clone(),
                 members: ordered,
+                children: Vec::new(),
             });
             Ok(())
         });
@@ -229,6 +279,24 @@ where
         }
     }
 
+    /// Every group of the shown list, folded ones too, in list order (a parent before the groups
+    /// nested in it).
+    fn group_runs(&self, s: Surface) -> Vec<GroupRun> {
+        match s {
+            Surface::Panel => self.model.groups().to_vec(),
+            Surface::Main => self.main.all_groups().cloned().collect(),
+        }
+    }
+
+    /// The groups nested directly in `id`.
+    fn group_children(&self, s: Surface, id: GroupId) -> Vec<GroupId> {
+        self.group_runs(s)
+            .into_iter()
+            .filter(|r| r.group.parent == Some(id))
+            .map(|r| r.group.id)
+            .collect()
+    }
+
     /// The list the rows belong to (the Main window: the open list; other sections have no groups).
     fn group_list(&self, s: Surface) -> Option<ListId> {
         match s {
@@ -299,8 +367,7 @@ where
                 .iter()
                 .map(|r| match &r.header {
                     Some(h) => RowMark::Header(h.group),
-                    None if r.grouped => RowMark::Member,
-                    None if r.is_item() => RowMark::Loose(r.id),
+                    None if r.is_item() => RowMark::Item(r.id),
                     None => RowMark::Other,
                 })
                 .collect(),
@@ -310,8 +377,7 @@ where
                 .iter()
                 .map(|k| match k {
                     MainKey::Group(g) => RowMark::Header(*g),
-                    MainKey::Item(id) if self.main.group_of(*id).is_some() => RowMark::Member,
-                    MainKey::Item(id) => RowMark::Loose(*id),
+                    MainKey::Item(id) => RowMark::Item(*id),
                     _ => RowMark::Other,
                 })
                 .collect(),
@@ -345,32 +411,70 @@ where
             Surface::Main => {
                 if !self.main.searching()
                     && let Some(list) = self.main.open_list()
-                    && list.sort != snipdeck_core::ListSort::Manual
+                    && !list.sort.is_manual()
                 {
                     let id = list.id;
                     self.offer_manual_order(id);
+                } else {
+                    // A search or a view that mixes lists has no order of its own to group in.
+                    self.show_toast(neutral(ToastMessage::GroupNeedsList));
                 }
             }
         }
     }
 
+    /// The groups group `id` is in, outermost first, and `id` itself last.
+    fn group_path(runs: &[GroupRun], id: GroupId) -> Vec<GroupId> {
+        let tree = GroupTree::new(runs.iter().map(|r| &r.group));
+        let mut path: Vec<GroupId> = tree.ancestors(id).collect();
+        path.reverse();
+        path.push(id);
+        path
+    }
+
+    /// The groups item `id` is in, outermost first.
+    fn item_path(runs: &[GroupRun], id: ItemId) -> Vec<GroupId> {
+        runs.iter()
+            .find(|r| r.items.contains(&id))
+            .map_or_else(Vec::new, |r| Self::group_path(runs, r.group.id))
+    }
+
+    /// The blocks that sit side by side with group `id`, in order: the groups and the loose items
+    /// directly in its parent (at the top level when it has none).
+    fn sibling_blocks(&self, s: Surface, list: ListId, id: GroupId) -> Vec<Block> {
+        let runs = self.group_runs(s);
+        let path = Self::group_path(&runs, id);
+        let level = path.len() - 1;
+        let mut blocks: Vec<Block> = Vec::new();
+        for item in self.group_order(s, list) {
+            let at = Self::item_path(&runs, item);
+            if at.len() < level || at[..level] != path[..level] {
+                continue;
+            }
+            let block = at
+                .get(level)
+                .map_or(Block::Item(item), |g| Block::Group(*g));
+            if blocks.last() != Some(&block) {
+                blocks.push(block);
+            }
+        }
+        blocks
+    }
+
     /// The row to drop group `index` on to move it one place (`delta` of 1 or -1): the next
-    /// block (a group's header or a loose row) in that direction. `None` at the ends.
+    /// block beside it (a group's header or a loose row) in that direction, within the group it
+    /// is nested in. `None` at the ends.
     fn group_step_target(&self, s: Surface, index: usize, delta: isize) -> Option<usize> {
         let run = self.group_row(s, index)?;
         let list = self.group_list(s)?;
-        let order = self.group_order(s, list);
-        let head = order.iter().position(|i| run.items.first() == Some(i))?;
-        let tail = head + run.items.len().saturating_sub(1);
-        let next = if delta > 0 {
-            order.get(tail + 1)
-        } else {
-            order.get(head.checked_sub(1)?)
-        }?;
-        let group = self.group_of_item(s, *next).map(|g| g.group.id);
-        self.row_marks(s).iter().position(|m| match (m, group) {
-            (RowMark::Header(h), Some(g)) => *h == g,
-            (RowMark::Loose(id), None) => id == next,
+        let blocks = self.sibling_blocks(s, list, run.group.id);
+        let at = blocks
+            .iter()
+            .position(|b| *b == Block::Group(run.group.id))?;
+        let next = *blocks.get(at.checked_add_signed(delta)?)?;
+        self.row_marks(s).iter().position(|m| match (m, next) {
+            (RowMark::Header(h), Block::Group(g)) => *h == g,
+            (RowMark::Item(id), Block::Item(want)) => *id == want,
             _ => false,
         })
     }
@@ -420,23 +524,21 @@ where
             return;
         };
         self.group_drop_on(s, index, onto);
-        let marks = self.row_marks(s);
         let Some(at) = self.header_row(s, group) else {
             return;
         };
         self.group_cursor(s, at);
-        let blocks: Vec<bool> = marks
-            .iter()
-            .filter(|m| !matches!(m, RowMark::Member))
-            .map(|m| matches!(m, RowMark::Header(g) if *g == group))
-            .collect();
-        if let Some(place) = blocks.iter().position(|mine| *mine) {
-            self.announce_placed(place + 1, blocks.len());
+        if let Some(list) = self.group_list(s) {
+            let blocks = self.sibling_blocks(s, list, group);
+            if let Some(place) = blocks.iter().position(|b| *b == Block::Group(group)) {
+                self.announce_placed(place + 1, blocks.len());
+            }
         }
     }
 
     /// A click on a header's chevron, or Left / Right on it: collapses or expands the group.
-    /// `collapsed` of `None` toggles. Not a history step: it is a view setting.
+    /// `collapsed` of `None` toggles. A history step, like the rename: the fold is saved with the
+    /// group, so Undo brings the old state back.
     pub fn group_collapse(&mut self, index: usize, collapsed: Option<bool>) {
         self.group_collapse_on(Surface::Panel, index, collapsed);
     }
@@ -455,12 +557,20 @@ where
         if want == run.group.collapsed {
             return;
         }
-        let mut group = run.group;
+        let before = run.group;
+        let mut group = before.clone();
         group.collapsed = want;
         if self.store.update_group(&group).is_err() {
             self.show_toast(failed());
             return;
         }
+        self.record_step(
+            Action::Group,
+            vec![Change::Rename {
+                before,
+                after: group.clone(),
+            }],
+        );
         if !self.group_refresh(s) {
             return;
         }
@@ -504,6 +614,27 @@ where
         self.group_refresh(s);
     }
 
+    /// The Main window's colour choice for header `index`: one of the nine accents, or none.
+    /// The same colour again does nothing. A history step, like the rename.
+    pub fn main_group_colour(&mut self, index: usize, colour: Option<snipdeck_core::ListAccent>) {
+        self.main_fresh();
+        let Some(run) = self.group_row(Surface::Main, index) else {
+            return;
+        };
+        if colour == run.group.colour {
+            return;
+        }
+        let before = run.group;
+        let mut after = before.clone();
+        after.colour = colour;
+        if self.store.update_group(&after).is_err() {
+            self.show_toast(failed());
+            return;
+        }
+        self.record_step(Action::Group, vec![Change::Rename { before, after }]);
+        self.group_refresh(Surface::Main);
+    }
+
     /// Ungroup: the header goes, the items stay. One Undo step.
     pub fn group_ungroup(&mut self, index: usize) {
         self.group_ungroup_on(Surface::Panel, index);
@@ -519,6 +650,8 @@ where
         let Some(run) = self.group_row(s, index) else {
             return;
         };
+        // The groups nested in it go up to its parent, as do its own members.
+        let children = self.group_children(s, run.group.id);
         let gone = self
             .store
             .atomically(|b| b.delete_group(run.group.id, GroupDelete::Keep));
@@ -531,9 +664,150 @@ where
             vec![Change::Ungroup {
                 group: run.group,
                 members: run.items,
+                children,
             }],
         );
         self.group_refresh(s);
+    }
+
+    /// "Nest under…" on header `index` (or the palette's command): the chooser the window opens next
+    /// lists where the group can go, the top level first when it is nested now.
+    pub fn main_group_nest_start(&mut self, index: usize) {
+        self.main_fresh();
+        self.nest = self.group_row(Surface::Main, index).map(|run| {
+            let runs = self.group_runs(Surface::Main);
+            let tree = GroupTree::new(runs.iter().map(|r| &r.group));
+            let mut options = Vec::new();
+            if run.group.parent.is_some() {
+                options.push(None);
+            }
+            options.extend(
+                runs.iter()
+                    .filter(|r| {
+                        Some(r.group.id) != run.group.parent
+                            && tree.can_nest(run.group.id, Some(r.group.id))
+                    })
+                    .map(|r| Some(r.group.id)),
+            );
+            NestChooser {
+                group: run.group.id,
+                options,
+            }
+        });
+    }
+
+    /// The "Nest under…" chooser's entries (empty while it is not open).
+    pub(super) fn nest_choices(&self) -> Vec<super::main_ctl::NestChoice> {
+        let Some(nest) = &self.nest else {
+            return Vec::new();
+        };
+        let runs = self.group_runs(Surface::Main);
+        nest.options
+            .iter()
+            .map(|option| {
+                let run = option.and_then(|id| runs.iter().find(|r| r.group.id == id));
+                super::main_ctl::NestChoice {
+                    name: run.map(|r| r.group.name.as_str().to_owned()),
+                    depth: run.map_or(0, |r| r.depth),
+                    count: run.map_or(0, |r| r.run.len()),
+                }
+            })
+            .collect()
+    }
+
+    /// The chooser picked entry `index`: the group, with everything in it, goes under that group
+    /// (or to the top level). One undo step.
+    pub fn main_group_nest_chosen(&mut self, index: usize) {
+        self.main_fresh();
+        let Some(nest) = self.nest.take() else {
+            return;
+        };
+        if let Some(parent) = nest.options.get(index).copied() {
+            self.group_nest(Surface::Main, nest.group, parent);
+        }
+    }
+
+    /// The chooser closed without a pick.
+    pub fn main_group_nest_cancel(&mut self) {
+        self.nest = None;
+    }
+
+    /// Group `id` and all it holds go under `parent` (`None`: the top level), at the end of it.
+    fn group_nest(&mut self, s: Surface, id: GroupId, parent: Option<GroupId>) {
+        let runs = self.group_runs(s);
+        let (Some(run), Some(list)) = (
+            runs.iter().find(|r| r.group.id == id).cloned(),
+            self.group_list(s),
+        ) else {
+            return;
+        };
+        let tree = GroupTree::new(runs.iter().map(|r| &r.group));
+        if !tree.can_nest(id, parent) {
+            self.show_toast(neutral(ToastMessage::GroupTooDeep));
+            return;
+        }
+        let order = self.group_order(s, list);
+        let Some(back) = place_before(&order, run.run[0], &run.run) else {
+            return;
+        };
+        // The end of the group it goes into (else of the outermost group it leaves), outside
+        // its own run; with nothing there, just above that group.
+        let holder = match parent {
+            Some(p) => runs.iter().find(|r| r.group.id == p),
+            None => Self::group_path(&runs, id)
+                .first()
+                .and_then(|root| runs.iter().find(|r| r.group.id == *root)),
+        };
+        let tail = holder.and_then(|h| h.run.iter().rev().find(|i| !run.run.contains(i)));
+        let to = match (tail, holder) {
+            (Some(tail), _) => Placement::After(*tail),
+            (None, Some(h)) if parent.is_none() => h
+                .run
+                .first()
+                .and_then(|first| place_before(&order, *first, &run.run))
+                .unwrap_or(back),
+            _ => back,
+        };
+        if self.store.reparent_group(id, parent, to).is_err() {
+            self.show_toast(failed());
+            return;
+        }
+        self.record_step(
+            Action::Group,
+            vec![Change::Reparent {
+                group: id,
+                from: (run.group.parent, back),
+                to: (parent, to),
+            }],
+        );
+        if !self.group_refresh(s) {
+            return;
+        }
+        if let Some(at) = self.header_row(s, id) {
+            self.group_cursor(s, at);
+        }
+    }
+
+    /// "Move group to list…": the chooser the window opens next holds the group's items, those of
+    /// the groups nested in it included, so the list picked takes them all (the headers stay behind;
+    /// a group is a run in one list, and is made again, nested as it was, in the list picked).
+    pub fn main_group_move_start(&mut self, index: usize) {
+        self.main_fresh();
+        if let Some(run) = self.group_row(Surface::Main, index) {
+            let targets = run.run.iter().map(|id| MainKey::Item(*id)).collect();
+            self.main.set_chooser(targets);
+            self.group_move = self.subtree(Surface::Main, run.group.id);
+        }
+    }
+
+    /// Group `id` and the groups nested in it, parents first.
+    fn subtree(&self, s: Surface, id: GroupId) -> Vec<GroupRun> {
+        let runs = self.group_runs(s);
+        let tree = GroupTree::new(runs.iter().map(|r| &r.group));
+        let inside = tree.subtree(id);
+        runs.into_iter()
+            .filter(|r| inside.contains(&r.group.id))
+            .collect()
     }
 
     /// Delete group: the header and its items go to the Trash, with the usual Undo toast (one
@@ -542,18 +816,55 @@ where
         let Some(run) = self.group_row(Surface::Panel, index) else {
             return;
         };
-        let items: Vec<ItemId> = run.items;
-        self.trash_with_undo(&items);
+        self.trash_with_undo(&run.run);
     }
 
-    /// Delete group from the Main window: the same, with the same Undo toast.
+    /// Delete group from the Main window: the same, with the same Undo toast. A folded group
+    /// hides the rows it deletes, so the window asks first, with the count.
     pub fn main_group_delete(&mut self, index: usize) {
         self.main_fresh();
         let Some(run) = self.group_row(Surface::Main, index) else {
             return;
         };
-        self.trash_with_undo(&run.items);
+        // Rows out of sight, or a whole branch of groups: ask first, with the count.
+        let nested = !self.group_children(Surface::Main, run.group.id).is_empty();
+        if (run.group.collapsed || nested) && !run.run.is_empty() {
+            self.group_delete = Some(run.group.id);
+            return;
+        }
+        self.trash_with_undo(&run.run);
         self.main_fresh();
+    }
+
+    /// The group the Main window asks about, with how many items go with it (its whole branch).
+    pub(super) fn group_delete_view(&self) -> Option<(String, usize)> {
+        let id = self.group_delete?;
+        self.main
+            .all_groups()
+            .find(|r| r.group.id == id)
+            .map(|r| (r.group.name.as_str().to_owned(), r.run.len()))
+    }
+
+    /// "Delete group" in the confirmation: the group and its items go to the Trash, with Undo.
+    pub fn main_group_delete_confirm(&mut self) {
+        self.main_fresh();
+        let Some(id) = self.group_delete.take() else {
+            return;
+        };
+        let items = self
+            .main
+            .all_groups()
+            .find(|r| r.group.id == id)
+            .map(|r| r.run.clone());
+        if let Some(items) = items {
+            self.trash_with_undo(&items);
+            self.main_fresh();
+        }
+    }
+
+    /// Cancel, Esc or a click on the scrim: the group stays.
+    pub fn main_group_delete_cancel(&mut self) {
+        self.group_delete = None;
     }
 
     /// A drag that involves a header: a header dropped on a row moves the whole group there; an
@@ -609,36 +920,53 @@ where
             DragRow::Item { id, .. } => Some(id),
             DragRow::Header => None,
         };
+        let runs = self.group_runs(s);
         let done = match (self.group_row(s, from), self.group_row(s, onto)) {
             (Some(run), target) => {
-                if target_id.is_some_and(|id| run.items.contains(&id))
+                if target_id.is_some_and(|id| run.run.contains(&id))
                     || target.as_ref().is_some_and(|t| t.group.id == run.group.id)
                 {
                     return true;
                 }
                 let down = from < onto;
-                let anchor = match &target {
-                    Some(t) if down => t.items.last().copied(),
-                    Some(t) => t.items.first().copied(),
-                    None => target_id,
+                // The block the drop lands beside, seen from the group's own level: a target
+                // deeper in another group counts as that group, not as its member.
+                let ancestors = {
+                    let mut path = Self::group_path(&runs, run.group.id);
+                    path.pop();
+                    path
                 };
-                let Some(anchor) = anchor else {
+                let (head, end) = match (&target, target_id) {
+                    (Some(t), _) => (t.run.first().copied(), t.run.last().copied()),
+                    (None, Some(id)) => {
+                        let path = Self::item_path(&runs, id);
+                        let shared = path
+                            .iter()
+                            .zip(&ancestors)
+                            .take_while(|(a, b)| a == b)
+                            .count();
+                        let block = path
+                            .get(shared)
+                            .and_then(|g| runs.iter().find(|r| r.group.id == *g));
+                        block.map_or((Some(id), Some(id)), |r| {
+                            (r.run.first().copied(), r.run.last().copied())
+                        })
+                    }
+                    (None, None) => (None, None),
+                };
+                let Some(anchor) = (if down { end } else { head }) else {
                     return true;
                 };
                 let to = if down {
                     Placement::After(anchor)
                 } else {
-                    // Above the anchor's group (or the anchor), outside the dragged run.
-                    let top = self
-                        .group_of_item(s, anchor)
-                        .and_then(|g| g.items.first().copied())
-                        .unwrap_or(anchor);
-                    let Some(to) = place_before(&order, top, &run.items) else {
+                    // Above the anchor's block, outside the dragged run.
+                    let Some(to) = place_before(&order, anchor, &run.run) else {
                         return true;
                     };
                     to
                 };
-                let Some(back) = place_before(&order, run.items[0], &run.items) else {
+                let Some(back) = place_before(&order, run.run[0], &run.run) else {
                     return true;
                 };
                 let moved = self.store.move_run(run.group.id, to);
@@ -706,17 +1034,17 @@ where
                     return true;
                 };
                 if old.as_ref().is_some_and(|o| o.group.id == g) {
-                    // Past its own header: out of the group, above it.
-                    (place_before(&order, id, &[id]), None)
+                    // Past its own header: out of the group (into the one it is nested in), above it.
+                    (place_before(&order, id, &[id]), run.group.parent)
                 } else if run.group.collapsed {
                     let to = if delta < 0 {
-                        run.items
+                        run.run
                             .first()
                             .and_then(|first| place_before(&order, *first, &[id]))
                     } else {
-                        run.items.last().map(|last| Placement::After(*last))
+                        run.run.last().map(|last| Placement::After(*last))
                     };
-                    (to, None)
+                    (to, run.group.parent)
                 } else {
                     // An open group's header below: the item joins it at its top.
                     let joined = self.join_dropped(Surface::Main, id, &run);
@@ -744,9 +1072,10 @@ where
         want: Option<snipdeck_core::GroupId>,
         old: Option<&GroupRun>,
     ) {
+        let before = self.store.groups_of(list).unwrap_or_default();
         let mut changes = vec![Change::Regroup {
             item: id,
-            group: old.map(|r| r.group.clone()),
+            group: old.and_then(|r| Membership::of(&before, r.group.id)),
         }];
         let done = self.store.atomically(|b| {
             let spot = super::history_ctl::spot_of(b, id)?;
@@ -760,13 +1089,7 @@ where
                 b.set_item_group(id, want)?;
                 changes.push(Change::Regroup {
                     item: id,
-                    group: want.and_then(|w| {
-                        b.groups_of(list)
-                            .ok()?
-                            .into_iter()
-                            .find(|r| r.group.id == w)
-                            .map(|r| r.group)
-                    }),
+                    group: want.and_then(|w| Membership::of(&b.groups_of(list).ok()?, w)),
                 });
             }
             let after = b.groups_of(list)?;
@@ -811,13 +1134,14 @@ where
         // A run is built from live members only (`groups_of`), so it always has a first item; were that
         // ever not so, the ordinary drop is the fallback rather than a drop that silently does nothing.
         let Some(to) = run
-            .items
+            .run
             .first()
             .and_then(|first| place_before(&order, *first, &[id]))
         else {
             return false;
         };
-        self.place_item_in(s, id, list, to, None, old.as_ref());
+        // Above the group, outside it: in the group it is nested in, if any.
+        self.place_item_in(s, id, list, to, run.group.parent, old.as_ref());
         true
     }
 
@@ -843,6 +1167,7 @@ where
     ) -> snipdeck_store::Result<()> {
         let from = super::history_ctl::spot_of(&self.store, id)?;
         let old = self.group_of_item(s, id);
+        let runs = self.group_runs(s);
         self.store
             .join_group(id, target.group.id, snipdeck_store::GroupEnd::First)?;
         self.record_step(
@@ -851,7 +1176,7 @@ where
                 item: id,
                 group: target.group.id,
                 from,
-                from_group: old.map(|r| r.group),
+                from_group: old.and_then(|r| Membership::of(&runs, r.group.id)),
             }],
         );
         Ok(())

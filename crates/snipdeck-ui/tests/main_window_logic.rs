@@ -206,7 +206,7 @@ fn start() -> (MainWindow, Log) {
     hook!(on_sidebar_collapsed_changed, |c| format!(
         "sidebar-collapsed:{c}"
     ));
-    hook!(on_sort_chosen, |i| format!("sort:{i}"));
+    hook!(on_sort_chosen, |i, reversed| format!("sort:{i}:{reversed}"));
     hook!(on_undo_requested, || "undo".to_string());
     hook!(on_help_requested, |page| format!("help:{page:?}"));
     hook!(on_panel_requested, || "panel".to_string());
@@ -328,11 +328,12 @@ ui_tests! {
                 title: "Group".into(),
                 is_header: true,
                 group_count: 2,
+                group_colour: -1,
                 ..Default::default()
             },
         );
-        rows[1].grouped = true;
-        rows[2].grouped = true;
+        rows[1].depth = 1;
+        rows[2].depth = 1;
         fixture::set_rows(&ui, rows);
         ui.set_has_groups(true);
         settle();
@@ -346,13 +347,14 @@ ui_tests! {
             is_header: true,
             group_count: count,
             group_collapsed: collapsed,
+            group_colour: -1,
             ..Default::default()
         };
         let mut rows = fixture::sample_rows();
         rows.truncate(3);
         rows.insert(0, header(2, false));
-        rows[1].grouped = true;
-        rows[2].grouped = true;
+        rows[1].depth = 1;
+        rows[2].depth = 1;
         let model = fixture::set_rows(&ui, rows);
         ui.set_has_groups(true);
         ui.set_list_total(9);
@@ -1093,11 +1095,12 @@ ui_tests! {
                 title: "Replies".into(),
                 is_header: true,
                 group_count: 2,
+                group_colour: -1,
                 ..Default::default()
             },
         );
-        rows[1].grouped = true;
-        rows[2].grouped = true;
+        rows[1].depth = 1;
+        rows[2].depth = 1;
         fixture::set_rows(&ui, rows);
         ui.set_has_groups(true);
         settle();
@@ -1489,6 +1492,8 @@ ui_tests! {
                 .find_all()
                 .into_iter()
                 .filter_map(|e| e.accessible_label().map(|l| l.to_string()))
+                // Filter and Sort sit in the heading row below the toolbar and keep their words.
+                .filter(|l| !l.starts_with("Filter") && !l.starts_with("Sort"))
                 .collect()
         };
         assert_eq!(texts(&ui), ["Commands", "View"], "ghost buttons with a label and the keys at 854 px");
@@ -1523,7 +1528,15 @@ ui_tests! {
             ui.window().set_size(slint::LogicalSize::new(232.0 + area, 640.0));
             settle();
         };
-        let label_count = || ElementQuery::from_root(&ui).match_id("ToolbarButton::label-text").find_all().len();
+        // Filter and Sort sit in the heading row below the toolbar and keep their words.
+        let label_count = || {
+            ElementQuery::from_root(&ui)
+                .match_id("ToolbarButton::label-text")
+                .find_all()
+                .iter()
+                .filter(|e| e.accessible_label().is_some_and(|l| !l.starts_with("Filter") && !l.starts_with("Sort")))
+                .count()
+        };
         let width = |name: &str| find(&ui, name, AccessibleRole::Button).size().width;
         at(854.0);
         assert_eq!(label_count(), 2, "both labels at 854");
@@ -1594,6 +1607,11 @@ ui_tests! {
             let asked = asked.clone();
             ui.on_label_filter_requested(move |i| asked.borrow_mut().push(i));
         }
+        let cleared: Rc<RefCell<u32>> = Rc::default();
+        {
+            let cleared = cleared.clone();
+            ui.on_filter_cleared(move || *cleared.borrow_mut() += 1);
+        }
         assert!(missing(&ui, "Teal", AccessibleRole::Button), "no labels, no row");
         ui.set_label_chips(slint::ModelRc::new(VecModel::from(vec![
             LabelChipEntry { label: 1, name: "Teal".into(), count: 2 },
@@ -1619,7 +1637,9 @@ ui_tests! {
         find(&ui, "Teal", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(*asked.borrow(), [1, -1], "choosing the active chip again clears");
         find(&ui, "Clear filter", AccessibleRole::Button).invoke_accessible_default_action();
-        assert_eq!(*asked.borrow(), [1, -1, -1]);
+        // The Clear button clears the whole filter (the label is one of its criteria), not only the label.
+        assert_eq!(*asked.borrow(), [1, -1]);
+        assert_eq!(*cleared.borrow(), 1);
     }
 
     // ---- Selection with the real binding ---------------------------------------------------------
@@ -2518,13 +2538,14 @@ ui_tests! {
 
     fn the_sort_menu_names_the_order_and_reports_the_choice() {
         let (ui, log) = start();
-        assert!(missing(&ui, "Sort by: Manual", AccessibleRole::Button), "only inside a list");
+        assert!(missing(&ui, "Sort by: Manual", AccessibleRole::Button), "only where the host says the view sorts");
         ui.set_section(MainSection::List);
         ui.set_section_index(0);
+        ui.set_sortable(true);
         settle();
         let button = find(&ui, "Sort by: Manual", AccessibleRole::Button);
         assert!(button.size().height >= MIN_HIT);
-        ui.set_list_sort(1);
+        ui.set_list_sort(4);
         settle();
         let _ = find(&ui, "Sort by: Most used", AccessibleRole::Button);
         ui.set_list_sort(0);
@@ -2535,7 +2556,7 @@ ui_tests! {
         let _ = find(&ui, "Sort by", AccessibleRole::List);
         press_key(&ui, Key::DownArrow);
         press_key(&ui, Key::Return);
-        assert_eq!(take(&log), ["sort:1"]);
+        assert_eq!(take(&log), ["sort:1:false"]);
     }
 
     fn the_sidebar_rail_has_a_settings_button_when_collapsed() {

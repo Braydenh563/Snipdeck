@@ -9,7 +9,7 @@
 use std::{fs, io::Read, path::Path};
 
 use snipdeck_core::{
-    Content, FileEntry, Inline, ItemKind, ItemLabel,
+    Content, FileEntry, Inline, ItemKind, ItemLabel, TriggerOptions,
     template::{Template, TemplateError, TemplateErrorKind},
 };
 use snipdeck_platform::system_look::HighContrast;
@@ -29,8 +29,9 @@ pub const MAX_TEXT_BYTES: usize = 5 * 1024 * 1024;
 /// back whole and must stay under [`crate::drafts`]' file cap).
 pub const DRAFT_TEXT_MAX_BYTES: usize = 128 * 1024;
 
-/// The longest title, in characters.
-pub const TITLE_MAX_CHARS: usize = 200;
+/// The longest title, in characters: [`snipdeck_core::Item::TITLE_MAX_CHARS`], the one limit for
+/// the editor (which shows a counter), the importers and the search index.
+pub const TITLE_MAX_CHARS: usize = snipdeck_core::Item::TITLE_MAX_CHARS;
 
 /// The largest file an Image or File item takes. It is the largest entry a `.snipdeck` archive
 /// reads back less the envelope a sensitive item's payload gains, so an item that is saved can
@@ -132,6 +133,21 @@ pub enum EditorProblem {
     TriggerInvalid,
     /// Another item already has this trigger.
     TriggerTaken,
+    /// A code of fewer than three letters or digits that fires without a delimiter: it would fire
+    /// inside ordinary words. Refused.
+    TriggerTooShort,
+    /// A one-character code fires every time it is typed. A warning.
+    TriggerOneCharacter,
+    /// This code starts another snippet's, so that one would never fire. A warning.
+    TriggerHides {
+        /// The other snippet's title.
+        title: String,
+    },
+    /// Another snippet's code starts this one, so this one would never fire. A warning.
+    TriggerHidden {
+        /// The other snippet's title.
+        title: String,
+    },
     /// A link without a scheme such as `https://`.
     LinkNeedsScheme,
     /// A link with a space or a line break in it.
@@ -278,6 +294,12 @@ pub struct ItemEditorView {
     pub trigger_problem: Option<EditorProblem>,
     /// The Trigger field as it stands.
     pub trigger: String,
+    /// When the trigger fires and how it reads case.
+    pub trigger_options: TriggerOptions,
+    /// A warning about the trigger that does not stop Save.
+    pub trigger_note: Option<EditorProblem>,
+    /// The text of a new item is already saved: Save waits for "Open it" or "Save anyway".
+    pub duplicate: Option<crate::duplicate::Duplicate>,
     /// A failure that belongs to no field.
     pub banner: Option<EditorProblem>,
     /// The item keeps HTML or RTF next to its text: the window says that saving changed text
@@ -329,7 +351,8 @@ pub fn check_title(title: &str) -> Result<String, EditorProblem> {
     Ok(title.to_owned())
 }
 
-/// `text` as a link: trimmed, with a scheme and no blanks.
+/// `text` as a link: trimmed, with no blanks. A scheme is kept as typed; an address with none that
+/// reads as a web host (`www.example.com`, `example.com/path`, `localhost:3000`) gets `https://`.
 ///
 /// # Errors
 ///
@@ -339,8 +362,20 @@ pub fn check_link(text: &str) -> Result<String, EditorProblem> {
     if text.chars().any(char::is_whitespace) {
         return Err(EditorProblem::LinkHasSpace);
     }
+    if has_scheme(text) {
+        return Ok(text.to_owned());
+    }
+    if looks_like_web_host(text) {
+        return Ok(format!("https://{text}"));
+    }
+    Err(EditorProblem::LinkNeedsScheme)
+}
+
+/// Whether `text` starts with a scheme and what follows it: `mailto:` and `tel:` take anything,
+/// every other scheme needs `//` and something after it.
+fn has_scheme(text: &str) -> bool {
     let Some((scheme, rest)) = text.split_once(':') else {
-        return Err(EditorProblem::LinkNeedsScheme);
+        return false;
     };
     let scheme_ok = scheme
         .chars()
@@ -349,17 +384,42 @@ pub fn check_link(text: &str) -> Result<String, EditorProblem> {
         && scheme
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.'));
-    // `mailto:` and `tel:` carry no `//`; every other scheme needs something after it.
     let rest_ok = if matches!(scheme.to_ascii_lowercase().as_str(), "mailto" | "tel") {
         !rest.is_empty()
     } else {
         rest.strip_prefix("//").is_some_and(|r| !r.is_empty())
     };
-    if scheme_ok && rest_ok {
-        Ok(text.to_owned())
-    } else {
-        Err(EditorProblem::LinkNeedsScheme)
+    scheme_ok && rest_ok
+}
+
+/// Whether `text` (no scheme) reads as `host[:port][/path]`: a dotted host name whose last label is
+/// letters (or an IPv4 address), or `localhost`.
+fn looks_like_web_host(text: &str) -> bool {
+    let authority = text.split(['/', '?', '#']).next().unwrap_or("");
+    let host = match authority.rsplit_once(':') {
+        Some((h, port)) if !port.is_empty() && port.chars().all(|c| c.is_ascii_digit()) => h,
+        Some(_) => return false,
+        None => authority,
+    };
+    if host.eq_ignore_ascii_case("localhost") {
+        return true;
     }
+    let labels: Vec<&str> = host.split('.').collect();
+    if labels.len() < 2 {
+        return false;
+    }
+    let label_ok = |l: &&str| {
+        !l.is_empty()
+            && !l.starts_with('-')
+            && !l.ends_with('-')
+            && l.chars().all(|c| c.is_alphanumeric() || c == '-')
+    };
+    if !labels.iter().all(label_ok) {
+        return false;
+    }
+    let tld = labels[labels.len() - 1];
+    let ipv4 = labels.len() == 4 && labels.iter().all(|l| l.parse::<u8>().is_ok());
+    ipv4 || (tld.chars().count() >= 2 && tld.chars().all(char::is_alphabetic))
 }
 
 /// Checks template `text`: it must parse.
@@ -367,8 +427,11 @@ pub fn check_link(text: &str) -> Result<String, EditorProblem> {
 /// # Errors
 ///
 /// [`EditorProblem::Template`].
-pub fn check_template(text: &str) -> Result<(), EditorProblem> {
-    Template::parse(text)
+pub fn check_template(
+    text: &str,
+    snippets: &dyn snipdeck_core::template::SnippetSource,
+) -> Result<(), EditorProblem> {
+    Template::parse_with(text, snippets)
         .map(drop)
         .map_err(|e: TemplateError| EditorProblem::Template(TemplateProblem::Parse(e.kind)))
 }
@@ -592,7 +655,53 @@ pub fn prefix_of(text: &str, max: usize) -> &str {
 
 #[cfg(test)]
 mod tests {
+    /// Every chip of the editor's placeholder help inserts text that parses (with what a real
+    /// template would have around it), so a chip never writes a template the editor then
+    /// refuses. The chips are the `token:` lines of `editors.slint`.
+    #[test]
+    fn library_19_every_placeholder_chip_inserts_a_template_that_parses() {
+        struct Any;
+        impl snipdeck_core::template::SnippetSource for Any {
+            fn snippet(&self, _name: &str) -> snipdeck_core::template::SnippetLookup {
+                snipdeck_core::template::SnippetLookup::Found("x".into())
+            }
+        }
+        let slint = include_str!("../../snipdeck-ui/ui/editors.slint");
+        let tokens: Vec<&str> = slint
+            .lines()
+            .filter_map(|l| l.trim().strip_prefix("{ token: \""))
+            .filter_map(|l| l.split('"').next())
+            .collect();
+        assert!(tokens.len() >= 19, "the chips were not found: {tokens:?}");
+        for token in tokens {
+            let around = if token.starts_with("{value:") {
+                "{field:Name}"
+            } else if token.starts_with("{calc:") {
+                "{number:Qty}{number:Price}"
+            } else {
+                ""
+            };
+            let src = format!("{around}{token}");
+            let parsed = Template::parse_with(&src, &Any);
+            assert!(parsed.is_ok(), "{token}: {:?}", parsed.err());
+        }
+    }
+
+    #[test]
+    fn library_19_a_name_or_option_with_a_bar_or_brace_is_written_with_backslashes() {
+        use snipdeck_core::template::escape_arg;
+        let option = "a|b {c}";
+        let src = format!("{{choice:Size|{}|x}}", escape_arg(option));
+        let template = Template::parse(&src).expect("parses");
+        let prompts = template.prompts();
+        assert!(matches!(
+            &prompts[0].kind,
+            snipdeck_core::template::PromptKind::Choice { options, .. } if options[0] == option
+        ));
+    }
+
     use super::*;
+    use snipdeck_core::template::NoSnippets;
 
     #[test]
     fn both_ways_of_refusing_a_big_file_name_the_same_size() {
@@ -684,8 +793,12 @@ mod tests {
         }
         assert_eq!(check_link(" https://a.b ").as_deref(), Ok("https://a.b"));
         for bad in [
-            "example.com",
-            "example.org/file/x",
+            "example",
+            "user@example.com",
+            "example.c0m",
+            "a..b",
+            "-a.com",
+            "example.com:port",
             "https://",
             "://x",
             "1http://x",
@@ -704,16 +817,36 @@ mod tests {
     }
 
     #[test]
+    fn a_web_address_without_a_scheme_gets_https() {
+        for (typed, saved) in [
+            ("www.example.com", "https://www.example.com"),
+            ("example.com/path", "https://example.com/path"),
+            (" example.org?q=1 ", "https://example.org?q=1"),
+            ("example.com:8080/x", "https://example.com:8080/x"),
+            ("localhost:3000", "https://localhost:3000"),
+            ("192.168.0.1/admin", "https://192.168.0.1/admin"),
+            ("bücher.example/a", "https://bücher.example/a"),
+        ] {
+            assert_eq!(check_link(typed).as_deref(), Ok(saved), "{typed:?}");
+        }
+        // A scheme that is there is never replaced.
+        assert_eq!(
+            check_link("http://example.com").as_deref(),
+            Ok("http://example.com")
+        );
+    }
+
+    #[test]
     fn templates_must_parse_and_prompts_are_allowed() {
-        assert!(check_template("Dear {field:Name}, {date}").is_ok());
-        assert!(check_template("Pick {choice:Size|S|M}").is_ok());
-        assert!(check_template("Today is {date}").is_ok());
+        assert!(check_template("Dear {field:Name}, {date}", &NoSnippets).is_ok());
+        assert!(check_template("Pick {choice:Size|S|M}", &NoSnippets).is_ok());
+        assert!(check_template("Today is {date}", &NoSnippets).is_ok());
         assert!(matches!(
-            check_template("Broken {nope}"),
+            check_template("Broken {nope}", &NoSnippets),
             Err(EditorProblem::Template(_))
         ));
         assert!(matches!(
-            check_template("Open { here"),
+            check_template("Open { here", &NoSnippets),
             Err(EditorProblem::Template(_))
         ));
     }

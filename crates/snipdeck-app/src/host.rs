@@ -109,6 +109,12 @@ pub trait ClipboardText {
     fn forget_pasted_files_waiting(&mut self) {
         self.forget_pasted_files();
     }
+    /// The text entries of the clipboard history besides the one on the clipboard, newest first
+    /// (`{clipboard:2}` is the first). Empty when there is none, the history is off, or this
+    /// platform has none. Writes nothing.
+    fn read_history(&mut self) -> Vec<String> {
+        Vec::new()
+    }
 }
 
 #[cfg(windows)]
@@ -146,6 +152,21 @@ impl ClipboardText for snipdeck_platform::windows::clipboard::WinClipboard {
     fn forget_pasted_files_waiting(&mut self) {
         Self::forget_pasted_files_waiting(self);
     }
+    fn read_history(&mut self) -> Vec<String> {
+        // Unverified on Windows (see `snipdeck_platform::clipboard_history`). Blocks until Windows
+        // answers; the entry the clipboard holds now is dropped, as `{clipboard}` is that one.
+        let current = Self::read_text(self);
+        let Ok(snipdeck_platform::clipboard_history::HistoryRead::Entries(entries)) =
+            snipdeck_platform::clipboard_history::read_current_session()
+        else {
+            return Vec::new();
+        };
+        let mut texts: Vec<String> = entries.into_iter().map(|e| e.text).collect();
+        if texts.first().is_some() && texts.first() == current.as_ref() {
+            texts.remove(0);
+        }
+        texts
+    }
 }
 
 /// The fake clipboard "holds" what was last written to it (as a real one holds what the user
@@ -153,10 +174,25 @@ impl ClipboardText for snipdeck_platform::windows::clipboard::WinClipboard {
 impl ClipboardText for snipdeck_platform::testing::FakeClipboard {
     fn read_text(&mut self) -> Option<String> {
         self.text_reads += 1;
+        // A Target that was sent Ctrl+C answers after a few reads, by replacing the clipboard.
+        if let Some((after, _)) = &mut self.copy_arrives {
+            if *after == 0 {
+                if let Some((_, text)) = self.copy_arrives.take() {
+                    use snipdeck_platform::payload::{Data, Payload};
+                    self.written.extend(Payload::new(vec![Data::Text(text)]));
+                    self.sequence += 1;
+                }
+            } else {
+                *after -= 1;
+            }
+        }
         self.written.last()?.data().iter().find_map(|d| match d {
             snipdeck_platform::payload::Data::Text(text) => Some(text.clone()),
             _ => None,
         })
+    }
+    fn read_history(&mut self) -> Vec<String> {
+        self.held_history.clone()
     }
     fn read_rich(&mut self) -> snipdeck_platform::clipboard_watch::RichClip {
         if self.held_excluded

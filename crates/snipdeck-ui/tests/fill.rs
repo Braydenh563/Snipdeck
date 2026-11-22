@@ -69,7 +69,8 @@ fn fill_flags_required_fields_left_empty() {
     let mut fields = fixture::fields();
     fields[0] = fixture::text("Name", "", true);
     fixture::set_fields(&h.component, fields);
-    h.component.invoke_submit();
+    // The host answers a failed submit with this (the app's `flag_missing`).
+    h.component.invoke_show_required_errors();
     assert!(h.component.get_showing_errors());
     assert_golden("fill-errors-light", &render(&h));
 }
@@ -185,7 +186,7 @@ fn the_submit_button_is_ink_and_a_required_field_in_error_has_a_danger_border() 
     let (x, y) = (WIDTH - 16 - 4, f.height - FOOTER_H / 2);
     assert_eq!(f.pixel(x, y), INK_LIGHT, "Insert is ink, never blue");
 
-    h.component.invoke_submit();
+    h.component.invoke_show_required_errors();
     // The border colour fades in over `Motion.instant`.
     h.advance(std::time::Duration::from_millis(200));
     let f = render(&h);
@@ -240,4 +241,40 @@ fn render_at(h: &Harness<TemplateFillWindow>, height: f32) -> Frame {
         .set_size(LogicalSize::new(WIDTH_F, height));
     h.component.window().request_redraw();
     h.render_settled()
+}
+
+/// Opens the month grid of the "Due date" field the way a user does.
+#[allow(clippy::expect_used, reason = "test code: a failure is a failed test")]
+fn open_calendar(h: &Harness<TemplateFillWindow>) {
+    use i_slint_backend_testing::{AccessibleRole, ElementHandle};
+    let buttons: Vec<_> = ElementHandle::find_by_accessible_label(&h.component, "Pick a date")
+        .filter(|e| e.accessible_role() == Some(AccessibleRole::Button))
+        .collect();
+    assert_eq!(buttons.len(), 1, "one calendar button");
+    buttons
+        .iter()
+        .for_each(ElementHandle::invoke_accessible_default_action);
+    let _ = h.render_settled();
+}
+
+#[test]
+fn fill_with_the_month_grid_open_light() {
+    let h = form(WIDTH, false);
+    open_calendar(&h);
+    assert_golden("fill-calendar-light", &render(&h));
+}
+
+#[test]
+fn fill_with_the_month_grid_open_dark() {
+    let h = form(WIDTH, true);
+    open_calendar(&h);
+    assert_golden("fill-calendar-dark", &render(&h));
+}
+
+#[test]
+fn fill_with_the_month_grid_open_at_225_percent_text_size() {
+    let h = form(800, false);
+    h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
+    open_calendar(&h);
+    assert_golden("fill-calendar-scale-light", &render(&h));
 }

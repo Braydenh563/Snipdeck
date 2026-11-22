@@ -283,7 +283,7 @@ where
             return;
         }
         let made: Vec<ItemId> = ready.iter().map(|m| m.item.id).collect();
-        self.finish_create(list, &made, skipped, action);
+        self.finish_create(list, &made, skipped, action, None);
     }
 
     /// One text (or a link) as a new item, through the same save as quick capture.
@@ -298,6 +298,8 @@ where
             self.show_toast(failed());
             return;
         };
+        // Looked up before the save, so the new copy does not find itself.
+        let twin = crate::duplicate::find_text(&self.store, text).map(|d| d.list_name);
         let saved = capture::capture_with(
             &mut self.store,
             &destination,
@@ -308,7 +310,9 @@ where
             self.clock.now(),
         );
         match saved {
-            Ok(Captured::Saved { item, .. }) => self.finish_create(list, &[item], 0, action),
+            Ok(Captured::Saved { item, .. }) => {
+                self.finish_create(list, &[item], 0, action, twin.as_deref());
+            }
             Ok(Captured::Empty) => self.show_toast(neutral(ToastMessage::NothingToSave)),
             Ok(Captured::TooLarge) => self.show_toast(neutral(ToastMessage::TooLargeToSave)),
             Err(_) => self.show_toast(failed()),
@@ -316,7 +320,14 @@ where
     }
 
     /// The history step and the toast for the items just made (`made` is top first).
-    fn finish_create(&mut self, list: ListId, made: &[ItemId], skipped: usize, action: Action) {
+    fn finish_create(
+        &mut self,
+        list: ListId,
+        made: &[ItemId],
+        skipped: usize,
+        action: Action,
+        was_in: Option<&str>,
+    ) {
         let Some(first) = made.first().copied() else {
             return;
         };
@@ -326,7 +337,12 @@ where
             .map(|l| l.name.as_str().to_owned())
             .unwrap_or_default();
         let step = self.record_step(action, vec![Change::Restore(item_targets(made))]);
-        let message = if skipped > 0 {
+        let message = if let Some(was_in) = was_in {
+            ToastMessage::SavedAgain {
+                list: name,
+                was_in: was_in.to_owned(),
+            }
+        } else if skipped > 0 {
             ToastMessage::AddedSomeFiles { list: name }
         } else {
             ToastMessage::AddedTo {
@@ -349,6 +365,7 @@ where
             step,
             adds: Some(first),
             list: None,
+            purge: Vec::new(),
         });
     }
 

@@ -5,7 +5,7 @@
 //! lower-casing keeps `Straße` and `STRASSE`, or a composed and a decomposed `École`, apart.
 
 use rusqlite::{Connection, OptionalExtension, params};
-use snipdeck_core::{Name, Tag, TagId};
+use snipdeck_core::{ItemId, ItemLabel, Name, Tag, TagId};
 use unicode_normalization::UnicodeNormalization as _;
 
 use crate::Error;
@@ -66,15 +66,23 @@ fn hex(bytes: &[u8]) -> String {
 }
 
 pub(crate) fn tags(conn: &Connection) -> Result<Vec<Tag>> {
-    let mut stmt = conn.prepare_cached("SELECT id, name FROM tags ORDER BY name_key, id")?;
+    let mut stmt =
+        conn.prepare_cached("SELECT id, name, colour, parent FROM tags ORDER BY name_key, id")?;
     let rows = stmt.query_map([], |r| {
-        Ok((r.get::<_, Vec<u8>>(0)?, r.get::<_, String>(1)?))
+        Ok((
+            r.get::<_, Vec<u8>>(0)?,
+            r.get::<_, String>(1)?,
+            r.get::<_, Option<String>>(2)?,
+            r.get::<_, Option<Vec<u8>>>(3)?,
+        ))
     })?;
     rows.map(|row| {
-        let (id, name) = row?;
+        let (id, name, colour, parent) = row?;
         Ok(Tag {
             id: id_from(&id)?,
             name: stored_name(&name)?,
+            colour: colour.as_deref().map(str::parse).transpose()?,
+            parent: parent.as_deref().map(id_from).transpose()?,
         })
     })
     .collect()
@@ -84,9 +92,16 @@ pub(crate) fn insert_tag(cx: &mut Ctx<'_>, tag: &Tag) -> Result<()> {
     let conn = cx.conn;
     require_new(conn, "tags", tag.id)?;
     clash_check(conn, tag)?;
+    parent_check(conn, tag)?;
     conn.execute(
-        "INSERT INTO tags (id, name, name_key) VALUES (?1, ?2, ?3)",
-        params![id_bytes(tag.id), tag.name.as_str(), key(&tag.name)],
+        "INSERT INTO tags (id, name, name_key, colour, parent) VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![
+            id_bytes(tag.id),
+            tag.name.as_str(),
+            key(&tag.name),
+            tag.colour.map(ItemLabel::key),
+            tag.parent.map(id_bytes)
+        ],
     )?;
     Ok(())
 }
@@ -97,14 +112,26 @@ pub(crate) fn update_tag(cx: &mut Ctx<'_>, tag: &Tag) -> Result<()> {
         return Err(not_found(tag.id));
     }
     clash_check(conn, tag)?;
+    parent_check(conn, tag)?;
     conn.execute(
-        "UPDATE tags SET name = ?2, name_key = ?3 WHERE id = ?1",
-        params![id_bytes(tag.id), tag.name.as_str(), key(&tag.name)],
+        "UPDATE tags SET name = ?2, name_key = ?3, colour = ?4, parent = ?5 WHERE id = ?1",
+        params![
+            id_bytes(tag.id),
+            tag.name.as_str(),
+            key(&tag.name),
+            tag.colour.map(ItemLabel::key),
+            tag.parent.map(id_bytes)
+        ],
     )?;
     Ok(())
 }
 
+/// Deletes a tag; the tags nested under it move up to its own parent (or become top-level).
 pub(crate) fn delete_tag(cx: &mut Ctx<'_>, id: TagId) -> Result<()> {
+    cx.conn.execute(
+        "UPDATE tags SET parent = (SELECT p.parent FROM tags p WHERE p.id = ?1) WHERE parent = ?1",
+        [id_bytes(id)],
+    )?;
     let deleted = cx
         .conn
         .execute("DELETE FROM tags WHERE id = ?1", [id_bytes(id)])?;
@@ -118,15 +145,24 @@ pub(crate) fn delete_tag(cx: &mut Ctx<'_>, id: TagId) -> Result<()> {
 pub(crate) fn find_tag(conn: &Connection, name: &Name) -> Result<Option<Tag>> {
     let row = conn
         .query_row(
-            "SELECT id, name FROM tags WHERE name_key = ?1",
+            "SELECT id, name, colour, parent FROM tags WHERE name_key = ?1",
             params![key(name)],
-            |r| Ok((r.get::<_, Vec<u8>>(0)?, r.get::<_, String>(1)?)),
+            |r| {
+                Ok((
+                    r.get::<_, Vec<u8>>(0)?,
+                    r.get::<_, String>(1)?,
+                    r.get::<_, Option<String>>(2)?,
+                    r.get::<_, Option<Vec<u8>>>(3)?,
+                ))
+            },
         )
         .optional()?;
-    row.map(|(id, name)| {
+    row.map(|(id, name, colour, parent)| {
         Ok(Tag {
             id: id_from(&id)?,
             name: stored_name(&name)?,
+            colour: colour.as_deref().map(str::parse).transpose()?,
+            parent: parent.as_deref().map(id_from).transpose()?,
         })
     })
     .transpose()
@@ -149,9 +185,82 @@ pub(crate) fn merge_tag(cx: &mut Ctx<'_>, from: TagId, into: TagId) -> Result<us
          SELECT item_id, ?2 FROM item_tags WHERE tag_id = ?1",
         params![id_bytes(from), id_bytes(into)],
     )?;
+    // Tags nested under `from` move up to its own parent, as when a tag is deleted.
+    conn.execute(
+        "UPDATE tags SET parent = (SELECT p.parent FROM tags p WHERE p.id = ?1) WHERE parent = ?1",
+        [id_bytes(from)],
+    )?;
     // The cascade removes the old links with the tag.
     conn.execute("DELETE FROM tags WHERE id = ?1", [id_bytes(from)])?;
     Ok(moved)
+}
+
+pub(crate) fn tag_items(conn: &Connection, id: TagId) -> Result<Vec<ItemId>> {
+    let mut stmt =
+        conn.prepare_cached("SELECT item_id FROM item_tags WHERE tag_id = ?1 ORDER BY item_id")?;
+    let rows = stmt.query_map([id_bytes(id)], |r| r.get::<_, Vec<u8>>(0))?;
+    rows.map(|row| id_from(&row?)).collect()
+}
+
+pub(crate) fn link_tag(cx: &mut Ctx<'_>, id: TagId, items: &[ItemId]) -> Result<()> {
+    let conn = cx.conn;
+    if !crate::codec::exists(conn, "tags", id_bytes(id))? {
+        return Err(not_found(id));
+    }
+    for item in items {
+        // `INSERT ... SELECT` skips an item that is gone; OR IGNORE one that has the tag.
+        conn.execute(
+            "INSERT OR IGNORE INTO item_tags (item_id, tag_id)
+             SELECT id, ?2 FROM items WHERE id = ?1",
+            params![id_bytes(*item), id_bytes(id)],
+        )?;
+    }
+    Ok(())
+}
+
+pub(crate) fn unlink_tag(cx: &mut Ctx<'_>, id: TagId, items: &[ItemId]) -> Result<()> {
+    let conn = cx.conn;
+    if !crate::codec::exists(conn, "tags", id_bytes(id))? {
+        return Err(not_found(id));
+    }
+    for item in items {
+        conn.execute(
+            "DELETE FROM item_tags WHERE item_id = ?1 AND tag_id = ?2",
+            params![id_bytes(*item), id_bytes(id)],
+        )?;
+    }
+    Ok(())
+}
+
+/// Fails with [`Error::TagParent`] if `tag.parent` is not a stored tag, is `tag` itself or is
+/// nested under `tag`.
+fn parent_check(conn: &rusqlite::Connection, tag: &Tag) -> Result<()> {
+    let Some(parent) = tag.parent else {
+        return Ok(());
+    };
+    // Walk up from the new parent: meeting `tag` would close a loop. The bound stops a loop
+    // that is already stored.
+    let mut at = Some(parent);
+    for _ in 0..64 {
+        let Some(current) = at else {
+            return Ok(());
+        };
+        if current == tag.id {
+            return Err(Error::TagParent);
+        }
+        let row: Option<Option<Vec<u8>>> = conn
+            .query_row(
+                "SELECT parent FROM tags WHERE id = ?1",
+                [id_bytes(current)],
+                |r| r.get(0),
+            )
+            .optional()?;
+        match row {
+            None => return Err(Error::TagParent),
+            Some(next) => at = next.as_deref().map(id_from).transpose()?,
+        }
+    }
+    Err(Error::TagParent)
 }
 
 /// Fails with [`Error::TagExists`] if another tag has the same name ignoring case.

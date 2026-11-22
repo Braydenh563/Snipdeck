@@ -19,7 +19,7 @@ use snipdeck_app::{
     settings::{Hotkeys, Settings},
     toast::ToastKind,
 };
-use snipdeck_core::{ItemKind, ListSort, Timestamp};
+use snipdeck_core::{ItemKind, Sort, Timestamp};
 use snipdeck_platform::testing::{FakeClipboard, FakeKeyboard, FakeTiming};
 use snipdeck_store::{BoardRepo, ItemRepo, Store, crypto::KdfParams};
 
@@ -77,7 +77,7 @@ fn a_fresh_install_has_no_board_limit() {
             ctl.main_screen().editor.is_some(),
             "board {n} opens its editor"
         );
-        ctl.main_editor_save(&format!("Board {n}"), None, None, ListSort::Manual);
+        ctl.main_editor_save(&format!("Board {n}"), None, None, Sort::MANUAL);
     }
     assert_eq!(ctl.store().boards().expect("boards").len(), before + 10);
     assert!(

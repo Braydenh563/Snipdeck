@@ -198,13 +198,16 @@ fn duplicate_puts_a_copy_after_the_row_from_the_menu_and_from_ctrl_d() {
         .position(|e| *e == ItemMenuEntry::Duplicate)
         .expect("entry");
     assert_eq!(w.ctl.choose_item_menu(duplicate), Vec::new());
-    assert_eq!(row_titles(&w), ["One", "One", "Two", "Three", "Greeting"]);
+    assert_eq!(
+        row_titles(&w),
+        ["One", "One copy", "Two", "Three", "Greeting"]
+    );
     assert_eq!(w.ctl.view().item_menu, None);
 
     w.ctl.duplicate_row(2);
     assert_eq!(
         row_titles(&w),
-        ["One", "One", "Two", "Two", "Three", "Greeting"]
+        ["One", "One copy", "Two", "Two copy", "Three", "Greeting"]
     );
     w.ctl.duplicate_row(99);
     assert_eq!(row_titles(&w).len(), 6, "no such row");

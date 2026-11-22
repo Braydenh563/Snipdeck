@@ -24,8 +24,16 @@ export global FormTexts {
     }
 
     // A date field that is not a real day; the format is the same hint the field shows.
-    pure public function bad-date() -> string {
-        return @tr("Enter a real date as YYYY-MM-DD, or leave it empty for today.");
+    pure public function bad-date(format: string) -> string {
+        return @tr("Enter a real date as {}, or leave it empty for today.", format);
+    }
+    // The placeholder of a date field: the locale's format, then what an empty field means.
+    pure public function date-hint(format: string) -> string {
+        return @tr("{}, empty for today", format);
+    }
+    // A number field holding something that is not a number.
+    pure public function bad-number() -> string {
+        return @tr("Enter a number, such as 12 or 3.5.");
     }
 
     // A required fill-form field left empty (or holding only spaces).
@@ -78,6 +86,24 @@ export global FormTexts {
     }
     pure public function trigger-taken() -> string {
         return @tr("Another item already uses this trigger.");
+    }
+    pure public function trigger-too-short() -> string {
+        return @tr("A trigger of fewer than 3 letters or digits would fire inside words. Add a symbol such as ;, make it longer, or have it fire at a space or punctuation.");
+    }
+    pure public function trigger-one-character() -> string {
+        return @tr("A one-character trigger fires every time you type it, even inside words. Two or more characters are safer.");
+    }
+    pure public function trigger-hides(title: string) -> string {
+        return @tr("This trigger starts the trigger of {}, which would then never fire.", title);
+    }
+    pure public function trigger-hidden(title: string) -> string {
+        return @tr("The trigger of {} starts like this one, so this one would never fire.", title);
+    }
+    pure public function duplicate-title() -> string {
+        return @tr("Already saved");
+    }
+    pure public function duplicate-body(title: string, list: string) -> string {
+        return @tr("This text is already saved as {} in {}.", title, list);
     }
     pure public function content-empty() -> string {
         return @tr("Add some text, or cancel.");

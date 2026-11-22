@@ -17,8 +17,8 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 use snipdeck_core::{
-    BlobRef, Board, Content, FileEntry, Format, FormatKind, Formats, Group, Item, ItemId, ItemKind,
-    ItemLabel, List, ListAccent, ListIcon, ListSort, ListView, Name, Placement, Tag, TagId,
+    BlobRef, Board, Content, FileEntry, Format, FormatKind, Formats, Group, GroupId, Item, ItemId,
+    ItemKind, ItemLabel, List, ListAccent, ListIcon, ListView, Name, Placement, Sort, Tag, TagId,
     Timestamp, Trigger,
 };
 use snipdeck_store::crypto::{DataKey, Slot};
@@ -147,17 +147,27 @@ impl PlanItem {
     }
 }
 
+/// A group of a list in a plan.
+#[derive(Debug)]
+pub(crate) struct PlanGroup {
+    pub name: Name,
+    pub collapsed: bool,
+    pub colour: Option<ListAccent>,
+    /// The group it is nested in, an index into [`PlanList::groups`] (always an earlier one).
+    pub parent: Option<usize>,
+}
+
 #[derive(Debug)]
 pub(crate) struct PlanList {
     pub name: Name,
     pub accent: Option<ListAccent>,
     pub icon: Option<ListIcon>,
     pub view: ListView,
-    pub sort: ListSort,
+    pub sort: Sort,
     pub created_at: Timestamp,
     pub updated_at: Timestamp,
-    /// Name and collapsed flag of each group; items point at them by index.
-    pub groups: Vec<(Name, bool)>,
+    /// Each group; items point at them by index.
+    pub groups: Vec<PlanGroup>,
     pub items: Vec<PlanItem>,
 }
 
@@ -168,7 +178,7 @@ impl PlanList {
             accent: None,
             icon: None,
             view: ListView::Comfortable,
-            sort: ListSort::Manual,
+            sort: Sort::MANUAL,
             created_at: now,
             updated_at: now,
             groups: Vec::new(),
@@ -180,6 +190,8 @@ impl PlanList {
 #[derive(Debug)]
 pub(crate) struct PlanBoard {
     pub name: Name,
+    pub accent: Option<ListAccent>,
+    pub icon: Option<ListIcon>,
     pub created_at: Timestamp,
     pub updated_at: Timestamp,
     pub lists: Vec<PlanList>,
@@ -188,6 +200,10 @@ pub(crate) struct PlanBoard {
 #[derive(Debug, Default)]
 pub(crate) struct Plan {
     pub tags: Vec<Name>,
+    /// The colour of each tag, by the same index; a tag past the end has none.
+    pub tag_colours: Vec<Option<ItemLabel>>,
+    /// The tag each tag is nested under, as an index into `tags`; a tag past the end is top-level.
+    pub tag_parents: Vec<Option<usize>>,
     pub boards: Vec<PlanBoard>,
     /// A restore: boards and lists the library already has (by name) are reused, not added.
     pub reuse_existing: bool,
@@ -329,39 +345,71 @@ pub(crate) fn apply<L: Library>(
     Ok(report)
 }
 
-/// Creates the tags the plan needs (existing ones are reused by name); the plan's tag index
-/// to the library's id.
+/// The tags a write creates or finds: those a kept item uses and the tags above them, with each
+/// parent before its children (fewer ancestors first).
+fn tags_in_use(plan: &Plan) -> Vec<usize> {
+    // A restore (`reuse_existing`) keeps every tag; an import only those a kept item uses.
+    let mut used: HashSet<usize> = if plan.reuse_existing {
+        (0..plan.tags.len()).collect()
+    } else {
+        plan.boards
+            .iter()
+            .flat_map(|b| &b.lists)
+            .flat_map(|l| &l.items)
+            .flat_map(|i| i.tags.iter().copied())
+            .collect()
+    };
+    let parent_of = |index: usize| plan.tag_parents.get(index).copied().flatten();
+    for start in used.clone() {
+        let mut at = parent_of(start);
+        while let Some(index) = at {
+            if !used.insert(index) {
+                break;
+            }
+            at = parent_of(index);
+        }
+    }
+    let mut order: Vec<usize> = used.iter().copied().collect();
+    let depth = |index: usize| {
+        let mut n = 0;
+        let mut at = parent_of(index);
+        while let Some(p) = at {
+            n += 1;
+            if n > 64 {
+                break;
+            }
+            at = parent_of(p);
+        }
+        n
+    };
+    order.sort_by_key(|i| (depth(*i), *i));
+    order
+}
+
+/// Creates the tags the plan needs (existing ones are reused by name and keep their place; the
+/// rest are created parent first); the plan's tag index to the library's id.
 fn write_tags(
     lib: &mut Batch<'_>,
     plan: &Plan,
     report: &mut ImportReport,
 ) -> Result<HashMap<usize, TagId>> {
-    // Only tags that a kept item uses are created; existing tags are reused by name.
-    let every = plan.reuse_existing;
-    let used: HashSet<usize> = plan
-        .boards
-        .iter()
-        .flat_map(|b| &b.lists)
-        .flat_map(|l| &l.items)
-        .flat_map(|i| i.tags.iter().copied())
-        .collect();
+    let parent_of = |index: usize| plan.tag_parents.get(index).copied().flatten();
+    let order = tags_in_use(plan);
     let mut by_key: HashMap<String, TagId> = lib
         .tags()?
         .into_iter()
         .map(|t| (name_key(t.name.as_str()), t.id))
         .collect();
     let mut tag_ids: HashMap<usize, TagId> = HashMap::new();
-    for (index, name) in plan
-        .tags
-        .iter()
-        .enumerate()
-        .filter(|(i, _)| every || used.contains(i))
-    {
+    for index in order {
+        let name = &plan.tags[index];
         let key = name_key(name.as_str());
         let id = if let Some(id) = by_key.get(&key) {
             *id
         } else {
-            let tag = Tag::new(name.clone());
+            let mut tag = Tag::new(name.clone());
+            tag.colour = plan.tag_colours.get(index).copied().flatten();
+            tag.parent = parent_of(index).and_then(|p| tag_ids.get(&p).copied());
             lib.insert_tag(&tag)?;
             by_key.insert(key, tag.id);
             report.tags_added += 1;
@@ -394,6 +442,8 @@ fn write(
         } else {
             let mut board = Board::new(plan_board.name.clone(), plan_board.created_at);
             board.updated_at = plan_board.updated_at;
+            board.accent = plan_board.accent;
+            board.icon = plan_board.icon;
             lib.insert_board(&board, Placement::Last)?;
             report.boards_added += 1;
             report.boards.push(board.id);
@@ -433,7 +483,7 @@ fn write(
                 // A code already in use keeps its owner (the library's, or the first in this
                 // import); the newcomer comes in without one, and the report says so.
                 if let Some(trigger) = plan_item.trigger.as_ref().filter(|_| !item.sensitive) {
-                    if lib.trigger_holder(trigger)?.is_some() {
+                    if lib.triggers()?.iter().any(|(t, _)| t.same_code(trigger)) {
                         report.warn(Warning::Note(Note::TriggerTaken {
                             title: item.title.clone(),
                             trigger: trigger.to_string(),
@@ -453,15 +503,42 @@ fn write(
                 }
                 report.items_added += 1;
             }
-            // Items skipped as duplicates leave their group short; one left empty is not made.
-            for ((name, collapsed), ids) in plan_list.groups.iter().zip(&members) {
-                if !ids.is_empty() {
-                    let mut group = Group::new(list.id, name.clone());
-                    group.collapsed = *collapsed;
-                    lib.create_group(&group, ids)?;
-                }
-            }
+            make_groups(lib, list.id, &plan_list.groups, &members)?;
         }
+    }
+    Ok(())
+}
+
+/// Makes a list's groups, the deepest first so that a parent can take the groups nested in it
+/// where they stand. Items skipped as duplicates leave their group short; a group left with
+/// nothing in it (and nothing nested in it) is not made.
+fn make_groups(
+    lib: &mut Batch<'_>,
+    list: snipdeck_core::ListId,
+    groups: &[PlanGroup],
+    members: &[Vec<ItemId>],
+) -> Result<()> {
+    let mut made: Vec<Option<Group>> = vec![None; groups.len()];
+    // A parent comes before the groups nested in it, so going backwards finds children first.
+    for index in (0..groups.len()).rev() {
+        let plan = &groups[index];
+        let children: Vec<GroupId> = (index + 1..groups.len())
+            .filter(|c| groups[*c].parent == Some(index))
+            .filter_map(|c| made[c].as_ref().map(|g| g.id))
+            .collect();
+        let ids = &members[index];
+        if ids.is_empty() && children.is_empty() {
+            continue;
+        }
+        let mut group = Group::new(list, plan.name.clone());
+        group.collapsed = plan.collapsed;
+        group.colour = plan.colour;
+        if children.is_empty() {
+            lib.create_group(&group, ids)?;
+        } else {
+            lib.restore_group(&group, ids, &children)?;
+        }
+        made[index] = Some(group);
     }
     Ok(())
 }
@@ -605,12 +682,16 @@ mod tests {
         let mut list_b = PlanList::new(name("B"), at(1));
         list_b.items = vec![item("b1", asset(2), &[1]), item("b2", asset(3), &[])];
         let board = |n: &str, lists| PlanBoard {
+            accent: None,
+            icon: None,
             name: name(n),
             created_at: at(1),
             updated_at: at(1),
             lists,
         };
         Plan {
+            tag_colours: Vec::new(),
+            tag_parents: Vec::new(),
             tags: vec![name("existing"), name("fresh")],
             boards: vec![board("First", vec![list_a]), board("Second", vec![list_b])],
             reuse_existing: false,
@@ -727,8 +808,12 @@ mod tests {
         let mut list = PlanList::new(name("L"), at(1));
         list.items = vec![item("t", Source::Bytes(b"t".to_vec()), &[0, 1, 2])];
         let mut plan = Plan {
+            tag_colours: Vec::new(),
+            tag_parents: Vec::new(),
             tags: vec![name("Straße"), name("STRASSE"), name("e\u{301}cole")],
             boards: vec![PlanBoard {
+                accent: None,
+                icon: None,
                 name: name("B"),
                 created_at: at(1),
                 updated_at: at(1),
@@ -895,8 +980,11 @@ mod tests {
         fn record_use(&mut self, _: ItemId, _: Timestamp) -> snipdeck_store::Result<()> {
             unreachable!()
         }
-        fn search(&self, query: &str, limit: usize) -> snipdeck_store::Result<Vec<ItemId>> {
-            self.0.search(query, limit)
+        fn search(
+            &self,
+            query: &snipdeck_core::search::Query,
+        ) -> snipdeck_store::Result<snipdeck_core::search::BodyMatches> {
+            self.0.search(query)
         }
     }
 

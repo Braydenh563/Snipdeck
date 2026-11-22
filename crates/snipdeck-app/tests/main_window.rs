@@ -770,13 +770,16 @@ fn renaming_onto_another_tag_asks_and_the_confirmation_merges() {
         manager.set_editing(0);
         manager.invoke_rename_requested(0, before[1].to_uppercase().into());
         assert_eq!(manager.get_rename_error(), "");
-        assert_eq!(manager.get_merge_from(), 0, "the dialog is open");
-        assert_eq!(manager.get_merge_into(), 1);
+        assert_eq!(
+            manager.get_merge_into(),
+            before[1].to_uppercase(),
+            "the dialog is open"
+        );
         assert_eq!(manager.get_editing(), 0, "the field stays open");
         assert_eq!(tag_labels(&r), before, "nothing changed yet");
 
-        manager.invoke_merge_confirmed(0, 1);
-        assert_eq!(manager.get_merge_from(), -1);
+        manager.invoke_merge_confirmed(0, before[1].to_uppercase().into());
+        assert_eq!(manager.get_merge_into(), "");
         assert_eq!(manager.get_editing(), -1);
         assert_eq!(tag_labels(&r), [before[1].clone()]);
         assert_eq!(manager.get_tags().row_count(), 1);
@@ -793,22 +796,22 @@ fn cancelling_the_merge_question_changes_nothing() {
         let ask = |manager: &snipdeck_ui::TagManager| {
             manager.set_editing(0);
             manager.invoke_rename_requested(0, before[1].to_uppercase().into());
-            assert_eq!(manager.get_merge_from(), 0, "the question is open");
+            assert_ne!(manager.get_merge_into(), "", "the question is open");
         };
         // The dialog's Cancel button, clicked through hit testing.
         ask(&manager);
         let cancel = element(&manager, "Cancel", AccessibleRole::Button);
         click(manager.window(), &cancel);
-        assert_eq!(manager.get_merge_from(), -1, "the question closed");
+        assert_eq!(manager.get_merge_into(), "", "the question closed");
         assert_eq!(tag_labels(&r), before, "Cancel merged nothing");
         // Esc closes it the same way.
         ask(&manager);
         press(manager.window(), &key(Key::Escape));
-        assert_eq!(manager.get_merge_from(), -1);
+        assert_eq!(manager.get_merge_into(), "");
         assert_eq!(tag_labels(&r), before, "Esc merged nothing");
         // The other button does merge, so the two are not the same wiring.
         ask(&manager);
-        let merge = element(&manager, "Merge tags", AccessibleRole::Button);
+        let merge = element(&manager, "Merge", AccessibleRole::Button);
         click(manager.window(), &merge);
         assert_eq!(tag_labels(&r), [before[1].clone()]);
     });
@@ -1546,7 +1549,7 @@ fn a_move_in_a_sorted_list_offers_manual_order_through_the_keys() {
         )
         .unwrap();
         r.open_list(code);
-        r.ui.invoke_sort_chosen(1);
+        r.ui.invoke_sort_chosen(1, false);
         slint::platform::update_timers_and_animations();
         assert_eq!(r.ui.get_list_sort(), 1);
         assert!(!r.ui.get_rows_reorderable());
@@ -1576,7 +1579,7 @@ fn dragging_a_row_in_a_sorted_list_offers_manual_order() {
         )
         .unwrap();
         r.open_list(code);
-        r.ui.invoke_sort_chosen(1);
+        r.ui.invoke_sort_chosen(1, false);
         slint::platform::update_timers_and_animations();
         let first = r.ui.get_rows().row_data(0).unwrap().title.to_string();
         let second = r.ui.get_rows().row_data(1).unwrap().title.to_string();

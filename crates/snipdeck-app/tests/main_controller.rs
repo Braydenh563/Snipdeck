@@ -24,7 +24,7 @@ use snipdeck_app::{
     settings::Settings,
     toast::ToastMessage,
 };
-use snipdeck_core::{ItemLabel, ListAccent, ListIcon, ListSort, Name, Tag, Timestamp};
+use snipdeck_core::{ItemLabel, ListAccent, ListIcon, Name, Sort, Tag, Timestamp};
 use snipdeck_platform::testing::{FakeClipboard, FakeKeyboard, FakeTiming};
 use snipdeck_store::ListRepo as _;
 use snipdeck_store::{BoardRepo, ItemRepo, Store, TagRepo, TrashRepo};
@@ -279,7 +279,11 @@ fn duplicate_copies_each_selected_item_next_to_it_unpinned_and_unused() {
     let copy = &after[place + 1];
     assert_ne!(copy.id, id);
     assert_eq!(after[place].id, id, "the original stays put");
-    assert_eq!(copy.title, original.title);
+    assert_eq!(
+        copy.title,
+        format!("{} copy", original.title),
+        "titled as a copy"
+    );
     assert_eq!(copy.preview, original.preview);
     assert_eq!(copy.tags, original.tags);
     assert_eq!(
@@ -477,11 +481,7 @@ fn renaming_to_an_existing_name_asks_to_merge_and_changes_nothing() {
     let names = tag_names(&mut ctl);
     // Compared ignoring case, like the store does.
     let other = names[1].to_uppercase();
-    let count = ctl.main_screen().tags[0].count;
-    assert_eq!(
-        ctl.main_rename_tag(0, &other),
-        Err(TagRenameError::Merge { into: 1, count })
-    );
+    assert_eq!(ctl.main_rename_tag(0, &other), Err(TagRenameError::Exists));
     assert_eq!(tag_names(&mut ctl), names, "nothing changed");
     assert!(
         ctl.main_screen().toast.is_none(),
@@ -502,7 +502,7 @@ fn merging_tags_moves_the_items_and_removes_the_first_tag() {
     let before = ctl.main_screen().tags.clone();
     assert_eq!(before[0].count, 1);
 
-    ctl.main_merge_tag(0, 1);
+    ctl.main_merge_tag(0, &names[1]).expect("merged");
     match toast_message(&mut ctl) {
         Some(ToastMessage::TagMerged { from, into }) => {
             assert_eq!((from, into), (names[0].clone(), names[1].clone()));
@@ -513,9 +513,12 @@ fn merging_tags_moves_the_items_and_removes_the_first_tag() {
     let after = ctl.main_screen();
     assert_eq!(tag_names(&mut ctl), [names[1].clone()]);
     assert_eq!(after.tags[0].count, before[0].count + before[1].count);
-    // The same index twice, or a stale one, does nothing.
-    ctl.main_merge_tag(0, 0);
-    ctl.main_merge_tag(0, 7);
+    // Into itself (the only tag left), or from a stale index, does nothing.
+    assert_eq!(
+        ctl.main_merge_tag(0, &names[1]),
+        Err(TagRenameError::Failed)
+    );
+    assert_eq!(ctl.main_merge_tag(7, &names[1]), Ok(()));
     assert_eq!(tag_names(&mut ctl), [names[1].clone()]);
 }
 
@@ -751,12 +754,12 @@ fn a_new_list_opens_the_editor_and_saving_adds_and_opens_it() {
         "a sample name the editor selects"
     );
 
-    ctl.main_editor_save("   ", None, None, ListSort::Manual);
+    ctl.main_editor_save("   ", None, None, Sort::MANUAL);
     let editor = ctl.main_screen().editor.expect("still open");
     assert_eq!(editor.name_error, Some(NameError::Empty));
     ctl.main_editor_edited();
     assert_eq!(ctl.main_screen().editor.unwrap().name_error, None);
-    ctl.main_editor_save(&"x".repeat(101), None, None, ListSort::Manual);
+    ctl.main_editor_save(&"x".repeat(101), None, None, Sort::MANUAL);
     assert_eq!(
         ctl.main_screen().editor.unwrap().name_error,
         Some(NameError::TooLong { max: 100 })
@@ -766,7 +769,7 @@ fn a_new_list_opens_the_editor_and_saving_adds_and_opens_it() {
         "  Snippets 2 ",
         Some(ListAccent::Rose),
         None,
-        ListSort::MostUsed,
+        Sort::MOST_USED,
     );
     let screen = ctl.main_screen();
     assert!(screen.editor.is_none());
@@ -794,7 +797,7 @@ fn a_parked_list_editor_closes_and_comes_back_with_its_typed_fields() {
     let mut ctl = seeded();
     let index = list_index(&ctl.main_screen(), "Addresses");
     ctl.main_edit_list(index);
-    ctl.main_editor_park("Places (typed)", None, None, ListSort::RecentlyUsed, 0);
+    ctl.main_editor_park("Places (typed)", None, None, Sort::RECENTLY_USED, 0);
     assert!(ctl.main_screen().editor.is_none());
     ctl.main_edit_list(index);
     let editor = ctl.main_screen().editor.expect("editor");
@@ -803,7 +806,7 @@ fn a_parked_list_editor_closes_and_comes_back_with_its_typed_fields() {
         editor.restored,
         "MAIN-42: the editor says the fields came back"
     );
-    assert_eq!((editor.accent, editor.sort), (None, ListSort::RecentlyUsed));
+    assert_eq!((editor.accent, editor.sort), (None, Sort::RECENTLY_USED));
     // Cancelling forgets them: the next open shows the saved list, with no notice.
     ctl.main_editor_close();
     ctl.main_edit_list(index);
@@ -826,7 +829,7 @@ fn a_parked_editor_with_nothing_typed_leaves_no_draft() {
         editor.board_index,
     );
     ctl.main_edit_list(index);
-    ctl.main_editor_save("Renamed", None, None, ListSort::Manual);
+    ctl.main_editor_save("Renamed", None, None, Sort::MANUAL);
     ctl.main_edit_list(index);
     assert_eq!(ctl.main_screen().editor.expect("editor").name, "Renamed");
 }
@@ -843,7 +846,7 @@ fn editing_a_list_renames_recolours_and_re_sorts_it() {
         (editor.name.as_str(), editor.accent, editor.item_count),
         ("Addresses", Some(ListAccent::Amber), 2)
     );
-    ctl.main_editor_save("Places", None, None, ListSort::RecentlyUsed);
+    ctl.main_editor_save("Places", None, None, Sort::RECENTLY_USED);
     let screen = ctl.main_screen();
     let list = &screen.lists[index];
     assert_eq!((list.name.as_str(), list.accent), ("Places", None));
@@ -856,7 +859,7 @@ fn a_list_saved_with_an_icon_reads_back_with_it_and_none_clears_it() {
     let index = list_index(&ctl.main_screen(), "Addresses");
     ctl.main_edit_list(index);
     assert_eq!(ctl.main_screen().editor.unwrap().icon, None);
-    ctl.main_editor_save("Addresses", None, Some(ListIcon::House), ListSort::Manual);
+    ctl.main_editor_save("Addresses", None, Some(ListIcon::House), Sort::MANUAL);
     assert_eq!(ctl.main_screen().lists[index].icon, Some(ListIcon::House));
     assert_eq!(ctl.view().tabs[index].icon, Some(ListIcon::House));
     ctl.main_edit_list(index);
@@ -865,7 +868,7 @@ fn a_list_saved_with_an_icon_reads_back_with_it_and_none_clears_it() {
         Some(ListIcon::House),
         "the editor opens with it"
     );
-    ctl.main_editor_save("Addresses", None, None, ListSort::Manual);
+    ctl.main_editor_save("Addresses", None, None, Sort::MANUAL);
     assert_eq!(ctl.main_screen().lists[index].icon, None);
     assert_eq!(ctl.view().tabs[index].icon, None);
 }
@@ -1032,7 +1035,7 @@ fn the_list_menu_edits_the_list_it_was_opened_on() {
     let editor = ctl.main_screen().editor.expect("editor");
     assert_eq!(editor.name, "Code");
     assert!(!editor.is_new && editor.can_delete);
-    ctl.main_editor_save("Items", None, None, ListSort::Manual);
+    ctl.main_editor_save("Items", None, None, Sort::MANUAL);
     assert_eq!(ctl.view().tabs[tab_index(&ctl, "Items")].name, "Items");
 }
 
@@ -1112,7 +1115,7 @@ fn a_new_board_is_made_through_the_menu_and_opened() {
     assert_eq!(editor.kind, EditorKind::Board);
     assert!(editor.is_new);
     assert_eq!(editor.name, "New board 1");
-    ctl.main_editor_save("Side projects", None, None, ListSort::Manual);
+    ctl.main_editor_save("Side projects", None, None, Sort::MANUAL);
     let screen = ctl.main_screen();
     assert_eq!(screen.board_name, "Side projects");
     assert_eq!(screen.lists.len(), 0);
@@ -1141,7 +1144,7 @@ fn renaming_the_open_board_uses_the_board_editor() {
     assert_eq!(editor.name, "Work");
     assert_eq!(editor.item_count, 10, "the lists of the open board");
     assert!(editor.can_delete);
-    ctl.main_editor_save("Office", None, None, ListSort::Manual);
+    ctl.main_editor_save("Office", None, None, Sort::MANUAL);
     assert_eq!(ctl.main_screen().board_name, "Office");
     assert_eq!(ctl.view().board_name, "Office");
 }
@@ -1220,7 +1223,7 @@ fn a_deleted_board_comes_back_from_the_trash_however_many_boards_there_are() {
     for n in 0..8 {
         let new = menu_index(&mut ctl, &BoardMenuEntry::New);
         ctl.main_board_menu_activate(new);
-        ctl.main_editor_save(&format!("Extra {n}"), None, None, ListSort::Manual);
+        ctl.main_editor_save(&format!("Extra {n}"), None, None, Sort::MANUAL);
     }
     let many = ctl.store().boards().unwrap().len();
     assert_eq!(many, 10);
@@ -1231,7 +1234,7 @@ fn a_deleted_board_comes_back_from_the_trash_however_many_boards_there_are() {
     let gone = ctl.store().trashed().unwrap()[0].target;
     let new = menu_index(&mut ctl, &BoardMenuEntry::New);
     ctl.main_board_menu_activate(new);
-    ctl.main_editor_save("Replacement", None, None, ListSort::Manual);
+    ctl.main_editor_save("Replacement", None, None, Sort::MANUAL);
     assert_eq!(ctl.store().boards().unwrap().len(), many);
     ctl.main_open(Section::Trash);
     let at = ctl
@@ -1453,7 +1456,7 @@ fn the_panels_move_entries_are_disabled_in_a_search_and_in_a_list_sorted_by_use(
         .unwrap();
     let index = list_index(&ctl.main_screen(), "Code");
     ctl.main_edit_list(index);
-    ctl.main_editor_save("Code", Some(ListAccent::Violet), None, ListSort::MostUsed);
+    ctl.main_editor_save("Code", Some(ListAccent::Violet), None, Sort::MOST_USED);
     ctl.select_tab(tab);
     ctl.open_item_menu(0, false);
     let menu = ctl.view().item_menu.expect("the item menu");
@@ -1834,7 +1837,7 @@ fn panel_rows_do_not_move_in_a_list_sorted_by_use() {
         .unwrap();
     let index = list_index(&ctl.main_screen(), "Code");
     ctl.main_edit_list(index);
-    ctl.main_editor_save("Code", Some(ListAccent::Violet), None, ListSort::MostUsed);
+    ctl.main_editor_save("Code", Some(ListAccent::Violet), None, Sort::MOST_USED);
     ctl.select_tab(tab);
     assert!(!ctl.view().rows_reorderable);
     let before = panel_titles(&ctl);
@@ -1852,7 +1855,7 @@ fn items_do_not_move_in_a_sorted_list_a_search_or_a_system_view() {
     open_list(&mut ctl, "Code");
     let index = list_index(&ctl.main_screen(), "Code");
     ctl.main_edit_list(index);
-    ctl.main_editor_save("Code", Some(ListAccent::Violet), None, ListSort::MostUsed);
+    ctl.main_editor_save("Code", Some(ListAccent::Violet), None, Sort::MOST_USED);
     let before = titles(&ctl.main_screen());
     ctl.main_reorder_items(1);
     assert_eq!(titles(&ctl.main_screen()), before, "sorted by use");
@@ -2133,9 +2136,11 @@ fn the_palette_duplicate_command_puts_a_copy_after_the_row_under_the_cursor() {
     );
     assert_eq!(
         titles(&after).iter().filter(|t| **t == target).count(),
-        2,
-        "the copy keeps the title"
+        1,
+        "the original keeps its title"
     );
+    assert_eq!(after.rows[2].title, format!("{target} copy"));
+    assert_eq!(after.cursor, 2, "the cursor is on the copy");
     assert_eq!(
         after.rows[1].key, before.rows[1].key,
         "the original stays where it was, the copy goes after it"
@@ -2310,7 +2315,7 @@ fn dragging_a_row_in_manual_order_announces_where_it_went() {
 fn saving_a_new_list_or_board_from_the_editor_says_so() {
     let mut ctl = seeded();
     ctl.main_new_list();
-    ctl.main_editor_save("Fresh list", None, None, ListSort::Manual);
+    ctl.main_editor_save("Fresh list", None, None, Sort::MANUAL);
     assert_eq!(toast_message(&mut ctl), Some(ToastMessage::ListSaved));
     ctl.main_board_menu_open();
     let new = ctl
@@ -2321,7 +2326,7 @@ fn saving_a_new_list_or_board_from_the_editor_says_so() {
         .position(|e| *e == snipdeck_app::controller::BoardMenuEntry::New)
         .unwrap();
     ctl.main_board_menu_activate(new);
-    ctl.main_editor_save("Fresh board", None, None, ListSort::Manual);
+    ctl.main_editor_save("Fresh board", None, None, Sort::MANUAL);
     assert_eq!(toast_message(&mut ctl), Some(ToastMessage::BoardSaved));
 }
 
@@ -2331,26 +2336,26 @@ fn saving_a_new_list_or_board_from_the_editor_says_so() {
 fn sorting_from_the_header_matches_the_editor() {
     let mut ctl = seeded();
     open_list(&mut ctl, "Code");
-    assert_eq!(ctl.main_screen().list_sort, ListSort::Manual);
-    ctl.main_set_list_sort(ListSort::RecentlyUsed);
+    assert_eq!(ctl.main_screen().sort, Sort::MANUAL);
+    ctl.main_set_sort(Sort::RECENTLY_USED);
     let screen = ctl.main_screen();
-    assert_eq!(screen.list_sort, ListSort::RecentlyUsed);
+    assert_eq!(screen.sort, Sort::RECENTLY_USED);
     assert!(!screen.reorderable);
     // The List editor opens on the same value, and saving it unchanged keeps it.
     let index = list_index(&screen, "Code");
     ctl.main_edit_list(index);
     let editor = ctl.main_screen().editor.expect("the editor");
-    assert_eq!(editor.sort, ListSort::RecentlyUsed);
+    assert_eq!(editor.sort, Sort::RECENTLY_USED);
     ctl.main_editor_close();
     // A list the header did not touch is as it was.
     open_list(&mut ctl, "Addresses");
-    assert_eq!(ctl.main_screen().list_sort, ListSort::Manual);
+    assert_eq!(ctl.main_screen().sort, Sort::MANUAL);
     // And the rows follow the choice, exactly as when the editor makes it.
     let mut other = seeded();
     open_list(&mut other, "Code");
     let index = list_index(&other.main_screen(), "Code");
     other.main_edit_list(index);
-    other.main_editor_save("Code", None, None, ListSort::RecentlyUsed);
+    other.main_editor_save("Code", None, None, Sort::RECENTLY_USED);
     open_list(&mut ctl, "Code");
     assert_eq!(titles(&ctl.main_screen()), titles(&other.main_screen()));
 }
@@ -2363,7 +2368,7 @@ fn dragging_in_a_sorted_list_offers_manual() {
         Section::List(id) => id,
         other => panic!("{other:?}"),
     };
-    ctl.main_set_list_sort(ListSort::MostUsed);
+    ctl.main_set_sort(Sort::MOST_USED);
     let before = titles(&ctl.main_screen());
     ctl.main_drop_row(0, 1);
     let screen = ctl.main_screen();
@@ -2371,15 +2376,11 @@ fn dragging_in_a_sorted_list_offers_manual() {
     assert_eq!(message(&screen), ToastMessage::SwitchToManual { list: id });
     ctl.toast_action();
     let screen = ctl.main_screen();
-    assert_eq!(
-        screen.list_sort,
-        ListSort::Manual,
-        "the toast's button switched it"
-    );
+    assert_eq!(screen.sort, Sort::MANUAL, "the toast's button switched it");
     assert!(screen.reorderable);
     assert_eq!(message(&screen), ToastMessage::ListSaved);
     // Alt+Down offers it the same way.
-    ctl.main_set_list_sort(ListSort::MostUsed);
+    ctl.main_set_sort(Sort::MOST_USED);
     ctl.main_reorder_items(1);
     assert_eq!(
         message(&ctl.main_screen()),
@@ -2388,7 +2389,7 @@ fn dragging_in_a_sorted_list_offers_manual() {
     // Alt+Up on the first row and Alt+Down on the last offer it alike.
     for delta in [-1, 1] {
         ctl.toast_action();
-        ctl.main_set_list_sort(ListSort::MostUsed);
+        ctl.main_set_sort(Sort::MOST_USED);
         let last = ctl.main_screen().rows.len() - 1;
         ctl.main_select(if delta < 0 { 0 } else { last }, SelectMode::Replace);
         ctl.main_reorder_items(delta);
@@ -2417,10 +2418,10 @@ fn the_panel_list_menu_sorts_and_a_panel_drag_in_a_sorted_list_offers_manual() {
     let tab = tab_index(&ctl, "Code");
     ctl.select_tab(tab);
     ctl.open_list_menu(tab);
-    assert_eq!(ctl.view().list_menu_sort, ListSort::Manual);
+    assert_eq!(ctl.view().list_menu_sort, Sort::MANUAL);
     let at = LIST_MENU
         .iter()
-        .position(|e| *e == ListMenuEntry::SortBy(ListSort::MostUsed))
+        .position(|e| *e == ListMenuEntry::SortBy(Sort::MOST_USED))
         .expect("a Sort by row");
     assert_eq!(ctl.choose_list_menu(at), vec![]);
     assert_eq!(ctl.view().list_menu, None, "the menu closes");
@@ -2434,7 +2435,7 @@ fn the_panel_list_menu_sorts_and_a_panel_drag_in_a_sorted_list_offers_manual() {
     };
     ctl.toast_action();
     assert!(ctl.view().rows_reorderable);
-    assert_eq!(ctl.store().list(list).unwrap().sort, ListSort::Manual);
+    assert_eq!(ctl.store().list(list).unwrap().sort, Sort::MANUAL);
 }
 
 /// MAIN-25: a text export that leaves items out says how many were written.
@@ -2587,7 +2588,7 @@ fn the_list_editor_moves_a_list_to_another_board_and_opens_it_there() {
     let other = 1 - editor.board_index;
     let other_name = editor.boards[other].1.clone();
     ctl.main_editor_set_board(other);
-    ctl.main_editor_save("Addresses", None, None, ListSort::Manual);
+    ctl.main_editor_save("Addresses", None, None, Sort::MANUAL);
     let screen = ctl.main_screen();
     assert_eq!(screen.board_name, other_name, "the other board is open");
     assert_eq!(screen.section, Section::List(list), "and the list with it");
@@ -2603,7 +2604,7 @@ fn a_list_saved_on_its_own_board_stays_and_a_new_list_lands_on_the_chosen_board(
     let screen = ctl.main_screen();
     let index = list_index(&screen, "Code");
     ctl.main_edit_list(index);
-    ctl.main_editor_save("Code", None, None, ListSort::Manual);
+    ctl.main_editor_save("Code", None, None, Sort::MANUAL);
     assert_eq!(ctl.main_screen().board_name, "Work");
     assert!(board_has_list(&ctl, "Work", "Code"));
     ctl.main_new_list();
@@ -2612,7 +2613,7 @@ fn a_list_saved_on_its_own_board_stays_and_a_new_list_lands_on_the_chosen_board(
     let other = 1 - editor.board_index;
     let other_name = editor.boards[other].1.clone();
     ctl.main_editor_set_board(other);
-    ctl.main_editor_save("Fresh", None, None, ListSort::Manual);
+    ctl.main_editor_save("Fresh", None, None, Sort::MANUAL);
     assert!(board_has_list(&ctl, &other_name, "Fresh"));
     assert!(!board_has_list(&ctl, "Work", "Fresh"));
 }
@@ -2625,7 +2626,7 @@ fn a_parked_list_editor_keeps_the_board_that_was_picked() {
     ctl.main_edit_list(index);
     let editor = ctl.main_screen().editor.expect("editor");
     let other = 1 - editor.board_index;
-    ctl.main_editor_park("Code", None, None, ListSort::Manual, other);
+    ctl.main_editor_park("Code", None, None, Sort::MANUAL, other);
     ctl.main_edit_list(index);
     let back = ctl.main_screen().editor.expect("editor again");
     assert_eq!(back.board_index, other, "the typed board comes back");

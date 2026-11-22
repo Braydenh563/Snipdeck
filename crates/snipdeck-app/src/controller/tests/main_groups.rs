@@ -18,7 +18,7 @@ fn shape(w: &mut World) -> Vec<(String, bool, bool)> {
         .main_screen()
         .rows
         .iter()
-        .map(|r| (r.title.clone(), r.header.is_some(), r.grouped))
+        .map(|r| (r.title.clone(), r.header.is_some(), r.depth > 0))
         .collect()
 }
 
@@ -44,7 +44,7 @@ fn ctrl_g_groups_the_selected_rows_as_one_undo_step_and_starts_the_rename() {
     let screen = w.ctl.main_screen();
     assert_eq!(screen.rows.len(), 5, "a header joins the four items");
     assert_eq!(screen.rows[0].header.as_ref().map(|h| h.count), Some(2));
-    assert!(screen.rows[1].grouped && screen.rows[2].grouped && !screen.rows[3].grouped);
+    assert!(screen.rows[1].depth > 0 && screen.rows[2].depth > 0 && screen.rows[3].depth == 0);
     assert_eq!(screen.rename_row, Some(0), "the new header starts renaming");
     assert_eq!(screen.selected_count, 0, "the marks are spent");
     w.ctl.undo();
@@ -67,7 +67,7 @@ fn a_list_that_sorts_itself_offers_manual_order_instead_of_grouping() {
     let mut w = open_replies();
     let board = w.ctl.store().boards().expect("boards")[0].id;
     let id = w.ctl.store().lists(board).expect("lists")[0].id;
-    w.ctl.set_list_sort(id, snipdeck_core::ListSort::MostUsed);
+    w.ctl.set_list_sort(id, snipdeck_core::Sort::MOST_USED);
     w.ctl.main_select(0, SelectMode::Replace);
     w.ctl.main_group_marked(0);
     assert_eq!(shape(&mut w).iter().filter(|r| r.1).count(), 0);
@@ -476,6 +476,12 @@ fn deleting_a_folded_group_trashes_its_hidden_members_and_undo_restores_them() {
     w.ctl.main_group_collapse(0, Some(true)); // [Group*] Three Greeting
     w.ctl.main_group_delete(0);
     assert_eq!(
+        w.ctl.main_screen().group_delete,
+        Some(("Group".to_owned(), 2)),
+        "a folded group hides what it deletes: the window asks, with the count"
+    );
+    w.ctl.main_group_delete_confirm();
+    assert_eq!(
         titles(&mut w),
         ["Three", "Greeting"],
         "the folded members went too"
@@ -507,4 +513,90 @@ fn folding_a_group_with_its_members_selected_drops_them_from_the_selection() {
         "hidden rows are not acted on by a later delete"
     );
     assert_eq!(titles(&mut w), ["Group", "Three", "Greeting"]);
+}
+
+/// The message of the toast on screen.
+fn toast_message(w: &mut World) -> Option<ToastMessage> {
+    w.ctl.main_screen().toast.map(|t| t.message)
+}
+
+#[test]
+fn ctrl_g_refusals_say_why() {
+    // A list that sorts itself offers manual order (tested above); a colour filter says so.
+    let mut w = open_replies();
+    label_first_rows_red(&mut w, 2);
+    w.ctl
+        .main_set_label_filter(Some(snipdeck_core::ItemLabel::Red));
+    w.ctl.main_select(0, SelectMode::Replace);
+    w.ctl.main_group_marked(0);
+    assert_eq!(toast_message(&mut w), Some(ToastMessage::GroupColourFilter));
+    // Outside a list there is nothing to group in.
+    let mut w = world();
+    w.ctl.main_group_marked(0);
+    assert_eq!(toast_message(&mut w), Some(ToastMessage::GroupNeedsList));
+}
+
+#[test]
+fn folding_and_unfolding_a_group_is_an_undo_step() {
+    let mut w = open_replies();
+    group_first_two(&mut w);
+    w.ctl.main_group_rename_ended();
+    let before = shape(&mut w);
+    w.ctl.main_group_collapse(0, Some(true));
+    assert_ne!(shape(&mut w), before, "the group is folded");
+    w.ctl.undo();
+    assert_eq!(shape(&mut w), before, "Undo unfolds it");
+    w.ctl.redo();
+    assert_ne!(shape(&mut w), before, "Redo folds it again");
+}
+
+/// Saves a new item titled `title` from a Main-window editor opened with the cursor on row `at`.
+fn add_item_after_row(w: &mut World, at: usize, title: &str) {
+    w.ctl.main_select(at, SelectMode::Replace);
+    w.ctl.open_new_item(crate::item_editor::Origin::Main);
+    let v = w.ctl.item_editor_view().expect("editor");
+    w.ctl.item_editor_save(&crate::item_editor::EditorInput {
+        title: title.to_owned(),
+        content: format!("text of {title}"),
+        ..v.fields
+    });
+    assert!(!w.ctl.item_editor_open(), "saved");
+}
+
+#[test]
+fn a_new_item_goes_after_the_cursor_row_and_joins_its_group() {
+    let mut w = open_replies();
+    group_first_two(&mut w);
+    w.ctl.main_group_rename_ended();
+    // Rows: [Group] One Two Three Greeting. The cursor is on One (row 1, inside the group).
+    add_item_after_row(&mut w, 1, "Fresh");
+    assert_eq!(
+        titles(&mut w),
+        ["Group", "One", "Fresh", "Two", "Three", "Greeting"]
+    );
+    let rows = shape(&mut w);
+    assert!(
+        rows[2].2,
+        "Fresh joined the group of the row it follows: {rows:?}"
+    );
+    assert_eq!(
+        w.ctl.main_screen().rows[0].header.as_ref().map(|h| h.count),
+        Some(3)
+    );
+    // Outside a group, after the cursor row, ungrouped.
+    add_item_after_row(&mut w, 4, "Plain");
+    let rows = shape(&mut w);
+    assert_eq!(rows[5].0, "Plain");
+    assert!(!rows[5].2);
+}
+
+#[test]
+fn duplicating_titles_the_copy_and_puts_the_cursor_on_it() {
+    let mut w = open_replies();
+    w.ctl.set_copy_title("{title} (kopie)");
+    w.ctl
+        .main_action(crate::controller::MainAction::Duplicate, 1);
+    let screen = w.ctl.main_screen();
+    assert_eq!(screen.rows[2].title, "Two (kopie)");
+    assert_eq!(screen.cursor, 2, "the cursor follows the copy");
 }

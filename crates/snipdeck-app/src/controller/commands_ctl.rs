@@ -45,7 +45,8 @@ where
             // Not the controller's: `MainBinding::run_command` handles both before it gets here
             // (Search moves the window's focus, Tour opens the tour window). The arm stays only so
             // the match is exhaustive.
-            Command::Search | Command::Tour => {}
+            // The window's own: the focus move, the tour window and the colour dialog (`main_binding`).
+            Command::Search | Command::Tour | Command::ColourGroup | Command::NestGroup => {}
             Command::ShowPanel => self.main_toggle_panel(),
             Command::Symbols => {
                 if self.settings.show_symbols_tab {

@@ -232,6 +232,10 @@ pub fn onboarding(ui: &OnboardingWindow, step: i32) {
 }
 
 pub fn tag_manager(ui: &TagManager) {
+    // No tag is nested here, so what each carries itself is what it counts.
+    ui.set_own_counts(slint::ModelRc::new(slint::VecModel::from(vec![
+        9, 4, 3, 1, 0,
+    ])));
     ui.set_tags(tag_model(
         [
             ("billing", 9),

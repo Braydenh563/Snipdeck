@@ -385,17 +385,21 @@ where
     /// Gives the items `ids` colour `label` (`None` clears it).
     pub(super) fn label_items(&mut self, ids: &[ItemId], label: Option<ItemLabel>) {
         let now = self.clock.now();
+        let mut changes = Vec::new();
         let done = self.store.atomically(|b| {
+            changes.clear();
             for id in ids {
-                let mut item = b.item(*id)?;
+                let before = b.item(*id)?;
+                let mut item = before.clone();
                 item.label = label;
                 item.updated_at = now;
-                b.update_item(&item, None)?;
+                super::history_ctl::update_recorded(b, &before, &item, &mut changes)?;
             }
             Ok(())
         });
         match done {
             Ok(()) => {
+                self.record_step(crate::history::Action::Colour, changes);
                 self.library_changed();
             }
             Err(_) => self.show_toast(failed()),

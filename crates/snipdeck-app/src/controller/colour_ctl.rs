@@ -615,6 +615,7 @@ where
         let Some(c) = colour_of(&item) else {
             return;
         };
+        let before = item.clone();
         let title = title.trim();
         item.title = if title.is_empty() {
             title_for(c)
@@ -622,7 +623,11 @@ where
             title.to_owned()
         };
         item.updated_at = self.clock.now();
-        if self.store.update_item(&item, None).is_ok() {
+        let mut changes = Vec::new();
+        if super::history_ctl::update_recorded(&mut self.store, &before, &item, &mut changes)
+            .is_ok()
+        {
+            self.record_step(crate::history::Action::Edit, changes);
             self.library_changed();
         } else {
             self.show_toast(failed());

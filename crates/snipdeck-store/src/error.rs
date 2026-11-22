@@ -15,6 +15,16 @@ pub enum Error {
     /// A tag with this name, ignoring case, already exists.
     #[error("a tag named `{0}` already exists")]
     TagExists(String),
+    /// A tag cannot be nested under itself or under one of its own descendants, nor under a
+    /// tag that is not there.
+    #[error("a tag cannot be nested under itself, a tag below it or a tag that is gone")]
+    TagParent,
+    /// A group cannot be nested in itself, in a group inside it, in a group that is gone or
+    /// that has nothing live in it, nor deeper than `MAX_GROUP_DEPTH` levels.
+    #[error(
+        "that group cannot be nested there: groups nest three levels deep at most, never in themselves"
+    )]
+    GroupParent,
     /// Another live item already has this trigger (case counts).
     #[error("the trigger `{0}` is already used by another item")]
     TriggerTaken(String),

@@ -9,7 +9,7 @@
 
 use snipdeck_core::{
     Item, ItemId, ItemKind, ItemLabel, Timestamp,
-    template::{Locale, Template, TimeZone},
+    template::{Locale, SnippetSource, Template, TimeZone},
 };
 
 use crate::{
@@ -75,6 +75,7 @@ pub fn card_of(
     tz: &TimeZone,
     locale: Locale,
     words: PreviewWords<'_>,
+    snippets: &dyn SnippetSource,
 ) -> CardPreview {
     let text_kind = item_editor::is_text_kind(input.kind);
     let sensitive = input.sensitive && text_kind;
@@ -108,7 +109,8 @@ pub fn card_of(
             Err(p) if !text.trim().is_empty() => card.problem = Some(p),
             _ => {}
         },
-        ItemKind::Template if !text.trim().is_empty() => match Template::parse(text) {
+        ItemKind::Template if !text.trim().is_empty() => match Template::parse_with(text, snippets)
+        {
             Ok(template) if !sensitive => {
                 card.expanded = Some(expand(&template, now, tz, locale, words));
             }
@@ -138,6 +140,7 @@ fn expand(
         snipdeck_core::UseMode::Paste,
         String::new(),
         template.clone(),
+        locale,
     );
     let empty: Vec<usize> = form
         .fields()
@@ -152,7 +155,7 @@ fn expand(
         let stand_in = format!("‹{}›", form.fields()[i].label);
         form.set_value(i, &stand_in);
     }
-    let text = form.preview(now, tz, locale);
+    let text = form.preview(now, tz);
     text.replace(&crate::fill::preview_uuid(), words.new_id)
 }
 
@@ -185,6 +188,7 @@ fn link_display(url: &str) -> LinkDisplay {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use snipdeck_core::template::NoSnippets;
 
     const WORDS: PreviewWords<'static> = PreviewWords { new_id: "(new ID)" };
 
@@ -207,7 +211,14 @@ mod tests {
     }
 
     fn card(input: &EditorInput) -> CardPreview {
-        card_of(input, now(), &TimeZone::UTC, Locale::default(), WORDS)
+        card_of(
+            input,
+            now(),
+            &TimeZone::UTC,
+            Locale::default(),
+            WORDS,
+            &NoSnippets,
+        )
     }
 
     #[test]
@@ -295,7 +306,7 @@ mod tests {
 
     #[test]
     fn a_bad_link_gives_the_refusal_save_would_give() {
-        let c = card(&input(ItemKind::Link, "", "example.com"));
+        let c = card(&input(ItemKind::Link, "", "example"));
         assert_eq!(c.problem, Some(EditorProblem::LinkNeedsScheme));
         let c = card(&input(ItemKind::Link, "", "https://a b"));
         assert_eq!(c.problem, Some(EditorProblem::LinkHasSpace));
@@ -311,6 +322,7 @@ mod tests {
 #[cfg(test)]
 mod secret_tests {
     use super::*;
+    use snipdeck_core::template::NoSnippets;
 
     fn sensitive(kind: ItemKind, title: &str, content: &str) -> CardPreview {
         let input = EditorInput {
@@ -329,6 +341,7 @@ mod secret_tests {
             &TimeZone::UTC,
             Locale::default(),
             PreviewWords { new_id: "(new ID)" },
+            &NoSnippets,
         )
     }
 

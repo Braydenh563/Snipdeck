@@ -23,18 +23,68 @@ pub enum Transform {
     /// `a-url-friendly-slug`: lower case, letters and digits of any script kept, every other
     /// run of characters one `-`, none at the ends.
     Slug,
+    /// `Sentence case.`: the text lower case, then the first letter of each sentence up.
+    Sentence,
+    /// `camelCase`: words joined, the first one in lower case and the others capitalised.
+    Camel,
+    /// `snake_case`: words in lower case joined by `_`.
+    Snake,
+    /// `url%20encoded`: every byte but `A-Z a-z 0-9 - . _ ~` as `%XX` (UTF-8).
+    UrlEncode,
+    /// Only the first whitespace-separated word.
+    FirstWord,
+    /// Only the last whitespace-separated word.
+    LastWord,
 }
 
 impl Transform {
-    /// Every choice, in the order the menu lists them.
-    pub const ALL: [Self; 6] = [
+    /// Every choice, in the order the menu and the editor help list them.
+    pub const ALL: [Self; 12] = [
         Self::Plain,
         Self::Upper,
         Self::Lower,
         Self::Title,
         Self::Trimmed,
         Self::Slug,
+        Self::Sentence,
+        Self::Camel,
+        Self::Snake,
+        Self::UrlEncode,
+        Self::FirstWord,
+        Self::LastWord,
     ];
+
+    /// The name a placeholder uses: `{clipboard|upper}`, `{value:Name|snake}`.
+    #[must_use]
+    pub const fn keyword(self) -> &'static str {
+        match self {
+            Self::Plain => "plain",
+            Self::Upper => "upper",
+            Self::Lower => "lower",
+            Self::Title => "title",
+            Self::Trimmed => "trim",
+            Self::Slug => "slug",
+            Self::Sentence => "sentence",
+            Self::Camel => "camel",
+            Self::Snake => "snake",
+            Self::UrlEncode => "urlencode",
+            Self::FirstWord => "firstword",
+            Self::LastWord => "lastword",
+        }
+    }
+
+    /// The transform a placeholder names (ignoring case and spaces), if there is one.
+    #[must_use]
+    pub fn from_keyword(word: &str) -> Option<Self> {
+        let word = word.trim().to_ascii_lowercase();
+        Self::ALL.into_iter().find(|t| t.keyword() == word)
+    }
+
+    /// The keywords, comma separated, for messages and the editor help.
+    #[must_use]
+    pub fn keyword_list() -> String {
+        Self::ALL.map(Self::keyword).join(", ")
+    }
 }
 
 /// `text` with `transform` applied.
@@ -47,7 +97,98 @@ pub fn apply(transform: Transform, text: &str) -> String {
         Transform::Trimmed => text.trim().to_owned(),
         Transform::Title => title(text),
         Transform::Slug => slug(text),
+        Transform::Sentence => sentence(text),
+        Transform::Camel => camel(text),
+        Transform::Snake => words(text).join("_").to_lowercase(),
+        Transform::UrlEncode => url_encode(text),
+        Transform::FirstWord => text
+            .split_whitespace()
+            .next()
+            .unwrap_or_default()
+            .to_owned(),
+        Transform::LastWord => text
+            .split_whitespace()
+            .next_back()
+            .unwrap_or_default()
+            .to_owned(),
     }
+}
+
+/// The letter-and-digit runs of `text`, split also where a lower case letter meets an upper
+/// case one (`fooBar` is `foo`, `Bar`).
+fn words(text: &str) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    let mut current = String::new();
+    let mut previous_lower = false;
+    for c in text.nfc() {
+        if c.is_alphanumeric() {
+            if c.is_uppercase() && previous_lower && !current.is_empty() {
+                out.push(core::mem::take(&mut current));
+            }
+            previous_lower = c.is_lowercase();
+            current.push(c);
+        } else {
+            previous_lower = false;
+            if !current.is_empty() {
+                out.push(core::mem::take(&mut current));
+            }
+        }
+    }
+    if !current.is_empty() {
+        out.push(current);
+    }
+    out
+}
+
+fn camel(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for (i, word) in words(text).iter().enumerate() {
+        let mut chars = word.chars();
+        if let Some(first) = chars.next() {
+            if i == 0 {
+                out.extend(first.to_lowercase());
+            } else {
+                out.extend(first.to_uppercase());
+            }
+            out.push_str(&chars.as_str().to_lowercase());
+        }
+    }
+    out
+}
+
+fn sentence(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut start = true;
+    for c in text.nfc() {
+        if c.is_alphabetic() {
+            if start {
+                out.extend(c.to_uppercase());
+                start = false;
+            } else {
+                out.extend(c.to_lowercase());
+            }
+        } else {
+            if matches!(c, '.' | '!' | '?' | '。' | '！' | '？') {
+                start = true;
+            }
+            out.push(c);
+        }
+    }
+    out
+}
+
+fn url_encode(text: &str) -> String {
+    use core::fmt::Write as _;
+    let mut out = String::with_capacity(text.len());
+    for byte in text.bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'.' | b'_' | b'~') {
+            out.push(char::from(byte));
+        } else {
+            // Writing to a `String` cannot fail.
+            let _ = write!(out, "%{byte:02X}");
+        }
+    }
+    out
 }
 
 fn title(text: &str) -> String {
@@ -125,9 +266,36 @@ mod tests {
             (Slug, "\u{301}a", "a"),
             (Title, "cafe\u{301} au lait", "Café Au Lait"),
             (Slug, "", ""),
+            (
+                Sentence,
+                "hELLO there. how ARE you? fine",
+                "Hello there. How are you? Fine",
+            ),
+            (Sentence, "  ünder 3 rules", "  Ünder 3 rules"),
+            (Camel, "hello big_world-ok", "helloBigWorldOk"),
+            (Camel, "Get HTTP Response", "getHttpResponse"),
+            (Camel, "👋", ""),
+            (Snake, "Hello Big World", "hello_big_world"),
+            (Snake, "fooBar baz", "foo_bar_baz"),
+            (Snake, "  --  ", ""),
+            (UrlEncode, "a b&c=d/é~._-", "a%20b%26c%3Dd%2F%C3%A9~._-"),
+            (UrlEncode, "", ""),
+            (FirstWord, "  Ada Lovelace Byron ", "Ada"),
+            (LastWord, "  Ada Lovelace Byron ", "Byron"),
+            (FirstWord, "   ", ""),
+            (LastWord, "", ""),
         ] {
             assert_eq!(apply(transform, input), want, "{transform:?} {input:?}");
         }
+    }
+
+    #[test]
+    fn every_choice_has_a_keyword_that_finds_it_again() {
+        for t in Transform::ALL {
+            assert_eq!(Transform::from_keyword(t.keyword()), Some(t));
+        }
+        assert_eq!(Transform::from_keyword(" UPPER "), Some(Upper));
+        assert_eq!(Transform::from_keyword("shout"), None);
     }
 
     #[test]

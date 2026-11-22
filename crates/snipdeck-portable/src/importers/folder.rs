@@ -97,6 +97,8 @@ pub fn decode_folder(
     let mut plan = Plan::default();
     if !lists.is_empty() {
         plan.boards.push(PlanBoard {
+            accent: None,
+            icon: None,
             name: board,
             created_at: now,
             updated_at: now,

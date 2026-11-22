@@ -15,7 +15,7 @@ pub(crate) const FORMAT_NAME: &str = "snipdeck-archive";
 /// The newest major version this build reads and the one it writes.
 pub(crate) const MAJOR: u32 = 1;
 /// The minor version this build writes.
-pub(crate) const MINOR: u32 = 2;
+pub(crate) const MINOR: u32 = 3;
 /// The `encryption` value when payloads are `SNENC2` envelopes (`docs/crypto.md`).
 pub(crate) const ENCRYPTION: &str = "SNENC2";
 
@@ -75,12 +75,24 @@ pub(crate) struct ItemsDoc {
 pub(crate) struct TagDto {
     pub id: String,
     pub name: String,
+    /// Added in 1.3: one of the eight item colour keys.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub colour: Option<String>,
+    /// Added in 1.3: the id (in this file) of the tag this one is nested under.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct BoardDto {
     pub id: String,
     pub name: String,
+    /// Added in 1.3.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub accent: Option<String>,
+    /// Added in 1.3.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
     pub created_at: String,
     pub updated_at: String,
     pub lists: Vec<ListDto>,
@@ -113,6 +125,13 @@ pub(crate) struct GroupDto {
     pub name: String,
     #[serde(default)]
     pub collapsed: bool,
+    /// Added in 1.3: one of the nine list accent keys.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub colour: Option<String>,
+    /// Added in 1.3: the id (in this list) of the group this one is nested in. Older readers
+    /// ignore it and see a flat group.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent: Option<String>,
 }
 
 thread_local! {
@@ -200,6 +219,12 @@ pub(crate) struct ItemDto {
     /// The typed trigger; added in 1.2. Never present for a sensitive item.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub trigger: Option<String>,
+    /// When the trigger fires, `immediate` or `delimiter`; absent means `immediate`. Added in 1.2.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trigger_fires: Option<String>,
+    /// How the trigger reads case, `exact`, `ignore` or `adapt`; absent means `exact`. Added in 1.2.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trigger_case: Option<String>,
     #[serde(default)]
     pub use_count: u32,
     #[serde(default)]
