@@ -2285,33 +2285,42 @@ export component MainWindow inherits Window {
                                 }
                             }
                             chip-row := HorizontalLayout {
+                                // As tall as the strip, so each chip centres on the Clear filter button beside it.
+                                height: chip-scroll.height;
                                 spacing: Space.s1;
                                 alignment: start;
-                                for chip in root.label-chips: chip-l := LabelChip {
-                                    y: (parent.height - self.height) / 2;
-                                    text: chip.name;
-                                    hue: [ListHue.blue, ListHue.teal, ListHue.green, ListHue.amber, ListHue.orange, ListHue.red, ListHue.violet, ListHue.slate][chip.label];
-                                    count: chip.count;
-                                    selected: chip.label == root.label-filter;
-                                    clicked => { root.label-filter-requested(chip.label == root.label-filter ? -1 : chip.label); }
-                                    changed has-focus => { if (self.has-focus) { chip-scroll.reveal(self.x, self.width); } }
+                                // A layout ignores a child's `y`, so each chip sits in a cell that centres it on the strip.
+                                for chip in root.label-chips: VerticalLayout {
+                                    alignment: center;
+                                    chip-l := LabelChip {
+                                        text: chip.name;
+                                        hue: [ListHue.blue, ListHue.teal, ListHue.green, ListHue.amber, ListHue.orange, ListHue.red, ListHue.violet, ListHue.slate][chip.label];
+                                        count: chip.count;
+                                        selected: chip.label == root.label-filter;
+                                        clicked => { root.label-filter-requested(chip.label == root.label-filter ? -1 : chip.label); }
+                                        changed has-focus => { if (self.has-focus) { chip-scroll.reveal(parent.x, self.width); } }
+                                    }
                                 }
-                                for chip[i] in root.filter-chips: chip-f := LabelChip {
-                                    y: (parent.height - self.height) / 2;
-                                    text: root.filter-name(chip.kind, chip.name);
-                                    hue: ListHue.slate;
-                                    selected: true;
-                                    accessible-description: @tr("Remove this filter");
-                                    clicked => { root.filter-chip-removed(i); }
-                                    changed has-focus => { if (self.has-focus) { chip-scroll.reveal(self.x, self.width); } }
+                                for chip[i] in root.filter-chips: VerticalLayout {
+                                    alignment: center;
+                                    chip-f := LabelChip {
+                                        text: root.filter-name(chip.kind, chip.name);
+                                        hue: ListHue.slate;
+                                        selected: true;
+                                        accessible-description: @tr("Remove this filter");
+                                        clicked => { root.filter-chip-removed(i); }
+                                        changed has-focus => { if (self.has-focus) { chip-scroll.reveal(parent.x, self.width); } }
+                                    }
                                 }
                             }
                         }
-                        if root.filter-count() > 0: Button {
-                            variant: ButtonVariant.ghost;
-                            text: @tr("Clear filter");
-                            y: (parent.height - self.height) / 2;
-                            clicked => { root.filter-cleared(); }
+                        if root.filter-count() > 0: VerticalLayout {
+                            alignment: center;
+                            Button {
+                                variant: ButtonVariant.ghost;
+                                text: @tr("Clear filter");
+                                clicked => { root.filter-cleared(); }
+                            }
                         }
                         if root.filter-count() > 0 && !root.heading-compact: Text {
                             text: @tr("{n} item" | "{n} items" % root.rows.length);

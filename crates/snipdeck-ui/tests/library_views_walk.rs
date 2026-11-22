@@ -1470,3 +1470,28 @@ fn tab_reaches_filter_sort_every_chip_and_clear_in_reading_order_and_scrolls_a_c
     }
     assert_eq!(problems.len(), 0, "{}", problems.join("\n"));
 }
+
+#[test]
+fn the_filter_chips_share_a_centre_line_with_clear_filter() {
+    for scale in [1.0_f32, 1.5, 2.25] {
+        let h = main_with_filter(1100, scale, false, false);
+        let (_, _, chips) = rows_of_controls(&h);
+        let clear = chips
+            .iter()
+            .find(|b| b.label == "Clear filter")
+            .expect("Clear filter is in the row");
+        let centre = clear.y + clear.h / 2.0;
+        for chip in chips.iter().filter(|b| b.label != "Clear filter") {
+            let at = chip.y + chip.h / 2.0;
+            eprintln!(
+                "scale {scale}: {:?} y {:.1} h {:.1} centre {at:.1}, Clear filter y {:.1} h {:.1} centre {centre:.1}",
+                chip.label, chip.y, chip.h, clear.y, clear.h
+            );
+            assert!(
+                (at - centre).abs() <= 1.0,
+                "scale {scale}: chip {:?} centre {at:.1} is not on Clear filter's {centre:.1}",
+                chip.label
+            );
+        }
+    }
+}
