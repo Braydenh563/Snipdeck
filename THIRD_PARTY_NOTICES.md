@@ -337,7 +337,7 @@ Snipdeck links the 337 crates below (Windows build). Slint is used under GPL-3.0
 | font-types 0.12.7 | MIT OR Apache-2.0 |
 | fontdb 0.24.0 | MIT |
 | fontique 0.11.1 | Apache-2.0 OR MIT |
-| form_urlencoded 1.2.2 | MIT OR Apache-2.0 |
+| form_urlencoded 1.2.3 | MIT OR Apache-2.0 |
 | getrandom 0.4.3 | MIT OR Apache-2.0 |
 | gif 0.14.2 | MIT OR Apache-2.0 |
 | glow 0.18.0 | MIT OR Apache-2.0 OR Zlib |
@@ -537,7 +537,7 @@ Snipdeck links the 337 crates below (Windows build). Slint is used under GPL-3.0
 | unicode-xid 0.2.6 | MIT OR Apache-2.0 |
 | universal-hash 0.6.1 | MIT OR Apache-2.0 |
 | unty 0.0.4 | MIT OR Apache-2.0 |
-| url 2.5.8 | MIT OR Apache-2.0 |
+| url 2.5.9 | MIT OR Apache-2.0 |
 | usvg 0.48.1 | Apache-2.0 OR MIT |
 | utf8_iter 1.0.4 | Apache-2.0 OR MIT |
 | uuid 1.28.0 | Apache-2.0 OR MIT |
@@ -1782,7 +1782,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### arrayvec 0.7.8, base64 0.23.1, bitflags 1.3.2, bitflags 2.13.2, by_address 1.2.1, cfg-if 1.0.5, core_detect 1.0.0, countme 3.0.1, critical-section 1.2.0, crossbeam-channel 0.5.17, crossbeam-deque 0.8.8, crossbeam-epoch 0.9.21, crossbeam-utils 0.8.23, data-url 0.3.2, displaydoc 0.2.7, either 1.19.0, encoding_rs_io 0.1.8, equivalent 1.0.3, euclid 0.22.14, flate2 1.1.10, fontique 0.11.1, form_urlencoded 1.2.2, gif 0.14.2, glow 0.18.0, hashbrown 0.14.5, hashbrown 0.16.1, hashbrown 0.17.1, heck 0.5.0, htmlparser 0.2.1, idna 1.1.0, idna_adapter 1.2.2, indexmap 2.14.2, itertools 0.15.0, keyboard-types 0.7.0, lazy_static 1.5.1, lock_api 0.4.14, log 0.4.34, muda 0.19.3, num-traits 0.2.19, once_cell 1.21.4, parking_lot 0.12.5, parking_lot_core 0.9.12, parlance 0.1.1, parley 0.11.1, parley_data 0.11.1, percent-encoding 2.3.2, png 0.18.1, rayon 1.12.0, rayon-core 1.13.0, renderdoc-sys 1.1.0, rowan 0.17.0, roxmltree 0.21.1, rustc-hash 1.1.0, scoped-tls-hkt 0.1.5, scopeguard 1.2.0, simplecss 0.2.2, smallvec 1.16.3, smol_str 0.2.2, smol_str 0.3.6, spin_on 0.1.1, stable_deref_trait 1.2.1, svgtypes 0.16.1, swash 0.2.10, text-size 1.1.1, unicase 2.10.0, unicode-bidi 0.3.18, unicode-normalization 0.1.26, unicode-segmentation 1.13.3, unicode-vo 0.1.0, unicode-width 0.2.2, unicode-xid 0.2.6, url 2.5.8, uuid 1.28.0, weezl 0.1.12, yazi 0.2.1, zeno 0.3.3
+### arrayvec 0.7.8, base64 0.23.1, bitflags 1.3.2, bitflags 2.13.2, by_address 1.2.1, cfg-if 1.0.5, core_detect 1.0.0, countme 3.0.1, critical-section 1.2.0, crossbeam-channel 0.5.17, crossbeam-deque 0.8.8, crossbeam-epoch 0.9.21, crossbeam-utils 0.8.23, data-url 0.3.2, displaydoc 0.2.7, either 1.19.0, encoding_rs_io 0.1.8, equivalent 1.0.3, euclid 0.22.14, flate2 1.1.10, fontique 0.11.1, form_urlencoded 1.2.3, gif 0.14.2, glow 0.18.0, hashbrown 0.14.5, hashbrown 0.16.1, hashbrown 0.17.1, heck 0.5.0, htmlparser 0.2.1, idna 1.1.0, idna_adapter 1.2.2, indexmap 2.14.2, itertools 0.15.0, keyboard-types 0.7.0, lazy_static 1.5.1, lock_api 0.4.14, log 0.4.34, muda 0.19.3, num-traits 0.2.19, once_cell 1.21.4, parking_lot 0.12.5, parking_lot_core 0.9.12, parlance 0.1.1, parley 0.11.1, parley_data 0.11.1, percent-encoding 2.3.2, png 0.18.1, rayon 1.12.0, rayon-core 1.13.0, renderdoc-sys 1.1.0, rowan 0.17.0, roxmltree 0.21.1, rustc-hash 1.1.0, scoped-tls-hkt 0.1.5, scopeguard 1.2.0, simplecss 0.2.2, smallvec 1.16.3, smol_str 0.2.2, smol_str 0.3.6, spin_on 0.1.1, stable_deref_trait 1.2.1, svgtypes 0.16.1, swash 0.2.10, text-size 1.1.1, unicase 2.10.0, unicode-bidi 0.3.18, unicode-normalization 0.1.26, unicode-segmentation 1.13.3, unicode-vo 0.1.0, unicode-width 0.2.2, unicode-xid 0.2.6, url 2.5.9, uuid 1.28.0, weezl 0.1.12, yazi 0.2.1, zeno 0.3.3
 
 ```text
 Apache License
@@ -5250,7 +5250,7 @@ Permission is granted to anyone to use this software for any purpose, including 
 3. This notice may not be removed or altered from any source distribution.
 ```
 
-### data-url 0.3.2, idna 1.1.0, percent-encoding 2.3.2, url 2.5.8
+### data-url 0.3.2, idna 1.1.0, percent-encoding 2.3.2, url 2.5.9
 
 ```text
 Copyright (c) 2013-2025 The rust-url developers
@@ -6140,7 +6140,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### form_urlencoded 1.2.2
+### form_urlencoded 1.2.3
 
 ```text
 Copyright (c) 2013-2016 The rust-url developers
