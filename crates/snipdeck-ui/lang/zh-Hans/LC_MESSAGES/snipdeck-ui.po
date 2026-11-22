@@ -941,6 +941,12 @@ msgstr "创建于"
 msgid "Credit card"
 msgstr "信用卡"
 
+msgid "Ctrl+C in the Colours tab"
+msgstr "Ctrl+C（“颜色”选项卡）"
+
+msgid "Ctrl+Enter or Ctrl+S"
+msgstr "Ctrl+Enter 或 Ctrl+S"
+
 msgid "Ctrl+Shift+V"
 msgstr "Ctrl+Shift+V"
 
@@ -1195,6 +1201,9 @@ msgstr "删除资料库"
 
 msgid "Erase library…"
 msgstr "删除资料库…"
+
+msgid "Esc or Ctrl+W"
+msgstr "Esc 或 Ctrl+W"
 
 msgid "Escape"
 msgstr "Esc"

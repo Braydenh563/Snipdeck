@@ -1252,6 +1252,14 @@ msgstr ""
 msgid "Credit card"
 msgstr ""
 
+#: ui/name_texts.slint:81
+msgid "Ctrl+C in the Colours tab"
+msgstr ""
+
+#: ui/name_texts.slint:82
+msgid "Ctrl+Enter or Ctrl+S"
+msgstr ""
+
 #: ui/settings.slint:157
 msgid "Ctrl+Shift+V"
 msgstr ""
@@ -1590,6 +1598,10 @@ msgstr ""
 
 #: ui/settings.slint:1972
 msgid "Erase library…"
+msgstr ""
+
+#: ui/name_texts.slint:83
+msgid "Esc or Ctrl+W"
 msgstr ""
 
 #: ui/name_texts.slint:51 ui/picker.slint:684

@@ -941,6 +941,12 @@ msgstr "作成"
 msgid "Credit card"
 msgstr "クレジットカード"
 
+msgid "Ctrl+C in the Colours tab"
+msgstr "Ctrl+C（「カラー」タブ）"
+
+msgid "Ctrl+Enter or Ctrl+S"
+msgstr "Ctrl+Enter または Ctrl+S"
+
 msgid "Ctrl+Shift+V"
 msgstr "Ctrl+Shift+V"
 
@@ -1195,6 +1201,9 @@ msgstr "ライブラリを削除"
 
 msgid "Erase library…"
 msgstr "ライブラリを削除…"
+
+msgid "Esc or Ctrl+W"
+msgstr "Esc または Ctrl+W"
 
 msgid "Escape"
 msgstr "Esc"

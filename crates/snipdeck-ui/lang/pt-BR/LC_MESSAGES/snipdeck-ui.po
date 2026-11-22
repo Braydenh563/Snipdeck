@@ -942,6 +942,12 @@ msgstr "Criado"
 msgid "Credit card"
 msgstr "Cartão de crédito"
 
+msgid "Ctrl+C in the Colours tab"
+msgstr "Ctrl+C na aba Cores"
+
+msgid "Ctrl+Enter or Ctrl+S"
+msgstr "Ctrl+Enter ou Ctrl+S"
+
 msgid "Ctrl+Shift+V"
 msgstr "Ctrl+Shift+V"
 
@@ -1196,6 +1202,9 @@ msgstr "Apagar a biblioteca"
 
 msgid "Erase library…"
 msgstr "Apagar a biblioteca…"
+
+msgid "Esc or Ctrl+W"
+msgstr "Esc ou Ctrl+W"
 
 msgid "Escape"
 msgstr "Esc"
