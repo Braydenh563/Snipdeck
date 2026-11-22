@@ -255,6 +255,15 @@ msgstr "Apparaît quand vous tapez"
 msgid "Apply the new name"
 msgstr "Appliquer le nouveau nom"
 
+msgid "Arrow keys change it, Shift for bigger steps. Enter keeps it, Esc puts it back."
+msgstr "Les flèches le modifient, Maj pour des pas plus grands. Entrée le garde, Échap le remet."
+
+msgid "Arrow keys move the panel"
+msgstr "Les flèches déplacent le panneau"
+
+msgid "Arrow keys resize the panel"
+msgstr "Les flèches redimensionnent le panneau"
+
 msgid "Asks for a date, today if left empty"
 msgstr "Demande une date, aujourd'hui si elle est vide"
 
@@ -1620,6 +1629,12 @@ msgstr "Monter le tableau"
 msgid "Move down"
 msgstr "Descendre"
 
+msgid "Move panel"
+msgstr "Déplacer le panneau"
+
+msgid "Move panel (arrow keys)"
+msgstr "Déplacer le panneau (flèches)"
+
 msgid "Move selected item to Trash"
 msgstr "Mettre l'extrait sélectionné à la corbeille"
 
@@ -2412,6 +2427,12 @@ msgstr "Réinitialiser la taille et la position du panneau"
 
 msgid "Reset size and position"
 msgstr "Réinitialiser la taille et la position"
+
+msgid "Resize panel"
+msgstr "Redimensionner le panneau"
+
+msgid "Resize panel (arrow keys)"
+msgstr "Redimensionner le panneau (flèches)"
 
 msgid "Restore"
 msgstr "Restaurer"

@@ -72,6 +72,10 @@ pub enum AppMenuEntry {
     KeepOnTop,
     /// Open the header's Select / Delete strip in Select mode ("Clear list…" lives there).
     SelectOrDelete,
+    /// Move a floating Panel with the arrow keys (Enter keeps the place, Esc gives the old one back).
+    MoveFrame,
+    /// Size a floating Panel with the arrow keys (Enter keeps the size, Esc gives the old one back).
+    SizeFrame,
     /// Forget the remembered size and position on this monitor and put the Panel back at the default.
     ResetGeometry,
     /// A line between groups.
@@ -193,9 +197,30 @@ pub const LIST_MENU: [ListMenuEntry; 8] = [
     ListMenuEntry::CopyCss,
 ];
 
+/// What the arrow keys do to a floating Panel while the Window menu's Move or Size is on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FrameMode {
+    /// The arrows move the Panel.
+    Move,
+    /// The arrows resize it: left and right the width, up and down the height.
+    Size,
+}
+
+/// The keyboard move or size under way: what it does, the frame it began with (Esc gives it back)
+/// and the frame it stands at (the window reports back late, so it is kept here).
+#[derive(Debug, Clone, Copy)]
+pub(super) struct FrameKeys {
+    pub(super) mode: FrameMode,
+    pub(super) start: Rect,
+    pub(super) now: Rect,
+}
+
+/// One arrow-key step of the keyboard move or size, in logical pixels; with Shift it is four times that.
+const FRAME_STEP: u32 = 16;
+
 /// The kebab menu's rows. Help is a group of three rows under a line, because the Panel's
 /// `Menu` has no sub-menus.
-pub const APP_MENU: [AppMenuEntry; 24] = [
+pub const APP_MENU: [AppMenuEntry; 26] = [
     AppMenuEntry::Undo,
     AppMenuEntry::Redo,
     AppMenuEntry::Separator,
@@ -212,6 +237,8 @@ pub const APP_MENU: [AppMenuEntry; 24] = [
     AppMenuEntry::Group(AppGroup::Window),
     AppMenuEntry::Dock,
     AppMenuEntry::KeepOnTop,
+    AppMenuEntry::MoveFrame,
+    AppMenuEntry::SizeFrame,
     AppMenuEntry::ResetGeometry,
     AppMenuEntry::Group(AppGroup::Help),
     AppMenuEntry::Shortcuts,
@@ -227,7 +254,11 @@ impl AppMenuEntry {
     #[must_use]
     pub const fn group(self) -> Option<AppGroup> {
         match self {
-            Self::Dock | Self::KeepOnTop | Self::ResetGeometry => Some(AppGroup::Window),
+            Self::Dock
+            | Self::KeepOnTop
+            | Self::MoveFrame
+            | Self::SizeFrame
+            | Self::ResetGeometry => Some(AppGroup::Window),
             Self::Shortcuts | Self::Troubleshoot | Self::UserGuide | Self::About => {
                 Some(AppGroup::Help)
             }
@@ -317,6 +348,8 @@ where
                 self.panel_select_mode(true);
                 Vec::new()
             }
+            AppMenuEntry::MoveFrame => self.begin_frame_mode(FrameMode::Move),
+            AppMenuEntry::SizeFrame => self.begin_frame_mode(FrameMode::Size),
             AppMenuEntry::ResetGeometry => self.reset_panel_geometry(),
             AppMenuEntry::Troubleshoot => vec![Effect::OpenHelp(HelpTopic::Troubleshoot)],
             AppMenuEntry::UserGuide => vec![Effect::OpenHelp(HelpTopic::Guide)],
@@ -774,6 +807,71 @@ where
         self.resize_loop_seen = false;
         self.resize_at = self.clock.now();
         vec![Effect::ResizeWindow(edge)]
+    }
+
+    /// The Window menu's Move or Size: the arrow keys now move or resize a floating Panel
+    /// ([`frame_key`](Self::frame_key)) until Enter or Esc ([`end_frame_mode`](Self::end_frame_mode)).
+    /// A docked Panel has none (it keeps to its edge).
+    pub fn begin_frame_mode(&mut self, mode: FrameMode) -> Vec<Effect> {
+        self.frame_keys = None;
+        let Some(monitor) = self.monitor.clone() else {
+            return Vec::new();
+        };
+        if self.dock_edge().is_some() || self.dock_collapsed() {
+            return Vec::new();
+        }
+        let start = self.open_frame(&monitor);
+        self.frame_keys = Some(FrameKeys {
+            mode,
+            start,
+            now: start,
+        });
+        Vec::new()
+    }
+
+    /// What the arrow keys are doing to the Panel's frame, if anything.
+    #[must_use]
+    pub fn frame_mode(&self) -> Option<FrameMode> {
+        self.frame_keys.map(|k| k.mode)
+    }
+
+    /// An arrow key (`dx`, `dy` each -1, 0 or 1) in the keyboard move or size; `coarse` is Shift.
+    /// The new frame is held inside the limits ([`frame::clamp`]) and the window is placed there.
+    pub fn frame_key(&mut self, dx: i32, dy: i32, coarse: bool) -> Vec<Effect> {
+        let (Some(keys), Some(monitor)) = (self.frame_keys, self.monitor.clone()) else {
+            return Vec::new();
+        };
+        let step = i32::try_from(frame::scaled(FRAME_STEP, monitor.scale)).unwrap_or(i32::MAX)
+            * if coarse { 4 } else { 1 };
+        let grown = |len: u32, by: i32| u32::try_from(i64::from(len) + i64::from(by)).unwrap_or(0);
+        let moved = match keys.mode {
+            FrameMode::Move => Rect {
+                x: keys.now.x.saturating_add(dx.saturating_mul(step)),
+                y: keys.now.y.saturating_add(dy.saturating_mul(step)),
+                ..keys.now
+            },
+            FrameMode::Size => Rect {
+                w: grown(keys.now.w, dx.saturating_mul(step)),
+                h: grown(keys.now.h, dy.saturating_mul(step)),
+                ..keys.now
+            },
+        };
+        let now = frame::clamp(moved, &monitor);
+        self.frame_keys = Some(FrameKeys { now, ..keys });
+        vec![Effect::PlaceWindow(now)]
+    }
+
+    /// Enter (`keep`) or Esc in the keyboard move or size. Enter remembers the frame it stands at;
+    /// Esc puts the window back where the mode began.
+    pub fn end_frame_mode(&mut self, keep: bool) -> Vec<Effect> {
+        let (Some(keys), Some(monitor)) = (self.frame_keys.take(), self.monitor.clone()) else {
+            return Vec::new();
+        };
+        if keep {
+            self.frame_changed(&monitor, keys.now)
+        } else {
+            vec![Effect::PlaceWindow(keys.start)]
+        }
     }
 
     /// The Panel's frame is now `frame` on `monitor` (after a resize or a move; the host

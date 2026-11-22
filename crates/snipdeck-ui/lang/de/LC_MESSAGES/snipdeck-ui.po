@@ -255,6 +255,15 @@ msgstr "Erscheint beim Tippen"
 msgid "Apply the new name"
 msgstr "Neuen Namen übernehmen"
 
+msgid "Arrow keys change it, Shift for bigger steps. Enter keeps it, Esc puts it back."
+msgstr "Pfeiltasten ändern es, Umschalt für größere Schritte. Eingabe behält es, Esc stellt es zurück."
+
+msgid "Arrow keys move the panel"
+msgstr "Pfeiltasten verschieben das Fenster"
+
+msgid "Arrow keys resize the panel"
+msgstr "Pfeiltasten ändern die Fenstergröße"
+
 msgid "Asks for a date, today if left empty"
 msgstr "Fragt nach einem Datum, heute wenn leer"
 
@@ -1620,6 +1629,12 @@ msgstr "Board nach oben verschieben"
 msgid "Move down"
 msgstr "Nach unten"
 
+msgid "Move panel"
+msgstr "Fenster verschieben"
+
+msgid "Move panel (arrow keys)"
+msgstr "Fenster verschieben (Pfeiltasten)"
+
 msgid "Move selected item to Trash"
 msgstr "Ausgewählten Textbaustein in den Papierkorb verschieben"
 
@@ -2412,6 +2427,12 @@ msgstr "Größe und Position des Panels zurücksetzen"
 
 msgid "Reset size and position"
 msgstr "Größe und Position zurücksetzen"
+
+msgid "Resize panel"
+msgstr "Fenstergröße ändern"
+
+msgid "Resize panel (arrow keys)"
+msgstr "Fenstergröße ändern (Pfeiltasten)"
 
 msgid "Restore"
 msgstr "Wiederherstellen"

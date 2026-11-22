@@ -254,6 +254,15 @@ msgstr "输入时出现"
 msgid "Apply the new name"
 msgstr "应用新名称"
 
+msgid "Arrow keys change it, Shift for bigger steps. Enter keeps it, Esc puts it back."
+msgstr "方向键调整，Shift 加大步长。Enter 保留，Esc 还原。"
+
+msgid "Arrow keys move the panel"
+msgstr "方向键移动面板"
+
+msgid "Arrow keys resize the panel"
+msgstr "方向键调整面板大小"
+
 msgid "Asks for a date, today if left empty"
 msgstr "询问日期，留空则为今天"
 
@@ -1616,6 +1625,12 @@ msgstr "将看板上移"
 msgid "Move down"
 msgstr "下移"
 
+msgid "Move panel"
+msgstr "移动面板"
+
+msgid "Move panel (arrow keys)"
+msgstr "移动面板（方向键）"
+
 msgid "Move selected item to Trash"
 msgstr "将所选片段移到回收站"
 
@@ -2406,6 +2421,12 @@ msgstr "重置面板大小和位置"
 
 msgid "Reset size and position"
 msgstr "重置大小和位置"
+
+msgid "Resize panel"
+msgstr "调整面板大小"
+
+msgid "Resize panel (arrow keys)"
+msgstr "调整面板大小（方向键）"
 
 msgid "Restore"
 msgstr "还原"

@@ -58,6 +58,8 @@ fn start() -> (PanelWindow, Log) {
         }};
     }
     hook!(on_query_changed, |q| format!("query:{q}"));
+    hook!(on_frame_key, |dx, dy, big| format!("frame:{dx},{dy},{big}"));
+    hook!(on_frame_ended, |keep| format!("frame-end:{keep}"));
     hook!(on_row_activated, |i| format!("use:{i}"));
     hook!(on_row_copied, |i| format!("copy:{i}"));
     hook!(on_quick_use, |n| format!("quick:{n}"));
@@ -1202,6 +1204,40 @@ ui_tests! {
         }
         ui.global::<snipdeck_ui::SystemLook<'_>>().set_text_scale(1.0);
         slint::select_bundled_translation("").expect("back to the source language");
+    }
+
+    fn the_arrows_move_the_panel_only_while_the_frame_mode_is_on_and_enter_and_escape_end_it() {
+        let (ui, log) = start();
+        press(ui.window(), &key(Key::LeftArrow));
+        assert!(
+            take(&log).iter().all(|l| !l.starts_with("frame")),
+            "no mode, no frame keys"
+        );
+        ui.set_frame_mode(1);
+        settle();
+        for k in [Key::LeftArrow, Key::RightArrow, Key::UpArrow, Key::DownArrow] {
+            press(ui.window(), &key(k));
+        }
+        chord(ui.window(), &[Key::Shift], &key(Key::RightArrow));
+        press(ui.window(), "x");
+        press(ui.window(), &key(Key::Return));
+        press(ui.window(), &key(Key::Escape));
+        assert_eq!(
+            take(&log),
+            [
+                "frame:-1,0,false",
+                "frame:1,0,false",
+                "frame:0,-1,false",
+                "frame:0,1,false",
+                "frame:1,0,true",
+                "frame-end:true",
+                "frame-end:false",
+            ],
+            "arrows and Shift+arrows step, Enter keeps, Esc cancels, other keys do nothing"
+        );
+        let hint = find(&ui, "Move panel", AccessibleRole::Groupbox);
+        assert!(hint.size().height > 0.0, "a strip says what the arrows do");
+        ui.set_frame_mode(0);
     }
 
     fn the_panels_width_floor_grows_with_the_text_so_the_header_controls_stay_inside() {

@@ -969,6 +969,9 @@ where
         wire!(on_item_menu_dismissed, |ctl| ctl.close_item_menu());
         wire!(on_stack_started, |ctl| ctl.start_stack());
         wire!(on_stack_ended, |ctl| ctl.end_stack());
+        wire_effects!(on_frame_key, |ctl, dx, dy, coarse| ctl
+            .frame_key(dx, dy, coarse));
+        wire_effects!(on_frame_ended, |ctl, keep| ctl.end_frame_mode(keep));
         wire!(on_list_menu_requested, |ctl, i| ctl
             .open_list_menu(index(i)));
         wire_effects!(on_list_menu_activated, |ctl, i| ctl
@@ -1700,6 +1703,13 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
             view.reduced_motion,
         );
     }
+    if differs(&|p| p.frame_mode == view.frame_mode) {
+        window.set_frame_mode(match view.frame_mode {
+            None => 0,
+            Some(crate::controller::FrameMode::Move) => 1,
+            Some(crate::controller::FrameMode::Size) => 2,
+        });
+    }
     if differs(&|p| p.stack == view.stack) {
         window.set_stack_visible(view.stack.is_some());
         let stack = view.stack.clone().unwrap_or_default();
@@ -2025,7 +2035,10 @@ fn render_app_menu(window: &ui::PanelWindow, view: &View) {
         },
         disabled: (entry == AppMenuEntry::Undo && view.history.undo.is_none())
             || (entry == AppMenuEntry::Redo && view.history.redo.is_none())
-            || (entry == AppMenuEntry::PasteStack && view.stack.is_none()),
+            || (entry == AppMenuEntry::PasteStack && view.stack.is_none())
+            // A docked Panel keeps to its edge: it has no keyboard move or size.
+            || (matches!(entry, AppMenuEntry::MoveFrame | AppMenuEntry::SizeFrame)
+                && view.dock_edge.is_some()),
         checked: (entry == AppMenuEntry::PauseHotkeys && view.hotkeys_paused)
             || (entry == AppMenuEntry::PasteStack
                 && view.stack.as_ref().is_some_and(|s| s.running))

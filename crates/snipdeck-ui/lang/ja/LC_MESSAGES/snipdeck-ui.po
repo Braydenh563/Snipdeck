@@ -254,6 +254,15 @@ msgstr "入力すると表示"
 msgid "Apply the new name"
 msgstr "新しい名前を適用"
 
+msgid "Arrow keys change it, Shift for bigger steps. Enter keeps it, Esc puts it back."
+msgstr "矢印キーで変更、Shift で大きく動かします。Enter で確定、Esc で元に戻します。"
+
+msgid "Arrow keys move the panel"
+msgstr "矢印キーでパネルを移動します"
+
+msgid "Arrow keys resize the panel"
+msgstr "矢印キーでパネルの大きさを変えます"
+
 msgid "Asks for a date, today if left empty"
 msgstr "日付を尋ねます。空のままなら今日の日付です"
 
@@ -1616,6 +1625,12 @@ msgstr "ボードを上へ移動"
 msgid "Move down"
 msgstr "下へ移動"
 
+msgid "Move panel"
+msgstr "パネルを移動"
+
+msgid "Move panel (arrow keys)"
+msgstr "パネルを移動（矢印キー）"
+
 msgid "Move selected item to Trash"
 msgstr "選択したスニペットをゴミ箱へ移動"
 
@@ -2406,6 +2421,12 @@ msgstr "パネルのサイズと位置をリセット"
 
 msgid "Reset size and position"
 msgstr "サイズと位置をリセット"
+
+msgid "Resize panel"
+msgstr "パネルのサイズ変更"
+
+msgid "Resize panel (arrow keys)"
+msgstr "パネルのサイズ変更（矢印キー）"
 
 msgid "Restore"
 msgstr "復元"

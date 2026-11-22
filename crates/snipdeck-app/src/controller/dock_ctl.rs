@@ -659,6 +659,7 @@ where
             return;
         }
         self.drag = None;
+        self.frame_keys = None;
         let stored = self.stored_geometry(&monitor).cloned();
         let mut geometry = self.geometry_on(&monitor);
         let floating = frame::clamp(Rect::of(&geometry), &monitor);
@@ -931,6 +932,7 @@ where
             return Vec::new();
         };
         self.dock = DockState::Expanded;
+        self.frame_keys = None;
         // A gesture in flight ends here: it must not dock or resize the placement.
         self.drag = None;
         self.update_settings(|s| s.panel_geometry.retain(|g| g.monitor_id != monitor.id));

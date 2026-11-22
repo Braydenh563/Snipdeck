@@ -255,6 +255,15 @@ msgstr "Aparece quando você digita"
 msgid "Apply the new name"
 msgstr "Aplicar o novo nome"
 
+msgid "Arrow keys change it, Shift for bigger steps. Enter keeps it, Esc puts it back."
+msgstr "As setas alteram; Shift para passos maiores. Enter mantém; Esc desfaz."
+
+msgid "Arrow keys move the panel"
+msgstr "As setas movem o painel"
+
+msgid "Arrow keys resize the panel"
+msgstr "As setas redimensionam o painel"
+
 msgid "Asks for a date, today if left empty"
 msgstr "Pede uma data; hoje se ficar vazia"
 
@@ -1620,6 +1629,12 @@ msgstr "Mover quadro para cima"
 msgid "Move down"
 msgstr "Mover para baixo"
 
+msgid "Move panel"
+msgstr "Mover painel"
+
+msgid "Move panel (arrow keys)"
+msgstr "Mover painel (setas)"
+
 msgid "Move selected item to Trash"
 msgstr "Mover item selecionado para a Lixeira"
 
@@ -2412,6 +2427,12 @@ msgstr "Redefinir tamanho e posição do painel"
 
 msgid "Reset size and position"
 msgstr "Redefinir tamanho e posição"
+
+msgid "Resize panel"
+msgstr "Redimensionar painel"
+
+msgid "Resize panel (arrow keys)"
+msgstr "Redimensionar painel (setas)"
 
 msgid "Restore"
 msgstr "Restaurar"

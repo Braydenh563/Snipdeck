@@ -536,6 +536,8 @@ pub fn app_menu_text(
         AppMenuEntry::PauseHotkeys => t.invoke_app_pause_hotkeys(),
         AppMenuEntry::KeepOnTop => t.invoke_app_keep_on_top(),
         AppMenuEntry::SelectOrDelete => t.invoke_app_select_or_delete(),
+        AppMenuEntry::MoveFrame => t.invoke_app_move_frame(),
+        AppMenuEntry::SizeFrame => t.invoke_app_size_frame(),
         AppMenuEntry::ResetGeometry => t.invoke_app_reset_geometry(),
         AppMenuEntry::Undo | AppMenuEntry::Redo | AppMenuEntry::Separator => return String::new(),
         AppMenuEntry::Troubleshoot => t.invoke_app_troubleshoot(),

@@ -491,6 +491,10 @@ export component PanelWindow inherits Window {
     // The paste stack (SPEC 5.1): items marked from the item menu, then "Start stack" makes Paste next walk them.
     in property <bool> stack-visible: false;
     in property <bool> stack-running: false;
+    // The Window menu's Move (1) or Size (2): the arrow keys move or resize the floating Panel, Enter keeps, Esc cancels.
+    in property <int> frame-mode: 0;
+    callback frame-key(int, int, bool);
+    callback frame-ended(bool);
     in property <int> stack-count: 0;
     in property <int> stack-position: 0;
     in property <string> stack-next-title: "";
@@ -1246,6 +1250,16 @@ export component PanelWindow inherits Window {
                 if (event.text == Key.Escape && TipHost.dismiss()) {
                     return accept;
                 }
+                // Keyboard move and size: the arrows are the frame's; every other key waits for the mode to end.
+                if (root.frame-mode != 0) {
+                    if (event.text == Key.LeftArrow) { root.frame-key(-1, 0, event.modifiers.shift); }
+                    if (event.text == Key.RightArrow) { root.frame-key(1, 0, event.modifiers.shift); }
+                    if (event.text == Key.UpArrow) { root.frame-key(0, -1, event.modifiers.shift); }
+                    if (event.text == Key.DownArrow) { root.frame-key(0, 1, event.modifiers.shift); }
+                    if (event.text == Key.Return) { root.frame-ended(true); }
+                    if (event.text == Key.Escape) { root.frame-ended(false); }
+                    return accept;
+                }
                 if (event.text == Key.Tab || event.text == Key.Backtab) {
                     self.tab-back = event.text == Key.Backtab || event.modifiers.shift;
                 }
@@ -1918,6 +1932,36 @@ export component PanelWindow inherits Window {
                             size: ButtonSize.sm;
                             text: @tr("Done");
                             clicked => { root.modes-ended(); }
+                        }
+                    }
+                }
+
+                // ---- Keyboard move and size: a strip that says what the arrows do while the mode is on.
+                if root.frame-mode != 0: Rectangle {
+                    height: root.strip-h;
+                    accessible-role: AccessibleRole.groupbox;
+                    accessible-label: root.frame-mode == 1 ? @tr("Move panel") : @tr("Resize panel");
+                    accessible-description: @tr("Arrow keys change it, Shift for bigger steps. Enter keeps it, Esc puts it back.");
+                    HorizontalLayout {
+                        padding-left: Space.s2;
+                        padding-right: Space.s2;
+                        padding-top: Space.s1;
+                        padding-bottom: Space.s1;
+                        spacing: Space.s1;
+                        Text {
+                            horizontal-stretch: 1;
+                            text: root.frame-mode == 1 ? @tr("Arrow keys move the panel") : @tr("Arrow keys resize the panel");
+                            font-family: Fonts.sans;
+                            font-size: Type.sm;
+                            color: Theme.text-secondary;
+                            vertical-alignment: center;
+                            overflow: elide;
+                            accessible-role: none;
+                        }
+                        Button {
+                            size: ButtonSize.sm;
+                            text: @tr("Done");
+                            clicked => { root.frame-ended(true); }
                         }
                     }
                 }

@@ -234,6 +234,8 @@ pub struct View {
     pub dock_vertical: bool,
     /// The edge the Panel is docked to (the kebab offers to undock it; the dock grips follow it).
     pub dock_edge: Option<DockEdge>,
+    /// The arrow keys move or size the floating Panel (the Window menu's Move and Size).
+    pub frame_mode: Option<super::FrameMode>,
     /// A side dock takes the whole edge: its ends do not resize and it does not slide.
     pub dock_full_edge: bool,
     /// The Panel is being dragged by its header.

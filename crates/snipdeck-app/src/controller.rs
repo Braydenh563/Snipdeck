@@ -53,7 +53,7 @@ pub use library::Library;
 pub use lock_ctl::{MasterProblem, MasterState};
 pub use main_ctl::{BoardMenuEntry, MainAction, MainScreen, TagChoice, TagRenameError};
 pub use panel::{
-    APP_MENU, AppGroup, AppMenuEntry, HelpTopic, ItemMenuEntry, LIST_MENU, ListMenuEntry,
+    APP_MENU, AppGroup, AppMenuEntry, FrameMode, HelpTopic, ItemMenuEntry, LIST_MENU, ListMenuEntry,
 };
 pub use panel_select::LABELS;
 pub use settings_ctl::{ImportKind, ImportPreview, ImportProblem, ImportSource};
@@ -253,6 +253,8 @@ pub struct Controller<S, C: Clipboard, K, T> {
     stack: Vec<ItemId>,
     /// The marked items are being pasted one by one ("Start stack" was chosen).
     stack_running: bool,
+    /// The arrow keys move or size the floating Panel (the Window menu's Move and Size).
+    frame_keys: Option<panel::FrameKeys>,
     /// Which of the Panel's two menus is open (never both).
     menu: PanelMenu,
     /// The symbol the open [`PanelMenu::Symbol`] is about.
@@ -542,6 +544,7 @@ where
             queue: PasteQueue::default(),
             stack: Vec::new(),
             stack_running: false,
+            frame_keys: None,
             menu: PanelMenu::None,
             symbol_menu: None,
             menu_targets: Vec::new(),
@@ -709,6 +712,7 @@ where
             dock_collapsed: self.dock.is_collapsed(),
             dock_vertical: self.shown_edge().is_none_or(DockEdge::vertical),
             dock_edge: self.shown_edge(),
+            frame_mode: self.frame_mode(),
             dock_full_edge: self.settings.dock.full_edge,
             dragging: self.drag.is_some(),
             dock_target: self.dock_target(),
@@ -1088,6 +1092,7 @@ where
     pub fn hide(&mut self) -> Vec<Effect> {
         self.visible = false;
         self.drag = None;
+        self.frame_keys = None;
         self.panel_focused = false;
         self.panel_end_modes();
         self.blur_hide = false;

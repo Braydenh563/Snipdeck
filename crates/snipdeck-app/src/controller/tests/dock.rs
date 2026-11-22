@@ -2610,3 +2610,125 @@ mod eyedropper {
         assert_eq!(w.ctl.on_foreground_changed(), [Effect::HidePanel]);
     }
 }
+
+// ---- Move and Size by keyboard (PANEL-29) ---------------------------------------------------
+
+#[test]
+fn arrow_keys_move_a_floating_panel_in_steps_and_keep_it_inside_the_work_area() {
+    let mut w = floating(DockTrigger::Off);
+    assert_eq!(w.ctl.begin_frame_mode(FrameMode::Move), Vec::new());
+    assert_eq!(w.ctl.frame_mode(), Some(FrameMode::Move));
+    // Two quick steps before the window reports back: they add up.
+    assert_eq!(
+        w.ctl.frame_key(1, 0, false),
+        place(Rect { x: 616, ..FLOATING })
+    );
+    assert_eq!(
+        w.ctl.frame_key(0, 1, false),
+        place(Rect {
+            x: 616,
+            y: 116,
+            ..FLOATING
+        })
+    );
+    // The coarse step is four times as long.
+    assert_eq!(
+        w.ctl.frame_key(-1, 0, true),
+        place(Rect {
+            x: 552,
+            y: 116,
+            ..FLOATING
+        })
+    );
+    // Pushed past the edge of the work area the frame stays inside it.
+    let mut last = Vec::new();
+    for _ in 0..40 {
+        last = w.ctl.frame_key(-1, -1, true);
+    }
+    assert_eq!(
+        last,
+        place(Rect {
+            x: 0,
+            y: 0,
+            ..FLOATING
+        })
+    );
+}
+
+#[test]
+fn arrow_keys_resize_a_floating_panel_between_its_limits() {
+    let mut w = floating(DockTrigger::Off);
+    w.ctl.begin_frame_mode(FrameMode::Size);
+    assert_eq!(
+        w.ctl.frame_key(1, 0, false),
+        place(Rect { w: 336, ..FLOATING })
+    );
+    assert_eq!(
+        w.ctl.frame_key(0, -1, false),
+        place(Rect {
+            w: 336,
+            h: 484,
+            ..FLOATING
+        })
+    );
+    let mut last = Vec::new();
+    for _ in 0..40 {
+        last = w.ctl.frame_key(1, 0, true);
+    }
+    let [Effect::PlaceWindow(wide)] = last.as_slice() else {
+        panic!("one placement, got {last:?}");
+    };
+    assert_eq!(wide.w, 480, "the widest a Panel goes");
+    for _ in 0..40 {
+        last = w.ctl.frame_key(0, -1, true);
+    }
+    let [Effect::PlaceWindow(short)] = last.as_slice() else {
+        panic!("one placement, got {last:?}");
+    };
+    assert_eq!(short.h, frame::MIN_HEIGHT, "the lowest a Panel goes");
+}
+
+#[test]
+fn enter_keeps_the_new_frame_and_escape_gives_the_old_one_back() {
+    let mut w = floating(DockTrigger::Off);
+    w.ctl.begin_frame_mode(FrameMode::Move);
+    w.ctl.frame_key(1, 0, true);
+    assert_eq!(w.ctl.end_frame_mode(true), Vec::new());
+    assert_eq!(w.ctl.frame_mode(), None);
+    assert_eq!(w.ctl.frame_key(1, 0, false), Vec::new(), "no mode, no move");
+
+    w.ctl.begin_frame_mode(FrameMode::Size);
+    w.ctl.frame_key(1, 1, true);
+    let back = w.ctl.end_frame_mode(false);
+    assert_eq!(
+        back,
+        place(Rect { x: 664, ..FLOATING }),
+        "the frame the mode began with"
+    );
+    assert_eq!(w.ctl.view().frame_mode, None);
+}
+
+#[test]
+fn a_docked_panel_has_no_keyboard_move_or_size() {
+    let mut w = docked(DockTrigger::Both, DockEdge::Right);
+    assert_eq!(w.ctl.begin_frame_mode(FrameMode::Move), Vec::new());
+    assert_eq!(w.ctl.frame_mode(), None);
+}
+
+#[test]
+fn the_window_menu_has_move_and_size_rows_that_start_the_mode() {
+    let mut w = floating(DockTrigger::Off);
+    let at = |entry| APP_MENU.iter().position(|e| *e == entry).expect("a row");
+    w.ctl.open_app_menu();
+    assert_eq!(
+        w.ctl.choose_app_menu(at(AppMenuEntry::MoveFrame)),
+        Vec::new()
+    );
+    assert_eq!(w.ctl.frame_mode(), Some(FrameMode::Move));
+    assert_eq!(w.ctl.view().frame_mode, Some(FrameMode::Move));
+    assert!(w.ctl.view().app_menu.is_none(), "the menu closed");
+    w.ctl.end_frame_mode(true);
+    w.ctl.open_app_menu();
+    w.ctl.choose_app_menu(at(AppMenuEntry::SizeFrame));
+    assert_eq!(w.ctl.frame_mode(), Some(FrameMode::Size));
+}
