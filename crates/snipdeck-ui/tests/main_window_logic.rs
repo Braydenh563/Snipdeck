@@ -1688,7 +1688,7 @@ ui_tests! {
             ui.global::<snipdeck_ui::SystemLook<'_>>().set_text_scale(scale);
             ui.set_selected_count(2);
             settle();
-            let button = find(&ui, "Move", AccessibleRole::Button);
+            let button = find(&ui, "Move to list…", AccessibleRole::Button);
             let (bp, bs) = (button.absolute_position(), button.size());
             button.invoke_accessible_default_action();
             settle();
