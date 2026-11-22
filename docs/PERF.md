@@ -73,8 +73,8 @@ reads in library order through the three rank indexes (no sort) with one scan of
 per start and after a write that is not an edit or a use (`IndexCache`). The first typing
 suggestion pays the 25 ms build, once per snapshot.
 
-The Picker's worst key varies between runs on the shared container (9 to 45 ms in five runs)
-and its path (`set_query`) was not touched, so that probe needs a quiet machine to judge.
+The Picker's worst key was noisy while other builds ran on the same container (9 to 45 ms). On a quiet
+machine, five runs: 7.2, 7.3, 7.8, 7.9, 8.1 ms, median 7.8 ms (budget 16 ms).
 
 ## Release size and idle RAM
 
