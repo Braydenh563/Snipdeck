@@ -117,6 +117,9 @@ pub enum Out {
     /// `Tab` was pressed while hint number `.1` showed: insert the suggested item, but only if
     /// that hint is the one on screen.
     Accept(Typed, u64),
+    /// Backspace was the very next key after an expansion: take the expansion back and type the
+    /// code again (the controller checks it was this item's, and recent).
+    Undo(Typed),
 }
 
 /// What the UI thread tells the worker.
@@ -205,6 +208,10 @@ pub struct Typist {
     /// A trigger just fired and nothing has forgotten the text since: its expansion may still be
     /// reported as not sent (see [`Typist::not_expanded`]).
     after_fire: bool,
+    /// The trigger that just fired, until the next key (a Backspace then is an undo).
+    last_fire: Option<Fired>,
+    /// A Backspace came right after `last_fire`: see [`Typist::take_undo`].
+    undo: Option<Fired>,
 }
 
 // What was typed is private: nothing of the matcher's state is shown.
@@ -221,6 +228,8 @@ impl Typist {
         Self {
             matcher,
             after_fire: false,
+            last_fire: None,
+            undo: None,
         }
     }
 
@@ -228,12 +237,22 @@ impl Typist {
     pub fn set_matcher(&mut self, matcher: Matcher) {
         self.matcher = matcher;
         self.after_fire = false;
+        self.last_fire = None;
+        self.undo = None;
     }
 
     /// Forgets what was typed.
     pub fn reset(&mut self) {
         self.matcher.reset();
         self.after_fire = false;
+        self.last_fire = None;
+        self.undo = None;
+    }
+
+    /// The trigger whose expansion the last event asked to take back (a Backspace as the very
+    /// next key after the expansion), once.
+    pub fn take_undo(&mut self) -> Option<Fired> {
+        self.undo.take()
     }
 
     /// Forgets what was typed after a suggestion was inserted: the text that came in is not
@@ -241,6 +260,8 @@ impl Typist {
     pub fn inserted(&mut self) {
         self.matcher.after_expansion(AFTER_EXPANSION);
         self.after_fire = false;
+        self.last_fire = None;
+        self.undo = None;
     }
 
     /// The expansion `fired` reported was not sent after all (a password box, a key typed on):
@@ -271,7 +292,9 @@ impl Typist {
     pub fn event(&mut self, event: TypedEvent) -> Option<Fired> {
         match event {
             TypedEvent::Char(c) => {
+                self.undo = None;
                 let fired = self.matcher.feed(c);
+                self.last_fire = fired.clone();
                 if fired.is_some() {
                     self.matcher.after_expansion(AFTER_EXPANSION);
                     self.after_fire = true;
@@ -279,6 +302,8 @@ impl Typist {
                 fired
             }
             TypedEvent::Backspace => {
+                // The first key after a fire is the user taking the expansion back.
+                self.undo = self.last_fire.take();
                 if self.matcher.buffered() == 0 {
                     // Past the start: the text before is unknown, nothing to correct.
                     self.after_fire = false;
@@ -363,6 +388,16 @@ pub fn run(
                 let fired = typist.event(event);
                 if fired.is_some() {
                     drop_hint(&mut hint, env, &mut deliver);
+                }
+                if let Some(undo) = typist.take_undo() {
+                    let window = (env.foreground)();
+                    let in_password_box = password();
+                    if fresh() {
+                        let typed = Typed::new(undo, in_password_box, fresh)
+                            .in_window(window, Arc::clone(&env.foreground));
+                        deliver(Out::Undo(typed));
+                    }
+                    continue;
                 }
                 let Some(fired) = fired else {
                     follow_hint(
@@ -709,6 +744,34 @@ mod tests {
     }
 
     #[test]
+    fn a_backspace_straight_after_a_fire_asks_to_undo_it_once() {
+        let item = item_id(1);
+        let mut typist = Typist::new(matcher(";ab", item));
+        for c in ";ab".chars() {
+            typist.event(TypedEvent::Char(c));
+        }
+        typist.event(TypedEvent::Backspace);
+        assert_eq!(typist.take_undo().map(|f| f.item), Some(item));
+        assert!(typist.take_undo().is_none(), "once");
+        // Another key between the fire and the Backspace: no undo.
+        let mut typist = Typist::new(matcher(";ab", item));
+        for c in ";ab ".chars() {
+            typist.event(TypedEvent::Char(c));
+        }
+        typist.event(TypedEvent::Backspace);
+        assert!(typist.take_undo().is_none());
+        // Two Backspaces: only the first is the undo.
+        let mut typist = Typist::new(matcher(";ab", item));
+        for c in ";ab".chars() {
+            typist.event(TypedEvent::Char(c));
+        }
+        typist.event(TypedEvent::Backspace);
+        typist.take_undo();
+        typist.event(TypedEvent::Backspace);
+        assert!(typist.take_undo().is_none());
+    }
+
+    #[test]
     fn debug_shows_no_typed_text() {
         let mut typist = Typist::new(matcher(";sig", item_id(1)));
         for c in "hunter2".chars() {
@@ -751,6 +814,7 @@ mod tests {
                     Out::Hide(_) => "hide".to_owned(),
                     Out::Accept(t, _) => format!("accept {}", t.fired.chars),
                     Out::Expand(_) => "expand".to_owned(),
+                    Out::Undo(_) => "undo".to_owned(),
                 };
                 log.lock().expect("log").push(line);
             };
@@ -1140,6 +1204,7 @@ mod tests {
                         Out::Hide(_) => "hide",
                         Out::Expand(_) => "expand",
                         Out::Accept(..) => "accept",
+                        Out::Undo(_) => "undo",
                     });
                 },
             );

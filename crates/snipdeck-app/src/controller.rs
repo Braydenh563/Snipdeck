@@ -384,6 +384,10 @@ pub struct Controller<S, C: Clipboard, K, T> {
     typing_suggest: bool,
     /// Why the last typed trigger did not expand (Troubleshoot).
     last_skip: Option<trigger_ctl::SkipReason>,
+    /// The last typed expansion that was pasted, until a key or a few seconds take the undo away.
+    last_expansion: Option<trigger_ctl::Expansion>,
+    /// How many characters the use that just began puts into the Target (see `usecase::Used`).
+    last_use_chars: Option<usize>,
     /// The group of the kebab menu that is open (the menu's other groups show only their head).
     app_group: Option<AppGroup>,
     /// The Panel row the user had selected when it asked for the palette, until the Main window opens it.
@@ -606,6 +610,8 @@ where
             typing_sent: Vec::new(),
             typing_suggest: false,
             last_skip: None,
+            last_expansion: None,
+            last_use_chars: None,
             app_group: None,
             palette_armed: None,
             palette_item: None,

@@ -706,6 +706,7 @@ where
         erase: Option<Erasing<'_>>,
     ) -> UseResult {
         self.drain_paste();
+        self.last_use_chars = None;
         let chars = erase.as_ref().map_or(0, |e| e.chars);
         let route = self.model.route();
         let pasted_into = self.model.target().map(|t| t.app.clone());
@@ -754,6 +755,7 @@ where
         match usecase::begin_use(&mut self.store, &mut env, &request, &proceed) {
             Ok(usecase::Started::Done(used)) => {
                 self.queue.used(item);
+                self.last_use_chars = used.inserted_chars;
                 self.finish_use(item, &route, pasted_into.as_deref(), sequence_before, &used);
                 UseResult::Done(used.outcome)
             }
@@ -762,6 +764,7 @@ where
             Ok(usecase::Started::Waiting(pending)) => {
                 // "Paste next" walks on as soon as the key is out, not when the tail ends.
                 self.queue.used(item);
+                self.last_use_chars = pending.inserted_chars();
                 self.paste = Some(PendingPaste {
                     pending,
                     route,

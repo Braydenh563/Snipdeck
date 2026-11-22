@@ -430,6 +430,11 @@ where
                     let _ = ctl.expand_typed(&typed);
                 });
             }
+            Out::Undo(typed) => {
+                self.act(|ctl| {
+                    let _ = ctl.undo_expansion(&typed);
+                });
+            }
             // Only the hint that is on screen is accepted: anything else was passed on or is
             // old, and inserts nothing.
             Out::Accept(typed, id) => {

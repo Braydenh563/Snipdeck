@@ -56,6 +56,10 @@ pub struct Used {
     /// For a template with `{cursor}`: how many Left-arrow presses move the caret to it. Sent
     /// after a paste (at most [`MAX_CURSOR_PRESSES`]); a copy has no caret to move.
     pub cursor_from_end: Option<usize>,
+    /// How many characters a paste puts into the Target (a line break counts once), when that is
+    /// known: text only, and no `{cursor}` that moves the caret off the end. The undo of a typed
+    /// expansion erases this many (PANEL-16).
+    pub inserted_chars: Option<usize>,
     /// Why the use could not be counted, when the paste or copy worked but the store refused the
     /// usage update. The use is best-effort bookkeeping: failing it must not turn a paste that
     /// happened into an error (the user would retry and paste twice). The host may log it.
@@ -154,6 +158,7 @@ pub struct Pending<C: Clipboard> {
     item: ItemId,
     now: Timestamp,
     cursor_from_end: Option<usize>,
+    inserted_chars: Option<usize>,
 }
 
 impl<C: Clipboard> Pending<C> {
@@ -161,6 +166,12 @@ impl<C: Clipboard> Pending<C> {
     #[must_use]
     pub fn item(&self) -> ItemId {
         self.item
+    }
+
+    /// The characters this paste puts into the Target, when known (see [`Used::inserted_chars`]).
+    #[must_use]
+    pub fn inserted_chars(&self) -> Option<usize> {
+        self.inserted_chars
     }
 
     /// One look, without waiting (see [`pipeline::Waiting::poll`]): `Some` when the paste is
@@ -184,7 +195,7 @@ impl<C: Clipboard> Pending<C> {
             self.item,
             self.now,
             outcome,
-            self.cursor_from_end,
+            (self.cursor_from_end, self.inserted_chars),
         ))
     }
 }
@@ -218,6 +229,7 @@ where
     let item = store.item(request.item)?;
     let formats = store.formats(request.item)?;
     let (payload, cursor_from_end) = build_payload(store, &item, &formats, request)?;
+    let inserted_chars = inserted_chars(&payload, cursor_from_end);
     let began = pipeline::begin_item_erasing(
         env,
         &payload,
@@ -234,15 +246,33 @@ where
             item.id,
             request.now,
             outcome,
-            cursor_from_end,
+            (cursor_from_end, inserted_chars),
         )),
         pipeline::Began::Waiting(waiting) => Started::Waiting(Pending {
             waiting,
             item: item.id,
             now: request.now,
             cursor_from_end,
+            inserted_chars,
         }),
     })
+}
+
+/// The characters `payload` puts into a Target: its text, a line break counted once; `None` when
+/// it holds a picture or files, has no text, or `{cursor}` leaves the caret before the end.
+fn inserted_chars(payload: &Payload, cursor_from_end: Option<usize>) -> Option<usize> {
+    if cursor_from_end.is_some_and(|n| n > 0) {
+        return None;
+    }
+    let mut text = None;
+    for data in payload.data() {
+        match data {
+            Data::Text(t) => text = Some(t),
+            Data::Html(_) | Data::Rtf(_) => {}
+            Data::Png(_) | Data::Files(_) => return None,
+        }
+    }
+    text.map(|t| t.replace("\r\n", "\n").chars().count())
 }
 
 /// The paste or copy is over: moves the caret back for a template's `{cursor}` and counts the
@@ -253,7 +283,7 @@ fn finish<S: ItemRepo, K: Keyboard>(
     item: ItemId,
     now: Timestamp,
     outcome: UseOutcome,
-    cursor_from_end: Option<usize>,
+    (cursor_from_end, inserted_chars): (Option<usize>, Option<usize>),
 ) -> Used {
     if matches!(outcome, UseOutcome::Pasted | UseOutcome::PastedNotRestored)
         && let Some(n) = cursor_from_end.filter(|n| *n > 0)
@@ -274,6 +304,7 @@ fn finish<S: ItemRepo, K: Keyboard>(
     Used {
         outcome,
         cursor_from_end,
+        inserted_chars,
         count_failed,
     }
 }

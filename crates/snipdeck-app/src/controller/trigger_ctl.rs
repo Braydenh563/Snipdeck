@@ -9,10 +9,11 @@
 
 use std::collections::BTreeMap;
 
-use snipdeck_core::{Candidate, Matcher, UseMode};
+use snipdeck_core::{Candidate, Matcher, UseMode, UseOutcome};
 use snipdeck_platform::{
     keys::{Key, KeyEvent},
-    pipeline::{Clipboard, Keyboard, Timing},
+    payload::{Data, Payload},
+    pipeline::{self, Clipboard, Env, Keyboard, Timing},
     route::{CopyReason, Route, ScreenRect},
 };
 
@@ -21,6 +22,18 @@ use crate::{
     host::{ClipboardText, TypingControl},
     typing_worker::Typed,
 };
+
+/// A typed expansion that was pasted and can still be taken back with Backspace (PANEL-16).
+#[derive(Debug, Clone, Copy)]
+pub(super) struct Expansion {
+    item: snipdeck_core::ItemId,
+    /// Characters the paste put into the app.
+    chars: usize,
+    at: snipdeck_core::Timestamp,
+}
+
+/// How long after an expansion a Backspace as the very next key takes it back.
+const UNDO_WINDOW_SECS: i64 = 8;
 
 /// What became of a typed trigger.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -350,6 +363,7 @@ where
             window: self.model.target().map_or(0, |t| t.window),
             fresh: Some(&fresh),
         };
+        self.last_expansion = None;
         match self.run_use_erasing(
             fired.item,
             UseMode::Paste,
@@ -361,8 +375,80 @@ where
                 self.last_skip = Some(SkipReason::KeyTyped);
                 TypedOutcome::Skipped
             }
-            result => TypedOutcome::Expanded(result),
+            result => {
+                // Only a plain paste of known length can be taken back.
+                if matches!(
+                    result,
+                    UseResult::Done(UseOutcome::Pasted | UseOutcome::PastedNotRestored)
+                ) && let Some(chars) = self.last_use_chars.filter(|n| *n > 0)
+                {
+                    self.last_expansion = Some(Expansion {
+                        item: fired.item,
+                        chars,
+                        at: self.clock.now(),
+                    });
+                }
+                TypedOutcome::Expanded(result)
+            }
         }
+    }
+
+    /// Backspace was the very next key after the expansion of `typed`: the expansion goes and the
+    /// typed code comes back (Espanso, TextExpander and Beeftext do the same). The user's own
+    /// Backspace has erased one character already. Only for the last expansion, within
+    /// [`UNDO_WINDOW_SECS`], in the window it went into, with no key typed since. Returns whether
+    /// the code was typed back. **Unverified on Windows** (S1: the key counts are the unknown).
+    pub fn undo_expansion(&mut self, typed: &Typed) -> bool {
+        let Some(last) = self.last_expansion.take() else {
+            return false;
+        };
+        let fired = &typed.fired;
+        let recent = self.clock.now().duration_since(last.at).as_secs().abs() <= UNDO_WINDOW_SECS;
+        if !self.settings.expand_triggers
+            || last.item != fired.item
+            || !recent
+            || typed.password
+            || !typed.same_window()
+            || !typed.still_current()
+            || self.own_window_active
+        {
+            return false;
+        }
+        self.on_target_changed();
+        let route = self.model.route();
+        let Route::Paste { .. } = route else {
+            return false;
+        };
+        let (app, window) = self
+            .model
+            .target()
+            .map_or((None, 0), |t| (Some(t.app.clone()), t.window));
+        let Some(payload) = Payload::new(vec![Data::Text(fired.trigger.as_str().to_owned())])
+        else {
+            return false;
+        };
+        let target = &self.target;
+        let proceed = || {
+            typed.still_current()
+                && target
+                    .current()
+                    .is_some_and(|t| Some(t.app) == app && t.window == window)
+        };
+        let mut env = Env {
+            clipboard: &mut self.services.clipboard,
+            keyboard: &mut self.services.keyboard,
+            timing: &mut self.services.timing,
+        };
+        // The Backspaces and the paste go out together once the clipboard holds the code.
+        pipeline::use_item_erasing(
+            &mut env,
+            &payload,
+            UseMode::Paste,
+            &route,
+            last.chars.saturating_sub(1),
+            &proceed,
+        )
+        .is_ok()
     }
 
     /// A trigger is being typed: whether a hint with the item's title stands at the caret. The

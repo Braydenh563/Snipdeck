@@ -1744,3 +1744,70 @@ fn a_paste_that_starts_asks_the_host_to_poll_it_wherever_it_started() {
     w.ctl.use_item(id, UseMode::Paste);
     assert_eq!(asked.get(), 2);
 }
+
+#[test]
+fn backspace_right_after_an_expansion_types_the_code_back() {
+    let mut w = typing_world(1, ";two");
+    w.clock.set(at("2026-10-17T10:30:00Z"));
+    let fired = typed(&w, ";two");
+    w.ctl
+        .expand_typed(&Typed::new(fired.clone(), false, || true));
+    w.ctl.drain_paste();
+    w.ctl.services_mut().keyboard.sent.clear();
+    w.ctl.services_mut().clipboard.written.clear();
+    w.clock.set(at("2026-10-17T10:30:05Z"));
+    assert!(
+        w.ctl
+            .undo_expansion(&Typed::new(fired.clone(), false, || true))
+    );
+    let sent = backspaces_sent(&mut w);
+    assert_eq!(sent.len(), 1);
+    // "second" is 6 characters; the user's own Backspace took one.
+    assert!(sent[0].starts_with(&snipdeck_platform::keys::backspaces(5)));
+    assert_eq!(
+        w.ctl.services().clipboard.written[0].data(),
+        [Data::Text(";two".into())],
+        "the code comes back"
+    );
+    // Once only.
+    assert!(!w.ctl.undo_expansion(&Typed::new(fired, false, || true)));
+}
+
+#[test]
+fn the_undo_is_for_a_fresh_expansion_of_the_same_item_in_the_same_conditions() {
+    let undo = |wait: &str, on: bool, password: bool, other: bool| {
+        let mut w = typing_world(1, ";two");
+        w.clock.set(at("2026-10-17T10:30:00Z"));
+        let fired = typed(&w, ";two");
+        w.ctl
+            .expand_typed(&Typed::new(fired.clone(), false, || true));
+        w.ctl.drain_paste();
+        w.clock.set(at(wait));
+        w.ctl.update_settings(|s| s.expand_triggers = on);
+        let mut asked = fired;
+        if other {
+            asked.item = w.ids[2];
+        }
+        w.ctl.undo_expansion(&Typed::new(asked, password, || true))
+    };
+    assert!(undo("2026-10-17T10:30:08Z", true, false, false), "in time");
+    assert!(!undo("2026-10-17T10:30:09Z", true, false, false), "late");
+    assert!(!undo("2026-10-17T10:30:01Z", false, false, false), "off");
+    assert!(!undo("2026-10-17T10:30:01Z", true, true, false), "password");
+    assert!(
+        !undo("2026-10-17T10:30:01Z", true, false, true),
+        "other item"
+    );
+}
+
+#[test]
+fn a_key_since_the_expansion_takes_the_undo_away() {
+    let mut w = typing_world(1, ";two");
+    let fired = typed(&w, ";two");
+    w.ctl
+        .expand_typed(&Typed::new(fired.clone(), false, || true));
+    w.ctl.drain_paste();
+    w.ctl.services_mut().keyboard.sent.clear();
+    assert!(!w.ctl.undo_expansion(&Typed::new(fired, false, || false)));
+    assert_eq!(backspaces_sent(&mut w), Vec::<Vec<KeyEvent>>::new());
+}
