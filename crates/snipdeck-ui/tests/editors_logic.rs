@@ -1203,7 +1203,7 @@ ui_tests! {
         find(&ui, "Delete tag unused", AccessibleRole::Button).invoke_accessible_default_action();
         settle();
         assert_eq!(
-            find(&ui, "Delete this tag?", AccessibleRole::Groupbox).accessible_description().as_deref(),
+            find(&ui, "Delete tag “unused”?", AccessibleRole::Groupbox).accessible_description().as_deref(),
             Some("No item uses this tag.")
         );
     }
@@ -1254,7 +1254,7 @@ ui_tests! {
             Some("Another program already uses Ctrl+Alt+K.")
         );
 
-        find(&ui, "Clear the shortcut for Open the Picker", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Clear the shortcut for Open the picker", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["hk-clear:1"]);
         // A shortcut that is not set says so.
         assert_eq!(find(&ui, names[3], AccessibleRole::Button).accessible_value().as_deref(), Some(""));
@@ -1263,7 +1263,7 @@ ui_tests! {
     fn each_set_shortcut_has_a_test_button_and_a_failed_one_offers_its_alternatives() {
         let (ui, log) = settings();
         // Set shortcuts (three of four in the fixture) show "Test"; the empty one shows no health line.
-        find(&ui, "Test Open the Picker", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Test Open the picker", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["hk-test:1"]);
         assert!(missing(&ui, "Test Paste next", AccessibleRole::Button));
 
@@ -1276,7 +1276,7 @@ ui_tests! {
         hotkeys[2].alternatives = ModelRc::new(VecModel::from(vec!["Ctrl+Shift+G".into(), "Ctrl+Shift+H".into()]));
         ui.set_hotkeys(ModelRc::new(VecModel::from(hotkeys)));
         settle();
-        find(&ui, "Cancel the test of Open the Picker", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Cancel the test of Open the picker", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["hk-test:1"]);
         assert!(missing(&ui, "Test Quick capture", AccessibleRole::Button));
         find(&ui, "Use Ctrl+Shift+H for Quick capture", AccessibleRole::Button).invoke_accessible_default_action();
@@ -1372,7 +1372,7 @@ ui_tests! {
 
     fn escape_ends_a_recording_first_and_then_closes_the_page() {
         let (ui, log) = settings();
-        find(&ui, "Open the Picker", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Open the picker", AccessibleRole::Button).invoke_accessible_default_action();
         press_key(&ui, Key::Escape);
         assert!(take(&log).is_empty(), "Esc only cancelled the recording");
         press_key(&ui, Key::Escape);
@@ -1882,8 +1882,8 @@ ui_tests! {
 
     fn each_step_shows_its_own_content() {
         let (ui, _) = onboarding(0);
-        let _ = find(&ui, "The Panel", AccessibleRole::Groupbox);
-        let _ = find(&ui, "The Picker", AccessibleRole::Groupbox);
+        let _ = find(&ui, "The panel", AccessibleRole::Groupbox);
+        let _ = find(&ui, "The picker", AccessibleRole::Groupbox);
         // MAIN-47: the tour says where to bring other tools' snippets in.
         let import = find(&ui, "Bring your snippets", AccessibleRole::Groupbox);
         assert!(import.accessible_description().is_some_and(|d| d.contains("TextExpander") && d.contains("CopyQ")));
@@ -1891,8 +1891,8 @@ ui_tests! {
         assert!(missing(&ui, "Start with Windows", AccessibleRole::Switch));
         ui.set_step(1);
         settle();
-        assert!(missing(&ui, "The Panel", AccessibleRole::Groupbox));
-        let _ = find(&ui, "Show or hide the Panel", AccessibleRole::Button);
+        assert!(missing(&ui, "The panel", AccessibleRole::Groupbox));
+        let _ = find(&ui, "Show or hide the panel", AccessibleRole::Button);
         ui.set_step(2);
         settle();
         let _ = find(&ui, "Floating", AccessibleRole::RadioButton);
@@ -1905,7 +1905,7 @@ ui_tests! {
 
     fn the_shortcut_step_records_through_the_settings_recorder() {
         let (ui, log) = onboarding(1);
-        let first = find(&ui, "Show or hide the Panel", AccessibleRole::Button);
+        let first = find(&ui, "Show or hide the panel", AccessibleRole::Button);
         assert_eq!(first.accessible_value().as_deref(), Some("Ctrl+Alt+V"));
         first.invoke_accessible_default_action();
         chord(ui.window(), &[Key::Control, Key::Alt], "k");

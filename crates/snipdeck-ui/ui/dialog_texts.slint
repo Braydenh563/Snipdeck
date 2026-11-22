@@ -5,6 +5,7 @@ export global DialogTexts {
         return @tr("Delete tag “{}”?", name);
     }
     pure public function tag-delete-body(count: int) -> string {
+        if (count == 0) { return @tr("No item uses this tag."); }
         return @tr("It is removed from {n} item. The item stays." | "It is removed from {n} items. The items stay." % count);
     }
     pure public function tag-delete-ok() -> string {
