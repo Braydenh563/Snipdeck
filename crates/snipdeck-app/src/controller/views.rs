@@ -147,7 +147,7 @@ pub struct PickerView {
 /// What the Picker's preview pane shows (F3).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PickerDetail {
-    /// The item's text, cut at [`PICKER_DETAIL_CHARS`] with a `…`; empty for a sensitive item
+    /// The item's text, cut at `PICKER_DETAIL_CHARS` characters with a `…`; empty for a sensitive item
     /// and for one without text.
     pub text: String,
     /// The item is sensitive: the pane shows a mask, never the text.

@@ -5780,68 +5780,72 @@ the_tooltip_is_cut_to_what_the_shell_shows_without_splitting_a_pair | crates/sni
 
 ### crates/snipdeck-platform/src/typing.rs
 
-BUFFER_CHARS | crates/snipdeck-platform/src/typing.rs:19
-VK_BACK | crates/snipdeck-platform/src/typing.rs:22
-VK_TAB | crates/snipdeck-platform/src/typing.rs:24
-VK_RETURN | crates/snipdeck-platform/src/typing.rs:26
-VK_SHIFT | crates/snipdeck-platform/src/typing.rs:28
-VK_CONTROL | crates/snipdeck-platform/src/typing.rs:30
-VK_MENU | crates/snipdeck-platform/src/typing.rs:32
-VK_CAPITAL | crates/snipdeck-platform/src/typing.rs:34
-VK_ESCAPE | crates/snipdeck-platform/src/typing.rs:36
-VK_PRIOR | crates/snipdeck-platform/src/typing.rs:38
-VK_DOWN | crates/snipdeck-platform/src/typing.rs:40
-VK_DELETE | crates/snipdeck-platform/src/typing.rs:42
-VK_LWIN | crates/snipdeck-platform/src/typing.rs:44
-VK_RWIN | crates/snipdeck-platform/src/typing.rs:46
-VK_NUMLOCK | crates/snipdeck-platform/src/typing.rs:48
-VK_SCROLL | crates/snipdeck-platform/src/typing.rs:50
-VK_LSHIFT | crates/snipdeck-platform/src/typing.rs:52
-VK_RMENU | crates/snipdeck-platform/src/typing.rs:54
-VK_PROCESSKEY | crates/snipdeck-platform/src/typing.rs:56
-Translation | crates/snipdeck-platform/src/typing.rs:60
-impl std::fmt::Debug for Translation | crates/snipdeck-platform/src/typing.rs:70
-fmt | crates/snipdeck-platform/src/typing.rs:71
-Stroke | crates/snipdeck-platform/src/typing.rs:82
-TypedEvent | crates/snipdeck-platform/src/typing.rs:97
-impl std::fmt::Debug for TypedEvent | crates/snipdeck-platform/src/typing.rs:114
-fmt | crates/snipdeck-platform/src/typing.rs:115
-is_plain_tab | crates/snipdeck-platform/src/typing.rs:129
-classify | crates/snipdeck-platform/src/typing.rs:141
-Classifier | crates/snipdeck-platform/src/typing.rs:177
-impl Classifier | crates/snipdeck-platform/src/typing.rs:181
-new | crates/snipdeck-platform/src/typing.rs:184
-classify | crates/snipdeck-platform/src/typing.rs:189
-backspace_count | crates/snipdeck-platform/src/typing.rs:205
-TypeBuffer | crates/snipdeck-platform/src/typing.rs:210
-impl std::fmt::Debug for TypeBuffer | crates/snipdeck-platform/src/typing.rs:215
-fmt | crates/snipdeck-platform/src/typing.rs:216
-impl Default for TypeBuffer | crates/snipdeck-platform/src/typing.rs:221
-default | crates/snipdeck-platform/src/typing.rs:222
-impl Drop for TypeBuffer | crates/snipdeck-platform/src/typing.rs:230
-drop | crates/snipdeck-platform/src/typing.rs:231
-impl TypeBuffer | crates/snipdeck-platform/src/typing.rs:236
-new | crates/snipdeck-platform/src/typing.rs:239
-apply | crates/snipdeck-platform/src/typing.rs:244
-push | crates/snipdeck-platform/src/typing.rs:256
-reset | crates/snipdeck-platform/src/typing.rs:266
-len | crates/snipdeck-platform/src/typing.rs:273
-is_empty | crates/snipdeck-platform/src/typing.rs:279
-suffix_match | crates/snipdeck-platform/src/typing.rs:287
-tests | crates/snipdeck-platform/src/typing.rs:312
-only_a_plain_tab_is_the_hints | crates/snipdeck-platform/src/typing.rs:314
-stroke | crates/snipdeck-platform/src/typing.rs:339
-ch | crates/snipdeck-platform/src/typing.rs:349
-the_key_event_table | crates/snipdeck-platform/src/typing.rs:354
-typed | crates/snipdeck-platform/src/typing.rs:426
-the_buffer_keeps_the_last_32_characters | crates/snipdeck-platform/src/typing.rs:433
-backspace_and_reset_edit_the_buffer | crates/snipdeck-platform/src/typing.rs:442
-the_longest_suffix_wins_and_empty_triggers_never_match | crates/snipdeck-platform/src/typing.rs:456
-a_dead_key_swallows_the_next_character | crates/snipdeck-platform/src/typing.rs:469
-caps_lock_with_shift_types_what_the_layout_says | crates/snipdeck-platform/src/typing.rs:489
-matching_is_case_sensitive_unicode_and_never_past_the_buffer | crates/snipdeck-platform/src/typing.rs:496
-backspaces_count_graphemes | crates/snipdeck-platform/src/typing.rs:511
-debug_shows_no_typed_text | crates/snipdeck-platform/src/typing.rs:522
+BUFFER_CHARS | crates/snipdeck-platform/src/typing.rs:20
+VK_BACK | crates/snipdeck-platform/src/typing.rs:23
+VK_TAB | crates/snipdeck-platform/src/typing.rs:25
+VK_RETURN | crates/snipdeck-platform/src/typing.rs:27
+VK_SHIFT | crates/snipdeck-platform/src/typing.rs:29
+VK_CONTROL | crates/snipdeck-platform/src/typing.rs:31
+VK_MENU | crates/snipdeck-platform/src/typing.rs:33
+VK_CAPITAL | crates/snipdeck-platform/src/typing.rs:35
+VK_ESCAPE | crates/snipdeck-platform/src/typing.rs:37
+VK_PRIOR | crates/snipdeck-platform/src/typing.rs:39
+VK_DOWN | crates/snipdeck-platform/src/typing.rs:41
+VK_DELETE | crates/snipdeck-platform/src/typing.rs:43
+VK_LWIN | crates/snipdeck-platform/src/typing.rs:45
+VK_RWIN | crates/snipdeck-platform/src/typing.rs:47
+VK_NUMLOCK | crates/snipdeck-platform/src/typing.rs:49
+VK_SCROLL | crates/snipdeck-platform/src/typing.rs:51
+VK_LSHIFT | crates/snipdeck-platform/src/typing.rs:53
+VK_RMENU | crates/snipdeck-platform/src/typing.rs:55
+VK_PROCESSKEY | crates/snipdeck-platform/src/typing.rs:57
+Translation | crates/snipdeck-platform/src/typing.rs:61
+impl std::fmt::Debug for Translation | crates/snipdeck-platform/src/typing.rs:72
+fmt | crates/snipdeck-platform/src/typing.rs:73
+Stroke | crates/snipdeck-platform/src/typing.rs:84
+TypedEvent | crates/snipdeck-platform/src/typing.rs:99
+impl std::fmt::Debug for TypedEvent | crates/snipdeck-platform/src/typing.rs:116
+fmt | crates/snipdeck-platform/src/typing.rs:117
+is_plain_tab | crates/snipdeck-platform/src/typing.rs:131
+classify | crates/snipdeck-platform/src/typing.rs:143
+Classifier | crates/snipdeck-platform/src/typing.rs:184
+impl Classifier | crates/snipdeck-platform/src/typing.rs:192
+new | crates/snipdeck-platform/src/typing.rs:195
+with_caps | crates/snipdeck-platform/src/typing.rs:201
+caps | crates/snipdeck-platform/src/typing.rs:210
+classify | crates/snipdeck-platform/src/typing.rs:215
+compose | crates/snipdeck-platform/src/typing.rs:234
+backspace_count | crates/snipdeck-platform/src/typing.rs:265
+TypeBuffer | crates/snipdeck-platform/src/typing.rs:270
+impl std::fmt::Debug for TypeBuffer | crates/snipdeck-platform/src/typing.rs:275
+fmt | crates/snipdeck-platform/src/typing.rs:276
+impl Default for TypeBuffer | crates/snipdeck-platform/src/typing.rs:281
+default | crates/snipdeck-platform/src/typing.rs:282
+impl Drop for TypeBuffer | crates/snipdeck-platform/src/typing.rs:290
+drop | crates/snipdeck-platform/src/typing.rs:291
+impl TypeBuffer | crates/snipdeck-platform/src/typing.rs:296
+new | crates/snipdeck-platform/src/typing.rs:299
+apply | crates/snipdeck-platform/src/typing.rs:304
+push | crates/snipdeck-platform/src/typing.rs:316
+reset | crates/snipdeck-platform/src/typing.rs:326
+len | crates/snipdeck-platform/src/typing.rs:333
+is_empty | crates/snipdeck-platform/src/typing.rs:339
+suffix_match | crates/snipdeck-platform/src/typing.rs:347
+tests | crates/snipdeck-platform/src/typing.rs:372
+only_a_plain_tab_is_the_hints | crates/snipdeck-platform/src/typing.rs:374
+stroke | crates/snipdeck-platform/src/typing.rs:399
+ch | crates/snipdeck-platform/src/typing.rs:409
+the_key_event_table | crates/snipdeck-platform/src/typing.rs:414
+typed | crates/snipdeck-platform/src/typing.rs:486
+the_buffer_keeps_the_last_32_characters | crates/snipdeck-platform/src/typing.rs:493
+backspace_and_reset_edit_the_buffer | crates/snipdeck-platform/src/typing.rs:502
+the_longest_suffix_wins_and_empty_triggers_never_match | crates/snipdeck-platform/src/typing.rs:516
+a_dead_key_and_the_next_letter_type_the_composed_letter | crates/snipdeck-platform/src/typing.rs:529
+caps_lock_is_counted_from_the_presses_the_hook_sees | crates/snipdeck-platform/src/typing.rs:569
+caps_lock_with_shift_types_what_the_layout_says | crates/snipdeck-platform/src/typing.rs:580
+matching_is_case_sensitive_unicode_and_never_past_the_buffer | crates/snipdeck-platform/src/typing.rs:587
+backspaces_count_graphemes | crates/snipdeck-platform/src/typing.rs:602
+debug_shows_no_typed_text | crates/snipdeck-platform/src/typing.rs:613
 
 ### crates/snipdeck-platform/src/win_formats.rs
 
@@ -6717,13 +6721,13 @@ shutdown | crates/snipdeck-platform/src/windows/typing_hook.rs:169
 impl Drop for TypingHook | crates/snipdeck-platform/src/windows/typing_hook.rs:189
 drop | crates/snipdeck-platform/src/windows/typing_hook.rs:190
 run | crates/snipdeck-platform/src/windows/typing_hook.rs:195
-foreground_window | crates/snipdeck-platform/src/windows/typing_hook.rs:244
-unhook | crates/snipdeck-platform/src/windows/typing_hook.rs:249
-install | crates/snipdeck-platform/src/windows/typing_hook.rs:261
-handle | crates/snipdeck-platform/src/windows/typing_hook.rs:330
-async_down | crates/snipdeck-platform/src/windows/typing_hook.rs:384
-stroke_of | crates/snipdeck-platform/src/windows/typing_hook.rs:389
-translate | crates/snipdeck-platform/src/windows/typing_hook.rs:425
+foreground_window | crates/snipdeck-platform/src/windows/typing_hook.rs:247
+unhook | crates/snipdeck-platform/src/windows/typing_hook.rs:252
+install | crates/snipdeck-platform/src/windows/typing_hook.rs:264
+handle | crates/snipdeck-platform/src/windows/typing_hook.rs:333
+async_down | crates/snipdeck-platform/src/windows/typing_hook.rs:388
+stroke_of | crates/snipdeck-platform/src/windows/typing_hook.rs:393
+translate | crates/snipdeck-platform/src/windows/typing_hook.rs:434
 
 ### crates/snipdeck-platform/src/windows/update_region.rs
 
@@ -8966,7 +8970,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-platform/src/system_look.rs` (inline) | 6 |
 | `crates/snipdeck-platform/src/testing.rs` (inline) | 13 |
 | `crates/snipdeck-platform/src/tray.rs` (inline) | 20 |
-| `crates/snipdeck-platform/src/typing.rs` (inline) | 10 |
+| `crates/snipdeck-platform/src/typing.rs` (inline) | 11 |
 | `crates/snipdeck-platform/src/win_formats.rs` (inline) | 46 |
 | `crates/snipdeck-platform/src/win_logic.rs` (inline) | 29 |
 | `crates/snipdeck-platform/src/windows/clipboard.rs` (inline) | 8 |

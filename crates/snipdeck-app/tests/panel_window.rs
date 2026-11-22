@@ -1085,7 +1085,7 @@ fn the_paste_as_row_has_its_name_and_the_second_level_takes_arrows_enter_and_esc
                 .expect("a Paste as row");
         r.ui.invoke_item_menu_activated(i32::try_from(at).expect("index"));
         r.binding.redraw();
-        // The second level replaces the first, with the six choices as rows.
+        // The second level replaces the first, with the nine choices as rows.
         assert!(r.ui.get_item_menu_open());
         let texts: Vec<String> =
             r.ui.get_item_menu_entries()
@@ -1100,7 +1100,10 @@ fn the_paste_as_row_has_its_name_and_the_second_level_takes_arrows_enter_and_esc
                 "lowercase",
                 "Title Case",
                 "Trimmed",
-                "slug-like-this"
+                "slug-like-this",
+                "JSON string",
+                "Markdown quote",
+                "Markdown code block"
             ]
         );
         let _ = element(&r.ui, "UPPERCASE", AccessibleRole::ListItem);
