@@ -1242,7 +1242,10 @@ ui_tests! {
 
     fn the_panels_width_floor_grows_with_the_text_so_the_header_controls_stay_inside() {
         let (ui, _log) = start();
-        assert_eq!(ui.get_floor_width(), 260.0, "at the usual size the floor is the documented 260");
+        assert!(
+            (ui.get_floor_width() - 260.0).abs() < 0.5,
+            "at the usual size the floor is the documented 260"
+        );
         ui.global::<snipdeck_ui::SystemLook<'_>>().set_text_scale(2.25);
         settle();
         let floor = ui.get_floor_width();

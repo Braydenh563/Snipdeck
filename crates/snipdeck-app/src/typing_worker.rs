@@ -294,7 +294,7 @@ impl Typist {
             TypedEvent::Char(c) => {
                 self.undo = None;
                 let fired = self.matcher.feed(c);
-                self.last_fire = fired.clone();
+                self.last_fire.clone_from(&fired);
                 if fired.is_some() {
                     self.matcher.after_expansion(AFTER_EXPANSION);
                     self.after_fire = true;
