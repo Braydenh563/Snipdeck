@@ -1495,3 +1495,42 @@ fn the_filter_chips_share_a_centre_line_with_clear_filter() {
         }
     }
 }
+
+#[test]
+fn a_tag_rename_error_stays_inside_its_row() {
+    const ERROR: &str = "A tag named meeting already exists.";
+    for scale in SCALES {
+        for width in [360_u32, 440] {
+            let h = tag_manager(width, 1400, scale, false, false);
+            h.component.set_editing(0);
+            h.component.set_rename_text("meeting".into());
+            h.component.set_rename_error(ERROR.into());
+            let _ = h.render_settled();
+            let boxes = all(&h);
+            let mut rows: Vec<&Boxed> = boxes.iter().filter(|b| b.role == Role::ListItem).collect();
+            rows.sort_by(|a, b| a.y.total_cmp(&b.y));
+            let error = boxes
+                .iter()
+                .find(|b| b.label == ERROR && b.role == Role::Text)
+                .expect("the error text is on screen");
+            let (row, next) = (rows[0], rows[1]);
+            eprintln!(
+                "scale {scale}, {width}px: error bottom {:.1}, row bottom {:.1}, next row top {:.1}",
+                error.y + error.h,
+                row.y + row.h,
+                next.y
+            );
+            assert!(
+                error.y + error.h <= row.y + row.h - 1.0 + 0.5,
+                "scale {scale}, {width}px: the error ends at {:.1}, below the row's divider at {:.1}",
+                error.y + error.h,
+                row.y + row.h - 1.0
+            );
+            assert!(
+                next.y >= row.y + row.h - 0.5,
+                "scale {scale}, {width}px: the next row starts at {:.1}, inside the editing row",
+                next.y
+            );
+        }
+    }
+}

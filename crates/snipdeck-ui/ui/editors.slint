@@ -2447,7 +2447,8 @@ export component TagManager inherits Window {
                     accessible-role: list;
                     accessible-label: @tr("Tags");
                     for tag[i] in root.tags: Rectangle {
-                        height: root.row-h;
+                        // The row being renamed grows to hold the field's error under it, above the divider.
+                        height: root.editing == i && root.rename-error != "" ? max(root.row-h, row-layout.preferred-height + Space.s2) : root.row-h;
                         accessible-role: list-item;
                         accessible-label: i < root.paths.length ? root.paths[i] : tag.label;
                         accessible-description: @tr("{n} item" | "{n} items" % tag.count);
@@ -2457,7 +2458,7 @@ export component TagManager inherits Window {
                             height: 1px;
                             background: Theme.border-subtle;
                         }
-                        HorizontalLayout {
+                        row-layout := HorizontalLayout {
                             padding-left: Space.s3 + Space.s4 * (i < root.depths.length ? min(root.depths[i], 4) : 0);
                             padding-right: Space.s2;
                             spacing: Space.s2;
