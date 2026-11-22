@@ -85,7 +85,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 ### 5.2 Picker
 - Global hotkey (default `Ctrl+Shift+Space`), appears at text caret (fallback mouse) in <80 ms.
 - **Placement:** the Picker setting chooses the side of the caret: Below (default), Above, Right or Left. Below and Above leave a one-line gap, so the caret's line and the neighbouring line stay visible; Right and Left sit beside the caret, top-aligned, and may cover the rest of that line. A side without room flips to the opposite one, and the window is clamped to the monitor's work area. A mouse anchor behaves like Below.
-- Fuzzy search across all boards (title, content, tags); `Tab` cycles the scope (all, this board, this list, pinned, recent = items used before); `Alt+1`–`Alt+9` quick use (digits without `Alt` are search text).
+- Fuzzy search across all boards (title, content, tags); `Tab` cycles the scope (all, this board, this list, pinned, recent = items used before, tag = one tag, `Ctrl+Tab` steps to the next); `Alt+1`–`Alt+9` quick use (digits without `Alt` are search text).
 - `Enter` paste, `Shift+Enter` copy, `Ctrl+E` edit, `Esc` dismiss and restore focus.
 
 ### 5.3 Main window (3-pane)

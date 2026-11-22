@@ -240,6 +240,8 @@ pub struct Controller<S, C: Clipboard, K, T> {
     picker: Option<PickerModel>,
     /// The scope the Picker was left on; the next summon starts there.
     picker_scope: crate::picker::Scope,
+    /// The tag the Picker's tag scope covered last, so it opens on it again.
+    picker_tag: Option<snipdeck_core::TagId>,
     /// The template fill form, while it is open.
     fill: Option<FillModel>,
     fill_seq: u64,
@@ -533,6 +535,7 @@ where
             toast_seq: 0,
             picker: None,
             picker_scope: crate::picker::Scope::default(),
+            picker_tag: None,
             fill: None,
             fill_erase: None,
             fill_seq: 0,
@@ -750,6 +753,7 @@ where
                 rows: p.rows(),
                 scope: p.scope(),
                 more: p.more(),
+                tag: p.tag_name().to_owned(),
                 query: p.query().to_owned(),
                 selected: p.selected(),
                 footer: self.model.footer(),

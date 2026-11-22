@@ -133,6 +133,9 @@ msgstr "添加"
 msgid "Add a snippet, or move items here from another list."
 msgstr "添加片段，或从其他列表移动到这里。"
 
+msgid "Add a tag to a snippet to find it here."
+msgstr "给片段添加标签后，就能在这里找到它。"
+
 msgid "Add an item… (Enter to save)"
 msgstr "添加项目… (按 Enter 保存)"
 
@@ -1783,6 +1786,9 @@ msgstr "还没有片段"
 msgid "No symbols match “{}”"
 msgstr "没有与“{}”匹配的符号"
 
+msgid "No tagged snippets"
+msgstr "没有带标签的片段"
+
 msgid "No tags"
 msgstr "无标签"
 
@@ -1860,6 +1866,9 @@ msgstr "尚未使用过任何片段"
 
 msgid "Nothing was added. Folders, and files or pictures that are empty, too large or unreadable, are skipped."
 msgstr "未添加任何内容。文件夹，以及为空、太大或无法读取的文件或图片会被跳过。"
+
+msgid "Nothing with this tag matches “{}”."
+msgstr "带此标签的内容中没有与“{}”匹配的项。"
 
 msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe."
 msgstr "在这些程序中复制的内容不会进入“最近”收件箱。请使用程序的文件名，例如 keepass.exe。"

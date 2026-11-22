@@ -86,8 +86,10 @@ where
                 let scope = match self.picker_scope {
                     Scope::List if !picker.has_list() => Scope::All,
                     Scope::Board if self.model.board().is_none() => Scope::All,
+                    Scope::Tag if !picker.has_tags() => Scope::All,
                     scope => scope,
                 };
+                picker.set_tag(self.picker_tag);
                 picker.set_scope(scope);
                 self.picker = Some(picker);
             }
@@ -102,11 +104,12 @@ where
             return;
         };
         let (query, scope, at) = (old.query().to_owned(), old.scope(), old.selected());
-        let list = old.list();
+        let (list, tag) = (old.list(), old.tag());
         drop(old);
         let loaded = PickerModel::load_cached(&self.store, self.model.board(), &self.index_cache);
         if let Ok(picker) = loaded {
             let mut picker = picker.with_list(list);
+            picker.set_tag(tag);
             picker.set_scope(scope);
             picker.set_query(&query);
             picker.move_selection(isize::try_from(at).unwrap_or(0));
@@ -195,6 +198,18 @@ where
         if let Some(picker) = &mut self.picker {
             picker.set_scope(scope);
             self.picker_scope = scope;
+            self.picker_tag = picker.tag();
+        }
+    }
+
+    /// Ctrl+Tab (`dir` 1) or Ctrl+Shift+Tab (-1) in the Picker's tag scope: the next or previous tag.
+    pub fn picker_step_tag(&mut self, dir: isize) {
+        if let Some(picker) = &mut self.picker {
+            if picker.scope() != Scope::Tag {
+                return;
+            }
+            picker.next_tag(dir);
+            self.picker_tag = picker.tag();
         }
     }
 

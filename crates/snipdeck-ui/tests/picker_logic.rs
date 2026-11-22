@@ -45,6 +45,7 @@ fn start() -> (PickerWindow, Log) {
     }
     hook!(on_query_changed, |q| format!("query:{q}"));
     hook!(on_scope_changed, |s| format!("scope:{s:?}"));
+    hook!(on_tag_stepped, |d| format!("tag:{d}"));
     hook!(on_row_activated, |i| format!("use:{i}"));
     hook!(on_row_copied, |i| format!("copy:{i}"));
     hook!(on_quick_use, |n| format!("quick:{n}"));
@@ -520,7 +521,7 @@ ui_tests! {
 
     // ---- Scopes --------------------------------------------------------------------------------
 
-    fn tab_cycles_the_scope_all_board_list_pinned_recent_and_back() {
+    fn tab_cycles_the_scope_all_board_list_pinned_recent_tag_and_back() {
         let (ui, log) = start();
         assert_eq!(ui.get_scope(), PickerScope::All);
         press(ui.window(), &key(Key::Tab));
@@ -532,10 +533,19 @@ ui_tests! {
         press(ui.window(), &key(Key::Tab));
         assert_eq!(ui.get_scope(), PickerScope::Recent);
         press(ui.window(), &key(Key::Tab));
+        assert_eq!(ui.get_scope(), PickerScope::Tag);
+        press(ui.window(), &key(Key::Tab));
         assert_eq!(ui.get_scope(), PickerScope::All, "wraps around");
         assert_eq!(
             take(&log),
-            ["scope:Board", "scope:List", "scope:Pinned", "scope:Recent", "scope:All"]
+            [
+                "scope:Board",
+                "scope:List",
+                "scope:Pinned",
+                "scope:Recent",
+                "scope:Tag",
+                "scope:All"
+            ]
         );
         assert!(ui.get_search_focused(), "focus never leaves the search");
     }
@@ -543,10 +553,27 @@ ui_tests! {
     fn shift_tab_goes_back_through_the_scopes() {
         let (ui, log) = start();
         chord(ui.window(), &[Key::Shift], &key(Key::Backtab));
-        assert_eq!(ui.get_scope(), PickerScope::Recent);
+        assert_eq!(ui.get_scope(), PickerScope::Tag);
         chord(ui.window(), &[Key::Shift], &key(Key::Tab));
-        assert_eq!(ui.get_scope(), PickerScope::Pinned);
-        assert_eq!(take(&log), ["scope:Recent", "scope:Pinned"]);
+        assert_eq!(ui.get_scope(), PickerScope::Recent);
+        assert_eq!(take(&log), ["scope:Tag", "scope:Recent"]);
+    }
+
+    fn ctrl_tab_steps_the_tag_only_in_the_tag_scope_and_the_chip_names_the_tag() {
+        let (ui, log) = start();
+        chord(ui.window(), &[Key::Control], &key(Key::Tab));
+        assert_eq!(take(&log), Vec::<String>::new(), "outside the Tag scope it does nothing");
+        assert_eq!(ui.get_scope(), PickerScope::All, "and it does not change the scope");
+        ui.set_scope(PickerScope::Tag);
+        ui.set_scope_tag("work".into());
+        settle();
+        chord(ui.window(), &[Key::Control], &key(Key::Tab));
+        chord(ui.window(), &[Key::Control, Key::Shift], &key(Key::Backtab));
+        assert_eq!(take(&log), ["tag:1", "tag:-1"]);
+        // The chip carries the tag's name; a second click on it steps on.
+        let chip = find(&ui, "#work", AccessibleRole::Button);
+        click(&ui, &chip);
+        assert_eq!(take(&log), ["tag:1"]);
     }
 
     fn changing_the_scope_returns_the_selection_to_the_first_row_and_keeps_the_query() {
@@ -587,6 +614,7 @@ ui_tests! {
             ("This list", PickerScope::List),
             ("Pinned", PickerScope::Pinned),
             ("Recent", PickerScope::Recent),
+            ("Tag", PickerScope::Tag),
             ("All", PickerScope::All),
         ] {
             click(&ui, &find(&ui, label, AccessibleRole::Button));
@@ -696,7 +724,7 @@ ui_tests! {
             "the results list is labelled"
         );
         assert!(!all(&ui, "Search in", AccessibleRole::Groupbox).is_empty(), "the scopes are a labelled group");
-        for chip in ["All", "This board", "Pinned", "Recent"] {
+        for chip in ["All", "This board", "Pinned", "Recent", "Tag"] {
             let c = find(&ui, chip, AccessibleRole::Button);
             assert_eq!(c.accessible_checkable(), Some(true), "{chip} reports a checked state");
         }

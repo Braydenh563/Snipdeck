@@ -133,6 +133,9 @@ msgstr "追加"
 msgid "Add a snippet, or move items here from another list."
 msgstr "ここにスニペットを追加するか、別のリストから移動します。"
 
+msgid "Add a tag to a snippet to find it here."
+msgstr "スニペットにタグを付けると、ここで探せます。"
+
 msgid "Add an item… (Enter to save)"
 msgstr "項目を追加… (Enter で保存)"
 
@@ -1783,6 +1786,9 @@ msgstr "スニペットはまだありません"
 msgid "No symbols match “{}”"
 msgstr "「{}」に一致する記号はありません"
 
+msgid "No tagged snippets"
+msgstr "タグ付きのスニペットはありません"
+
 msgid "No tags"
 msgstr "タグなし"
 
@@ -1860,6 +1866,9 @@ msgstr "まだ使ったスニペットはありません"
 
 msgid "Nothing was added. Folders, and files or pictures that are empty, too large or unreadable, are skipped."
 msgstr "何も追加されませんでした。フォルダー、および空・大きすぎる・読み取れないファイルや画像はスキップされます。"
+
+msgid "Nothing with this tag matches “{}”."
+msgstr "このタグの項目に「{}」に一致するものはありません。"
 
 msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe."
 msgstr "これらのプログラムでコピーした内容は「最近」の受信箱に入りません。プログラムのファイル名を使ってください（例: keepass.exe）。"

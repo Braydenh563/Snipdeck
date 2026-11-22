@@ -132,6 +132,8 @@ pub struct PickerView {
     pub scope: Scope,
     /// The results were cut at the limit.
     pub more: bool,
+    /// The tag the tag scope covers (empty until one is chosen).
+    pub tag: String,
     /// The search text.
     pub query: String,
     /// The keyboard-selected row.

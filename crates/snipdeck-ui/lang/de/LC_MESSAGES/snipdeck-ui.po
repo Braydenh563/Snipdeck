@@ -133,6 +133,9 @@ msgstr "Hinzufügen"
 msgid "Add a snippet, or move items here from another list."
 msgstr "Füge einen Textbaustein hinzu oder verschiebe Textbausteine aus einer anderen Liste hierher."
 
+msgid "Add a tag to a snippet to find it here."
+msgstr "Gib einem Snippet ein Tag, um es hier zu finden."
+
 msgid "Add an item… (Enter to save)"
 msgstr "Element hinzufügen … (Eingabe zum Speichern)"
 
@@ -1789,6 +1792,9 @@ msgstr "Noch keine Textbausteine"
 msgid "No symbols match “{}”"
 msgstr "Keine Symbole passen zu „{}“"
 
+msgid "No tagged snippets"
+msgstr "Keine Snippets mit Tag"
+
 msgid "No tags"
 msgstr "Keine Schlagwörter"
 
@@ -1866,6 +1872,9 @@ msgstr "Noch nichts verwendet"
 
 msgid "Nothing was added. Folders, and files or pictures that are empty, too large or unreadable, are skipped."
 msgstr "Nichts wurde hinzugefügt. Ordner sowie leere, zu große oder nicht lesbare Dateien und Bilder werden übersprungen."
+
+msgid "Nothing with this tag matches “{}”."
+msgstr "Nichts mit diesem Tag passt zu “{}”."
 
 msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe."
 msgstr "Was du in diesen Programmen kopierst, landet nicht im Posteingang „Zuletzt“. Verwende den Dateinamen des Programms, zum Beispiel keepass.exe."

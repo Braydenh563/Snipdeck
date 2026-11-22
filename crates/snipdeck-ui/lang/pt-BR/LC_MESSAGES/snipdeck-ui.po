@@ -133,6 +133,9 @@ msgstr "Adicionar"
 msgid "Add a snippet, or move items here from another list."
 msgstr "Adicione um trecho ou mova itens para cá a partir de outra lista."
 
+msgid "Add a tag to a snippet to find it here."
+msgstr "Adicione uma etiqueta a um trecho para encontrá-lo aqui."
+
 msgid "Add an item… (Enter to save)"
 msgstr "Adicionar um item… (Enter para salvar)"
 
@@ -1789,6 +1792,9 @@ msgstr "Nenhum trecho ainda"
 msgid "No symbols match “{}”"
 msgstr "Nenhum símbolo corresponde a “{}”"
 
+msgid "No tagged snippets"
+msgstr "Nenhum trecho com etiqueta"
+
 msgid "No tags"
 msgstr "Sem etiquetas"
 
@@ -1866,6 +1872,9 @@ msgstr "Nada usado ainda"
 
 msgid "Nothing was added. Folders, and files or pictures that are empty, too large or unreadable, are skipped."
 msgstr "Nada foi adicionado. Pastas e arquivos ou imagens vazios, grandes demais ou ilegíveis são ignorados."
+
+msgid "Nothing with this tag matches “{}”."
+msgstr "Nada com esta etiqueta corresponde a “{}”."
 
 msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe."
 msgstr "Nada que você copiar nestes programas chega à caixa de Recentes. Use o nome do arquivo do programa, por exemplo keepass.exe."

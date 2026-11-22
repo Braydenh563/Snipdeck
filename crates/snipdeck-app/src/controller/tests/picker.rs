@@ -389,3 +389,43 @@ fn a_palette_the_panel_asked_for_acts_on_the_panel_row_not_on_mains_cursor() {
     w.ctl.palette_opened();
     assert_eq!(w.ctl.palette_item_pinned(), None);
 }
+
+#[test]
+fn the_pickers_tag_scope_steps_through_tags_and_opens_on_the_last_one() {
+    use snipdeck_core::{Name, Tag};
+    use snipdeck_store::TagRepo;
+    let mut w = world();
+    let (alpha, beta) = (
+        Tag::new(Name::new("alpha").expect("name")),
+        Tag::new(Name::new("beta").expect("name")),
+    );
+    for tag in [&alpha, &beta] {
+        w.ctl.store.insert_tag(tag).expect("tag");
+    }
+    for (id, tag) in [(w.ids[0], &alpha), (w.ids[1], &beta), (w.ids[2], &beta)] {
+        let mut item = w.ctl.store.item(id).expect("item");
+        item.tags.insert(tag.id);
+        w.ctl.store.update_item(&item, None).expect("update");
+    }
+    w.ctl.open_picker();
+    w.ctl.picker_scope(crate::picker::Scope::Tag);
+    let view = w.ctl.view().picker.expect("open");
+    assert_eq!((view.tag.as_str(), view.rows.len()), ("alpha", 1));
+    // Stepping needs the Tag scope; a step elsewhere is ignored.
+    w.ctl.picker_step_tag(1);
+    let view = w.ctl.view().picker.expect("open");
+    assert_eq!((view.tag.as_str(), view.rows.len()), ("beta", 2));
+    // Closed and opened again, it is still on beta.
+    w.ctl.close_picker();
+    w.ctl.open_picker();
+    let view = w.ctl.view().picker.expect("open");
+    assert_eq!(view.scope, crate::picker::Scope::Tag);
+    assert_eq!((view.tag.as_str(), view.rows.len()), ("beta", 2));
+    w.ctl.picker_scope(crate::picker::Scope::All);
+    w.ctl.picker_step_tag(1);
+    assert_eq!(
+        w.ctl.view().picker.expect("open").tag,
+        "beta",
+        "no step outside the tag scope"
+    );
+}

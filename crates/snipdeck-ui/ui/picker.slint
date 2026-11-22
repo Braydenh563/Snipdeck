@@ -9,7 +9,7 @@
 //   type            filters; a printable key typed while another control has focus moves into the search
 //   Up / Down       move the selection (PageUp / PageDown a page); Enter uses it, Shift+Enter copies only
 //   Alt+1-9         use the Nth row, whatever the search holds (bare digits are always search text)
-//   Tab             next scope (All, This board, This list, Pinned, Recent), Shift+Tab previous
+//   Tab             next scope (All, This board, This list, Pinned, Recent, Tag); Ctrl+Tab, Ctrl+Shift+Tab the next or previous tag in the Tag scope, Shift+Tab previous
 //   Ctrl+E          asks the host to edit the selected snippet
 //   Menu, Shift+F10 on a colour row: "Paste as" (the colour in each format; Enter pastes, Shift+Enter copies, Esc back)
 //   Ctrl+O          on a colour row: open it in the Panel's Colours tab
@@ -57,7 +57,7 @@ export struct PickerRow {
 }
 
 // What the search covers. Tab cycles through these in order.
-export enum PickerScope { all, board, list, pinned, recent }
+export enum PickerScope { all, board, list, pinned, recent, tag }
 
 // One footer hint: the key caps and what they do. The caps speak their own name; the text is read as it is.
 component Hint inherits HorizontalLayout {
@@ -121,6 +121,9 @@ export component PickerWindow inherits Window {
     callback suggest-dismissed();
     callback suggest-chosen(int);
     callback scope-changed(PickerScope);
+    // The tag the Tag scope covers (empty when no snippet has a tag), and a step to the next (1) or previous (-1) one.
+    in property <string> scope-tag;
+    callback tag-stepped(int);
     // The most results the list shows when the search found more (0 when nothing was cut).
     in property <int> result-limit: 0;
     // Enter or a click used row `index`.
@@ -264,11 +267,11 @@ export component PickerWindow inherits Window {
     }
 
     pure function scope-index(s: PickerScope) -> int {
-        return s == PickerScope.all ? 0 : s == PickerScope.board ? 1 : s == PickerScope.list ? 2 : s == PickerScope.pinned ? 3 : 4;
+        return s == PickerScope.all ? 0 : s == PickerScope.board ? 1 : s == PickerScope.list ? 2 : s == PickerScope.pinned ? 3 : s == PickerScope.recent ? 4 : 5;
     }
 
     pure function scope-at(i: int) -> PickerScope {
-        return i == 0 ? PickerScope.all : i == 1 ? PickerScope.board : i == 2 ? PickerScope.list : i == 3 ? PickerScope.pinned : PickerScope.recent;
+        return i == 0 ? PickerScope.all : i == 1 ? PickerScope.board : i == 2 ? PickerScope.list : i == 3 ? PickerScope.pinned : i == 4 ? PickerScope.recent : PickerScope.tag;
     }
 
     // Rows are all `row-h` tall, so the selected row's place is known without the row existing yet.
@@ -357,7 +360,7 @@ export component PickerWindow inherits Window {
     }
 
     function cycle-scope(dir: int) {
-        root.pick-scope(root.scope-at(mod(root.scope-index(root.scope) + dir + 5, 5)));
+        root.pick-scope(root.scope-at(mod(root.scope-index(root.scope) + dir + 6, 6)));
     }
 
     // Moves a typed character into the search field when another control has focus.
@@ -393,6 +396,13 @@ export component PickerWindow inherits Window {
                 // Ctrl+Home and Ctrl+End: the first and last result (Home and End are the search field's caret keys).
                 if (event.text == Key.Home || event.text == Key.End) {
                     root.move-selection(event.text == Key.Home ? -root.rows.length : root.rows.length);
+                    return accept;
+                }
+                // Ctrl+Tab and Ctrl+Shift+Tab: the next and previous tag, in the Tag scope only.
+                if (event.text == Key.Tab || event.text == Key.Backtab) {
+                    if (root.scope == PickerScope.tag) {
+                        root.tag-stepped(event.text == Key.Backtab || event.modifiers.shift ? -1 : 1);
+                    }
                     return accept;
                 }
                 if (event.text == "e" || event.text == "E") {
@@ -536,6 +546,18 @@ export component PickerWindow inherits Window {
                         selected: root.scope == PickerScope.recent;
                         clicked => { root.pick-scope(PickerScope.recent); }
                     }
+                    Tag {
+                        text: root.scope-tag == "" ? @tr("Tag") : "#" + root.scope-tag;
+                        selected: root.scope == PickerScope.tag;
+                        clicked => {
+                            // A second click on the chip steps to the next tag.
+                            if (root.scope == PickerScope.tag) {
+                                root.tag-stepped(1);
+                            } else {
+                                root.pick-scope(PickerScope.tag);
+                            }
+                        }
+                    }
                     // The results were cut at the limit: say so instead of ending the list silently.
                     if root.result-limit > 0: Text {
                         horizontal-stretch: 1;
@@ -636,14 +658,17 @@ export component PickerWindow inherits Window {
                     kind: root.searching ? EmptyStateKind.search : root.scope == PickerScope.pinned ? EmptyStateKind.board : EmptyStateKind.list;
                     heading: root.searching ? @tr("No matches")
                         : root.scope == PickerScope.pinned ? @tr("Nothing pinned yet")
-                        : root.scope == PickerScope.recent ? @tr("Nothing used yet") : @tr("No snippets yet");
+                        : root.scope == PickerScope.recent ? @tr("Nothing used yet")
+                        : root.scope == PickerScope.tag ? @tr("No tagged snippets") : @tr("No snippets yet");
                     body: root.searching
                         ? (root.scope == PickerScope.all ? @tr("Nothing matches “{}”.", root.query)
                             : root.scope == PickerScope.board ? @tr("Nothing on this board matches “{}”.", root.query)
                             : root.scope == PickerScope.recent ? @tr("Nothing used recently matches “{}”.", root.query)
+                            : root.scope == PickerScope.tag ? @tr("Nothing with this tag matches “{}”.", root.query)
                             : @tr("Nothing pinned matches “{}”.", root.query))
                         : root.scope == PickerScope.pinned ? @tr("Pin a snippet from the Panel to find it here.")
                         : root.scope == PickerScope.recent ? @tr("Snippets you paste show up here.")
+                        : root.scope == PickerScope.tag ? @tr("Add a tag to a snippet to find it here.")
                         : @tr("Copy something, then save it from the Panel.");
                     // The one step that fixes the empty state: widen a search that found nothing in a narrow scope,
                     // or go where snippets are made.

@@ -11,7 +11,9 @@ use crate::{
     index_cache::{IndexCache, Snapshot},
     search_mark::{self, Marks},
 };
-use snipdeck_core::{BoardId, Item, ItemId, ItemKind, ListAccent, ListId, search::SearchIndex};
+use snipdeck_core::{
+    BoardId, Item, ItemId, ItemKind, ListAccent, ListId, TagId, search::SearchIndex,
+};
 use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, TagRepo};
 
 /// How many results the Picker shows (the window scrolls past nine).
@@ -31,6 +33,8 @@ pub enum Scope {
     Pinned,
     /// Items that have been used at least once, most recent first when nothing is typed.
     Recent,
+    /// Items carrying one tag; the tag is chosen with [`PickerModel::next_tag`].
+    Tag,
 }
 
 /// One result row.
@@ -83,6 +87,10 @@ pub struct PickerModel {
     list: Option<ListId>,
     /// The search found more than [`RESULT_LIMIT`] items and the rest were cut.
     more: bool,
+    /// The tags some item carries, by name: what the tag scope steps through.
+    tags: Vec<(TagId, String)>,
+    /// The tag the tag scope covers (one of `tags`), once chosen.
+    tag: Option<TagId>,
     query: String,
     scope: Scope,
     /// Positions in `places` of the current results, best first.
@@ -149,6 +157,18 @@ impl PickerModel {
             )
         });
         let index = Rc::clone(&snapshot.index);
+        let carried: std::collections::HashSet<TagId> = snapshot
+            .all
+            .iter()
+            .flat_map(|item| item.tags.iter().copied())
+            .collect();
+        // `TagRepo::tags` answers by name, ignoring case.
+        let tags = store
+            .tags()?
+            .into_iter()
+            .filter(|t| carried.contains(&t.id))
+            .map(|t| (t.id, t.name.as_str().to_owned()))
+            .collect();
         let mut model = Self {
             places,
             positions,
@@ -159,6 +179,8 @@ impl PickerModel {
             board,
             list: None,
             more: false,
+            tags,
+            tag: None,
             query: String::new(),
             scope: Scope::All,
             results: Vec::new(),
@@ -188,6 +210,9 @@ impl PickerModel {
             Scope::List => Some(self.list_of(place).id) == self.list,
             Scope::Pinned => self.item(place).pinned,
             Scope::Recent => self.item(place).last_used_at.is_some(),
+            Scope::Tag => self
+                .tag
+                .is_some_and(|tag| self.item(place).tags.contains(&tag)),
         }
     }
 
@@ -254,9 +279,58 @@ impl PickerModel {
         self.search();
     }
 
-    /// Sets the scope; the selection returns to the first row.
+    /// Sets the scope; the selection returns to the first row. The tag scope opens on the tag it
+    /// had, or on the first one.
     pub fn set_scope(&mut self, scope: Scope) {
         self.scope = scope;
+        if scope == Scope::Tag && !self.tags.iter().any(|(id, _)| Some(*id) == self.tag) {
+            self.tag = self.tags.first().map(|(id, _)| *id);
+        }
+        self.search();
+    }
+
+    /// Whether any item carries a tag, so the tag scope has something to cover.
+    #[must_use]
+    pub fn has_tags(&self) -> bool {
+        !self.tags.is_empty()
+    }
+
+    /// The tag the tag scope covers, to open on again.
+    #[must_use]
+    pub const fn tag(&self) -> Option<TagId> {
+        self.tag
+    }
+
+    /// Chooses the tag the tag scope covers (ignored when no item carries it).
+    pub fn set_tag(&mut self, tag: Option<TagId>) {
+        if tag.is_some_and(|t| self.tags.iter().any(|(id, _)| *id == t)) {
+            self.tag = tag;
+            self.search();
+        }
+    }
+
+    /// The tag's name, or nothing when none is chosen.
+    #[must_use]
+    pub fn tag_name(&self) -> &str {
+        self.tags
+            .iter()
+            .find(|(id, _)| Some(*id) == self.tag)
+            .map_or("", |(_, name)| name.as_str())
+    }
+
+    /// Steps the tag scope to the next tag (`dir` 1) or the one before (`dir` -1), wrapping.
+    pub fn next_tag(&mut self, dir: isize) {
+        let n = self.tags.len();
+        if n == 0 {
+            return;
+        }
+        let at = self
+            .tags
+            .iter()
+            .position(|(id, _)| Some(*id) == self.tag)
+            .unwrap_or(0);
+        let step = if dir < 0 { n - 1 } else { 1 };
+        self.tag = Some(self.tags[(at + step) % n].0);
         self.search();
     }
 
@@ -487,6 +561,57 @@ mod tests {
         // A query narrows inside the scope.
         m.set_query("zzzz-nothing");
         assert!(m.rows().is_empty(), "no match, no rows");
+    }
+
+    #[test]
+    fn the_tag_scope_holds_one_tag_and_cycles_through_the_tags_in_use() {
+        use snipdeck_core::{Name, Tag};
+        let mut store = demo::store(now()).expect("demo store");
+        let work = store.boards().expect("boards")[0].id;
+        let ids: Vec<_> = {
+            let m =
+                PickerModel::load_cached(&store, Some(work), &IndexCache::new()).expect("model");
+            m.rows().iter().take(3).map(|r| r.id).collect()
+        };
+        let (beta, alpha, unused) = (
+            Tag::new(Name::new("beta").expect("name")),
+            Tag::new(Name::new("alpha").expect("name")),
+            Tag::new(Name::new("zeta").expect("name")),
+        );
+        for tag in [&beta, &alpha, &unused] {
+            store.insert_tag(tag).expect("tag");
+        }
+        for (id, tag) in [(ids[0], &beta), (ids[1], &alpha), (ids[2], &beta)] {
+            let mut item = store.item(id).expect("item");
+            item.tags.insert(tag.id);
+            store.update_item(&item, None).expect("update");
+        }
+        let mut m =
+            PickerModel::load_cached(&store, Some(work), &IndexCache::new()).expect("model");
+        assert!(m.has_tags());
+        // Tags in use, by name: alpha (one item), then beta (two); zeta carries nothing.
+        m.set_scope(Scope::Tag);
+        assert_eq!(m.tag_name(), "alpha");
+        assert_eq!(m.rows().len(), 1);
+        m.next_tag(1);
+        assert_eq!(m.tag_name(), "beta");
+        assert_eq!(m.rows().len(), 2);
+        m.next_tag(1);
+        assert_eq!(m.tag_name(), "alpha", "wraps around");
+        m.next_tag(-1);
+        assert_eq!(m.tag_name(), "beta", "and back");
+        // A query narrows inside the tag.
+        m.set_query("zzzz-nothing");
+        assert!(m.rows().is_empty());
+    }
+
+    #[test]
+    fn the_tag_scope_without_tags_in_use_is_empty() {
+        let (_, mut m) = model();
+        assert!(!m.has_tags());
+        m.set_scope(Scope::Tag);
+        assert_eq!(m.rows(), Vec::new());
+        assert_eq!(m.tag_name(), "");
     }
 
     #[test]

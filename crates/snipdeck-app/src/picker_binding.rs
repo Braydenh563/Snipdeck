@@ -212,6 +212,8 @@ where
         crate::wire_suggestions!(window, self.controller, picker_suggestions);
         wire!(on_scope_changed, |core, scope| core
             .act(|ctl| ctl.picker_scope(scope_of(scope))));
+        wire!(on_tag_stepped, |core, dir| core
+            .act(|ctl| ctl.picker_step_tag(if dir < 0 { -1 } else { 1 })));
         wire!(on_row_activated, |core, i| core
             .use_row(index(i), UseMode::Paste));
         wire!(on_row_copied, |core, i| core
@@ -343,6 +345,7 @@ fn scope_of(scope: ui::PickerScope) -> Scope {
         ui::PickerScope::List => Scope::List,
         ui::PickerScope::Pinned => Scope::Pinned,
         ui::PickerScope::Recent => Scope::Recent,
+        ui::PickerScope::Tag => Scope::Tag,
     }
 }
 
@@ -353,6 +356,7 @@ const fn scope_in(scope: Scope) -> ui::PickerScope {
         Scope::List => ui::PickerScope::List,
         Scope::Pinned => ui::PickerScope::Pinned,
         Scope::Recent => ui::PickerScope::Recent,
+        Scope::Tag => ui::PickerScope::Tag,
     }
 }
 
@@ -445,6 +449,9 @@ fn render(
     window.set_colour_can_open(can_open);
     if window.get_query().as_str() != picker.query {
         window.set_query(picker.query.as_str().into());
+    }
+    if window.get_scope_tag().as_str() != picker.tag {
+        window.set_scope_tag(picker.tag.as_str().into());
     }
     if window.get_scope() != scope_in(picker.scope) {
         window.set_scope(scope_in(picker.scope));
