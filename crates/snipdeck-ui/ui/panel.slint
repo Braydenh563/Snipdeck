@@ -191,8 +191,12 @@ export component PanelWindow inherits Window {
     no-frame: true;
     always-on-top: root.topmost;
     background: Theme.bg-app;
-    // A collapsed dock is a strip a few pixels thick: the Panel's minimum size does not apply.
-    min-width: root.dock-collapsed ? 0px : 260px;
+    // A collapsed dock is a strip a few pixels thick: the Panel's minimum size does not apply. Otherwise 260 holds the header
+    // at the usual text size, and a larger text size adds what the header grows by (at 225 % the board picker, Search, New,
+    // More and Close no longer fit in 260). The need is worked out for the narrowest header (New as an icon).
+    min-width: root.dock-collapsed ? 0px : max(260px, 260px + root.header-need - root.header-need-base);
+    // The floor the window manager is given (the tests read it: the testing backend does not enforce it).
+    out property <length> floor-width: root.min-width;
     max-width: 480px;
     // Header, a few rows and the footer always fit: the footer is never pushed out of the window.
     min-height: root.dock-collapsed ? 0px : root.min-h;
@@ -648,6 +652,9 @@ export component PanelWindow inherits Window {
     property <float> glyph-k: min(SystemLook.text-scale, 1.75);
     // From 1.5 the header has no room for Keep on top as well: it moves into the More menu (audit 2, item 1).
     out property <bool> pin-in-menu: SystemLook.text-scale >= 1.5;
+    // The header's width without its padding and divider: the board picker's floor, the icon buttons and the gaps.
+    property <length> header-need: 69px * SystemLook.text-scale + Space.s8 * root.chrome-k * (root.pin-in-menu ? 4 : 5) + Space.s0-5 * (root.pin-in-menu ? 6 : 7);
+    property <length> header-need-base: 69px + Space.s8 * 5 + Space.s0-5 * 7;
     property <bool> new-icon-only: root.narrow || root.lists-in-menu;
     property <string> switcher-list: !root.lists-in-menu ? "" : root.recent-open ? @tr("Recent") : root.symbols-open ? @tr("Symbols") : root.colours-open ? @tr("Colours") : root.tabs[root.current-tab].text;
 

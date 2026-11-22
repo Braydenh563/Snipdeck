@@ -1204,6 +1204,29 @@ ui_tests! {
         slint::select_bundled_translation("").expect("back to the source language");
     }
 
+    fn the_panels_width_floor_grows_with_the_text_so_the_header_controls_stay_inside() {
+        let (ui, _log) = start();
+        assert_eq!(ui.get_floor_width(), 260.0, "at the usual size the floor is the documented 260");
+        ui.global::<snipdeck_ui::SystemLook<'_>>().set_text_scale(2.25);
+        settle();
+        let floor = ui.get_floor_width();
+        assert!(floor > 260.0 && floor <= 480.0, "the floor follows the text: {floor}");
+        // The window manager keeps the Panel at least this wide: nothing in the header may stand outside it.
+        ui.window().set_size(slint::LogicalSize::new(floor, 700.0));
+        settle();
+        let mut outside = Vec::new();
+        for role in [AccessibleRole::Button, AccessibleRole::TextInput] {
+            for e in ElementQuery::from_root(&ui).match_accessible_role(role).find_all() {
+                let (p, s) = (e.absolute_position(), e.size());
+                if s.width > 0.0 && (p.x < -0.5 || p.x + s.width > floor + 0.5) {
+                    outside.push(format!("{role:?} {:?}: x {:.0} w {:.0}", e.accessible_label().unwrap_or_default(), p.x, s.width));
+                }
+            }
+        }
+        ui.global::<snipdeck_ui::SystemLook<'_>>().set_text_scale(1.0);
+        assert!(outside.is_empty(), "outside a {floor} px window at 225 %: {outside:#?}");
+    }
+
     fn a_tall_item_menu_in_a_short_panel_stays_inside_the_window() {
         let (ui, _log) = start();
         ui.set_item_menu_entries(ModelRc::new(VecModel::from(
