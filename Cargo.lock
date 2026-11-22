@@ -4559,8 +4559,6 @@ version = "1.0.0"
 dependencies = [
  "jiff",
  "proptest",
- "serde",
- "serde_json",
  "thiserror 2.0.21",
  "unicode-normalization",
  "unicode-segmentation",
