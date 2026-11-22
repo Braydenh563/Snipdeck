@@ -83,8 +83,11 @@ fn only_commands_that_ask_a_further_question_end_in_an_ellipsis() {
     const ASKS: &[&str] = &[
         "Commands…",
         "Edit…",
+        "Group colour…",
         "Group…",
+        "Move group to list…",
         "Move to list…",
+        "Nest under…",
         "New board…",
         "Paste as…",
         "Rename board…",
