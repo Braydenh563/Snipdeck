@@ -1,12 +1,12 @@
 # fix-audit-panel remaining
 
 ## Done
-Pushed (head 5883d08, gate green): 1-14, 16-18, 19 (dead keys + Caps Lock), 20-39, 40 (Paste as JSON/quote/code, Picker F3 preview), 41-45, 2 and 23 (Recent/tag Picker scopes), 22 (documented).
-Committed, not yet pushed: 15 (FileDescription names via `snipdeck_platform::app_names`, one function `friendly_app_name`).
+Pushed (head 0650c7c, gate green): 1-14, 16-18, 19 (dead keys + Caps Lock), 20-39, 40 (Paste as JSON/quote/code, Picker F3 preview), 41-45, 2 and 23 (Recent/tag Picker scopes), 22 (documented).
+Also pushed: 15 (FileDescription names via `snipdeck_platform::app_names`), 10k probe (cold Panel load 89-121 ms vs 50 ms budget: open finding, see docs/PERF.md).
 
 ## Next
-1. 10k probe numbers into `docs/PERF.md` (test exists: `budget.rs measure_picker_and_palette_budgets`; run with `CARGO_PROFILE_DEV_OPT_LEVEL=3 CARGO_PROFILE_DEV_DEBUG=0`, in the background: the build outlasts 600 s).
-2. Gate, clippy (stable + 1.100), push, report to the coordinator.
+1. Cold Panel load over budget (coordinator decides on a fix).
+2. (done)
 3. Group colour + nesting indent: BLOCKED until the coordinator sends the head of PR #5 branch `claude/compassionate-pascal-pod8ux` (merge it into this branch first).
 4. `retro`.
 
