@@ -3386,7 +3386,7 @@ ui_tests! {
         let dialog = find(&ui, "Delete for good?", AccessibleRole::Groupbox);
         assert_eq!(
             dialog.accessible_description().as_deref(),
-            Some("The selected items are deleted for good. This can’t be undone.")
+            Some("The selected items are deleted for good. This can't be undone.")
         );
         press_key(&ui, Key::Escape);
     }

@@ -170,7 +170,7 @@ msgid "Add to “{}”"
 msgstr "Añadir a «{}»"
 
 msgid "Add {} or {} to a snippet."
-msgstr "Añade {} o {} a un elemento."
+msgstr "Añade {} o {} a un fragmento."
 
 msgid "Add, rename, merge or delete tags. A new name another tag already has merges the two. Deleting a tag removes it from its items; the items stay."
 msgstr "Añade, renombra, fusiona o elimina etiquetas. Un nombre nuevo que otra etiqueta ya tiene las fusiona. Al eliminar una etiqueta se quita de sus fragmentos; los fragmentos se quedan."
