@@ -281,14 +281,30 @@ fn item_editor_long_values_and_the_inline_limit() {
         "A very long item title that keeps going well past the width of the field and then some"
             .into(),
     );
+    // The app sets `content_large` only with two or more parts, so the pager has a part count.
     h.component.set_content_large(true);
+    h.component.set_parts(ModelRc::new(VecModel::from(vec![
+        "Supercalifragilisticexpialidocious_Supercalifragilisticexpialidocious_Snippet https://example.com/a/very/long/unbroken/path".into(),
+        "second part".into(),
+    ])));
+    h.component.set_part_index(0);
     h.component.set_content_size("2.4 MB".into());
     h.component.set_content(
         "Supercalifragilisticexpialidocious_Supercalifragilisticexpialidocious_Snippet https://example.com/a/very/long/unbroken/path".into(),
     );
     h.component
         .set_title_error("Titles can't be longer than 200 characters.".into());
-    assert_golden("item-editor-long-light", &render(&h));
+    let frame = render(&h);
+    let pager = |label: &str| {
+        i_slint_backend_testing::ElementHandle::find_by_accessible_label(&h.component, label)
+            .count()
+    };
+    assert_eq!(pager("Part 1 of 0"), 0, "a large text always has parts");
+    assert!(
+        pager("Part 1 of 2") > 0,
+        "the pager names the part and the count"
+    );
+    assert_golden("item-editor-long-light", &frame);
 }
 
 /// "More options" open on an item with a trigger: the picture of the Tips card on triggers.
