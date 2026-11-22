@@ -780,15 +780,15 @@ item_editor_remove_formatting | crates/snipdeck-app/src/controller/editor_ctl.rs
 item_editor_tag_added | crates/snipdeck-app/src/controller/editor_ctl.rs:502
 item_editor_picked | crates/snipdeck-app/src/controller/editor_ctl.rs:511
 item_editor_autosave | crates/snipdeck-app/src/controller/editor_ctl.rs:540
-clear_draft | crates/snipdeck-app/src/controller/editor_ctl.rs:600
-item_editor_cancel | crates/snipdeck-app/src/controller/editor_ctl.rs:615
-item_editor_park | crates/snipdeck-app/src/controller/editor_ctl.rs:624
-item_editor_delete | crates/snipdeck-app/src/controller/editor_ctl.rs:635
-ResolvedTags | crates/snipdeck-app/src/controller/editor_ctl.rs:646
-preview_of | crates/snipdeck-app/src/controller/editor_ctl.rs:651
-build_formats | crates/snipdeck-app/src/controller/editor_ctl.rs:661
-save_failed_message | crates/snipdeck-app/src/controller/editor_ctl.rs:692
-open_failed | crates/snipdeck-app/src/controller/editor_ctl.rs:704
+clear_draft | crates/snipdeck-app/src/controller/editor_ctl.rs:603
+item_editor_cancel | crates/snipdeck-app/src/controller/editor_ctl.rs:618
+item_editor_park | crates/snipdeck-app/src/controller/editor_ctl.rs:627
+item_editor_delete | crates/snipdeck-app/src/controller/editor_ctl.rs:638
+ResolvedTags | crates/snipdeck-app/src/controller/editor_ctl.rs:649
+preview_of | crates/snipdeck-app/src/controller/editor_ctl.rs:654
+build_formats | crates/snipdeck-app/src/controller/editor_ctl.rs:664
+save_failed_message | crates/snipdeck-app/src/controller/editor_ctl.rs:695
+open_failed | crates/snipdeck-app/src/controller/editor_ctl.rs:707
 
 ### crates/snipdeck-app/src/controller/editor_ctl/open.rs
 
@@ -1855,18 +1855,18 @@ path | crates/snipdeck-app/src/drafts.rs:150
 load | crates/snipdeck-app/src/drafts.rs:159
 read_file | crates/snipdeck-app/src/drafts.rs:164
 save | crates/snipdeck-app/src/drafts.rs:181
-clear | crates/snipdeck-app/src/drafts.rs:213
-overwrite_with_zeros | crates/snipdeck-app/src/drafts.rs:229
-tests | crates/snipdeck-app/src/drafts.rs:254
-draft | crates/snipdeck-app/src/drafts.rs:257
-saving_over_a_draft_zeroes_the_one_it_replaces | crates/snipdeck-app/src/drafts.rs:271
-a_crash_between_zeroing_and_the_rename_still_loads_the_new_draft | crates/snipdeck-app/src/drafts.rs:289
-a_draft_too_big_to_read_back_is_refused_and_a_stale_one_is_zeroed_on_clear | crates/snipdeck-app/src/drafts.rs:303
-clearing_overwrites_the_draft_with_zeros_before_removing_it | crates/snipdeck-app/src/drafts.rs:324
-clearing_a_missing_draft_is_fine | crates/snipdeck-app/src/drafts.rs:343
-a_draft_round_trips_and_clearing_removes_it | crates/snipdeck-app/src/drafts.rs:351
-each_editor_has_its_own_file_and_a_newer_save_replaces_the_older | crates/snipdeck-app/src/drafts.rs:369
-damaged_foreign_and_oversized_files_read_as_no_draft | crates/snipdeck-app/src/drafts.rs:387
+clear | crates/snipdeck-app/src/drafts.rs:215
+overwrite_with_zeros | crates/snipdeck-app/src/drafts.rs:231
+tests | crates/snipdeck-app/src/drafts.rs:256
+draft | crates/snipdeck-app/src/drafts.rs:259
+saving_over_a_draft_zeroes_the_one_it_replaces | crates/snipdeck-app/src/drafts.rs:273
+a_crash_between_zeroing_and_the_rename_still_loads_the_new_draft | crates/snipdeck-app/src/drafts.rs:291
+a_draft_too_big_to_read_back_is_refused_and_a_stale_one_is_zeroed_on_clear | crates/snipdeck-app/src/drafts.rs:305
+clearing_overwrites_the_draft_with_zeros_before_removing_it | crates/snipdeck-app/src/drafts.rs:326
+clearing_a_missing_draft_is_fine | crates/snipdeck-app/src/drafts.rs:345
+a_draft_round_trips_and_clearing_removes_it | crates/snipdeck-app/src/drafts.rs:353
+each_editor_has_its_own_file_and_a_newer_save_replaces_the_older | crates/snipdeck-app/src/drafts.rs:371
+damaged_foreign_and_oversized_files_read_as_no_draft | crates/snipdeck-app/src/drafts.rs:389
 
 ### crates/snipdeck-app/src/drop_batch.rs
 
@@ -10168,7 +10168,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/tests/budget.rs` | 6 |
 | `crates/snipdeck-app/tests/colours_window.rs` | 47 |
 | `crates/snipdeck-app/tests/crash_hook.rs` | 1 |
-| `crates/snipdeck-app/tests/editor_controller.rs` | 51 |
+| `crates/snipdeck-app/tests/editor_controller.rs` | 52 |
 | `crates/snipdeck-app/tests/editor_window.rs` | 36 |
 | `crates/snipdeck-app/tests/everything_free.rs` | 4 |
 | `crates/snipdeck-app/tests/fill_window.rs` | 15 |
