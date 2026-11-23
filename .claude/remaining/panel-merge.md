@@ -1,4 +1,4 @@
 # panel-merge
-Done: conflicts resolved in sources/tests/slint; po/pot/CODEMAP ours.
-Next: build, app tests, commit merge, i18n extract+translate, goldens, codemap, ui tests, clippy, checks.
+Done: merge, app tests, ui tests, goldens, clippy, checks.
+Next: none
 Blocked: none

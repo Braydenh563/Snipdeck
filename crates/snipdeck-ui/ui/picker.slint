@@ -89,7 +89,7 @@ export component PickerWindow inherits Window {
     always-on-top: true;
     background: Theme.bg-overlay;
     // The Picker is sized by the host to its content and is never shown shorter, so no button is cut at any text size.
-    out property <length> min-window-width: max(320px, 150px * SystemLook.text-scale);
+    out property <length> min-window-width: max(320px, 160px * SystemLook.text-scale);
     out property <length> min-window-height: root.content-height;
     min-width: root.min-window-width;
     min-height: root.min-window-height;
