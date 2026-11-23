@@ -1,6 +1,12 @@
 ## Morning summary
 
-(written at the end of the run)
+2026-11-23. All audit work is merged into PR #5 (Library, UX, Panel) and pushed; gate green; PR #29 closed as superseded.
+- Owner holds PR #5 as the official 1.0.0: owner tests, Claude fixes findings; never merge, tag or release unasked.
+- Left out of 1.0 (in `docs/V1-PLAN.md`): paste then Enter/Tab, global per-position paste hotkeys.
+- Windows checklist: "Verified on Linux only versus needs Windows" below, plus the Panel audit's section 3
+  (`.claude/audit/panel.md`): paste timing, tray, dead keys, Paste as formats, app names.
+- Weekly usage 93% at the end of the run (owner's line 98%).
+- Next: owner's test findings.
 
 # Snipdeck handover
 
