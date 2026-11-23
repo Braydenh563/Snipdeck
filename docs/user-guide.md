@@ -221,16 +221,16 @@ the right of the sidebar header (or `Ctrl+B`) folds the sidebar to a narrow rail
   - **Colour (Main window).** Choose **Group colour…** from the header's menu and pick one of nine colours, or none.
     The colour shows as a dot before the name and is read out with it; `Ctrl+Z` takes it back.
   - **Ungroup or delete.** **Ungroup** dissolves the group and keeps its items. **Delete group** (or `Delete`
-    on the header) moves the group and its items to the Trash, and `Ctrl+Z` brings them all back in one step. A
-    folded group asks first and names how many items it hides.
+    on the header) moves the group and its items to the Trash, and `Ctrl+Z` brings them all back in one step. It
+    deletes at once, with an Undo button in the toast, and does not ask first.
   - **Move to another list.** **Move group to list…** in the header's menu takes the header and all its items.
   - **Other sorts.** Under any sort except Manual the headers stay and the items sort inside each group.
   - **Groups inside groups (Main window).** Select rows that are all in one group and press `Ctrl+G` to make a
     group inside it, or choose **Nest under…** from a header's menu (or **Nest under…** in the command
     palette, `Ctrl+K`) and pick the group it goes under; pick **Top level** to take it out again. A group can
     sit three levels deep. Inner headers are indented, folding a group folds the groups inside it, and
-    **Ungroup** moves what was inside up to the group above. **Delete group** on a group with groups inside asks
-    first with the total count, **Move group to list…** takes them all, and each step is one `Ctrl+Z`. The Panel
+    **Ungroup** moves what was inside up to the group above. **Delete group** on a group with groups inside deletes
+    the whole branch at once (Undo brings it back), **Move group to list…** takes them all, and each step is one `Ctrl+Z`. The Panel
     shows inner groups without the indent.
   - **Move.** Drag a header to move the whole group, or press `Alt+Up` or `Alt+Down` on it. Dropping an item on a
     header adds it to that group.
