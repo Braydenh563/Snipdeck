@@ -229,6 +229,9 @@ export component ItemCard inherits Rectangle {
     in property <length> reserve-r: 0px;
     // Draws the keyboard focus ring although the card is not the focus owner (the list's cursor row).
     in property <bool> show-focus: false;
+    // The keyboard cursor row while nothing is selected (the Panel): a faint fill, not the selection's, so it does not
+    // read as chosen. Screen readers still hear it as the selected row.
+    in property <bool> cursor: false;
     // False where no row menu exists (the Picker): the row still offers Copy and Edit; only More goes.
     in property <bool> has-menu: true;
     // The row has three shapes picked by `variant` (DESIGN.md §4 ItemCard anatomy): comfortable = the List row (56, tile 32,
@@ -469,7 +472,7 @@ export component ItemCard inherits Rectangle {
     property <color> fill: touch.pressed ? Theme.bg-sunken
         : root.selected ? Theme.bg-selected
         : root.lift-visual ? Theme.bg-overlay
-        : root.hovered && !root.tile ? Theme.bg-hover
+        : (root.hovered || root.cursor) && !root.tile ? Theme.bg-hover
         : root.tile ? Theme.bg-surface
         : transparent;
 
@@ -486,7 +489,7 @@ export component ItemCard inherits Rectangle {
     // A masked secret says how to reveal it (`masked-hint`); otherwise the list the item belongs to.
     accessible-description: (root.has-label ? (root.described == "" ? @tr("label: {}", root.label-name) : root.described + ", " + @tr("label: {}", root.label-name)) : root.described) + (root.formatted && !root.sensitive ? (root.described == "" && !root.has-label ? "" : ", ") + @tr("Formatted") : "");
     accessible-item-selectable: true;
-    accessible-item-selected: root.selected;
+    accessible-item-selected: root.selected || root.cursor;
     // A group's item says "n of m" to a screen reader; -1 is not a number, so a loose row says nothing.
     accessible-item-index: root.set-position > 0 ? root.set-position - 1 : -1;
     accessible-item-count: root.set-size > 0 ? root.set-size : -1;
@@ -824,7 +827,7 @@ export component ItemCard inherits Rectangle {
         }
 
         // The Compact row's divider: 1px `border.subtle`, inset 8, only at rest (a hovered or selected row is a fill).
-        if root.compact && !root.selected && !root.hovered && !root.focused && !root.lift-visual: Rectangle {
+        if root.compact && !root.selected && !root.hovered && !root.cursor && !root.focused && !root.lift-visual: Rectangle {
             x: Space.s2;
             y: parent.height - 1px;
             width: max(0px, parent.width - 2 * Space.s2);
