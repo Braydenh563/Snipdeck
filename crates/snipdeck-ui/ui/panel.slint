@@ -53,7 +53,7 @@ import { Keycap } from "components/keycap.slint";
 import { DockHandle } from "components/dock-handle.slint";
 import { QuickAdd } from "components/quick-add.slint";
 import { EdgeScroll } from "components/edge-scroll.slint";
-import { SymbolsView, SymbolRow } from "symbols.slint";
+import { SymbolsView, SymbolRow, SymbolCell, SymbolGroup } from "symbols.slint";
 import { ColoursView, ColourState } from "colours.slint";
 
 // One row of the list, as `snipdeck-app`'s `Row`. The quick-use number is the row's position
@@ -257,6 +257,8 @@ export component PanelWindow inherits Window {
     in-out property <string> symbol-query;
     in-out property <int> symbol-selected: 0;
     in property <int> symbol-selected-row: -1;
+    in property <[SymbolGroup]> symbol-groups;
+    in-out property <SymbolCell> symbol-selected-cell: { art: -1, text: "", label: "", kind: 0, wide: false, flat: -1 };
     in property <int> symbol-top-row: -1;
     in property <int> symbol-top-ticks: 0;
     in property <string> symbol-empty-heading;
@@ -2548,8 +2550,8 @@ export component PanelWindow inherits Window {
                         // scrolled down keeps its place.
                         property <[RecentRow]> rows: root.recent-rows;
                         changed rows => {
-                            if (recent-list.viewport-y > -Space.hit) {
-                                recent-list.viewport-y = 0px;
+                            if (recent-list.content-y > -Space.hit) {
+                                recent-list.content-y = 0px;
                             }
                         }
                         recent-list := ListView {
@@ -2643,6 +2645,8 @@ export component PanelWindow inherits Window {
                         query <=> root.symbol-query;
                         selected <=> root.symbol-selected;
                         selected-row: root.symbol-selected-row;
+                        groups: root.symbol-groups;
+                        selected-cell <=> root.symbol-selected-cell;
                         top-row: root.symbol-top-row;
                         top-row-ticks: root.symbol-top-ticks;
                         empty-heading: root.symbol-empty-heading;

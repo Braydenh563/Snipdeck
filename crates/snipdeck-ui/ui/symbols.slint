@@ -21,6 +21,12 @@ export struct SymbolCell {
     flat: int,
 }
 
+// One button of the text group strip: the group's name and its number (what `group-picked` reports).
+export struct SymbolGroup {
+    label: string,
+    group: int,
+}
+
 // One row of the grid. A header row has `header` set ("RECENTLY USED"); `link` is the "Show all" text at its right and
 // `link-kind` the kind tab it switches to. Other rows hold `cells`; `chips` marks kaomoji rows. `y` and `h` place the row
 // (the host sums them) so the selection can be scrolled into view.
@@ -65,12 +71,17 @@ export global SymbolTexts {
 
 export component SymbolsView inherits Rectangle {
     in property <[SymbolRow]> rows;
+    // The group strip's buttons (one per group, not one per grid row).
+    in property <[SymbolGroup]> groups;
     // 0 All, 1 Emoji, 2 Kaomoji, 3 Icons, 4 Characters.
     in property <int> kind: 0;
     in-out property <string> query <=> search.text;
     // The keyboard-selected cell (flat index, -1 none) and the grid row that holds it.
     in-out property <int> selected: 0;
     in property <int> selected-row: -1;
+    // The selected cell itself, for the preview: the host sets it with the selection and a click sets it here, so the
+    // preview never walks (and loads the art of) every cell of the grid.
+    in-out property <SymbolCell> selected-cell: { art: -1, text: "", label: "", kind: 0, wide: false, flat: -1 };
     // A group button or "Show all" asked for this row to be put at the top of the grid.
     in property <int> top-row: -1;
     in property <int> top-row-ticks: 0;
@@ -285,17 +296,15 @@ export component SymbolsView inherits Rectangle {
                     padding-bottom: Space.s1;
                     spacing: Space.s1;
                     alignment: stretch;
-                    for grow in root.rows: Rectangle {
-                        visible: grow.group >= 0;
-                        horizontal-stretch: grow.group >= 0 ? 1 : 0;
-                        min-width: grow.group >= 0 ? max(Space.hit-min, chiplabel.preferred-width + 2 * Space.s2) : 0px;
-                        max-width: grow.group >= 0 ? 10000px : 0px;
+                    for grow in root.groups: Rectangle {
+                        horizontal-stretch: 1;
+                        min-width: max(Space.hit-min, chiplabel.preferred-width + 2 * Space.s2);
                         border-radius: Radius.md;
                         border-width: 1px;
                         border-color: Theme.border-subtle;
                         background: cfocus.has-focus || ctap.has-hover ? Theme.bg-hover : transparent;
                         accessible-role: button;
-                        accessible-label: grow.header;
+                        accessible-label: grow.label;
                         accessible-action-default => { root.group-picked(grow.group); }
                         cfocus := FocusScope {
                             key-pressed(event) => {
@@ -309,7 +318,7 @@ export component SymbolsView inherits Rectangle {
                         chiplabel := Text {
                             width: parent.width;
                             horizontal-alignment: center;
-                            text: grow.header;
+                            text: grow.label;
                             font-family: Fonts.sans;
                             font-size: Type.xs;
                             font-weight: Type.medium;
@@ -433,7 +442,7 @@ export component SymbolsView inherits Rectangle {
                             accessible-description: cell.kind == 0 ? @tr("Emoji") : cell.kind == 1 ? @tr("Kaomoji") : cell.kind == 2 ? @tr("Icon") : @tr("Character");
                             accessible-item-selectable: true;
                             accessible-item-selected: self.chosen;
-                            accessible-action-default => { root.selected = cell.flat; root.cell-used(cell.flat); }
+                            accessible-action-default => { root.selected = cell.flat; root.selected-cell = cell; root.cell-used(cell.flat); }
                             animate background { duration: Motion.instant; easing: Motion.out; }
 
                             if cell.kind == 0 && cell.art >= 0 && cbox.picture.width > 0: Image {
@@ -484,6 +493,7 @@ export component SymbolsView inherits Rectangle {
                                     if (event.button == PointerEventButton.left && event.kind == PointerEventKind.up
                                         && self.mouse-x >= 0 && self.mouse-x <= self.width && self.mouse-y >= 0 && self.mouse-y <= self.height) {
                                         root.selected = cell.flat;
+                                        root.selected-cell = cell;
                                         if (event.modifiers.shift) {
                                             root.cell-copied(cell.flat);
                                         } else {
@@ -491,6 +501,7 @@ export component SymbolsView inherits Rectangle {
                                         }
                                     } else if (event.button == PointerEventButton.right && event.kind == PointerEventKind.up) {
                                         root.selected = cell.flat;
+                                        root.selected-cell = cell;
                                         root.cell-menu(cell.flat, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
                                     }
                                 }
@@ -527,31 +538,30 @@ export component SymbolsView inherits Rectangle {
                 height: 1px;
                 background: Theme.border-subtle;
             }
-            for prow in root.rows: Rectangle {
-                for pcell in prow.cells: pbox := Rectangle {
-                    visible: pcell.flat == root.selected;
-                    property <image> big: pcell.art >= 0 ? root.art(pcell.art) : @image-url("../icons/x.svg");
-                    if pcell.kind != 1 && pcell.art >= 0 && pbox.big.width > 0: Image {
-                        source: pbox.big;
-                        colorize: pcell.kind == 2 ? Theme.text-primary : transparent;
-                        x: Space.s2;
-                        width: Space.s8;
-                        height: Space.s8;
-                        y: (parent.height - self.height) / 2;
-                        image-fit: contain;
-                    }
-                    if pcell.kind == 1 || pcell.kind == 3 || (pcell.kind == 0 && pcell.art < 0): Text {
-                        x: Space.s2;
-                        width: parent.width - 2 * Space.s2;
-                        height: parent.height;
-                        text: pcell.text;
-                        font-family: Fonts.sans;
-                        font-size: pcell.kind == 1 ? Type.lg : Type.xl * 1.5;
-                        color: Theme.text-primary;
-                        vertical-alignment: center;
-                        overflow: elide;
-                        accessible-role: AccessibleRole.none;
-                    }
+            pbox := Rectangle {
+                property <SymbolCell> pcell: root.selected-cell;
+                visible: self.pcell.flat >= 0;
+                property <image> big: self.pcell.art >= 0 ? root.art(self.pcell.art) : @image-url("../icons/x.svg");
+                if self.pcell.kind != 1 && self.pcell.art >= 0 && pbox.big.width > 0: Image {
+                    source: pbox.big;
+                    colorize: pbox.pcell.kind == 2 ? Theme.text-primary : transparent;
+                    x: Space.s2;
+                    width: Space.s8;
+                    height: Space.s8;
+                    y: (parent.height - self.height) / 2;
+                    image-fit: contain;
+                }
+                if pbox.pcell.kind == 1 || pbox.pcell.kind == 3 || (pbox.pcell.kind == 0 && pbox.pcell.art < 0): Text {
+                    x: Space.s2;
+                    width: parent.width - 2 * Space.s2;
+                    height: parent.height;
+                    text: pbox.pcell.text;
+                    font-family: Fonts.sans;
+                    font-size: pbox.pcell.kind == 1 ? Type.lg : Type.xl * 1.5;
+                    color: Theme.text-primary;
+                    vertical-alignment: center;
+                    overflow: elide;
+                    accessible-role: AccessibleRole.none;
                 }
             }
         }

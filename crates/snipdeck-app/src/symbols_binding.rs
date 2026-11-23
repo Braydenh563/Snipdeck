@@ -183,6 +183,15 @@ impl Glue {
         let tab = self.inner.borrow().tab;
         let t = ui::SymbolTexts::get(w);
         let empty = self.inner.borrow().grid.items.is_empty();
+        let groups: Vec<ui::SymbolGroup> = rows
+            .iter()
+            .filter(|r| r.group >= 0)
+            .map(|r| ui::SymbolGroup {
+                label: r.header.clone(),
+                group: r.group,
+            })
+            .collect();
+        w.set_symbol_groups(ModelRc::new(VecModel::from(groups)));
         w.set_symbol_rows(ModelRc::new(VecModel::from(rows)));
         w.set_symbol_kind(tab);
         if w.get_symbol_query() != query.as_str() {
@@ -221,6 +230,19 @@ impl Glue {
             .map(|&i| label_of(i, lang))
             .unwrap_or_default();
         w.set_symbol_selected_name(name.into());
+        let cell = s
+            .grid
+            .items
+            .get(s.selected)
+            .and_then(|&i| cell_of(i, s.selected, false, &ui::SymbolTexts::get(w), lang));
+        w.set_symbol_selected_cell(cell.unwrap_or(ui::SymbolCell {
+            art: -1,
+            text: SharedString::new(),
+            label: SharedString::new(),
+            kind: 0,
+            wide: false,
+            flat: -1,
+        }));
     }
 }
 
@@ -237,35 +259,7 @@ fn rows_of(grid: &Grid, t: &ui::SymbolTexts<'_>, lang: Lang) -> Vec<ui::SymbolRo
             let cells: Vec<ui::SymbolCell> = row
                 .cells
                 .iter()
-                .filter_map(|cell| {
-                    let sym = Catalog::get().symbol(cell.index)?;
-                    let kind = sym.id.kind();
-                    Some(ui::SymbolCell {
-                        // Kaomoji and characters are text; so is an emoji with no art (system style).
-                        art: if matches!(kind, Kind::Kaomoji | Kind::Character)
-                            || (kind == Kind::Emoji && !Catalog::get().has_art(cell.index))
-                        {
-                            -1
-                        } else {
-                            i32::try_from(cell.index).unwrap_or(-1)
-                        },
-                        text: sym.text.clone().unwrap_or_default().into(),
-                        label: if kind == Kind::Kaomoji {
-                            let (place, of) = kaomoji_place(cell.index);
-                            t.invoke_kaomoji_label(label_of(cell.index, lang).into(), place, of)
-                        } else {
-                            label_of(cell.index, lang).into()
-                        },
-                        kind: match kind {
-                            Kind::Emoji => 0,
-                            Kind::Kaomoji => 1,
-                            Kind::Icon => 2,
-                            Kind::Character => 3,
-                        },
-                        wide: cell.wide,
-                        flat: i32::try_from(cell.flat).unwrap_or(0),
-                    })
-                })
+                .filter_map(|cell| cell_of(cell.index, cell.flat, cell.wide, t, lang))
                 .collect();
             ui::SymbolRow {
                 header: header.into(),
@@ -292,6 +286,43 @@ fn rows_of(grid: &Grid, t: &ui::SymbolTexts<'_>, lang: Lang) -> Vec<ui::SymbolRo
             }
         })
         .collect()
+}
+
+/// The window's cell for catalog entry `index`, numbered `flat` in reading order.
+fn cell_of(
+    index: usize,
+    flat: usize,
+    wide: bool,
+    t: &ui::SymbolTexts<'_>,
+    lang: Lang,
+) -> Option<ui::SymbolCell> {
+    let sym = Catalog::get().symbol(index)?;
+    let kind = sym.id.kind();
+    Some(ui::SymbolCell {
+        // Kaomoji and characters are text; so is an emoji with no art (system style).
+        art: if matches!(kind, Kind::Kaomoji | Kind::Character)
+            || (kind == Kind::Emoji && !Catalog::get().has_art(index))
+        {
+            -1
+        } else {
+            i32::try_from(index).unwrap_or(-1)
+        },
+        text: sym.text.clone().unwrap_or_default().into(),
+        label: if kind == Kind::Kaomoji {
+            let (place, of) = kaomoji_place(index);
+            t.invoke_kaomoji_label(label_of(index, lang).into(), place, of)
+        } else {
+            label_of(index, lang).into()
+        },
+        kind: match kind {
+            Kind::Emoji => 0,
+            Kind::Kaomoji => 1,
+            Kind::Icon => 2,
+            Kind::Character => 3,
+        },
+        wide,
+        flat: i32::try_from(flat).unwrap_or(0),
+    })
 }
 
 /// What a step that rebuilds the grid is given: the glue, the window, the recents and the language.
@@ -349,19 +380,30 @@ pub fn label_of(index: usize, lang: Lang) -> String {
 
 /// A kaomoji's place in its group (1-based) and the size of the group: "cat, 3 of 10".
 fn kaomoji_place(index: usize) -> (i32, i32) {
+    // Worked out once for every kaomoji: a lookup per cell, not a walk of the whole kind per cell.
+    static PLACES: std::sync::OnceLock<Vec<(i32, i32)>> = std::sync::OnceLock::new();
     let catalog = Catalog::get();
-    let group = catalog.symbol(index).map(|s| s.group);
-    let mut place = 0;
-    let mut of = 0;
-    for i in catalog.range(Kind::Kaomoji) {
-        if catalog.symbol(i).map(|s| s.group) == group {
-            of += 1;
-            if i <= index {
-                place += 1;
-            }
+    let range = catalog.range(Kind::Kaomoji);
+    let places = PLACES.get_or_init(|| {
+        let mut seen: HashMap<_, i32> = HashMap::new();
+        let mut places: Vec<(i32, i32)> = range
+            .clone()
+            .map(|i| {
+                let n = seen.entry(catalog.symbol(i).map(|s| s.group)).or_insert(0);
+                *n += 1;
+                (*n, 0)
+            })
+            .collect();
+        for (i, place) in range.clone().zip(places.iter_mut()) {
+            place.1 = seen[&catalog.symbol(i).map(|s| s.group)];
         }
-    }
-    (place, of)
+        places
+    });
+    index
+        .checked_sub(range.start)
+        .and_then(|i| places.get(i))
+        .copied()
+        .unwrap_or((0, 0))
 }
 
 fn load_art(index: usize) -> Option<slint::Image> {

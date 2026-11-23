@@ -4828,15 +4828,16 @@ group | crates/snipdeck-app/src/symbols_binding.rs:125
 id_at | crates/snipdeck-app/src/symbols_binding.rs:146
 art | crates/snipdeck-app/src/symbols_binding.rs:154
 rebuild | crates/snipdeck-app/src/symbols_binding.rs:170
-push_selection | crates/snipdeck-app/src/symbols_binding.rs:204
-push_selection_with | crates/snipdeck-app/src/symbols_binding.rs:209
-rows_of | crates/snipdeck-app/src/symbols_binding.rs:227
-Step | crates/snipdeck-app/src/symbols_binding.rs:298
-title_text | crates/snipdeck-app/src/symbols_binding.rs:300
-capitalise | crates/snipdeck-app/src/symbols_binding.rs:324
-label_of | crates/snipdeck-app/src/symbols_binding.rs:334
-kaomoji_place | crates/snipdeck-app/src/symbols_binding.rs:351
-load_art | crates/snipdeck-app/src/symbols_binding.rs:367
+push_selection | crates/snipdeck-app/src/symbols_binding.rs:213
+push_selection_with | crates/snipdeck-app/src/symbols_binding.rs:218
+rows_of | crates/snipdeck-app/src/symbols_binding.rs:249
+cell_of | crates/snipdeck-app/src/symbols_binding.rs:292
+Step | crates/snipdeck-app/src/symbols_binding.rs:329
+title_text | crates/snipdeck-app/src/symbols_binding.rs:331
+capitalise | crates/snipdeck-app/src/symbols_binding.rs:355
+label_of | crates/snipdeck-app/src/symbols_binding.rs:365
+kaomoji_place | crates/snipdeck-app/src/symbols_binding.rs:382
+load_art | crates/snipdeck-app/src/symbols_binding.rs:409
 
 ### crates/snipdeck-app/src/symbols_panel.rs
 
@@ -11249,7 +11250,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-ui/tests/support/panel_fixture.rs` | 0 |
 | `crates/snipdeck-ui/tests/support/picker_fixture.rs` | 0 |
 | `crates/snipdeck-ui/tests/symbol_nav.rs` | 5 |
-| `crates/snipdeck-ui/tests/symbols.rs` | 20 |
+| `crates/snipdeck-ui/tests/symbols.rs` | 22 |
 | `crates/snipdeck-ui/tests/token_lint.rs` | 2 |
 | `crates/snipdeck-ui/tests/tooltips.rs` | 4 |
 | `crates/snipdeck-ui/tests/tray_texts.rs` | 1 |

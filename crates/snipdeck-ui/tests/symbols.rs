@@ -19,7 +19,7 @@ use std::{cell::RefCell, rc::Rc};
 use std::time::Duration;
 
 use i_slint_backend_testing::ElementQuery;
-use slint::{ComponentHandle, LogicalPosition, ModelRc, VecModel, platform::WindowEvent};
+use slint::{ComponentHandle, LogicalPosition, Model, ModelRc, VecModel, platform::WindowEvent};
 use snipdeck_symbols::{Catalog, Kind, SymbolId};
 use snipdeck_ui::{
     PanelWindow, SymbolCell, SymbolRow, SystemLook,
@@ -161,7 +161,13 @@ struct Shown {
     used: Rc<RefCell<Vec<(i32, bool)>>>,
 }
 
+thread_local! {
+    /// How many pictures the window has asked the host for.
+    static ART_CALLS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
 fn art(i: i32) -> slint::Image {
+    ART_CALLS.with(|c| c.set(c.get() + 1));
     let catalog = Catalog::get();
     let sym = catalog
         .symbol(usize::try_from(i).expect("index"))
@@ -209,9 +215,22 @@ fn open(
     ui.on_symbol_columns_changed(move |n| {
         *c.borrow_mut() = n;
         if let Some(w) = weak.upgrade() {
-            w.set_symbol_rows(ModelRc::new(VecModel::from(rows(
-                usize::try_from(n).unwrap(),
-            ))));
+            let rows = rows(usize::try_from(n).unwrap());
+            // The host sets the selected cell with the selection (the preview shows it).
+            if let Some(first) = rows.iter().find_map(|r| r.cells.row_data(0)) {
+                w.set_symbol_selected_cell(first);
+            }
+            // The strip's buttons: one per group header, as the host sends them.
+            let groups: Vec<snipdeck_ui::SymbolGroup> = rows
+                .iter()
+                .filter(|r| r.group >= 0)
+                .map(|r| snipdeck_ui::SymbolGroup {
+                    label: r.header.clone(),
+                    group: r.group,
+                })
+                .collect();
+            w.set_symbol_groups(ModelRc::new(VecModel::from(groups)));
+            w.set_symbol_rows(ModelRc::new(VecModel::from(rows)));
         }
     });
     let m = Rc::clone(&moves);
@@ -240,6 +259,36 @@ fn key(s: &Shown, text: &str) {
     s.h.component
         .window()
         .dispatch_event(WindowEvent::KeyReleased { text: text.into() });
+}
+
+/// Switching to a kind with thousands of cells must only load the pictures that are on screen (plus the preview):
+/// the whole grid used to be walked, and every emoji decoded, on each switch.
+#[test]
+fn a_full_grid_loads_only_the_pictures_on_screen() {
+    let total = arted(Catalog::get().range(Kind::Emoji)).len();
+    assert!(total > 1000, "the fixture needs a big kind: {total}");
+    ART_CALLS.with(|c| c.set(0));
+    let s = open(320, false, 1, |cols| {
+        let e = Catalog::get().range(Kind::Emoji);
+        let (mut rows, mut y, mut flat) = (Vec::new(), 0.0, 0);
+        section(
+            &mut rows,
+            &mut y,
+            &mut flat,
+            "ALL",
+            arted(e),
+            cols,
+            usize::MAX,
+            false,
+        );
+        rows
+    });
+    let _ = render(&s);
+    let calls = ART_CALLS.with(std::cell::Cell::get);
+    assert!(
+        calls < 400,
+        "{calls} pictures asked for, {total} cells in the grid"
+    );
 }
 
 #[test]
@@ -590,6 +639,30 @@ fn the_characters_tab_draws_its_cells_as_text_with_a_group_strip() {
     let _ = first;
 }
 
+/// The strip loops over the groups, not the grid rows: plain rows add no element and no layout gap.
+#[test]
+fn the_group_strip_has_one_button_per_group() {
+    let s = open(320, false, 4, |cols| {
+        let mut rows = char_rows(cols);
+        for (g, name) in [(1, "MATH"), (2, "CURRENCY")] {
+            let mut h = header(name, 0.0, "");
+            h.group = g;
+            rows.push(h);
+        }
+        rows
+    });
+    let _ = render(&s);
+    let labels: Vec<String> = ElementQuery::from_root(&s.h.component)
+        .match_accessible_role(i_slint_backend_testing::AccessibleRole::Button)
+        .find_all()
+        .iter()
+        .filter_map(i_slint_backend_testing::ElementHandle::accessible_label)
+        .map(|l| l.to_string())
+        .filter(|l| ["ARROWS", "MATH", "CURRENCY"].contains(&l.as_str()))
+        .collect();
+    assert_eq!(labels, ["ARROWS", "MATH", "CURRENCY"]);
+}
+
 /// TOOLS-63: the selection is shown large under the grid.
 #[test]
 fn the_preview_bar_shows_the_selected_symbol_large() {
@@ -597,6 +670,14 @@ fn the_preview_bar_shows_the_selected_symbol_large() {
     s.h.component.set_symbol_selected(0);
     let a = render(&s);
     s.h.component.set_symbol_selected(5);
+    // The host sends the selected cell along with the selection.
+    let rows = s.h.component.get_symbol_rows();
+    let five = rows
+        .iter()
+        .flat_map(|r| r.cells.iter().collect::<Vec<_>>())
+        .find(|c| c.flat == 5)
+        .expect("cell 5");
+    s.h.component.set_symbol_selected_cell(five);
     let b = render(&s);
     // Only the preview strip at the bottom and the two cells differ; the bottom 48 px changed.
     let mut changed_bottom = false;
