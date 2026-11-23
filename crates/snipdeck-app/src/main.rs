@@ -1294,9 +1294,12 @@ fn open_library(args: &Args) -> Result<Library, String> {
     }
     // A library that cannot be opened is kept aside and a fresh one opened (DATA-5): exiting
     // here would leave no way to reach Settings > Rebuild from backup.
-    let (store, set_aside_toast) =
-        snipdeck_app::paths::open_library_folder(&folder, Timestamp::now())
-            .map_err(|e| format!("{}: {e}", folder.display()))?;
+    let (store, set_aside_toast) = snipdeck_app::paths::open_library_folder(
+        &folder,
+        &settings.backup_folder(&folder),
+        Timestamp::now(),
+    )
+    .map_err(|e| format!("{}: {e}", folder.display()))?;
     Ok((
         store,
         settings,

@@ -1984,10 +1984,10 @@ where
 
     /// Opens the folder of the daily backups (made if no backup has been taken yet).
     fn open_backups_folder(self: &Rc<Self>) {
-        let Some(dir) = self.data_dir.clone() else {
+        if self.data_dir.is_none() {
             return;
-        };
-        let backups = dir.join("backups");
+        }
+        let backups = self.backup_folder();
         let _ = std::fs::create_dir_all(&backups);
         self.open_folder(&backups);
     }

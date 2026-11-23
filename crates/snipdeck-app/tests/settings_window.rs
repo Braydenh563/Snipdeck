@@ -1436,6 +1436,23 @@ fn export_saves_a_new_file_in_documents_each_time_and_opens_the_folder() {
     });
 }
 
+#[test]
+fn open_backups_folder_opens_the_chosen_backup_folder() {
+    on_ui_thread(|| {
+        let r = rig();
+        let chosen = r.dir.path().join("Elsewhere");
+        r.ctl
+            .borrow_mut()
+            .set_backup_folder(&chosen.to_string_lossy());
+        r.ui.invoke_open_backups_folder_requested();
+        assert_eq!(r.host.opened.borrow().last().unwrap(), &chosen);
+        assert!(
+            !r.dir.path().join("backups").exists(),
+            "the default folder is not made"
+        );
+    });
+}
+
 // ---- Erase library --------------------------------------------------------------------------
 
 /// A library on disk with the demo in it, a backup, the settings, the stale licence file an older

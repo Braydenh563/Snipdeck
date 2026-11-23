@@ -393,8 +393,12 @@ fn a_library_that_cannot_be_opened_is_set_aside_and_rebuild_finds_the_backups() 
     fs::write(&db, &bytes).expect("damage");
     assert!(Store::open(dir.path()).is_err());
 
-    let (store, toast) = snipdeck_app::paths::open_library_folder(dir.path(), now())
-        .expect("the app opens a fresh library");
+    let (store, toast) = snipdeck_app::paths::open_library_folder(
+        dir.path(),
+        &snipdeck_portable::backup::backups_dir(dir.path()),
+        now(),
+    )
+    .expect("the app opens a fresh library");
     let Some(ToastMessage::LibrarySetAside { folder, has_backup }) = toast.map(|t| t.message)
     else {
         panic!("the set-aside notice");

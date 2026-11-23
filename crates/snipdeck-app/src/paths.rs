@@ -202,7 +202,7 @@ pub fn saver_baseline(loaded: &Loaded, salvage_written: bool) -> Settings {
     }
 }
 
-/// Opens the library in `folder`. One that cannot be opened (damaged, empty beside backups, a
+/// Opens the library in `folder`; `backups` is where the user's backups are (for the notice). One that cannot be opened (damaged, empty beside backups, a
 /// failed migration) is kept in `snipdeck.damaged-<stamp>/` and a fresh one opens, with a Danger
 /// notice pointing at Settings > Rebuild from backup. Everything else (another Snipdeck holds
 /// the folder, a newer database, a full or read-only disk) is an error and nothing moves.
@@ -211,6 +211,7 @@ pub fn saver_baseline(loaded: &Loaded, salvage_written: bool) -> Settings {
 /// The store's error when the library cannot be opened and moving it aside is not safe.
 pub fn open_library_folder(
     folder: &Path,
+    backups: &Path,
     now: jiff::Timestamp,
 ) -> Result<(snipdeck_store::Store, Option<crate::toast::Toast>), snipdeck_store::Error> {
     let stamp = now
@@ -228,8 +229,7 @@ pub fn open_library_folder(
         .unwrap_or_else(|| format!("snipdeck.damaged-{stamp}-x"));
     let (store, kept) = snipdeck_store::Store::open_or_set_aside(folder, &stem)?;
     let has_backup =
-        snipdeck_portable::backup::list_backups(&snipdeck_portable::backup::backups_dir(folder))
-            .is_ok_and(|list| !list.is_empty());
+        snipdeck_portable::backup::list_backups(backups).is_ok_and(|list| !list.is_empty());
     let toast = kept.map(|folder| crate::toast::Toast {
         kind: crate::toast::ToastKind::Danger,
         message: crate::toast::ToastMessage::LibrarySetAside { folder, has_backup },
@@ -564,7 +564,12 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(dir.path().join("snipdeck.db"), vec![7u8; 2048]).unwrap();
         let now: jiff::Timestamp = "2026-11-16T10:00:00Z".parse().unwrap();
-        let (_store, toast) = open_library_folder(dir.path(), now).unwrap();
+        let (_store, toast) = open_library_folder(
+            dir.path(),
+            &snipdeck_portable::backup::backups_dir(dir.path()),
+            now,
+        )
+        .unwrap();
         let toast = toast.expect("a notice");
         assert_eq!(toast.kind, crate::toast::ToastKind::Danger);
         let crate::toast::ToastMessage::LibrarySetAside { folder, has_backup } = &toast.message
@@ -586,11 +591,31 @@ mod tests {
     }
 
     #[test]
+    fn the_set_aside_notice_finds_a_backup_in_the_chosen_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        let chosen = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("snipdeck.db"), vec![7u8; 2048]).unwrap();
+        std::fs::write(
+            chosen.path().join("snipdeck-backup-20261115.snipdeck"),
+            b"x",
+        )
+        .unwrap();
+        let now: jiff::Timestamp = "2026-11-16T10:00:00Z".parse().unwrap();
+        let (_store, toast) = open_library_folder(dir.path(), chosen.path(), now).unwrap();
+        let crate::toast::ToastMessage::LibrarySetAside { has_backup, .. } =
+            toast.expect("a notice").message
+        else {
+            panic!("the set-aside notice");
+        };
+        assert!(has_backup, "the chosen folder holds a backup");
+    }
+
+    #[test]
     fn a_library_held_by_another_snipdeck_is_not_moved() {
         let dir = tempfile::tempdir().unwrap();
         let _held = snipdeck_store::Store::open(dir.path()).unwrap();
         let now: jiff::Timestamp = "2026-11-16T10:00:00Z".parse().unwrap();
-        assert!(open_library_folder(dir.path(), now).is_err());
+        assert!(open_library_folder(dir.path(), dir.path(), now).is_err());
         assert!(dir.path().join("snipdeck.db").is_file());
     }
 }
