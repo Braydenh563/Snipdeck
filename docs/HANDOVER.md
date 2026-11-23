@@ -1,5 +1,13 @@
 ## Morning summary
 
+2026-11-23 (third update). Fixed and pushed (gate green): Main header row room for the focus ring (9a18360a), one
+centred empty-state action group (e7861b11), Symbols freeze and the group strip (afe7ea01: the preview built an
+element per cell and decoded every picture of the kind on each tab switch; the strip looped over grid rows).
+Not verified in a running app on Windows: frame time while scrolling the grids (icons still rasterise per visible
+cell, cached), the look of the header gap and empty state. Next, in order: board delete Undo toast, per-board
+Edit/Delete and board-named menu labels; Panel "All" tab and the delete-list "also delete its items" toggle;
+high-contrast sidebar focus ring and Panel cursor marker (.claude/audit/final2.md items 2 and 3). Weekly usage 95%.
+
 2026-11-23 (second update). PR #5 is still held by the owner as 1.0.0: never merge, tag or release unasked.
 - Done since: the final audit's 4 findings (Picker reveal of sensitive rows, chosen backup folder, group-delete docs,
   4 unused controller commands); the Windows test wizard builds again; owner findings fixed: sidebar focus ring inside
