@@ -7,6 +7,8 @@ use snipdeck_core::UseMode;
 use snipdeck_platform::chord::Chord;
 use snipdeck_platform::pipeline::{self, Env, SETTLE, SystemTiming, Timing};
 use snipdeck_platform::route::{self, CopyReason, Policy, Route};
+use snipdeck_platform::command_line::AutostartStatus;
+use snipdeck_platform::handover::Request;
 use snipdeck_platform::windows::autostart;
 use snipdeck_platform::windows::clipboard::WinClipboard;
 use snipdeck_platform::windows::dpapi;
@@ -134,13 +136,21 @@ pub fn run() -> i32 {
     sys::ensure_message_queue();
 
     // The single-instance claim comes first so a second launch exits without touching hotkeys.
-    let _instance = match SingleInstance::acquire(APP_ID, || println!("[m2] raised")) {
+    let _instance = match SingleInstance::acquire(
+        APP_ID,
+        &Request::Show,
+        |request, ack| {
+            println!("[m2] raised: {request:?}");
+            ack.send();
+        },
+        || println!("[m2] asked to quit"),
+    ) {
         Ok(Acquired::First(guard)) => {
             println!("[m2] instance=first");
             guard
         }
-        Ok(Acquired::Second) => {
-            println!("[m2] second instance");
+        Ok(Acquired::Second(delivery)) => {
+            println!("[m2] second instance: {delivery:?}");
             return 0;
         }
         Err(e) => {
@@ -401,7 +411,7 @@ fn autostart_test(hold_secs: u64) -> i32 {
     };
     let set = |enabled: bool| -> Result<bool, String> {
         autostart::set_enabled(Path::new(&exe), "", enabled).map_err(|e| e.to_string())?;
-        Ok(autostart::is_enabled())
+        Ok(autostart::status() == AutostartStatus::On)
     };
     let on = set(true);
     println!("[m2] autostart set on -> is_enabled={on:?} (expect Ok(true))");
