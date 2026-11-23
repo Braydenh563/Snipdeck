@@ -160,6 +160,14 @@ fn the_picker_searches_by_scope_and_moves_a_selection() {
     assert!(w.ctl.view().picker.is_none());
 }
 
+/// What the Picker's binding does on Enter: take the row, then use the item.
+fn pick_and_use(ctl: &mut Ctl, index: usize, mode: UseMode) -> UseResult {
+    match ctl.picker_take(index) {
+        Some(item) => ctl.use_item(item, mode),
+        None => UseResult::Failed,
+    }
+}
+
 #[test]
 fn enter_in_the_picker_pastes_counts_the_use_and_closes_it() {
     let mut w = world();
@@ -167,7 +175,7 @@ fn enter_in_the_picker_pastes_counts_the_use_and_closes_it() {
     w.ctl.picker_query("two");
     let refocused = w.targets.refocus_count();
     assert_eq!(
-        w.ctl.picker_use(0, UseMode::Paste),
+        pick_and_use(&mut w.ctl, 0, UseMode::Paste),
         UseResult::Done(UseOutcome::Pasted)
     );
     assert!(w.ctl.view().picker.is_none());
@@ -184,7 +192,7 @@ fn shift_enter_in_the_picker_only_copies() {
     let mut w = world();
     w.ctl.on_hotkey(HotkeyAction::Picker);
     assert_eq!(
-        w.ctl.picker_use(0, UseMode::Copy),
+        pick_and_use(&mut w.ctl, 0, UseMode::Copy),
         UseResult::Done(UseOutcome::Copied)
     );
     assert_eq!(w.ctl.services().keyboard.sent, Vec::<Vec<KeyEvent>>::new());
@@ -198,7 +206,10 @@ fn a_number_key_takes_the_nth_row_and_a_missing_row_leaves_the_picker_open() {
     assert_eq!(w.ctl.picker_take_number(10), None);
     assert_eq!(w.ctl.picker_take_number(0), None);
     assert!(w.ctl.view().picker.is_some());
-    assert_eq!(w.ctl.picker_use(9, UseMode::Paste), UseResult::Failed);
+    assert_eq!(
+        pick_and_use(&mut w.ctl, 9, UseMode::Paste),
+        UseResult::Failed
+    );
     assert!(w.ctl.view().picker.is_some(), "no such row: still open");
     assert_eq!(w.ctl.picker_take_number(2), Some(w.ids[1]));
     assert!(w.ctl.view().picker.is_none());
@@ -214,7 +225,10 @@ fn a_template_chosen_in_the_picker_closes_it_and_opens_the_fill_form() {
     let mut w = world();
     w.ctl.on_hotkey(HotkeyAction::Picker);
     w.ctl.picker_query("greeting");
-    assert_eq!(w.ctl.picker_use(0, UseMode::Paste), UseResult::NeedsAnswers);
+    assert_eq!(
+        pick_and_use(&mut w.ctl, 0, UseMode::Paste),
+        UseResult::NeedsAnswers
+    );
     let view = w.ctl.view();
     assert!(view.picker.is_none());
     assert_eq!(view.fill.expect("form").title, "Greeting");
@@ -337,6 +351,39 @@ fn holding_space_in_the_picker_reveals_only_a_sensitive_row_and_closing_ends_it(
         None,
         "a reopened Picker starts hidden"
     );
+}
+
+// A revealed sensitive Picker row carries the decrypted text (its stored preview is always empty).
+#[test]
+fn a_revealed_sensitive_picker_row_shows_the_text_and_a_lock_hides_it_again() {
+    let mut w = world();
+    let secret = w.ids[0];
+    let text = usecase::item_text(&w.ctl.store, secret)
+        .expect("text")
+        .expect("some");
+    make_sensitive(&mut w, secret);
+    w.ctl.open_picker();
+    let at = w
+        .ctl
+        .view()
+        .picker
+        .expect("open")
+        .rows
+        .iter()
+        .position(|r| r.id == secret)
+        .expect("the secret is a result");
+    assert_eq!(w.ctl.view().picker.expect("open").rows[at].preview, "");
+    w.ctl.picker_reveal(at, true);
+    let view = w.ctl.view().picker.expect("open");
+    assert_eq!(view.revealed, Some(at));
+    assert!(!text.is_empty());
+    assert_eq!(
+        view.rows[at].preview, text,
+        "the revealed row shows the text"
+    );
+    w.ctl.lock.set = true;
+    w.ctl.lock_now();
+    assert_eq!(w.ctl.picker_revealed, None, "a lock ends the reveal");
 }
 
 #[test]

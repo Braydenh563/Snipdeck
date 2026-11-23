@@ -692,6 +692,7 @@ where
         self.clear_pending_clipboard_now();
         self.revealed = None;
         self.panel_revealed = None;
+        self.picker_revealed = None;
         self.sync_recent_gate();
         // The editor's window closes with the lock; what was typed waits sealed for the unlock.
         match parked {

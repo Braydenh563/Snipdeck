@@ -842,18 +842,32 @@ where
             list_menu_sort: self.list_menu_sort(),
             list_menu_css: matches!(self.menu, PanelMenu::List(id) if self.list_has_colours(id)),
             hotkeys_paused: self.session.hotkeys_paused,
-            picker: self.picker.as_ref().map(|p| PickerView {
-                rows: p.rows(),
-                revealed: self
+            picker: self.picker.as_ref().map(|p| {
+                let mut rows = p.rows();
+                let revealed = self
                     .picker_revealed
-                    .and_then(|id| p.rows().iter().position(|r| r.id == id)),
-                scope: p.scope(),
-                more: p.more(),
-                tag: p.tag_name().to_owned(),
-                query: p.query().to_owned(),
-                selected: p.selected(),
-                footer: self.model.footer(),
-                detail: self.picker_detail_view(p),
+                    .and_then(|id| rows.iter().position(|r| r.id == id));
+                // A sensitive item keeps no preview; the revealed row shows the decrypted text,
+                // as the Panel's does.
+                if let Some(at) = revealed
+                    && let Ok(Some(text)) = usecase::item_text(&self.store, rows[at].id)
+                {
+                    rows[at].preview = text
+                        .chars()
+                        .take(snipdeck_core::Item::PREVIEW_CHARS)
+                        .collect();
+                }
+                PickerView {
+                    rows,
+                    revealed,
+                    scope: p.scope(),
+                    more: p.more(),
+                    tag: p.tag_name().to_owned(),
+                    query: p.query().to_owned(),
+                    selected: p.selected(),
+                    footer: self.model.footer(),
+                    detail: self.picker_detail_view(p),
+                }
             }),
             fill: self.fill_view(),
             recent: self.recent_view(),
