@@ -14,7 +14,7 @@ use snipdeck_platform::{
 use super::{
     CLIPBOARD_CLEAR_ATTEMPTS, CLIPBOARD_CLEAR_RETRY, ClipboardDigest, Controller, FillSubmission,
     Library, PendingClear, REFOCUS_WAIT, StackView, UseResult, failed, neutral,
-    views::{FillErase, PICKER_DETAIL_CHARS, PickerDetail},
+    views::{FillErase, PICKER_DETAIL_CHARS, PickerDetail, PickerView},
 };
 use crate::{
     capture::{self, Captured},
@@ -239,6 +239,34 @@ where
     /// F3 in the Picker: opens or closes the preview pane.
     pub fn picker_toggle_detail(&mut self) {
         self.picker_detail = !self.picker_detail;
+    }
+
+    /// What the Picker shows now. A sensitive item keeps no preview, so the revealed row gets the
+    /// decrypted text, as the Panel's does.
+    pub(super) fn picker_view(&self, p: &PickerModel) -> PickerView {
+        let mut rows = p.rows();
+        let revealed = self
+            .picker_revealed
+            .and_then(|id| rows.iter().position(|r| r.id == id));
+        if let Some(at) = revealed
+            && let Ok(Some(text)) = usecase::item_text(&self.store, rows[at].id)
+        {
+            rows[at].preview = text
+                .chars()
+                .take(snipdeck_core::Item::PREVIEW_CHARS)
+                .collect();
+        }
+        PickerView {
+            rows,
+            revealed,
+            scope: p.scope(),
+            more: p.more(),
+            tag: p.tag_name().to_owned(),
+            query: p.query().to_owned(),
+            selected: p.selected(),
+            footer: self.model.footer(),
+            detail: self.picker_detail_view(p),
+        }
     }
 
     /// The preview pane for the selected row: the whole text (cut at `PICKER_DETAIL_CHARS`),

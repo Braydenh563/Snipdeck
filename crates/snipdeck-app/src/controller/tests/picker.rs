@@ -376,7 +376,7 @@ fn a_revealed_sensitive_picker_row_shows_the_text_and_a_lock_hides_it_again() {
     w.ctl.picker_reveal(at, true);
     let view = w.ctl.view().picker.expect("open");
     assert_eq!(view.revealed, Some(at));
-    assert!(!text.is_empty());
+    assert_ne!(text, "", "the item has text to reveal");
     assert_eq!(
         view.rows[at].preview, text,
         "the revealed row shows the text"
