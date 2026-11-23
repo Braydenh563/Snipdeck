@@ -101,15 +101,13 @@ export component SidebarItem inherits Rectangle {
         }
     }
 
-    // 2px ring, 2px offset (DESIGN.md §2), keyboard focus only.
+    // 2px ring, keyboard focus only. Drawn inside the row, not offset outside it (DESIGN.md §2's
+    // default): rows sit 2px apart, so an outside ring ran under the next row and its hover fill
+    // covered it.
     Rectangle {
-        x: -4px;
-        y: -4px;
-        width: parent.width + 8px;
-        height: parent.height + 8px;
         border-width: root.focused ? 2px : 0px;
         border-color: Theme.focus-ring;
-        border-radius: Radius.md + 2px;
+        border-radius: Radius.md;
         background: transparent;
     }
 
