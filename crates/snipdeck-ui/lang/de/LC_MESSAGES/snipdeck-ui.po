@@ -2163,9 +2163,6 @@ msgstr "Neue Liste…"
 msgid "New name for {}"
 msgstr "Neuer Name für {}"
 
-msgid "New note"
-msgstr "Neue Notiz"
-
 msgid "New password"
 msgstr "Neues Passwort"
 

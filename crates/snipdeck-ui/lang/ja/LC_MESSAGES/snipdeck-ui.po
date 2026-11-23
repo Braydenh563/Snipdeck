@@ -2156,9 +2156,6 @@ msgstr "新しいリスト…"
 msgid "New name for {}"
 msgstr "{} の新しい名前"
 
-msgid "New note"
-msgstr "新しいメモ"
-
 msgid "New password"
 msgstr "新しいパスワード"
 

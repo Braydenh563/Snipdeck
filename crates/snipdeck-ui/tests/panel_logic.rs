@@ -2269,7 +2269,7 @@ ui_tests! {
         assert!(missing(&ui, "New item in Work", AccessibleRole::Button), "no second create row under the empty state");
         assert!(!missing(&ui, "Save from clipboard", AccessibleRole::Button));
         // The quiet action opens the box where the row would be; Enter saves what was typed.
-        find(&ui, "New note", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "New item", AccessibleRole::Button).invoke_accessible_default_action();
         settle();
         take(&log);
         type_text(ui.window(), "hello");
@@ -2689,7 +2689,7 @@ ui_tests! {
     fn the_new_button_opens_a_menu_of_save_from_clipboard_new_note_and_new_list() {
         let (ui, log) = start();
         let entries = |ui: &PanelWindow| {
-            ["Save from clipboard", "New note", "New list"]
+            ["Save from clipboard", "New item", "New list"]
                 .map(|l| (l, all(ui, l, AccessibleRole::ListItem).len()))
         };
         assert_eq!(entries(&ui).map(|e| e.1), [0, 0, 0]);

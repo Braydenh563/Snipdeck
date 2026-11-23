@@ -2876,10 +2876,6 @@ msgstr ""
 msgid "New name for {}"
 msgstr ""
 
-#: ui/panel.slint:630 ui/panel.slint:2687
-msgid "New note"
-msgstr ""
-
 #: ui/master_password.slint:292 ui/master_password.slint:293
 msgid "New password"
 msgstr ""

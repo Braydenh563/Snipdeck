@@ -613,7 +613,7 @@ export component PanelWindow inherits Window {
     property <length> search-status-h: max(Space.s5, Type.line-sm + Space.s1);
     property <length> search-h: (root.symbols-open || root.colours-open) ? 0px : root.search-always ? search.box-height + Space.s2
         : root.search-block ? Space.s2 + search.box-height + Space.s1 + root.search-status-h + Space.s1 : 0px;
-    // The header's New menu (Save from clipboard, New note, New list).
+    // The header's New menu (Save from clipboard, New item, New list).
     property <bool> new-menu-open: false;
     // A list tab holds the keyboard focus (the tab row is not always there, so it reports itself).
     property <bool> tabs-focused: false;
@@ -627,7 +627,7 @@ export component PanelWindow inherits Window {
     in property <[MenuEntry]> pinned-more-entries;
     property <[MenuEntry]> new-menu-entries: [
         { text: @tr("Save from clipboard"), icon: Icons.clipboard },
-        { text: @tr("New note"), icon: Icons.pencil-simple, shortcut: "Ctrl+N" },
+        { text: @tr("New item"), icon: Icons.pencil-simple, shortcut: "Ctrl+N" },
         { text: @tr("New list"), icon: Icons.plus },
     ];
     // Space is held down to reveal the selected sensitive row.
@@ -1766,7 +1766,7 @@ export component PanelWindow inherits Window {
                             changed has-hover => { root.tip-set(self.tooltip, self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.has-hover || self.has-focus); }
                             changed has-focus => { root.tip-set(self.tooltip, self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.has-hover || self.has-focus); }
                         }
-                        // New: a menu of ways to add (Save from clipboard, New note, New list). Icon only below 300px.
+                        // New: a menu of ways to add (Save from clipboard, New item, New list). Icon only below 300px.
                         new-button := Rectangle {
                             property <bool> tip-on: new-touch.has-hover || new-scope.has-focus;
                             out property <bool> has-focus: new-scope.has-focus;
@@ -2357,7 +2357,9 @@ export component PanelWindow inherits Window {
                                                 set-position: item.set-position;
                                                 set-size: item.set-size;
                                                 formatted: item.formatted;
-                                                selected: root.delete-mode ? false : root.marked-count > 0 || root.select-mode ? item.marked : i == root.sel;
+                                                selected: root.delete-mode ? false : root.marked-count > 0 || root.select-mode ? item.marked : false;
+                                                // The cursor row is only tinted: a full selection fill looked chosen, as if a click would act on it.
+                                                cursor: !root.delete-mode && root.marked-count == 0 && !root.select-mode && i == root.sel;
                                                 masked-hint: @tr("Hidden. Hold Space to reveal.");
                                                 revealed: i == root.revealed-index;
                                                 pulling: i == root.used-index;
@@ -2489,7 +2491,7 @@ export component PanelWindow inherits Window {
 
                     // The "+ New item" row: directly under the last item (or at the bottom of a short or empty list).
                     quick := QuickAdd {
-                        // An empty list shows its empty state's two create actions instead; "New note" opens the box.
+                        // An empty list shows its empty state's two create actions instead; "New item" opens the box.
                         visible: !root.list-hidden && !root.searching && !root.no-lists && (root.rows.length > 0 || self.expanded);
                         x: Space.s2;
                         width: parent.width - 2 * Space.s2;
@@ -2542,6 +2544,14 @@ export component PanelWindow inherits Window {
                     if root.recent-open: Rectangle {
                         width: parent.width;
                         height: parent.height;
+                        // New copies arrive at the top. A list read from the top stays there to show them; a list the user
+                        // scrolled down keeps its place.
+                        property <[RecentRow]> rows: root.recent-rows;
+                        changed rows => {
+                            if (recent-list.viewport-y > -Space.hit) {
+                                recent-list.viewport-y = 0px;
+                            }
+                        }
                         recent-list := ListView {
                             x: Space.s2 - Space.s1;
                             y: 0px;
@@ -2684,7 +2694,7 @@ export component PanelWindow inherits Window {
                             : @tr("Copy something, then save it here.");
                         action-text: root.no-lists ? @tr("New list") : root.searching ? @tr("Create “{}”", root.query) : @tr("Save from clipboard");
                         caption: root.searching && !root.no-lists ? @tr("Adds a text item to {}", root.add-list-name) : "";
-                        secondary-text: root.no-lists ? "" : root.searching ? @tr("Clear search") : @tr("New note");
+                        secondary-text: root.no-lists ? "" : root.searching ? @tr("Clear search") : @tr("New item");
                         action => {
                             if (root.no-lists) {
                                 root.add-list-requested();
