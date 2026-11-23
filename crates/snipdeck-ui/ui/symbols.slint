@@ -269,21 +269,30 @@ export component SymbolsView inherits Rectangle {
             }
         }
 
+        // The group buttons share the strip's width equally, each at least as wide as its name; when they do
+        // not fit, the strip scrolls sideways. A gap above and below keeps the focus ring inside the strip.
         if root.strip-shown && root.text-strip: Rectangle {
-            height: Space.hit;
+            height: Space.hit + 2 * Space.s1;
             clip: true;
             Flickable {
-                content-width: textstrip.preferred-width;
+                content-width: max(self.width, textstrip.preferred-width);
                 interactive: true;
                 textstrip := HorizontalLayout {
+                    width: max(parent.width, self.preferred-width);
                     padding-left: Space.s2;
                     padding-right: Space.s2;
+                    padding-top: Space.s1;
+                    padding-bottom: Space.s1;
                     spacing: Space.s1;
-                    alignment: start;
+                    alignment: stretch;
                     for grow in root.rows: Rectangle {
                         visible: grow.group >= 0;
-                        width: grow.group >= 0 ? max(Space.hit-min, chiplabel.preferred-width + 2 * Space.s2) : 0px;
+                        horizontal-stretch: grow.group >= 0 ? 1 : 0;
+                        min-width: grow.group >= 0 ? max(Space.hit-min, chiplabel.preferred-width + 2 * Space.s2) : 0px;
+                        max-width: grow.group >= 0 ? 10000px : 0px;
                         border-radius: Radius.md;
+                        border-width: 1px;
+                        border-color: Theme.border-subtle;
                         background: cfocus.has-focus || ctap.has-hover ? Theme.bg-hover : transparent;
                         accessible-role: button;
                         accessible-label: grow.header;
@@ -298,7 +307,8 @@ export component SymbolsView inherits Rectangle {
                             }
                         }
                         chiplabel := Text {
-                            x: Space.s2;
+                            width: parent.width;
+                            horizontal-alignment: center;
                             text: grow.header;
                             font-family: Fonts.sans;
                             font-size: Type.xs;
