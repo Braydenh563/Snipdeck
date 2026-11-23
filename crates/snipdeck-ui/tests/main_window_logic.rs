@@ -1477,6 +1477,12 @@ ui_tests! {
         settle();
         find(&ui, "No items yet", AccessibleRole::Text);
         find(&ui, "Save what you paste often.", AccessibleRole::Text);
+        // One centred group: the actions share one width and one centre line, whatever shortcut caps they carry.
+        let save = find(&ui, "Save from clipboard", AccessibleRole::Button);
+        let import = find(&ui, "Import…", AccessibleRole::Button);
+        let centre = |e: &ElementHandle| e.absolute_position().x + e.size().width / 2.0;
+        assert!((save.size().width - import.size().width).abs() < 0.5, "equal widths: {} vs {}", save.size().width, import.size().width);
+        assert!((centre(&save) - centre(&import)).abs() < 0.5, "one centre line: {} vs {}", centre(&save), centre(&import));
         take(&log);
         find(&ui, "Save from clipboard", AccessibleRole::Button).invoke_accessible_default_action();
         find(&ui, "New item", AccessibleRole::Button).invoke_accessible_default_action();
@@ -1524,6 +1530,23 @@ ui_tests! {
         assert!(commands.size().width > 100.0, "label and keycaps: {}", commands.size().width);
         let view = find(&ui, "View", AccessibleRole::Button);
         assert!(view.size().width > 32.0, "label and caret: {}", view.size().width);
+    }
+
+    fn the_heading_row_leaves_room_for_the_focus_ring_of_its_buttons() {
+        let (ui, _log) = start();
+        ui.window().set_size(slint::LogicalSize::new(232.0 + 854.0, 640.0));
+        settle();
+        let commands = find(&ui, "Commands (Ctrl+K)", AccessibleRole::Button);
+        let filter = find(&ui, "Filter the items", AccessibleRole::Button);
+        let above = commands.absolute_position().y + commands.size().height;
+        let gap_above = filter.absolute_position().y - above;
+        // The 2 px ring sits 2 px off the button: it needs 4 px each side, inside the row and not under the toolbar.
+        assert!(gap_above >= 4.0 - 0.5, "gap between the toolbar and the Filter button: {gap_above}");
+        let below = filter.absolute_position().y + filter.size().height;
+        let rows = by_role(&ui, AccessibleRole::ListItem);
+        let first = rows.iter().map(|r| r.absolute_position().y).filter(|&y| y >= below - 1.0).fold(f32::MAX, f32::min);
+        assert!(first < f32::MAX, "no list row under the heading");
+        assert!(first - below >= 4.0 - 0.5, "gap between the Filter button and the first row: {}", first - below);
     }
 
     fn the_detail_pane_takes_its_width_before_the_toolbar_is_measured() {

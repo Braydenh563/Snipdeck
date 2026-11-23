@@ -732,10 +732,10 @@ fn contrast(a: [u8; 3], b: [u8; 3]) -> f64 {
     (hi + 0.05) / (lo + 0.05)
 }
 
-/// The bounding box (x0, y0, x1, y1; inclusive) of the pixels equal to `ink` in the bottom band, right of the sidebar.
+/// The bounding box (x0, y0, x1, y1; inclusive) of the pixels equal to `ink` in the bottom band (below the last list row), right of the sidebar.
 fn ink_box(f: &Frame, ink: [u8; 3]) -> Option<(u32, u32, u32, u32)> {
     let mut b: Option<(u32, u32, u32, u32)> = None;
-    for y in 520..SIZE.1 {
+    for y in 550..SIZE.1 {
         for x in 240..SIZE.0 {
             if f.pixel(x, y) == ink {
                 b = Some(match b {
@@ -757,7 +757,7 @@ fn toast_fill_is_ink() {
         h.component.set_toast_kind(ToastKind::Neutral);
         let f = render(&h);
         let (x0, y0, x1, y1) = ink_box(&f, ink).expect("an ink toast");
-        assert_eq!(y1 - y0 + 1, 40, "h40 (dark {dark})");
+        assert_eq!(y1 - y0 + 1, 40, "h40 (dark {dark}) box {x0},{y0},{x1},{y1}");
         assert!(x1 - x0 < 480, "max width 480 (dark {dark})");
         // Centred in the item area (right of the 232px sidebar).
         let mid = f64::midpoint(f64::from(x0), f64::from(x1));

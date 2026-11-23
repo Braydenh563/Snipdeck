@@ -2210,8 +2210,9 @@ export component MainWindow inherits Window {
                 }
 
                 // ---- Heading: where the user is -----------------------------------------------
+                // The buttons' 2 px focus ring sits 2 px outside them: the row keeps Space.s1 above and below.
                 Rectangle {
-                    height: max(root.ctl-h, Type.line-lg + Space.s2);
+                    height: max(root.ctl-h, Type.line-lg + Space.s2) + 2 * Space.s1;
                     HorizontalLayout {
                         padding-left: root.pad;
                         padding-right: root.pad;
