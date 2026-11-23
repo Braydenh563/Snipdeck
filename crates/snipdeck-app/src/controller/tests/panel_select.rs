@@ -909,12 +909,21 @@ fn a_file_over_the_limit_is_skipped_and_said() {
     assert!(w.ctl.history_view().undo.is_none(), "no step for nothing");
 }
 
+/// A drop as the windows run it, with the file reads done here instead of off the UI thread.
+fn drop_inline(ctl: &mut Ctl, paths: &[String], origin: Origin, list: Option<ListId>) {
+    let mut run = ctl.drop_begin(paths, origin, list);
+    while let Some(mut r) = run {
+        let done = r.next_job().run();
+        run = ctl.drop_read_done(r, done);
+    }
+}
+
 #[test]
 fn a_drop_to_a_given_list_targets_that_list() {
     let dir = tempfile::tempdir().expect("dir");
     let mut w = world();
     let paths = files_in(&dir, &[("dropped.txt", b"x")]);
-    w.ctl.drop_create(&paths, Origin::Panel, Some(w.links_list));
+    drop_inline(&mut w.ctl, &paths, Origin::Panel, Some(w.links_list));
     assert_eq!(items_in(&w, w.links_list), 2);
     assert_eq!(w.ctl.view().rows.len(), 4, "the shown list is untouched");
     assert_eq!(
@@ -925,9 +934,10 @@ fn a_drop_to_a_given_list_targets_that_list() {
         }
     );
     // No list given: the list shown. A list that is gone falls back to the list shown too.
-    w.ctl.drop_create(&paths, Origin::Panel, None);
+    drop_inline(&mut w.ctl, &paths, Origin::Panel, None);
     assert_eq!(w.ctl.view().rows.len(), 5);
-    w.ctl.drop_create(
+    drop_inline(
+        &mut w.ctl,
         &paths,
         Origin::Panel,
         Some(snipdeck_core::ListId::generate()),
@@ -1026,7 +1036,7 @@ fn a_dropped_folder_is_skipped_like_an_unusable_file() {
     let folder = dir.path().join("sub");
     std::fs::create_dir(&folder).expect("folder");
     paths.push(folder.to_string_lossy().into_owned());
-    w.ctl.drop_create(&paths, Origin::Panel, None);
+    drop_inline(&mut w.ctl, &paths, Origin::Panel, None);
     assert_eq!(w.ctl.view().rows.len(), 5);
     assert_eq!(
         w.ctl.view().toast.expect("toast").message,
@@ -1049,7 +1059,7 @@ fn too_many_files_are_refused_with_their_own_message() {
     let many: Vec<String> = (0..=snipdeck_platform::win_formats::MAX_DROP_FILES)
         .map(|i| format!("f{i}"))
         .collect();
-    w.ctl.drop_create(&many, Origin::Panel, None);
+    drop_inline(&mut w.ctl, &many, Origin::Panel, None);
     assert_eq!(w.ctl.view().rows.len(), 4);
     assert_eq!(
         w.ctl.view().toast.expect("toast").message,

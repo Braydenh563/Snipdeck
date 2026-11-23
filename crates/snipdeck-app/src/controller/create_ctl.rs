@@ -103,16 +103,6 @@ where
         None
     }
 
-    /// Files were dropped on a window: makes items from them in `list`, reading them on the
-    /// calling thread (the windows read them off the UI thread with [`drop_begin`](Self::drop_begin)
-    /// instead). Windows tells winit where the files came from but not where on the window, so
-    /// the callers pass `None`: the list the window shows (so does a `list` that is gone).
-    pub fn drop_create(&mut self, paths: &[String], origin: Origin, list: Option<ListId>) {
-        if let Some(run) = self.drop_begin(paths, origin, list) {
-            self.read_inline(run);
-        }
-    }
-
     /// Reads the rest of `run` on the calling thread, a job at a time.
     fn read_inline(&mut self, mut run: DropRun) {
         loop {

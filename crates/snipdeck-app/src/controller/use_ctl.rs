@@ -288,15 +288,6 @@ where
         item
     }
 
-    /// [`picker_take`](Self::picker_take) and [`use_item`](Self::use_item) in one: Enter (or a
-    /// click) on row `index` pastes it, Shift+Enter copies it.
-    pub fn picker_use(&mut self, index: usize, mode: UseMode) -> UseResult {
-        match self.picker_take(index) {
-            Some(item) => self.use_item(item, mode),
-            None => UseResult::Failed,
-        }
-    }
-
     /// Where the Target's text caret is on the screen, if it has one. Read it before a window
     /// of ours takes the foreground.
     #[must_use]

@@ -606,34 +606,6 @@ where
         vec![Effect::EditItem(id)]
     }
 
-    /// Renames saved colour `id`. An empty name restores the default title.
-    pub fn rename_saved_colour(&mut self, id: ItemId, title: &str) {
-        let Ok(mut item) = self.store.item(id) else {
-            self.show_toast(failed());
-            return;
-        };
-        let Some(c) = colour_of(&item) else {
-            return;
-        };
-        let before = item.clone();
-        let title = title.trim();
-        item.title = if title.is_empty() {
-            title_for(c)
-        } else {
-            title.to_owned()
-        };
-        item.updated_at = self.clock.now();
-        let mut changes = Vec::new();
-        if super::history_ctl::update_recorded(&mut self.store, &before, &item, &mut changes)
-            .is_ok()
-        {
-            self.record_step(crate::history::Action::Edit, changes);
-            self.library_changed();
-        } else {
-            self.show_toast(failed());
-        }
-    }
-
     fn read_saved_colours(&self) -> Vec<(ItemId, Rgba8)> {
         let Some(list) = self.home_list_id() else {
             return Vec::new();

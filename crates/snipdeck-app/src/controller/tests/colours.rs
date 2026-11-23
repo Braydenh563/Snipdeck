@@ -949,15 +949,19 @@ fn a_saved_colour_is_titled_by_its_hex_and_nearest_name() {
 }
 
 #[test]
-fn a_saved_colour_is_renamed_and_deleted_with_undo_from_the_tab() {
+fn a_saved_colour_is_deleted_with_undo_from_the_tab_and_edited_in_the_item_editor() {
     let mut w = world();
     let red = Rgba8::rgb(255, 0, 0);
     w.ctl.save_colour(BLUE, SaveTarget::Home);
     w.ctl.save_colour(red, SaveTarget::Home);
     let list = colours_list(&w).unwrap();
     let blue_id = w.ctl.saved_colours()[1].0;
-    w.ctl.rename_saved_colour(blue_id, "Brand blue");
-    assert_eq!(items_of(&w, list)[0].0, "Brand blue");
+    assert_eq!(
+        w.ctl.edit_saved_colour(blue_id),
+        vec![Effect::EditItem(blue_id)],
+        "renaming goes through the item editor"
+    );
+    assert_eq!(items_of(&w, list).len(), 2);
     w.ctl.delete_saved_colour(blue_id);
     assert_eq!(w.ctl.colour_view().saved, [red]);
     assert!(w.ctl.view().toast.is_some_and(|t| t.undo));

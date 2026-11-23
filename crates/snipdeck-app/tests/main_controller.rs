@@ -1962,11 +1962,8 @@ fn the_main_window_can_show_the_panel_again_and_names_its_hotkey() {
     // The Panel was closed: "Show Panel" asks the host to show it, as the tray does.
     drop(ctl.hide());
     assert!(!ctl.visible());
-    ctl.main_show_panel();
+    ctl.main_toggle_panel();
     assert!(ctl.visible());
-    assert_eq!(ctl.take_pending(), [Effect::ShowPanel]);
-    // Already up: the same effect brings it forward.
-    ctl.main_show_panel();
     assert_eq!(ctl.take_pending(), [Effect::ShowPanel]);
 }
 

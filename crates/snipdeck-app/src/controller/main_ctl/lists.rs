@@ -378,13 +378,6 @@ where
         self.pending.push(Effect::OpenHelp(topic));
     }
 
-    /// "Show Panel" in the Main window: shows the Panel (or brings an open one forward) the way
-    /// the tray and the hotkey do. The Panel's window acts on the effect when it redraws.
-    pub fn main_show_panel(&mut self) {
-        let effects = self.show();
-        self.pending.extend(effects);
-    }
-
     /// The toolbar's Panel button and the palette's Show Panel: hides the Panel when it is on
     /// screen, shows it otherwise (a docked Panel folds and unfolds, as with the hotkey).
     pub fn main_toggle_panel(&mut self) {
