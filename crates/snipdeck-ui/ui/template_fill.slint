@@ -75,7 +75,7 @@ export component TemplateFillWindow inherits Window {
     in property <bool> private: false;
     callback private-copied(text: string, start: int, end: int);
     callback private-cut(text: string, start: int, end: int) -> [string];
-    in property <string> submit-label: root.copies ? @tr("Copy") : @tr("Insert");
+    in property <string> submit-label: root.copies ? @tr("Copy") : @tr("Paste");
 
     // ---- State both ways ----------------------------------------------------------------------
     // The prompts and the answers so far; the form writes `value` and `choice-index` as the user fills it.

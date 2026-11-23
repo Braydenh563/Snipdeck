@@ -118,7 +118,7 @@ where
     run_step(controller, job, |_| {});
 }
 
-struct UnlockCore<C, K, T> {
+struct UnlockCore<C: Clipboard, K, T> {
     controller: Rc<RefCell<Controller<Store, C, K, T>>>,
     window: slint::Weak<ui::UnlockWindow>,
     /// Closes the window if the controller no longer wants the prompt (registered with
@@ -128,11 +128,11 @@ struct UnlockCore<C, K, T> {
 
 /// A bound unlock window. Dropping it does not unbind the window; its callbacks keep the binding
 /// alive.
-pub struct UnlockBinding<C, K, T> {
+pub struct UnlockBinding<C: Clipboard, K, T> {
     core: Rc<UnlockCore<C, K, T>>,
 }
 
-impl<C, K, T> std::fmt::Debug for UnlockBinding<C, K, T> {
+impl<C: Clipboard, K, T> std::fmt::Debug for UnlockBinding<C, K, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("UnlockBinding").finish_non_exhaustive()
     }

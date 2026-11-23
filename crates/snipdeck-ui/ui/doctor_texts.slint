@@ -10,7 +10,8 @@ export global DoctorTexts {
         if (index == 3) { return @tr("Encryption key"); }
         if (index == 4) { return @tr("Shortcuts"); }
         if (index == 5) { return @tr("Tray icon"); }
-        return @tr("Crash reports");
+        if (index == 6) { return @tr("Crash reports"); }
+        return @tr("Typed triggers");
     }
 
     // What a check found: `kind` is `doctor::Detail::code`, `a`, `b` and `c` are its facts.
@@ -37,6 +38,9 @@ export global DoctorTexts {
         if (kind == 19) { return @tr("No icon in the notification area; closing the panel quits Snipdeck."); }
         if (kind == 20) { return @tr("No crash report."); }
         if (kind == 21) { return @tr("The newest crash report is {}.", a); }
-        return @tr("Not checked from the command line.");
+        if (kind == 22) { return @tr("Not checked from the command line."); }
+        if (kind == 23) { return @tr("No typed trigger was skipped since Snipdeck started."); }
+        // The reason a typed trigger was skipped: one English sentence from the controller, not yet translated.
+        return a;
     }
 }

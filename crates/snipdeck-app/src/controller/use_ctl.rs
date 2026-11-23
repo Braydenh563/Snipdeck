@@ -13,7 +13,8 @@ use snipdeck_platform::{
 
 use super::{
     CLIPBOARD_CLEAR_ATTEMPTS, CLIPBOARD_CLEAR_RETRY, ClipboardDigest, Controller, FillSubmission,
-    Library, PendingClear, REFOCUS_WAIT, StackView, UseResult, failed, neutral, views::FillErase,
+    Library, PendingClear, REFOCUS_WAIT, StackView, UseResult, failed, neutral,
+    views::{FillErase, PICKER_DETAIL_CHARS, PickerDetail},
 };
 use crate::{
     capture::{self, Captured},
@@ -31,11 +32,21 @@ pub(super) struct Erasing<'a> {
     pub(super) chars: usize,
     /// The app the trigger was typed into: the paste only goes while it is still in front.
     pub(super) app: Option<String>,
+    /// The window of that app (`0` when unknown): another document of the same app gets nothing.
+    pub(super) window: usize,
     /// `false` once a key was typed after the trigger (none for a confirmed fill form, whose own
     /// keystrokes the hook also sees).
     pub(super) fresh: Option<&'a dyn Fn() -> bool>,
     /// What the trigger asks of the text that replaces it.
     pub(super) retype: Retype,
+}
+
+/// A paste whose key is out and that waits for its target (see [`Controller::paste_tick`]).
+pub(super) struct PendingPaste<C: Clipboard> {
+    pending: usecase::Pending<C>,
+    route: Route,
+    pasted_into: Option<String>,
+    sequence_before: Option<u32>,
 }
 
 impl<S, C, K, T> Controller<S, C, K, T>
@@ -66,13 +77,77 @@ where
     /// the window it came from.
     pub fn open_picker(&mut self) {
         self.picker_revealed = None;
-        self.fill = None;
+        if self.fill.take().is_some() {
+            // The Picker replaces an open form; say so rather than drop it silently.
+            self.show_toast(neutral(ToastMessage::FormClosed));
+        }
         self.fill_erase = None;
         self.on_target_changed();
         match PickerModel::load_cached(&self.store, self.model.board(), &self.index_cache) {
-            Ok(picker) => self.picker = Some(picker),
+            Ok(picker) => {
+                let mut picker = picker.with_list(self.model.list().map(|l| l.id));
+                // Start where the user left off; "This list" only when the Panel shows one.
+                let scope = match self.picker_scope {
+                    Scope::List if !picker.has_list() => Scope::All,
+                    Scope::Board if self.model.board().is_none() => Scope::All,
+                    Scope::Tag if !picker.has_tags() => Scope::All,
+                    scope => scope,
+                };
+                picker.set_tag(self.picker_tag);
+                picker.set_scope(scope);
+                self.picker = Some(picker);
+            }
             Err(_) => self.show_toast(failed()),
         }
+    }
+
+    /// Reads the library again for an open Picker after one of its own item keys changed something,
+    /// keeping its query, scope and selected row.
+    fn refresh_picker(&mut self) {
+        let Some(old) = self.picker.take() else {
+            return;
+        };
+        let (query, scope, at) = (old.query().to_owned(), old.scope(), old.selected());
+        let (list, tag) = (old.list(), old.tag());
+        drop(old);
+        let loaded = PickerModel::load_cached(&self.store, self.model.board(), &self.index_cache);
+        if let Ok(picker) = loaded {
+            let mut picker = picker.with_list(list);
+            picker.set_tag(tag);
+            picker.set_scope(scope);
+            picker.set_query(&self.store, &query).ok();
+            picker.move_selection(isize::try_from(at).unwrap_or(0));
+            self.picker = Some(picker);
+        }
+    }
+
+    /// Ctrl+P in the Picker on result row `index`: pins the item, or unpins it when it is pinned.
+    pub fn picker_pin(&mut self, index: usize) {
+        let Some(id) = self.picker.as_ref().and_then(|p| p.item_at(index)) else {
+            return;
+        };
+        let pinned = self.store.item(id).is_ok_and(|i| i.pinned);
+        self.set_item_pinned(id, !pinned);
+        self.refresh_picker();
+    }
+
+    /// Ctrl+D in the Picker on result row `index`: a copy of the item right after it.
+    pub fn picker_duplicate(&mut self, index: usize) {
+        let Some(id) = self.picker.as_ref().and_then(|p| p.item_at(index)) else {
+            return;
+        };
+        self.duplicate(&[id]);
+        self.refresh_picker();
+    }
+
+    /// Delete in the Picker (with an empty search) on result row `index`: the item goes to the Trash
+    /// with an Undo toast.
+    pub fn picker_trash(&mut self, index: usize) {
+        let Some(id) = self.picker.as_ref().and_then(|p| p.item_at(index)) else {
+            return;
+        };
+        self.trash_items(&[id]);
+        self.refresh_picker();
     }
 
     /// Closes the Picker without using anything (Esc, the hotkey again) and hands the focus
@@ -88,6 +163,13 @@ where
     /// clicked).
     pub fn dismiss_picker(&mut self) {
         self.picker = None;
+    }
+
+    /// The Picker's empty state "Open Snipdeck": the Picker closes and the Panel shows.
+    pub fn picker_open_panel(&mut self) {
+        self.picker = None;
+        let effects = self.show();
+        self.pending.extend(effects);
     }
 
     /// The Picker, while it is open.
@@ -122,6 +204,8 @@ where
     pub fn picker_scope(&mut self, scope: Scope) {
         if let Some(picker) = &mut self.picker {
             picker.set_scope(scope);
+            self.picker_scope = scope;
+            self.picker_tag = picker.tag();
         }
     }
 
@@ -139,6 +223,50 @@ where
             })
             .flatten();
         self.picker_revealed = id.filter(|_| self.reveal_allowed());
+    }
+
+    /// Ctrl+Tab (`dir` 1) or Ctrl+Shift+Tab (-1) in the Picker's tag scope: the next or previous tag.
+    pub fn picker_step_tag(&mut self, dir: isize) {
+        if let Some(picker) = &mut self.picker {
+            if picker.scope() != Scope::Tag {
+                return;
+            }
+            picker.next_tag(dir);
+            self.picker_tag = picker.tag();
+        }
+    }
+
+    /// F3 in the Picker: opens or closes the preview pane.
+    pub fn picker_toggle_detail(&mut self) {
+        self.picker_detail = !self.picker_detail;
+    }
+
+    /// The preview pane for the selected row: the whole text (cut at `PICKER_DETAIL_CHARS`),
+    /// or a mask for a sensitive item. `None` while the pane is closed or no row is selected.
+    pub(super) fn picker_detail_view(&self, picker: &PickerModel) -> Option<PickerDetail> {
+        if !self.picker_detail {
+            return None;
+        }
+        let id = picker.item_at(picker.selected())?;
+        let item = self.store.item(id).ok()?;
+        if item.sensitive {
+            return Some(PickerDetail {
+                text: String::new(),
+                hidden: true,
+            });
+        }
+        let text = crate::usecase::item_text(&self.store, id)
+            .ok()
+            .flatten()
+            .unwrap_or_default();
+        let mut shown: String = text.chars().take(PICKER_DETAIL_CHARS).collect();
+        if text.chars().nth(PICKER_DETAIL_CHARS).is_some() {
+            shown.push('…');
+        }
+        Some(PickerDetail {
+            text: shown,
+            hidden: false,
+        })
     }
 
     /// The Picker's keyboard selection moved by `delta` rows.
@@ -287,6 +415,7 @@ where
         let erase = submission.erase.map(|e| Erasing {
             chars: e.chars,
             app: e.app,
+            window: e.window,
             fresh: None,
             retype: e.retype,
         });
@@ -488,6 +617,7 @@ where
     /// Marks `item` for the paste stack, or unmarks it. Ignored while a stack runs.
     pub fn toggle_stack_mark(&mut self, item: ItemId) {
         if self.stack_running {
+            self.show_toast(neutral(ToastMessage::StackRunning));
             return;
         }
         if let Some(at) = self.stack.iter().position(|id| *id == item) {
@@ -545,6 +675,105 @@ where
                 None
             }
         }
+    }
+
+    /// Brings the Target forward for a paste and, only when that switched windows, waits for its
+    /// focused control to come back ([`REFOCUS_WAIT`]); a Target already in front needs no wait.
+    pub(super) fn refocus_for_paste(&mut self, mode: UseMode, route: &Route) {
+        if mode != UseMode::Copy
+            && matches!(route, Route::Paste { .. })
+            && self.target.refocus().must_wait()
+        {
+            self.services.timing.sleep(REFOCUS_WAIT);
+        }
+    }
+
+    /// Whether a paste is still waiting for its target (the host runs
+    /// [`paste_tick`](Self::paste_tick) every [`PASTE_TICK`](super::PASTE_TICK) while so).
+    #[must_use]
+    pub fn paste_pending(&self) -> bool {
+        self.paste.is_some()
+    }
+
+    /// Sets what runs when a paste starts waiting for its target. The host arms the polling
+    /// timer there; it must not borrow the controller before the call returns.
+    pub fn set_on_paste_waiting(&mut self, wake: std::rc::Rc<dyn Fn()>) {
+        self.on_paste_waiting = Some(wake);
+    }
+
+    /// Whether the caller should start the timer chain that polls the waiting paste: true once
+    /// per paste, until [`paste_timer_next`](Self::paste_timer_next) ends the chain.
+    pub fn claim_paste_timer(&mut self) -> bool {
+        if self.paste.is_none() || self.paste_timer {
+            return false;
+        }
+        self.paste_timer = true;
+        true
+    }
+
+    /// One tick of the chain: looks at the paste and says whether to tick again.
+    pub fn paste_timer_next(&mut self) -> bool {
+        self.paste_tick();
+        self.paste_timer = self.paste.is_some();
+        self.paste_timer
+    }
+
+    /// One look at the waiting paste, without sleeping: when it is over, the toast, the
+    /// clipboard bookkeeping and the refresh happen now.
+    pub fn paste_tick(&mut self) {
+        let Some(mut waiting) = self.paste.take() else {
+            return;
+        };
+        let polled = waiting.pending.poll(
+            &mut self.store,
+            &mut self.services.clipboard,
+            &mut self.services.keyboard,
+            &mut self.services.timing,
+        );
+        match polled {
+            Some(used) => self.finish_use(
+                waiting.pending.item(),
+                &waiting.route,
+                waiting.pasted_into.as_deref(),
+                waiting.sequence_before,
+                &used,
+            ),
+            None => self.paste = Some(waiting),
+        }
+    }
+
+    /// Runs a waiting paste to its end now (a new use must not start over it: two pastes would
+    /// share one clipboard).
+    pub fn drain_paste(&mut self) {
+        while self.paste.is_some() {
+            self.paste_tick();
+            if self.paste.is_some() {
+                self.services.timing.sleep(super::PASTE_TICK);
+            }
+        }
+    }
+
+    /// The use is over: counts it, schedules the clipboard clear, toasts and refreshes.
+    fn finish_use(
+        &mut self,
+        item: ItemId,
+        route: &Route,
+        pasted_into: Option<&str>,
+        sequence_before: Option<u32>,
+        used: &usecase::Used,
+    ) {
+        if used.outcome == UseOutcome::Pasted {
+            self.follow_restored_clipboard(sequence_before);
+        }
+        if let Some(line) = used.count_failed_line() {
+            crate::trace!("{line}");
+        }
+        self.note_activity();
+        self.index_cache.note_use(item);
+        self.schedule_clipboard_clear(item, used.outcome);
+        self.show_toast(toast::after_use(used.outcome, route, pasted_into));
+        // The paste worked: a refresh that fails must not turn that into "failed".
+        self.refresh_logged("a paste");
     }
 
     pub(super) fn run_use(
@@ -608,12 +837,12 @@ where
         transform: Option<Transform>,
         erase: Option<Erasing<'_>>,
     ) -> UseResult {
+        self.drain_paste();
+        self.last_use_chars = None;
         let chars = erase.as_ref().map_or(0, |e| e.chars);
         let route = self.model.route();
         let pasted_into = self.model.target().map(|t| t.app.clone());
-        if mode != UseMode::Copy && matches!(route, Route::Paste { .. }) && self.target.refocus() {
-            self.services.timing.sleep(REFOCUS_WAIT);
-        }
+        self.refocus_for_paste(mode, &route);
         let template = usecase::template_source(&self.store, item)
             .ok()
             .flatten()
@@ -650,32 +879,38 @@ where
         let target = &self.target;
         let proceed = || {
             erase.as_ref().is_none_or(|e| {
-                e.fresh.is_none_or(|fresh| fresh()) && target.current().map(|t| t.app) == e.app
+                e.fresh.is_none_or(|fresh| fresh())
+                    && target
+                        .current()
+                        .is_some_and(|t| Some(t.app) == e.app && t.window == e.window)
             })
         };
         // Where the clipboard stood before the use: a paste puts the user's earlier clipboard
         // back, which can be the sensitive content a pending clear is waiting for.
         let sequence_before = env.clipboard.sequence_number();
-        match usecase::use_item_guarded(&mut self.store, &mut env, &request, &proceed) {
-            Ok(used) => {
-                if used.outcome == UseOutcome::Pasted {
-                    self.follow_restored_clipboard(sequence_before);
-                }
-                if let Some(line) = used.count_failed_line() {
-                    crate::trace!("{line}");
-                }
-                self.note_activity();
+        match usecase::begin_use(&mut self.store, &mut env, &request, &proceed) {
+            Ok(usecase::Started::Done(used)) => {
                 self.queue.used(item);
-                self.index_cache.note_use(item);
-                self.schedule_clipboard_clear(item, used.outcome);
-                self.show_toast(toast::after_use(
-                    used.outcome,
-                    &route,
-                    pasted_into.as_deref(),
-                ));
-                // The paste worked: a refresh that fails must not turn that into "failed".
-                self.refresh_logged("a paste");
+                self.last_use_chars = used.inserted_chars;
+                self.finish_use(item, &route, pasted_into.as_deref(), sequence_before, &used);
                 UseResult::Done(used.outcome)
+            }
+            // The key is out: the rest is polled by `paste_tick`. The caller sees the paste as
+            // done (it was sent); the toast waits for the real end.
+            Ok(usecase::Started::Waiting(pending)) => {
+                // "Paste next" walks on as soon as the key is out, not when the tail ends.
+                self.queue.used(item);
+                self.last_use_chars = pending.inserted_chars();
+                self.paste = Some(PendingPaste {
+                    pending,
+                    route,
+                    pasted_into,
+                    sequence_before,
+                });
+                if let Some(wake) = &self.on_paste_waiting {
+                    wake();
+                }
+                UseResult::Done(UseOutcome::Pasted)
             }
             Err(UseError::Platform(snipdeck_platform::pipeline::Error::Superseded)) => {
                 // The clipboard is back as it was, but a sensitive Files item already wrote its
@@ -696,6 +931,7 @@ where
                         self.fill_erase = erase.filter(|e| e.chars > 0).map(|e| FillErase {
                             chars: e.chars,
                             app: e.app,
+                            window: e.window,
                             retype: e.retype,
                         });
                         UseResult::NeedsAnswers
@@ -856,6 +1092,9 @@ where
     /// timer that would have done it dies with the event loop). A clipboard that someone else
     /// has written to since is left alone, as for the timed clear.
     pub fn clear_pending_clipboard_now(&mut self) {
+        // A paste still waiting for its target holds the user's clipboard aside (a sensitive item
+        // is on it): it ends first, so the restore is not lost with the event loop.
+        self.drain_paste();
         self.clear_clipboard(true);
         self.secret_files_due = None;
         // One started by the lock may still be running (`secret_files_deleting`): wait for it too.

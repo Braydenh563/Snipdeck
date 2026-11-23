@@ -676,6 +676,9 @@ where
         if !self.lock.set {
             return;
         }
+        // A paste still waiting for its target ends first: its restore needs the store and its
+        // clipboard bookkeeping must see the item before the key goes.
+        self.drain_paste();
         // A change or removal still being derived must not reopen what is being locked.
         self.invalidate_master();
         // A Hello step under way is told to stop and its outcome is refused; the sealed copy stays

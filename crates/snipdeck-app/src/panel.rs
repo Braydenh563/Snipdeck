@@ -68,11 +68,18 @@ pub struct Row {
     pub formatted: bool,
     /// The row is a group's header, not an item (its `id` is the group's, never an item's).
     pub header: Option<GroupHeader>,
-    /// The item is a member of a group shown above it: the card is indented.
-    pub grouped: bool,
+    /// How many groups the row sits in (a header: how many it is nested in): the Panel indents
+    /// by it. 0: at the top level.
+    pub depth: usize,
 }
 
 impl Row {
+    /// The item is a member of a group shown above it.
+    #[must_use]
+    pub fn grouped(&self) -> bool {
+        self.header.is_none() && self.depth > 0
+    }
+
     /// An item row a click can use, edit or mark: not a header, not "Deleted · Undo".
     #[must_use]
     pub fn is_item(&self) -> bool {
@@ -418,8 +425,8 @@ impl PanelModel {
         self.items.iter().map(|i| i.id).collect()
     }
 
-    /// The names the search suggestions are made of (shared with the Picker's, built with the
-    /// search index).
+    /// The names the search suggestions are made of (shared with the Picker's, built the first
+    /// time they are asked for).
     #[must_use]
     pub fn suggest_index(&self) -> Rc<crate::search_suggest::Index> {
         self.all.suggest()
@@ -530,7 +537,7 @@ impl PanelModel {
             rows.push(header);
             for (member, tag) in mine {
                 let mut row = self.row(member, number, true, *tag);
-                row.grouped = true;
+                row.depth = 1;
                 rows.push(row);
                 number += 1;
             }
@@ -557,7 +564,7 @@ impl PanelModel {
                 continue;
             }
             let mut row = self.row(item, number, false, None);
-            row.grouped = step.depth > 0;
+            row.depth = step.depth;
             rows.push(row);
             number += 1;
         }
@@ -590,7 +597,7 @@ impl PanelModel {
                 colour: run.group.colour,
                 depth,
             }),
-            grouped: false,
+            depth,
         }
     }
 
@@ -800,7 +807,7 @@ impl PanelModel {
             deleted_pending: false,
             formatted: self.all.rich.contains(&item.id),
             header: None,
-            grouped: false,
+            depth: 0,
         }
     }
 
@@ -1016,15 +1023,68 @@ impl PanelModel {
     }
 }
 
-/// `OUTLOOK.EXE` becomes `Outlook`; `notepad++.exe` becomes `Notepad++`.
+/// The names people know for programs whose file name does not say it. Keys are lower case, no
+/// extension.
+const KNOWN_APPS: &[(&str, &str)] = &[
+    ("winword", "Word"),
+    ("excel", "Excel"),
+    ("powerpnt", "PowerPoint"),
+    ("onenote", "OneNote"),
+    ("msedge", "Microsoft Edge"),
+    ("chrome", "Google Chrome"),
+    ("code", "Visual Studio Code"),
+    ("devenv", "Visual Studio"),
+    ("explorer", "File Explorer"),
+    ("ms-teams", "Microsoft Teams"),
+    ("teams", "Microsoft Teams"),
+    ("wt", "Windows Terminal"),
+    ("cmd", "Command Prompt"),
+    ("powershell", "PowerShell"),
+    ("pwsh", "PowerShell"),
+    ("mspaint", "Paint"),
+    ("wordpad", "WordPad"),
+    ("idea64", "IntelliJ IDEA"),
+    // Every Store app runs inside this one host, so its name says nothing about the app.
+    ("applicationframehost", "Windows app"),
+];
+
+/// `OUTLOOK.EXE` becomes `Outlook`, `WINWORD.EXE` `Word`, `WindowsTerminal.exe` `Windows
+/// Terminal`; `notepad++.exe` becomes `Notepad++`. The names above are listed by hand; any other
+/// program says its own name through its version resource's `FileDescription` (read on Windows,
+/// see `snipdeck_platform::app_names`), and only one that gives none is named from its file name.
 #[must_use]
 pub fn friendly_app_name(exe: &str) -> String {
-    let stem = exe
-        .rsplit(['\\', '/'])
-        .next()
-        .unwrap_or(exe)
-        .trim_end_matches(".exe")
-        .trim_end_matches(".EXE");
+    let file = exe.rsplit(['\\', '/']).next().unwrap_or(exe);
+    let stem = match file.len().checked_sub(4) {
+        Some(at) if file.is_char_boundary(at) && file[at..].eq_ignore_ascii_case(".exe") => {
+            &file[..at]
+        }
+        _ => file,
+    };
+    let lower = stem.to_lowercase();
+    if let Some((_, known)) = KNOWN_APPS.iter().find(|(key, _)| *key == lower) {
+        return (*known).to_owned();
+    }
+    if let Some(described) = snipdeck_platform::app_names::lookup(exe) {
+        return described;
+    }
+    let mixed = stem.chars().any(char::is_lowercase) && stem.chars().any(char::is_uppercase);
+    if mixed {
+        // `WindowsTerminal` is already cased by its maker: only split the words.
+        let mut out = String::new();
+        let mut previous_lower = false;
+        for c in stem.chars() {
+            if previous_lower && c.is_uppercase() {
+                out.push(' ');
+            }
+            previous_lower = c.is_lowercase();
+            out.push(c);
+        }
+        let mut chars = out.chars();
+        return chars.next().map_or_else(String::new, |first| {
+            first.to_uppercase().chain(chars).collect()
+        });
+    }
     let mut chars = stem.chars();
     chars.next().map_or_else(String::new, |first| {
         first
@@ -1097,6 +1157,7 @@ mod tests {
             app: app.into(),
             title: "New message".into(),
             elevated: false,
+            window: 0,
             focus,
         }
     }
@@ -1543,6 +1604,43 @@ mod tests {
         assert_eq!(friendly_app_name("notepad++.exe"), "Notepad++");
         assert_eq!(friendly_app_name("C:\\Windows\\notepad.exe"), "Notepad");
         assert_eq!(friendly_app_name(""), "");
+    }
+
+    #[test]
+    fn friendly_names_are_the_ones_people_know() {
+        // PANEL-15: the file stem alone gave "Winword", "Msedge", "Windowsterminal".
+        for (exe, name) in [
+            ("WINWORD.EXE", "Word"),
+            ("POWERPNT.EXE", "PowerPoint"),
+            ("msedge.exe", "Microsoft Edge"),
+            ("WindowsTerminal.exe", "Windows Terminal"),
+            ("ApplicationFrameHost.exe", "Windows app"),
+            ("ms-teams.exe", "Microsoft Teams"),
+            ("explorer.Exe", "File Explorer"),
+            ("Slack.exe", "Slack"),
+            ("MyCoolApp.exe", "My Cool App"),
+            ("C:\\Program Files\\Mozilla\\firefox.exe", "Firefox"),
+        ] {
+            assert_eq!(friendly_app_name(exe), name, "{exe}");
+        }
+    }
+
+    #[test]
+    fn a_programs_own_name_beats_the_one_made_from_its_file_name() {
+        // Not in the table: before the platform has read it, the name is made from the file.
+        assert_eq!(friendly_app_name("zzacmetool.exe"), "Zzacmetool");
+        snipdeck_platform::app_names::remember(r"C:\Acme\ZzAcmeTool.exe", "Acme Toolbox 2");
+        assert_eq!(friendly_app_name("zzacmetool.exe"), "Acme Toolbox 2");
+        assert_eq!(
+            friendly_app_name(r"D:\other\ZZACMETOOL.EXE"),
+            "Acme Toolbox 2"
+        );
+        // The hand-written names stay first: a Store app's host says nothing about the app.
+        snipdeck_platform::app_names::remember(
+            "ApplicationFrameHost.exe",
+            "Application Frame Host",
+        );
+        assert_eq!(friendly_app_name("ApplicationFrameHost.exe"), "Windows app");
     }
 
     fn five(f: &mut Fixture) -> Vec<ItemId> {

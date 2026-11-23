@@ -18,6 +18,9 @@ export struct MenuEntry {
     checked: bool,
     // Not drawn, not selectable, not counted (the host keeps the row's index stable and decides per open).
     hidden: bool,
+    // The head of a group that opens in place (a caret at the right; `expanded` says it is open).
+    expandable: bool,
+    expanded: bool,
 }
 
 // DESIGN.md §4 MenuItem: 32px row (radius 6) with an optional icon, label and shortcut keycap. `current` is the
@@ -31,6 +34,9 @@ export component MenuItem inherits Rectangle {
     in property <bool> disabled: false;
     in property <bool> checked: false;
     in property <bool> current: false;
+    // The row opens or folds the rows under it: a caret, and the state for assistive technology.
+    in property <bool> expandable: false;
+    in property <bool> expanded: false;
     // The highlight is the keyboard's (not the pointer's or the host's): it adds the 2px focus ring.
     in property <bool> ring: false;
     // The row's height: 32, or 28 when the menu would not fit its window at 32.
@@ -63,6 +69,8 @@ export component MenuItem inherits Rectangle {
     accessible-item-selected: root.current && !root.disabled;
     accessible-checkable: root.checked;
     accessible-checked: root.checked;
+    accessible-expandable: root.expandable;
+    accessible-expanded: root.expanded;
     accessible-action-default => { if (!root.disabled) { root.activated(); } }
 
     animate background { duration: Motion.instant; easing: Motion.out; }
@@ -92,6 +100,11 @@ export component MenuItem inherits Rectangle {
             vertical-alignment: center;
             overflow: elide;
             horizontal-stretch: 1;
+        }
+        if root.expandable: Icon {
+            source: root.expanded ? Icons.caret-down : Icons.caret-right;
+            tint: root.fg;
+            y: (parent.height - self.height) / 2;
         }
         if root.shortcut != "": Rectangle {
             width: key.min-width;
@@ -144,10 +157,10 @@ export component Menu inherits Rectangle {
         scope.focus();
     }
 
-    // Separators before row `i`. Slint has no loop, so this adds up the first 24 entries; a menu is never longer
+    // Separators before row `i`. Slint has no loop, so this adds up the first 32 entries; a menu is never longer
     // than that, and an entry past the end reads as "not a separator".
     pure function separators-before(i: int) -> int {
-        return (i > 0 && (root.entries[0].separator || root.entries[0].hidden) ? 1 : 0) + (i > 1 && (root.entries[1].separator || root.entries[1].hidden) ? 1 : 0) + (i > 2 && (root.entries[2].separator || root.entries[2].hidden) ? 1 : 0) + (i > 3 && (root.entries[3].separator || root.entries[3].hidden) ? 1 : 0) + (i > 4 && (root.entries[4].separator || root.entries[4].hidden) ? 1 : 0) + (i > 5 && (root.entries[5].separator || root.entries[5].hidden) ? 1 : 0) + (i > 6 && (root.entries[6].separator || root.entries[6].hidden) ? 1 : 0) + (i > 7 && (root.entries[7].separator || root.entries[7].hidden) ? 1 : 0) + (i > 8 && (root.entries[8].separator || root.entries[8].hidden) ? 1 : 0) + (i > 9 && (root.entries[9].separator || root.entries[9].hidden) ? 1 : 0) + (i > 10 && (root.entries[10].separator || root.entries[10].hidden) ? 1 : 0) + (i > 11 && (root.entries[11].separator || root.entries[11].hidden) ? 1 : 0) + (i > 12 && (root.entries[12].separator || root.entries[12].hidden) ? 1 : 0) + (i > 13 && (root.entries[13].separator || root.entries[13].hidden) ? 1 : 0) + (i > 14 && (root.entries[14].separator || root.entries[14].hidden) ? 1 : 0) + (i > 15 && (root.entries[15].separator || root.entries[15].hidden) ? 1 : 0) + (i > 16 && (root.entries[16].separator || root.entries[16].hidden) ? 1 : 0) + (i > 17 && (root.entries[17].separator || root.entries[17].hidden) ? 1 : 0) + (i > 18 && (root.entries[18].separator || root.entries[18].hidden) ? 1 : 0) + (i > 19 && (root.entries[19].separator || root.entries[19].hidden) ? 1 : 0) + (i > 20 && (root.entries[20].separator || root.entries[20].hidden) ? 1 : 0) + (i > 21 && (root.entries[21].separator || root.entries[21].hidden) ? 1 : 0) + (i > 22 && (root.entries[22].separator || root.entries[22].hidden) ? 1 : 0) + (i > 23 && (root.entries[23].separator || root.entries[23].hidden) ? 1 : 0);
+        return (i > 0 && (root.entries[0].separator || root.entries[0].hidden) ? 1 : 0) + (i > 1 && (root.entries[1].separator || root.entries[1].hidden) ? 1 : 0) + (i > 2 && (root.entries[2].separator || root.entries[2].hidden) ? 1 : 0) + (i > 3 && (root.entries[3].separator || root.entries[3].hidden) ? 1 : 0) + (i > 4 && (root.entries[4].separator || root.entries[4].hidden) ? 1 : 0) + (i > 5 && (root.entries[5].separator || root.entries[5].hidden) ? 1 : 0) + (i > 6 && (root.entries[6].separator || root.entries[6].hidden) ? 1 : 0) + (i > 7 && (root.entries[7].separator || root.entries[7].hidden) ? 1 : 0) + (i > 8 && (root.entries[8].separator || root.entries[8].hidden) ? 1 : 0) + (i > 9 && (root.entries[9].separator || root.entries[9].hidden) ? 1 : 0) + (i > 10 && (root.entries[10].separator || root.entries[10].hidden) ? 1 : 0) + (i > 11 && (root.entries[11].separator || root.entries[11].hidden) ? 1 : 0) + (i > 12 && (root.entries[12].separator || root.entries[12].hidden) ? 1 : 0) + (i > 13 && (root.entries[13].separator || root.entries[13].hidden) ? 1 : 0) + (i > 14 && (root.entries[14].separator || root.entries[14].hidden) ? 1 : 0) + (i > 15 && (root.entries[15].separator || root.entries[15].hidden) ? 1 : 0) + (i > 16 && (root.entries[16].separator || root.entries[16].hidden) ? 1 : 0) + (i > 17 && (root.entries[17].separator || root.entries[17].hidden) ? 1 : 0) + (i > 18 && (root.entries[18].separator || root.entries[18].hidden) ? 1 : 0) + (i > 19 && (root.entries[19].separator || root.entries[19].hidden) ? 1 : 0) + (i > 20 && (root.entries[20].separator || root.entries[20].hidden) ? 1 : 0) + (i > 21 && (root.entries[21].separator || root.entries[21].hidden) ? 1 : 0) + (i > 22 && (root.entries[22].separator || root.entries[22].hidden) ? 1 : 0) + (i > 23 && (root.entries[23].separator || root.entries[23].hidden) ? 1 : 0) + (i > 24 && (root.entries[24].separator || root.entries[24].hidden) ? 1 : 0) + (i > 25 && (root.entries[25].separator || root.entries[25].hidden) ? 1 : 0) + (i > 26 && (root.entries[26].separator || root.entries[26].hidden) ? 1 : 0) + (i > 27 && (root.entries[27].separator || root.entries[27].hidden) ? 1 : 0) + (i > 28 && (root.entries[28].separator || root.entries[28].hidden) ? 1 : 0) + (i > 29 && (root.entries[29].separator || root.entries[29].hidden) ? 1 : 0) + (i > 30 && (root.entries[30].separator || root.entries[30].hidden) ? 1 : 0) + (i > 31 && (root.entries[31].separator || root.entries[31].hidden) ? 1 : 0);
     }
 
     // Position of row `i` among the actions (separators are not items), and the number of actions.
@@ -455,6 +468,8 @@ export component Menu inherits Rectangle {
                 destructive: entry.destructive;
                 disabled: entry.disabled;
                 checked: entry.checked;
+                expandable: entry.expandable;
+                expanded: entry.expanded;
                 current: root.current == i;
                 ring: root.by-key;
                 row-h: root.row-h;

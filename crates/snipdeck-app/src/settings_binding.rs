@@ -1238,7 +1238,7 @@ where
 
 // ---- The binding -------------------------------------------------------------------------------
 
-struct SettingsCore<C, K, T> {
+struct SettingsCore<C: Clipboard, K, T> {
     controller: Rc<RefCell<Controller<Store, C, K, T>>>,
     window: slint::Weak<ui::SettingsPage>,
     /// The data folder; `None` in the demo, which keeps nothing on disk.
@@ -1264,11 +1264,11 @@ struct SettingsCore<C, K, T> {
 
 /// A bound Settings page. Dropping it does not unbind the window; the window's callbacks keep the
 /// binding alive.
-pub struct SettingsBinding<C, K, T> {
+pub struct SettingsBinding<C: Clipboard, K, T> {
     core: Rc<SettingsCore<C, K, T>>,
 }
 
-impl<C, K, T> std::fmt::Debug for SettingsBinding<C, K, T> {
+impl<C: Clipboard, K, T> std::fmt::Debug for SettingsBinding<C, K, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SettingsBinding").finish_non_exhaustive()
     }

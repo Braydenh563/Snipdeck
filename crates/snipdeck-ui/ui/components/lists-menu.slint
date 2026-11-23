@@ -17,6 +17,13 @@ export component ListsMenu inherits Rectangle {
     in property <bool> recent-available: false;
     in property <bool> recent-open: false;
     in property <string> recent-label;
+    // The other tabs the tab row would show (Symbols, Colours): same rows, same source of truth (the host's flags).
+    in property <bool> symbols-available: false;
+    in property <bool> symbols-open: false;
+    in property <string> symbols-label;
+    in property <bool> colours-available: false;
+    in property <bool> colours-open: false;
+    in property <string> colours-label;
     in property <string> new-list-label;
     // Group headers ("Boards", "Lists"): the two groups are named, not just separated.
     in property <string> boards-label;
@@ -30,6 +37,8 @@ export component ListsMenu inherits Rectangle {
     // The highlighted row (-1 = none), counted over all rows: Recent, boards, lists, New list.
     in-out property <int> current: -1;
     callback recent-chosen();
+    callback symbols-chosen();
+    callback colours-chosen();
     callback board-chosen(int);
     callback list-chosen(int);
     callback new-list-chosen();
@@ -39,7 +48,10 @@ export component ListsMenu inherits Rectangle {
         scope.focus();
     }
 
-    property <int> r: root.recent-available ? 1 : 0;
+    // The leading rows (Recent, Symbols, Colours, each only when the tab row would have it).
+    property <int> rs: root.recent-available ? 1 : 0;
+    property <int> ss: root.rs + (root.symbols-available ? 1 : 0);
+    property <int> r: root.ss + (root.colours-available ? 1 : 0);
     property <int> b: root.boards.length;
     property <int> l: root.lists.length;
     property <int> total: root.r + root.b + root.l + 1;
@@ -74,8 +86,12 @@ export component ListsMenu inherits Rectangle {
         if (!root.selectable(i)) {
             return;
         }
-        if (i < root.r) {
+        if (i < root.rs) {
             root.recent-chosen();
+        } else if (i < root.ss) {
+            root.symbols-chosen();
+        } else if (i < root.r) {
+            root.colours-chosen();
         } else if (i < root.r + root.b) {
             root.board-chosen(i - root.r);
         } else if (i < root.r + root.b + root.l) {
@@ -141,7 +157,25 @@ export component ListsMenu inherits Rectangle {
                 pointer-entered => { root.current = 0; }
                 activated => { root.activate(0); }
             }
-            if root.recent-available: Rectangle {
+            if root.symbols-available: MenuItem {
+                text: root.symbols-label;
+                icon: Icons.smiley;
+                current: root.current == root.rs;
+                index: root.rs;
+                count: root.total;
+                pointer-entered => { root.current = root.rs; }
+                activated => { root.activate(root.rs); }
+            }
+            if root.colours-available: MenuItem {
+                text: root.colours-label;
+                icon: Icons.palette;
+                current: root.current == root.ss;
+                index: root.ss;
+                count: root.total;
+                pointer-entered => { root.current = root.ss; }
+                activated => { root.activate(root.ss); }
+            }
+            if root.r > 0: Rectangle {
                 height: root.sep-h;
                 Rectangle {
                     y: (parent.height - self.height) / 2;
@@ -237,7 +271,7 @@ export component ListsMenu inherits Rectangle {
                     background: tab.accent;
                 }
                 // The current list is ticked.
-                if i == root.current-list && !root.recent-open: Icon {
+                if i == root.current-list && !root.recent-open && !root.symbols-open && !root.colours-open: Icon {
                     source: Icons.check;
                     tint: Theme.accent-text;
                     x: parent.width - Space.s2 - self.width;

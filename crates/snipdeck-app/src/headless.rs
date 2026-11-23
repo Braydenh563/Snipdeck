@@ -172,6 +172,11 @@ impl DoctorHost for FolderDoctor<'_> {
     fn newest_crash(&self) -> Option<String> {
         crash::newest(self.folder)
     }
+
+    /// No typing runs without the app.
+    fn last_skipped_trigger(&self) -> Option<&'static str> {
+        None
+    }
 }
 
 /// `--troubleshoot`: the Troubleshoot checks and the diagnostic report for the library in

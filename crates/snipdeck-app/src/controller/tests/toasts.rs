@@ -473,6 +473,7 @@ fn a_retry_that_works_replaces_the_error_of_the_failed_try() {
     let before = w.ctl.view().toast.expect("toast").seq;
     let result = w.ctl.activate_row(0, UseMode::Paste);
     assert_eq!(result, UseResult::Done(UseOutcome::Pasted));
+    w.ctl.drain_paste();
     // The error keeps the screen for its guard time, then the retry's toast takes over.
     w.ctl.toast_tick(before);
     w.ctl.toast_tick(before);
@@ -533,6 +534,7 @@ fn a_failed_refresh_after_a_paste_keeps_the_success() {
     let result = w.ctl.activate_row(0, UseMode::Paste);
     FAIL_REFRESH.set(false);
     assert_eq!(result, UseResult::Done(UseOutcome::Pasted));
+    w.ctl.drain_paste();
     assert_eq!(
         shown(&w),
         Some(ToastMessage::Pasted {

@@ -68,6 +68,19 @@ pub enum Effect {
     OpenUnlock,
     /// Open the optional Support Snipdeck page in the browser.
     OpenSupport,
+    /// Open Settings and start one of its backup actions (the palette's Import, Export, Back up).
+    SettingsAction(SettingsAction),
+}
+
+/// What the palette asks Settings to start.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SettingsAction {
+    /// Show the import sources.
+    Import,
+    /// Export the library to a folder.
+    Export,
+    /// Make a backup now.
+    BackUp,
 }
 
 /// How far a toast is through its life (the Slint `ToastPhase`).
@@ -131,13 +144,32 @@ pub struct PickerView {
     pub revealed: Option<usize>,
     /// What the search covers.
     pub scope: Scope,
+    /// The results were cut at the limit.
+    pub more: bool,
+    /// The tag the tag scope covers (empty until one is chosen).
+    pub tag: String,
     /// The search text.
     pub query: String,
     /// The keyboard-selected row.
     pub selected: usize,
     /// Where Enter goes ("Paste" or "Copy" in the window's footer).
     pub footer: Footer,
+    /// The preview pane of the selected row, while it is open.
+    pub detail: Option<PickerDetail>,
 }
+
+/// What the Picker's preview pane shows (F3).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PickerDetail {
+    /// The item's text, cut at `PICKER_DETAIL_CHARS` characters with a `…`; empty for a sensitive item
+    /// and for one without text.
+    pub text: String,
+    /// The item is sensitive: the pane shows a mask, never the text.
+    pub hidden: bool,
+}
+
+/// The most characters of an item the preview pane reads.
+pub const PICKER_DETAIL_CHARS: usize = 1500;
 
 /// The template fill form's content.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -194,6 +226,7 @@ pub struct FillSubmission {
 pub(crate) struct FillErase {
     pub(super) chars: usize,
     pub(super) app: Option<String>,
+    pub(super) window: usize,
     pub(super) retype: crate::usecase::Retype,
 }
 
@@ -252,6 +285,8 @@ pub struct View {
     pub dock_vertical: bool,
     /// The edge the Panel is docked to (the kebab offers to undock it; the dock grips follow it).
     pub dock_edge: Option<DockEdge>,
+    /// The arrow keys move or size the floating Panel (the Window menu's Move and Size).
+    pub frame_mode: Option<super::FrameMode>,
     /// A side dock takes the whole edge: its ends do not resize and it does not slide.
     pub dock_full_edge: bool,
     /// The Panel is being dragged by its header.
@@ -280,6 +315,8 @@ pub struct View {
     pub board_menu: Option<Vec<super::BoardMenuEntry>>,
     /// The kebab menu's rows while it is open ([`APP_MENU`](crate::controller::APP_MENU)).
     pub app_menu: Option<Vec<AppMenuEntry>>,
+    /// The group of the kebab menu that is open (the other groups show only their head).
+    pub app_menu_group: Option<super::AppGroup>,
     /// The context menu of a card or pinned chip while it is open.
     pub item_menu: Option<Vec<ItemMenuEntry>>,
     /// The context menu of a Symbols cell while it is open.

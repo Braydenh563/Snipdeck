@@ -419,6 +419,14 @@ fn use_pastes_the_item_through_the_controller_and_counts_it() {
             snipdeck_app::main_window::Key::Item(id) => id,
             other => panic!("{other:?}"),
         };
+        // The key is out; the window's timer polls the tail (the fake clock moves by hand).
+        assert_eq!(r.ctl.borrow().store().item(id).unwrap().use_count, 0);
+        for _ in 0..10 {
+            r.ctl.borrow_mut().services_mut().timing.now += Duration::from_millis(50);
+            i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(10));
+            slint::platform::update_timers_and_animations();
+        }
+        assert!(!r.ctl.borrow().paste_pending());
         assert_eq!(r.ctl.borrow().store().item(id).unwrap().use_count, 1);
         assert_eq!(r.ui.get_toast_text(), "Pasted into Mail");
     });

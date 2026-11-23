@@ -48,7 +48,7 @@ pub fn extras(rows: &[Row], marked: &[ItemId]) -> Vec<Extra> {
             ..Extra::default()
         };
         // A group's items count off under their header: "2 of 5".
-        if r.grouped {
+        if r.grouped() {
             extra.set_position = to_i32(run + 1);
             extra.set_size = header_above.map_or(0, |h| to_i32(h.count));
         }
@@ -56,7 +56,7 @@ pub fn extras(rows: &[Row], marked: &[ItemId]) -> Vec<Extra> {
         if r.deleted_pending || r.header.is_some() {
             ghosts_before += 1;
         }
-        if r.grouped {
+        if r.grouped() {
             run += 1;
         } else {
             run = 0;
@@ -238,7 +238,7 @@ mod tests {
             deleted_pending: false,
             formatted: false,
             header: None,
-            grouped: false,
+            depth: 0,
         }
     }
 

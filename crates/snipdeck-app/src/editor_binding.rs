@@ -58,7 +58,7 @@ fn refit(window: &ui::ItemEditor) {
     crate::native_window::fit_when_settled(window);
 }
 
-struct EditorCore<S, C, K, T> {
+struct EditorCore<S, C: Clipboard, K, T> {
     controller: Rc<RefCell<Controller<S, C, K, T>>>,
     window: RefCell<Option<ui::ItemEditor>>,
     /// The editor whose fields the window holds.
@@ -78,11 +78,11 @@ struct EditorCore<S, C, K, T> {
 
 /// A bound item editor. Dropping it does not unbind the window; the window's callbacks keep the
 /// binding alive.
-pub struct EditorBinding<S, C, K, T> {
+pub struct EditorBinding<S, C: Clipboard, K, T> {
     core: Rc<EditorCore<S, C, K, T>>,
 }
 
-impl<S, C, K, T> std::fmt::Debug for EditorBinding<S, C, K, T> {
+impl<S, C: Clipboard, K, T> std::fmt::Debug for EditorBinding<S, C, K, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("EditorBinding").finish_non_exhaustive()
     }

@@ -310,6 +310,7 @@ fn palette_scales_with_the_text_size() {
         spoken: "Control Shift G".into(),
         mark_before: "".into(),
         mark_text: "".into(),
+        hint: "".into(),
     });
     let h = Harness::new(MainWindow::new, 1400, 700);
     h.component.global::<SystemLook<'_>>().set_text_scale(2.25);

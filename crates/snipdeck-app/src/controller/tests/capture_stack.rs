@@ -138,6 +138,7 @@ fn the_palette_paste_next_command_walks_the_stack_like_the_hotkey() {
     w.ctl.start_stack();
     w.ctl.run_command(Command::PasteNext, 0);
     w.ctl.run_command(Command::PasteNext, 0);
+    w.ctl.drain_paste();
     assert_eq!(pasted(&w), ["third", "first"]);
 }
 
@@ -220,6 +221,7 @@ fn paste_next_walks_the_shown_list_then_says_it_is_done_and_starts_again() {
     for _ in 0..3 {
         assert_eq!(w.ctl.on_hotkey(HotkeyAction::PasteNext), []);
     }
+    w.ctl.drain_paste();
     assert_eq!(pasted(&w), ["first", "second", "third"]);
     assert_eq!(uses(&w, w.ids[2]), 1);
 
@@ -261,6 +263,7 @@ fn paste_next_prefers_the_pinned_strip_and_reads_the_target_when_pressed() {
     w.ctl.on_hotkey(HotkeyAction::PasteNext);
     assert_eq!(pasted(&w), ["second", "https://example.com"]);
     assert_eq!(w.ctl.services().keyboard.sent.len(), 1);
+    w.ctl.drain_paste();
     assert_eq!(w.ctl.paste_next(), None);
 }
 
@@ -298,4 +301,18 @@ fn the_panel_menu_paste_stack_row_starts_and_ends_the_stack() {
     w.ctl.open_app_menu();
     w.ctl.choose_app_menu(row);
     assert_eq!(w.ctl.view().stack, None, "a second choice ends it");
+}
+
+#[test]
+fn marking_while_a_stack_runs_says_why_it_is_ignored() {
+    let mut w = world();
+    w.ctl.toggle_stack_mark(w.ids[0]);
+    w.ctl.start_stack();
+    assert!(w.ctl.view().toast.is_none());
+    w.ctl.toggle_stack_mark(w.ids[1]);
+    assert_eq!(
+        w.ctl.view().toast.map(|t| t.message),
+        Some(ToastMessage::StackRunning)
+    );
+    assert_eq!(w.ctl.view().stack.expect("running").count, 1);
 }

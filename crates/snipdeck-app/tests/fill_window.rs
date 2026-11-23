@@ -184,7 +184,7 @@ fn a_prompted_template_chosen_in_the_picker_opens_the_form_where_the_picker_was(
             .collect();
         assert_eq!(labels, ["Name", "Number"]);
         assert!(form.get_fields().iter().all(|f| f.required));
-        assert_eq!(form.get_submit_label(), "Insert");
+        assert_eq!(form.get_submit_label(), "Paste");
         // One caret line below the caret the Picker had; 440 logical wide.
         let at = r.fill.placed().expect("it was placed");
         assert_eq!((at.x, at.y, at.w), (400, 240, 440));
@@ -377,8 +377,8 @@ fn the_form_exposes_roles_and_labels_to_assistive_technology() {
         assert_eq!(fields.accessible_label().as_deref(), Some("Fields"));
         let preview = element(&form, "Preview", AccessibleRole::Groupbox);
         assert_eq!(preview.accessible_label().as_deref(), Some("Preview"));
-        let insert = element(&form, "Insert", AccessibleRole::Button);
-        assert_eq!(insert.accessible_label().as_deref(), Some("Insert"));
+        let insert = element(&form, "Paste", AccessibleRole::Button);
+        assert_eq!(insert.accessible_label().as_deref(), Some("Paste"));
     });
 }
 

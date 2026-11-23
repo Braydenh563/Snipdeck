@@ -7,7 +7,7 @@ import { Theme, Space, Radius } from "../theme.slint";
 // side open. The accent shows only as the grip, a 2px pill in the middle in the colour of the list on
 // show; hovering lengthens it and fills the tab with `bg-overlay-hover`. Hovering it or clicking it
 // opens the Panel (the app decides which, from the Dock setting); the handle only reports. It never takes keyboard focus: the
-// Panel hotkey is the keyboard way in, which the accessible name says. The 6px thickness is the
+// Panel hotkey is the keyboard way in. The accessible name says what the button does ("Open Snipdeck Panel"). The 6px thickness is the
 // design's, an exception to the 24px hit-target rule: the strip sits against the screen edge, where a
 // pointer cannot overshoot it. High contrast: Window fill, WindowText border, Highlight grip.
 export component DockHandle inherits Rectangle {

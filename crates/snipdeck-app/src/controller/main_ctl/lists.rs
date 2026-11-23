@@ -478,7 +478,7 @@ where
     }
 
     /// Opens board `id` in the sidebar.
-    pub(super) fn open_board(&mut self, id: BoardId) {
+    pub(in crate::controller) fn open_board(&mut self, id: BoardId) {
         if self.main.open_board(&self.store, id).is_err() {
             self.show_toast(failed());
         }

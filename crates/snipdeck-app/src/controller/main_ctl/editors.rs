@@ -139,6 +139,12 @@ where
     }
 
     /// The board editor for a new board.
+    pub fn main_new_board(&mut self) {
+        self.main_fresh();
+        self.new_board();
+    }
+
+    /// Opens the board editor for a new board.
     pub(super) fn new_board(&mut self) {
         self.open_editor(
             EditorTarget::NewBoard,

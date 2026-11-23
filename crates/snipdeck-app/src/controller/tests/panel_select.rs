@@ -1446,7 +1446,7 @@ fn group_from_selection_is_one_undo_step() {
     assert_eq!(view.rows.len(), 5, "a header joins the four items");
     let header = view.rows[0].header.clone().expect("the header is first");
     assert_eq!(header.count, 2);
-    assert!(view.rows[1].grouped && view.rows[2].grouped && !view.rows[3].grouped);
+    assert!(view.rows[1].grouped() && view.rows[2].grouped() && !view.rows[3].grouped());
     assert_eq!(view.rename_row, Some(0), "the new header starts renaming");
     w.ctl.undo();
     assert_eq!(headers(&w), Vec::<usize>::new(), "one Undo ungroups");
@@ -1497,7 +1497,7 @@ fn collapsed_group_hides_rows_but_search_shows_them() {
         .as_ref()
         .expect("the header sits before the match");
     assert!(!header.collapsed, "the header is open in results");
-    assert!(rows[at].grouped, "the match is drawn under the header");
+    assert!(rows[at].grouped(), "the match is drawn under the header");
     w.ctl.set_query("");
     w.ctl.group_collapse(0, Some(false));
     assert_eq!(w.ctl.view().rows.len(), 5);
@@ -1667,7 +1667,7 @@ fn members_shape(w: &World) -> Vec<String> {
         .view()
         .rows
         .iter()
-        .map(|r| match (&r.header, r.grouped) {
+        .map(|r| match (&r.header, r.grouped()) {
             (Some(h), _) => format!("[{}:{}]", r.title, h.count),
             (None, true) => format!("+{}", r.title),
             (None, false) => r.title.clone(),
@@ -1767,7 +1767,7 @@ fn group_of_title(w: &World, title: &str) -> bool {
         .rows
         .iter()
         .find(|r| r.title == title)
-        .is_some_and(|r| r.grouped)
+        .is_some_and(crate::panel::Row::grouped)
 }
 
 #[test]

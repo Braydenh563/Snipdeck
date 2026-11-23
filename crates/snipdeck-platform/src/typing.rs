@@ -12,6 +12,7 @@
 //! is `Copy`). Nothing here implements `Debug` with the characters, so they cannot reach a log
 //! or a trace by accident; keep it that way.
 
+use unicode_normalization::UnicodeNormalization;
 use unicode_segmentation::UnicodeSegmentation;
 use zeroize::Zeroize;
 
@@ -60,8 +61,9 @@ pub const VK_PROCESSKEY: u16 = 0xE5;
 pub enum Translation {
     /// Exactly one character.
     Text(char),
-    /// A dead key (accent waiting for a letter).
-    Dead,
+    /// A dead key (accent waiting for a letter), with the accent as the spacing character
+    /// `ToUnicodeEx` reports for it (`^`, `´`, `` ` ``), when it did.
+    Dead(Option<char>),
     /// No character, or more than one.
     Nothing,
 }
@@ -71,7 +73,7 @@ impl std::fmt::Debug for Translation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Text(_) => f.write_str("Text(..)"),
-            Self::Dead => f.write_str("Dead"),
+            Self::Dead(_) => f.write_str("Dead"),
             Self::Nothing => f.write_str("Nothing"),
         }
     }
@@ -105,6 +107,9 @@ pub enum TypedEvent {
     Tab(u64),
     /// The typing context is gone (focus moved, caret jumped, an IME composes): forget everything.
     Reset,
+    /// No key: the app put something on the worker's update channel and wakes it to look (it blocks
+    /// on this channel while nothing is pending, instead of polling). Never sent by the hook.
+    Wake,
 }
 
 // A character is a typed secret candidate: never print it.
@@ -115,6 +120,7 @@ impl std::fmt::Debug for TypedEvent {
             Self::Backspace => f.write_str("Backspace"),
             Self::Tab(_) => f.write_str("Tab"),
             Self::Reset => f.write_str("Reset"),
+            Self::Wake => f.write_str("Wake"),
         }
     }
 }
@@ -163,35 +169,93 @@ pub fn classify(stroke: Stroke) -> Option<TypedEvent> {
     }
 }
 
-/// [`classify`] with the one piece of memory a dead key needs.
+/// [`classify`] with the memory a dead key and Caps Lock need.
 ///
 /// With `ToUnicodeEx` flag `0x4` the pending accent is not consumed, so the key typed after a
 /// dead key translates to its plain letter while the app composes another (`^` then `e` is `ê`).
-/// So a dead key resets, and the next character is swallowed (also a reset) rather than
-/// buffered. Bare modifiers in between change nothing.
+/// So a dead key resets, and the letter after it is composed here: the accent as a combining mark
+/// plus the letter, in NFC (`ê`); a space after the accent types the accent itself. A letter that
+/// has no precomposed form with that accent is swallowed (a reset) rather than guessed. Bare
+/// modifiers in between change nothing.
+///
+/// Caps Lock is tracked here: the hook thread has no message queue of its own, so asking the
+/// system for the toggle state on that thread can be stale.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Classifier {
-    after_dead: bool,
+    /// A dead key was just pressed.
+    dead: bool,
+    /// The accent that dead key left, when the layout reported one.
+    accent: Option<char>,
+    caps: bool,
 }
 
 impl Classifier {
-    /// A classifier with no dead key pending.
+    /// A classifier with no dead key pending and Caps Lock off.
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// A classifier that starts with Caps Lock `on` as the system reports it.
+    #[must_use]
+    pub fn with_caps(on: bool) -> Self {
+        Self {
+            caps: on,
+            ..Self::default()
+        }
+    }
+
+    /// Whether Caps Lock is on, counting the presses seen so far.
+    #[must_use]
+    pub fn caps(&self) -> bool {
+        self.caps
+    }
+
     /// Like [`classify`].
     pub fn classify(&mut self, stroke: Stroke) -> Option<TypedEvent> {
-        let event = classify(stroke)?;
-        let was_dead = std::mem::take(&mut self.after_dead);
-        if stroke.text == Translation::Dead && event == TypedEvent::Reset {
-            self.after_dead = true;
+        if stroke.vk == VK_CAPITAL {
+            self.caps = !self.caps;
         }
-        if was_dead && matches!(event, TypedEvent::Char(_)) {
-            return Some(TypedEvent::Reset);
+        let event = classify(stroke)?;
+        let (pending, accent) = (std::mem::take(&mut self.dead), self.accent.take());
+        if let Translation::Dead(new) = stroke.text
+            && event == TypedEvent::Reset
+        {
+            (self.dead, self.accent) = (true, new);
+        }
+        if let (true, TypedEvent::Char(c)) = (pending, event) {
+            return Some(compose(accent, c).map_or(TypedEvent::Reset, TypedEvent::Char));
         }
         Some(event)
+    }
+}
+
+/// The letter a dead key `accent` and then `typed` make, if it is one character.
+fn compose(accent: Option<char>, typed: char) -> Option<char> {
+    let accent = accent?;
+    if typed == ' ' {
+        return Some(accent);
+    }
+    let mark = match accent {
+        '`' => '\u{300}',
+        '´' | '\'' => '\u{301}',
+        '^' | 'ˆ' => '\u{302}',
+        '~' | '˜' => '\u{303}',
+        '¯' => '\u{304}',
+        '˘' => '\u{306}',
+        '˙' => '\u{307}',
+        '¨' => '\u{308}',
+        '°' | '˚' => '\u{30A}',
+        '˝' => '\u{30B}',
+        'ˇ' => '\u{30C}',
+        '¸' => '\u{327}',
+        '˛' => '\u{328}',
+        _ => return None,
+    };
+    let mut composed = [typed, mark].into_iter().nfc();
+    match (composed.next(), composed.next()) {
+        (Some(c), None) => Some(c),
+        _ => None,
     }
 }
 
@@ -242,6 +306,7 @@ impl TypeBuffer {
             TypedEvent::Char(c) => self.push(c),
             TypedEvent::Backspace => self.len = self.len.saturating_sub(1),
             TypedEvent::Reset | TypedEvent::Tab(_) => self.reset(),
+            TypedEvent::Wake => {}
         }
         if self.len < BUFFER_CHARS {
             self.chars[self.len..].zeroize();
@@ -395,7 +460,7 @@ mod tests {
         assert_eq!(classify(word), Some(TypedEvent::Reset));
         // Dead key, IME, navigation, keys with no character.
         assert_eq!(
-            classify(stroke(0xDC, Translation::Dead)),
+            classify(stroke(0xDC, Translation::Dead(None))),
             Some(TypedEvent::Reset)
         );
         assert_eq!(
@@ -461,23 +526,54 @@ mod tests {
     }
 
     #[test]
-    fn a_dead_key_swallows_the_next_character() {
+    fn a_dead_key_and_the_next_letter_type_the_composed_letter() {
+        let dead = |accent| stroke(0xDC, Translation::Dead(Some(accent)));
         let mut c = Classifier::new();
-        assert_eq!(
-            c.classify(stroke(0xDC, Translation::Dead)),
-            Some(TypedEvent::Reset)
-        );
-        // A bare modifier in between does not use up the swallow.
+        assert_eq!(c.classify(dead('^')), Some(TypedEvent::Reset));
+        // A bare modifier in between does not use up the accent.
         assert_eq!(c.classify(stroke(VK_SHIFT, Translation::Nothing)), None);
+        assert_eq!(c.classify(ch(0x45, 'e')), Some(TypedEvent::Char('ê')));
+        assert_eq!(
+            c.classify(ch(0x45, 'e')),
+            Some(TypedEvent::Char('e')),
+            "used up"
+        );
+        // Other accents and a capital.
+        c.classify(dead('´'));
+        assert_eq!(c.classify(ch(0x41, 'A')), Some(TypedEvent::Char('Á')));
+        c.classify(dead('¨'));
+        assert_eq!(c.classify(ch(0x55, 'u')), Some(TypedEvent::Char('ü')));
+        c.classify(dead('~'));
+        assert_eq!(c.classify(ch(0x4E, 'n')), Some(TypedEvent::Char('ñ')));
+        // A space gives the accent itself.
+        c.classify(dead('´'));
+        assert_eq!(c.classify(ch(0x20, ' ')), Some(TypedEvent::Char('´')));
+        // A letter with no precomposed form with the accent is not guessed.
+        c.classify(dead('^'));
+        assert_eq!(c.classify(ch(0x4B, 'k')), Some(TypedEvent::Reset));
+        // An accent the table does not know, or one that was not reported, swallows the letter.
+        c.classify(dead('?'));
         assert_eq!(c.classify(ch(0x45, 'e')), Some(TypedEvent::Reset));
-        assert_eq!(c.classify(ch(0x45, 'e')), Some(TypedEvent::Char('e')));
-        // Dead then Backspace: the swallow ends without a character.
-        c.classify(stroke(0xDC, Translation::Dead));
+        c.classify(stroke(0xDC, Translation::Dead(None)));
+        assert_eq!(c.classify(ch(0x45, 'e')), Some(TypedEvent::Reset));
+        // Dead then Backspace: the accent is gone without a character.
+        c.classify(dead('^'));
         assert_eq!(
             c.classify(stroke(VK_BACK, Translation::Nothing)),
             Some(TypedEvent::Backspace)
         );
         assert_eq!(c.classify(ch(0x45, 'e')), Some(TypedEvent::Char('e')));
+    }
+
+    #[test]
+    fn caps_lock_is_counted_from_the_presses_the_hook_sees() {
+        let mut c = Classifier::with_caps(true);
+        assert!(c.caps());
+        assert_eq!(c.classify(stroke(VK_CAPITAL, Translation::Nothing)), None);
+        assert!(!c.caps());
+        c.classify(stroke(VK_CAPITAL, Translation::Nothing));
+        assert!(c.caps());
+        assert!(!Classifier::new().caps());
     }
 
     #[test]

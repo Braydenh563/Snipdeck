@@ -11,9 +11,9 @@
 
 use windows::Win32::UI::Input::KeyboardAndMouse::{
     GetAsyncKeyState, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBD_EVENT_FLAGS, KEYBDINPUT,
-    KEYEVENTF_EXTENDEDKEY, KEYEVENTF_KEYUP, SendInput, VIRTUAL_KEY, VK_BACK, VK_INSERT,
-    VK_LCONTROL, VK_LEFT, VK_LMENU, VK_LSHIFT, VK_LWIN, VK_RCONTROL, VK_RMENU, VK_RSHIFT, VK_RWIN,
-    VK_V,
+    KEYEVENTF_EXTENDEDKEY, KEYEVENTF_KEYUP, MAPVK_VK_TO_VSC, MapVirtualKeyW, SendInput,
+    VIRTUAL_KEY, VK_BACK, VK_INSERT, VK_LCONTROL, VK_LEFT, VK_LMENU, VK_LSHIFT, VK_LWIN,
+    VK_RCONTROL, VK_RMENU, VK_RSHIFT, VK_RWIN, VK_V,
 };
 
 use crate::keys::{KeyEvent, Modifiers};
@@ -75,10 +75,14 @@ impl Keyboard for WinKeyboard {
             .collect();
         // Best effort: the sequence already failed, so a failure here changes nothing.
         let _ = inject(&stuck);
-        Err(Error::Input(format!(
-            "Windows accepted {accepted} of {} key events",
-            sequence.len()
-        )))
+        Err(if accepted == 0 {
+            Error::Input("Windows accepted no key events".into())
+        } else {
+            Error::PartialInput {
+                sent: accepted,
+                of: sequence.len(),
+            }
+        })
     }
 }
 
@@ -118,10 +122,13 @@ fn key_input(key: VirtualKey, press: bool) -> INPUT {
         Anonymous: INPUT_0 {
             ki: KEYBDINPUT {
                 wVk: VIRTUAL_KEY(key.vk),
-                wScan: 0,
+                // Apps that read the scan code (games, remote desktops) ignore a zero one.
+                // SAFETY: no preconditions.
+                wScan: u16::try_from(unsafe { MapVirtualKeyW(u32::from(key.vk), MAPVK_VK_TO_VSC) })
+                    .unwrap_or(0),
                 dwFlags: flags,
                 time: 0,
-                dwExtraInfo: 0,
+                dwExtraInfo: win_logic::OWN_INPUT_TAG,
             },
         },
     }
@@ -144,5 +151,6 @@ mod tests {
         assert_eq!(down.dwFlags, KEYEVENTF_EXTENDEDKEY);
         assert_eq!(up.dwFlags, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP);
         assert_eq!(down.wVk, VK_INSERT);
+        assert_eq!(down.dwExtraInfo, win_logic::OWN_INPUT_TAG);
     }
 }

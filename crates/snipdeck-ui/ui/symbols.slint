@@ -98,6 +98,12 @@ export component SymbolsView inherits Rectangle {
     callback cell-menu(int, length, length);
     callback tip(string, length, length, length, length, bool);
     callback columns-changed(int);
+    // Ctrl+F in the Panel: each time this goes up the search field takes the caret and selects its text.
+    in property <int> search-ticks: 0;
+    changed search-ticks => {
+        search.focus();
+        search.select-all();
+    }
     callback focus-changed(bool);
     callback composing-changed(bool);
     // The name of the cell under the pointer ("" when it leaves): the Panel's footer shows it.

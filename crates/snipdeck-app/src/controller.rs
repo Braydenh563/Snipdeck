@@ -54,14 +54,16 @@ pub use history_ctl::HistoryView;
 pub use library::Library;
 pub use lock_ctl::{MasterProblem, MasterState};
 pub use main_ctl::{BoardMenuEntry, FilterChip, MainAction, MainScreen, TagChoice, TagRenameError};
-pub use panel::{APP_MENU, AppMenuEntry, HelpTopic, ItemMenuEntry, LIST_MENU, ListMenuEntry};
+pub use panel::{
+    APP_MENU, AppGroup, AppMenuEntry, FrameMode, HelpTopic, ItemMenuEntry, LIST_MENU, ListMenuEntry,
+};
 pub use panel_select::LABELS;
 pub use settings_ctl::{ImportKind, ImportPreview, ImportProblem, ImportSource};
 pub use symbol_ctl::{IconExport, IconSave, SaveOutcome, SymbolChoice, SymbolMenuEntry};
-pub use trigger_ctl::{HintOutcome, TypedOutcome};
+pub use trigger_ctl::{HintOutcome, SkipReason, TypedOutcome};
 pub use views::{
     CalendarView, ChooseEntry, ChooseLabel, ChooseMenu, Effect, FillSubmission, FillView,
-    PickerView, StackView, ToastPhase, ToastView, UseResult, View,
+    PickerDetail, PickerView, SettingsAction, StackView, ToastPhase, ToastView, UseResult, View,
 };
 
 use crate::{
@@ -83,6 +85,8 @@ use crate::{
 /// How long the Target gets to take the focus back before keys are injected (the M2 spike's
 /// 50 ms; Windows restores the focused control asynchronously).
 pub const REFOCUS_WAIT: Duration = Duration::from_millis(50);
+/// How often [`Controller::paste_tick`] looks at a paste that is waiting for its target.
+pub const PASTE_TICK: Duration = snipdeck_platform::pipeline::POLL_INTERVAL;
 /// A foreground change this soon after the Panel was shown does not hide it: showing the Panel
 /// (a hotkey, the tray) can itself move the foreground around while Windows settles.
 pub const BLUR_GRACE: Duration = Duration::from_millis(400);
@@ -218,7 +222,7 @@ struct ActiveToast {
     clippy::struct_excessive_bools,
     reason = "independent UI states, not a hidden state machine"
 )]
-pub struct Controller<S, C, K, T> {
+pub struct Controller<S, C: Clipboard, K, T> {
     store: S,
     services: Services<C, K, T>,
     target: Box<dyn TargetSource>,
@@ -229,6 +233,15 @@ pub struct Controller<S, C, K, T> {
     /// (if the clipboard still holds exactly that text). Only a keyed hash of the text is kept,
     /// so the secret does not sit in memory for the wait.
     clipboard_clear: Option<PendingClear>,
+    /// A paste whose key is out and whose tail (the target asking for the clipboard, the settle
+    /// time, the restore) is polled by [`Controller::paste_tick`], never slept through on the UI
+    /// thread (PANEL-13).
+    paste: Option<use_ctl::PendingPaste<C>>,
+    /// A timer chain is polling [`Self::paste`] (one chain, however many windows are bound).
+    paste_timer: bool,
+    /// Told when a paste starts waiting, from whichever entry point started it (the Panel, the
+    /// Picker, a typed trigger), so the host arms the polling timer without waiting for a redraw.
+    on_paste_waiting: Option<std::rc::Rc<dyn Fn()>>,
     /// A sensitive Files item was pasted: its decrypted files wait in the temp folder until the
     /// lock or the quit deletes them.
     secret_files_pasted: bool,
@@ -261,6 +274,12 @@ pub struct Controller<S, C, K, T> {
     toast_history: std::collections::VecDeque<Toast>,
     /// The Picker, while it is open.
     picker: Option<PickerModel>,
+    /// The scope the Picker was left on; the next summon starts there.
+    picker_scope: crate::picker::Scope,
+    /// The Picker's preview pane is open (F3); it stays as the user left it.
+    picker_detail: bool,
+    /// The tag the Picker's tag scope covered last, so it opens on it again.
+    picker_tag: Option<snipdeck_core::TagId>,
     /// The template fill form, while it is open.
     fill: Option<FillModel>,
     fill_seq: u64,
@@ -275,6 +294,8 @@ pub struct Controller<S, C, K, T> {
     stack: Vec<ItemId>,
     /// The marked items are being pasted one by one ("Start stack" was chosen).
     stack_running: bool,
+    /// The arrow keys move or size the floating Panel (the Window menu's Move and Size).
+    frame_keys: Option<panel::FrameKeys>,
     /// Which of the Panel's two menus is open (never both).
     menu: PanelMenu,
     /// The symbol the open [`PanelMenu::Symbol`] is about.
@@ -396,6 +417,8 @@ pub struct Controller<S, C, K, T> {
     /// it since: it stays out until it has, so that it does not tuck away under the hand that
     /// docked it.
     dock_fresh: bool,
+    /// The pointer was near the tucked tab at the last tick: the dock polls at its fast pace.
+    dock_near: bool,
     /// When the Panel was last docked from a menu or from Settings.
     docked_at: Timestamp,
     /// The work area the dock's timer last read for the Panel's monitor: a change in it (the
@@ -421,6 +444,18 @@ pub struct Controller<S, C, K, T> {
     typing_sent: Vec<(snipdeck_core::Trigger, snipdeck_core::ItemId)>,
     /// Whether the candidate list handed over was built with suggestions on.
     typing_suggest: bool,
+    /// Why the last typed trigger did not expand (Troubleshoot).
+    last_skip: Option<trigger_ctl::SkipReason>,
+    /// The last typed expansion that was pasted, until a key or a few seconds take the undo away.
+    last_expansion: Option<trigger_ctl::Expansion>,
+    /// How many characters the use that just began puts into the Target (see `usecase::Used`).
+    last_use_chars: Option<usize>,
+    /// The group of the kebab menu that is open (the menu's other groups show only their head).
+    app_group: Option<AppGroup>,
+    /// The Panel row the user had selected when it asked for the palette, until the Main window opens it.
+    palette_armed: Option<ItemId>,
+    /// The Panel row the open palette acts on (the item commands run on it, not on Main's cursor).
+    palette_item: Option<ItemId>,
     /// Whether the typing service was last told to run.
     typing_on: Option<bool>,
     /// Told whether clipboard history is on and whether it is paused, for the tray menu's
@@ -494,7 +529,7 @@ struct Session {
     tour: Option<crate::tour::TourStep>,
 }
 
-impl<S, C, K, T> std::fmt::Debug for Controller<S, C, K, T> {
+impl<S, C: Clipboard, K, T> std::fmt::Debug for Controller<S, C, K, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Controller")
             .field("visible", &self.visible)
@@ -547,6 +582,9 @@ where
             clock,
             tz: TimeZone::system(),
             clipboard_clear: None,
+            paste: None,
+            paste_timer: false,
+            on_paste_waiting: None,
             secret_files_pasted: false,
             secret_files_deleting: false,
             secret_files_due: None,
@@ -564,6 +602,9 @@ where
             pending_toast: None,
             toast_history: std::collections::VecDeque::new(),
             picker: None,
+            picker_scope: crate::picker::Scope::default(),
+            picker_detail: false,
+            picker_tag: None,
             fill: None,
             fill_erase: None,
             selection_for_use: None,
@@ -571,6 +612,7 @@ where
             queue: PasteQueue::default(),
             stack: Vec::new(),
             stack_running: false,
+            frame_keys: None,
             menu: PanelMenu::None,
             symbol_menu: None,
             menu_targets: Vec::new(),
@@ -628,6 +670,7 @@ where
             resize_loop_seen: false,
             resize_at: shown_at,
             dock_fresh: false,
+            dock_near: false,
             docked_at: shown_at,
             dock_area_seen: None,
             fullscreen: false,
@@ -639,6 +682,12 @@ where
             typing: None,
             typing_sent: Vec::new(),
             typing_suggest: false,
+            last_skip: None,
+            last_expansion: None,
+            last_use_chars: None,
+            app_group: None,
+            palette_armed: None,
+            palette_item: None,
             typing_on: None,
             tray_history: None,
             screen_clip: crate::screen_clip::ScreenClipFlow::new(),
@@ -755,6 +804,7 @@ where
             dock_collapsed: self.dock.is_collapsed(),
             dock_vertical: self.shown_edge().is_none_or(DockEdge::vertical),
             dock_edge: self.shown_edge(),
+            frame_mode: self.frame_mode(),
             dock_full_edge: self.settings.dock.full_edge,
             dragging: self.drag.is_some(),
             dock_target: self.dock_target(),
@@ -768,6 +818,7 @@ where
             history: self.history_view(),
             board_menu: (self.menu == PanelMenu::Board).then(|| self.panel_board_menu_entries()),
             app_menu: (self.menu == PanelMenu::App).then(|| APP_MENU.to_vec()),
+            app_menu_group: self.app_group,
             item_menu: match self.menu {
                 PanelMenu::Item(id) => Some(self.item_menu_entries(id)),
                 _ => None,
@@ -797,9 +848,12 @@ where
                     .picker_revealed
                     .and_then(|id| p.rows().iter().position(|r| r.id == id)),
                 scope: p.scope(),
+                more: p.more(),
+                tag: p.tag_name().to_owned(),
                 query: p.query().to_owned(),
                 selected: p.selected(),
                 footer: self.model.footer(),
+                detail: self.picker_detail_view(p),
             }),
             fill: self.fill_view(),
             recent: self.recent_view(),
@@ -951,6 +1005,18 @@ where
         self.visible
     }
 
+    /// Whether "Keep Panel open" is on (the Panel stays when another window is clicked).
+    #[must_use]
+    pub fn keeps_open(&self) -> bool {
+        self.on_top
+    }
+
+    /// Whether the library has a master password (so it can be locked now).
+    #[must_use]
+    pub fn master_password_set(&self) -> bool {
+        self.lock.set
+    }
+
     /// The panel's model, for tests and the host.
     #[must_use]
     pub fn model(&self) -> &PanelModel {
@@ -973,6 +1039,11 @@ where
     #[must_use]
     pub fn services(&self) -> &Services<C, K, T> {
         &self.services
+    }
+
+    /// The platform services, for tests that move a fake clock by hand.
+    pub fn services_mut(&mut self) -> &mut Services<C, K, T> {
+        &mut self.services
     }
 
     // ---- Hotkeys, the Target and the window ---------------------------------------------------
@@ -1123,6 +1194,7 @@ where
     pub fn hide(&mut self) -> Vec<Effect> {
         self.visible = false;
         self.drag = None;
+        self.frame_keys = None;
         self.panel_focused = false;
         self.panel_end_modes();
         self.blur_hide = false;
@@ -1233,6 +1305,15 @@ where
         }
     }
 
+    /// [`on_target_changed`](Self::on_target_changed) with the probe already made: one foreground
+    /// change asks the system for the Target once (each probe is a process query and, for some apps,
+    /// a UI Automation call that may wait), not once for each decision it feeds.
+    fn apply_target(&mut self, now: Option<snipdeck_platform::route::Target>) {
+        if self.picker.is_none() && self.fill.is_none() {
+            self.model.set_target(now);
+        }
+    }
+
     /// The foreground window changed: the Target follows it (see
     /// [`on_target_changed`](Self::on_target_changed)), and an unpinned Panel hides when
     /// "Hide the Panel when it loses focus" is on. Only the Panel does this: the Main window,
@@ -1248,18 +1329,20 @@ where
         self.panel_revealed = None;
         // The user went to another app while the Picker or the fill form was open: they are
         // dismissed like any popup, without taking the focus back from where the user went (U6).
+        // One probe for the whole event: the three decisions below all read it.
+        let now = self.target.current();
         if (self.picker.is_some() || self.fill.is_some())
-            && self
-                .target
-                .current()
-                .is_some_and(|now| self.model.target() != Some(&now))
+            && now
+                .as_ref()
+                .is_some_and(|now| self.model.target() != Some(now))
         {
             self.picker = None;
             self.fill = None;
             self.fill_erase = None;
         }
-        self.on_target_changed();
-        if self.hides_on_blur() {
+        let has_target = now.is_some();
+        self.apply_target(now);
+        if self.hides_on_blur(has_target) {
             let effects = self.hide_with_hint();
             self.blur_hide = true;
             effects
@@ -1269,7 +1352,7 @@ where
     }
 
     /// Whether a foreground change now should hide the Panel.
-    fn hides_on_blur(&self) -> bool {
+    fn hides_on_blur(&self, has_target: bool) -> bool {
         self.visible
             && !self.on_top
             // A docked Panel tucks instead: its tab is how it comes back.
@@ -1282,7 +1365,7 @@ where
             && self.fill.is_none()
             // The tray, the desktop or the taskbar taking the foreground is no Target: the
             // user who just clicked the tray icon to open the Panel must not see it vanish.
-            && self.target.current().is_some()
+            && has_target
             && Duration::try_from(self.clock.now().duration_since(self.shown_at))
                 .is_ok_and(|since| since > BLUR_GRACE)
     }

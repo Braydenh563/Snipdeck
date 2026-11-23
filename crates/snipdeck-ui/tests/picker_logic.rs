@@ -45,14 +45,20 @@ fn start() -> (PickerWindow, Log) {
     }
     hook!(on_query_changed, |q| format!("query:{q}"));
     hook!(on_scope_changed, |s| format!("scope:{s:?}"));
+    hook!(on_tag_stepped, |d| format!("tag:{d}"));
     hook!(on_row_activated, |i| format!("use:{i}"));
     hook!(on_row_copied, |i| format!("copy:{i}"));
     hook!(on_quick_use, |n| format!("quick:{n}"));
     hook!(on_selection_moved, |d| format!("move:{d}"));
     hook!(on_edit_requested, |i| format!("edit:{i}"));
+    hook!(on_pin_requested, |i| format!("pin:{i}"));
+    hook!(on_duplicate_requested, |i| format!("duplicate:{i}"));
+    hook!(on_trash_requested, |i| format!("trash:{i}"));
     hook!(on_close_requested, || "close".to_string());
+    hook!(on_open_requested, || "open".to_string());
     hook!(on_dismissed, || "dismissed".to_string());
     hook!(on_reveal_requested, |i, on| format!("reveal:{i}:{on}"));
+    hook!(on_detail_toggled, || "detail".to_string());
     (ui, log)
 }
 
@@ -105,6 +111,27 @@ fn by_role(root: &impl ElementRoot, role: AccessibleRole) -> Vec<ElementHandle> 
         .collect()
 }
 
+/// A real left click at the middle of `element`: pointer down and up, as a mouse sends them, so any control that
+/// takes the keyboard focus on a click does so here.
+fn click(ui: &PickerWindow, element: &ElementHandle) {
+    let (p, s) = (element.absolute_position(), element.size());
+    let at = slint::LogicalPosition::new(p.x + s.width / 2.0, p.y + s.height / 2.0);
+    let button = slint::platform::PointerEventButton::Left;
+    ui.window()
+        .dispatch_event(slint::platform::WindowEvent::PointerMoved { position: at });
+    ui.window()
+        .dispatch_event(slint::platform::WindowEvent::PointerPressed {
+            position: at,
+            button,
+        });
+    ui.window()
+        .dispatch_event(slint::platform::WindowEvent::PointerReleased {
+            position: at,
+            button,
+        });
+    settle();
+}
+
 fn rows(ui: &PickerWindow) -> Vec<ElementHandle> {
     by_role(ui, AccessibleRole::ListItem)
 }
@@ -152,6 +179,21 @@ ui_tests! {
         press(ui.window(), &key(Key::Escape));
         assert_eq!(take(&log), ["close"], "Esc dismisses; it does not clear first");
         assert_eq!(ui.get_query(), "ab", "the host decides what a re-summon shows");
+    }
+
+    fn f3_asks_for_the_preview_and_the_pane_adds_its_height_when_the_controller_opens_it() {
+        let (ui, log) = start();
+        press(ui.window(), &key(Key::F3));
+        assert_eq!(take(&log), ["detail"]);
+        let closed = ui.get_content_height();
+        ui.set_detail_text("the whole text of the item".into());
+        ui.set_detail_open(true);
+        settle();
+        let open = ui.get_content_height();
+        assert!(open > closed + 40.0, "the pane has its own height: {closed} -> {open}");
+        ui.set_detail_open(false);
+        settle();
+        assert!((ui.get_content_height() - closed).abs() < 0.5, "and gives it back");
     }
 
     fn losing_the_keyboard_to_another_window_dismisses_without_the_escape_close() {
@@ -226,6 +268,18 @@ ui_tests! {
         assert_eq!(take(&log), ["move:8"]);
         press(ui.window(), &key(Key::PageUp));
         assert_eq!(ui.get_selected_index(), 0);
+    }
+
+    fn ctrl_home_and_ctrl_end_go_to_the_first_and_last_result_and_leave_the_search_caret_alone() {
+        let (ui, log) = start();
+        fixture::set_rows(&ui, fixture::numbered_rows(30));
+        settle();
+        chord(ui.window(), &[Key::Control], &key(Key::End));
+        assert_eq!(ui.get_selected_index(), 29);
+        assert_eq!(take(&log), ["move:29"]);
+        chord(ui.window(), &[Key::Control], &key(Key::Home));
+        assert_eq!(ui.get_selected_index(), 0);
+        assert_eq!(take(&log), ["move:-29"]);
     }
 
     fn the_selected_row_is_exposed_as_selected_to_assistive_technology() {
@@ -349,6 +403,29 @@ ui_tests! {
         assert_eq!(ui.get_selected_index(), 1);
     }
 
+    fn ctrl_p_ctrl_d_and_delete_ask_to_pin_duplicate_and_trash_the_selected_row() {
+        let (ui, log) = start();
+        press(ui.window(), &key(Key::DownArrow));
+        take(&log);
+        chord(ui.window(), &[Key::Control], "p");
+        chord(ui.window(), &[Key::Control], "d");
+        press(ui.window(), &key(Key::Delete));
+        assert_eq!(take(&log), ["pin:1", "duplicate:1", "trash:1"]);
+        assert_eq!(ui.get_query(), "", "the shortcuts are not search text");
+    }
+
+    fn delete_edits_the_search_text_instead_of_trashing_once_something_is_typed() {
+        let (ui, log) = start();
+        press(ui.window(), &key(Key::DownArrow));
+        type_text(ui.window(), "o");
+        take(&log);
+        press(ui.window(), &key(Key::Delete));
+        assert!(
+            !take(&log).iter().any(|l| l.starts_with("trash")),
+            "a search is being edited"
+        );
+    }
+
     fn ctrl_e_asks_to_edit_the_selected_row() {
         let (ui, log) = start();
         press(ui.window(), &key(Key::DownArrow));
@@ -461,26 +538,59 @@ ui_tests! {
 
     // ---- Scopes --------------------------------------------------------------------------------
 
-    fn tab_cycles_the_scope_all_board_pinned_and_back() {
+    fn tab_cycles_the_scope_all_board_list_pinned_recent_tag_and_back() {
         let (ui, log) = start();
         assert_eq!(ui.get_scope(), PickerScope::All);
         press(ui.window(), &key(Key::Tab));
         assert_eq!(ui.get_scope(), PickerScope::Board);
         press(ui.window(), &key(Key::Tab));
+        assert_eq!(ui.get_scope(), PickerScope::List);
+        press(ui.window(), &key(Key::Tab));
         assert_eq!(ui.get_scope(), PickerScope::Pinned);
         press(ui.window(), &key(Key::Tab));
+        assert_eq!(ui.get_scope(), PickerScope::Recent);
+        press(ui.window(), &key(Key::Tab));
+        assert_eq!(ui.get_scope(), PickerScope::Tag);
+        press(ui.window(), &key(Key::Tab));
         assert_eq!(ui.get_scope(), PickerScope::All, "wraps around");
-        assert_eq!(take(&log), ["scope:Board", "scope:Pinned", "scope:All"]);
+        assert_eq!(
+            take(&log),
+            [
+                "scope:Board",
+                "scope:List",
+                "scope:Pinned",
+                "scope:Recent",
+                "scope:Tag",
+                "scope:All"
+            ]
+        );
         assert!(ui.get_search_focused(), "focus never leaves the search");
     }
 
     fn shift_tab_goes_back_through_the_scopes() {
         let (ui, log) = start();
         chord(ui.window(), &[Key::Shift], &key(Key::Backtab));
-        assert_eq!(ui.get_scope(), PickerScope::Pinned);
+        assert_eq!(ui.get_scope(), PickerScope::Tag);
         chord(ui.window(), &[Key::Shift], &key(Key::Tab));
-        assert_eq!(ui.get_scope(), PickerScope::Board);
-        assert_eq!(take(&log), ["scope:Pinned", "scope:Board"]);
+        assert_eq!(ui.get_scope(), PickerScope::Recent);
+        assert_eq!(take(&log), ["scope:Tag", "scope:Recent"]);
+    }
+
+    fn ctrl_tab_steps_the_tag_only_in_the_tag_scope_and_the_chip_names_the_tag() {
+        let (ui, log) = start();
+        chord(ui.window(), &[Key::Control], &key(Key::Tab));
+        assert_eq!(take(&log), Vec::<String>::new(), "outside the Tag scope it does nothing");
+        assert_eq!(ui.get_scope(), PickerScope::All, "and it does not change the scope");
+        ui.set_scope(PickerScope::Tag);
+        ui.set_scope_tag("work".into());
+        settle();
+        chord(ui.window(), &[Key::Control], &key(Key::Tab));
+        chord(ui.window(), &[Key::Control, Key::Shift], &key(Key::Backtab));
+        assert_eq!(take(&log), ["tag:1", "tag:-1"]);
+        // The chip carries the tag's name; a second click on it steps on.
+        let chip = find(&ui, "#work", AccessibleRole::Button);
+        click(&ui, &chip);
+        assert_eq!(take(&log), ["tag:1"]);
     }
 
     fn changing_the_scope_returns_the_selection_to_the_first_row_and_keeps_the_query() {
@@ -509,7 +619,76 @@ ui_tests! {
         assert!(take(&log).is_empty(), "no callback fired");
     }
 
+    fn a_pointer_click_on_every_scope_chip_changes_the_scope_and_never_dismisses() {
+        let (ui, log) = start();
+        // The window has the keyboard, as it does when Windows activates it.
+        ui.window().dispatch_event(slint::platform::WindowEvent::WindowActiveChanged(true));
+        ui.invoke_focus_search();
+        settle();
+        take(&log);
+        for (label, scope) in [
+            ("This board", PickerScope::Board),
+            ("This list", PickerScope::List),
+            ("Pinned", PickerScope::Pinned),
+            ("Recent", PickerScope::Recent),
+            ("Tag", PickerScope::Tag),
+            ("All", PickerScope::All),
+        ] {
+            click(&ui, &find(&ui, label, AccessibleRole::Button));
+            assert_eq!(ui.get_scope(), scope, "{label}");
+            let seen = take(&log);
+            assert!(!seen.iter().any(|l| l == "dismissed"), "a click on {label} dismissed the Picker: {seen:?}");
+            assert!(ui.get_search_focused(), "the keyboard stays in the search after {label}");
+        }
+    }
+
+    fn a_pointer_click_on_a_row_uses_it_without_a_dismiss_first() {
+        let (ui, log) = start();
+        ui.window().dispatch_event(slint::platform::WindowEvent::WindowActiveChanged(true));
+        ui.invoke_focus_search();
+        settle();
+        take(&log);
+        let first = rows(&ui).into_iter().next().expect("a row");
+        click(&ui, &first);
+        assert_eq!(take(&log), ["use:0"], "the click uses the row and nothing dismissed the Picker before it");
+    }
+
+    fn the_list_chip_exists_and_a_cut_list_says_how_many_are_shown() {
+        let (ui, log) = start();
+        find(&ui, "This list", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert_eq!(take(&log), ["scope:List"]);
+        assert!(
+            missing(&ui, "Showing the first 50", AccessibleRole::Text),
+            "nothing was cut"
+        );
+        ui.set_result_limit(50);
+        settle();
+        find(&ui, "Showing the first 50", AccessibleRole::Text);
+    }
+
     // ---- States --------------------------------------------------------------------------------
+
+    fn an_empty_state_carries_the_one_action_that_fixes_it() {
+        let (ui, log) = start();
+        fixture::set_rows(&ui, Vec::new());
+        settle();
+        find(&ui, "Open Snipdeck", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["open"], "an empty library goes to the Panel");
+
+        // A search with no result in a narrow scope offers the wider one.
+        find(&ui, "This board", AccessibleRole::Button).invoke_accessible_default_action();
+        type_text(ui.window(), "zz");
+        settle();
+        take(&log);
+        find(&ui, "Search all boards", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert_eq!(take(&log), ["scope:All"]);
+        assert!(
+            missing(&ui, "Search all boards", AccessibleRole::Button),
+            "the widest scope has nothing wider to offer"
+        );
+    }
 
     fn an_empty_picker_teaches_and_a_search_with_no_results_says_so() {
         let (ui, log) = start();
@@ -562,7 +741,7 @@ ui_tests! {
             "the results list is labelled"
         );
         assert!(!all(&ui, "Search in", AccessibleRole::Groupbox).is_empty(), "the scopes are a labelled group");
-        for chip in ["All", "This board", "Pinned"] {
+        for chip in ["All", "This board", "Pinned", "Recent", "Tag"] {
             let c = find(&ui, chip, AccessibleRole::Button);
             assert_eq!(c.accessible_checkable(), Some(true), "{chip} reports a checked state");
         }

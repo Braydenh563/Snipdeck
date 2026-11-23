@@ -441,6 +441,11 @@ fn deck_parts_report_clicks_menus_and_have_accessible_names() {
         .find(|e| e.accessible_role() == Some(AccessibleRole::Button))
         .expect("pinned chip");
     assert!(chip.size().height >= 24.0);
+    assert_eq!(
+        chip.accessible_description().as_deref(),
+        Some("Pinned snippet. Press to paste."),
+        "the chip says what it does, the name stays the title"
+    );
     chip.invoke_accessible_default_action();
     assert_eq!(ui.get_last(), "pinned:1");
 

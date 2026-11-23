@@ -63,6 +63,8 @@ list wins. Rungs as below (H Haiku, S Sonnet, O Opus, F the one Fable pass).
 - [ ] G3 [owner] Tag `v1.0.0`; the release workflow builds the zip; add its SHA-256 to `tools/launcher/release-sha256.txt`.
 - [ ] G4 [owner] After release: apply to SignPath Foundation; Microsoft Store submission (optional).
 
+Follow-up (PANEL-40 extras, skipped 2026-11-22, needs Windows testing): paste-then-Enter/Tab and per-position global chords. Risk: the paste is a begin/poll pipeline (`snipdeck-platform/src/pipeline.rs`), so a trailing Enter or Tab must go out only after the target has taken the paste, and a timing slip sends it to the wrong window (it submits a form or sends a message). Per-position chords need a new `HotkeyAction` variant (about 12 exhaustive matches), a Settings row, the shortcuts `CATALOGUE` and its six locales, and Windows registration, all unverified here.
+
 Not in v1 (owner, 2026-10-19): screen capture and OCR (SPEC 5.5), an update check (breaks the offline promise), an activation server.
 
 ---

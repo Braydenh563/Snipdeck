@@ -164,6 +164,8 @@ struct WorkerDoctor {
     today: Date,
     shortcuts_unset: Vec<HotkeyAction>,
     tray_present: bool,
+    /// Why the last typed trigger was not expanded, if one was not.
+    skipped_trigger: Option<&'static str>,
 }
 
 impl WorkerDoctor {
@@ -173,6 +175,7 @@ impl WorkerDoctor {
         today: Date,
         hotkeys: &Hotkeys,
         tray_present: bool,
+        skipped_trigger: Option<&'static str>,
     ) -> Self {
         let store = Store::open_reader(&data_dir, None).map_err(|e| e.to_string());
         Self {
@@ -182,6 +185,7 @@ impl WorkerDoctor {
             today,
             shortcuts_unset: unset_actions(hotkeys),
             tray_present,
+            skipped_trigger,
         }
     }
 
@@ -256,6 +260,10 @@ impl DoctorHost for WorkerDoctor {
 
     fn newest_crash(&self) -> Option<String> {
         crash::newest(&self.data_dir)
+    }
+
+    fn last_skipped_trigger(&self) -> Option<&'static str> {
+        self.skipped_trigger
     }
 }
 
@@ -382,7 +390,7 @@ fn build_date() -> &'static str {
 
 // ---- The binding -------------------------------------------------------------------------------
 
-struct HelpCore<C, K, T> {
+struct HelpCore<C: Clipboard, K, T> {
     controller: Rc<RefCell<Controller<Store, C, K, T>>>,
     window: slint::Weak<ui::HelpWindow>,
     /// The data folder; `None` in the demo, which has nothing to check.
@@ -424,13 +432,16 @@ where
             self.checking.set(false);
             return;
         };
-        let (today, hotkeys, tray, backup_dir) = {
+        let (today, hotkeys, tray, backup_dir, skipped) = {
             let controller = self.controller.borrow();
             (
                 controller.today(),
                 controller.settings().hotkeys.clone(),
                 controller.tray_icon_present(),
                 controller.settings().backup_folder(&dir),
+                controller
+                    .last_skipped_trigger()
+                    .map(crate::controller::SkipReason::sentence),
             )
         };
         self.checks.borrow_mut().clear();
@@ -439,7 +450,9 @@ where
         let offload = CHECK_OFFLOAD.with(|o| Rc::clone(&o.borrow()));
         offload.run(
             Box::new(move || {
-                doctor::run(&WorkerDoctor::new(dir, backup_dir, today, &hotkeys, tray))
+                doctor::run(&WorkerDoctor::new(
+                    dir, backup_dir, today, &hotkeys, tray, skipped,
+                ))
             }),
             Box::new(move |found| {
                 if let Some(core) = weak.upgrade()
@@ -728,11 +741,11 @@ where
 }
 
 /// A bound Help window. Dropping it does not unbind the window.
-pub struct HelpBinding<C, K, T> {
+pub struct HelpBinding<C: Clipboard, K, T> {
     core: Rc<HelpCore<C, K, T>>,
 }
 
-impl<C, K, T> std::fmt::Debug for HelpBinding<C, K, T> {
+impl<C: Clipboard, K, T> std::fmt::Debug for HelpBinding<C, K, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("HelpBinding").finish_non_exhaustive()
     }

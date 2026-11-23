@@ -166,10 +166,13 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::LibrarySetAside { .. } => 136,
         ToastMessage::ExportedSome { .. } => 137,
         ToastMessage::ItemsTagged { .. } => 138,
+        ToastMessage::CopiedPartlySent => 139,
+        ToastMessage::StackRunning => 140,
+        ToastMessage::FormClosed => 141,
     }
 }
 
-const VARIANTS: usize = 139;
+const VARIANTS: usize = 142;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -188,6 +191,7 @@ fn samples() -> Vec<ToastMessage> {
         M::CopiedNothingFocused { app: s("Outlook") },
         M::CopiedExcluded { app: s("Outlook") },
         M::CopiedTargetGone,
+        M::CopiedPartlySent,
         M::ClipboardBusy,
         M::TemplateBroken,
         M::Locked,
@@ -210,6 +214,8 @@ fn samples() -> Vec<ToastMessage> {
         M::TooLargeToSave,
         M::NoListToSave,
         M::NothingToPasteNext,
+        M::StackRunning,
+        M::FormClosed,
         M::PasteNextFinished,
         M::HotkeyInUse {
             chord: s("Ctrl+Alt+Space"),

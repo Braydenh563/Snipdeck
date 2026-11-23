@@ -107,7 +107,7 @@ use Scope::{Anywhere, Editors, Main, Panel, Picker, Unlock};
 
 /// Every shortcut, in the order of `ShortcutTexts.titles` (a test in `tests/help_window.rs` checks the
 /// length) and grouped by scope in the order of [`Scope::ALL`].
-pub const CATALOGUE: [Shortcut; 99] = [
+pub const CATALOGUE: [Shortcut; 101] = [
     // Anywhere in Windows.
     global(HotkeyAction::TogglePanel),
     global(HotkeyAction::Picker),
@@ -239,6 +239,8 @@ pub const CATALOGUE: [Shortcut; 99] = [
     custom(Picker, &["Alt", "1-9"], "Alt+1 to 9"),
     custom(Picker, &["Tab", ALT, "Shift", "Tab"], "Tab or Shift+Tab"),
     row(Picker, "Ctrl+E"),
+    row(Picker, "Ctrl+P"),
+    row(Picker, "Ctrl+D"),
     row(Picker, "Ctrl+O"),
     row(Picker, "Esc"),
     // Editors.
@@ -543,10 +545,13 @@ mod tests {
                 continue;
             }
             assert!(
-                CATALOGUE
-                    .iter()
-                    .any(|s| s.scope == Scope::Main
-                        && matches!(s.keys, Keys::Chord(c) if c == chord)),
+                CATALOGUE.iter().any(|s| s.scope == Scope::Main
+                    && match s.keys {
+                        Keys::Chord(c) => c == chord,
+                        // A row that names two chords ("Ctrl+Y or Ctrl+Shift+Z") lists each.
+                        Keys::Custom { spoken, .. } => spoken.split(" or ").any(|c| c == chord),
+                        _ => false,
+                    }),
                 "{command:?} ({chord}) is in the shortcuts list"
             );
         }

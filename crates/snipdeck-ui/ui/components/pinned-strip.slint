@@ -43,6 +43,8 @@ component PinnedChip inherits Rectangle {
     border-color: Theme.hc-border;
     accessible-role: button;
     accessible-label: root.title;
+    // The name is the snippet's title alone (it is what a voice user says); what the button does and why it is here come second.
+    accessible-description: @tr("Pinned snippet. Press to paste.");
     accessible-action-default => {
         root.use();
     }

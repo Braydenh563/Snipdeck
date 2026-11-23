@@ -29,7 +29,7 @@
 // one after 500ms, and swaps it instantly while the pointer moves between controls.
 import { TipHost, TipLayer } from "components/tip-host.slint";
 import { ListView } from "std-widgets.slint";
-import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook, Palette } from "theme.slint";
+import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook, Palette, ListHue, ListAccent } from "theme.slint";
 import { Icons } from "icons.slint";
 import { Icon } from "components/icon.slint";
 import { GroupHeader } from "components/group-header.slint";
@@ -94,8 +94,10 @@ export struct PanelRow {
     is-header: bool,
     group-count: int,
     group-collapsed: bool,
-    // The item sits under a group's header: the card is indented.
-    grouped: bool,
+    // The group's colour: -1 none, else 0 to 8 in the order of `ListHue` (the host's `ListAccent`).
+    group-colour: int,
+    // How many groups the row sits in (a header: how many it is nested in): the row is indented by it.
+    depth: int,
     // Its place among the group's items (1 = first) and how many the group has; 0 = not in a group.
     set-position: int,
     set-size: int,
@@ -191,8 +193,12 @@ export component PanelWindow inherits Window {
     no-frame: true;
     always-on-top: root.topmost;
     background: Theme.bg-app;
-    // A collapsed dock is a strip a few pixels thick: the Panel's minimum size does not apply.
-    min-width: root.dock-collapsed ? 0px : 260px;
+    // A collapsed dock is a strip a few pixels thick: the Panel's minimum size does not apply. Otherwise 260 holds the header
+    // at the usual text size, and a larger text size adds what the header grows by (at 225 % the board picker, Search, New,
+    // More and Close no longer fit in 260). The need is worked out for the narrowest header (New as an icon).
+    min-width: root.dock-collapsed ? 0px : max(260px, 260px + root.header-need - root.header-need-base);
+    // The floor the window manager is given (the tests read it: the testing backend does not enforce it).
+    out property <length> floor-width: root.min-width;
     max-width: 480px;
     // Header, a few rows and the footer always fit: the footer is never pushed out of the window.
     min-height: root.dock-collapsed ? 0px : root.min-h;
@@ -220,8 +226,17 @@ export component PanelWindow inherits Window {
     callback group-rename-ended();
     // The name a new group starts with.
     public pure function group-default-name() -> string { return @tr("Group"); }
-    public pure function group-announcement(name: string, count: int) -> string {
+    property <[ListHue]> group-hues: [ListHue.blue, ListHue.teal, ListHue.green, ListHue.amber, ListHue.orange, ListHue.red, ListHue.rose, ListHue.violet, ListHue.slate];
+    property <[string]> group-colour-names: [
+        @tr("Blue"), @tr("Teal"), @tr("Green"), @tr("Amber"), @tr("Orange"),
+        @tr("Red"), @tr("Rose"), @tr("Violet"), @tr("Slate"),
+    ];
+    public pure function group-announcement(name: string, count: int, colour: int) -> string {
         // Folded or open is spoken from the header's expanded state, so the label does not repeat it.
+        // The colour is spoken too: the dot is never the only cue.
+        if (colour >= 0 && colour < root.group-colour-names.length) {
+            return @tr("group {}, {}, {} item" | "group {}, {}, {} items" % count, name, root.group-colour-names[colour], count);
+        }
         return @tr("group {}, {} item" | "group {}, {} items" % count, name, count);
     }
     // The Recent inbox (SPEC 5.6): `recent-available` while clipboard history is on shows the clock tab at the far left
@@ -475,6 +490,10 @@ export component PanelWindow inherits Window {
     // The paste stack (SPEC 5.1): items marked from the item menu, then "Start stack" makes Paste next walk them.
     in property <bool> stack-visible: false;
     in property <bool> stack-running: false;
+    // The Window menu's Move (1) or Size (2): the arrow keys move or resize the floating Panel, Enter keeps, Esc cancels.
+    in property <int> frame-mode: 0;
+    callback frame-key(int, int, bool);
+    callback frame-ended(bool);
     in property <int> stack-count: 0;
     in property <int> stack-position: 0;
     in property <string> stack-next-title: "";
@@ -633,8 +652,11 @@ export component PanelWindow inherits Window {
     property <float> glyph-k: min(SystemLook.text-scale, 1.75);
     // From 1.5 the header has no room for Keep on top as well: it moves into the More menu (audit 2, item 1).
     out property <bool> pin-in-menu: SystemLook.text-scale >= 1.5;
+    // The header's width without its padding and divider: the board picker's floor, the icon buttons and the gaps.
+    property <length> header-need: 69px * SystemLook.text-scale + Space.s8 * root.chrome-k * (root.pin-in-menu ? 4 : 5) + Space.s0-5 * (root.pin-in-menu ? 6 : 7);
+    property <length> header-need-base: 69px + Space.s8 * 5 + Space.s0-5 * 7;
     property <bool> new-icon-only: root.narrow || root.lists-in-menu;
-    property <string> switcher-list: !root.lists-in-menu ? "" : root.recent-open ? @tr("Recent") : root.tabs[root.current-tab].text;
+    property <string> switcher-list: !root.lists-in-menu ? "" : root.recent-open ? @tr("Recent") : root.symbols-open ? @tr("Symbols") : root.colours-open ? @tr("Colours") : root.tabs[root.current-tab].text;
 
     property <int> sel: root.rows.length == 0 ? -1 : min(max(root.selected-index, 0), root.rows.length - 1);
     property <int> used-index: -1;
@@ -759,13 +781,20 @@ export component PanelWindow inherits Window {
     property <string> row-tip-text: "";
     function row-tips-close() {
         if (root.row-tip-text != "") {
-            root.tip-set(root.row-tip-text, 0px, 0px, 0px, 0px, false);
+            // The row is gone: its tip goes at once, with no wait for a pointer to cross to it.
+            TipHost.dismiss();
             root.row-tip-text = "";
         }
     }
     changed rows => { root.row-tips-close(); }
     changed symbol-rows => { root.row-tips-close(); }
     property <bool> symbol-search-focused: false;
+    // Ctrl+F on the Symbols or Colours tab: counts the requests for that tab's own search field.
+    property <int> search-ticks: 0;
+    // A text field other than the list search owns the editing keys (Ctrl+Z, Ctrl+Y undo the typing there, not
+    // the library): the Symbols search, a group rename, quick add, a Colours field. One test for every
+    // window-level editing chord.
+    property <bool> field-owns-edit-keys: root.symbol-search-focused || root.header-renaming-row >= 0 || quick.expanded || (root.colours-open && ColourState.text-focused);
     property <bool> symbol-composing: false;
     property <string> symbol-hover-name: "";
     property <string> symbol-typed: "";
@@ -950,6 +979,16 @@ export component PanelWindow inherits Window {
         root.quick-use(n);
     }
 
+    // Leaving the list for Symbols or Colours: the search box is hidden there, and a query nobody can see must
+    // not catch Esc or Enter (nor come back as a stale filter when the tab closes).
+    function leave-list-view() {
+        root.search-user = false;
+        if (root.query != "") {
+            root.query = "";
+            root.query-changed("");
+        }
+    }
+
     // The Symbols tab opened from outside (the command palette's "Symbols"); a no-op while the tab is off.
     public function open-symbols() {
         if (!root.symbols-available || root.symbols-open) {
@@ -957,6 +996,7 @@ export component PanelWindow inherits Window {
         }
         root.close-recent();
         root.close-colours();
+        root.leave-list-view();
         root.symbols-open = true;
         root.symbols-toggled(true);
     }
@@ -970,12 +1010,7 @@ export component PanelWindow inherits Window {
         if (root.symbols-open) {
             root.close-symbols();
         }
-        // The search box is hidden while the tab is open: a query nobody can see must not catch Esc or Enter.
-        root.search-user = false;
-        if (root.query != "") {
-            root.query = "";
-            root.query-changed("");
-        }
+        root.leave-list-view();
         root.colours-open = true;
         root.colours-toggled(true);
     }
@@ -1111,7 +1146,13 @@ export component PanelWindow inherits Window {
 
     // The header icon and Ctrl+F: expands the search (a no-op when it is always shown) and selects its text.
     function open-search() {
-        if (root.symbols-open || root.colours-open) {
+        // Each tab's own search field takes the caret (the Colours tab's is its colour field).
+        if (root.symbols-open) {
+            root.search-ticks += 1;
+            return;
+        }
+        if (root.colours-open) {
+            root.search-ticks += 1;
             return;
         }
         root.search-user = true;
@@ -1198,6 +1239,16 @@ export component PanelWindow inherits Window {
                 if (event.text == Key.Escape && TipHost.dismiss()) {
                     return accept;
                 }
+                // Keyboard move and size: the arrows are the frame's; every other key waits for the mode to end.
+                if (root.frame-mode != 0) {
+                    if (event.text == Key.LeftArrow) { root.frame-key(-1, 0, event.modifiers.shift); }
+                    if (event.text == Key.RightArrow) { root.frame-key(1, 0, event.modifiers.shift); }
+                    if (event.text == Key.UpArrow) { root.frame-key(0, -1, event.modifiers.shift); }
+                    if (event.text == Key.DownArrow) { root.frame-key(0, 1, event.modifiers.shift); }
+                    if (event.text == Key.Return) { root.frame-ended(true); }
+                    if (event.text == Key.Escape) { root.frame-ended(false); }
+                    return accept;
+                }
                 if (event.text == Key.Tab || event.text == Key.Backtab) {
                     self.tab-back = event.text == Key.Backtab || event.modifiers.shift;
                 }
@@ -1255,6 +1306,17 @@ export component PanelWindow inherits Window {
                     return reject;
                 }
                 if (event.modifiers.control && !event.modifiers.alt && !event.modifiers.meta) {
+                // Ctrl+Home and Ctrl+End: the first and last row of the list or of Recent (Home and End are the search
+                // field's caret keys).
+                    if (root.recent-open && !switcher.has-focus && (event.text == Key.Home || event.text == Key.End)) {
+                        root.move-recent(event.text == Key.Home ? -root.recent-rows.length : root.recent-rows.length);
+                        return accept;
+                    }
+                    if (!root.recent-open && !root.symbols-open && !root.colours-open && !switcher.has-focus && !root.list-hidden
+                        && (event.text == Key.Home || event.text == Key.End)) {
+                        root.move-selection(event.text == Key.Home ? -root.rows.length : root.rows.length);
+                        return accept;
+                    }
                     if (root.symbols-open && event.text == Key.LeftArrow) {
                         root.step-symbol-kind(-1);
                         return accept;
@@ -1323,7 +1385,8 @@ export component PanelWindow inherits Window {
                     if (event.text == "n" || event.text == "N") {
                         if (event.modifiers.shift) {
                             root.add-list-requested();
-                        } else {
+                        } else if (!root.symbols-open && !root.colours-open) {
+                            // Quick add lives on the list view only.
                             root.quick-add-request += 1;
                         }
                         return accept;
@@ -1337,11 +1400,11 @@ export component PanelWindow inherits Window {
                         return accept;
                     }
                     // Typed text in the search field undoes itself; with an empty field Ctrl+Z is the history's Undo.
-                    if ((event.text == "z" || event.text == "Z") && !event.modifiers.shift && root.query == "" && !(root.colours-open && ColourState.text-focused)) {
+                    if ((event.text == "z" || event.text == "Z") && !event.modifiers.shift && root.query == "" && !root.field-owns-edit-keys) {
                         root.undo-requested();
                         return accept;
                     }
-                    if ((((event.text == "z" || event.text == "Z") && event.modifiers.shift) || event.text == "y" || event.text == "Y") && root.query == "" && !(root.colours-open && ColourState.text-focused)) {
+                    if ((((event.text == "z" || event.text == "Z") && event.modifiers.shift) || event.text == "y" || event.text == "Y") && root.query == "" && !root.field-owns-edit-keys) {
                         root.redo-requested();
                         return accept;
                     }
@@ -1371,6 +1434,12 @@ export component PanelWindow inherits Window {
                     && (event.text == Key.UpArrow || event.text == Key.DownArrow)) {
                     // The keyboard way to arrange rows (WCAG 2.5.7 for the drag); a sorted list or a search leaves the key alone.
                     root.item-reorder-requested(event.text == Key.UpArrow ? -1 : 1);
+                    return accept;
+                }
+                // Alt+1-9 on Recent uses the Nth clipboard entry.
+                if (event.modifiers.alt && !event.modifiers.control && !event.modifiers.shift && !event.modifiers.meta && root.recent-open
+                    && root.digit(event.text) > 0 && root.digit(event.text) <= root.recent-rows.length) {
+                    root.recent-used(root.recent-rows[root.digit(event.text) - 1].id);
                     return accept;
                 }
                 // Alt+1-9 uses the Nth row whatever the query holds; a bare digit is always search text.
@@ -1498,7 +1567,9 @@ export component PanelWindow inherits Window {
                         }
                         return accept;
                     }
-                    if (event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10)) {
+                    // F2 is "name it": a clipboard entry has no name, so it opens the menu whose "Save to" makes
+                    // it an item (the item list's F2 renames the row).
+                    if (event.text == Key.Menu || event.text == Key.F2 || (event.modifiers.shift && event.text == Key.F10)) {
                         root.recent-menu-at(root.rsel, Space.s6, deck.absolute-position.y + Space.s8);
                         return accept;
                     }
@@ -1780,7 +1851,8 @@ export component PanelWindow inherits Window {
                             size: IconButtonSize.sm;
                             side-override: Space.s8 * root.chrome-k;
                             glyph-scale: root.glyph-k;
-                            tooltip: @tr("Keep Panel open");
+                            tooltip: root.on-top ? @tr("Keep Panel open: on") : @tr("Keep Panel open");
+                            a11y-name: @tr("Keep Panel open");
                             active: root.on-top;
                             toggle: true;
                             y: (parent.height - self.height) / 2;
@@ -1810,6 +1882,8 @@ export component PanelWindow inherits Window {
                             side-override: Space.s8 * root.chrome-k;
                             glyph-scale: root.glyph-k;
                             tooltip: @tr("Close panel (Esc)");
+                            a11y-name: @tr("Close panel");
+                            a11y-description: @tr("Escape");
                             y: (parent.height - self.height) / 2;
                             clicked => { root.close-requested(); }
                             changed has-hover => { root.tip-set(self.tooltip, self.absolute-position.x, self.absolute-position.y, self.width, self.height, self.has-hover || self.has-focus); }
@@ -1857,6 +1931,36 @@ export component PanelWindow inherits Window {
                             size: ButtonSize.sm;
                             text: @tr("Done");
                             clicked => { root.modes-ended(); }
+                        }
+                    }
+                }
+
+                // ---- Keyboard move and size: a strip that says what the arrows do while the mode is on.
+                if root.frame-mode != 0: Rectangle {
+                    height: root.strip-h;
+                    accessible-role: AccessibleRole.groupbox;
+                    accessible-label: root.frame-mode == 1 ? @tr("Move panel") : @tr("Resize panel");
+                    accessible-description: @tr("Arrow keys change it, Shift for bigger steps. Enter keeps it, Esc puts it back.");
+                    HorizontalLayout {
+                        padding-left: Space.s2;
+                        padding-right: Space.s2;
+                        padding-top: Space.s1;
+                        padding-bottom: Space.s1;
+                        spacing: Space.s1;
+                        Text {
+                            horizontal-stretch: 1;
+                            text: root.frame-mode == 1 ? @tr("Arrow keys move the panel") : @tr("Arrow keys resize the panel");
+                            font-family: Fonts.sans;
+                            font-size: Type.sm;
+                            color: Theme.text-secondary;
+                            vertical-alignment: center;
+                            overflow: elide;
+                            accessible-role: none;
+                        }
+                        Button {
+                            size: ButtonSize.sm;
+                            text: @tr("Done");
+                            clicked => { root.frame-ended(true); }
                         }
                     }
                 }
@@ -2178,14 +2282,16 @@ export component PanelWindow inherits Window {
 
                                             // A group's header takes the place of a card.
                                             if item.is-header: GroupHeader {
-                                                x: 0px;
+                                                x: item.depth * Space.s3;
                                                 y: 0px;
-                                                width: parent.width;
+                                                width: parent.width - self.x;
                                                 height: root.ghost-h;
                                                 name: item.title;
                                                 collapsed: item.group-collapsed;
                                                 count-text: @tr("{} item" | "{} items" % item.group-count, item.group-count);
-                                                a11y-label: root.group-announcement(item.title, item.group-count);
+                                                a11y-label: root.group-announcement(item.title, item.group-count, item.group-colour);
+                                                dot: item.group-colour >= 0 && item.group-colour < root.group-hues.length ? ListAccent.color(root.group-hues[item.group-colour]) : transparent;
+                                                has-dot: item.group-colour >= 0;
                                                 rename-label: @tr("Group name");
                                                 selected: i == root.sel;
                                                 rename-request: root.rename-row == i ? root.rename-seq : 0;
@@ -2211,7 +2317,7 @@ export component PanelWindow inherits Window {
                                             }
 
                                             card := ItemCard {
-                                                x: item.grouped ? Space.s3 : 0px;
+                                                x: item.depth * Space.s3;
                                                 y: 0px;
                                                 width: parent.width - self.x;
                                                 height: item.deleted-pending ? root.ghost-h : self.preferred-height;
@@ -2221,7 +2327,8 @@ export component PanelWindow inherits Window {
                                                 edit-action: !(root.layout == PanelLayout.compact && root.narrow);
                                                 copy-action: root.pastes;
                                                 show-actions: i == root.sel && root.marked-count == 0 && !root.delete-mode && !root.select-mode;
-                                                row-tip: root.pastes ? @tr("Click to paste into {}. Shift+click copies.", root.target-name) : @tr("Click to copy.");
+                                                // No per-row tooltip: it covered the next row, and the footer already says where a click pastes.
+                                    row-tip: "";
                                                 kind: item.kind;
                                                 number: i - item.ghosts-before < 9 && !root.select-mode ? i - item.ghosts-before + 1 : 0;
                                                 numbered: root.show-numbers || root.select-mode;
@@ -2460,7 +2567,8 @@ export component PanelWindow inherits Window {
                                     preview: entry.app == "" ? RecentText.ago(entry.age-minutes) : entry.app + " · " + RecentText.ago(entry.age-minutes);
                                     selected: i == root.rsel;
                                     copy-action: root.pastes;
-                                    row-tip: root.pastes ? @tr("Click to paste into {}. Shift+click copies.", root.target-name) : @tr("Click to copy.");
+                                    // No per-row tooltip: it covered the next row, and the footer already says where a click pastes.
+                                    row-tip: "";
                                     keyboard-focusable: false;
                                     use => {
                                         root.recent-selected = i;
@@ -2509,6 +2617,7 @@ export component PanelWindow inherits Window {
 
                     // ---- The Colours tab: picker, values, formats, contrast, schemes (colours.slint) -------------------
                     if root.colours-open: ColoursView {
+                        focus-ticks: root.search-ticks;
                         width: parent.width;
                         height: parent.height;
                         tip(text, left, top, w, h, on) => { root.tip-set(text, left, top, w, h, on); }
@@ -2516,6 +2625,7 @@ export component PanelWindow inherits Window {
 
                     // ---- The Symbols tab: emoji, kaomoji and icons; click pastes, Shift+click copies -------------------
                     if root.symbols-open: SymbolsView {
+                        search-ticks: root.search-ticks;
                         width: parent.width;
                         height: parent.height;
                         rows: root.symbol-rows;
@@ -2642,7 +2752,7 @@ export component PanelWindow inherits Window {
                             clicked => { root.bulk-move-requested(); }
                         }
                         IconButton {
-                            icon: Icons.flag;
+                            icon: Icons.palette;
                             tooltip: @tr("Colour");
                             own-tooltip: true;
                             y: (parent.height - self.height) / 2;
@@ -2676,19 +2786,21 @@ export component PanelWindow inherits Window {
                 if root.stack-visible: Rectangle {
                     height: max(Space.s8 + Space.s2, Type.line-sm + Space.s3);
                     background: Theme.accent-subtle;
-                    accessible-role: AccessibleRole.text;
+                    // A group of controls (Start, End, Clear), not one text: a screen reader must reach the buttons.
+                    accessible-role: AccessibleRole.groupbox;
                     accessible-label: root.stack-running
-                        ? @tr("Paste stack, item {} of {}, next: {}", root.stack-position + 1, root.stack-count, root.stack-next-title)
-                        : @tr("Paste stack, {} marked", root.stack-count);
+                        ? (root.pastes ? @tr("Paste stack, item {} of {}, next: {}, into {}", root.stack-position + 1, root.stack-count, root.stack-next-title, root.target-name) : @tr("Paste stack, item {} of {}, next: {}", root.stack-position + 1, root.stack-count, root.stack-next-title))
+                        : (root.pastes ? @tr("Paste stack, {} marked, into {}", root.stack-count, root.target-name) : @tr("Paste stack, {} marked", root.stack-count));
                     HorizontalLayout {
                         padding-left: Space.s3;
                         padding-right: Space.s2;
                         spacing: Space.s2;
                         Text {
                             horizontal-stretch: 1;
+                            // The Target stays on the bar: during a stack it matters most where the next paste goes.
                             text: root.stack-running
-                                ? @tr("{} of {} · next: {}", root.stack-position + 1, root.stack-count, root.stack-next-title)
-                                : @tr("Paste stack: {} marked", root.stack-count);
+                                ? (root.pastes ? @tr("{} of {} · next: {} · into {}", root.stack-position + 1, root.stack-count, root.stack-next-title, root.target-name) : @tr("{} of {} · next: {}", root.stack-position + 1, root.stack-count, root.stack-next-title))
+                                : (root.pastes ? @tr("Paste stack: {} marked · into {}", root.stack-count, root.target-name) : @tr("Paste stack: {} marked", root.stack-count));
                             font-family: Fonts.sans;
                             font-size: Type.sm;
                             color: Theme.accent-text;
@@ -2947,13 +3059,19 @@ export component PanelWindow inherits Window {
             recent-available: root.recent-available;
             recent-open: root.recent-open;
             recent-label: @tr("Recent");
+            symbols-available: root.symbols-available;
+            symbols-open: root.symbols-open;
+            symbols-label: @tr("Symbols");
+            colours-available: root.colours-available;
+            colours-open: root.colours-open;
+            colours-label: @tr("Colours");
             new-list-label: @tr("New list");
             boards-label: @tr("Boards");
             lists-label: @tr("Lists");
             current-board: root.board-name;
             label: @tr("Boards and lists");
             init => {
-                self.current = root.recent-open ? 0 : root.recent-available ? 1 + root.board-menu-entries.length + root.current-tab : root.board-menu-entries.length + root.current-tab;
+                self.current = root.recent-open ? 0 : root.symbols-open ? (root.recent-available ? 1 : 0) : root.colours-open ? (root.recent-available ? 1 : 0) + (root.symbols-available ? 1 : 0) : (root.recent-available ? 1 : 0) + (root.symbols-available ? 1 : 0) + (root.colours-available ? 1 : 0) + root.board-menu-entries.length + root.current-tab;
                 self.focus-menu();
             }
             board-chosen(i) => { root.board-menu-activated(i); }
@@ -2964,6 +3082,14 @@ export component PanelWindow inherits Window {
             recent-chosen => {
                 root.board-menu-dismissed();
                 root.open-recent();
+            }
+            symbols-chosen => {
+                root.board-menu-dismissed();
+                root.open-symbols();
+            }
+            colours-chosen => {
+                root.board-menu-dismissed();
+                root.open-colours();
             }
             new-list-chosen => {
                 root.board-menu-dismissed();
@@ -3281,7 +3407,7 @@ export component PanelWindow inherits Window {
         edge: root.dock-edge > 0 ? root.dock-edge : root.dock-vertical ? 2 : 4;
         accent: root.dock-has-list-color && !SystemLook.high-contrast ? root.dock-list-color : Theme.accent;
         vertical: root.dock-vertical;
-        label: @tr("Snipdeck handle, press the Panel hotkey to open");
+        label: @tr("Open Snipdeck Panel");
         hovered(on) => { root.handle-hovered(on); }
         clicked => { root.handle-clicked(); }
     }

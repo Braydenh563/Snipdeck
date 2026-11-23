@@ -320,11 +320,12 @@ fn panel_with_a_group_light_dark_and_cards() {
             is_header: true,
             group_count: count,
             group_collapsed: collapsed,
+            group_colour: -1,
             ..Default::default()
         };
         rows.insert(0, header("Replies", 2, false));
-        rows[1].grouped = true;
-        rows[2].grouped = true;
+        rows[1].depth = 1;
+        rows[2].depth = 1;
         rows.push(header("Archive", 5, true));
         for (i, row) in rows.iter_mut().enumerate() {
             row.ghosts_before = i32::from(i > 0 && i < 5);
