@@ -172,9 +172,22 @@ fn first_y_of(f: &Frame, x: u32, colour: [u8; 3]) -> Option<u32> {
     (0..SIZE.1).find(|&y| f.pixel(x, y) == colour)
 }
 
+/// Top y of the Enter-target row: found by its 2px accent bar at the left edge (which starts 4px below the row's top,
+/// a 20px vertical run, so no header control matches), then checked to wear `colour` beside the bar.
+fn first_row_of(f: &Frame, x: u32, colour: [u8; 3]) -> Option<u32> {
+    let bar_top = (0..SIZE.1.saturating_sub(20))
+        .find(|&y| (0..12).any(|bx| (y..y + 20).all(|yy| f.pixel(bx, yy) == ACCENT)))?;
+    let top = bar_top - 4;
+    (f.pixel(x, top + 2) == colour).then_some(top)
+}
+
 const SELECTED_LIGHT: [u8; 3] = [0xEB, 0xF2, 0xFE];
 const HOVER_LIGHT: [u8; 3] = [0xEB, 0xE9, 0xE7];
 const SELECTED_DARK: [u8; 3] = [0x05, 0x30, 0x6A];
+/// The keyboard cursor row while nothing is selected: the hover fill (plus the accent bar), not the selection fill, so
+/// it does not read as chosen (owner, 2026-11-23).
+const CURSOR_LIGHT: [u8; 3] = HOVER_LIGHT;
+const CURSOR_DARK: [u8; 3] = [0x20, 0x1E, 0x1B];
 
 #[test]
 fn panel_row_hover_light() {
@@ -182,7 +195,11 @@ fn panel_row_hover_light() {
     h.component.set_selected_index(1);
     let f = render(&h);
     // Row stride: a 56px row and the 6px gap of the comfortable list.
-    let top = first_y_of(&f, 150, SELECTED_LIGHT).expect("the selected row is drawn");
+    let top = first_row_of(&f, 150, CURSOR_LIGHT).expect("the cursor row is drawn");
+    assert!(
+        first_y_of(&f, 150, SELECTED_LIGHT).is_none(),
+        "the cursor row does not wear the selection fill"
+    );
     let hover_y = u16::try_from(top + 2 * 62 + 28).unwrap();
     h.component
         .window()
@@ -209,8 +226,8 @@ fn panel_row_selected_sensitive_dark() {
     h.component.set_selected_index(4);
     let f = render(&h);
     assert!(
-        first_y_of(&f, 150, SELECTED_DARK).is_some(),
-        "the sensitive row is selected"
+        first_row_of(&f, 150, CURSOR_DARK).is_some(),
+        "the sensitive cursor row is drawn"
     );
     assert_golden("panel-row-selected-sensitive-dark", &f);
 }
@@ -1209,11 +1226,11 @@ fn keep_on_top_on_wears_a_visible_accent_outline() {
 /// also wears a 2px accent bar on its left edge.
 #[test]
 fn the_selected_row_wears_a_two_px_accent_bar_on_its_left_edge() {
-    for (dark, fill) in [(false, SELECTED_LIGHT), (true, SELECTED_DARK)] {
+    for (dark, fill) in [(false, CURSOR_LIGHT), (true, CURSOR_DARK)] {
         let h = list_panel(SIZE, dark);
         h.component.set_selected_index(1);
         let f = render(&h);
-        let top = first_y_of(&f, 150, fill).expect("the selected row is drawn");
+        let top = first_row_of(&f, 150, fill).expect("the cursor row is drawn");
         let mid = top + 28;
         let bar: Vec<u32> = (0..12).filter(|&x| f.pixel(x, mid) == ACCENT).collect();
         assert_eq!(

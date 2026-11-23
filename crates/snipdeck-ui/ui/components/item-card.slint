@@ -607,8 +607,8 @@ export component ItemCard inherits Rectangle {
             background: Theme.hc-border != transparent ? Theme.text-primary : ListAccent.color(root.label-hues[root.label]);
         }
 
-        // The selected row (the Enter target): a 2px accent bar on the left edge; its fill alone is 1.08:1 in light.
-        if root.selected: Rectangle {
+        // The selected or cursor row (the Enter target): a 2px accent bar on the left edge; its fill alone is faint.
+        if root.selected || root.cursor: Rectangle {
             x: 0px;
             y: Space.s1;
             width: 2px;

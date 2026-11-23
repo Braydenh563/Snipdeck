@@ -1,12 +1,19 @@
 ## Morning summary
 
-2026-11-23. All audit work is merged into PR #5 (Library, UX, Panel) and pushed; gate green; PR #29 closed as superseded.
-- Owner holds PR #5 as the official 1.0.0: owner tests, Claude fixes findings; never merge, tag or release unasked.
-- Left out of 1.0 (in `docs/V1-PLAN.md`): paste then Enter/Tab, global per-position paste hotkeys.
-- Windows checklist: "Verified on Linux only versus needs Windows" below, plus the Panel audit's section 3
-  (`.claude/audit/panel.md`): paste timing, tray, dead keys, Paste as formats, app names.
-- Weekly usage 93% at the end of the run (owner's line 98%).
-- Next: owner's test findings.
+2026-11-23 (second update). PR #5 is still held by the owner as 1.0.0: never merge, tag or release unasked.
+- Done since: the final audit's 4 findings (Picker reveal of sensitive rows, chosen backup folder, group-delete docs,
+  4 unused controller commands); the Windows test wizard builds again; owner findings fixed: sidebar focus ring inside
+  the row, "New note" is "New item", Kaomoji/Characters group buttons fill the strip with a gap, the Panel cursor row
+  is a faint fill (not the selection), Recent stays at the top for new copies (Slint-side, not measured in a running app).
+- Owner's queue (verbatim in `.claude/now.md` Inbox, 2026-11-23): dropdowns as top-level popup windows; Symbols
+  freeze/slow scroll/blank cells; collapsed dock outline; Main detail pane hide + resize; Main header gap; one centred
+  empty state; boards (All boards view, "Default" first board, icon/colour shown, Manage boards, edit/delete per row,
+  delete Undo); lists ("All" tab, delete with "also delete its items" toggle, Manage lists, Tags +); Settings "?" help
+  tooltips, delete a backup, backups-to-keep near the list; symbol additions (fancy text converter, accented and
+  Cyrillic letters, chess/cards/dice/zodiac/Braille/music, ~1,000 kaomoji, text emoticons).
+- Decision: the stored thing stays "item", not "snippet" (owner left it to Claude).
+- Blind usability tests (Sonnet/Opus) are still owed; the owner plans a Fable audit after the weekly reset (2026-11-28).
+- Weekly usage 94% at the end (owner's line 98%).
 
 # Snipdeck handover
 
