@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Empty State UI Redesign Preview</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            canvas: '#121212',
+            surface: '#18181A',
+            elevated: '#222225',
+            borderSubtle: 'rgba(255, 255, 255, 0.08)',
+            borderHover: 'rgba(255, 255, 255, 0.16)',
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      background-color: #0D0D0E;
+      color: #F4F4F5;
+      font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Subtle dot grid for the stage background */
+    .stage-grid {
+      background-color: #121212;
+      background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+
+    /* Smooth transitions for interactive preview controls */
+    .tab-pill {
+      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Keycap styling */
+    .kbd-redesigned {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10.5px;
+      line-height: 1;
+      padding: 3px 5px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      color: #A1A1AA;
+    }
+
+    .kbd-primary-dark {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10.5px;
+      line-height: 1;
+      padding: 3px 5px;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.12);
+      border: 1px solid rgba(0, 0, 0, 0.14);
+      color: #27272A;
+    }
+
+    /* Authentic recreation of user's "Before" keycaps */
+    .kbd-before {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      padding: 3px 7px;
+      border-radius: 5px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      color: #A1A1AA;
+      background: transparent;
+    }
+
+    /* Toast notification animation */
+    @keyframes slideUpFade {
+      from {
+        opacity: 0;
+        transform: translate(-50%, 8px);
+      }
+      to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+    }
+    .toast-animate {
+      animation: slideUpFade 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-white/20">
+
+  <!-- Top Control Bar -->
+  <header class="w-full border-b border-white/[0.07] bg-[#141416]/90 backdrop-blur-md sticky top-0 z-20">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3">
+      
+      <!-- Title & Badge -->
+      <div class="flex items-center gap-2.5">
+        <div class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"></div>
+        <span class="text-sm font-medium text-zinc-200 tracking-tight">Empty State Layout Preview</span>
+        <span class="hidden md:inline-block text-[11px] font-mono px-2 py-0.5 rounded-full bg-white/[0.06] text-zinc-400 border border-white/[0.06]">
+          #121212 Dark UI
+        </span>
+      </div>
+
+      <!-- Controls Group -->
+      <div class="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+        
+        <!-- View State Selector (Screen 1 vs Screen 2) -->
+        <div class="inline-flex p-1 rounded-lg bg-[#0D0D0E] border border-white/[0.08]" role="tablist" aria-label="Empty state screen">
+          <button
+            id="state-empty-list"
+            onclick="setScreen('empty-list')"
+            class="tab-pill px-3 py-1.5 rounded-md text-xs font-medium text-zinc-400 hover:text-zinc-200"
+          >
+            1. Empty List
+          </button>
+          <button
+            id="state-no-items"
+            onclick="setScreen('no-items')"
+            class="tab-pill px-3 py-1.5 rounded-md text-xs font-medium bg-white/[0.1] text-white shadow-sm"
+          >
+            2. No Items Yet
+          </button>
+        </div>
+
+        <!-- Mode Switcher (After vs Before vs Split) -->
+        <div class="inline-flex p-1 rounded-lg bg-[#0D0D0E] border border-white/[0.08]" role="tablist" aria-label="Comparison mode">
+          <button
+            id="mode-after"
+            onclick="setMode('after')"
+            class="tab-pill px-3 py-1.5 rounded-md text-xs font-medium bg-zinc-100 text-zinc-950 shadow-sm"
+          >
+            After (Redesigned)
+          </button>
+          <button
+            id="mode-before"
+            onclick="setMode('before')"
+            class="tab-pill px-3 py-1.5 rounded-md text-xs font-medium text-zinc-400 hover:text-zinc-200"
+          >
+            Before (Current)
+          </button>
+          <button
+            id="mode-split"
+            onclick="setMode('split')"
+            class="tab-pill hidden lg:inline-block px-3 py-1.5 rounded-md text-xs font-medium text-zinc-400 hover:text-zinc-200"
+          >
+            Side-by-Side
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Interactive Stage -->
+  <main class="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 max-w-6xl w-full mx-auto">
+    
+    <!-- Canvas Container -->
+    <div id="preview-grid" class="w-full grid grid-cols-1 gap-6 transition-all duration-300">
+      <!-- Content injected dynamically by JS -->
+    </div>
+
+    <!-- Design Breakdown Strip -->
+    <div id="annotations-bar" class="w-full mt-6 grid grid-cols-1 md:grid-cols-3 gap-3 text-left">
+      <div class="p-3.5 rounded-xl bg-[#161618] border border-white/[0.06]">
+        <div class="flex items-center gap-2 text-xs font-medium text-zinc-200 mb-1">
+          <span class="text-emerald-400">01</span> Clear Visual Anchor
+        </div>
+        <p class="text-xs text-zinc-400 leading-relaxed">
+          High-contrast primary fill (<code class="text-zinc-300 font-mono text-[11px]">#F4F4F5</code>) immediately directs the eye to the main action instead of blending into the dark canvas.
+        </p>
+      </div>
+      <div class="p-3.5 rounded-xl bg-[#161618] border border-white/[0.06]">
+        <div class="flex items-center gap-2 text-xs font-medium text-zinc-200 mb-1">
+          <span class="text-emerald-400">02</span> True Optical Centering
+        </div>
+        <p class="text-xs text-zinc-400 leading-relaxed">
+          Icon, title, subtitle, and buttons share a strict vertical axis with balanced horizontal proportions (<code class="text-zinc-300 font-mono text-[11px]">max-w-[260px]</code>).
+        </p>
+      </div>
+      <div class="p-3.5 rounded-xl bg-[#161618] border border-white/[0.06]">
+        <div class="flex items-center gap-2 text-xs font-medium text-zinc-200 mb-1">
+          <span class="text-emerald-400">03</span> Intentional Grouping
+        </div>
+        <p class="text-xs text-zinc-400 leading-relaxed">
+          Tight <code class="text-zinc-300 font-mono text-[11px]">6px</code> spacing binds the message together, separated by <code class="text-zinc-300 font-mono text-[11px]">24px</code> from a compact secondary action row.
+        </p>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Subtle Interactive Feedback Toast -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 hidden">
+    <div class="px-3.5 py-2 rounded-lg bg-zinc-800/95 border border-white/10 text-xs text-zinc-200 shadow-xl backdrop-blur-md flex items-center gap-2">
+      <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+      <span id="toast-message">Action triggered</span>
+    </div>
+  </div>
+
+  <script>
+    // Application State
+    let currentScreen = 'no-items'; // 'empty-list' | 'no-items'
+    let currentMode = 'after';      // 'after' | 'before' | 'split'
+    let toastTimeout = null;
+
+    // Shared SVG Icon matching the user's stacked list/item icon
+    const listStackIcon = (sizeClass = 'w-5 h-5') => `
+      <svg class="${sizeClass}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="5" width="16" height="5" rx="1.5" />
+        <rect x="4" y="14" width="16" height="5" rx="1.5" />
+      </svg>
+    `;
+
+    // Trigger subtle interactive feedback when clicking preview buttons
+    function triggerAction(label) {
+      const toast = document.getElementById('toast');
+      const msg = document.getElementById('toast-message');
+      msg.textContent = label;
+      toast.classList.remove('hidden');
+      toast.classList.remove('toast-animate');
+      void toast.offsetWidth; // trigger reflow
+      toast.classList.add('toast-animate');
+
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 2000);
+    }
+
+    // Keyboard shortcut listener (Ctrl+N / Cmd+N) for extra realism
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        triggerAction('Shortcut triggered: New item (Ctrl + N)');
+      }
+    });
+
+    // Template: BEFORE (Current Claude layout from screenshots)
+    function renderBeforeCard(screen) {
+      if (screen === 'empty-list') {
+        return `
+          <div class="w-full min-h-[430px] rounded-2xl bg-[#121212] border border-white/[0.07] flex flex-col items-center justify-center p-8 relative overflow-hidden">
+            <span class="absolute top-3.5 left-4 text-[11px] font-mono uppercase tracking-wider text-zinc-500 bg-white/[0.03] px-2.5 py-1 rounded-md border border-white/[0.05]">
+              Before · Current Structure
+            </span>
+
+            <div class="w-full max-w-[340px] flex flex-col items-center text-center mt-4">
+              <!-- Icon -->
+              <div class="w-11 h-11 rounded-xl bg-[#1E1E1E] flex items-center justify-center text-zinc-400 mb-4">
+                ${listStackIcon('w-5 h-5')}
+              </div>
+
+              <!-- Title -->
+              <h2 class="text-[17px] font-semibold text-zinc-100 mb-2">This list is empty</h2>
+
+              <!-- Subtitle -->
+              <p class="text-[13.5px] text-zinc-400 mb-5">
+                Add an item, or move items here from another list.
+              </p>
+
+              <!-- Overly wide outlined button with off-center label -->
+              <button
+                onclick="triggerAction('Clicked: New item (Before UI)')"
+                class="w-full py-2.5 px-4 rounded-xl border border-white/25 hover:bg-white/[0.05] transition-colors flex items-center justify-center gap-3 text-[14px] font-medium text-zinc-100"
+              >
+                <span class="ml-10">New item</span>
+                <span class="inline-flex items-center gap-1">
+                  <kbd class="kbd-before">Ctrl</kbd>
+                  <kbd class="kbd-before">N</kbd>
+                </span>
+              </button>
+            </div>
+          </div>
+        `;
+      }
+
+      // Screen 2: 'no-items' (Replicating the exact off-center stack from screenshot 2 & 3)
+      return `
+        <div class="w-full min-h-[430px] rounded-2xl bg-[#121212] border border-white/[0.07] flex flex-col items-center justify-center p-8 relative overflow-hidden">
+          <span class="absolute top-3.5 left-4 text-[11px] font-mono uppercase tracking-wider text-zinc-500 bg-white/[0.03] px-2.5 py-1 rounded-md border border-white/[0.05]">
+            Before · Current Structure
+          </span>
+
+          <div class="w-full max-w-[360px] flex flex-col items-center mt-4">
+            <!-- Notice how header was shifted left relative to the wide buttons -->
+            <div class="flex flex-col items-center text-center -ml-6 mb-5">
+              <div class="w-11 h-11 rounded-xl bg-[#1E1E1E] flex items-center justify-center text-zinc-400 mb-4">
+                ${listStackIcon('w-5 h-5')}
+              </div>
+              <h2 class="text-[17px] font-semibold text-zinc-100 mb-2">No items yet</h2>
+              <p class="text-[13.5px] text-zinc-400">Save what you paste often.</p>
+            </div>
+
+            <!-- Wide hollow primary button -->
+            <button
+              onclick="triggerAction('Clicked: Save from clipboard (Before UI)')"
+              class="w-full py-2.5 px-4 rounded-xl border border-white/25 hover:bg-white/[0.05] transition-colors text-[14px] font-medium text-zinc-100 mb-2.5"
+            >
+              Save from clipboard
+            </button>
+
+            <!-- Full-width hover row with off-center text -->
+            <button
+              onclick="triggerAction('Clicked: New item (Before UI)')"
+              class="w-full py-2 px-4 rounded-xl hover:bg-white/[0.06] transition-colors flex items-center justify-center gap-3 text-[14px] font-medium text-zinc-100 mb-2"
+            >
+              <span class="ml-12">New item</span>
+              <span class="inline-flex items-center gap-1">
+                <kbd class="kbd-before">Ctrl</kbd>
+                <kbd class="kbd-before">N</kbd>
+              </span>
+            </button>
+
+            <!-- Hanging Import link -->
+            <button
+              onclick="triggerAction('Clicked: Import... (Before UI)')"
+              class="py-1.5 px-4 -ml-6 text-[14px] font-medium text-zinc-200 hover:text-white transition-colors"
+            >
+              Import...
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    // Template: AFTER (Redesigned layout with proper hierarchy, spacing & optical centering)
+    function renderAfterCard(screen) {
+      if (screen === 'empty-list') {
+        return `
+          <div class="w-full min-h-[430px] rounded-2xl stage-grid border border-white/[0.09] shadow-2xl flex flex-col items-center justify-center p-8 relative overflow-hidden">
+            <span class="absolute top-3.5 left-4 text-[11px] font-mono uppercase tracking-wider text-emerald-400/90 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20">
+              After · Redesigned
+            </span>
+
+            <!-- Centered Empty State Container -->
+            <div class="w-full max-w-[300px] flex flex-col items-center text-center">
+              
+              <!-- Group 1: Icon + Copy (Tightly grouped) -->
+              <div class="w-11 h-11 rounded-xl bg-white/[0.04] border border-white/[0.08] shadow-inner flex items-center justify-center text-zinc-400 mb-3.5">
+                ${listStackIcon('w-[18px] h-[18px]')}
+              </div>
+
+              <h2 class="text-[15.5px] font-semibold text-zinc-100 tracking-[-0.01em] mb-1.5">
+                This list is empty
+              </h2>
+
+              <p class="text-[13px] leading-[1.5] text-zinc-400 max-w-[250px] mb-6">
+                Add an item, or move items here from another list.
+              </p>
+
+              <!-- Group 2: Actions (Distinct separation & constrained width) -->
+              <div class="w-full max-w-[230px] flex flex-col items-center gap-2.5">
+                <!-- Solid High-Contrast Primary CTA -->
+                <button
+                  onclick="triggerAction('Creating new item...')"
+                  class="w-full h-9 px-4 rounded-lg bg-zinc-100 hover:bg-white active:scale-[0.99] text-zinc-950 text-[13px] font-medium shadow-sm transition-all flex items-center justify-center gap-2"
+                >
+                  <svg class="w-3.5 h-3.5 text-zinc-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                    <path d="M12 5v14M5 12h14"/>
+                  </svg>
+                  <span>New item</span>
+                </button>
+
+                <!-- Subtle Secondary Link -->
+                <button
+                  onclick="triggerAction('Opening list picker to move items...')"
+                  class="w-full h-8 px-3 rounded-lg text-[12.5px] font-medium text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.05] transition-colors flex items-center justify-center"
+                >
+                  Move items here...
+                </button>
+              </div>
+
+              <!-- Subtle Keyboard Shortcut Hint -->
+              <div class="mt-5 flex items-center justify-center gap-1.5 text-[11.5px] text-zinc-500">
+                <span>Press</span>
+                <kbd class="kbd-redesigned">Ctrl</kbd>
+                <kbd class="kbd-redesigned">N</kbd>
+                <span>anytime</span>
+              </div>
+
+            </div>
+          </div>
+        `;
+      }
+
+      // Screen 2: 'no-items' Redesigned
+      return `
+        <div class="w-full min-h-[430px] rounded-2xl stage-grid border border-white/[0.09] shadow-2xl flex flex-col items-center justify-center p-8 relative overflow-hidden">
+          <span class="absolute top-3.5 left-4 text-[11px] font-mono uppercase tracking-wider text-emerald-400/90 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20">
+            After · Redesigned
+          </span>
+
+          <!-- Centered Empty State Container -->
+          <div class="w-full max-w-[300px] flex flex-col items-center text-center">
+            
+            <!-- Group 1: Icon + Copy -->
+            <div class="w-11 h-11 rounded-xl bg-white/[0.04] border border-white/[0.08] shadow-inner flex items-center justify-center text-zinc-400 mb-3.5">
+              ${listStackIcon('w-[18px] h-[18px]')}
+            </div>
+
+            <h2 class="text-[15.5px] font-semibold text-zinc-100 tracking-[-0.01em] mb-1.5">
+              No items yet
+            </h2>
+
+            <p class="text-[13px] leading-[1.5] text-zinc-400 max-w-[240px] mb-6">
+              Save what you paste often to access it quickly.
+            </p>
+
+            <!-- Group 2: Constrained Action Stack -->
+            <div class="w-full max-w-[248px] flex flex-col items-center gap-2">
+              
+              <!-- Primary Solid CTA -->
+              <button
+                onclick="triggerAction('Saved current clipboard contents!')"
+                class="w-full h-9 px-4 rounded-lg bg-zinc-100 hover:bg-white active:scale-[0.99] text-zinc-950 text-[13px] font-medium shadow-sm transition-all flex items-center justify-center gap-2"
+              >
+                <svg class="w-3.5 h-3.5 text-zinc-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                <span>Save from clipboard</span>
+              </button>
+
+              <!-- Side-by-Side Secondary Row -->
+              <div class="w-full grid grid-cols-5 gap-2">
+                <button
+                  onclick="triggerAction('Creating new item...')"
+                  class="col-span-3 h-8 px-2.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.09] hover:border-white/[0.15] text-zinc-300 hover:text-white text-[12.5px] font-medium transition-all flex items-center justify-center gap-1.5"
+                >
+                  <span>New item</span>
+                  <kbd class="kbd-redesigned">Ctrl N</kbd>
+                </button>
+
+                <button
+                  onclick="triggerAction('Opening file import dialog...')"
+                  class="col-span-2 h-8 px-2.5 rounded-lg bg-transparent hover:bg-white/[0.06] border border-transparent hover:border-white/[0.08] text-zinc-400 hover:text-zinc-200 text-[12.5px] font-medium transition-all flex items-center justify-center"
+                >
+                  Import...
+                </button>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+      `;
+    }
+
+    // Update UI when switching between Screen 1 and Screen 2
+    function setScreen(screen) {
+      currentScreen = screen;
+
+      const btnEmpty = document.getElementById('state-empty-list');
+      const btnNoItems = document.getElementById('state-no-items');
+
+      const activeClasses = ['bg-white/[0.1]', 'text-white', 'shadow-sm'];
+      const inactiveClasses = ['text-zinc-400', 'hover:text-zinc-200'];
+
+      if (screen === 'empty-list') {
+        btnEmpty.classList.add(...activeClasses);
+        btnEmpty.classList.remove(...inactiveClasses);
+        btnNoItems.classList.remove(...activeClasses);
+        btnNoItems.classList.add(...inactiveClasses);
+      } else {
+        btnNoItems.classList.add(...activeClasses);
+        btnNoItems.classList.remove(...inactiveClasses);
+        btnEmpty.classList.remove(...activeClasses);
+        btnEmpty.classList.add(...inactiveClasses);
+      }
+
+      renderStage();
+    }
+
+    // Update UI when switching between After, Before, and Side-by-Side
+    function setMode(mode) {
+      currentMode = mode;
+
+      const modes = ['after', 'before', 'split'];
+      modes.forEach((m) => {
+        const el = document.getElementById(`mode-${m}`);
+        if (!el) return;
+        if (m === mode) {
+          el.classList.add('bg-zinc-100', 'text-zinc-950', 'shadow-sm');
+          el.classList.remove('text-zinc-400', 'hover:text-zinc-200');
+        } else {
+          el.classList.remove('bg-zinc-100', 'text-zinc-950', 'shadow-sm');
+          el.classList.add('text-zinc-400', 'hover:text-zinc-200');
+        }
+      });
+
+      renderStage();
+    }
+
+    // Render the stage content
+    function renderStage() {
+      const grid = document.getElementById('preview-grid');
+
+      if (currentMode === 'split') {
+        grid.className = 'w-full grid grid-cols-1 lg:grid-cols-2 gap-6 transition-all duration-300';
+        grid.innerHTML = renderBeforeCard(currentScreen) + renderAfterCard(currentScreen);
+      } else if (currentMode === 'before') {
+        grid.className = 'w-full max-w-2xl mx-auto grid grid-cols-1 gap-6 transition-all duration-300';
+        grid.innerHTML = renderBeforeCard(currentScreen);
+      } else {
+        grid.className = 'w-full max-w-2xl mx-auto grid grid-cols-1 gap-6 transition-all duration-300';
+        grid.innerHTML = renderAfterCard(currentScreen);
+      }
+    }
+
+    // Initialize on load
+    window.addEventListener('DOMContentLoaded', () => {
+      renderStage();
+    });
+  </script>
+</body>
+</html>
