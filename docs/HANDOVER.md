@@ -9,6 +9,8 @@ How to work with the owner and this repo, learned over the 1.0 sessions:
 - **Build env:** `export CARGO_TARGET_DIR=/tmp/target-main CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_BUILD_JOBS=1 CARGO_INCREMENTAL=0`; cargo under `flock /tmp/target-panel/.audit.lock`; long runs in the background with a 2 h timeout. Gate: `scripts/gate.sh --changed`, push only on `failed: none`; never chain a push after the gate without checking its result. CI uses the newest stable Rust (1.100 as of Nov 24).
 - **Goldens:** a UI change breaks many. Loop `cargo test -p snipdeck-ui --no-fail-fast` once before the gate, view each diff in `target/screenshot-diff/`, bless only what you viewed.
 - **Agents:** at 94%+ weekly, one Sonnet agent, no Opus unless the owner asks; Fable only when the owner names it.
+- **Hub role:** the new session is the coordinator (hub): it keeps the queue, briefs agents, runs the one gate per push, answers the owner. Keep it lean: grep CODEMAP then read line ranges, no full-file dumps, start a fresh hub at each milestone or past 150k context.
+- **"Fable deep audit"** = the full-app audit run before (reports in `.claude/audit/`: one file per area, `final.md` and `final2.md` the last two). Rerun it the same way: one auditor per area (bindings, data, extras, library, main, panel, perf, platform, plus the recent changes), each told to read the earlier report and check its findings are fixed, findings verified, merged into `.claude/audit/final3.md` ranked by severity. Model Fable only because the owner names it for that task.
 - **Commits** end with the session's Co-Authored-By and Claude-Session lines; GitHub comments end with the Claude Code footer; never a model name in commits or code.
 
 ## Morning summary
