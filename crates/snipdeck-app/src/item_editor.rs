@@ -1,0 +1,1072 @@
+//! The item editor's data and the checks that need no store: what the window shows
+//! ([`ItemEditorView`]), what it hands back ([`EditorInput`]), why a field is refused
+//! ([`EditorProblem`]) and how a file chosen for an Image or File item is vetted.
+//!
+//! Slint-free like the controller that owns the state (`controller/editor_ctl.rs`); the window is
+//! bound by [`editor_binding`](crate::editor_binding). Nothing here logs: no function writes
+//! item text, a path or a file name to a log or a trace.
+
+use std::{fs, io::Read, path::Path};
+
+use snipdeck_core::{
+    Content, FileEntry, Inline, ItemKind, ItemLabel, TriggerOptions,
+    template::{Template, TemplateError, TemplateErrorKind},
+};
+use snipdeck_platform::system_look::HighContrast;
+
+use crate::main_window::NameError;
+
+/// The size of one part of a long text (SPEC 5.4). The field holds one part at a time, so a
+/// keystroke re-shapes at most about this much text (M0 S3: 16 KB is the largest size at which
+/// typing still fits one frame); longer text is edited part by part and saved whole.
+pub const PART_BYTES: usize = 16 * 1024;
+
+/// The most text the editor holds (SPEC 5.4: the same 5 MB the capture accepts). Text pasted past
+/// this is refused on Save; a stored text already over it can still be kept or shortened.
+pub const MAX_TEXT_BYTES: usize = 5 * 1024 * 1024;
+
+/// The most text a draft file holds: longer text is saved or lost, not drafted (a draft is read
+/// back whole and must stay under [`crate::drafts`]' file cap).
+pub const DRAFT_TEXT_MAX_BYTES: usize = 128 * 1024;
+
+/// The longest title, in characters: [`snipdeck_core::Item::TITLE_MAX_CHARS`], the one limit for
+/// the editor (which shows a counter), the importers and the search index.
+pub const TITLE_MAX_CHARS: usize = snipdeck_core::Item::TITLE_MAX_CHARS;
+
+/// The largest file an Image or File item takes. It is the largest entry a `.snipdeck` archive
+/// reads back less the envelope a sensitive item's payload gains, so an item that is saved can
+/// always be exported and restored, sensitive or not.
+#[must_use]
+pub fn max_attachment_bytes() -> u64 {
+    snipdeck_portable::Limits::default().max_attachment_bytes()
+}
+
+/// The largest picture the editor decodes to show a preview, in pixels.
+const PREVIEW_MAX_PIXELS: u64 = 16 * 1024 * 1024;
+
+/// The kinds in the order of the window's kind switch (`kind-index`).
+pub const KINDS: [ItemKind; 6] = [
+    ItemKind::Text,
+    ItemKind::Code,
+    ItemKind::Link,
+    ItemKind::Template,
+    ItemKind::Image,
+    ItemKind::File,
+];
+
+/// The window's `kind-index` of `kind`.
+#[must_use]
+pub fn kind_index(kind: ItemKind) -> usize {
+    KINDS.iter().position(|k| *k == kind).unwrap_or(0)
+}
+
+/// The kind of window index `index`; a value out of range reads as Text.
+#[must_use]
+pub fn kind_at(index: usize) -> ItemKind {
+    KINDS.get(index).copied().unwrap_or(ItemKind::Text)
+}
+
+/// Whether the kind holds text the editor shows (Text, Code, Link, Template).
+#[must_use]
+pub fn is_text_kind(kind: ItemKind) -> bool {
+    !matches!(kind, ItemKind::Image | ItemKind::File)
+}
+
+/// Where a request to open the editor came from, which decides the list a new item goes to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Origin {
+    /// The Panel (or the Picker): the list on its tab.
+    Panel,
+    /// The Main window: the list open in its sidebar.
+    Main,
+}
+
+/// What the fields of the open window hold, handed to the controller on Save and for the draft.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EditorInput {
+    /// The kind chosen.
+    pub kind: ItemKind,
+    /// The title field.
+    pub title: String,
+    /// The text field (what the window shows: only the start of a large text).
+    pub content: String,
+    /// The Sensitive switch.
+    pub sensitive: bool,
+    /// The "Always paste as plain text" switch (SPEC 5.1a).
+    pub always_plain: bool,
+    /// The list chosen: an index into [`ItemEditorView::list_names`].
+    pub list_index: usize,
+    /// The path field of a new Image or File item.
+    pub source_path: String,
+    /// The colour label chosen, if any.
+    pub label: Option<ItemLabel>,
+}
+
+/// What is wrong with a template, as data: the words come from the UI's `TemplateTexts`, so they
+/// follow the selected language.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TemplateProblem {
+    /// The template is sensitive, so the parser's explanation (which quotes the text) is not given.
+    Sensitive,
+    /// The parser's finding.
+    Parse(TemplateErrorKind),
+}
+
+/// Why the editor refuses something. The words are `wording::editor_problem_text`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum EditorProblem {
+    /// The title is longer than [`TITLE_MAX_CHARS`].
+    TitleTooLong {
+        /// The limit.
+        max: usize,
+    },
+    /// The title has a line break or another control character.
+    TitleHasControl,
+    /// There is no text (or only blanks).
+    ContentEmpty,
+    /// The text is over [`MAX_TEXT_BYTES`].
+    ContentTooLong {
+        /// The limit in KB.
+        max_kb: usize,
+    },
+    /// The trigger is not 1 to 32 characters without spaces.
+    TriggerInvalid,
+    /// Another item already has this trigger.
+    TriggerTaken,
+    /// A code of fewer than three letters or digits that fires without a delimiter: it would fire
+    /// inside ordinary words. Refused.
+    TriggerTooShort,
+    /// A one-character code fires every time it is typed. A warning.
+    TriggerOneCharacter,
+    /// This code starts another snippet's, so that one would never fire. A warning.
+    TriggerHides {
+        /// The other snippet's title.
+        title: String,
+    },
+    /// Another snippet's code starts this one, so this one would never fire. A warning.
+    TriggerHidden {
+        /// The other snippet's title.
+        title: String,
+    },
+    /// A link without a scheme such as `https://`.
+    LinkNeedsScheme,
+    /// A link with a space or a line break in it.
+    LinkHasSpace,
+    /// The template does not parse; carries what is wrong, worded by `wording` in the UI language.
+    Template(TemplateProblem),
+    /// No file chosen.
+    SourceEmpty,
+    /// No file at that path.
+    SourceMissing,
+    /// The path is a folder or a device, not a regular file.
+    SourceNotAFile,
+    /// The file cannot be read (permissions, in use, gone meanwhile).
+    SourceUnreadable,
+    /// The file is over the limit.
+    SourceTooLarge {
+        /// The limit in MB.
+        max_mb: u64,
+    },
+    /// The file is empty.
+    SourceEmptyFile,
+    /// An Image item needs a PNG picture.
+    SourceNotPng,
+    /// The file's name cannot be kept (Windows does not allow it).
+    SourceBadName,
+    /// A new tag's name is refused.
+    Tag(NameError),
+    /// Saving failed for a reason that belongs to no field.
+    Save(SaveFailure),
+    /// Writing the draft failed.
+    DraftNotSaved,
+    /// The file dialog could not be shown.
+    BrowseFailed,
+}
+
+/// Why a write to the library failed, in words the user can act on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SaveFailure {
+    /// The encryption key is locked (a master password is set).
+    Locked,
+    /// The encryption key could not be made or opened.
+    KeyUnavailable,
+    /// The item was deleted meanwhile.
+    ItemGone,
+    /// The list was deleted meanwhile.
+    ListGone,
+    /// The disk or database failed.
+    Storage,
+    /// Anything else the store refused.
+    Other,
+}
+
+impl SaveFailure {
+    /// The failure the store error `error` stands for.
+    #[must_use]
+    pub fn of(error: &snipdeck_store::Error) -> Self {
+        use snipdeck_store::{Error, crypto::CryptoError};
+        match error {
+            Error::EncryptionLocked | Error::Crypto(CryptoError::PasswordRequired) => Self::Locked,
+            Error::Crypto(_) => Self::KeyUnavailable,
+            Error::NotFound { entity: "list", .. } => Self::ListGone,
+            Error::NotFound { .. } => Self::ItemGone,
+            Error::Io(_) | Error::Sqlite(_) | Error::BlobCorrupt { .. } => Self::Storage,
+            _ => Self::Other,
+        }
+    }
+}
+
+/// A picture to show in the editor: 8-bit RGBA.
+#[derive(Clone, PartialEq, Eq)]
+pub struct Preview {
+    /// Width in pixels.
+    pub width: u32,
+    /// Height in pixels.
+    pub height: u32,
+    /// `width * height * 4` bytes.
+    pub rgba: Vec<u8>,
+}
+
+impl std::fmt::Debug for Preview {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Preview")
+            .field("width", &self.width)
+            .field("height", &self.height)
+            .finish_non_exhaustive()
+    }
+}
+
+/// What an existing Image or File item holds, for the editor to show.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AttachmentView {
+    /// The kind (Image or File).
+    pub kind: ItemKind,
+    /// The first file's name (empty for an image).
+    pub name: String,
+    /// How many files (1 for an image).
+    pub files: usize,
+    /// The total size in bytes.
+    pub bytes: u64,
+    /// The picture's size, for an image.
+    pub dimensions: Option<(u32, u32)>,
+    /// The picture, when it is small enough to decode.
+    pub preview: Option<Preview>,
+}
+
+/// Everything the item editor window shows, as plain data. The text fields are the values to
+/// start from: the window keeps what the user types and sends it back as an [`EditorInput`].
+#[derive(Debug, Clone, PartialEq)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "independent switches the editor shows, not a state"
+)]
+pub struct ItemEditorView {
+    /// Changes with every editor that opens, so the window resets its fields for a new one and
+    /// keeps what the user typed while the same one stays up.
+    pub seq: u64,
+    /// Changes when something asks for the open editor to come to the front.
+    pub raise: u64,
+    /// A new item (no Delete button, the kind can be any of the six).
+    pub is_new: bool,
+    /// Dark theme.
+    pub dark: bool,
+    /// The high-contrast colours, while a Windows high-contrast theme is on.
+    pub high_contrast: Option<HighContrast>,
+    /// The user's accent, when it is not the built-in blue.
+    pub accent: Option<crate::accent::Accent>,
+    /// Animations are off.
+    pub reduced_motion: bool,
+    /// The starting values.
+    pub fields: EditorInput,
+    /// The names of the lists to choose from.
+    pub list_names: Vec<String>,
+    /// Every tag with whether this item has it.
+    pub tags: Vec<(String, bool)>,
+    /// The title is refused.
+    pub title_problem: Option<EditorProblem>,
+    /// The text is refused.
+    pub content_problem: Option<EditorProblem>,
+    /// The file is refused.
+    pub source_problem: Option<EditorProblem>,
+    /// The Sensitive switch is refused.
+    pub privacy_problem: Option<EditorProblem>,
+    /// The Trigger is refused.
+    pub trigger_problem: Option<EditorProblem>,
+    /// The Trigger field as it stands.
+    pub trigger: String,
+    /// When the trigger fires and how it reads case.
+    pub trigger_options: TriggerOptions,
+    /// A warning about the trigger that does not stop Save.
+    pub trigger_note: Option<EditorProblem>,
+    /// The text of a new item is already saved: Save waits for "Open it" or "Save anyway".
+    pub duplicate: Option<crate::duplicate::Duplicate>,
+    /// A failure that belongs to no field.
+    pub banner: Option<EditorProblem>,
+    /// The item keeps HTML or RTF next to its text: the window says that saving changed text
+    /// removes it and offers "Remove formatting".
+    pub formatted: bool,
+    /// The saved text the notice measures against (empty when the text spans several parts).
+    pub saved_text: String,
+    /// What an existing Image or File holds.
+    pub attachment: Option<AttachmentView>,
+    /// The app can open a file dialog.
+    pub can_browse: bool,
+    /// The fields hold a draft from an earlier session.
+    pub restored: bool,
+    /// "More options" (Kind, Title, Colour, Tags, Privacy) is open, as the user left it.
+    pub more_open: bool,
+}
+
+/// `content` with `token` inserted at the UTF-8 byte offset `caret`, and the offset just after the
+/// token. A caret past the end, or inside a character, is moved back to the nearest character start
+/// (the field reports byte offsets; this must never split a character).
+#[must_use]
+pub fn insert_at_caret(content: &str, caret: usize, token: &str) -> (String, usize) {
+    let mut at = caret.min(content.len());
+    while !content.is_char_boundary(at) {
+        at -= 1;
+    }
+    let mut out = String::with_capacity(content.len() + token.len());
+    out.push_str(&content[..at]);
+    out.push_str(token);
+    out.push_str(&content[at..]);
+    (out, at + token.len())
+}
+
+/// `title` trimmed, or why it is refused.
+///
+/// # Errors
+///
+/// [`EditorProblem::TitleTooLong`] or [`EditorProblem::TitleHasControl`].
+pub fn check_title(title: &str) -> Result<String, EditorProblem> {
+    let title = title.trim();
+    if title.chars().any(char::is_control) {
+        return Err(EditorProblem::TitleHasControl);
+    }
+    if title.chars().count() > TITLE_MAX_CHARS {
+        return Err(EditorProblem::TitleTooLong {
+            max: TITLE_MAX_CHARS,
+        });
+    }
+    Ok(title.to_owned())
+}
+
+/// `text` as a link: trimmed, with no blanks. A scheme is kept as typed; an address with none that
+/// reads as a web host (`www.example.com`, `example.com/path`, `localhost:3000`) gets `https://`.
+///
+/// # Errors
+///
+/// [`EditorProblem::LinkNeedsScheme`] or [`EditorProblem::LinkHasSpace`].
+pub fn check_link(text: &str) -> Result<String, EditorProblem> {
+    let text = text.trim();
+    if text.chars().any(char::is_whitespace) {
+        return Err(EditorProblem::LinkHasSpace);
+    }
+    if has_scheme(text) {
+        return Ok(text.to_owned());
+    }
+    if looks_like_web_host(text) {
+        return Ok(format!("https://{text}"));
+    }
+    Err(EditorProblem::LinkNeedsScheme)
+}
+
+/// Whether `text` starts with a scheme and what follows it: `mailto:` and `tel:` take anything,
+/// every other scheme needs `//` and something after it.
+fn has_scheme(text: &str) -> bool {
+    let Some((scheme, rest)) = text.split_once(':') else {
+        return false;
+    };
+    let scheme_ok = scheme
+        .chars()
+        .next()
+        .is_some_and(|c| c.is_ascii_alphabetic())
+        && scheme
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.'));
+    let rest_ok = if matches!(scheme.to_ascii_lowercase().as_str(), "mailto" | "tel") {
+        !rest.is_empty()
+    } else {
+        rest.strip_prefix("//").is_some_and(|r| !r.is_empty())
+    };
+    scheme_ok && rest_ok
+}
+
+/// Whether `text` (no scheme) reads as `host[:port][/path]`: a dotted host name whose last label is
+/// letters (or an IPv4 address), or `localhost`.
+fn looks_like_web_host(text: &str) -> bool {
+    let authority = text.split(['/', '?', '#']).next().unwrap_or("");
+    let host = match authority.rsplit_once(':') {
+        Some((h, port)) if !port.is_empty() && port.chars().all(|c| c.is_ascii_digit()) => h,
+        Some(_) => return false,
+        None => authority,
+    };
+    if host.eq_ignore_ascii_case("localhost") {
+        return true;
+    }
+    let labels: Vec<&str> = host.split('.').collect();
+    if labels.len() < 2 {
+        return false;
+    }
+    let label_ok = |l: &&str| {
+        !l.is_empty()
+            && !l.starts_with('-')
+            && !l.ends_with('-')
+            && l.chars().all(|c| c.is_alphanumeric() || c == '-')
+    };
+    if !labels.iter().all(label_ok) {
+        return false;
+    }
+    let tld = labels[labels.len() - 1];
+    let ipv4 = labels.len() == 4 && labels.iter().all(|l| l.parse::<u8>().is_ok());
+    ipv4 || (tld.chars().count() >= 2 && tld.chars().all(char::is_alphabetic))
+}
+
+/// Checks template `text`: it must parse.
+///
+/// # Errors
+///
+/// [`EditorProblem::Template`].
+pub fn check_template(
+    text: &str,
+    snippets: &dyn snipdeck_core::template::SnippetSource,
+) -> Result<(), EditorProblem> {
+    Template::parse_with(text, snippets)
+        .map(drop)
+        .map_err(|e: TemplateError| EditorProblem::Template(TemplateProblem::Parse(e.kind)))
+}
+
+/// `text` for a text kind: not blank and within [`MAX_TEXT_BYTES`].
+///
+/// # Errors
+///
+/// [`EditorProblem::ContentEmpty`] or [`EditorProblem::ContentTooLong`].
+pub fn check_text(text: &str) -> Result<(), EditorProblem> {
+    check_text_within(text, MAX_TEXT_BYTES)
+}
+
+/// [`check_text`] with a cap of `max_bytes` (a stored text over the usual cap may be kept).
+///
+/// # Errors
+///
+/// [`EditorProblem::ContentEmpty`] or [`EditorProblem::ContentTooLong`].
+pub fn check_text_within(text: &str, max_bytes: usize) -> Result<(), EditorProblem> {
+    if text.trim().is_empty() {
+        return Err(EditorProblem::ContentEmpty);
+    }
+    if text.len() > max_bytes {
+        return Err(EditorProblem::ContentTooLong {
+            max_kb: max_bytes / 1024,
+        });
+    }
+    Ok(())
+}
+
+/// Cuts `text` into parts of at most [`PART_BYTES`] for the editor to show one at a time. A cut
+/// falls after a line break when one is in the second half of the part, else after a space, else
+/// on a character boundary, so nothing is lost: the parts joined are `text`. Always at least one
+/// part (empty for an empty text).
+#[must_use]
+pub fn split_parts(text: &str) -> Vec<String> {
+    let mut parts = Vec::new();
+    let mut rest = text;
+    while rest.len() > PART_BYTES {
+        let head = prefix_of(rest, PART_BYTES);
+        let half = head.len() / 2;
+        let cut = head
+            .rfind('\n')
+            .filter(|at| *at >= half)
+            .or_else(|| head.rfind(' ').filter(|at| *at >= half))
+            .map_or(head.len(), |at| at + 1);
+        let (part, tail) = rest.split_at(cut);
+        parts.push(part.to_owned());
+        rest = tail;
+    }
+    parts.push(rest.to_owned());
+    parts
+}
+
+/// Puts `content` in place of part `at` of `parts`. Content grown past [`PART_BYTES`] (a
+/// paste) is cut again, so the field never carries more than a part for long. Returns how many
+/// parts `content` became. A stale `at` is clamped.
+pub fn replace_part(parts: &mut Vec<String>, at: usize, content: &str) -> usize {
+    let at = at.min(parts.len().saturating_sub(1));
+    let pieces = split_parts(content);
+    let n = pieces.len();
+    if parts.is_empty() {
+        *parts = pieces;
+    } else {
+        parts.splice(at..=at, pieces);
+    }
+    n
+}
+
+/// A file read for a new Image or File item.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Source {
+    /// The kind (Image or File).
+    pub kind: ItemKind,
+    /// The file's name.
+    pub name: String,
+    /// Its bytes.
+    pub bytes: Vec<u8>,
+}
+
+/// The eight bytes every PNG starts with.
+const PNG_SIGNATURE: [u8; 8] = [0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A];
+
+/// Reads the file at `path` for an Image or File item. The path is canonicalised (so a link is
+/// followed to what it names), must exist and be a regular file within the size limit, and an
+/// image must be a PNG.
+///
+/// # Errors
+///
+/// A `Source…` [`EditorProblem`].
+pub fn read_source(kind: ItemKind, path: &str) -> Result<Source, EditorProblem> {
+    // Explorer's "Copy as path" puts quotes around the path.
+    let path = path.trim().trim_matches('"').trim();
+    if path.is_empty() {
+        return Err(EditorProblem::SourceEmpty);
+    }
+    let canonical = fs::canonicalize(path).map_err(|e| match e.kind() {
+        std::io::ErrorKind::NotFound => EditorProblem::SourceMissing,
+        _ => EditorProblem::SourceUnreadable,
+    })?;
+    let meta = fs::metadata(&canonical).map_err(|_| EditorProblem::SourceUnreadable)?;
+    if !meta.is_file() {
+        return Err(EditorProblem::SourceNotAFile);
+    }
+    let limit = max_attachment_bytes();
+    if meta.len() > limit {
+        return Err(too_large(limit));
+    }
+    let name = canonical
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or(EditorProblem::SourceBadName)?
+        .to_owned();
+    // The name must be one Snipdeck can write back out when the item is pasted.
+    let empty = Inline::new(Vec::new()).map_err(|_| EditorProblem::SourceUnreadable)?;
+    FileEntry::new(&name, Content::Inline(empty)).map_err(|_| EditorProblem::SourceBadName)?;
+    let bytes = read_bounded(&canonical, limit)?;
+    if bytes.is_empty() {
+        return Err(EditorProblem::SourceEmptyFile);
+    }
+    if kind == ItemKind::Image && !is_png(&bytes) {
+        return Err(EditorProblem::SourceNotPng);
+    }
+    Ok(Source { kind, name, bytes })
+}
+
+/// The "file too large" problem for `limit` bytes. The limit is a little under a whole number of
+/// megabytes (the entry limit less the envelope), so it is rounded up: both places that refuse
+/// a file say the same number.
+fn too_large(limit: u64) -> EditorProblem {
+    EditorProblem::SourceTooLarge {
+        max_mb: limit.div_ceil(1024 * 1024),
+    }
+}
+
+/// The whole file, but never more than `limit` bytes (a file that grows while it is read).
+fn read_bounded(path: &Path, limit: u64) -> Result<Vec<u8>, EditorProblem> {
+    let file = fs::File::open(path).map_err(|_| EditorProblem::SourceUnreadable)?;
+    let mut bytes = Vec::new();
+    file.take(limit.saturating_add(1))
+        .read_to_end(&mut bytes)
+        .map_err(|_| EditorProblem::SourceUnreadable)?;
+    if u64::try_from(bytes.len()).unwrap_or(u64::MAX) > limit {
+        return Err(too_large(limit));
+    }
+    Ok(bytes)
+}
+
+/// Whether `bytes` start like a PNG whose header the decoder accepts.
+#[must_use]
+pub fn is_png(bytes: &[u8]) -> bool {
+    bytes.starts_with(&PNG_SIGNATURE) && png_size(bytes).is_some()
+}
+
+/// The size of a PNG picture from its header.
+#[must_use]
+pub fn png_size(bytes: &[u8]) -> Option<(u32, u32)> {
+    let reader = png::Decoder::new(std::io::Cursor::new(bytes))
+        .read_info()
+        .ok()?;
+    let info = reader.info();
+    Some((info.width, info.height))
+}
+
+/// The picture of PNG `bytes` as RGBA, or `None` when it is not a PNG, is too big to be worth
+/// decoding on the UI thread, or fails to decode.
+#[must_use]
+pub fn decode_preview(bytes: &[u8]) -> Option<Preview> {
+    let mut decoder = png::Decoder::new(std::io::Cursor::new(bytes));
+    decoder.set_transformations(png::Transformations::normalize_to_color8());
+    let mut reader = decoder.read_info().ok()?;
+    let (width, height) = {
+        let info = reader.info();
+        (info.width, info.height)
+    };
+    if u64::from(width) * u64::from(height) > PREVIEW_MAX_PIXELS {
+        return None;
+    }
+    let mut buffer = vec![0; reader.output_buffer_size()?];
+    let frame = reader.next_frame(&mut buffer).ok()?;
+    let data = buffer.get(..frame.buffer_size())?;
+    let mut rgba = Vec::with_capacity(data.len() / frame.color_type.samples() * 4);
+    match frame.color_type {
+        png::ColorType::Rgba => rgba.extend_from_slice(data),
+        png::ColorType::Rgb => {
+            for px in data.as_chunks::<3>().0 {
+                rgba.extend_from_slice(&[px[0], px[1], px[2], 255]);
+            }
+        }
+        png::ColorType::Grayscale => {
+            for &g in data {
+                rgba.extend_from_slice(&[g, g, g, 255]);
+            }
+        }
+        png::ColorType::GrayscaleAlpha => {
+            for px in data.as_chunks::<2>().0 {
+                rgba.extend_from_slice(&[px[0], px[0], px[0], px[1]]);
+            }
+        }
+        png::ColorType::Indexed => return None,
+    }
+    Some(Preview {
+        width: frame.width,
+        height: frame.height,
+        rgba,
+    })
+}
+
+/// The start of `text` that fits `max` bytes, cut on a character boundary.
+#[must_use]
+pub fn prefix_of(text: &str, max: usize) -> &str {
+    if text.len() <= max {
+        return text;
+    }
+    let mut end = max;
+    while !text.is_char_boundary(end) {
+        end -= 1;
+    }
+    &text[..end]
+}
+
+#[cfg(test)]
+mod tests {
+    /// Every chip of the editor's placeholder help inserts text that parses (with what a real
+    /// template would have around it), so a chip never writes a template the editor then
+    /// refuses. The chips are the `token:` lines of `editors.slint`.
+    #[test]
+    fn library_19_every_placeholder_chip_inserts_a_template_that_parses() {
+        struct Any;
+        impl snipdeck_core::template::SnippetSource for Any {
+            fn snippet(&self, _name: &str) -> snipdeck_core::template::SnippetLookup {
+                snipdeck_core::template::SnippetLookup::Found("x".into())
+            }
+        }
+        let slint = include_str!("../../snipdeck-ui/ui/editors.slint");
+        let tokens: Vec<&str> = slint
+            .lines()
+            .filter_map(|l| l.trim().strip_prefix("{ token: \""))
+            .filter_map(|l| l.split('"').next())
+            .collect();
+        assert!(tokens.len() >= 19, "the chips were not found: {tokens:?}");
+        for token in tokens {
+            let around = if token.starts_with("{value:") {
+                "{field:Name}"
+            } else if token.starts_with("{calc:") {
+                "{number:Qty}{number:Price}"
+            } else {
+                ""
+            };
+            let src = format!("{around}{token}");
+            let parsed = Template::parse_with(&src, &Any);
+            assert!(parsed.is_ok(), "{token}: {:?}", parsed.err());
+        }
+    }
+
+    #[test]
+    fn library_19_a_name_or_option_with_a_bar_or_brace_is_written_with_backslashes() {
+        use snipdeck_core::template::escape_arg;
+        let option = "a|b {c}";
+        let src = format!("{{choice:Size|{}|x}}", escape_arg(option));
+        let template = Template::parse(&src).expect("parses");
+        let prompts = template.prompts();
+        assert!(matches!(
+            &prompts[0].kind,
+            snipdeck_core::template::PromptKind::Choice { options, .. } if options[0] == option
+        ));
+    }
+
+    use super::*;
+    use snipdeck_core::template::NoSnippets;
+
+    #[test]
+    fn both_ways_of_refusing_a_big_file_name_the_same_size() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("big.bin");
+        std::fs::write(&path, [1_u8; 3]).unwrap();
+        // The size check on the file's length, and the check on the bytes actually read.
+        let by_length = read_source(ItemKind::File, &path.to_string_lossy());
+        assert!(by_length.is_ok(), "a small file is fine");
+        let limit = max_attachment_bytes();
+        assert_eq!(
+            too_large(limit),
+            EditorProblem::SourceTooLarge { max_mb: 64 }
+        );
+        assert_eq!(
+            read_bounded(&path, 2),
+            Err(EditorProblem::SourceTooLarge { max_mb: 1 }),
+            "a file that grew while it was read"
+        );
+    }
+
+    #[test]
+    fn a_placeholder_goes_in_at_the_caret_and_the_caret_lands_after_it() {
+        let (text, caret) = insert_at_caret("Dear , thanks", 5, "{field:Name}");
+        assert_eq!(text, "Dear {field:Name}, thanks");
+        assert_eq!(caret, 5 + "{field:Name}".len());
+        assert_eq!(insert_at_caret("", 0, "{date}"), ("{date}".to_owned(), 6));
+        assert_eq!(insert_at_caret("ab", 2, "X"), ("abX".to_owned(), 3));
+    }
+
+    #[test]
+    fn a_caret_past_the_end_or_inside_a_character_is_clamped() {
+        assert_eq!(insert_at_caret("ab", 99, "X").0, "abX");
+        // "é" is two bytes: offset 1 is inside it.
+        assert_eq!(insert_at_caret("é!", 1, "X"), ("Xé!".to_owned(), 1));
+    }
+
+    fn png_bytes(width: u32, height: u32, color: png::ColorType, data: &[u8]) -> Vec<u8> {
+        let mut out = Vec::new();
+        let mut encoder = png::Encoder::new(&mut out, width, height);
+        encoder.set_color(color);
+        encoder.set_depth(png::BitDepth::Eight);
+        let mut writer = encoder.write_header().expect("header");
+        writer.write_image_data(data).expect("data");
+        writer.finish().expect("finish");
+        out
+    }
+
+    #[test]
+    fn kinds_map_to_the_window_order_both_ways() {
+        for (i, kind) in KINDS.iter().enumerate() {
+            assert_eq!(kind_index(*kind), i);
+            assert_eq!(kind_at(i), *kind);
+        }
+        assert_eq!(kind_at(99), ItemKind::Text, "out of range reads as Text");
+        assert!(is_text_kind(ItemKind::Template));
+        assert!(!is_text_kind(ItemKind::Image));
+        assert!(!is_text_kind(ItemKind::File));
+    }
+
+    #[test]
+    fn titles_are_trimmed_and_checked() {
+        assert_eq!(check_title("  Thanks  ").as_deref(), Ok("Thanks"));
+        assert_eq!(check_title("").as_deref(), Ok(""), "a title is optional");
+        assert_eq!(check_title("a\nb"), Err(EditorProblem::TitleHasControl));
+        assert_eq!(
+            check_title(&"x".repeat(TITLE_MAX_CHARS + 1)),
+            Err(EditorProblem::TitleTooLong {
+                max: TITLE_MAX_CHARS
+            })
+        );
+        assert!(
+            check_title(&"é".repeat(TITLE_MAX_CHARS)).is_ok(),
+            "chars, not bytes"
+        );
+    }
+
+    #[test]
+    fn links_need_a_scheme_and_no_blanks() {
+        for good in [
+            "https://example.com/a?b=1",
+            " http://x.io ",
+            "ftp://host/file",
+            "mailto:me@example.com",
+            "tel:+4930123",
+            "obsidian://open?vault=a",
+        ] {
+            assert!(check_link(good).is_ok(), "{good:?}");
+        }
+        assert_eq!(check_link(" https://a.b ").as_deref(), Ok("https://a.b"));
+        for bad in [
+            "example",
+            "user@example.com",
+            "example.c0m",
+            "a..b",
+            "-a.com",
+            "example.com:port",
+            "https://",
+            "://x",
+            "1http://x",
+            "mailto:",
+            ":",
+            "",
+        ] {
+            assert_eq!(
+                check_link(bad),
+                Err(EditorProblem::LinkNeedsScheme),
+                "{bad:?}"
+            );
+        }
+        assert_eq!(check_link("https://a b"), Err(EditorProblem::LinkHasSpace));
+        assert_eq!(check_link("https://a\nb"), Err(EditorProblem::LinkHasSpace));
+    }
+
+    #[test]
+    fn a_web_address_without_a_scheme_gets_https() {
+        for (typed, saved) in [
+            ("www.example.com", "https://www.example.com"),
+            ("example.com/path", "https://example.com/path"),
+            (" example.org?q=1 ", "https://example.org?q=1"),
+            ("example.com:8080/x", "https://example.com:8080/x"),
+            ("localhost:3000", "https://localhost:3000"),
+            ("192.168.0.1/admin", "https://192.168.0.1/admin"),
+            ("bücher.example/a", "https://bücher.example/a"),
+        ] {
+            assert_eq!(check_link(typed).as_deref(), Ok(saved), "{typed:?}");
+        }
+        // A scheme that is there is never replaced.
+        assert_eq!(
+            check_link("http://example.com").as_deref(),
+            Ok("http://example.com")
+        );
+    }
+
+    #[test]
+    fn templates_must_parse_and_prompts_are_allowed() {
+        assert!(check_template("Dear {field:Name}, {date}", &NoSnippets).is_ok());
+        assert!(check_template("Pick {choice:Size|S|M}", &NoSnippets).is_ok());
+        assert!(check_template("Today is {date}", &NoSnippets).is_ok());
+        assert!(matches!(
+            check_template("Broken {nope}", &NoSnippets),
+            Err(EditorProblem::Template(_))
+        ));
+        assert!(matches!(
+            check_template("Open { here", &NoSnippets),
+            Err(EditorProblem::Template(_))
+        ));
+    }
+
+    #[test]
+    fn text_must_not_be_blank_or_over_the_cap() {
+        assert_eq!(check_text(" \n\t"), Err(EditorProblem::ContentEmpty));
+        assert!(check_text(&"a".repeat(MAX_TEXT_BYTES)).is_ok());
+        assert_eq!(
+            check_text(&"a".repeat(MAX_TEXT_BYTES + 1)),
+            Err(EditorProblem::ContentTooLong { max_kb: 5120 })
+        );
+        // A stored text over the cap may be kept as it is.
+        let kept = "a".repeat(MAX_TEXT_BYTES + 10);
+        assert!(check_text_within(&kept, kept.len()).is_ok());
+    }
+
+    #[test]
+    fn text_over_a_part_is_cut_on_lines_and_joins_back_whole() {
+        assert_eq!(split_parts(""), [""]);
+        assert_eq!(split_parts("short"), ["short"]);
+        let lines = "0123456789\n".repeat(5000);
+        let parts = split_parts(&lines);
+        assert!(parts.len() > 3, "{}", parts.len());
+        for p in &parts {
+            assert!(p.len() <= PART_BYTES);
+            assert!(p.ends_with('\n'), "a cut keeps a line whole");
+        }
+        assert_eq!(parts.concat(), lines);
+
+        // No line break and no space: a character boundary, never inside a character.
+        let wide = "日本語".repeat(20_000);
+        let parts = split_parts(&wide);
+        assert!(parts.iter().all(|p| p.len() <= PART_BYTES));
+        assert_eq!(parts.concat(), wide);
+        // A space is the next best place.
+        let words = "word ".repeat(10_000);
+        let parts = split_parts(&words);
+        assert!(parts.iter().all(|p| p.ends_with(' ')));
+        assert_eq!(parts.concat(), words);
+    }
+
+    #[test]
+    fn replacing_a_part_cuts_a_paste_again() {
+        let mut parts = vec!["a".to_owned(), "b".to_owned(), "c".to_owned()];
+        assert_eq!(replace_part(&mut parts, 1, "B"), 1);
+        assert_eq!(parts, ["a", "B", "c"]);
+        let big = "line\n".repeat(10_000);
+        let n = replace_part(&mut parts, 1, &big);
+        assert!(n > 1);
+        assert_eq!(parts.len(), 2 + n);
+        assert_eq!(parts.concat(), format!("a{big}c"));
+        assert_eq!(
+            replace_part(&mut parts, 99, "z"),
+            1,
+            "a stale index is clamped"
+        );
+        assert_eq!(parts.last().map(String::as_str), Some("z"));
+    }
+
+    #[test]
+    fn a_prefix_never_cuts_a_character() {
+        assert_eq!(prefix_of("abc", 10), "abc");
+        assert_eq!(prefix_of("abcdef", 3), "abc");
+        // "é" is two bytes: cutting at 1 backs up to 0.
+        assert_eq!(prefix_of("éé", 1), "");
+        assert_eq!(prefix_of("éé", 3), "é");
+        assert_eq!(prefix_of("日本語", 4), "日");
+    }
+
+    #[test]
+    fn a_source_must_exist_be_a_regular_file_and_fit() {
+        let dir = tempfile::tempdir().expect("dir");
+        let file = dir.path().join("note.txt");
+        fs::write(&file, b"hello").expect("write");
+        let ok = read_source(ItemKind::File, file.to_str().expect("utf8")).expect("source");
+        assert_eq!(
+            (ok.name.as_str(), ok.bytes.as_slice()),
+            ("note.txt", &b"hello"[..])
+        );
+        // Quotes, as Explorer's "Copy as path" makes them.
+        let quoted = format!("  \"{}\"  ", file.display());
+        assert!(read_source(ItemKind::File, &quoted).is_ok());
+        assert_eq!(
+            read_source(ItemKind::File, "  "),
+            Err(EditorProblem::SourceEmpty)
+        );
+        assert_eq!(
+            read_source(
+                ItemKind::File,
+                dir.path().join("nope").to_str().expect("utf8")
+            ),
+            Err(EditorProblem::SourceMissing)
+        );
+        assert_eq!(
+            read_source(ItemKind::File, dir.path().to_str().expect("utf8")),
+            Err(EditorProblem::SourceNotAFile)
+        );
+        let empty = dir.path().join("empty.bin");
+        fs::write(&empty, b"").expect("write");
+        assert_eq!(
+            read_source(ItemKind::File, empty.to_str().expect("utf8")),
+            Err(EditorProblem::SourceEmptyFile)
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_link_is_followed_and_a_dangling_one_is_missing() {
+        let dir = tempfile::tempdir().expect("dir");
+        let target = dir.path().join("real.txt");
+        fs::write(&target, b"x").expect("write");
+        let link = dir.path().join("link.txt");
+        std::os::unix::fs::symlink(&target, &link).expect("symlink");
+        let got = read_source(ItemKind::File, link.to_str().expect("utf8")).expect("source");
+        assert_eq!(got.name, "real.txt", "the name of what the link names");
+        let dangling = dir.path().join("dangling");
+        std::os::unix::fs::symlink(dir.path().join("gone"), &dangling).expect("symlink");
+        assert_eq!(
+            read_source(ItemKind::File, dangling.to_str().expect("utf8")),
+            Err(EditorProblem::SourceMissing)
+        );
+    }
+
+    #[test]
+    fn an_image_source_must_be_a_png() {
+        let dir = tempfile::tempdir().expect("dir");
+        let png = dir.path().join("p.png");
+        fs::write(
+            &png,
+            png_bytes(2, 1, png::ColorType::Rgb, &[1, 2, 3, 4, 5, 6]),
+        )
+        .expect("write");
+        assert!(read_source(ItemKind::Image, png.to_str().expect("utf8")).is_ok());
+        let fake = dir.path().join("fake.png");
+        fs::write(&fake, b"GIF89a not a png").expect("write");
+        assert_eq!(
+            read_source(ItemKind::Image, fake.to_str().expect("utf8")),
+            Err(EditorProblem::SourceNotPng)
+        );
+        // The same file is a fine File item.
+        assert!(read_source(ItemKind::File, fake.to_str().expect("utf8")).is_ok());
+        // A PNG signature with nothing after it is not a picture either.
+        fs::write(&fake, PNG_SIGNATURE).expect("write");
+        assert_eq!(
+            read_source(ItemKind::Image, fake.to_str().expect("utf8")),
+            Err(EditorProblem::SourceNotPng)
+        );
+    }
+
+    #[test]
+    fn a_file_name_windows_would_refuse_is_not_kept() {
+        let dir = tempfile::tempdir().expect("dir");
+        let file = dir.path().join("trailing.");
+        if fs::write(&file, b"x").is_ok() && file.exists() {
+            assert_eq!(
+                read_source(ItemKind::File, file.to_str().expect("utf8")),
+                Err(EditorProblem::SourceBadName)
+            );
+        }
+    }
+
+    #[test]
+    fn previews_come_out_as_rgba_whatever_the_colour_type() {
+        let rgb = png_bytes(2, 1, png::ColorType::Rgb, &[10, 20, 30, 40, 50, 60]);
+        let p = decode_preview(&rgb).expect("preview");
+        assert_eq!((p.width, p.height), (2, 1));
+        assert_eq!(p.rgba, [10, 20, 30, 255, 40, 50, 60, 255]);
+        let rgba = png_bytes(1, 1, png::ColorType::Rgba, &[1, 2, 3, 4]);
+        assert_eq!(decode_preview(&rgba).expect("preview").rgba, [1, 2, 3, 4]);
+        let gray = png_bytes(2, 1, png::ColorType::Grayscale, &[7, 9]);
+        assert_eq!(
+            decode_preview(&gray).expect("preview").rgba,
+            [7, 7, 7, 255, 9, 9, 9, 255]
+        );
+        let gray_alpha = png_bytes(1, 1, png::ColorType::GrayscaleAlpha, &[5, 200]);
+        assert_eq!(
+            decode_preview(&gray_alpha).expect("preview").rgba,
+            [5, 5, 5, 200]
+        );
+        assert_eq!(png_size(&rgb), Some((2, 1)));
+        assert!(decode_preview(b"not a png").is_none());
+        assert!(png_size(b"not a png").is_none());
+    }
+
+    #[test]
+    fn store_errors_become_specific_failures() {
+        use snipdeck_store::{Error, crypto::CryptoError};
+        let cases = [
+            (Error::EncryptionLocked, SaveFailure::Locked),
+            (
+                Error::Crypto(CryptoError::PasswordRequired),
+                SaveFailure::Locked,
+            ),
+            (
+                Error::Crypto(CryptoError::Random),
+                SaveFailure::KeyUnavailable,
+            ),
+            (
+                Error::NotFound {
+                    entity: "list",
+                    id: "x".into(),
+                },
+                SaveFailure::ListGone,
+            ),
+            (
+                Error::NotFound {
+                    entity: "item",
+                    id: "x".into(),
+                },
+                SaveFailure::ItemGone,
+            ),
+            (
+                Error::Io(std::io::Error::other("disk")),
+                SaveFailure::Storage,
+            ),
+            (Error::Invalid("x".into()), SaveFailure::Other),
+        ];
+        for (error, failure) in cases {
+            assert_eq!(SaveFailure::of(&error), failure, "{error}");
+        }
+    }
+}

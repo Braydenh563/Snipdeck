@@ -12,6 +12,6 @@ if command -v powershell.exe >/dev/null 2>&1; then
 elif command -v pwsh >/dev/null 2>&1; then
   exec pwsh -NoProfile -File "$script" "$@"
 else
-  echo "PowerShell not found. Run tools/windows-test/run-tests.bat from Windows instead." >&2
+  echo "PowerShell not found. Double-click \"Test Snipdeck on Windows.bat\" from Windows instead." >&2
   exit 1
 fi

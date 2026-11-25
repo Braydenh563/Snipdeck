@@ -149,7 +149,7 @@ fn a_committed_transaction_makes_everything_visible_at_once() {
     assert_eq!(s.lists(board.id).unwrap()[0].id, list.id);
     assert_eq!(s.item(item.id).unwrap().tags.len(), 1);
     assert_eq!(s.formats(item.id).unwrap().iter().count(), 1);
-    assert_eq!(s.search("big", 5).unwrap(), [item.id]);
+    assert_eq!(found(&s, "big"), [item.id]);
     healthy(&s);
 }
 
@@ -241,7 +241,7 @@ fn a_panic_rolls_back_and_leaves_the_store_usable() {
     }));
     assert!(crashed.is_err());
     assert_eq!(snapshot(&s), before);
-    assert!(blob_files(dir.path()).is_empty());
+    assert_eq!(blob_files(dir.path()).len(), 0);
     healthy(&s);
     // No transaction was left open: a new one starts and commits.
     s.transaction(|b| fill(b, blob(5)).map(drop)).unwrap();
@@ -469,7 +469,7 @@ fn restore_and_trash_work_inside_a_transaction() {
     s.trash(Trashable::Item(item), at(1)).unwrap();
     s.transaction(|b| {
         assert_eq!(b.trashed().unwrap().len(), 1);
-        let revived = b.restore_with(Trashable::Item(item), Some(3))?;
+        let revived = b.restore_reporting(Trashable::Item(item))?;
         assert_eq!(revived, [Trashable::Item(item)]);
         b.trash(Trashable::List(list), at(2))?;
         Ok::<_, Error>(())

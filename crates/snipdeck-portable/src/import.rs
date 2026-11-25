@@ -21,25 +21,26 @@ use std::str::FromStr;
 
 use snipdeck_core::Content;
 use snipdeck_core::{
-    BlobRef, BoardId, FileEntry, Format, FormatKind, Formats, Inline, ItemId, ItemKind, ListAccent,
-    ListId, ListSort, ListView, Name, TagId, Timestamp,
+    BlobRef, BoardId, FileEntry, Format, FormatKind, Formats, GroupId, Inline, ItemId, ItemKind,
+    ItemLabel, ListAccent, ListIcon, ListId, ListView, Name, TagId, Timestamp, Trigger,
 };
 use snipdeck_store::crypto::{DataKey, Slot, decrypt_payload};
 use snipdeck_store::name_key;
 
 use crate::archive::{ITEMS, MANIFEST, SafeArchive};
+use crate::decoded::Decoded;
 use crate::dto::{
-    ENCRYPTION, FORMAT_NAME, FormatDto, Header, ItemDto, ItemsDoc, ListDto, MAJOR, MINOR, Manifest,
-    TagDto,
+    ENCRYPTION, FORMAT_NAME, FormatDto, Header, ItemDto, ItemsDoc, ItemsParseError, ListDto, MAJOR,
+    MINOR, Manifest, TagDto, parse_items_doc,
 };
 use crate::error::{Error, Result};
-use crate::importers::MEMORY_BUDGET;
+use crate::importers::truncate_chars;
 use crate::limits::{Limits, TEXT_LIMIT};
 use crate::plan::{
-    AssetRef, ContentHasher, Library, Plan, PlanBoard, PlanFile, PlanFormat, PlanItem, PlanList,
-    Source, apply, existing_hashes,
+    AssetRef, ContentHasher, Library, Plan, PlanBoard, PlanFile, PlanFormat, PlanGroup, PlanItem,
+    PlanList, Source,
 };
-use crate::report::{ImportReport, Warning};
+use crate::report::{ImportReport, Note, Warning};
 
 /// What to do with items that are already in the library.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -52,6 +53,12 @@ pub enum MergeStrategy {
     /// an item already in the library or earlier in the same import. If nothing is left the
     /// board is not created.
     SkipDuplicates,
+    /// Restoring a Snipdeck backup or rebuilding from one: each archive item is matched by
+    /// where it is (board and list name), its title and its content against the library, one
+    /// for one, so two items with the same text in different lists both come back, and an item
+    /// that is already there is left alone. Boards and lists are reused by name and created only
+    /// when the library has none (empty ones included); items go back into their own lists.
+    Restore,
 }
 
 /// How a `.snipdeck` archive's boards and lists are laid out on import.
@@ -81,6 +88,17 @@ pub enum KeySource<'k> {
     Given(&'k DataKey),
 }
 
+/// Whether triggers in the source are installed. A trigger types text into other programs, so a
+/// caller that takes a file from someone else can leave them out after showing the list.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Triggers {
+    /// Install the source's triggers (the default; a restore of one's own backup).
+    #[default]
+    Install,
+    /// Import every item without its trigger.
+    Leave,
+}
+
 /// Options shared by every importer. Fields an importer has no use for are ignored.
 #[derive(Debug, Clone, Default)]
 pub struct ImportOptions<'k> {
@@ -93,17 +111,14 @@ pub struct ImportOptions<'k> {
     pub key: KeySource<'k>,
     /// The name of the new board, instead of one derived from the file or folder name.
     pub board_name: Option<String>,
-    /// When set, a warning is reported if the import leaves more boards than this (the Free
-    /// tier's limit). Nothing is blocked: the caller decides. Use [`ImportOptions::max_boards`]
-    /// to enforce a limit.
-    pub free_board_limit: Option<usize>,
-    /// The most live boards the library may hold once the import is done (the Free tier's 3).
-    /// An import that would go past it is refused inside its transaction with
-    /// `ProRequired(UnlimitedBoards)` and changes nothing; the caller passes `None` on Pro. A
-    /// restore of boards the user already has cannot grow past the limit this way.
-    pub max_boards: Option<usize>,
     /// Limits for reading untrusted input.
     pub limits: Limits,
+    /// Run the whole import (validation, duplicate skipping) and report what it
+    /// would add, then roll the transaction back so the library is unchanged. This is the
+    /// preview the Settings import and Restore show before anything is written.
+    pub dry_run: bool,
+    /// Whether the source's triggers are installed.
+    pub triggers: Triggers,
 }
 
 /// A board name from a file or folder name: trimmed, control characters replaced, shortened to
@@ -117,40 +132,29 @@ pub(crate) fn board_name(raw: &str, fallback: &str) -> Result<Name> {
     Ok(Name::new(&cleaned).or_else(|_| Name::new(fallback))?)
 }
 
-/// The common ending of every importer: skip duplicates, warn about the board limit, write the
-/// plan. `plan` must hold only in-memory payloads.
-pub(crate) fn finish<L: Library>(
-    lib: &mut L,
-    mut plan: Plan,
+/// The common ending of every importer: hands the finished plan on for previewing or writing.
+pub(crate) fn finish(
+    plan: Plan,
     options: &ImportOptions<'_>,
-    mut report: ImportReport,
-) -> Result<ImportReport> {
-    if options.merge == MergeStrategy::SkipDuplicates {
-        let mut known = existing_hashes(lib)?;
-        report.items_skipped += plan.drop_duplicates(&mut known);
-    }
-    warn_board_limit(lib, &plan, options, &mut report)?;
-    let mut no_assets = |_: &AssetRef| -> Result<Vec<u8>> {
-        Err(Error::malformed("import", "internal: no assets expected"))
-    };
-    apply(lib, &plan, &mut no_assets, report, options.max_boards)
+    report: ImportReport,
+) -> Decoded<'static> {
+    Decoded::new(plan, report, options)
 }
 
-fn warn_board_limit<L: Library>(
-    lib: &L,
-    plan: &Plan,
+/// Reads and checks every source with `decode`, then writes it (or, with `options.dry_run`,
+/// only reports what it would add). The one-call form of the two halves in [`Decoded`], for
+/// callers that hold the library and have no worker.
+pub(crate) fn one_pass<'d, L: Library>(
+    lib: &mut L,
     options: &ImportOptions<'_>,
-    report: &mut ImportReport,
-) -> Result<()> {
-    if let Some(limit) = options.free_board_limit
-        && !plan.boards.is_empty()
-    {
-        let total = lib.boards()?.len() + plan.boards.len();
-        if total > limit {
-            report.warn(Warning::BoardLimit { limit, total });
-        }
+    decode: impl FnOnce(&L, &ImportOptions<'_>) -> Result<Decoded<'d>>,
+) -> Result<ImportReport> {
+    let decoded = decode(lib, options)?;
+    if options.dry_run {
+        decoded.preview(lib, None)
+    } else {
+        decoded.apply(lib, None)
     }
-    Ok(())
 }
 
 /// Imports the `.snipdeck` file at `path`. The default new board is named after the file.
@@ -175,6 +179,29 @@ pub fn import_archive_path<L: Library>(
     import_archive(lib, BufReader::new(file), &stem, now, options)
 }
 
+/// Reads and checks the `.snipdeck` file at `path` without a library: the half of
+/// [`import_archive_path`] that can run on a worker. `options.key` must not be
+/// [`KeySource::Library`]: pass the key itself.
+///
+/// # Errors
+///
+/// See [`import_archive`].
+pub fn decode_archive_path(
+    path: &Path,
+    now: Timestamp,
+    options: &ImportOptions<'_>,
+) -> Result<Decoded<'static>> {
+    let file = File::open(path).map_err(|source| Error::File {
+        path: path.to_owned(),
+        source,
+    })?;
+    let stem = path
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    decode_archive(BufReader::new(file), &stem, now, options)
+}
+
 /// Imports a `.snipdeck` archive. `source_name` (normally the file name without extension) names
 /// the new board unless the options say otherwise.
 ///
@@ -185,20 +212,48 @@ pub fn import_archive_path<L: Library>(
 /// # Errors
 ///
 /// An [`Error`] naming the first problem; the library is unchanged. Warnings (sensitive items
-/// that need a key, unknown entries, the Free-tier board limit) go in the report instead.
-pub fn import_archive<L: Library, R: Read + Seek>(
+/// that need a key, unknown entries) go in the report instead.
+pub fn import_archive<L: Library, R: Read + Seek + Send>(
     lib: &mut L,
     reader: R,
     source_name: &str,
     now: Timestamp,
     options: &ImportOptions<'_>,
 ) -> Result<ImportReport> {
+    one_pass(lib, options, |lib, options| {
+        // The key may be borrowed from the library; it is dropped with `own` before writing.
+        let mut own = options.clone();
+        if matches!(own.key, KeySource::Library) {
+            own.key = lib.data_key().map_or(KeySource::None, KeySource::Given);
+        }
+        decode_archive(reader, source_name, now, &own)
+    })
+}
+
+/// Reads and checks a `.snipdeck` archive without a library (see [`import_archive`] for what is
+/// validated). The result owns everything it needs, the open archive included.
+/// `options.key` must not be [`KeySource::Library`].
+///
+/// # Errors
+///
+/// See [`import_archive`].
+pub fn decode_archive<'a, R: Read + Seek + Send + 'a>(
+    reader: R,
+    source_name: &str,
+    now: Timestamp,
+    options: &ImportOptions<'_>,
+) -> Result<Decoded<'a>> {
     let mut archive = SafeArchive::open(reader, options.limits)?;
     let mut report = ImportReport::default();
-
     let manifest = read_manifest(&archive.read_manifest()?, &mut report)?;
-    let doc: ItemsDoc = serde_json::from_slice(&archive.read_items()?)
-        .map_err(|e| Error::malformed(ITEMS, e.to_string()))?;
+    let doc: ItemsDoc =
+        parse_items_doc(&archive.read_items()?, options.limits.max_items).map_err(|e| match e {
+            ItemsParseError::TooManyItems => Error::LimitExceeded {
+                what: "item count",
+                limit: options.limits.max_items as u64,
+            },
+            ItemsParseError::Malformed(reason) => Error::malformed(ITEMS, reason),
+        })?;
 
     let name = board_name(
         options.board_name.as_deref().unwrap_or(source_name),
@@ -216,28 +271,39 @@ pub fn import_archive<L: Library, R: Read + Seek>(
             count: built.unreferenced,
         });
     }
+    if built.truncated > 0 {
+        report.warn(Warning::Note(Note::TitleCut {
+            count: built.truncated,
+            title_chars: TITLE_CHARS,
+            source_chars: SOURCE_APP_CHARS,
+        }));
+    }
     if manifest.sensitive_omitted > 0 {
         report.warn(Warning::SensitiveOmittedByExport {
             count: manifest.sensitive_omitted,
         });
     }
-
-    // Decrypted payloads are moved into the plan here, so the key (which may be borrowed from
-    // the library) is no longer needed when the library is borrowed mutably for writing.
-    let key = match options.key {
-        KeySource::None => None,
-        KeySource::Given(key) => Some(key),
-        KeySource::Library => lib.data_key(),
-    };
-    verify(&mut archive, &mut plan, key, &mut report)?;
-
-    if options.merge == MergeStrategy::SkipDuplicates {
-        let mut known = existing_hashes(lib)?;
-        report.items_skipped += plan.drop_duplicates(&mut known);
+    if manifest.skipped_unreadable > 0 {
+        report.warn(Warning::SkippedByExport {
+            count: manifest.skipped_unreadable,
+        });
     }
-    warn_board_limit(lib, &plan, options, &mut report)?;
 
-    let mut fetch = |asset: &AssetRef| -> Result<Vec<u8>> {
+    // Decrypted payloads are moved into the plan here, so the key is no longer needed after.
+    let key = match options.key {
+        KeySource::None | KeySource::Library => None,
+        KeySource::Given(key) => Some(key),
+    };
+    verify(
+        &mut archive,
+        &mut plan,
+        key,
+        options.limits.max_total_bytes,
+        options.limits.max_sensitive_bytes,
+        &mut report,
+    )?;
+
+    let fetch = move |asset: &AssetRef| -> Result<Vec<u8>> {
         // Encrypted payloads were decrypted into the plan; only plain assets are fetched.
         let bytes = archive.read_asset(&asset.hash)?;
         // The file was verified before writing began; check again in case it changed
@@ -250,7 +316,7 @@ pub fn import_archive<L: Library, R: Read + Seek>(
         }
         Ok(bytes)
     };
-    apply(lib, &plan, &mut fetch, report, options.max_boards)
+    Ok(Decoded::with_assets(plan, report, options, Box::new(fetch)))
 }
 
 /// Reads `manifest.json`: checks it is a Snipdeck manifest of a readable version before looking
@@ -291,7 +357,14 @@ struct Built {
     plan: Plan,
     /// Assets in the archive that no item refers to.
     unreferenced: usize,
+    /// Items whose title or source app was cut to its cap.
+    truncated: usize,
 }
+
+/// The longest item title an archive may bring, in characters; longer ones are cut.
+const TITLE_CHARS: usize = snipdeck_core::Item::TITLE_MAX_CHARS;
+/// The longest `source_app` an archive may bring, in characters; longer ones are cut.
+const SOURCE_APP_CHARS: usize = 256;
 
 /// An id in the canonical 36-character hyphenated form (`docs/format.md`); the parsers behind
 /// `FromStr` also take braces, `urn:uuid:` and unhyphenated forms, which are not the format.
@@ -331,6 +404,27 @@ fn parse_time(text: &str, what: &str) -> Result<Timestamp> {
 
 fn parse_name(text: &str, what: &str) -> Result<Name> {
     Name::new(text).map_err(|e| Error::malformed(ITEMS, format!("{what} name: {e}")))
+}
+
+/// The options an item's trigger was written with. A key this build does not know reads as the
+/// default, so an archive from a newer one still imports.
+fn trigger_options(dto: &ItemDto) -> snipdeck_core::TriggerOptions {
+    snipdeck_core::TriggerOptions {
+        end: dto
+            .trigger_fires
+            .as_deref()
+            .and_then(snipdeck_core::TriggerEnd::from_key)
+            .unwrap_or_default(),
+        case: dto
+            .trigger_case
+            .as_deref()
+            .and_then(snipdeck_core::CaseMode::from_key)
+            .unwrap_or_default(),
+    }
+}
+
+fn invalid_trigger(id: ItemId, e: &snipdeck_core::Error) -> Error {
+    Error::malformed(ITEMS, format!("item {id} has an invalid trigger: {e}"))
 }
 
 fn parse_key<T: FromStr<Err = snipdeck_core::Error>>(text: &str, what: &str) -> Result<T> {
@@ -383,18 +477,26 @@ fn build_plan<R: Read + Seek>(
         referenced: HashSet::new(),
         tag_index: HashMap::new(),
         seen_lists: HashSet::new(),
+        seen_groups: HashSet::new(),
+        group_index: HashMap::new(),
         seen_items: HashSet::new(),
+        truncated: 0,
     };
-    let tags = builder.read_tags(&doc.tags)?;
+    let (tags, tag_colours, tag_parents) = builder.read_tags(&doc.tags)?;
     let mut plan = Plan {
         tags,
+        tag_colours,
+        tag_parents,
         boards: Vec::new(),
+        reuse_existing: false,
     };
 
     let keep_boards = options.layout == BoardLayout::KeepBoards;
     let multi = doc.boards.len() > 1;
     if !keep_boards {
         plan.boards.push(PlanBoard {
+            accent: None,
+            icon: None,
             name: single_board,
             created_at: now,
             updated_at: now,
@@ -415,8 +517,20 @@ fn build_plan<R: Read + Seek>(
             lists.push(builder.list(list, prefix)?);
         }
         if keep_boards {
+            let accent = board
+                .accent
+                .as_deref()
+                .map(|a| parse_key::<ListAccent>(a, "board accent"))
+                .transpose()?;
+            let icon = board
+                .icon
+                .as_deref()
+                .map(|i| parse_key::<ListIcon>(i, "board icon"))
+                .transpose()?;
             plan.boards.push(PlanBoard {
                 name,
+                accent,
+                icon,
                 created_at,
                 updated_at,
                 lists,
@@ -426,11 +540,44 @@ fn build_plan<R: Read + Seek>(
         }
     }
 
+    distrust_claims(&mut plan, now, options.merge == MergeStrategy::Restore);
+
     let unreferenced = archive
         .asset_hashes()
         .filter(|h| !builder.referenced.contains(h))
         .count();
-    Ok(Built { plan, unreferenced })
+    Ok(Built {
+        plan,
+        unreferenced,
+        truncated: builder.truncated,
+    })
+}
+
+/// What a file says about time and use is a claim, not a fact: nothing may be dated after `now`
+/// (it would sort first and, for the Trash, never expire), and use counts only carry over when
+/// the file is the user's own backup being restored (DATA-10).
+fn distrust_claims(plan: &mut Plan, now: Timestamp, own_backup: bool) {
+    let cap = |t: &mut Timestamp| *t = (*t).min(now);
+    for board in &mut plan.boards {
+        cap(&mut board.created_at);
+        cap(&mut board.updated_at);
+        for list in &mut board.lists {
+            cap(&mut list.created_at);
+            cap(&mut list.updated_at);
+            for item in &mut list.items {
+                cap(&mut item.created_at);
+                cap(&mut item.updated_at);
+                if own_backup {
+                    if let Some(t) = &mut item.last_used_at {
+                        cap(t);
+                    }
+                } else {
+                    item.use_count = 0;
+                    item.last_used_at = None;
+                }
+            }
+        }
+    }
 }
 
 /// The manifest's counts must equal what the document and the zip really hold.
@@ -480,26 +627,123 @@ struct Builder<'a, R: Read + Seek> {
     referenced: HashSet<BlobRef>,
     tag_index: HashMap<TagId, usize>,
     seen_lists: HashSet<ListId>,
+    seen_groups: HashSet<GroupId>,
+    /// The current list's groups by id, as indexes into `PlanList::groups`.
+    group_index: HashMap<GroupId, usize>,
     seen_items: HashSet<ItemId>,
+    /// Items whose title or source app was cut.
+    truncated: usize,
 }
 
 impl<R: Read + Seek> Builder<'_, R> {
     /// Tags: ids unique, names valid. Tags whose names are equal ignoring case merge into one.
-    fn read_tags(&mut self, tags: &[TagDto]) -> Result<Vec<Name>> {
+    #[expect(
+        clippy::type_complexity,
+        reason = "the three parallel columns of the plan's tags"
+    )]
+    fn read_tags(
+        &mut self,
+        tags: &[TagDto],
+    ) -> Result<(Vec<Name>, Vec<Option<ItemLabel>>, Vec<Option<usize>>)> {
         let mut seen = HashSet::new();
         let mut names: Vec<Name> = Vec::new();
+        let mut colours: Vec<Option<ItemLabel>> = Vec::new();
         let mut by_key: HashMap<String, usize> = HashMap::new();
+        let mut wanted_parents: Vec<(usize, TagId)> = Vec::new();
         for tag in tags {
             let id: TagId = parse_id(&tag.id, "tag")?;
             unique(&mut seen, id, "tag")?;
             let name = parse_name(&tag.name, "tag")?;
+            let colour = tag
+                .colour
+                .as_deref()
+                .map(|c| parse_key::<ItemLabel>(c, "tag colour"))
+                .transpose()?;
             let index = *by_key.entry(name_key(name.as_str())).or_insert_with(|| {
                 names.push(name.clone());
+                colours.push(None);
                 names.len() - 1
             });
+            // Two tags that merge keep the first colour any of them names.
+            if colours[index].is_none() {
+                colours[index] = colour;
+            }
+            if let Some(parent) = &tag.parent {
+                wanted_parents.push((index, parse_id(parent, "tag parent")?));
+            }
             self.tag_index.insert(id, index);
         }
-        Ok(names)
+        // Parents by the index of the tag they became (two tags that merged keep the first
+        // parent either names). A parent the file does not hold, or a loop, is refused.
+        let mut parents: Vec<Option<usize>> = vec![None; names.len()];
+        for (index, parent) in wanted_parents {
+            let Some(&parent_index) = self.tag_index.get(&parent) else {
+                return Err(Error::malformed(
+                    ITEMS,
+                    "a tag is nested under a tag the file does not hold".to_owned(),
+                ));
+            };
+            if parents[index].is_none() && parent_index != index {
+                parents[index] = Some(parent_index);
+            }
+        }
+        for start in 0..names.len() {
+            let mut at = parents[start];
+            for _ in 0..=names.len() {
+                match at {
+                    Some(i) if i == start => {
+                        return Err(Error::malformed(
+                            ITEMS,
+                            "the tags are nested in a loop".to_owned(),
+                        ));
+                    }
+                    Some(i) => at = parents[i],
+                    None => break,
+                }
+            }
+        }
+        Ok((names, colours, parents))
+    }
+
+    /// The nesting of a list's groups (1.3). A parent the list does not hold, a loop, a parent
+    /// listed after its child and a nesting deeper than `MAX_GROUP_DEPTH` levels are refused;
+    /// an archive without the field has flat groups.
+    fn read_group_parents(&self, dto: &ListDto, list: &mut PlanList) -> Result<()> {
+        for (index, group) in dto.groups.iter().enumerate() {
+            let Some(parent) = &group.parent else {
+                continue;
+            };
+            let parent: GroupId = parse_id(parent, "group parent")?;
+            let Some(&at) = self.group_index.get(&parent) else {
+                return Err(Error::malformed(
+                    ITEMS,
+                    "a group is nested in a group the list does not hold".to_owned(),
+                ));
+            };
+            if at >= index {
+                return Err(Error::malformed(
+                    ITEMS,
+                    "the groups are nested in a loop or listed before the group they are in"
+                        .to_owned(),
+                ));
+            }
+            list.groups[index].parent = Some(at);
+        }
+        for index in 0..list.groups.len() {
+            let mut depth = 1;
+            let mut at = list.groups[index].parent;
+            while let Some(up) = at {
+                depth += 1;
+                at = list.groups[up].parent;
+            }
+            if depth > snipdeck_core::MAX_GROUP_DEPTH {
+                return Err(Error::malformed(
+                    ITEMS,
+                    "the groups are nested deeper than three levels".to_owned(),
+                ));
+            }
+        }
+        Ok(())
     }
 
     /// One list. `prefix` is the archive board's name when boards are being merged into one.
@@ -517,8 +761,39 @@ impl<R: Read + Seek> Builder<'_, R> {
             .as_deref()
             .map(|a| parse_key::<ListAccent>(a, "list accent"))
             .transpose()?;
+        list.icon = dto
+            .icon
+            .as_deref()
+            .map(|i| parse_key::<ListIcon>(i, "list icon"))
+            .transpose()?;
         list.view = parse_key::<ListView>(&dto.view, "list view")?;
-        list.sort = parse_key::<ListSort>(&dto.sort, "list sort")?;
+        list.sort = snipdeck_core::Sort::from_key(&dto.sort).map_err(|_| {
+            Error::malformed(
+                ITEMS,
+                format!(
+                    "`{}` is not a known list sort",
+                    crate::error::display_name(&dto.sort)
+                ),
+            )
+        })?;
+        self.group_index.clear();
+        for group in &dto.groups {
+            let id: GroupId = parse_id(&group.id, "group")?;
+            unique(&mut self.seen_groups, id, "group")?;
+            self.group_index.insert(id, list.groups.len());
+            let colour = group
+                .colour
+                .as_deref()
+                .map(|c| parse_key::<ListAccent>(c, "group colour"))
+                .transpose()?;
+            list.groups.push(PlanGroup {
+                name: parse_name(&group.name, "group")?,
+                collapsed: group.collapsed,
+                colour,
+                parent: None,
+            });
+        }
+        self.read_group_parents(dto, &mut list)?;
         for item in &dto.items {
             let item_id: ItemId = parse_id(&item.id, "item")?;
             unique(&mut self.seen_items, item_id, "item")?;
@@ -542,6 +817,23 @@ impl<R: Read + Seek> Builder<'_, R> {
         if dto.formats.is_empty() {
             return Err(Error::malformed(ITEMS, format!("item {id} has no formats")));
         }
+        // An encrypted payload on an item that says it is not sensitive would be decrypted with
+        // the library key and stored as plain text: a tampered `items.json` could strip the flag.
+        let any_encrypted = dto.formats.iter().any(|f| {
+            f.encrypted
+                || f.files
+                    .as_deref()
+                    .is_some_and(|files| files.iter().any(|file| file.encrypted))
+        });
+        if any_encrypted && !dto.sensitive {
+            return Err(Error::malformed(
+                ITEMS,
+                format!(
+                    "item {id} (`{}`) has an encrypted payload but is not marked sensitive",
+                    crate::error::display_name(&dto.title)
+                ),
+            ));
+        }
         let mut kinds = HashSet::new();
         let mut formats = Vec::with_capacity(dto.formats.len());
         for format in &dto.formats {
@@ -555,19 +847,54 @@ impl<R: Read + Seek> Builder<'_, R> {
             formats.push(self.format(format, kind, id)?);
         }
         check_shape(&formats)?;
+        let title = truncate_chars(&dto.title, TITLE_CHARS);
+        let source_app = dto
+            .source_app
+            .as_deref()
+            .map(|s| truncate_chars(s, SOURCE_APP_CHARS));
+        if title.len() != dto.title.len() || source_app != dto.source_app {
+            self.truncated += 1;
+        }
         Ok(PlanItem {
-            title: dto.title.clone(),
+            title,
             kind: parse_key::<ItemKind>(&dto.kind, "item kind")?,
             pinned: dto.pinned,
             sensitive: dto.sensitive,
             always_plain: dto.always_plain,
+            label: dto
+                .label
+                .as_deref()
+                .map(|l| parse_key::<ItemLabel>(l, "item label"))
+                .transpose()?,
+            trigger: dto
+                .trigger
+                .as_deref()
+                .map(|t| {
+                    Trigger::new(t)
+                        .map(|t| t.with_options(trigger_options(dto)))
+                        .map_err(|e| invalid_trigger(id, &e))
+                })
+                .transpose()?,
+            group: dto
+                .group
+                .as_deref()
+                .map(|g| {
+                    let gid: GroupId = parse_id(g, "group")?;
+                    self.group_index.get(&gid).copied().ok_or_else(|| {
+                        Error::malformed(
+                            ITEMS,
+                            format!("item {id} is in group {gid}, which its list does not list"),
+                        )
+                    })
+                })
+                .transpose()?,
             use_count: dto.use_count,
             last_used_at: dto
                 .last_used_at
                 .as_deref()
                 .map(|t| parse_time(t, "last use"))
                 .transpose()?,
-            source_app: dto.source_app.clone(),
+            source_app,
             created_at: parse_time(&dto.created_at, "item creation")?,
             updated_at: parse_time(&dto.updated_at, "item update")?,
             tags,
@@ -733,6 +1060,14 @@ struct Verified {
     plain: HashSet<(BlobRef, bool)>,
     /// Bytes of decrypted payload the plan may still hold in memory.
     decrypt_budget: u64,
+    /// The budget at the start, for the error.
+    decrypt_limit: u64,
+    /// Bytes of encrypted asset the checks may still read. Every reference reads and decrypts
+    /// its asset again (the envelope is bound to the item), so many items pointing at one big
+    /// asset would otherwise cost one read each without limit.
+    read_budget: u64,
+    /// The budget at the start, for the error.
+    read_budget_limit: u64,
 }
 
 /// Result of checking one asset.
@@ -754,11 +1089,16 @@ fn verify<R: Read + Seek>(
     archive: &mut SafeArchive<R>,
     plan: &mut Plan,
     key: Option<&DataKey>,
+    read_limit: u64,
+    decrypt_limit: u64,
     report: &mut ImportReport,
 ) -> Result<()> {
     let mut verified = Verified {
         plain: HashSet::new(),
-        decrypt_budget: MEMORY_BUDGET,
+        decrypt_budget: decrypt_limit,
+        decrypt_limit,
+        read_budget: read_limit,
+        read_budget_limit: read_limit,
     };
     let mut needs_key = 0_usize;
     for list in plan.boards.iter_mut().flat_map(|b| &mut b.lists) {
@@ -887,6 +1227,13 @@ fn check_source<R: Read + Seek>(
             let Some(key) = key else {
                 return Ok(Checked::NeedsKey);
             };
+            verified.read_budget = verified
+                .read_budget
+                .checked_sub(archive.asset_size(&asset.hash).unwrap_or(0))
+                .ok_or(Error::LimitExceeded {
+                    what: "encrypted asset bytes read",
+                    limit: verified.read_budget_limit,
+                })?;
             let bytes = archive.read_asset(&asset.hash)?;
             if blake3::hash(&bytes).as_bytes() != asset.hash.as_bytes() {
                 return Err(name_mismatch());
@@ -913,7 +1260,7 @@ fn check_source<R: Read + Seek>(
                     .checked_sub(len)
                     .ok_or(Error::LimitExceeded {
                         what: "decrypted size",
-                        limit: MEMORY_BUDGET,
+                        limit: verified.decrypt_limit,
                     })?;
             Ok(Checked::Ok {
                 hash: *blake3::hash(&plain).as_bytes(),

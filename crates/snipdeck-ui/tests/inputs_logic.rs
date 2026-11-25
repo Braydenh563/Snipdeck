@@ -67,6 +67,24 @@ ui_tests! {
 // TextField / SearchField
 // ---------------------------------------------------------------------------------------------
 
+fn a_disabled_text_field_has_no_context_menu() {
+    let ui = start(InputsGallery::new);
+    let field = find(&ui, "Disabled field", AccessibleRole::TextInput);
+    let (p, s) = (field.absolute_position(), field.size());
+    let at = slint::LogicalPosition::new(p.x + s.width / 2.0, p.y + s.height / 2.0);
+    ui.window().dispatch_event(slint::platform::WindowEvent::PointerMoved { position: at });
+    for pressed in [true, false] {
+        let button = slint::platform::PointerEventButton::Right;
+        ui.window().dispatch_event(if pressed {
+            slint::platform::WindowEvent::PointerPressed { position: at, button }
+        } else {
+            slint::platform::WindowEvent::PointerReleased { position: at, button }
+        });
+    }
+    settle();
+    assert!(ElementHandle::find_by_accessible_label(&ui, "Paste").next().is_none(), "nothing can be pasted into a disabled field");
+}
+
 fn text_field_exposes_role_label_placeholder_value_and_error() {
     let ui = start(InputsGallery::new);
     let name = find(&ui, "Name", AccessibleRole::TextInput);
@@ -169,7 +187,7 @@ fn search_field_role_label_and_placeholder() {
     let search = find(&ui, "Search", AccessibleRole::TextInput);
     assert_eq!(
         search.accessible_placeholder_text().as_deref(),
-        Some("Search snippets")
+        Some("Search items")
     );
     let filled = find(&ui, "Search filled", AccessibleRole::TextInput);
     assert_eq!(filled.accessible_value().as_deref(), Some("invoice"));
@@ -364,6 +382,19 @@ fn an_overflowing_bar_scrolls_to_reveal_the_selected_tab() {
     ui.invoke_select_last_overflow();
     settle();
     assert!(ui.get_overflow_scroll_x() < -1.0);
+}
+
+fn an_overflowing_bar_shows_a_caret_on_each_side_that_has_more_tabs() {
+    let ui = start(TabsGallery::new);
+    settle();
+    // Scrolled to the start: more tabs lie to the right only.
+    assert!(missing(&ui, "Tabs left", AccessibleRole::Button));
+    find(&ui, "Tabs right", AccessibleRole::Button).invoke_accessible_default_action();
+    settle();
+    assert!(ui.get_overflow_scroll_x() < -1.0, "the caret scrolls the tabs");
+    let _ = find(&ui, "Tabs left", AccessibleRole::Button);
+    // A bar whose tabs all fit has no carets.
+    assert_eq!(all(&ui, "Tabs right", AccessibleRole::Button).len(), 1);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -566,6 +597,8 @@ fn template_choice_is_a_radio_group_with_one_checked_option() {
 fn template_choice_keyboard_navigation() {
     let ui = start(FormGallery::new);
     ui.invoke_focus_choice();
+    // The focus request is handled by a change handler, which the real event loop runs between events.
+    settle();
     assert_eq!(ui.get_tf_choice(), 1);
     press(ui.window(), &key(Key::DownArrow));
     assert_eq!(ui.get_tf_choice(), 2);
@@ -653,7 +686,7 @@ fn a_closed_dialog_is_gone_and_holds_no_keys() {
 
 fn empty_state_has_heading_sentence_and_one_primary_action() {
     let ui = start(EmptyStateGallery::new);
-    for heading in ["No snippets yet", "No lists on this board", "Nothing found", "Inbox is empty"] {
+    for heading in ["No items yet", "No lists on this board", "Nothing found", "Inbox is empty"] {
         assert!(
             !missing(&ui, heading, AccessibleRole::Text),
             "heading {heading:?}"

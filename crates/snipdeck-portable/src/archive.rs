@@ -19,7 +19,7 @@ use zip::result::ZipError;
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
-use crate::error::{Error, Result};
+use crate::error::{Error, Result, TOTAL_SIZE};
 use crate::limits::Limits;
 
 pub(crate) const MANIFEST: &str = "manifest.json";
@@ -407,16 +407,16 @@ impl Scan {
             Some(_) => return Err(Error::unsafe_entry(name, "not a regular file")),
         }
 
-        if facts.size > limits.max_entry_bytes {
+        if facts.size > limits.entry_cap(name) {
             return Err(Error::LimitExceeded {
-                what: "uncompressed entry size",
-                limit: limits.max_entry_bytes,
+                what: Limits::entry_cap_what(name),
+                limit: limits.entry_cap(name),
             });
         }
         self.total = self.total.saturating_add(facts.size);
         if self.total > limits.max_total_bytes {
             return Err(Error::LimitExceeded {
-                what: "total uncompressed size",
+                what: TOTAL_SIZE,
                 limit: limits.max_total_bytes,
             });
         }
@@ -482,15 +482,15 @@ impl<W: Write + Seek> ArchiveWriter<W> {
                 limit: self.limits.max_entries as u64,
             });
         }
-        if size > self.limits.max_entry_bytes {
+        if size > self.limits.entry_cap(name) {
             return Err(Error::LimitExceeded {
-                what: "uncompressed entry size",
-                limit: self.limits.max_entry_bytes,
+                what: Limits::entry_cap_what(name),
+                limit: self.limits.entry_cap(name),
             });
         }
         if self.total.saturating_add(size) > self.limits.max_total_bytes {
             return Err(Error::LimitExceeded {
-                what: "total uncompressed size",
+                what: TOTAL_SIZE,
                 limit: self.limits.max_total_bytes,
             });
         }

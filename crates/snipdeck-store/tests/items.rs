@@ -19,7 +19,7 @@ use snipdeck_core::{
     BlobRef, Content, FileEntry, Format, FormatKind, Formats, INLINE_LIMIT, Item, ItemId, ItemKind,
     ListId, Placement, Tag, Timestamp,
 };
-use snipdeck_store::{BlobStore, Error, ItemRepo, Store, TagRepo};
+use snipdeck_store::{BlobStore, Error, ItemRepo, Store, TagRepo, TrashRepo, Trashable};
 
 fn setup() -> (Store, snipdeck_core::List) {
     let mut s = store();
@@ -57,6 +57,7 @@ fn an_item_round_trips_every_field() {
     it.tags = BTreeSet::from([tag.id]);
     it.pinned = true;
     it.always_plain = true;
+    it.label = Some(snipdeck_core::ItemLabel::Violet);
     it.use_count = 42;
     it.last_used_at = Some(Timestamp::new(1_800_000_123, 456_789_012).unwrap());
     it.source_app = Some("Outlook".to_owned());
@@ -75,7 +76,7 @@ fn unused_optional_fields_stay_none() {
     let it = item(&mut s, l.id, "plain", "x");
     let back = s.item(it.id).unwrap();
     assert_eq!((back.last_used_at, back.source_app.clone()), (None, None));
-    assert!(back.tags.is_empty());
+    assert_eq!(back.tags.len(), 0);
 }
 
 #[test]
@@ -175,7 +176,7 @@ fn an_unknown_tag_on_an_item_is_refused_and_nothing_is_written() {
         matches!(err, Err(Error::NotFound { entity: "tag", .. })),
         "{err:?}"
     );
-    assert!(s.items(l.id).unwrap().is_empty());
+    assert_eq!(s.items(l.id).unwrap().len(), 0);
     assert_healthy(&s);
 }
 
@@ -336,6 +337,45 @@ fn all_items_follow_board_then_list_then_item_order() {
 }
 
 #[test]
+fn all_items_carry_their_tags_and_leave_out_what_is_in_the_trash() {
+    let mut s = store();
+    let b1 = board(&mut s, "b1");
+    let b2 = board(&mut s, "b2");
+    let (l1, l2, gone) = (
+        list(&mut s, b1.id, "l1"),
+        list(&mut s, b2.id, "l2"),
+        list(&mut s, b2.id, "gone"),
+    );
+    let (red, blue) = (Tag::new(name("red")), Tag::new(name("blue")));
+    s.insert_tag(&red).unwrap();
+    s.insert_tag(&blue).unwrap();
+    let tagged = |s: &mut Store, list: ListId, title: &str, tags: &[&Tag]| {
+        let mut it = item(s, list, title, "x");
+        it.tags = tags.iter().map(|t| t.id).collect();
+        s.update_item(&it, None).unwrap();
+        it
+    };
+    let first = tagged(&mut s, l1.id, "first", &[&red, &blue]);
+    let plain = tagged(&mut s, l1.id, "plain", &[]);
+    let trashed = tagged(&mut s, l2.id, "trashed", &[&red]);
+    let in_gone = tagged(&mut s, gone.id, "in a trashed list", &[&blue]);
+    let last = tagged(&mut s, l2.id, "last", &[&blue]);
+    s.trash(Trashable::Item(trashed.id), at(10)).unwrap();
+    s.trash(Trashable::List(gone.id), at(11)).unwrap();
+    let all = s.all_items().unwrap();
+    assert_eq!(all, [first.clone(), plain, last.clone()]);
+    assert_eq!(all[0].tags, BTreeSet::from([red.id, blue.id]));
+    assert_eq!(all[2].tags, BTreeSet::from([blue.id]));
+    assert!(all.iter().all(|i| i.id != in_gone.id));
+    // The same items, in the same order, as reading list by list.
+    let by_list: Vec<_> = [l1.id, l2.id]
+        .into_iter()
+        .flat_map(|l| s.items(l).unwrap())
+        .collect();
+    assert_eq!(all, by_list);
+}
+
+#[test]
 fn tags_on_items_are_replaced_by_update_and_removed_with_the_tag() {
     let (mut s, l) = setup();
     let red = Tag::new(name("red"));
@@ -355,7 +395,7 @@ fn tags_on_items_are_replaced_by_update_and_removed_with_the_tag() {
     assert_eq!(s.item(it.id).unwrap().tags, BTreeSet::from([blue.id]));
 
     s.delete_tag(blue.id).unwrap();
-    assert!(s.item(it.id).unwrap().tags.is_empty());
+    assert_eq!(s.item(it.id).unwrap().tags.len(), 0);
     assert_eq!(s.all_items().unwrap()[0].tags.len(), 0);
     assert_healthy(&s);
 }
@@ -470,7 +510,7 @@ fn a_failed_blob_delete_after_purge_still_reports_the_count() {
     block_deletion(dir.path(), &b);
     s.trash(Trashable::Item(x.id), at(1)).unwrap();
     assert_eq!(s.purge(at(2)).unwrap(), 1);
-    assert!(s.trashed().unwrap().is_empty());
+    assert_eq!(s.trashed().unwrap().len(), 0);
 }
 
 /// Review L11: a metadata-only edit neither reads the content nor loses it from the index, even
@@ -501,12 +541,8 @@ fn metadata_edits_do_not_read_the_content() {
     it.pinned = true;
     it.title = "renamed".to_owned();
     s.update_item(&it, None).unwrap();
-    assert_eq!(
-        s.search("needle", 5).unwrap(),
-        [it.id],
-        "body still indexed"
-    );
-    assert_eq!(s.search("renamed", 5).unwrap(), [it.id], "title updated");
+    assert_eq!(found(&s, "needle"), [it.id], "body still indexed");
+    assert_eq!(found(&s, "renamed"), [it.id], "title updated");
 }
 
 /// Review L12: `record_use` owns the usage columns; saving an item loaded earlier keeps them.

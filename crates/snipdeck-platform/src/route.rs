@@ -2,7 +2,7 @@
 
 use snipdeck_core::PasteFailure;
 
-use crate::keys::{PasteKey, paste_key_for};
+use crate::keys::{PasteKey, PasteRule, builtin_paste_rules, paste_key_for};
 
 /// What the platform could see of the Target's keyboard focus.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -19,6 +19,45 @@ pub enum Focus {
     None,
 }
 
+/// A rectangle on the virtual screen, in physical pixels (the text caret of the Target).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ScreenRect {
+    /// Left edge.
+    pub x: i32,
+    /// Top edge.
+    pub y: i32,
+    /// Width.
+    pub w: u32,
+    /// Height.
+    pub h: u32,
+}
+
+/// What bringing the Target to the front did.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Refocus {
+    /// There is no Target, or Windows refused.
+    None,
+    /// The Target was in front already: injected keys reach it at once.
+    InFront,
+    /// The Target was brought to the front. Windows restores its focused control
+    /// asynchronously, so injected keys wait about 50 ms (the spike used 50 ms).
+    Switched,
+}
+
+impl Refocus {
+    /// Whether the Target is (or is being brought) in front.
+    #[must_use]
+    pub fn ok(self) -> bool {
+        self != Self::None
+    }
+
+    /// Whether keys must wait for the focused control to come back.
+    #[must_use]
+    pub fn must_wait(self) -> bool {
+        self == Self::Switched
+    }
+}
+
 /// The window that had focus before the user clicked Snipdeck.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Target {
@@ -30,6 +69,8 @@ pub struct Target {
     pub elevated: bool,
     /// What focus was found inside the Target.
     pub focus: Focus,
+    /// The window's handle (`0` when unknown): two windows of one program differ here.
+    pub window: usize,
 }
 
 // The title may be private (a document name, a page title): never print it.
@@ -40,6 +81,7 @@ impl std::fmt::Debug for Target {
             .field("title_len", &self.title.len())
             .field("elevated", &self.elevated)
             .field("focus", &self.focus)
+            .field("window", &self.window)
             .finish()
     }
 }
@@ -99,8 +141,15 @@ impl CopyReason {
     }
 }
 
-/// Decides how to use an item given the Target (`None` when there is none).
+/// Decides how to use an item given the Target (`None` when there is none), pasting with the
+/// built-in paste keys. [`decide_with`] takes the user's own.
 pub fn decide(target: Option<&Target>, policy: &Policy) -> Route {
+    decide_with(target, policy, &builtin_paste_rules())
+}
+
+/// Decides how to use an item given the Target (`None` when there is none): `rules` say which
+/// key pastes into which program (Settings > Programs), `Ctrl+V` for the others.
+pub fn decide_with(target: Option<&Target>, policy: &Policy, rules: &[PasteRule]) -> Route {
     let Some(target) = target else {
         return Route::Copy(CopyReason::NoTarget);
     };
@@ -119,7 +168,7 @@ pub fn decide(target: Option<&Target>, policy: &Policy) -> Route {
         return Route::Copy(CopyReason::NothingFocused { app: app() });
     }
     Route::Paste {
-        key: paste_key_for(&target.app),
+        key: paste_key_for(&target.app, rules),
     }
 }
 
@@ -133,6 +182,7 @@ mod tests {
             title: "Untitled".into(),
             elevated,
             focus,
+            window: 0,
         }
     }
 
@@ -204,6 +254,35 @@ mod tests {
             decide(Some(&t), &Policy::default()),
             Route::Paste {
                 key: PasteKey::ShiftInsert
+            }
+        );
+    }
+
+    #[test]
+    fn the_users_rules_choose_the_paste_key_and_replace_the_built_in_ones() {
+        let rules = [
+            PasteRule {
+                exe: "wt.exe".into(),
+                key: PasteKey::CtrlShiftV,
+            },
+            PasteRule {
+                exe: "mintty.exe".into(),
+                key: PasteKey::CtrlV,
+            },
+        ];
+        let policy = Policy::default();
+        let paste =
+            |app: &str| decide_with(Some(&target(app, false, Focus::Caret)), &policy, &rules);
+        assert_eq!(
+            paste("WT.exe"),
+            Route::Paste {
+                key: PasteKey::CtrlShiftV
+            }
+        );
+        assert_eq!(
+            paste("mintty.exe"),
+            Route::Paste {
+                key: PasteKey::CtrlV
             }
         );
     }

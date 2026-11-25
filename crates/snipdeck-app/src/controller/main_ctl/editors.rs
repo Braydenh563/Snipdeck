@@ -1,0 +1,446 @@
+//! The list and board editors.
+
+use snipdeck_core::{BoardId, ListAccent, ListIcon, ListId, Name, Placement, Sort};
+use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
+use snipdeck_store::Trashable;
+
+use crate::history::{Action, Change, Record};
+
+use super::super::{Controller, Library, ToastMessage, failed, success};
+use super::{EditorSlot, EditorTarget, Opened, neutral_toast};
+use crate::{
+    host::ClipboardText,
+    main_window::{DeleteHint, EditorKind, EditorView, NameError, Section},
+};
+
+impl<S, C, K, T> Controller<S, C, K, T>
+where
+    S: Library,
+    C: Clipboard + ClipboardText,
+    K: Keyboard,
+    T: Timing,
+{
+    // ---- The list and board editors ------------------------------------------------------------
+
+    /// "Add list": opens the list editor for a new list on the open board. A library without
+    /// a board gets the starter board and list instead.
+    pub fn main_new_list(&mut self) {
+        self.main_fresh();
+        let Some(board) = self.main.board() else {
+            self.add_list();
+            self.main.mark_stale();
+            return;
+        };
+        self.open_editor(
+            EditorTarget::NewList(board),
+            EditorView {
+                seq: 0,
+                kind: EditorKind::List,
+                is_new: true,
+                name: crate::starter::numbered_name(
+                    &self.starter.new_list,
+                    self.main.lists().iter().map(|l| l.name.as_str()),
+                ),
+                accent: None,
+                icon: None,
+                sort: Sort::MANUAL,
+                boards: self.board_choices(),
+                board_index: self.main.board_position().unwrap_or(0),
+                can_delete: false,
+                delete_hint: None,
+                name_error: None,
+                restored: false,
+            },
+        );
+    }
+
+    /// The boards a list can be put on, in board order.
+    fn board_choices(&self) -> Vec<(BoardId, String)> {
+        self.main
+            .boards()
+            .iter()
+            .map(|b| (b.id, b.name.as_str().to_owned()))
+            .collect()
+    }
+
+    /// "Edit list…": opens the list editor for list `index` of the sidebar.
+    pub fn main_edit_list(&mut self, index: usize) {
+        self.main_fresh();
+        let Some(list) = self.main.lists().get(index).cloned() else {
+            return;
+        };
+        self.open_list_editor(&list);
+    }
+
+    /// The Panel's "Edit list…" (or a double-click on a tab): opens the list editor on list `id`
+    /// (any board).
+    pub(in super::super) fn panel_edit_list(&mut self, id: ListId) {
+        self.main_fresh();
+        let Ok(list) = self.store.list(id) else {
+            self.show_toast(failed());
+            return;
+        };
+        self.open_list_editor(&list);
+    }
+
+    pub(super) fn open_list_editor(&mut self, list: &snipdeck_core::List) {
+        let view = EditorView {
+            seq: 0,
+            kind: EditorKind::List,
+            is_new: false,
+            name: list.name.as_str().to_owned(),
+            accent: list.accent,
+            icon: list.icon,
+            sort: list.sort,
+            boards: self.board_choices(),
+            board_index: self
+                .main
+                .board_of_list(list.id)
+                .and_then(|b| self.main.boards().iter().position(|x| x.id == b))
+                .unwrap_or(0),
+            can_delete: true,
+            delete_hint: None,
+            name_error: None,
+            restored: false,
+        };
+        self.open_editor(EditorTarget::List(list.id), view);
+    }
+
+    /// The Panel's "New board…": the same editor as the Main window's.
+    pub(in super::super) fn panel_new_board(&mut self) {
+        self.main_fresh();
+        self.new_board();
+    }
+
+    /// The Panel's "Rename board…": the board editor for the board the Panel shows.
+    pub(in super::super) fn panel_edit_board(&mut self, id: BoardId) {
+        self.main_fresh();
+        let Ok(board) = self.store.board(id) else {
+            self.show_toast(failed());
+            return;
+        };
+        let can_delete = self.main.boards().len() > 1;
+        let view = EditorView {
+            seq: 0,
+            kind: EditorKind::Board,
+            is_new: false,
+            name: board.name.as_str().to_owned(),
+            accent: board.accent,
+            icon: board.icon,
+            sort: Sort::MANUAL,
+            boards: Vec::new(),
+            board_index: 0,
+            can_delete,
+            delete_hint: (!can_delete).then_some(DeleteHint::LastBoard),
+            name_error: None,
+            restored: false,
+        };
+        self.open_editor(EditorTarget::Board(id), view);
+    }
+
+    /// The board editor for a new board.
+    pub fn main_new_board(&mut self) {
+        self.main_fresh();
+        self.new_board();
+    }
+
+    /// Opens the board editor for a new board.
+    pub(super) fn new_board(&mut self) {
+        self.open_editor(
+            EditorTarget::NewBoard,
+            EditorView {
+                seq: 0,
+                kind: EditorKind::Board,
+                is_new: true,
+                name: crate::starter::numbered_name(
+                    &self.starter.new_board,
+                    self.main.boards().iter().map(|b| b.name.as_str()),
+                ),
+                accent: None,
+                icon: None,
+                sort: Sort::MANUAL,
+                boards: Vec::new(),
+                board_index: 0,
+                can_delete: false,
+                delete_hint: None,
+                name_error: None,
+                restored: false,
+            },
+        );
+    }
+
+    /// The board editor for the open board.
+    pub(super) fn edit_board(&mut self) {
+        let Some(board) = self.main.board() else {
+            return;
+        };
+        let can_delete = self.main.boards().len() > 1;
+        let view = EditorView {
+            seq: 0,
+            kind: EditorKind::Board,
+            is_new: false,
+            name: self.main.board_name().to_owned(),
+            accent: self.store.board(board).ok().and_then(|b| b.accent),
+            icon: self.store.board(board).ok().and_then(|b| b.icon),
+            sort: Sort::MANUAL,
+            boards: Vec::new(),
+            board_index: 0,
+            can_delete,
+            delete_hint: (!can_delete).then_some(DeleteHint::LastBoard),
+            name_error: None,
+            restored: false,
+        };
+        self.open_editor(EditorTarget::Board(board), view);
+    }
+
+    pub(super) fn open_editor(&mut self, target: EditorTarget, mut view: EditorView) {
+        self.editor_seq += 1;
+        view.seq = self.editor_seq;
+        // Fields typed before the owner window closed come back.
+        if let Some(at) = self.parked_editors.iter().position(|(t, _)| *t == target) {
+            let (_, typed) = self.parked_editors.remove(at);
+            view.name = typed.name;
+            view.accent = typed.accent;
+            view.icon = typed.icon;
+            view.sort = typed.sort;
+            view.board_index = typed.board_index.min(view.boards.len().saturating_sub(1));
+            view.restored = true;
+        }
+        self.editor = Some(EditorSlot { view, target });
+    }
+
+    /// The editor's Save: checks the name, writes the list or board and closes the editor. A
+    /// refused name keeps it open with the reason (see [`EditorView::name_error`]).
+    pub fn main_editor_save(
+        &mut self,
+        name: &str,
+        accent: Option<ListAccent>,
+        icon: Option<ListIcon>,
+        sort: Sort,
+    ) {
+        self.main_fresh();
+        let Some(slot) = self.editor.as_mut() else {
+            return;
+        };
+        let target = slot.target;
+        let name = match Name::new(name) {
+            Ok(name) => name,
+            Err(error) => {
+                slot.view.name_error = NameError::of(&error);
+                return;
+            }
+        };
+        let board = slot.view.boards.get(slot.view.board_index).map(|b| b.0);
+        match self.write_editor(target, name, accent, icon, sort, board) {
+            Ok(opened) => {
+                self.editor = None;
+                // Read again below (`library_changed`, after the toast); the window needs
+                // the new list or board before that.
+                self.main.mark_stale();
+                self.main_fresh();
+                match opened {
+                    Some(Opened::List(id)) => self.main.open(Section::List(id)),
+                    Some(Opened::MovedList(board, id)) => {
+                        self.open_board(board);
+                        self.main.open(Section::List(id));
+                    }
+                    Some(Opened::Board(id)) => self.open_board(id),
+                    None => {}
+                }
+                self.show_toast(success(match target {
+                    EditorTarget::NewBoard | EditorTarget::Board(_) => ToastMessage::BoardSaved,
+                    EditorTarget::NewList(_) | EditorTarget::List(_) => ToastMessage::ListSaved,
+                }));
+                self.library_changed();
+            }
+            Err(_) => self.show_toast(failed()),
+        }
+    }
+
+    /// Writes what an editor made: a new list or board, or a changed one.
+    pub(super) fn write_editor(
+        &mut self,
+        target: EditorTarget,
+        name: Name,
+        accent: Option<ListAccent>,
+        icon: Option<ListIcon>,
+        sort: Sort,
+        board: Option<BoardId>,
+    ) -> snipdeck_store::Result<Option<Opened>> {
+        let now = self.clock.now();
+        match target {
+            EditorTarget::NewList(opened_on) => {
+                let mut list = snipdeck_core::List::new(board.unwrap_or(opened_on), name, now);
+                list.accent = accent;
+                list.icon = icon;
+                list.sort = sort;
+                self.store.insert_list(&list, Placement::Last)?;
+                self.record_step(
+                    Action::List,
+                    vec![Change::Restore(vec![Trashable::List(list.id)])],
+                );
+                Ok(Some(Opened::List(list.id)))
+            }
+            EditorTarget::List(id) => {
+                let before = self.store.list(id)?;
+                let mut list = before.clone();
+                list.name = name;
+                list.accent = accent;
+                list.icon = icon;
+                // The editor chooses the key; a list that already sorts by it keeps its direction.
+                list.sort = if sort.key == before.sort.key {
+                    before.sort
+                } else {
+                    sort
+                };
+                let changed = list != before;
+                list.updated_at = now;
+                self.store.update_list(&list)?;
+                let from = self.main.board_of_list(id);
+                let order_before: Vec<ListId> = from
+                    .and_then(|b| self.store.lists(b).ok())
+                    .map(|l| l.iter().map(|l| l.id).collect())
+                    .unwrap_or_default();
+                let moved_to = board.filter(|to| from.is_some_and(|f| f != *to));
+                let mut steps = Vec::new();
+                if changed {
+                    steps.push(Change::Rewrite {
+                        before: Record::List(before),
+                        after: Record::List(list),
+                    });
+                }
+                // Another board chosen: the list goes to the end of that board and is shown there.
+                if let (Some(to), Some(from)) = (moved_to, from) {
+                    self.store.move_list(id, to, Placement::Last)?;
+                    let at = order_before.iter().position(|l| *l == id).unwrap_or(0);
+                    steps.push(Change::MoveList {
+                        id,
+                        from: (from, crate::main_window::place_of(&order_before, at)),
+                        to: (to, Placement::Last),
+                    });
+                    self.record_step(Action::List, steps);
+                    return Ok(Some(Opened::MovedList(to, id)));
+                }
+                if !steps.is_empty() {
+                    self.record_step(Action::List, steps);
+                }
+                Ok(None)
+            }
+            EditorTarget::NewBoard => {
+                let mut board = snipdeck_core::Board::new(name, now);
+                board.accent = accent;
+                board.icon = icon;
+                self.store.insert_board(&board, Placement::Last)?;
+                self.record_step(
+                    Action::Board,
+                    vec![Change::Restore(vec![Trashable::Board(board.id)])],
+                );
+                Ok(Some(Opened::Board(board.id)))
+            }
+            EditorTarget::Board(id) => {
+                let before = self.store.board(id)?;
+                let mut board = before.clone();
+                board.name = name;
+                board.accent = accent;
+                board.icon = icon;
+                let changed = board != before;
+                board.updated_at = now;
+                self.store.update_board(&board)?;
+                if changed {
+                    self.record_step(
+                        Action::Board,
+                        vec![Change::Rewrite {
+                            before: Record::Board(before),
+                            after: Record::Board(board),
+                        }],
+                    );
+                }
+                Ok(None)
+            }
+        }
+    }
+
+    /// The editor's Delete: the list or board and what is inside it
+    /// move to the Trash, with an Undo toast.
+    pub fn main_editor_delete(&mut self) {
+        self.main_fresh();
+        let Some(slot) = self.editor.take() else {
+            return;
+        };
+        match slot.target {
+            EditorTarget::List(id) => self.trash_list(id, slot.view.name),
+            EditorTarget::Board(id) if self.main.boards().len() > 1 => {
+                self.trash_board(id, slot.view.name);
+            }
+            _ => {}
+        }
+    }
+
+    /// Moves board `id` (named `name`) with its lists and items to the Trash, with an Undo
+    /// toast.
+    pub(in super::super) fn trash_board(&mut self, id: BoardId, name: String) {
+        let now = self.clock.now();
+        match self.store.trash(Trashable::Board(id), now) {
+            Ok(()) => {
+                let step = self.record_step(
+                    Action::Delete,
+                    vec![Change::Trash(vec![Trashable::Board(id)])],
+                );
+                self.show_undo_toast(neutral_toast(ToastMessage::BoardTrashed { name }), step);
+                self.library_changed();
+            }
+            Err(_) => self.show_toast(failed()),
+        }
+    }
+
+    /// The editor was cancelled or closed.
+    pub fn main_editor_close(&mut self) {
+        self.editor = None;
+    }
+
+    /// The window that opened the editor closed: the editor closes without asking and keeps the
+    /// fields as typed (for the rest of the app session), so opening the same one again finds
+    /// them. Fields equal to what the editor opened with are not kept.
+    pub fn main_editor_park(
+        &mut self,
+        name: &str,
+        accent: Option<ListAccent>,
+        icon: Option<ListIcon>,
+        sort: Sort,
+        board_index: usize,
+    ) {
+        let Some(slot) = self.editor.take() else {
+            return;
+        };
+        self.parked_editors.retain(|(t, _)| *t != slot.target);
+        let v = &slot.view;
+        if (v.name.as_str(), v.accent, v.icon, v.sort) == (name, accent, icon, sort)
+            && v.board_index == board_index
+        {
+            return;
+        }
+        let mut typed = slot.view;
+        name.clone_into(&mut typed.name);
+        typed.accent = accent;
+        typed.icon = icon;
+        typed.sort = sort;
+        typed.board_index = board_index.min(typed.boards.len().saturating_sub(1));
+        self.parked_editors.push((slot.target, typed));
+    }
+
+    /// The list editor's Board field picked board `index` of [`EditorView::boards`].
+    pub fn main_editor_set_board(&mut self, index: usize) {
+        if let Some(slot) = self.editor.as_mut()
+            && index < slot.view.boards.len()
+        {
+            slot.view.board_index = index;
+        }
+    }
+
+    /// The user edited a field of the editor: a refusal no longer applies.
+    pub fn main_editor_edited(&mut self) {
+        if let Some(slot) = self.editor.as_mut() {
+            slot.view.name_error = None;
+        }
+    }
+}

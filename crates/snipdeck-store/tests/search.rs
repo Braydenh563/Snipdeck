@@ -1,4 +1,5 @@
-//! Full-content search (FTS5) for the main window.
+//! The full-text index: for each word of a parsed query, the live items whose title or content
+//! holds it (trigram FTS5 over folded text; `LIKE` for one or two CJK characters).
 #![allow(
     clippy::unwrap_used,
     clippy::expect_used,
@@ -23,12 +24,14 @@ fn setup() -> (Store, snipdeck_core::List) {
     (s, l)
 }
 
-fn found(s: &Store, q: &str) -> Vec<String> {
-    s.search(q, 50)
-        .unwrap()
+/// The titles of the items [`common::found`] returns, sorted.
+fn titles_found(s: &Store, q: &str) -> Vec<String> {
+    let mut titles: Vec<String> = found(s, q)
         .into_iter()
         .map(|id| s.item(id).unwrap().title)
-        .collect()
+        .collect();
+    titles.sort();
+    titles
 }
 
 #[test]
@@ -41,9 +44,9 @@ fn matches_titles_and_full_content() {
         "Address",
         "Lorem ipsum dolor sit amet, the secret word is pineapple",
     );
-    assert_eq!(found(&s, "invoice"), ["Invoice template"]);
+    assert_eq!(titles_found(&s, "invoice"), ["Invoice template"]);
     assert_eq!(
-        found(&s, "pineapple"),
+        titles_found(&s, "pineapple"),
         ["Address"],
         "content beyond the preview is searched"
     );
@@ -53,36 +56,63 @@ fn matches_titles_and_full_content() {
 fn matching_is_case_and_accent_insensitive() {
     let (mut s, l) = setup();
     item(&mut s, l.id, "Café menu", "Crème brûlée");
-    assert_eq!(found(&s, "CAFE"), ["Café menu"]);
-    assert_eq!(found(&s, "creme brulee"), ["Café menu"]);
+    assert_eq!(titles_found(&s, "CAFE"), ["Café menu"]);
+    assert_eq!(titles_found(&s, "creme brulee"), ["Café menu"]);
 }
 
 #[test]
-fn the_last_word_matches_as_a_prefix_and_all_words_are_required() {
+fn words_match_anywhere_in_a_word_and_all_words_are_required() {
     let (mut s, l) = setup();
     item(&mut s, l.id, "Quarterly report", "revenue figures");
-    item(&mut s, l.id, "Quarterly plan", "hiring");
-    assert_eq!(found(&s, "quart").len(), 2);
-    assert_eq!(found(&s, "quarterly rep"), ["Quarterly report"]);
-    assert!(found(&s, "quarterly zebra").is_empty());
+    item(&mut s, l.id, "Email signature", "hiring");
+    assert_eq!(titles_found(&s, "quart"), ["Quarterly report"]);
+    assert_eq!(titles_found(&s, "ature"), ["Email signature"], "mid-word");
+    assert_eq!(titles_found(&s, "terly port"), ["Quarterly report"]);
+    assert_eq!(titles_found(&s, "quarterly zebra").len(), 0);
+    assert_eq!(titles_found(&s, "\"revenue fig\""), ["Quarterly report"]);
+    assert!(
+        titles_found(&s, "\"figures revenue\"").is_empty(),
+        "a phrase keeps its order"
+    );
 }
 
 #[test]
-fn title_matches_rank_above_body_matches() {
+fn text_in_scripts_without_spaces_is_found_inside_sentences() {
     let (mut s, l) = setup();
-    item(&mut s, l.id, "Other", "mentions apple once");
-    item(&mut s, l.id, "Apple", "fruit");
-    assert_eq!(found(&s, "apple"), ["Apple", "Other"]);
+    item(&mut s, l.id, "ja", "東京都の天気は晴れです");
+    item(&mut s, l.id, "zh", "我们明天在北京见面");
+    item(&mut s, l.id, "ko", "안녕하세요 반갑습니다");
+    item(&mut s, l.id, "th", "สวัสดีครับยินดีต้อนรับ");
+    assert_eq!(titles_found(&s, "天気"), ["ja"], "two characters");
+    assert_eq!(titles_found(&s, "晴"), ["ja"], "one character");
+    assert_eq!(titles_found(&s, "北京"), ["zh"]);
+    assert_eq!(titles_found(&s, "반갑"), ["ko"]);
+    assert_eq!(titles_found(&s, "ยินดี"), ["th"]);
+    assert_eq!(
+        titles_found(&s, "都の天"),
+        ["ja"],
+        "three characters use the index"
+    );
 }
 
 #[test]
-fn limit_caps_the_results() {
+fn symbols_and_width_variants_are_found() {
     let (mut s, l) = setup();
-    for i in 0..10 {
-        item(&mut s, l.id, &format!("note {i}"), "common");
-    }
-    assert_eq!(s.search("common", 3).unwrap().len(), 3);
-    assert!(s.search("common", 0).unwrap().is_empty());
+    item(&mut s, l.id, "Lang", "notes on C++ and C# 50% off_sale");
+    item(&mut s, l.id, "Wide", "ＡＢＣＤ ﾃｽﾄ");
+    assert_eq!(titles_found(&s, "c++"), ["Lang"]);
+    assert_eq!(titles_found(&s, "50%"), ["Lang"]);
+    assert_eq!(titles_found(&s, "f_s"), ["Lang"], "LIKE wildcards are text");
+    assert_eq!(titles_found(&s, "abcd"), ["Wide"]);
+    assert_eq!(titles_found(&s, "テスト"), ["Wide"]);
+}
+
+#[test]
+fn short_latin_words_are_left_to_the_in_memory_fields() {
+    let (mut s, l) = setup();
+    item(&mut s, l.id, "x", "ab cd");
+    let query = snipdeck_core::search::Query::parse("ab");
+    assert!(s.search(&query).unwrap().term(0).is_none());
 }
 
 #[test]
@@ -90,9 +120,9 @@ fn trashed_items_are_not_found_until_restored() {
     let (mut s, l) = setup();
     let it = item(&mut s, l.id, "Temp", "ephemeral");
     s.trash(Trashable::Item(it.id), at(1)).unwrap();
-    assert!(found(&s, "ephemeral").is_empty());
+    assert_eq!(titles_found(&s, "ephemeral").len(), 0);
     s.restore(Trashable::Item(it.id)).unwrap();
-    assert_eq!(found(&s, "ephemeral"), ["Temp"]);
+    assert_eq!(titles_found(&s, "ephemeral"), ["Temp"]);
 }
 
 #[test]
@@ -102,28 +132,28 @@ fn sensitive_items_match_on_their_title_only() {
     it.sensitive = true;
     s.insert_item(&it, &text_formats("hunter2 correct horse"), Placement::Last)
         .unwrap();
-    assert_eq!(found(&s, "bank"), ["Bank login"]);
-    assert!(found(&s, "hunter2").is_empty());
-    assert!(found(&s, "horse").is_empty());
+    assert_eq!(titles_found(&s, "bank"), ["Bank login"]);
+    assert_eq!(titles_found(&s, "hunter2").len(), 0);
+    assert_eq!(titles_found(&s, "horse").len(), 0);
 }
 
 #[test]
 fn flipping_the_sensitive_flag_reindexes_the_content() {
     let (mut s, l) = setup();
     let mut it = item(&mut s, l.id, "Token", "abc123token");
-    assert_eq!(found(&s, "abc123token").len(), 1);
+    assert_eq!(titles_found(&s, "abc123token").len(), 1);
     it.sensitive = true;
     it.preview.clear();
     s.update_item(&it, None).unwrap();
     assert!(
-        found(&s, "abc123token").is_empty(),
+        titles_found(&s, "abc123token").is_empty(),
         "no content left in the index"
     );
     it.sensitive = false;
     it.preview = Item::preview_of("abc123token", false);
     s.update_item(&it, None).unwrap();
     assert_eq!(
-        found(&s, "abc123token").len(),
+        titles_found(&s, "abc123token").len(),
         1,
         "content comes back from storage"
     );
@@ -137,13 +167,13 @@ fn edits_to_title_and_content_are_searchable_immediately() {
     it.title = "After".to_owned();
     s.update_item(&it, Some(&text_formats("new words")))
         .unwrap();
-    assert!(found(&s, "before").is_empty() && found(&s, "old").is_empty());
-    assert_eq!(found(&s, "after"), ["After"]);
-    assert_eq!(found(&s, "words"), ["After"]);
+    assert!(titles_found(&s, "before").is_empty() && titles_found(&s, "old").is_empty());
+    assert_eq!(titles_found(&s, "after"), ["After"]);
+    assert_eq!(titles_found(&s, "words"), ["After"]);
     // A title-only edit keeps the body searchable.
     it.title = "Renamed".to_owned();
     s.update_item(&it, None).unwrap();
-    assert_eq!(found(&s, "words"), ["Renamed"]);
+    assert_eq!(titles_found(&s, "words"), ["Renamed"]);
 }
 
 #[test]
@@ -159,7 +189,7 @@ fn text_stored_as_a_blob_is_searchable() {
         Placement::Last,
     )
     .unwrap();
-    assert_eq!(found(&s, "needleinhaystack"), ["Long"]);
+    assert_eq!(titles_found(&s, "needleinhaystack"), ["Long"]);
 }
 
 #[test]
@@ -172,7 +202,7 @@ fn items_without_text_are_found_by_title() {
         Placement::Last,
     )
     .unwrap();
-    assert_eq!(found(&s, "logo"), ["Logo"]);
+    assert_eq!(titles_found(&s, "logo"), ["Logo"]);
 }
 
 #[test]
@@ -243,24 +273,25 @@ fn no_user_input_produces_a_syntax_error() {
         "$",
     ];
     for query in nasty {
-        let result = s.search(query, 10);
+        let parsed = snipdeck_core::search::Query::parse(query);
+        let result = s.search(&parsed);
         assert!(result.is_ok(), "{query:?} -> {result:?}");
     }
-    let long = "word ".repeat(5000);
-    assert!(s.search(&long, 10).is_ok());
+    let long = snipdeck_core::search::Query::parse(&"word ".repeat(5000));
+    assert!(s.search(&long).is_ok());
     assert_eq!(
-        found(&s, "title:foo").len(),
+        titles_found(&s, "title:foo").len(),
         1,
         "operators are searched as words, not run"
     );
-    assert_eq!(found(&s, "\"quoted\"").len(), 1);
+    assert_eq!(titles_found(&s, "\"quoted\"").len(), 1);
 }
 
 #[test]
 fn an_empty_query_finds_nothing() {
     let (mut s, l) = setup();
     item(&mut s, l.id, "x", "y");
-    assert!(s.search("", 10).unwrap().is_empty());
-    assert!(s.search("   ", 10).unwrap().is_empty());
-    assert!(s.search("!!!", 10).unwrap().is_empty());
+    assert_eq!(found(&s, "").len(), 0);
+    assert_eq!(found(&s, "   ").len(), 0);
+    assert_eq!(found(&s, "!!!").len(), 0);
 }

@@ -1,7 +1,7 @@
 # Snipdeck — Product Specification (v1)
 
 > Status: **Agreed** (grill rounds 1–2, 2026-10-17), amended with M0 spike outcomes (see [`docs/spikes/README.md`](spikes/README.md)). Anything marked **(unverified)** depends on a Windows test that has not been run yet. Design language: [`DESIGN.md`](../DESIGN.md).
-> Working name: **Snipdeck** — kept in one constant (`APP_NAME`); trademark/domain check before release.
+> Working name: **Snipdeck** — the name is the package name and the `*Texts` strings; trademark/domain check before release.
 
 ## 1. Problem
 
@@ -16,32 +16,32 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 2. **Never steal focus.** Using the panel must not disturb the app the user is typing in.
 3. **Native, light, instant.** No web runtime, no server, no network port. Strict perf budget (§9).
 4. **Local-first & private.** No account, no telemetry, data on disk in an open format.
-5. **Library first, history second.** Curated items are the product; clipboard history is an opt-in inbox.
+5. **Library first, history second.** Curated items are the product; clipboard history is a local inbox, on for new installs and off with one switch.
 
 ## 3. Platforms
 
 | Release | Platform | Notes |
 |---|---|---|
 | v1.0 | Windows 10 (1903+) / 11 | Primary target |
-| v1.1 | macOS 13+ | Needs Accessibility permission for paste-into-field |
+| Later | macOS 13+ | Needs Accessibility permission for paste-into-field |
 | later | Linux (X11 full, Wayland copy-only) | Wayland blocks key injection |
 
 ## 4. Domain model (glossary)
 
 | Term | Meaning |
 |---|---|
-| **Board** | Top-level workspace (e.g. "Work", "Personal"). Free tier: 3 boards. |
-| **List** | Ordered collection of Items inside a Board (e.g. "Email replies"). Has optional colour accent. |
-| **Item** | One saved thing the user can paste. Has a title, one or more Formats, tags, flags. |
+| **Board** | Top-level workspace (e.g. "Work", "Personal"). No limit on boards. |
+| **List** | Ordered collection of Items inside a Board (e.g. "Email replies"). Has optional colour accent and an optional icon (one of 24 curated glyphs). |
+| **Item** | One saved thing the user can paste. Has a title, one or more Formats, tags, flags, and an optional colour label (one of 8; a 4px bar on the card, filterable in the Main window; the name is always available as text). |
 | **Format** | One clipboard representation of an Item: `text`, `html`, `rtf`, `image/png`, `files`. An Item may hold several (e.g. html + text fallback). |
 | **Template** | An Item whose text contains placeholders, resolved at use time. |
-| **Placeholder** | `{date}`, `{time}`, `{datetime:FORMAT}`, `{clipboard}`, `{cursor}` (static/free) and `{field:Name}` / `{field:Name|default}` / `{choice:Name|a|b}` (prompted/Pro). |
-| **Tag** | Free-form label across Boards; filterable. |
+| **Placeholder** | `{date}`, `{time}`, `{datetime:FORMAT}`, `{clipboard}`, `{selection}`, `{cursor}`, `{key:tab}`, `{snippet:Title}` (static) and `{field:Name}` / `{choice:Name|a|*b}` / `{number:Name}` / `{pickdate:Name}` (prompted); see 5.4a. |
+| **Tag** | Free-form label across Boards; filterable (several at once, matching any or all). Has an optional colour (one of the 8 item colours), shown as a dot beside it, and an optional parent: a tag can be nested under another, at any depth. A tag stands for the tags under it: opening or filtering by `work` shows the items tagged `work/invoices` too, and its count counts each such item once. Names stay unique across the whole library (`work/invoices` is the path, not a name). |
 | **Pinned** | Item shown in the panel's favourites strip, above list order. |
-| **Sensitive** | Item that is masked, excluded from history, auto-cleared from clipboard after use; encrypted at rest (Pro). |
-| **Recent inbox** | Opt-in clipboard history. Last 200 entries or 7 days (configurable). Promote → List. |
+| **Sensitive** | Item that is masked and excluded from history; its clipboard copy is cleared after N s (default 30, Settings > Privacy); encrypted at rest (all tiers). |
+| **Recent inbox** | Clipboard history (opt-in: asked on first run; nothing is kept until Yes; Settings and the welcome tour change it). Last 200 entries or 7 days (fixed in v1.0). Promote → List. |
 | **Panel** | Small dockable, always-on-top, non-activating window showing a Board (lists as tabs). |
-| **Floating list** | A List detached from the Panel into its own mini-panel (Pro). |
+| **Floating list** | A List detached from the Panel into its own mini-panel. |
 | **Picker** | Hotkey-summoned, keyboard-first popup at the cursor: type to filter, Enter to paste. |
 | **Main window** | Full manager: sidebar / item list / detail editor. |
 | **Use** | Executing an Item: resolve template → write clipboard → paste or copy. |
@@ -51,75 +51,108 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 
 ### 5.1 Panel (always-available, Sticky-Notes-like)
 - Dock to any screen edge/corner or float; always-on-top toggle; per-monitor position memory.
-- **Edge dock with reveal (owner request 2026-10-18, modelled on Microsoft PC Manager's side panel):** docked to a screen edge the Panel collapses to a slim handle/grabber strip (as in PC Manager's "toolbar" mode, horizontal on top/bottom edges and vertical on left/right) and slides out on **hover and/or click** (setting: hover, click, or both; hover delay and leave delay configurable), then collapses again when the pointer leaves or after a paste. The handle stays on top, never takes focus, shows nothing sensitive, and is reachable by keyboard (the Panel hotkey toggles it). Multi-monitor: remembers the edge per monitor. Needs a Windows spike for the hover hit-test on a non-activating always-on-top strip (appbar vs plain topmost window) before building.
+- **Edge dock with reveal (owner request 2026-10-18, modelled on Microsoft PC Manager's side panel):** docked to a screen edge the Panel collapses to a slim handle/grabber strip (as in PC Manager's "toolbar" mode, horizontal on top/bottom edges and vertical on left/right) and slides out on **hover and/or click** (setting: hover, click, or both; hover delay and leave delay configurable), then collapses again when the pointer leaves or after a paste. The handle stays on top, never takes focus, shows nothing sensitive, and is reachable by keyboard (the Panel hotkey toggles it). Multi-monitor: remembers the edge per monitor. Needs a Windows spike for the hover hit-test on a non-activating always-on-top strip (appbar vs plain topmost window) before building. **Rebuilt 2026-11-12 (`docs/reviews/dock-redesign.md`):** the Panel floats wherever it is dropped; only the cursor held at a work-area edge (4 px, 200 ms) offers a dock, with a live preview, and pulling back 12 px takes the offer away. The app moves the window itself from the cursor. Floating frame and docked size are remembered apart per monitor. A docked Panel tucks by default (trigger Both; one docked by an older version keeps Off until it is docked again), is always on top except under a full-screen app on its own monitor, does not hide on focus loss, reveals when the pointer is on its tab (or at the edge within 12 px past the tab's ends) and stays while hovered, focused or being dragged or resized. The top 24 px of the Panel is a full-width grab strip (its top 6 px resize, the 18 px below them drag). **Keyboard move and size (PANEL-29):** the More menu's Window group has "Move panel" and "Resize panel" (floating Panel only): the arrow keys step it 16 px (Shift: 64 px; Resize: left and right the width, up and down the height), kept inside the work area and the 260 to 480 width; Enter keeps it, Esc puts the old frame back, and a strip under the header says so.
 - **Auto-hide to edge**: collapses to a thin tab; reveals on hover or hotkey.
 - **Non-activating**: clicking the panel does not take focus from the Target (see ADR-0003).
-- Header: board switcher, list tabs, search, `+` menu, collapse.
-- Views: **Compact** (1-line rows) and **Comfortable** (2–3 line preview, image thumbs). Per-list choice.
+- Header: board picker, search icon, `New` menu, keep-on-top, `More` menu (Undo, Redo, Paste stack, Dock to edge, Keyboard shortcuts, Settings), close; list tabs sit on the row below (setting: tabs or a menu). Layout details: `docs/reviews/panel-v2-spec.md`.
+- Layouts: **List** (default), **Cards** and **Compact**, one global setting (Settings > Panel). It is not per list: a layout that changes when you switch tabs is a surprise in a 2-second window. The store keeps each list's `ListView` (persisted data) but the Panel neither reads nor writes it. Every row shows its type as an icon tile.
 - **Favourites strip** of pinned items at top.
 - **Click behaviour (smart)**: click → paste into Target if a text-input Target is known, else copy + toast.
-  `Shift+click` → copy only. Hover reveals explicit **Copy** / **Paste** / **⋯** buttons.
-- Keys when panel focused: `1`–`9` use Nth item, arrows navigate, `Enter` use, `F2` rename, `Del` delete.
+  `Shift+click` → copy only. There is no Paste button: the row is the paste target and the footer says where it goes. Hover or selection reveals **Copy** / **Edit** / **More** on the preview line (Copy is hidden when there is no target).
+- Keys when panel focused: `Alt+1`–`Alt+9` use Nth item (bare digits are search text), arrows navigate, `Enter` use, `F2` rename, `Del` delete.
 - Add: **+ From clipboard**, `Ctrl+V` / drag-drop onto panel, **quick new note** (inline), global
   **save-selection** hotkey (copies selection under the hood, restores clipboard).
-- Reorder by drag (also `Alt+↑/↓`); per-list sort: Manual (default) / Most used / Recently used.
-- **Search:** typing while the panel is focused filters across the current board (panel and picker match **title, tags and the first 64 characters of content** in memory with `nucleo`, multi-threaded: measured 4–8 ms for 10k items against the 16 ms budget; full-content matching was 22–57 ms and is not used there. The main window's search uses SQLite FTS5 for full content) (the tab row becomes the search field; `Esc` restores). `Ctrl+F` and the search icon also work.
+- Reorder by drag (also `Alt+↑/↓`); one sort for every section (Manual, Name, Created, Modified, Most used, Recently used, each ascending or descending; never-used items come last), kept per section: a list's in the library, the system views' and tags' in the settings. Groups keep their headers under any sort, sorting inside each group. The Main window filters by several tags (any or all), untagged, kind, has trigger, sensitive and colour label, as chips in its toolbar; the Picker's scopes use the same filter.
+- **Groups:** when the list is on Manual sort, marked rows gather under a named, foldable header (`Ctrl+G`, item menu "Group…"). `Left`/`Right` fold and open a header, `F2` renames it, Ungroup keeps the items, Delete group sends group and items to the Trash as one undo step. Dragging a header moves the whole run. Search lists matches inside folded groups under their header. Under any other sort the headers stay and each group's items sort inside it (reordering waits for Manual). Deleting a group acts at once and shows an Undo; "Move group to list…" takes the header and its items to another list. A group can take one of the nine list colours (item menu "Group colour…", a dialog like the tag colour one): it shows as a dot before the name in the header (Main window and Panel), which also says the colour name to a screen reader; the colour is one undo step, goes with the group to another list, and is exported (`colour` of a group, format 1.3). Groups survive export, import, backup and undo (schema v8, `item_groups` + `items.group_id`; the colour is schema v14). **Nested groups** (Main window): a group can sit inside another, three levels at most (`MAX_GROUP_DEPTH`, `core/src/group.rs`; schema v16 `item_groups.parent`). An item belongs to its innermost group (`items.group_id`); a group's run is its own items and those of the groups nested in it, contiguous, and a nested run lies inside its parent's. `Ctrl+G` on rows that all sit in one group makes a group inside it (a mixed selection still makes a top-level one); the header menu's "Nest under…" (and the command palette's entry, the keyboard path) lists the groups it may go under, or the top level, and takes the group with everything in it to the end of the target. Nested headers are indented one step per level; folding a group hides the groups nested in it. Ungroup lifts the group's items and nested groups to its parent; deleting acts at once and trashes the whole branch as one undo step; "Move group to list…" carries the branch and recreates the nesting in the other list; sorts order the rows inside each block; dragging and `Alt+Up/Down` keep a group within its parent's run. Every step (nest, unnest, ungroup, delete, move) is one Undo step. A cycle or a fourth level is refused (the store checks `GroupParent`). Exported as `parent` (format 1.3, parents listed first); an older archive imports flat. The Panel indents them the same way, one step per level.
+- **Search:** typing while the panel is focused filters across **every board** and shows where each match lives ("Board · List"); a miss on another board used to send people to the Main window. (Panel, Picker and Main share one pipeline, see §5.2: an in-memory index of title, tags, list name, trigger and the first 64 characters of content, multi-threaded from 2,000 items, plus the store's trigram FTS5 index for the rest of the content; at 10k items a query is held to the 16 ms budget in release by `search_10k_items_stays_within_budget`) (the search field expands over the tab row, with a visible Close button; `Esc` clears and collapses). `Ctrl+F` and the search icon also work; a setting can keep the field always shown.
 - **Recent tab:** when history is on, a clock tab sits at the far left of the tab row. Promote an entry by dragging it to a tab or with "Save to…".
+- **Symbols tab:** a smiley tab after the clock tab. One search covers emoji, kaomoji, icons and characters (punctuation, arrows, maths, currency, letters, boxes, shapes); kind tabs (Emoji, Kaomoji, Icons, Characters) and a focusable group strip for every kind narrow it, and `Ctrl+Left/Right` steps the kind. The catalogue is every default-tone emoji of `emoji-test.txt` (an emoji with no bundled art is drawn by the system font, marked "system style" in the data), 341 kaomoji, 1,512 Phosphor icons and about 2,700 characters. Search tolerates one typo in a word of five letters or more, folds accents and kana marks, finds by code point (`U+1F600`), shortcode, emoticon and CJK reading, and also matches the UI language (the folded names are built when the tab opens). All lists the most used kind first, with two rows each and a Show all link; a lone kind shows all its rows. Click pastes an emoji, kaomoji or character into the Target (copies when there is none), `Shift+click` copies only, and `Ctrl+S` adds the selection to the current list as a Text item. The grid is its own focus stop: `Tab` or `Down` from the field enters it, all arrows, Home, End and Page keys move in it, typing returns to the field, and `Up` on the first row returns too. Emoji art is 72 px, and a larger preview of the selection sits under the grid. The cell menu (right-click, `Shift+F10`) has Paste, Copy, Add to list; for an emoji with skin tones a row per tone (the tone chosen is remembered as the default and used by the next paste); for an icon Copy SVG (`currentColor` kept), Copy PNG, Save as SVG and Save as PNG, and two rows that step the PNG size (24, 32, 48, 64, 128, 256) and flip the ink between dark (the default, safe on a white document) and the theme colour; both are remembered in the settings. Recents: "Recently used" on top of the grid, most recent first, at most 24, saved in the settings. Details: `docs/reviews/symbols-spec.md`. Windows rendering of system style emoji and of the kaomoji fallback fonts is unverified.
+- **Colours tab:** a palette tab after the Symbols tab (Settings > Panel "Show Colours tab"; palette commands "Colours" and "Pick a colour from the screen"). Open by default: a gradient square or hue wheel (Segmented switch), hue and alpha sliders, and typed per-channel values (HEX, RGB, HSL, HSB, CMYK) that update every other format live. Then Recently used, Saved, a row per format (click pastes into the Target, `Shift+click` copies; the default format is tagged), Contrast against white, black and any colour (WCAG AA/AAA marks, truncated ratios) and Schemes (rotations in OKLCH). Swatches make a colour current (`Shift+click` copies). A saved colour is a Text item in a list named "Colours" (or any list: Save to…); colour items are detected from the item preview, so no schema change. A colour item's menu has Open in Colours and a Paste as list of formats; a list holding colours has Copy as CSS variables. The screen eyedropper is Windows only (freeze-frame overlay, the Panel steps aside, the colour is copied when "Copy a colour picked from the screen" is on). Details: `docs/reviews/colour-spec.md`.
 - **Target footer:** always shows where a click will go ("Pastes into Outlook · New message" / "Copies to clipboard").
 - **Target detection (M0 S1 + a first manual run):** `GetGUIThreadInfo` finds the focused control in classic apps (Notepad verified: paste and clipboard restore worked, item absent from Win+V history) but reports nothing for OneNote and sometimes for Windows Terminal. v1 therefore adds a **UI Automation fallback** (focused element supports text input / value pattern) and a per-app **paste-key table** (Ctrl+V, Ctrl+Shift+V for terminals, Shift+Insert). When neither method finds a target the footer says "Copies to clipboard" and a click copies only. **(unverified for UIA)**
-- **First-run position:** docked to the right edge, full height minus taskbar, always-on-top, auto-hide off (changeable in onboarding).
-- **Fullscreen apps:** the panel auto-hides while a fullscreen app is in front and returns afterwards; hotkeys keep working.
+- **First-run position:** floating near the top left of the work area (48 px in), default width, 480 px tall, not pinned (only a docked Panel that tucks is always on top). Docked to an edge later it keeps that height (the full edge is a setting, off by default) and tucks into its tab (trigger Both).
+- **Fullscreen apps:** while a fullscreen app covers the Panel's own monitor (in front or not; one on another monitor does not count) a docked Panel is not topmost (its tab is under the app) and the pointer at the screen edge does not reveal it; it returns afterwards. Hotkeys keep working: the Panel hotkey opens the Panel over the app, and it tucks again when the keyboard goes back. (A pinned floating Panel is not covered by this yet.)
 - Inline quick-edit for short text and titles; everything else opens the Editor.
-- Detach a list tab → **Floating list** (Pro).
+- Detach a list tab → **Floating list**.
 
 ### 5.1a Use semantics (paste & clipboard)
 - **Paste** = write item to clipboard → paste key into Target → **restore the previous clipboard**. A fixed 300 ms wait is only the fallback: the primary signal is **delayed rendering** (the item's formats are rendered on demand and the previous clipboard is restored once the target has asked for them, with a 2 s cap), because slow targets such as Remote Desktop may otherwise receive the old content (M0 S1). **(unverified)**
 - **Copy** (`Shift+click`, `Shift+Enter`, or no Target) = item stays on the clipboard.
-- **Paste as plain text:** `Alt+click` / `Alt+Enter`; per-item "always paste as plain text" option.
-- **Paste stack (Pro):** multi-select items → "Start stack". The panel shows the queue; the global **Paste next** hotkey (default `Ctrl+Alt+V`) pastes the head and advances. `Ctrl+V` is never hooked. `Esc` in the panel or finishing the queue ends the stack.
+- **Paste as plain text:** `Alt+click` / `Alt+Enter` (Panel items and Recent rows, Picker, Main window; also "Paste as plain text" in the Recent row menu); per-item "always paste as plain text" option.
+- **Paste stack:** multi-select items → "Start stack". The panel shows the queue; the global **Paste next** hotkey (default `Ctrl+Shift+U`) pastes the head and advances. `Ctrl+V` is never hooked. `Esc` in the panel or finishing the queue ends the stack. With no stack running, **Paste next** walks the board's pinned strip, or the shown list when nothing is pinned; the user guide says so, and the usual toast names each item pasted.
 - Elevated targets (UIPI) and failures fall back to Copy with an explaining toast ("Couldn't paste into Task Manager (runs as admin). Copied instead.").
 
 ### 5.2 Picker
 - Global hotkey (default `Ctrl+Shift+Space`), appears at text caret (fallback mouse) in <80 ms.
-- Fuzzy search across all boards (title, content, tags); `Tab` scopes to board/list; `1`–`9` quick use.
+- **Placement:** the Picker setting chooses the side of the caret: Below (default), Above, Right or Left. Below and Above leave a one-line gap, so the caret's line and the neighbouring line stay visible; Right and Left sit beside the caret, top-aligned, and may cover the rest of that line. A side without room flips to the opposite one, and the window is clamped to the monitor's work area. A mouse anchor behaves like Below.
+- Search across all boards (title, tags, list name, trigger, full content); `Tab` cycles the scope (all, this board, this list, pinned, recent = items used before, tag = one tag, `Ctrl+Tab` steps to the next); `Alt+1`–`Alt+9` quick use (digits without `Alt` are search text).
+- **One query language on every surface** (Panel, Picker, Main; `core/src/search.rs`): words separated by spaces, each of which must match in *any* field; `"quoted phrase"` matches the words in that order; `-word` (or `-"phrase"`, `-tag:x`) excludes; `tag:name`, `list:name` (prefix of the name, quotes for spaces; `tag:work/inv` follows the path of a nested tag, and `tag:work` also finds items tagged with a tag nested under `work`), `kind:text|template|code|link|image|file`, `is:pinned` filter. Matching ignores case, accents and width (NFKC fold), so `RESUME`, `résumé` and `ｒｅｓｕｍｅ` are one word. A word matches exactly, as a prefix, at a word start, anywhere inside, or (title and tags, 2+ characters) as a subsequence; any run of 3+ characters, or 1+ CJK characters, is found in the full content. Ranking: match quality, then the field (trigger, title, tag, list, content), then use count and recency. A query is cut to 32 words and 256 characters. Marks show where the matcher matched (the longest run in the title, the first matching preview line, else the tag).
 - `Enter` paste, `Shift+Enter` copy, `Ctrl+E` edit, `Esc` dismiss and restore focus.
+- **Preview (PANEL-40):** `F3` opens a pane under the list with the selected item's whole text (cut at 1500 characters with `…`; a sensitive item shows a note and no text); it follows the selection and stays as it was left. **Paste as…** (item menus in the Panel, Main window and the Picker's colour rows) lists Plain text, UPPERCASE, lowercase, Title Case, Trimmed, slug-like-this, JSON string (a quoted, escaped literal), Markdown quote (`> ` on every line) and Markdown code block (a fence longer than any backtick run inside).
 
 ### 5.3 Main window (3-pane)
-- **Sidebar**: Search, Recent inbox, Pinned, Boards ▸ Lists, Tags, Trash (30-day).
-- **Item list**: list/grid, multi-select, bulk move/tag/delete, drag between lists.
-- **Detail**: preview + editor + metadata (formats present, uses, created/updated, source app).
-- Settings, onboarding, import/export, licence entry live here.
+- **Sidebar**: Search, Recent inbox, Pinned, Boards ▸ Lists, Tags, Trash (30-day). The tag manager has a "New tag" row; renaming a tag onto an existing name merges the two after a confirmation that shows how many items change (the merged items keep one link).
+- **Colours**: one named palette of nine hues (Blue, Teal, Green, Amber, Orange, Red, Rose, Violet, Slate) names every colour choice. Item labels offer eight of them (no Rose: the library file restricts the stored label keys), lists and boards all nine, and the accent six presets plus Windows; the stored ids and values are unchanged.
+- **Item list**: list/grid, multi-select, bulk move/tag/delete, drag between lists. Dragging items (a pointer drag with a ghost showing the count) onto a list, a tag or Trash in the sidebar moves, tags or deletes them; the keyboard and menu routes (F2, Delete, Move, Tags…) do the same.
+- **Detail**: a 360px pane right of the item list with a preview of the item under the cursor (its text, or its picture) and its metadata (formats present, uses, last used, created/updated, source app, list, tags). A sensitive item shows the mask until it is held revealed. It shows only while the item list keeps its 480px minimum beside it (window at least 1072px wide at 100% text size); the View menu's *Detail pane* switches it off or on, and the choice is kept in the settings. The 480px minimum window stays a two-pane layout.
+- Settings, onboarding, import/export and the optional Support Snipdeck link live here.
 
 ### 5.4 Editors
-- **Size limits (M0 S3, measured on a Linux VM with the software renderer):** Slint's `TextEdit` re-lays-out all text on every keystroke (about 1 ms per KB). Inline editing is therefore capped at **16 KB**. From 16 KB to **5 MB** an item opens in a **read-only virtualised viewer** (rope-based; find, copy, whole-text transforms; measured ≤ 12 ms per interaction). Text over 5 MB is rejected on capture with an explanatory toast (limit to be revisited after Windows measurements).
+- **Size limits (M0 S3, measured on a Linux VM with the software renderer):** Slint's `TextEdit` re-lays-out all text on every keystroke (about 1 ms per KB). The editor therefore never gives the field more than **16 KB** at a time. A text over 16 KB opens whole and fully editable **a part at a time** (Previous part / Next part, "Part 2 of 5"; parts split at line ends, a paste that grows a part is cut again), so a keystroke re-lays-out one part; the tags, template chips and Save work on the whole text, and a text over 16 KB gets no draft. The cap is **5 MB** (a stored text above it may be kept or shortened, not grown); text over 5 MB is rejected on capture with an explanatory toast. There is no "Open in external editor": it would need a temp file and a write-back watcher that cannot be verified off Windows.
 - **Text**: plain editor (wrap, monospace toggle, line numbers for long text), find/replace,
   transforms (UPPER/lower/Title, trim, strip formatting, dedupe lines, sort lines),
   **template field inserter** with live preview. Rich-text items: formatting preserved on paste;
   edited as text (rich-text editing is v1.x).
-- **Image**: crop, rotate/flip, resize/scale, **redact** (blur / solid box). Non-destructive until save.
+- **Editor footer:** Trash, Cancel and Save share one row; when the row does not fit, Trash moves above Cancel/Save instead of clipping. The template placeholder help lists its rows with one shared chip column so descriptions line up.
+- **Image**: crop, rotate/flip, resize/scale, **redact** (blur / solid box). Non-destructive until save. **Not built yet:** the whole image editor, decoding JPEG, WebP, GIF and BMP to the stored PNG (an Image item takes a PNG only; the `image` crate is only a transitive dependency with PNG and JPEG, so the other formats need new crates and a `deny.toml` check), and Replace on an existing Image or File item (delete it and add a new one). A File item takes one file.
+- **Text tools (built):** the editor's *Text tools* row opens find and replace (match count, *Match case*, *Replace all*), the whole-text changes UPPER CASE, lower case, Title Case, trim (spaces at line ends and blank lines at both ends), remove repeated lines (blank lines stay) and sort lines A to Z, a *Monospace font* switch (Code items start on) and *Line numbers* (lines stop wrapping and a long line scrolls sideways with the caret). A change is one step: *Undo the change* brings the text back until the next keystroke. The font and line-number choices last for the open editor only. They apply to text of 16 KB or less; a larger text is read-only, as above. **Not built yet:** these tools inside the read-only viewer for large text (the rope viewer is not built), and a replace that picks matches one by one.
+
+### 5.4a Templates
+A template is an Item whose text has placeholders, resolved at use time by the pure engine in `snipdeck-core` (`template.rs`). It reads no clock, clipboard, selection, locale or library itself: the caller passes them in.
+- **Static:** `{date}`, `{time}`, `{datetime}`, each with an optional format (`{date:%d %B %Y}`) and offsets (`{date+3d}`, `{time-90min}`; at most 16 per placeholder); `{uuid}`; `{clipboard}` and `{clipboard:N}` (N = 2 to 25: the copy N-1 steps before the current one, from the clipboard history; empty where history is off); `{selection}` (text selected in the target app); `{cursor}`; `{key:tab}` and `{key:enter}`; `{snippet:Title}`.
+- **Prompted (the fill form):** `{field:Name}` and `{field:Name|default}` (`{field:Name|}` is optional), `{multiline:Name|default}`, `{number:Name|default}`, `{choice:Name|a|*b|c}` (`*` marks the option the form starts on; one empty option is the "none" choice), `{pickdate:Name|FORMAT}`, `{optional:Name}...{/optional}` (a tick box; a required field inside an unticked section is disabled and never blocks Insert).
+- **Derived:** `{value:Name|transform}` (an answer again, shaped), `{calc:Qty*Price|2}` (`+ - * /`, parentheses, number prompts by name; a division by zero shows `#DIV/0!`), `{clipboard|upper}` and `{selection|title}`. Transforms: plain, upper, lower, title, trim, slug, sentence, camel, snake, urlencode, firstword, lastword (the same list is the "Paste as..." menu and the editor help, generated from one enum).
+- **Names** are compared trimmed and case-folded. At most **64** different prompts per template; the editor states the limits under the placeholder chips and refuses a longer template when it is saved, with the reason.
+- **Escapes:** `{{` and `}}` are literal braces in the text. Inside a placeholder a backslash writes `\|`, `\{`, `\}`, `\\` (and `\*` for an option that starts with `*`). A parse error names the fix.
+- **Dates:** `{date}`, `{time}` and `{datetime}` use one rule: the locale's short pattern (the Windows regional format where it can be read, else the UI language's table). Format flags `%-d` (no padding) and `%_d` (space padding); specifiers `%Y %y %G %m %B %b %h %d %e %j %A %a %u %V %q %H %I %M %S %p %z %Z %F %T %R %%`. Month and weekday names exist for all seven launch locales. `{pickdate}` is typed in the locale's numeric order (placeholder shows it, ISO always accepted) or picked in a month grid under the box (arrows, PageUp/PageDown, Home/End, Enter; a button after the box opens it, and Esc closes the grid before the next Esc cancels the form).
+- **Nested snippets:** `{snippet:Title}` is replaced, when the template is read, by the text of the one item with that title (or trigger). A plain-text item is inserted literally; a template item brings its own placeholders (a prompt both use is one prompt). Depth 4, 32 uses, cycles and Sensitive items are refused with a message. Nothing substituted is ever parsed again.
+- **Keys:** a template with `{key:tab}` or `{key:enter}` is pasted in pieces with the key between them; a copy, or a route that can only copy, keeps the text whole and presses nothing. A transform drops the keys.
+- **Selection:** `{selection}` is read before the fill form opens: Snipdeck copies with Ctrl+C into the clipboard, reads the result and puts the previous clipboard back. It does this only where Ctrl+C is safe: never in a console or terminal (where Ctrl+C interrupts), and only for the Ctrl+V route. In those apps `{selection}` is empty. *Windows behaviour (the copy, the restore, the key presses and the clipboard history) is unverified until the owner runs it on Windows.*
+- **Languages:** month and weekday names exist for the seven launch locales; any other language tag uses English names.
 
 ### 5.5 Capture & OCR
-- Hotkey (default `Ctrl+Shift+2`) → Snipdeck's own region-select overlay (multi-monitor, DPI-aware).
+- Hotkey (off until the user sets a chord; no default) → Snipdeck's own region-select overlay (multi-monitor, DPI-aware). **Not built yet:** v1.0's capture hotkey saves the text on the clipboard as a new item in the list the Panel shows (off until a chord is set), and Settings says so.
 - After selection an **action bar** appears at the selection: **Copy text** (one-off OCR, nothing stored) · **Save text** · **Save image** · **Save both**, plus a list picker (default: active list).
 - Text actions open a small **review popover** with the OCR result, editable before copying/saving.
 - OCR engine: **Windows.Media.Ocr** by default (zero bundle cost); optional **RapidOCR pack**
   (ONNX, downloaded on demand) for messy layouts / unsupported languages (ADR-0004).
 
-### 5.6 Recent inbox (opt-in, off by default)
+### 5.6 Recent inbox (asked on first run, nothing kept until Yes)
+- **Opt-in.** The first time the Panel opens (after the welcome tour, if it runs) a Yes/No question asks "Keep a Recent list of what you copy?"; Esc or a click outside answers No. Nothing is recorded before Yes. A settings file without `recent_history_asked` (any older build) is asked too, because it cannot tell a choice from the old default. The welcome tour (step 4) can answer early, and Settings has the switch. Default chords for a new install: Show/hide Panel `Ctrl+Shift+Y`, Picker `Ctrl+Shift+Space`, Paste next `Ctrl+Shift+U`, none use Ctrl+Alt (AltGr on many layouts; `docs/reviews/default-chords.md`); an existing file keeps its chords.
 - Listens to clipboard changes; dedupes; skips sources that set
   `ExcludeClipboardContentFromMonitorProcessing` / `CanIncludeInClipboardHistory=0` (password managers),
   excluded apps, and Sensitive items.
-- Retention: 200 entries / 7 days (configurable); image entries size-capped.
+- Retention: 200 entries / 7 days (fixed in v1.0, not a setting); image entries size-capped.
+- Encrypted at rest with the Sensitive-item key (OS-wrapped, optional master password); locked = hidden and paused. Search filters after decrypt, in memory.
 - One click **promote** to a List.
 
 ### 5.7 Sensitive items
-- Free: masked `••••` (click-and-hold to reveal), excluded from history, clipboard auto-clear after N s (default 30).
-- Pro: encrypted at rest (XChaCha20-Poly1305); key wrapped by OS (DPAPI) and optionally by a
+- Free: masked `••••` (click-and-hold to reveal), excluded from history. Clipboard auto-clear: a **copy** of a sensitive item (Shift+click, no Target) is cleared from the clipboard N s later (Settings > Privacy, default 30, 0 = off) unless something else has been copied since; an auto-paste restores the previous clipboard, so it leaves nothing to clear.
+- Everyone: encrypted at rest (XChaCha20-Poly1305); key wrapped by OS (DPAPI). An optional
   **master password** (Argon2id) → unlock prompt per session / idle timeout.
+  - Settings > Privacy sets, changes or removes it (typed twice, at least 8 characters, a strength hint in words). Setting, changing, removing and unlocking are always allowed.
+  - With a password set the library starts locked and says nothing. The unlock window opens the first time a locked sensitive item is needed (use, reveal, edit), and again after 15 minutes without use (`IDLE_LOCK`). A wrong password changes nothing and allows another try; Esc leaves it locked.
+  - Locking (idle or otherwise) also closes an open editor of a sensitive item without saving it, so no plain text stays on screen; typing in such an editor counts as use. A backup, export or restore never runs on a locked library (it would leave out or lose the sensitive items): it asks for the password instead, and the scheduled backup waits.
+  - Win+L and sleep lock through the same path, so an unsaved draft in an open sensitive editor is lost then too (no draft is kept, to keep no plain text anywhere); a known limit, not changed. Windows behaviour (session lock and sleep events) is unverified until run on Windows.
+  - Forgetting it loses the sensitive items for good: while a password is set the data key exists only sealed under it inside the OS-wrapped record, there is no recovery key, and the form says so before the password is set. Other items are not affected.
 
 ### 5.7a Deletion & recovery
-- Items delete instantly with a 5 s **Undo** toast; lists and boards ask for confirmation (showing the item count).
-- **Trash** keeps everything 30 days; restore from the main window.
+- Items, groups, lists and boards delete at once with an **Undo** toast (they go to the Trash); only irreversible acts (Empty Trash, tag delete, erase all) ask first (DESIGN.md "Confirm and undo"). A destructive confirmation starts with focus on **Cancel**: Enter or Space answers no, the destructive button is the next Tab stop, Esc cancels.
+- Toasts are held by the length of their text (at least 1 s plus 60 ms a character, at most 20 s, never less than the base hold: 2.5 s plain, 4.9 s with Undo, 10 s for an error) and wait while the pointer is on them or one of their buttons has keyboard focus. A plain message does not replace an error in its first 4 s (it shows after them); an Undo toast always shows at once. **Help > Recent messages** lists the last ten toasts, newest first, in a dialog, so a message that went before it was read can be read again; the toast window itself never takes focus, so the paste flow is unchanged.
+- **Undo checks that stored bytes exist, not that they are intact.** Before restoring a deleted item (or a replaced one) Undo checks that every blob file it needs is still stored (by file length). It does not read and hash the blob: that would stall the UI thread on a big image. Trade-off: a blob damaged on disk without changing its length is restored as it is, and the next integrity check reports it.
+- **Archives run off the UI thread, one at a time.** Backup, export and a rebuild's salvage copy read one snapshot of the library taken when the step begins. Blob files that edits orphan meanwhile are kept until the step ends. A second backup, export, restore, import or master-password step is refused with a toast while one runs. Quitting mid-export removes that export's `<name>.part`.
+- **Trash** keeps everything 30 days; restore from the main window. The search box also searches the Trash (title and preview, in memory, with the same marks; a sensitive item has no preview to search).
+- **Undo and Redo** (Ctrl+Z, Ctrl+Y) reach the last 100 steps made since Snipdeck started. The history lives in memory only: it is forgotten when the app closes and when the library is erased, and kept across a lock. It is not saved between runs (post-1.0, with its reasons): a saved step would have to hold the old text of every sensitive item, and a Trash purge or a restored backup could leave steps that point at things that no longer exist. Every item, list, board, tag, group and order change is a step, as is a restore from the Trash. An edit of a sensitive item's text is a marker only (its text is not kept, so Undo stops there with a message, and steps older than it stay in the list). Deleting for good (one item, Empty Trash, or the 30-day purge) removes only the steps that need what was deleted. A toast's Undo button is withdrawn when a later step touched the same item. Undo of an Add offers "Delete forever" instead of an Undo-the-Undo. Help > Shortcuts says the same in one note.
 - **Daily local auto-backup** (zipped `.snipdeck` in the data folder, keep 7); restore from Settings.
 - **Crash log** stored locally; "Report a problem" lets the user review the log, then opens a prefilled GitHub issue or email. Nothing is sent automatically.
 
@@ -128,39 +161,35 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 Seeds a **Getting started** list whose cards teach by doing ("Click me to paste", "Shift+click to copy", "Try a template").
 
 ### 5.8 System integration
-- Tray icon (ADR-0008): a left click toggles the Panel; the menu is Open Panel, Open Snipdeck, Pause hotkeys (check mark), Quit. The Picker and quick capture are hotkeys, not menu entries. "Pause history" joins the menu when clipboard history exists. Closing the Panel hides it to the tray while an icon is in the notification area (`close_to_tray`), otherwise it quits.
+- Tray icon (ADR-0008): a left click toggles the Panel; the menu is Open Panel, Open Main window, Pause hotkeys (check mark), Quit. The Picker and quick capture are hotkeys, not menu entries. "Pause history" joins the menu when clipboard history exists. Closing the Panel hides it to the tray while an icon is in the notification area (`close_to_tray`), otherwise it quits.
 - Start with Windows (opt-in during onboarding). Single instance.
 - Per-app exclusions: no history capture and/or no auto-paste in listed apps.
 - All hotkeys rebindable; conflicts detected and reported.
 
 ### 5.9 Data portability
 - Export/import `.snipdeck` (zip: `manifest.json`, `items.json`, `assets/`), schema documented in `docs/format.md`.
-- Importers: Ditto, CopyQ, Windows clipboard history (current session), folder of `.txt`/`.md`.
-- Data folder relocatable (e.g. into OneDrive/Dropbox for DIY sync); DB is single-writer — warn on concurrent use.
+- Importers: Ditto, CopyQ, folder of `.txt`/`.md`. The Windows clipboard history importer is **v1.x** (not implemented).
+- Importer notes are typed (`Note` in `snipdeck-portable`) and worded in the UI through `@tr`, so every note, including its "entry N" / "Ditto clip N" / "file, match N" label, appears in the user's language with its values intact.
+- Relocatable data folder (e.g. into OneDrive/Dropbox for DIY sync) with a concurrent-use warning is **v1.x** (not implemented): in v1.0 the data folder is always `%LOCALAPPDATA%\Snipdeck`; the DB is single-writer.
 
-## 6. Free vs Pro
+## 6. Free, with an optional Buy Me a Coffee link
 
-| Feature | Free | Pro |
-|---|---|---|
-| Boards | 3 | Unlimited |
-| Lists / items | Unlimited | Unlimited |
-| Panel, picker, capture, OCR, editors, history | ✓ | ✓ |
-| Static placeholders | ✓ | ✓ |
-| Prompted template fields (`{field}`, `{choice}`) | — | ✓ |
-| Sensitive masking + auto-clear | ✓ | ✓ |
-| Sensitive encryption + master password | — | ✓ |
-| Floating (detached) lists | — | ✓ |
-| Paste stack | — | ✓ |
+Owner decision 2026-11-15: everything is free on every build. There is no paid tier, no Supporter, no licence key, no
+entitlement check and no limit (boards, prompted placeholders, master password, paste stack, Paste next and
+floating lists are always on). The code is GPL-3.0.
 
-Licence key: offline Ed25519-signed token, no phone-home (ADR-0005).
-
-**Upsell:** shown only when the user tries a Pro action (a calm sheet: what it does, price, "Enter key" / "Get Pro"), plus a subtle "Pro" section in Settings listing Pro features. No nags, banners or countdowns.
+**Support Snipdeck** is an optional link, in Help ▸ About, Settings ▸ Support and the command palette. It opens
+`https://buymeacoffee.com/braydenh563` in the default browser through the same open-URL path as Help's other links,
+and its text says it is optional, keeps the app free and unlocks nothing. The app handles no payment data, sends
+nothing, and never nags (no banners, countdowns or prompts). Settings and libraries written by builds that had a
+licence key still load: unknown fields are ignored and a stale `licence.key` file is never read.
 
 ## 7. Internationalisation & accessibility
 - Launch locales: **en, es, de, fr, pt-BR, ja, zh-Hans**. All strings via Slint `@tr()` / gettext `.po`.
 - CJK font fallback, IME-correct text input, locale-aware dates in `{date}`.
 - WCAG 2.2 AA contrast in both themes, full keyboard operation, AccessKit/Narrator labels,
   visible focus, respects Windows reduced-motion and text-scale settings.
+- Tab order (audit 1b): focus moves in reading order through the Panel, editors and scrolling forms; a control that scrolls into view takes focus with it, and the Tips cards are reached with `Tab` card to card.
 
 ## 8. Appearance
 - **Own minimal brand** (Linear/Raycast-class restraint): neutral surfaces, one accent, sharp type, dense but calm.
@@ -179,13 +208,15 @@ Licence key: offline Ed25519-signed token, no phone-home (ADR-0005).
 | Search over 10k items (title + 64 chars, 4 threads) | < 16 ms (measured 4–8 ms on a Linux VM) |
 | Installer (excl. OCR pack) | < 15 MB |
 
+Note (PERF-17): the tooltip liveness timer (10 wake-ups a second while a tooltip rests) stays: Slint has no destruction hook, and it measures 0.0025 ms per wake-up (docs/PERF.md).
+
 ## 10. Architecture (summary — see ADRs)
 
 Cargo workspace:
 
 | Crate | Responsibility |
 |---|---|
-| `snipdeck-core` | Domain types, template engine, fuzzy search (nucleo), use-pipeline logic. Pure, OS-free. |
+| `snipdeck-core` | Domain types, template engine, search (query grammar, folding, ranking), use-pipeline logic. Pure, OS-free. |
 | `snipdeck-store` | SQLite (rusqlite, WAL, FTS5), migrations, content-addressed blob store, crypto. |
 | `snipdeck-platform` | Traits + Windows impl: clipboard (multi-format r/w + listener), global hotkeys, focus/Target tracking, paste injection, non-activating windows, screen capture, OS OCR, autostart. |
 | `snipdeck-ocr-rapid` | Optional RapidOCR backend (ort), on-demand model pack. |
@@ -195,8 +226,8 @@ Cargo workspace:
 Dependency rule: `app → ui, platform, store, core`; `store → core`; `platform → core`; `core` depends on nothing internal.
 
 ## 11. Distribution
-- **Microsoft Store** (paid listing) and **GitHub Releases + winget** (free, signed via SignPath Foundation).
-- In-app update check against GitHub Releases (user-confirmed); Store handles its own updates.
+- **Microsoft Store** (free; Individual Partner Center account) and **GitHub Releases + winget** (free, signed via SignPath Foundation).
+- No network update check: **Check for updates** opens the GitHub releases page, or the Store's updates page in the Store build; the Store handles its own updates.
 
 ## 12. Quality gates (CI, Windows runner)
 `cargo fmt --check`, `cargo clippy -D warnings`, unit + integration tests (store, templates,
@@ -226,3 +257,40 @@ clipboard format round-trips), Slint UI tests (testing backend), screenshot regr
 ## 15. Out of scope for v1
 Cloud sync service, rich-text editing, image annotation (arrows/text), scripting/macros,
 Linux/macOS builds, mobile.
+
+Post-1.0, decided:
+- Global eyedropper hotkey chord: needs Windows-only verification, not possible before release.
+- Per-swatch Ctrl+S: per-swatch save is reachable from the swatch menu.
+- OLE `IDropTarget` drops from other apps: a v1.1 deferral (`docs/reviews/v101-spec.md:68`).
+- Symbols, emoji art for the ~70 system-style emoji (mostly ZWJ families and couples, and emoji newer than the Fluent set): no free art covers them; the system emoji font draws them until a licensed set exists.
+- Symbols, a skin tone drawn in the grid as art: tones paste and are remembered, but the grid shows the default (yellow) art, because tone art would cost about 5x the people art (~1.2 MB).
+- Symbols, Add to list for an icon: an icon is not text; saving it as an Image item needs the item editor's PNG path and is not planned before 1.1.
+- Symbols, the Windows verification of system-style emoji and kaomoji fonts: needs the owner on Windows (`tools/windows-test/`).
+- Colours, HSL and HSB copies keep one decimal (`hsl(214.8, 64.9%, 53.1%)`): copy then paste round-trips to the same colour; whole-number text did so for only about 10-12% of colours.
+- Colours, the Name row on a colour no CSS keyword equals: copying fails with a toast ("≈ royalblue, not an exact colour name. Nothing copied.") and the row shows "Use royalblue (#4169e1)", which switches the colour to the keyword.
+- Symbols data: `scripts/symbols.lock` pins every input by sha256, including the `emoji/latest/emoji-test.txt` URL. After a Unicode release `latest` changes and regenerating fails the hash check; re-pin the lock (and review the diff) on purpose.
+- Colours and Symbols as standalone or pinnable windows (TOOLS-58): the Panel is one window with tabs and hides on focus loss by design; a second always-open window needs its own focus, dock and z-order rules and a Windows pass that cannot be done before release. The eyedropper already hides and restores the main window around a pick.
+- Colours, nearest Tailwind colour: needs a vendored palette and a licence check; the nearest CSS name already covers naming.
+- Colours, a custom copy-format template editor and a hex-case setting UI: `custom_format` exists in the colour crate and is tested, but a template editor needs Settings layout, validation wording and six translations; hex stays lower-case.
+
+### Data audit (`.claude/audit/data.md`): post-1.0, decided
+
+Each item below is a feature, not a defect fix, or cannot be checked before release. Reasons stay with the decision.
+
+- DATA-5, a library that cannot be opened: done for a database that is provably not a library. The start-up open (`Store::open_or_set_aside`) moves the database, its log and the attachments (a move, not a copy) into `snipdeck.damaged-<stamp>/`, opens a fresh library and shows a Danger notice naming that folder; when the data folder holds a backup it adds that Settings > Rebuild from backup restores the newest one, otherwise it says there is no backup yet. The `backups` folder stays where it is, so Rebuild finds it (a test runs the rebuild). Only these errors move anything: SQLite "not a database" or "corrupt", an inconsistent schema, an empty database file beside backups or attachments, and another program's database. Everything else is shown in the start-up message and nothing moves: a folder another Snipdeck holds, a database from a newer Snipdeck, an interrupted rebuild, any I/O error, a busy, locked, interrupted, out-of-memory or protocol error, a full or read-only disk, and a failed migration of an intact database (the `snipdeck.db.pre-v<N>.bak` copy is there to restore by hand). If the fresh open fails the move is undone, and if the rebuild marker can neither be removed nor sealed the start is refused rather than left to undo the new library at the next start. What stays post-1.0 is a recovery window shown before the app opens (a Slint window with no `Store`), to be built and measured on Windows. The notices due at start (a damaged settings file, the library moved aside, the clipboard watch) go through `Controller::queue_toast`: a first-in-first-out queue where the next one shows when the current one is dismissed or times out, and an identical consecutive message is queued once. `show_toast` (every other toast) replaces the one on screen and leaves the queue alone; every path that ends a toast (dismiss, timeout, Edit, Open log, Undo, the end of a drag) goes through `clear_toast`, which shows the next queued one, and dismissing with nothing on screen does nothing. Unverified on Windows: moving a database that a sync client or antivirus holds open fails, and the start-up message then names the error.
+- Backups, folder and Store copy: "Back up now" writes a file of its own (`snipdeck-backup-YYYYMMDD-HHMMSS.snipdeck`, newest ten kept) in the backup folder (Settings, `backup_folder`; empty means the data folder's `backups`) and never writes over today's daily file. In the Store build, the file a backup run wrote (the daily one when it was due, or the manual one) is also copied into `Documents\Snipdeck backups`, pruned like the backups folder (daily copies to the kept count, manual copies to the newest ten); a daily run that finds today's file already there writes and copies nothing.
+- DATA-18, the `snipdeck.db.pre-v<N>.bak` copy: stays, because it is the only way back from a bad upgrade and nothing in the app restores it yet; it goes with a restore-from-bak action in Settings. It holds the database only, not the attachments.
+- DATA-19, set-aside `snipdeck.damaged-<stamp>/` folders: a Settings list with Delete belongs with a Settings list of backups. Erase removes them today.
+- DATA-20, "Restore from file..." and a board-layout choice for Import: a file picker, a second preview and a layout switch in the import flow; the import itself keeps the one-board layout it has. Moving to a new PC works through the `backups` folder (Restore) today.
+- DATA-21, export of a selection or board and plain formats (CSV, JSON, Markdown, Espanso): "Export this list" to text exists; the rest is a new format family. A CSV export must neutralise cells starting with `=`, `+`, `-`, `@`.
+- DATA-24, maintenance off the UI thread: the Trash purge and the blob sweep write through the one writer connection; moving them needs a job queue that owns it. Not timed on a 10,000-item library; do that first.
+- DATA-25, a `maintenance.json` that cannot be saved: the same unwritable folder already fails the daily backup (named in a toast) and the settings save (named in a toast); a third notice would repeat them.
+- DATA-29, durable attachment rename on Windows (`MoveFileExW` with write-through): Windows-only, unverified; it needs a Windows run with a power cut or a VM kill, which cannot be done here. Until then the integrity check reports a row without its file.
+- DATA-32, undo for an import: needs the ids an import created kept until the toast closes and a cascade for the tags only it used; the Trash covers deleted items.
+- DATA-34, version history of an item, restoring one item or list out of a backup, a choice of backup frequency, a backup before a bulk act, a "last backup" line: a backup browser (large). The read-back check already runs after every backup (`BackupOutcome::Created.checked`); a backup that shrinks or leaves items out now says so.
+- Interactions not reached (disk full, a read-only folder run as non-root, OneDrive or a network folder with two PCs, Windows rename durability, DPAPI, an antivirus holding files): need a size-limited file system, a non-root run or Windows; error mapping is covered by the `Cause` tests only.
+
+### Known limits (honest notes)
+
+- Abandoned pending attachments: a file added to the editor and then dropped (the editor closed without saving) is kept while the app runs, because the sweep skips every blob put in this run until it is attached. It is freed at the next restart (`Store::gc_blobs`), not before.
+- Import (apply) and the Rebuild swap run on the UI thread, each in one transaction. The reading and checking of the file happens on the worker, but the write does not: a large library pauses the window briefly while it commits. Not timed on 10,000 items (see DATA-24).

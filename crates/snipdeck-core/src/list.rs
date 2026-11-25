@@ -1,4 +1,4 @@
-use crate::{BoardId, ListId, Name, Timestamp};
+use crate::{BoardId, ListId, Name, Sort, Timestamp};
 
 keyed_enum! {
     /// A list's colour, shown like an index-card divider tab: the active tab's underline,
@@ -26,24 +26,67 @@ keyed_enum! {
 }
 
 keyed_enum! {
+    /// A list's icon, from a curated set of Phosphor glyphs. It only helps the eye find a tab or
+    /// sidebar row; the name is still shown, so the icon never carries meaning alone.
+    pub enum ListIcon ("list icon") {
+        /// `folder`.
+        Folder = "folder",
+        /// `star`.
+        Star = "star",
+        /// `heart`.
+        Heart = "heart",
+        /// `briefcase`.
+        Briefcase = "briefcase",
+        /// `house`.
+        House = "house",
+        /// `user`.
+        User = "user",
+        /// `envelope-simple`.
+        EnvelopeSimple = "envelope-simple",
+        /// `chat-circle`.
+        ChatCircle = "chat-circle",
+        /// `phone`.
+        Phone = "phone",
+        /// `calendar-blank`.
+        CalendarBlank = "calendar-blank",
+        /// `shopping-cart`.
+        ShoppingCart = "shopping-cart",
+        /// `credit-card`.
+        CreditCard = "credit-card",
+        /// `code`.
+        Code = "code",
+        /// `terminal-window`.
+        TerminalWindow = "terminal-window",
+        /// `book-open`.
+        BookOpen = "book-open",
+        /// `lightbulb`.
+        Lightbulb = "lightbulb",
+        /// `flag`.
+        Flag = "flag",
+        /// `bookmark-simple`.
+        BookmarkSimple = "bookmark-simple",
+        /// `globe`.
+        Globe = "globe",
+        /// `map-pin`.
+        MapPin = "map-pin",
+        /// `camera`.
+        Camera = "camera",
+        /// `music-note`.
+        MusicNote = "music-note",
+        /// `wrench`.
+        Wrench = "wrench",
+        /// `rocket-launch`.
+        RocketLaunch = "rocket-launch",
+    }
+}
+
+keyed_enum! {
     /// How a list's items are drawn in the panel (SPEC §5.1).
     pub enum ListView ("list view") {
         /// One-line rows.
         Compact = "compact",
         /// Two to three preview lines and image thumbnails.
         Comfortable = "comfortable",
-    }
-}
-
-keyed_enum! {
-    /// How a list orders its items in the panel (SPEC §5.1).
-    pub enum ListSort ("list sort") {
-        /// The user's drag order.
-        Manual = "manual",
-        /// Highest [`Item::use_count`](crate::Item::use_count) first.
-        MostUsed = "most-used",
-        /// Latest [`Item::last_used_at`](crate::Item::last_used_at) first.
-        RecentlyUsed = "recently-used",
     }
 }
 
@@ -60,10 +103,12 @@ pub struct List {
     pub name: Name,
     /// Optional colour accent.
     pub accent: Option<ListAccent>,
+    /// Optional icon.
+    pub icon: Option<ListIcon>,
     /// Panel row style.
     pub view: ListView,
-    /// Panel item order.
-    pub sort: ListSort,
+    /// Item order in the Panel and the Main window.
+    pub sort: Sort,
     /// When the list was created.
     pub created_at: Timestamp,
     /// When the list was last changed.
@@ -78,8 +123,9 @@ impl List {
             board_id,
             name,
             accent: None,
+            icon: None,
             view: ListView::Comfortable,
-            sort: ListSort::Manual,
+            sort: Sort::MANUAL,
             created_at: now,
             updated_at: now,
         }
@@ -94,13 +140,27 @@ mod tests {
     #[test]
     fn keys_round_trip() {
         assert_keys_round_trip(ListAccent::ALL, ListAccent::key);
+        assert_keys_round_trip(ListIcon::ALL, ListIcon::key);
         assert_keys_round_trip(ListView::ALL, ListView::key);
-        assert_keys_round_trip(ListSort::ALL, ListSort::key);
+    }
+
+    /// Panel v2 made the layout a global setting, but the store keeps each list's `view` as
+    /// persisted data: its words must not change under existing libraries.
+    #[test]
+    fn list_view_keeps_its_stored_words() {
+        assert_eq!(ListView::Compact.key(), "compact");
+        assert_eq!(ListView::Comfortable.key(), "comfortable");
+        assert_eq!(ListView::ALL.len(), 2);
     }
 
     #[test]
     fn there_are_nine_list_accents() {
         assert_eq!(ListAccent::ALL.len(), 9);
+    }
+
+    #[test]
+    fn there_are_twenty_four_list_icons() {
+        assert_eq!(ListIcon::ALL.len(), 24);
     }
 
     #[test]
@@ -110,8 +170,8 @@ mod tests {
         let list = List::new(board, Name::new("Email replies").unwrap(), now);
         assert_eq!(list.board_id, board);
         assert_eq!(
-            (list.accent, list.view, list.sort),
-            (None, ListView::Comfortable, ListSort::Manual)
+            (list.accent, list.icon, list.view, list.sort),
+            (None, None, ListView::Comfortable, Sort::MANUAL)
         );
         assert_eq!((list.created_at, list.updated_at), (now, now));
     }

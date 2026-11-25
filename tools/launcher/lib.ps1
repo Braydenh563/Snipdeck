@@ -51,15 +51,21 @@ function ConvertTo-ArgString([string[]]$Items) {
     return ($parts -join ' ')
 }
 
-function Hide-UserName([string]$Text) {
+function Hide-UserName([string]$Text, [string[]]$Profiles = $null) {
     # Replaces the profile folder with %USERPROFILE% so a report can be sent without the user name.
+    # Case-insensitive, with either slash, and the 8.3 short form of a long user name (C:\Users\BRAYDE~1).
     if ([string]::IsNullOrEmpty($Text)) { return $Text }
+    if ($null -eq $Profiles) { $Profiles = @($env:USERPROFILE, $env:HOME) }
     $out = $Text
-    foreach ($p in @($env:USERPROFILE, $env:HOME)) {
-        if (-not [string]::IsNullOrEmpty($p) -and $p.Length -gt 3) {
-            $out = $out.Replace($p, '%USERPROFILE%')
+    foreach ($p in @($Profiles)) {
+        if ([string]::IsNullOrEmpty($p) -or $p.Length -le 3) { continue }
+        $back = $p.Replace('/', '\')
+        $fwd = $p.Replace('\', '/')
+        foreach ($v in @($back, $fwd)) {
+            $out = [regex]::Replace($out, [regex]::Escape($v), '%USERPROFILE%', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
         }
     }
+    $out = [regex]::Replace($out, '(?i)[A-Za-z]:[\\/]+Users[\\/]+[^\\/\s"''<>|*?:]+~\d+', '%USERPROFILE%')
     return $out
 }
 
@@ -87,6 +93,13 @@ function Test-PathUnder([string]$Path, [string]$Root, [switch]$AllowEqual) {
     if ($p.Equals($r, $cmp)) { return [bool]$AllowEqual }
     $sep = [string][System.IO.Path]::DirectorySeparatorChar
     return $p.StartsWith($r + $sep, $cmp)
+}
+
+function Test-OwnedExe([string]$ExePath, [string[]]$Roots) {
+    # True when the exe's full path is inside one of the folders this launcher owns. An empty or unreadable path is not owned.
+    if ([string]::IsNullOrWhiteSpace($ExePath)) { return $false }
+    foreach ($r in @($Roots)) { if ($r -and (Test-PathUnder $ExePath $r)) { return $true } }
+    return $false
 }
 
 function Test-PathEquals([string]$A, [string]$B) {

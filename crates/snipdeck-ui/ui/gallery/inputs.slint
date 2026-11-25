@@ -1,4 +1,4 @@
-import { TextField, SearchField, TabItem, ListTabBar, HotkeyRecorder, HotkeyState, TemplateField, TemplateFieldKind, Dialog, DialogVariant, EmptyState, EmptyStateKind, Button, ButtonVariant } from "../components.slint";
+import { TextField, SearchField, TabItem, ListTabBar, HotkeyRecorder, HotkeyState, TemplateField, TemplateFieldKind, Dialog, DialogVariant, EmptyState, EmptyStateKind, Button, ButtonVariant, MonthGrid } from "../components.slint";
 import { Theme, Type, Space, Palette, Primitives, Fonts } from "../theme.slint";
 import { Icons } from "../icons.slint";
 
@@ -89,7 +89,7 @@ export component InputsGallery inherits Window {
             Caption { text: "SearchField: default"; }
             search := SearchField {
                 label: "Search";
-                placeholder: "Search snippets";
+                placeholder: "Search items";
                 clear-label: "Clear search";
                 text <=> root.search-text;
                 edited(t) => { root.search-edits += 1; }
@@ -98,11 +98,11 @@ export component InputsGallery inherits Window {
             Caption { text: "with text (clear button)"; }
             SearchField { label: "Search filled"; clear-label: "Clear filled"; text: "invoice"; }
             Caption { text: "hover"; }
-            SearchField { label: "Search hover"; placeholder: "Search snippets"; show-hover: true; }
+            SearchField { label: "Search hover"; placeholder: "Search items"; show-hover: true; }
             Caption { text: "focus"; }
             SearchField { label: "Search focus"; clear-label: "Clear focus"; text: "invoice"; show-focus: true; }
             Caption { text: "disabled"; }
-            SearchField { label: "Search disabled"; placeholder: "Search snippets"; enabled: false; }
+            SearchField { label: "Search disabled"; placeholder: "Search items"; enabled: false; }
             Caption { text: "error"; }
             SearchField { label: "Search error"; text: "((("; error: "Not a valid pattern"; }
             Caption { text: "IME composing"; }
@@ -127,7 +127,6 @@ export component TabsGallery inherits Window {
     in-out property <int> current: 1;
     in-out property <int> picked: -1;
     in-out property <int> adds: 0;
-    in-out property <int> drops: 0;
     out property <length> overflow-scroll-x: overflow.scroll-x;
     out property <length> end-scroll-x: overflow-end.scroll-x;
     out property <bool> bar-has-focus: bar.has-focus;
@@ -171,7 +170,6 @@ export component TabsGallery inherits Window {
             current <=> root.current;
             selected(i) => { root.picked = i; }
             add-clicked => { root.adds += 1; }
-            dropped(i) => { root.drops += 1; }
         }
         Caption { text: "hover on Code, keyboard focus on active tab"; }
         ListTabBar {
@@ -194,6 +192,8 @@ export component TabsGallery inherits Window {
         overflow := ListTabBar {
             label: "Lists overflow";
             add-label: "Add list overflow";
+            scroll-left-label: "Tabs left";
+            scroll-right-label: "Tabs right";
             tabs: root.many;
             current: 0;
         }
@@ -223,9 +223,12 @@ export component FormGallery inherits Window {
     in-out property <int> tf-chosen: 0;
     out property <HotkeyState> hk-state: hk.state;
     out property <bool> hk-recording: hk.recording;
+    out property <string> hk-reason: hk.reject-reason;
     out property <bool> hk-has-focus: hk.has-focus;
     public function focus-hk() { hk.focus(); }
-    public function focus-choice() { choice.focus(); }
+    // As the fill form does: the list's own Tab stop takes focus through `focus-request`.
+    property <int> choice-focus: 0;
+    public function focus-choice() { root.choice-focus += 1; }
 
     width: 700px;
     height: 680px;
@@ -293,6 +296,7 @@ export component FormGallery inherits Window {
                 required-text: "Required";
                 choices: ["Short", "Medium", "Long"];
                 choice-index <=> root.tf-choice;
+                focus-request: root.choice-focus;
                 chosen(i) => { root.tf-chosen += 1; }
             }
             TemplateField {
@@ -317,6 +321,52 @@ export component FormGallery inherits Window {
                 error: "That date does not exist";
             }
         }
+    }
+}
+
+// The month grid of a date field, on its own (the tests read `view-*`, `cursor-day` and the picked day).
+export component MonthGridGallery inherits Window {
+    in property <bool> dark: false;
+    in property <bool> sunday: false;
+    in property <bool> focused: false;
+    in-out property <int> view-year: 2026;
+    in-out property <int> view-month: 10;
+    in-out property <int> cursor-day: 7;
+    in-out property <int> got-year: 0;
+    in-out property <int> got-month: 0;
+    in-out property <int> got-day: 0;
+    in-out property <int> dismissed-count: 0;
+    in property <int> picked-day: 0;
+    out property <int> lead: grid.lead;
+    out property <int> month-length: grid.month-length;
+    public pure function day-at(index: int) -> int { return grid.day-at(index); }
+    background: Theme.bg-surface;
+    width: 360px;
+    height: 330px;
+    init => { Palette.dark = root.dark; }
+    changed dark => { Palette.dark = root.dark; }
+    grid := MonthGrid {
+        x: 8px;
+        y: 8px;
+        width: parent.width - 16px;
+        month-names: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        weekday-names: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+        week-starts-sunday: root.sunday;
+        today-year: 2026;
+        today-month: 10;
+        today-day: 17;
+        picked-year: 2026;
+        picked-month: 10;
+        picked-day: root.picked-day;
+        previous-text: "Previous month";
+        next-text: "Next month";
+        show-focus: root.focused;
+        focus-request: 1;
+        view-year <=> root.view-year;
+        view-month <=> root.view-month;
+        cursor-day <=> root.cursor-day;
+        picked(y, m, d) => { root.got-year = y; root.got-month = m; root.got-day = d; }
+        dismissed => { root.dismissed-count += 1; }
     }
 }
 
@@ -391,7 +441,7 @@ export component EmptyStateGallery inherits Window {
             spacing: Space.s4;
             EmptyState {
                 kind: EmptyStateKind.list;
-                heading: "No snippets yet";
+                heading: "No items yet";
                 body: "Copy something, then use Save from clipboard to keep it here.";
                 action-text: "Save from clipboard";
                 action => { root.actions += 1; }

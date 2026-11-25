@@ -8,17 +8,20 @@
 use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 
 use rusqlite::{Connection, Transaction};
+use snipdeck_core::search::{BodyMatches, Query};
 use snipdeck_core::{
-    Board, BoardId, Content, Formats, Item, ItemId, List, ListId, Placement, Tag, TagId, Timestamp,
+    Board, BoardId, Content, Formats, Group, GroupId, Item, ItemId, List, ListId, Name, Placement,
+    Tag, TagId, Timestamp, Trigger,
 };
 
 use crate::blobs::{BlobMark, Blobs};
 use crate::crypto::DataKey;
 use crate::items::Written;
-use crate::store::begin;
+use crate::store::{Quiet, begin};
 use crate::{
-    BlobStore, BoardRepo, Error, ItemRepo, ListRepo, Result, Store, TagRepo, TrashEntry, TrashRepo,
-    Trashable, boards, items, tags, trash,
+    BlobStore, BoardRepo, Error, GroupDelete, GroupEnd, GroupRepo, GroupRun, ItemRepo, ListRepo,
+    Result, Store, TagRepo, TrashEntry, TrashRepo, Trashable, TriggerRepo, boards, groups, items,
+    tags, trash, triggers,
 };
 
 /// Everything a write needs, inside an open transaction.
@@ -34,6 +37,7 @@ pub(crate) struct Reader<'a> {
     pub conn: &'a Connection,
     pub blobs: &'a Blobs,
     pub key: Option<&'a DataKey>,
+    pub quiet: &'a Quiet,
 }
 
 /// Work that follows a commit and never fails the commit (review M4): blob bookkeeping,
@@ -103,6 +107,7 @@ impl Access for Store {
             conn: &self.conn,
             blobs: &self.blobs,
             key: self.key.as_ref(),
+            quiet: &self.quiet,
         }
     }
 
@@ -117,6 +122,7 @@ impl Access for Batch<'_> {
             conn: &self.tx,
             blobs: &*self.guard.blobs,
             key: self.key,
+            quiet: self.quiet,
         }
     }
 
@@ -198,6 +204,7 @@ pub struct Batch<'a> {
     tx: Transaction<'a>,
     guard: BlobGuard<'a>,
     key: Option<&'a DataKey>,
+    quiet: &'a Quiet,
     post: Post,
     /// A failed step could not be undone: the transaction must not commit.
     poisoned: bool,
@@ -232,6 +239,7 @@ impl Store {
                     mark: Some(mark),
                 },
                 key: self.key.as_ref(),
+                quiet: &self.quiet,
                 post: Post::default(),
                 poisoned: false,
             };
@@ -344,13 +352,9 @@ impl Batch<'_> {
         self.scoped(|batch| f(batch))
     }
 
-    /// [`Store::restore_with`] inside the transaction.
-    pub fn restore_with(
-        &mut self,
-        target: Trashable,
-        max_live_boards: Option<usize>,
-    ) -> Result<Vec<Trashable>> {
-        self.writer(|cx| trash::restore_with(cx, target, max_live_boards))
+    /// [`Store::restore_reporting`] inside the transaction.
+    pub fn restore_reporting(&mut self, target: Trashable) -> Result<Vec<Trashable>> {
+        self.writer(|cx| trash::restore_reporting(cx, target))
     }
 
     /// [`Store::put_sensitive`] inside the transaction.
@@ -360,24 +364,14 @@ impl Batch<'_> {
 }
 
 impl Store {
-    /// [`TrashRepo::restore`] that refuses to bring a board back when `max_live_boards`
-    /// boards are already live, and says what it brought back (review M1).
+    /// [`TrashRepo::restore`] that says what it brought back (review M1).
     ///
-    /// Restoring a list or item inside a trashed board revives the board too, so the Free
-    /// board limit cannot be bypassed by trashing a board, creating another and restoring the
-    /// first. Storage stays free of entitlements: the app passes the limit
-    /// (`Some(Entitlements::FREE_BOARD_LIMIT)` on Free, `None` on Pro). Over the limit it fails
-    /// with `Error::Core(ProRequired(Feature::UnlimitedBoards))`, the upsell path, and changes
-    /// nothing.
+    /// Restoring a list or item inside a trashed board revives the board too.
     ///
     /// Returns the records whose trash flag was cleared: the target (unless it was live),
     /// then its list and board if they were trashed. Empty if everything was live already.
-    pub fn restore_with(
-        &mut self,
-        target: Trashable,
-        max_live_boards: Option<usize>,
-    ) -> Result<Vec<Trashable>> {
-        self.writer(|cx| trash::restore_with(cx, target, max_live_boards))
+    pub fn restore_reporting(&mut self, target: Trashable) -> Result<Vec<Trashable>> {
+        self.writer(|cx| trash::restore_reporting(cx, target))
     }
 }
 
@@ -443,6 +437,23 @@ macro_rules! repo_impls {
                 items::all_items(self.reader().conn)
             }
 
+            fn plain_formats(&self) -> Result<Vec<(ItemId, Formats)>> {
+                items::plain_formats(self.reader().conn)
+            }
+
+            fn rich_item_ids(&self) -> Result<Vec<ItemId>> {
+                items::rich_item_ids(self.reader().conn)
+            }
+
+            fn change_counter(&self) -> u64 {
+                let r = self.reader();
+                r.conn.total_changes().saturating_sub(r.quiet.all.get())
+            }
+
+            fn usage_counter(&self) -> u64 {
+                self.reader().quiet.uses.get()
+            }
+
             fn item(&self, id: ItemId) -> Result<Item> {
                 items::item(self.reader().conn, id)
             }
@@ -470,11 +481,87 @@ macro_rules! repo_impls {
             }
 
             fn record_use(&mut self, id: ItemId, at: Timestamp) -> Result<()> {
-                self.writer(|cx| items::record_use(cx, id, at))
+                let before = self.reader().conn.total_changes();
+                let done = self.writer(|cx| items::record_use(cx, id, at));
+                let r = self.reader();
+                let delta = r.conn.total_changes() - before;
+                r.quiet.all.set(r.quiet.all.get() + delta);
+                r.quiet.uses.set(r.quiet.uses.get() + delta);
+                done
             }
 
-            fn search(&self, query: &str, limit: usize) -> Result<Vec<ItemId>> {
-                items::search(self.reader().conn, query, limit)
+            fn search(&self, query: &Query) -> Result<BodyMatches> {
+                items::search(self.reader().conn, query)
+            }
+        }
+
+        impl GroupRepo for $ty {
+            fn groups_of(&self, list: ListId) -> Result<Vec<GroupRun>> {
+                groups::groups_of(self.reader().conn, list)
+            }
+
+            fn create_group(&mut self, group: &Group, members: &[ItemId]) -> Result<()> {
+                self.writer(|cx| groups::create_group(cx, group, members))
+            }
+
+            fn restore_group(
+                &mut self,
+                group: &Group,
+                members: &[ItemId],
+                children: &[GroupId],
+            ) -> Result<()> {
+                self.writer(|cx| groups::restore_group(cx, group, members, children))
+            }
+
+            fn reparent_group(
+                &mut self,
+                id: GroupId,
+                parent: Option<GroupId>,
+                at: Placement<ItemId>,
+            ) -> Result<()> {
+                self.writer(|cx| groups::reparent_group(cx, id, parent, at))
+            }
+
+            fn update_group(&mut self, group: &Group) -> Result<()> {
+                self.writer(|cx| groups::update_group(cx, group))
+            }
+
+            fn delete_group(&mut self, id: GroupId, what: GroupDelete) -> Result<()> {
+                self.writer(|cx| groups::delete_group(cx, id, what))
+            }
+
+            fn move_run(&mut self, id: GroupId, at: Placement<ItemId>) -> Result<()> {
+                self.writer(|cx| groups::move_run(cx, id, at))
+            }
+
+            fn join_group(&mut self, item: ItemId, group: GroupId, end: GroupEnd) -> Result<()> {
+                self.writer(|cx| groups::join_group(cx, item, group, end))
+            }
+
+            fn set_item_group(&mut self, item: ItemId, group: Option<GroupId>) -> Result<()> {
+                self.writer(|cx| groups::set_item_group(cx, item, group))
+            }
+        }
+
+        impl TriggerRepo for $ty {
+            fn triggers(&self) -> Result<Vec<(Trigger, ItemId)>> {
+                triggers::triggers(self.reader().conn)
+            }
+
+            fn trigger_of(&self, item: ItemId) -> Result<Option<Trigger>> {
+                triggers::trigger_of(self.reader().conn, item)
+            }
+
+            fn trigger_holder(&self, trigger: &Trigger) -> Result<Option<ItemId>> {
+                triggers::trigger_holder(self.reader().conn, trigger)
+            }
+
+            fn set_trigger(
+                &mut self,
+                item: ItemId,
+                trigger: Option<&Trigger>,
+            ) -> Result<Vec<Trigger>> {
+                self.writer(|cx| triggers::set_trigger(cx, item, trigger))
             }
         }
 
@@ -494,6 +581,26 @@ macro_rules! repo_impls {
             fn delete_tag(&mut self, id: TagId) -> Result<()> {
                 self.writer(|cx| tags::delete_tag(cx, id))
             }
+
+            fn find_tag(&self, name: &Name) -> Result<Option<Tag>> {
+                tags::find_tag(self.reader().conn, name)
+            }
+
+            fn merge_tag(&mut self, from: TagId, into: TagId) -> Result<usize> {
+                self.writer(|cx| tags::merge_tag(cx, from, into))
+            }
+
+            fn tag_items(&self, id: TagId) -> Result<Vec<ItemId>> {
+                tags::tag_items(self.reader().conn, id)
+            }
+
+            fn link_tag(&mut self, id: TagId, items: &[ItemId]) -> Result<()> {
+                self.writer(|cx| tags::link_tag(cx, id, items))
+            }
+
+            fn unlink_tag(&mut self, id: TagId, items: &[ItemId]) -> Result<()> {
+                self.writer(|cx| tags::unlink_tag(cx, id, items))
+            }
         }
 
         impl TrashRepo for $ty {
@@ -502,7 +609,7 @@ macro_rules! repo_impls {
             }
 
             fn restore(&mut self, target: Trashable) -> Result<()> {
-                self.writer(|cx| trash::restore_with(cx, target, None))
+                self.writer(|cx| trash::restore_reporting(cx, target))
                     .map(drop)
             }
 
@@ -512,6 +619,14 @@ macro_rules! repo_impls {
 
             fn purge(&mut self, cutoff: Timestamp) -> Result<usize> {
                 self.writer(|cx| trash::purge(cx, cutoff))
+            }
+
+            fn purge_entry(&mut self, target: Trashable) -> Result<()> {
+                self.writer(|cx| trash::purge_entry(cx, target))
+            }
+
+            fn is_stored(&self, target: Trashable) -> Result<bool> {
+                trash::is_stored(self.reader().conn, target)
             }
         }
     };
@@ -529,6 +644,10 @@ impl BlobStore for Store {
         // Decrypted and staged sensitive payloads are served from memory.
         self.blobs.read_any(content)
     }
+
+    fn is_stored(&self, content: &Content) -> bool {
+        self.blobs.has_content(content)
+    }
 }
 
 impl BlobStore for Batch<'_> {
@@ -538,5 +657,9 @@ impl BlobStore for Batch<'_> {
 
     fn read<'a>(&self, content: &'a Content) -> Result<std::borrow::Cow<'a, [u8]>> {
         self.guard.blobs.read_any(content)
+    }
+
+    fn is_stored(&self, content: &Content) -> bool {
+        self.guard.blobs.has_content(content)
     }
 }

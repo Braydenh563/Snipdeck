@@ -8,6 +8,9 @@ use snipdeck_core::BoardId;
 /// [`ImportReport::warnings_dropped`], so a folder of 100 000 bad files cannot exhaust memory.
 pub const MAX_WARNINGS: usize = 200;
 
+/// Most triggers an [`ImportReport`] lists by name.
+pub const MAX_TRIGGERS_LISTED: usize = 50;
+
 /// Something the import did not do, or did differently from what the source said. Warnings never
 /// fail an import; the caller shows them.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -43,13 +46,10 @@ pub enum Warning {
         /// How many items the exporter left out.
         count: u64,
     },
-    /// The import leaves more boards than the Free tier allows. Nothing was blocked; the caller
-    /// decides what to tell the user.
-    BoardLimit {
-        /// The limit passed in the options.
-        limit: usize,
-        /// Boards after the import.
-        total: usize,
+    /// The exporter could not read some items' attachments and left those items out.
+    SkippedByExport {
+        /// How many items.
+        count: u64,
     },
     /// A file was not valid UTF-8; invalid bytes were replaced with U+FFFD.
     LossyText {
@@ -85,13 +85,233 @@ pub enum Warning {
         /// How many.
         count: usize,
     },
+    /// Folders inside the imported subfolders were not read (one level of subfolders is).
+    DeeperFoldersSkipped {
+        /// How many.
+        count: usize,
+    },
     /// The importer stopped at its cap on items or bytes.
     Truncated {
         /// Why it stopped.
         reason: String,
     },
-    /// Anything else worth telling the user.
-    Note(String),
+    /// Something the importer changed or could not carry over; see [`Note`].
+    Note(Note),
+}
+
+/// What an import left out or changed, as data: the UI words each in the selected language;
+/// [`fmt::Display`] is the English sentence, for logs and tests. `label` and `what` name the
+/// snippet (or file) the note is about; `tokens` is a list of source variables as written.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Note {
+    /// Variables with no Snipdeck equivalent were left as written.
+    UnmappedVariables {
+        /// The snippet.
+        label: String,
+        /// The variables, as written in the source, separated by commas.
+        tokens: String,
+    },
+    /// Espanso variables (shell, script, random or unknown) have no Snipdeck equivalent and were
+    /// left as written.
+    UnmappedEspansoVariables {
+        /// The snippet.
+        label: String,
+        /// The variables, as written in the source, separated by commas.
+        tokens: String,
+    },
+    /// A snippet's variables cannot be one Snipdeck template; it is kept as plain text.
+    VariablesDoNotFit {
+        /// The snippet.
+        label: String,
+    },
+    /// A snippet keeps one trigger; the other abbreviations were not kept.
+    TriggerOnlyOne {
+        /// The snippet.
+        label: String,
+        /// The abbreviations that were not kept, separated by commas.
+        triggers: String,
+    },
+    /// Abbreviations that fire after a separator cannot become triggers.
+    TriggerNeedsSeparator {
+        /// The snippet.
+        label: String,
+        /// The abbreviations, separated by commas.
+        triggers: String,
+    },
+    /// Abbreviations that are not a valid trigger (spaces, or over 32 characters).
+    TriggerBadShape {
+        /// The snippet.
+        label: String,
+        /// The abbreviations, separated by commas.
+        triggers: String,
+    },
+    /// An Espanso file whose name starts with `_` is disabled there, so it was skipped.
+    DisabledFile {
+        /// The file.
+        name: String,
+    },
+    /// An Espanso entry is not a match and was skipped.
+    NotAMatch {
+        /// The entry.
+        what: String,
+    },
+    /// An Espanso match has only a regex trigger, which Snipdeck cannot use; it was skipped.
+    RegexTriggerOnly {
+        /// The entry.
+        what: String,
+    },
+    /// An Espanso match has no trigger and was skipped.
+    NoTrigger {
+        /// The entry.
+        what: String,
+    },
+    /// Markdown or HTML text is kept as written.
+    MarkupKept {
+        /// The entry.
+        what: String,
+    },
+    /// An Espanso match has no text (an image or other content) and was skipped.
+    NoText {
+        /// The entry.
+        what: String,
+    },
+    /// A date format Snipdeck does not know was left as written.
+    DateFormat {
+        /// The entry.
+        what: String,
+        /// The format.
+        format: String,
+    },
+    /// A form field has no equivalent and was left as written.
+    FormField {
+        /// The entry.
+        what: String,
+        /// The field.
+        name: String,
+    },
+    /// Some table rows had more columns than are read.
+    ColumnsCut {
+        /// The file.
+        file: String,
+    },
+    /// A trigger of one character would fire in the middle of ordinary typing; the snippet came
+    /// in without it.
+    TriggerTooShort {
+        /// The snippet's title.
+        title: String,
+        /// The trigger.
+        trigger: String,
+    },
+    /// The trigger is already used by another snippet; the snippet came in without it.
+    TriggerTaken {
+        /// The snippet's title.
+        title: String,
+        /// The trigger.
+        trigger: String,
+    },
+    /// The trigger starts like others, so the shorter fires first.
+    TriggerOverlap {
+        /// The snippet's title.
+        title: String,
+        /// The trigger.
+        trigger: String,
+        /// The others, separated by commas.
+        others: String,
+    },
+    /// Titles or source apps over the limit were cut.
+    TitleCut {
+        /// How many items.
+        count: usize,
+        /// The title limit.
+        title_chars: usize,
+        /// The source-app limit.
+        source_chars: usize,
+    },
+}
+
+impl fmt::Display for Note {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::UnmappedVariables { label, tokens } => {
+                write!(
+                    f,
+                    "{label}: no Snipdeck equivalent for {tokens}; left as written"
+                )
+            }
+            Self::UnmappedEspansoVariables { label, tokens } => write!(
+                f,
+                "{label}: no Snipdeck equivalent for {tokens} (shell, script, random or unknown); left as written"
+            ),
+            Self::VariablesDoNotFit { label } => write!(
+                f,
+                "{label}: its variables do not fit a Snipdeck template together (for example two cursor marks); kept as plain text"
+            ),
+            Self::TriggerOnlyOne { label, triggers } => write!(
+                f,
+                "{label}: `{triggers}` was not kept as a trigger (Snipdeck keeps one trigger per snippet)"
+            ),
+            Self::TriggerNeedsSeparator { label, triggers } => write!(
+                f,
+                "{label}: `{triggers}` was not kept as a trigger (it fires after a separator, which a Snipdeck trigger does not wait for)"
+            ),
+            Self::TriggerBadShape { label, triggers } => write!(
+                f,
+                "{label}: `{triggers}` was not kept as a trigger (a trigger has no spaces and at most 32 characters)"
+            ),
+            Self::DisabledFile { name } => write!(
+                f,
+                "{name} is disabled in Espanso (its name starts with _) and was skipped"
+            ),
+            Self::NotAMatch { what } => write!(f, "{what}: is not a match; skipped"),
+            Self::RegexTriggerOnly { what } => write!(
+                f,
+                "{what}: has only a regex trigger, which Snipdeck cannot use; skipped"
+            ),
+            Self::NoTrigger { what } => write!(f, "{what}: has no trigger; skipped"),
+            Self::MarkupKept { what } => {
+                write!(f, "{what}: markdown/html text is kept as written")
+            }
+            Self::NoText { what } => {
+                write!(f, "{what}: has no text (image or other content); skipped")
+            }
+            Self::DateFormat { what, format } => write!(
+                f,
+                "{what}: the date format {format} is not one Snipdeck knows; left as written"
+            ),
+            Self::FormField { what, name } => write!(
+                f,
+                "{what}: the form field [[{name}]] has no Snipdeck equivalent; left as written"
+            ),
+            Self::ColumnsCut { file } => write!(
+                f,
+                "{file}: some rows have more than 256 columns; the rest were ignored"
+            ),
+            Self::TriggerTooShort { title, trigger } => write!(
+                f,
+                "`{title}`: the trigger `{trigger}` is too short (a trigger needs at least two characters); imported without it"
+            ),
+            Self::TriggerTaken { title, trigger } => write!(
+                f,
+                "`{title}`: the trigger `{trigger}` is already used by another snippet; imported without it"
+            ),
+            Self::TriggerOverlap {
+                title,
+                trigger,
+                others,
+            } => write!(
+                f,
+                "`{title}`: the trigger `{trigger}` and `{others}` start alike, so the shorter one fires first"
+            ),
+            Self::TitleCut {
+                count,
+                title_chars,
+                source_chars,
+            } => write!(
+                f,
+                "{count} item(s) had a title or source app longer than {title_chars} or {source_chars} characters; it was cut"
+            ),
+        }
+    }
 }
 
 impl fmt::Display for Warning {
@@ -120,9 +340,9 @@ impl fmt::Display for Warning {
                 f,
                 "{count} sensitive item(s) were left out when this file was exported"
             ),
-            Self::BoardLimit { limit, total } => write!(
+            Self::SkippedByExport { count } => write!(
                 f,
-                "you now have {total} boards; the Free plan includes {limit}"
+                "{count} item(s) with an unreadable attachment were left out when this file was exported"
             ),
             Self::LossyText { name } => write!(
                 f,
@@ -145,8 +365,11 @@ impl fmt::Display for Warning {
                     "{count} entry(ies) without text (images, files) were skipped"
                 )
             }
+            Self::DeeperFoldersSkipped { count } => {
+                write!(f, "{count} folder(s) inside subfolders were not read")
+            }
             Self::Truncated { reason } => write!(f, "the import stopped early: {reason}"),
-            Self::Note(note) => f.write_str(note),
+            Self::Note(note) => note.fmt(f),
         }
     }
 }
@@ -162,10 +385,17 @@ pub struct ImportReport {
     pub items_added: usize,
     /// Items in the source that were not imported (duplicates, unreadable, undecryptable, ...).
     pub items_skipped: usize,
+    /// How many of `items_skipped` were already in the library (content-identical).
+    pub duplicates_skipped: usize,
     /// Tags created (existing tags with the same name are reused).
     pub tags_added: usize,
     /// The boards created, in order, so the UI can open the first one.
     pub boards: Vec<BoardId>,
+    /// The triggers the import installs (or would install), at most [`MAX_TRIGGERS_LISTED`], so
+    /// a preview can show what a file wants to type.
+    pub triggers: Vec<String>,
+    /// How many triggers in all, which can exceed `triggers.len()`.
+    pub triggers_total: usize,
     /// Up to [`MAX_WARNINGS`] warnings.
     pub warnings: Vec<Warning>,
     /// Warnings beyond [`MAX_WARNINGS`], which were counted but not kept.

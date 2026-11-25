@@ -1,10 +1,10 @@
 //! Writing the settings file: atomically, and not on every keystroke.
 //!
 //! - [`write_atomic`] never leaves a half-written `settings.json`: the new text goes to
-//!   `settings.json.tmp`, is flushed to disk (`fsync`), and only then renamed over the old file
+//!   `settings.json.<pid>-<n>.tmp` (a name only this write uses), is flushed to disk (`fsync`), and only then renamed over the old file
 //!   (on Windows `std::fs::rename` replaces an existing file in one `MoveFileExW` call). A crash
 //!   before the rename leaves the old file untouched and a stale `.tmp`, which the next write
-//!   simply overwrites. Reading is [`crate::paths::read_settings`], which also sets a damaged
+//!   removes. Reading is [`crate::paths::read_settings`], which also sets a damaged
 //!   file aside as `settings.json.bad`.
 //! - [`SettingsSaver`] decides *when* to write. A change waits for a quiet moment
 //!   ([`Debounce::quiet`]) so that dragging a slider writes once; continuous changes still write
@@ -12,18 +12,54 @@
 //!   reads a clock: callers pass `now` (the controller's injected clock), so tests are exact.
 
 use std::{
-    fs::{self, File},
+    fs::{self, File, OpenOptions},
     io::{self, Write},
     path::{Path, PathBuf},
+    sync::atomic::{AtomicU64, Ordering},
     time::Duration,
 };
 
 use snipdeck_core::Timestamp;
 
-use crate::{paths::SETTINGS_FILE, settings::Settings};
+use crate::{
+    paths::SETTINGS_FILE,
+    settings::{Settings, Theme},
+};
 
-/// The file a write goes to before it replaces `settings.json`.
-pub const TEMP_FILE: &str = "settings.json.tmp";
+/// The start of the name of the file a write goes to before it replaces `settings.json`.
+pub const TEMP_STEM: &str = "settings.json";
+
+/// Makes a new, empty file `<stem>.<pid>-<n>.tmp` in `dir` that no other write is using
+/// (`create_new`: an existing file is never opened, so a planted or stale name cannot be
+/// written through). One retry with the next number if the name is taken.
+pub(crate) fn create_temp(dir: &Path, stem: &str) -> io::Result<(File, PathBuf)> {
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    let mut last = None;
+    for _ in 0..2 {
+        let n = NEXT.fetch_add(1, Ordering::Relaxed);
+        let path = dir.join(format!("{stem}.{}-{n}.tmp", std::process::id()));
+        match OpenOptions::new().write(true).create_new(true).open(&path) {
+            Ok(file) => return Ok((file, path)),
+            Err(e) if e.kind() == io::ErrorKind::AlreadyExists => last = Some(e),
+            Err(e) => return Err(e),
+        }
+    }
+    Err(last.unwrap_or_else(|| io::Error::other("no temporary name")))
+}
+
+/// Removes the temporary files that earlier, interrupted writes of `stem` left in `dir`.
+pub(crate) fn remove_stale_temps(dir: &Path, stem: &str) {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if name.starts_with(&format!("{stem}.")) && name.ends_with(".tmp") {
+            let _ = fs::remove_file(entry.path());
+        }
+    }
+}
 
 /// Writes `settings` to `folder/settings.json` so that a reader (or a crash) sees the old file
 /// or the new one, never a mixture. Creates `folder` if needed.
@@ -32,6 +68,8 @@ pub const TEMP_FILE: &str = "settings.json.tmp";
 ///
 /// Any I/O error from creating, writing, syncing or renaming. On error the old file is intact.
 pub fn write_atomic(folder: &Path, settings: &Settings) -> io::Result<()> {
+    fs::create_dir_all(folder)?;
+    remove_stale_temps(folder, TEMP_STEM);
     let temp = write_temp(folder, &settings.to_json())?;
     commit(&temp, &folder.join(SETTINGS_FILE))
 }
@@ -39,8 +77,7 @@ pub fn write_atomic(folder: &Path, settings: &Settings) -> io::Result<()> {
 /// Step one of [`write_atomic`]: the complete new text, on disk, under the temporary name.
 pub(crate) fn write_temp(folder: &Path, text: &str) -> io::Result<PathBuf> {
     fs::create_dir_all(folder)?;
-    let temp = folder.join(TEMP_FILE);
-    let mut file = File::create(&temp)?;
+    let (mut file, temp) = create_temp(folder, TEMP_STEM)?;
     let written = file
         .write_all(text.as_bytes())
         .and_then(|()| file.write_all(b"\n"))
@@ -100,6 +137,47 @@ impl FileSink {
 impl SettingsSink for FileSink {
     fn save(&mut self, settings: &Settings) -> io::Result<()> {
         write_atomic(&self.folder, settings)
+    }
+}
+
+/// A [`SettingsSink`] that writes every setting but keeps the theme the file already has. For a
+/// run with `--dark`: the one-run theme must not reach the user's file, and no other change of
+/// the run should be lost either. A theme the person picks in Settings during the run is theirs,
+/// not the override: from that save on nothing is pinned.
+pub struct ThemePinned<S: SettingsSink> {
+    inner: S,
+    /// The theme the file holds.
+    theme: Theme,
+    /// The theme this run was started with; a save that differs holds the person's own choice.
+    run_theme: Theme,
+    pinned: bool,
+}
+
+impl<S: SettingsSink> ThemePinned<S> {
+    /// Wraps `inner`; `theme` is the theme the file holds now and `run_theme` the one this run
+    /// started with.
+    #[must_use]
+    pub fn new(inner: S, theme: Theme, run_theme: Theme) -> Self {
+        Self {
+            inner,
+            theme,
+            run_theme,
+            pinned: true,
+        }
+    }
+}
+
+impl<S: SettingsSink> SettingsSink for ThemePinned<S> {
+    fn save(&mut self, settings: &Settings) -> io::Result<()> {
+        if settings.theme != self.run_theme {
+            self.pinned = false;
+        }
+        if !self.pinned {
+            return self.inner.save(settings);
+        }
+        let mut pinned = settings.clone();
+        pinned.theme = self.theme;
+        self.inner.save(&pinned)
     }
 }
 
@@ -288,7 +366,7 @@ mod tests {
     use std::{cell::RefCell, rc::Rc};
 
     use super::*;
-    use crate::{paths::load_settings, settings::Theme};
+    use crate::paths::read_settings;
 
     fn at(s: &str) -> Timestamp {
         s.parse().expect("timestamp")
@@ -308,8 +386,7 @@ mod tests {
         let temp = tempfile::tempdir().expect("dir");
         let folder = temp.path().join("not").join("yet");
         write_atomic(&folder, &dark()).expect("write");
-        assert_eq!(load_settings(&folder), dark());
-        assert!(!folder.join(TEMP_FILE).exists());
+        assert_eq!(read_settings(&folder).settings, dark());
         let names: Vec<_> = fs::read_dir(&folder)
             .expect("dir")
             .map(|e| e.expect("entry").file_name())
@@ -326,7 +403,7 @@ mod tests {
         // The process dies after the temporary file is complete but before the rename.
         let staged = write_temp(dir, &dark().to_json()).expect("temp");
         assert_eq!(
-            load_settings(dir),
+            read_settings(dir).settings,
             Settings::default(),
             "readers still see the old settings"
         );
@@ -337,7 +414,7 @@ mod tests {
 
         // The next run writes again over the stale temporary file.
         write_atomic(dir, &dark()).expect("second");
-        assert_eq!(load_settings(dir), dark());
+        assert_eq!(read_settings(dir).settings, dark());
         assert!(!staged.exists());
     }
 
@@ -350,7 +427,7 @@ mod tests {
         // Pull the temporary file out from under the rename.
         fs::remove_file(&staged).expect("remove");
         assert!(commit(&staged, &dir.join(SETTINGS_FILE)).is_err());
-        assert_eq!(load_settings(dir), Settings::default());
+        assert_eq!(read_settings(dir).settings, Settings::default());
     }
 
     // ---- the debounce ------------------------------------------------------------------------
@@ -371,6 +448,70 @@ mod tests {
         }
     }
 
+    #[test]
+    fn a_dark_run_saves_every_other_change_and_keeps_the_files_theme() {
+        let rec = Recorder::default();
+        let on_disk = Settings {
+            theme: Theme::Light,
+            ..Settings::default()
+        };
+        let in_use = Settings {
+            theme: Theme::Dark,
+            ..on_disk.clone()
+        };
+        // The baseline is what this run starts from: the file, with the one-run theme.
+        let mut saver = SettingsSaver::new(
+            Box::new(ThemePinned::new(rec.clone(), Theme::Light, Theme::Dark)),
+            in_use.clone(),
+        );
+        saver.changed(&in_use, at("2026-10-19T10:00:00Z"));
+        assert!(!saver.has_pending(), "starting dark changes nothing");
+        let changed = Settings {
+            panel_width: 411,
+            ..in_use
+        };
+        saver.changed(&changed, at("2026-10-19T10:00:01Z"));
+        saver.flush().expect("flush");
+        let writes = rec.writes.borrow();
+        assert_eq!(writes.len(), 1);
+        assert_eq!(writes[0].panel_width, 411, "the other change is saved");
+        assert_eq!(writes[0].theme, Theme::Light, "the dark override is not");
+    }
+
+    #[test]
+    fn a_theme_chosen_during_a_dark_run_is_saved() {
+        let rec = Recorder::default();
+        let in_use = Settings {
+            theme: Theme::Dark,
+            ..Settings::default()
+        };
+        let mut saver = SettingsSaver::new(
+            Box::new(ThemePinned::new(rec.clone(), Theme::Light, Theme::Dark)),
+            in_use.clone(),
+        );
+        let chosen = Settings {
+            theme: Theme::System,
+            panel_width: 411,
+            ..in_use
+        };
+        saver.changed(&chosen, at("2026-10-19T10:00:01Z"));
+        saver.flush().expect("flush");
+        let again = Settings {
+            panel_width: 420,
+            ..chosen
+        };
+        saver.changed(&again, at("2026-10-19T10:00:02Z"));
+        saver.flush().expect("flush");
+        let writes = rec.writes.borrow();
+        assert_eq!(writes.len(), 2);
+        assert_eq!(
+            writes[0].theme,
+            Theme::System,
+            "the person's choice is saved"
+        );
+        assert_eq!(writes[1].theme, Theme::System, "and stays saved");
+    }
+
     fn saver(rec: &Recorder) -> SettingsSaver {
         SettingsSaver::new(Box::new(rec.clone()), Settings::default())
     }
@@ -383,7 +524,20 @@ mod tests {
         assert!(!s.has_pending());
         assert!(matches!(s.poll(at("2026-10-17T10:00:00Z")), Poll::Idle));
         assert_eq!(s.wait(at("2026-10-17T10:00:00Z")), None);
-        assert!(rec.writes.borrow().is_empty());
+        assert_eq!(rec.writes.borrow().len(), 0);
+    }
+
+    #[test]
+    fn a_saver_started_from_the_defaults_writes_the_salvaged_settings() {
+        // The salvage write failed, so no file exists: the baseline is the defaults and the
+        // settings in use (the salvaged ones) are a change that gets written.
+        let rec = Recorder::default();
+        let mut s = saver(&rec);
+        let salvaged = dark();
+        s.changed(&salvaged, at("2026-10-17T09:00:00Z"));
+        assert!(s.has_pending());
+        assert!(matches!(s.poll(at("2026-10-17T09:00:01Z")), Poll::Saved));
+        assert_eq!(*rec.writes.borrow(), [salvaged]);
     }
 
     #[test]
@@ -399,7 +553,7 @@ mod tests {
             s.poll(at("2026-10-17T09:00:00.4Z")),
             Poll::Waiting(d) if d == Duration::from_millis(100)
         ));
-        assert!(rec.writes.borrow().is_empty());
+        assert_eq!(rec.writes.borrow().len(), 0);
         assert!(matches!(s.poll(at("2026-10-17T09:00:00.5Z")), Poll::Saved));
         assert_eq!(*rec.writes.borrow(), [dark()]);
         assert!(!s.has_pending());
@@ -468,7 +622,7 @@ mod tests {
             s.poll(back),
             Poll::Waiting(d) if d == Duration::from_millis(500)
         ));
-        assert!(rec.writes.borrow().is_empty());
+        assert_eq!(rec.writes.borrow().len(), 0);
         assert!(matches!(s.poll(at("2026-10-17T08:00:00.5Z")), Poll::Saved));
         assert_eq!(*rec.writes.borrow(), [dark()]);
     }
@@ -511,7 +665,7 @@ mod tests {
         s.changed(&Settings::default(), at("2026-10-17T09:00:00.1Z"));
         assert!(!s.has_pending());
         assert!(matches!(s.poll(at("2026-10-17T09:01:00Z")), Poll::Idle));
-        assert!(rec.writes.borrow().is_empty());
+        assert_eq!(rec.writes.borrow().len(), 0);
     }
 
     #[test]
@@ -560,6 +714,6 @@ mod tests {
         s.changed(&dark(), at("2026-10-17T09:00:00Z"));
         assert!(!temp.path().join(SETTINGS_FILE).exists(), "not yet");
         assert!(matches!(s.poll(at("2026-10-17T09:00:00.5Z")), Poll::Saved));
-        assert_eq!(load_settings(temp.path()), dark());
+        assert_eq!(read_settings(temp.path()).settings, dark());
     }
 }

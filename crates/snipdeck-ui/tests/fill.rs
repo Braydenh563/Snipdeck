@@ -25,6 +25,7 @@ const INK_LIGHT: [u8; 3] = [0x17, 0x16, 0x13];
 const DANGER_LIGHT: [u8; 3] = [0xAA, 0x1E, 0x25];
 
 const WIDTH: u32 = 440;
+const WIDTH_F: f32 = 440.0;
 
 fn form(width: u32, dark: bool) -> Harness<TemplateFillWindow> {
     let h = Harness::new(TemplateFillWindow::new, width, 1400);
@@ -68,7 +69,8 @@ fn fill_flags_required_fields_left_empty() {
     let mut fields = fixture::fields();
     fields[0] = fixture::text("Name", "", true);
     fixture::set_fields(&h.component, fields);
-    h.component.invoke_submit();
+    // The host answers a failed submit with this (the app's `flag_missing`).
+    h.component.invoke_show_required_errors();
     assert!(h.component.get_showing_errors());
     assert_golden("fill-errors-light", &render(&h));
 }
@@ -184,7 +186,7 @@ fn the_submit_button_is_ink_and_a_required_field_in_error_has_a_danger_border() 
     let (x, y) = (WIDTH - 16 - 4, f.height - FOOTER_H / 2);
     assert_eq!(f.pixel(x, y), INK_LIGHT, "Insert is ink, never blue");
 
-    h.component.invoke_submit();
+    h.component.invoke_show_required_errors();
     // The border colour fades in over `Motion.instant`.
     h.advance(std::time::Duration::from_millis(200));
     let f = render(&h);
@@ -196,4 +198,83 @@ fn the_submit_button_is_ink_and_a_required_field_in_error_has_a_danger_border() 
         edges, 2,
         "the invalid field's 1px border is danger-coloured"
     );
+}
+
+#[test]
+fn a_form_cut_to_a_small_height_keeps_its_footer_and_scrolls_its_fields() {
+    const SMALL: u32 = 320;
+    const SMALL_F: f32 = 320.0;
+    let h = form(WIDTH, false);
+    let many: Vec<_> = (0..12)
+        .map(|i| fixture::text(&format!("Field {i}"), "", false))
+        .collect();
+    fixture::set_fields(&h.component, many);
+    h.component.window().request_redraw();
+    let _ = h.render_settled();
+    let wanted = h.component.get_content_height();
+    assert!(
+        wanted > SMALL_F,
+        "twelve fields want more than {SMALL}px (got {wanted})"
+    );
+    h.component
+        .window()
+        .set_size(LogicalSize::new(WIDTH_F, SMALL_F));
+    h.component.window().request_redraw();
+    let f = h.render_settled();
+    assert_eq!(f.height, SMALL);
+    // The footer's primary button is still at the bottom, drawn in ink.
+    assert_eq!(
+        f.pixel(WIDTH - 16 - 4, f.height - FOOTER_H / 2),
+        INK_LIGHT,
+        "the footer stays inside the window"
+    );
+    // Focus on the last field scrolls it into view: its label differs from the first screen.
+    let before = f.rgb.clone();
+    h.component.invoke_focus_field(11);
+    let after = render_at(&h, SMALL_F);
+    assert_ne!(before, after.rgb, "the fields moved to show the last one");
+}
+
+fn render_at(h: &Harness<TemplateFillWindow>, height: f32) -> Frame {
+    h.component
+        .window()
+        .set_size(LogicalSize::new(WIDTH_F, height));
+    h.component.window().request_redraw();
+    h.render_settled()
+}
+
+/// Opens the month grid of the "Due date" field the way a user does.
+#[allow(clippy::expect_used, reason = "test code: a failure is a failed test")]
+fn open_calendar(h: &Harness<TemplateFillWindow>) {
+    use i_slint_backend_testing::{AccessibleRole, ElementHandle};
+    let buttons: Vec<_> = ElementHandle::find_by_accessible_label(&h.component, "Pick a date")
+        .filter(|e| e.accessible_role() == Some(AccessibleRole::Button))
+        .collect();
+    assert_eq!(buttons.len(), 1, "one calendar button");
+    buttons
+        .iter()
+        .for_each(ElementHandle::invoke_accessible_default_action);
+    let _ = h.render_settled();
+}
+
+#[test]
+fn fill_with_the_month_grid_open_light() {
+    let h = form(WIDTH, false);
+    open_calendar(&h);
+    assert_golden("fill-calendar-light", &render(&h));
+}
+
+#[test]
+fn fill_with_the_month_grid_open_dark() {
+    let h = form(WIDTH, true);
+    open_calendar(&h);
+    assert_golden("fill-calendar-dark", &render(&h));
+}
+
+#[test]
+fn fill_with_the_month_grid_open_at_225_percent_text_size() {
+    let h = form(800, false);
+    h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
+    open_calendar(&h);
+    assert_golden("fill-calendar-scale-light", &render(&h));
 }

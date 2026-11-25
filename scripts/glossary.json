@@ -1,0 +1,476 @@
+{
+ "terms": [
+  {
+   "id": "item",
+   "pattern": "\\bitems?\\b",
+   "note": "the thing a user stores; the source says item, never snippet",
+   "stems": {
+    "de": [
+     "Textbaustein"
+    ],
+    "es": [
+     "fragmento"
+    ],
+    "fr": [
+     "extrait"
+    ],
+    "pt-BR": [
+     "trecho"
+    ],
+    "ja": [
+     "スニペット"
+    ],
+    "zh-Hans": [
+     "片段"
+    ]
+   },
+   "avoid": {
+    "de": [
+     "Eintrag",
+     "Einträge",
+     "Element"
+    ],
+    "es": [
+     "elemento"
+    ],
+    "fr": [
+     "élément"
+    ],
+    "pt-BR": [
+     "item",
+     "itens"
+    ],
+    "ja": [
+     "アイテム",
+     "項目"
+    ]
+   }
+  },
+  {
+   "id": "trigger",
+   "pattern": "\\btriggers?\\b",
+   "note": "text typed to insert an item; never the word for a keyboard shortcut",
+   "stems": {
+    "de": [
+     "Kürzel"
+    ],
+    "es": [
+     "activador"
+    ],
+    "fr": [
+     "déclencheur"
+    ],
+    "pt-BR": [
+     "gatilho"
+    ],
+    "ja": [
+     "トリガー"
+    ],
+    "zh-Hans": [
+     "触发词"
+    ]
+   },
+   "avoid": {
+    "de": [
+     "Auslöser",
+     "Trigger"
+    ],
+    "es": [
+     "atajo",
+     "disparador"
+    ],
+    "fr": [
+     "raccourci"
+    ],
+    "pt-BR": [
+     "atalho"
+    ],
+    "ja": [
+     "ショートカット",
+     "略語"
+    ],
+    "zh-Hans": [
+     "快捷"
+    ]
+   }
+  },
+  {
+   "id": "shortcut",
+   "pattern": "\\b(keyboard )?shortcuts?\\b",
+   "note": "keyboard shortcut stays distinct from trigger in fr and es",
+   "avoid": {
+    "es": [
+     "activador"
+    ],
+    "fr": [
+     "déclencheur"
+    ]
+   }
+  },
+  {
+   "id": "sensitive",
+   "pattern": "\\bsensitive\\b",
+   "stems": {
+    "de": [
+     "vertraulich"
+    ],
+    "es": [
+     "sensible"
+    ],
+    "fr": [
+     "sensible"
+    ],
+    "pt-BR": [
+     "sensível",
+     "sensíveis"
+    ],
+    "ja": [
+     "機密"
+    ],
+    "zh-Hans": [
+     "敏感"
+    ]
+   },
+   "avoid": {
+    "de": [
+     "sensibel"
+    ],
+    "es": [
+     "confidencial"
+    ],
+    "fr": [
+     "confidentiel"
+    ],
+    "pt-BR": [
+     "confidencial"
+    ]
+   }
+  },
+  {
+   "id": "settings",
+   "pattern": "\\bsettings?\\b(?!\\.json)",
+   "stems": {
+    "de": [
+     "Einstellung"
+    ],
+    "es": [
+     "Configuración"
+    ],
+    "fr": [
+     "Paramètre"
+    ],
+    "pt-BR": [
+     "Configura"
+    ],
+    "ja": [
+     "設定"
+    ],
+    "zh-Hans": [
+     "设置"
+    ]
+   },
+   "avoid": {
+    "es": [
+     "Ajustes"
+    ],
+    "fr": [
+     "Réglage"
+    ]
+   }
+  },
+  {
+   "id": "recent",
+   "pattern": "\\brecent\\b",
+   "stems": {
+    "de": [
+     "Zuletzt verwendet"
+    ],
+    "es": [
+     "Reciente"
+    ],
+    "fr": [
+     "Récent"
+    ],
+    "pt-BR": [
+     "Recente"
+    ],
+    "ja": [
+     "最近"
+    ],
+    "zh-Hans": [
+     "最近"
+    ]
+   }
+  },
+  {
+   "id": "pin",
+   "pattern": "\\b(?-i:(?<!the )[Pp]in(?:ned|s|ning)?)\\b",
+   "stems": {
+    "de": [
+     "heft"
+    ],
+    "es": [
+     "fij"
+    ],
+    "fr": [
+     "épingl"
+    ],
+    "pt-BR": [
+     "fix"
+    ],
+    "ja": [
+     "ピン"
+    ],
+    "zh-Hans": [
+     "置顶"
+    ]
+   },
+   "avoid": {
+    "es": [
+     "ancl"
+    ],
+    "zh-Hans": [
+     "固定"
+    ]
+   },
+   "note": "the verb to pin (not the PIN code or the pin icon)"
+  },
+  {
+   "id": "trash",
+   "pattern": "\\btrash\\b",
+   "stems": {
+    "de": [
+     "Papierkorb"
+    ],
+    "es": [
+     "papelera"
+    ],
+    "fr": [
+     "corbeille"
+    ],
+    "pt-BR": [
+     "lixeira"
+    ],
+    "ja": [
+     "ごみ箱"
+    ],
+    "zh-Hans": [
+     "回收站"
+    ]
+   },
+   "avoid": {
+    "ja": [
+     "ゴミ箱"
+    ]
+   }
+  },
+  {
+   "id": "key-ctrl",
+   "pattern": "\\bCtrl\\b",
+   "note": "keycaps drawn from Rust are English: keep the key name",
+   "stems": {
+    "de": [
+     "Ctrl"
+    ],
+    "es": [
+     "Ctrl"
+    ],
+    "fr": [
+     "Ctrl"
+    ],
+    "pt-BR": [
+     "Ctrl"
+    ],
+    "ja": [
+     "Ctrl"
+    ],
+    "zh-Hans": [
+     "Ctrl"
+    ]
+   },
+   "avoid": {
+    "de": [
+     "Strg"
+    ]
+   },
+   "case_sensitive": true
+  },
+  {
+   "id": "key-enter",
+   "pattern": "\\bEnter\\b(?! (?:a|an|your|the|it|any)\\b)",
+   "note": "keycaps drawn from Rust are English: keep the key name",
+   "stems": {
+    "de": [
+     "Enter"
+    ],
+    "es": [
+     "Enter"
+    ],
+    "fr": [
+     "Enter"
+    ],
+    "pt-BR": [
+     "Enter"
+    ],
+    "ja": [
+     "Enter"
+    ],
+    "zh-Hans": [
+     "Enter"
+    ]
+   },
+   "avoid": {
+    "de": [
+     "Eingabe"
+    ],
+    "es": [
+     "Intro"
+    ],
+    "fr": [
+     "Entrée"
+    ]
+   },
+   "case_sensitive": true
+  },
+  {
+   "id": "key-shift",
+   "pattern": "\\bShift\\b",
+   "note": "keycaps drawn from Rust are English: keep the key name",
+   "stems": {
+    "de": [
+     "Shift"
+    ],
+    "es": [
+     "Shift"
+    ],
+    "fr": [
+     "Shift"
+    ],
+    "pt-BR": [
+     "Shift"
+    ],
+    "ja": [
+     "Shift"
+    ],
+    "zh-Hans": [
+     "Shift"
+    ]
+   },
+   "avoid": {
+    "de": [
+     "Umschalt"
+    ],
+    "es": [
+     "Mayús"
+    ],
+    "fr": [
+     "Maj"
+    ],
+    "pt-BR": [
+     "Maiús"
+    ]
+   },
+   "case_sensitive": true
+  },
+  {
+   "id": "key-esc",
+   "pattern": "\\bEsc\\b",
+   "note": "keycaps drawn from Rust are English: keep the key name",
+   "stems": {
+    "de": [
+     "Esc"
+    ],
+    "es": [
+     "Esc"
+    ],
+    "fr": [
+     "Esc"
+    ],
+    "pt-BR": [
+     "Esc"
+    ],
+    "ja": [
+     "Esc"
+    ],
+    "zh-Hans": [
+     "Esc"
+    ]
+   },
+   "avoid": {
+    "es": [
+     "Escape"
+    ],
+    "fr": [
+     "Échap"
+    ],
+    "de": [
+     "Escape"
+    ]
+   },
+   "case_sensitive": true
+  },
+  {
+   "id": "key-alt",
+   "pattern": "\\bAlt\\b",
+   "note": "keycaps drawn from Rust are English: keep the key name",
+   "stems": {
+    "de": [
+     "Alt"
+    ],
+    "es": [
+     "Alt"
+    ],
+    "fr": [
+     "Alt"
+    ],
+    "pt-BR": [
+     "Alt"
+    ],
+    "ja": [
+     "Alt"
+    ],
+    "zh-Hans": [
+     "Alt"
+    ]
+   },
+   "case_sensitive": true
+  },
+  {
+   "id": "key-tab",
+   "pattern": "\\bTab\\b",
+   "note": "keycaps drawn from Rust are English: keep the key name",
+   "stems": {
+    "de": [
+     "Tab"
+    ],
+    "es": [
+     "Tab"
+    ],
+    "fr": [
+     "Tab"
+    ],
+    "pt-BR": [
+     "Tab"
+    ],
+    "ja": [
+     "Tab"
+    ],
+    "zh-Hans": [
+     "Tab"
+    ]
+   },
+   "avoid": {
+    "de": [
+     "Tabulator"
+    ],
+    "fr": [
+     "Tabulation"
+    ],
+    "es": [
+     "Tabulador"
+    ]
+   },
+   "case_sensitive": true
+  }
+ ]
+}

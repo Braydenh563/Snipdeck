@@ -17,6 +17,10 @@ pub enum UseMode {
 pub enum UseOutcome {
     /// The item was pasted into the target.
     Pasted,
+    /// The item was pasted, but the user's earlier clipboard could not be put back (the snapshot
+    /// or the restore failed), so the item may still be on the clipboard: callers treat it as a
+    /// paste for the toast and still arm the clear timer for a sensitive item.
+    PastedNotRestored,
     /// The item was copied, as asked.
     Copied,
     /// A paste was asked for, but the item was copied instead.
@@ -30,4 +34,7 @@ pub enum PasteFailure {
     TargetElevated,
     /// The target went away or did not accept the paste.
     TargetUnavailable,
+    /// Windows took only part of the keys: some of a typed trigger's Backspaces may have reached
+    /// the target, and nothing was pasted.
+    PartlySent,
 }

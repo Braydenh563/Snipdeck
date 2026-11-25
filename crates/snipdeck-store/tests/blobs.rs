@@ -59,6 +59,9 @@ fn gc_removes_old_orphans_and_keeps_referenced_and_recent_blobs() {
     .unwrap();
     s.put(vec![2; INLINE_LIMIT + 1]).unwrap(); // orphan, old
     s.put(vec![3; INLINE_LIMIT + 1]).unwrap(); // orphan, brand new: maybe about to be attached
+    // A crash: the process that held the unattached blobs is gone, and so is what it remembered.
+    drop(s.close());
+    let mut s = Store::open(dir.path()).unwrap();
     let paths = blob_paths(dir.path());
     assert_eq!(paths.len(), 3);
     for path in &paths {
@@ -107,7 +110,9 @@ fn putting_bytes_that_are_already_stored_refreshes_their_age() {
 fn in_memory_gc_works_too() {
     let mut s = store();
     s.put(vec![1; INLINE_LIMIT + 1]).unwrap();
-    assert_eq!(s.gc_blobs(Duration::ZERO).unwrap().blobs, 1);
+    // DATA-30: a blob a `put` handed out and nothing has attached is pending, not an orphan.
+    assert_eq!(s.gc_blobs(Duration::ZERO).unwrap().blobs, 0);
+    // The attached-then-unreferenced case is covered in `store::tests` (in-memory).
 }
 
 #[test]

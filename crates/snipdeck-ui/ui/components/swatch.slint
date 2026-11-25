@@ -1,4 +1,4 @@
-import { Theme, Radius, Space, Motion, ListHue, ListAccent } from "../theme.slint";
+import { SystemLook, Theme, Radius, Space, Motion, ListHue, ListAccent } from "../theme.slint";
 import { Icon } from "icon.slint";
 import { Icons } from "../icons.slint";
 
@@ -11,13 +11,20 @@ export component Swatch inherits Rectangle {
     in property <string> label;
     in property <bool> selected: false;
     in property <bool> enabled: true;
+    // A group that moves the focus itself (one tab stop, arrow keys) sets `keyboard-focusable: false` and draws
+    // the ring on the focused swatch with `show-focus`.
+    in property <bool> keyboard-focusable: true;
+    in property <bool> show-focus: false;
+    // The side of the square target. A group that has less room than nine targets need at a large text size passes a
+    // smaller one (never under the 28 px hit target); everything inside follows it.
+    in property <length> cell: Space.hit * SystemLook.text-scale;
     callback clicked();
 
     property <bool> pressed: touch.pressed && root.enabled;
     property <bool> hovered: touch.has-hover && root.enabled;
 
-    width: Space.hit;
-    height: Space.hit;
+    width: root.cell;
+    height: root.cell;
     forward-focus: scope;
     accessible-role: radio-button;
     accessible-label: root.label;
@@ -39,7 +46,7 @@ export component Swatch inherits Rectangle {
     chip := Rectangle {
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
-        width: root.hovered || root.pressed ? 22px : 20px;
+        width: root.cell * (root.hovered || root.pressed ? 22 : 20) / 28;
         height: self.width;
         border-radius: Radius.sm;
         background: ListAccent.color(root.hue);
@@ -49,7 +56,7 @@ export component Swatch inherits Rectangle {
         animate width { duration: Motion.instant; easing: Motion.out; }
         if root.selected: Icon {
             source: Icons.check;
-            size: 14px;
+            size: root.cell / 2;
             tint: Theme.text-on-ink;
             x: (parent.width - self.width) / 2;
             y: (parent.height - self.height) / 2;
@@ -62,7 +69,7 @@ export component Swatch inherits Rectangle {
         y: -4px;
         width: parent.width + 8px;
         height: parent.height + 8px;
-        border-width: scope.has-focus ? 2px : 0px;
+        border-width: scope.has-focus || root.show-focus ? 2px : 0px;
         border-color: Theme.focus-ring;
         border-radius: Radius.lg + 2px;
         background: transparent;
@@ -74,7 +81,7 @@ export component Swatch inherits Rectangle {
     }
 
     scope := FocusScope {
-        enabled: root.enabled;
+        enabled: root.enabled && root.keyboard-focusable;
         focus-on-click: false;
         key-pressed(event) => {
             if (event.text == " " || event.text == "\n") {

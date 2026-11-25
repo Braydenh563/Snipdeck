@@ -1,0 +1,506 @@
+//! Lists and boards: creating, moving, renaming, reordering and deleting.
+
+use super::super::{group_ctl::Surface, history_ctl::move_recorded};
+use snipdeck_core::{BoardId, ItemId, ListId, Placement, Sort};
+use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
+use snipdeck_store::Trashable;
+
+use super::super::{
+    Controller, Effect, HelpTopic, Library, Toast, ToastKind, ToastMessage, failed,
+};
+use super::{BoardMenuEntry, neutral_toast};
+use crate::main_window::MainModel;
+use crate::{
+    failure::Cause,
+    history::{Action, Change, Record},
+    host::ClipboardText,
+    list_text,
+    main_window::{Key, Section, place_of, reorder, reorder_many},
+    usecase,
+};
+
+impl<S, C, K, T> Controller<S, C, K, T>
+where
+    S: Library,
+    C: Clipboard + ClipboardText,
+    K: Keyboard,
+    T: Timing,
+{
+    // ---- Lists ---------------------------------------------------------------------------------
+
+    /// Deletes list `index` of the sidebar after the window's confirmation: it and its items
+    /// move to the Trash, with an Undo toast.
+    pub fn main_delete_list(&mut self, index: usize) {
+        self.main_fresh();
+        let Some(list) = self.main.lists().get(index) else {
+            return;
+        };
+        self.trash_list(list.id, list.name.as_str().to_owned());
+    }
+
+    /// "Export as text…" on list `index` of the sidebar: its text items go to a new file in
+    /// `folder` (see [`crate::list_text`]). Returns the file.
+    pub fn main_export_list(
+        &mut self,
+        index: usize,
+        folder: &std::path::Path,
+    ) -> Option<std::path::PathBuf> {
+        self.main_fresh();
+        let list = self.main.lists().get(index)?;
+        let (id, name) = (list.id, list.name.as_str().to_owned());
+        let written = self
+            .store
+            .items(id)
+            .map_err(|e| Cause::of_store(&e))
+            .and_then(|items| {
+                let entries: Vec<_> = items
+                    .iter()
+                    .filter(|item| !item.sensitive)
+                    .filter_map(|item| {
+                        let text = usecase::item_text(&self.store, item.id).ok()??;
+                        Some(list_text::Entry {
+                            title: item.title.clone(),
+                            text,
+                        })
+                    })
+                    .collect();
+                let date = self
+                    .clock
+                    .now()
+                    .to_zoned(jiff::tz::TimeZone::system())
+                    .date();
+                let path = list_text::path(folder, &name, date);
+                std::fs::create_dir_all(folder).map_err(|e| Cause::of_io(&e))?;
+                std::fs::write(&path, list_text::render(&name, &entries, cfg!(windows)))
+                    .map_err(|e| Cause::of_io(&e))?;
+                Ok((path, entries.len(), items.len()))
+            });
+        let written = written.map(|(path, count, total)| {
+            let file = path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            // A list with items left out says how many were written (MAIN-25).
+            let message = if count < total {
+                ToastMessage::ExportedSome {
+                    file,
+                    written: count,
+                    total,
+                }
+            } else {
+                ToastMessage::Exported { file }
+            };
+            (path, message)
+        });
+        if let Ok((_, message)) = &written {
+            self.show_toast(Toast {
+                kind: ToastKind::Success,
+                message: message.clone(),
+            });
+        } else {
+            let cause = written.as_ref().err().copied().unwrap_or(Cause::Other);
+            self.show_toast(Toast {
+                kind: ToastKind::Danger,
+                message: ToastMessage::ExportFailed(cause),
+            });
+        }
+        written.ok().map(|(path, _)| path)
+    }
+
+    pub(in crate::controller) fn trash_list(&mut self, id: ListId, name: String) {
+        let now = self.clock.now();
+        match self.store.trash(Trashable::List(id), now) {
+            Ok(()) => {
+                let step = self.record_step(
+                    Action::Delete,
+                    vec![Change::Trash(vec![Trashable::List(id)])],
+                );
+                self.show_undo_toast(neutral_toast(ToastMessage::ListTrashed { name }), step);
+                self.library_changed();
+            }
+            Err(_) => self.show_toast(failed()),
+        }
+    }
+
+    /// Alt+Up / Alt+Down on list `index` of the sidebar.
+    pub fn main_reorder_list(&mut self, index: usize, delta: isize) {
+        self.main_fresh();
+        let Some(board) = self.main.board() else {
+            return;
+        };
+        let order: Vec<ListId> = self.main.lists().iter().map(|l| l.id).collect();
+        let Some((to, placement)) = reorder(&order, index, delta) else {
+            return;
+        };
+        let done = self.store.move_list(order[index], board, placement);
+        if done.is_ok() {
+            self.record_step(
+                Action::Reorder,
+                vec![Change::MoveList {
+                    id: order[index],
+                    from: (board, place_of(&order, index)),
+                    to: (board, placement),
+                }],
+            );
+        }
+        self.finish(&done, None);
+        if done.is_ok() {
+            // The same words as an item move: where it went (MAIN-12).
+            self.announce_placed(to + 1, order.len());
+        }
+    }
+
+    /// Alt+Up / Alt+Down or the item menu's Move up / Move down: moves the row at the cursor one
+    /// row among the rows shown (a label filter can hide some of the list), like dropping it on
+    /// that row. Only a list in manual order can be arranged by hand, and
+    /// a multi-selection is not moved.
+    pub fn main_reorder_items(&mut self, delta: isize) {
+        self.main_fresh();
+        let from = self.main.cursor();
+        if self.main.selected_count() > 1 {
+            // The selection moves as one block, past the row beside its first or last row (MAIN-11).
+            let moved = self.main.dragged_items(from);
+            let keys = self.main.keys();
+            let at: Vec<usize> = keys
+                .iter()
+                .enumerate()
+                .filter(|(_, k)| matches!(k, Key::Item(id) if moved.contains(id)))
+                .map(|(i, _)| i)
+                .collect();
+            let onto = match (at.first(), at.last()) {
+                (Some(&lo), _) if delta < 0 => lo.checked_sub(1),
+                (_, Some(&hi)) if delta > 0 => Some(hi + 1).filter(|n| *n < keys.len()),
+                _ => None,
+            };
+            if let Some(onto) = onto {
+                self.main_drop_row(from, onto);
+            }
+            return;
+        }
+        if self.main.group_at(from).is_some() {
+            // A header moves its whole group past the item or group beside it.
+            self.group_move_on(Surface::Main, from, delta);
+            return;
+        }
+        if self.main_move_item_on(from, delta) {
+            return;
+        }
+        // Alt+Up on the first row lands on itself, not nowhere: the sorted-list offer is the same at both ends.
+        let last = self.main.keys().len().saturating_sub(1);
+        let onto = from.saturating_add_signed(delta).min(last);
+        self.main_drop_row(from, onto);
+    }
+
+    /// Puts the cursor on item `id` among the rows now shown (a label filter can hide some of the
+    /// list, so its place in the list is not its row).
+    pub(in crate::controller) fn follow_moved_row(&mut self, id: ItemId) {
+        if let Some(at) = self.main.keys().iter().position(|k| *k == Key::Item(id)) {
+            self.main.set_cursor(at);
+        }
+    }
+
+    /// The toolbar's "Sort" menu: the open section orders itself by `sort`. A list keeps its sort
+    /// in the library (the same field the List editor edits); All items, Pinned and a tag's view
+    /// keep theirs in the settings, one per section.
+    pub fn main_set_sort(&mut self, sort: Sort) {
+        self.main_fresh();
+        if let Some(id) = self.main.open_list().map(|l| l.id) {
+            self.set_list_sort(id, sort);
+        } else if let Some(key) = MainModel::sort_key(self.main.section()) {
+            self.update_settings(|s| s.set_section_sort(&key, sort));
+            self.main.set_section_sorts(self.settings.section_sorts());
+            self.main.set_cursor(0);
+        }
+    }
+
+    /// Writes list `id`'s sort (the heading's menu, the Panel's list menu and the "Switch" toast
+    /// all end here); a toast says it was saved. Nothing happens when it already has that sort.
+    pub(in crate::controller) fn set_list_sort(&mut self, id: ListId, sort: Sort) {
+        let now = self.clock.now();
+        let done = self.store.list(id).and_then(|before| {
+            if before.sort == sort {
+                return Ok(false);
+            }
+            let mut list = before.clone();
+            list.sort = sort;
+            list.updated_at = now;
+            self.store.update_list(&list)?;
+            self.record_step(
+                Action::List,
+                vec![Change::Rewrite {
+                    before: Record::List(before),
+                    after: Record::List(list),
+                }],
+            );
+            Ok(true)
+        });
+        match done {
+            Ok(true) => {
+                self.main.mark_stale();
+                self.main_fresh();
+                self.show_toast(super::super::success(ToastMessage::ListSaved));
+                self.library_changed();
+            }
+            Ok(false) => {}
+            Err(_) => self.show_toast(failed()),
+        }
+    }
+
+    /// A drag or Alt+Up / Alt+Down was refused because list `id` sorts itself: offers to switch
+    /// it to manual order (the toast's button does).
+    pub(in crate::controller) fn offer_manual_order(&mut self, id: ListId) {
+        self.show_toast(neutral_toast(ToastMessage::SwitchToManual { list: id }));
+    }
+
+    /// A drag of row `from` ended on the top half of row `onto`: an item dropped there on a group's
+    /// header lands above the group instead of joining it; any other row takes it as a plain drop.
+    pub fn main_drop_row_above(&mut self, from: usize, onto: usize) {
+        self.main_fresh();
+        if !self.drop_above_group(Surface::Main, from, onto) {
+            self.main_drop_row(from, onto);
+        }
+    }
+
+    /// A drag of row `from` ended on row `onto`: the item takes that row's place and a toast says
+    /// which place that is. Like Alt+Up / Alt+Down, only a list in manual order can be arranged
+    /// by hand; in a list that sorts itself a toast offers to switch it to manual order.
+    pub fn main_drop_row(&mut self, from: usize, onto: usize) {
+        self.main_fresh();
+        // A header dragged (or an item dropped on one) is a group move or join.
+        let dragged = self.main.group_at(from).map(|r| r.group.id);
+        if self.group_drop_on(Surface::Main, from, onto) {
+            if let Some(at) =
+                dragged.and_then(|g| self.main.keys().iter().position(|k| *k == Key::Group(g)))
+            {
+                self.main.set_cursor(at);
+                self.announce_placed(at + 1, self.main.keys().len());
+            }
+            return;
+        }
+        if !self.main.reorderable() {
+            if !self.main.searching()
+                && let Some(list) = self.main.open_list()
+                && !list.sort.is_manual()
+            {
+                let id = list.id;
+                self.offer_manual_order(id);
+            }
+            return;
+        }
+        let Some(list) = self.main.open_list().map(|l| l.id) else {
+            return;
+        };
+        let keys = self.main.keys();
+        let (Some(Key::Item(first)), Some(Key::Item(target))) =
+            (keys.get(from).copied(), keys.get(onto).copied())
+        else {
+            return;
+        };
+        let moved = self.main.dragged_items(from);
+        let order = self.main.manual_order(list);
+        let Some(placements) = reorder_many(&order, &moved, target) else {
+            return;
+        };
+        let mut changes = Vec::new();
+        let mut done = Ok(());
+        for (id, placement) in placements {
+            done = move_recorded(&mut self.store, id, list, placement, &mut changes);
+            if done.is_err() {
+                break;
+            }
+        }
+        let any = !changes.is_empty();
+        if any {
+            self.record_step(crate::history::Action::Reorder, changes);
+        }
+        self.finish(&done, None);
+        if any && done.is_ok() {
+            self.main_fresh();
+            self.follow_moved_row(first);
+            self.announce_placed(self.main.cursor() + 1, self.main.keys().len());
+        }
+    }
+
+    /// A drag of row `row` ended on list `list` of the sidebar: the item goes to the end of it.
+    pub fn main_drop_on_list(&mut self, row: usize, list: usize) {
+        self.main_fresh();
+        if self.main.section() == Section::Trash {
+            return;
+        }
+        let moved = self.main.dragged_items(row);
+        let Some(target) = self.main.lists().get(list) else {
+            return;
+        };
+        let (target, name) = (target.id, target.name.as_str().to_owned());
+        let moved: Vec<ItemId> = moved
+            .into_iter()
+            .filter(|id| self.main.item(*id).is_some_and(|i| i.list_id != target))
+            .collect();
+        if moved.is_empty() {
+            return;
+        }
+        let mut changes = Vec::new();
+        let mut done = Ok(());
+        for id in &moved {
+            done = move_recorded(&mut self.store, *id, target, Placement::Last, &mut changes);
+            if done.is_err() {
+                break;
+            }
+        }
+        if !changes.is_empty() {
+            self.record_step(crate::history::Action::Move, changes);
+        }
+        match done {
+            Ok(()) => {
+                self.show_toast(neutral_toast(ToastMessage::ItemsMoved {
+                    count: moved.len(),
+                    list: name,
+                }));
+                self.library_changed();
+            }
+            Err(_) => self.show_toast(failed()),
+        }
+    }
+
+    /// A drag of list `from` of the sidebar ended on list `onto`: the list takes its place.
+    pub fn main_drop_list(&mut self, from: usize, onto: usize) {
+        let Some(delta) = onto.checked_signed_diff(from) else {
+            return;
+        };
+        self.main_reorder_list(from, delta);
+    }
+
+    // ---- Boards --------------------------------------------------------------------------------
+
+    /// The Main window's Help menu or F1: queues `OpenHelp(topic)` for the Panel's binding to
+    /// hand to the host on its next redraw ([`Controller::take_pending`]).
+    pub fn main_open_help(&mut self, topic: HelpTopic) {
+        self.pending.push(Effect::OpenHelp(topic));
+    }
+
+    /// The toolbar's Panel button and the palette's Show Panel: hides the Panel when it is on
+    /// screen, shows it otherwise (a docked Panel folds and unfolds, as with the hotkey).
+    pub fn main_toggle_panel(&mut self) {
+        let effects = self.on_hotkey(crate::settings::HotkeyAction::TogglePanel);
+        self.pending.extend(effects);
+    }
+
+    /// Opens the board menu.
+    pub fn main_board_menu_open(&mut self) {
+        self.main.set_board_menu(true);
+    }
+
+    /// Closes the board menu without a choice.
+    pub fn main_board_menu_close(&mut self) {
+        self.main.set_board_menu(false);
+    }
+
+    pub(super) fn board_menu_entries(&self) -> Vec<BoardMenuEntry> {
+        let current = self.main.board_position();
+        let count = self.main.boards().len();
+        let mut entries: Vec<BoardMenuEntry> = self
+            .main
+            .boards()
+            .iter()
+            .enumerate()
+            .map(|(i, b)| BoardMenuEntry::Board {
+                name: b.name.as_str().to_owned(),
+                current: Some(i) == current,
+            })
+            .collect();
+        entries.push(BoardMenuEntry::Separator);
+        entries.push(BoardMenuEntry::New);
+        entries.push(BoardMenuEntry::Rename);
+        entries.push(BoardMenuEntry::MoveUp {
+            enabled: current.is_some_and(|i| i > 0),
+        });
+        entries.push(BoardMenuEntry::MoveDown {
+            enabled: current.is_some_and(|i| i + 1 < count),
+        });
+        entries.push(BoardMenuEntry::Delete { enabled: count > 1 });
+        entries
+    }
+
+    /// The board menu's entry `index` was chosen.
+    pub fn main_board_menu_activate(&mut self, index: usize) {
+        self.main_fresh();
+        self.main.set_board_menu(false);
+        let Some(entry) = self.board_menu_entries().into_iter().nth(index) else {
+            return;
+        };
+        match entry {
+            BoardMenuEntry::Board { .. } => {
+                if let Some(id) = self.main.boards().get(index).map(|b| b.id) {
+                    self.open_board(id);
+                    self.revealed = None;
+                }
+            }
+            BoardMenuEntry::Separator => {}
+            BoardMenuEntry::New => self.new_board(),
+            BoardMenuEntry::Rename => self.edit_board(),
+            // The menu stays open after a move, so a board goes three places in three activations (MAIN-12).
+            BoardMenuEntry::MoveUp { enabled } => {
+                if enabled {
+                    self.main_reorder_board(-1);
+                    self.main.set_board_menu(true);
+                }
+            }
+            BoardMenuEntry::MoveDown { enabled } => {
+                if enabled {
+                    self.main_reorder_board(1);
+                    self.main.set_board_menu(true);
+                }
+            }
+            BoardMenuEntry::Delete { enabled } => {
+                if enabled {
+                    self.main_board_delete();
+                }
+            }
+        }
+    }
+
+    /// "Delete board…": the open board, its lists and their items move to the Trash at once, with
+    /// an Undo toast (the last board cannot go).
+    fn main_board_delete(&mut self) {
+        if let Some(id) = self.main.board()
+            && self.main.boards().len() > 1
+        {
+            let name = self.main.board_name().to_owned();
+            self.trash_board(id, name);
+        }
+    }
+
+    /// Opens board `id` in the sidebar.
+    pub(in crate::controller) fn open_board(&mut self, id: BoardId) {
+        if self.main.open_board(&self.store, id).is_err() {
+            self.show_toast(failed());
+        }
+    }
+
+    /// Moves the open board up (-1) or down (+1) among the boards.
+    pub fn main_reorder_board(&mut self, delta: isize) {
+        self.main_fresh();
+        let Some(from) = self.main.board_position() else {
+            return;
+        };
+        let order: Vec<BoardId> = self.main.boards().iter().map(|b| b.id).collect();
+        let Some((to, placement)) = reorder(&order, from, delta) else {
+            return;
+        };
+        let done = self.store.move_board(order[from], placement);
+        if done.is_ok() {
+            self.record_step(
+                Action::Reorder,
+                vec![Change::MoveBoard {
+                    id: order[from],
+                    from: place_of(&order, from),
+                    to: placement,
+                }],
+            );
+        }
+        self.finish(&done, None);
+        if done.is_ok() {
+            self.announce_placed(to + 1, order.len());
+        }
+    }
+}

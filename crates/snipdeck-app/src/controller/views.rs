@@ -1,0 +1,406 @@
+//! What the controller hands the window (`View` and its parts) and the effects it asks the host for.
+
+use std::collections::BTreeMap;
+
+use snipdeck_core::{ItemId, UseMode, UseOutcome};
+use snipdeck_platform::system_look::HighContrast;
+
+use crate::{
+    accent::Accent,
+    fill::{self},
+    frame::{Edge, Rect},
+    panel::{Footer, Row, Tab, UseLabel},
+    picker::{self, Scope},
+    settings::DockEdge,
+    toast::{ToastKind, ToastMessage},
+};
+
+use super::{AppMenuEntry, HelpTopic, ItemMenuEntry, ListMenuEntry};
+
+/// Something the host (the window and the process) must do. The controller decides, the host
+/// acts: nothing here touches a window.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Effect {
+    /// Show the Panel without taking focus.
+    ShowPanel,
+    /// Open the Panel's Symbols tab (after a `ShowPanel`; the palette's "Symbols").
+    ShowSymbols,
+    /// Open the Panel's Colours tab (after a `ShowPanel`; "Open in Colours", a colour picked from the screen).
+    ShowColours,
+    /// The Colours tab steps aside so the list under it shows.
+    HideColours,
+    /// The eyedropper starts: the Main window, when it is on screen, steps aside too (it would
+    /// be in the screenshot) and is remembered.
+    HideMainForEyedropper,
+    /// The eyedropper ended: the Main window comes back if it was hidden for the pick.
+    RestoreMainAfterEyedropper,
+    /// Hide the Panel.
+    HidePanel,
+    /// Move the Panel's window so that its top-left is here (physical pixels); its size
+    /// stays. A drag step: the app moves the window itself.
+    MoveWindow(i32, i32),
+    /// Show the Main window, creating it the first time (the tray's "Open Snipdeck").
+    OpenMainWindow,
+    /// Switch the global hotkeys off (`true`) or back on (`false`), per the settings.
+    SetHotkeysPaused(bool),
+    /// Exit the app.
+    Quit,
+    /// Open the Settings window, creating it the first time (the Panel menu's "Settings").
+    OpenSettings,
+    /// Start a new snippet. The Panel's binding opens the item editor on it
+    /// ([`Controller::open_new_item`](crate::controller::Controller::open_new_item)); the host has nothing more to do.
+    NewItem,
+    /// Show the Main window with the command palette open (the Panel's "Commands…" and Ctrl+K).
+    OpenCommands,
+    /// Open a help page (not built yet: the host logs it).
+    OpenHelp(HelpTopic),
+    /// Show the list editor the controller just opened, even if the Main window never was
+    /// (the Panel's list menu and tab double-click).
+    OpenListEditor,
+    /// Open the item editor on an item. The Panel's binding does it
+    /// ([`Controller::open_item_editor`](crate::controller::Controller::open_item_editor)); the host has nothing more to do.
+    EditItem(ItemId),
+    /// Start the OS resize of the Panel from an edge or corner.
+    ResizeWindow(Edge),
+    /// Move and size the Panel to this frame (a stored place restored, or a frame clamped).
+    PlaceWindow(Rect),
+    /// Show the window that asks for the master password (a locked sensitive item was needed).
+    OpenUnlock,
+    /// Open the optional Support Snipdeck page in the browser.
+    OpenSupport,
+    /// Open Settings and start one of its backup actions (the palette's Import, Export, Back up).
+    SettingsAction(SettingsAction),
+}
+
+/// What the palette asks Settings to start.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SettingsAction {
+    /// Show the import sources.
+    Import,
+    /// Export the library to a folder.
+    Export,
+    /// Make a backup now.
+    BackUp,
+}
+
+/// How far a toast is through its life (the Slint `ToastPhase`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ToastPhase {
+    /// Fading in.
+    Enter,
+    /// Settled.
+    Hold,
+    /// Fading out.
+    Exit,
+}
+
+/// The paste stack strip of the Panel.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct StackView {
+    /// How many items are marked.
+    pub count: usize,
+    /// "Start stack" was chosen: Paste next walks the marks.
+    pub running: bool,
+    /// How many have been pasted so far (the index of the next one).
+    pub position: usize,
+    /// The title of the item Paste next pastes next (empty when it has no title).
+    pub next_title: String,
+    /// The marked items, in the order they will be pasted.
+    pub items: Vec<ItemId>,
+}
+
+/// The toast on screen.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "one flag per button the toast can show"
+)]
+pub struct ToastView {
+    /// Changes with every new toast, so the host can tell a new one from a redraw.
+    pub seq: u64,
+    /// Style.
+    pub kind: ToastKind,
+    /// What it says, before wording.
+    pub message: ToastMessage,
+    /// Where it is in its life.
+    pub phase: ToastPhase,
+    /// It carries an Undo button ([`Controller::main_undo`](crate::controller::Controller::main_undo)).
+    pub undo: bool,
+    /// It carries a "Delete forever" button ([`Controller::toast_action`](crate::controller::Controller::toast_action)),
+    /// after an Undo of an add.
+    pub purge: bool,
+    /// It carries an Edit button ([`Controller::toast_edit`](crate::controller::Controller::toast_edit)).
+    pub edit: bool,
+    /// It carries an "Open log" button ([`Controller::toast_action`](crate::controller::Controller::toast_action)).
+    pub open_log: bool,
+}
+
+/// The Picker window's content.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PickerView {
+    /// The results, best first.
+    pub rows: Vec<picker::Entry>,
+    /// The sensitive row held revealed (Space held on it), as an index into `rows`.
+    pub revealed: Option<usize>,
+    /// What the search covers.
+    pub scope: Scope,
+    /// The results were cut at the limit.
+    pub more: bool,
+    /// The tag the tag scope covers (empty until one is chosen).
+    pub tag: String,
+    /// The search text.
+    pub query: String,
+    /// The keyboard-selected row.
+    pub selected: usize,
+    /// Where Enter goes ("Paste" or "Copy" in the window's footer).
+    pub footer: Footer,
+    /// The preview pane of the selected row, while it is open.
+    pub detail: Option<PickerDetail>,
+}
+
+/// What the Picker's preview pane shows (F3).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PickerDetail {
+    /// The item's text, cut at `PICKER_DETAIL_CHARS` characters with a `…`; empty for a sensitive item
+    /// and for one without text.
+    pub text: String,
+    /// The item is sensitive: the pane shows a mask, never the text.
+    pub hidden: bool,
+}
+
+/// The most characters of an item the preview pane reads.
+pub const PICKER_DETAIL_CHARS: usize = 1500;
+
+/// The template fill form's content.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FillView {
+    /// Changes with every form that opens, so the window resets its fields for a new one and
+    /// keeps what the user typed while the same form stays up.
+    pub seq: u64,
+    /// The template item's name.
+    pub title: String,
+    /// One per prompt.
+    pub fields: Vec<fill::Field>,
+    /// The date format as letters in this user's order (`DD.MM.YYYY`), for date fields.
+    pub date_hint: String,
+    /// What the month grid of a date field needs: the words, the first day of the week and today.
+    pub calendar: CalendarView,
+    /// Per field: the day it holds, for a date field with a real day typed in.
+    pub dates: Vec<Option<(i32, i32, i32)>>,
+    /// The text as it would be pasted now; empty while `masked`.
+    pub preview: String,
+    /// The template item is sensitive: the preview would show its secret text, so it is left
+    /// out and the window draws a mask instead.
+    pub masked: bool,
+}
+
+/// The month grid's words and today, in the language and week of the user's locale.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CalendarView {
+    /// The twelve month names, January first.
+    pub months: Vec<String>,
+    /// The seven short weekday names, Monday first.
+    pub weekdays: Vec<String>,
+    /// The week starts on Sunday.
+    pub week_starts_sunday: bool,
+    /// Today as (year, month, day) in the user's time zone.
+    pub today: (i32, i32, i32),
+}
+
+/// A filled-in form, ready to be used: see [`Controller::take_fill`](crate::controller::Controller::take_fill).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FillSubmission {
+    pub(super) item: ItemId,
+    pub(super) mode: UseMode,
+    pub(super) answers: BTreeMap<String, String>,
+    pub(super) transform: Option<snipdeck_core::template::transform::Transform>,
+    /// The Target's selection, read before the form opened.
+    pub(super) selection: Option<String>,
+    /// A typed trigger to erase with the paste, once the form is confirmed.
+    pub(super) erase: Option<FillErase>,
+}
+
+/// A typed trigger waiting for its fill form: how many characters to erase, and the app they were
+/// typed into (the paste only goes there).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct FillErase {
+    pub(super) chars: usize,
+    pub(super) app: Option<String>,
+    pub(super) window: usize,
+    pub(super) retype: crate::usecase::Retype,
+}
+
+/// How a use ended.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum UseResult {
+    /// It happened (pasted or copied) and was counted.
+    Done(UseOutcome),
+    /// The template needs answers first: the fill form is open, see [`Controller::fill`](crate::controller::Controller::fill).
+    NeedsAnswers,
+    /// It did not happen; a toast says why.
+    Failed,
+    /// It was called off before any key went out (the user typed on, or changed window): nothing
+    /// was sent or counted, and no toast.
+    Cancelled,
+}
+
+/// Everything the Panel window shows, as plain data.
+#[derive(Debug, Clone, PartialEq)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "one field per thing the window shows; they are independent flags, not a state"
+)]
+pub struct View {
+    /// The board's name.
+    pub board_name: String,
+    /// The list tabs.
+    pub tabs: Vec<Tab>,
+    /// The active tab (0 when the board has no lists).
+    pub current_tab: usize,
+    /// The pinned strip.
+    pub pinned: Vec<Row>,
+    /// The item rows. A revealed sensitive row carries its real text in `preview`.
+    pub rows: std::rc::Rc<Vec<Row>>,
+    /// The index in `rows` of the sensitive row held revealed.
+    pub revealed: Option<usize>,
+    /// The search text.
+    pub query: String,
+    /// The keyboard-selected row.
+    pub selected: usize,
+    /// Where a click goes. The window derives its "Paste ↵" / "Copy ↵" label from it.
+    pub footer: Footer,
+    /// What a click does.
+    pub use_label: UseLabel,
+    /// Whether a drag can rearrange the rows (manual order, no search).
+    pub rows_reorderable: bool,
+    /// Keep on top (the pin button's state).
+    pub on_top: bool,
+    /// Whether the window is topmost now: pinned, and no Snipdeck window of the regular kind
+    /// (Main, Settings, an editor, Help) is the active one. Such a window is allowed to cover the
+    /// Panel; the Panel goes back to the top when focus moves to another app.
+    pub topmost: bool,
+    /// Only the dock's handle shows (the window is a thin strip, see [`crate::dock`]).
+    pub dock_collapsed: bool,
+    /// The handle runs up and down (the Panel is docked to the left or right edge).
+    pub dock_vertical: bool,
+    /// The edge the Panel is docked to (the kebab offers to undock it; the dock grips follow it).
+    pub dock_edge: Option<DockEdge>,
+    /// The arrow keys move or size the floating Panel (the Window menu's Move and Size).
+    pub frame_mode: Option<super::FrameMode>,
+    /// A side dock takes the whole edge: its ends do not resize and it does not slide.
+    pub dock_full_edge: bool,
+    /// The Panel is being dragged by its header.
+    pub dragging: bool,
+    /// The edge the kebab's "Dock" row would dock a floating Panel to (`None` while docked or
+    /// before the monitor is known): the row names it.
+    pub dock_target: Option<DockEdge>,
+    /// The edge a drag under way would dock to if released now; the Panel marks that edge.
+    pub dock_preview: Option<DockEdge>,
+    /// Dark theme: the `theme` setting, or Windows' app mode when it is `system`.
+    pub dark: bool,
+    /// The high-contrast colours while a Windows high-contrast theme is on (it overrides the
+    /// theme setting), else `None`.
+    pub high_contrast: Option<HighContrast>,
+    /// The user's accent, when it is not the built-in blue.
+    pub accent: Option<Accent>,
+    /// The paste stack, while items are marked or it runs.
+    pub stack: Option<StackView>,
+    /// Animations are off: the `reduce_motion` setting, or Windows' "Animation effects" off.
+    pub reduced_motion: bool,
+    /// The toast, if one is showing.
+    pub toast: Option<ToastView>,
+    /// What the Undo and Redo buttons would do.
+    pub history: super::HistoryView,
+    /// The board menu's entries while it is open.
+    pub board_menu: Option<Vec<super::BoardMenuEntry>>,
+    /// The kebab menu's rows while it is open ([`APP_MENU`](crate::controller::APP_MENU)).
+    pub app_menu: Option<Vec<AppMenuEntry>>,
+    /// The group of the kebab menu that is open (the other groups show only their head).
+    pub app_menu_group: Option<super::AppGroup>,
+    /// The context menu of a card or pinned chip while it is open.
+    pub item_menu: Option<Vec<ItemMenuEntry>>,
+    /// The context menu of a Symbols cell while it is open.
+    pub symbol_menu: Option<Vec<super::SymbolMenuEntry>>,
+    /// The item menu's Move or Colour choice while it is open (it takes the menu's place).
+    pub choose_menu: Option<ChooseMenu>,
+    /// How many rows the multi-selection holds (the bulk bar shows from one).
+    pub marked_count: usize,
+    /// After a delete in Delete mode: the shown row whose delete button takes the keyboard focus
+    /// (`None`: the list), and a count that goes up with each delete.
+    pub focus_row: Option<usize>,
+    /// See `focus_row`.
+    pub focus_seq: u64,
+    /// The header row to open for rename (a group just made).
+    pub rename_row: Option<usize>,
+    /// See `rename_row`.
+    pub rename_seq: u64,
+    /// The header's Select mode is on (rows show a checkbox).
+    pub select_mode: bool,
+    /// The header's Delete mode is on (rows show a delete button).
+    pub delete_mode: bool,
+    /// The rows show their 1 to 9 numbers (the `show_numbers` setting).
+    pub show_numbers: bool,
+    /// The Symbols tab is offered (the `show_symbols_tab` setting).
+    pub symbols_available: bool,
+    /// The Colours tab is offered (the `show_colours_tab` setting).
+    pub colours_available: bool,
+    /// The Panel's layout (Settings > Panel > Layout).
+    pub layout: crate::settings::PanelLayout,
+    /// The search field is always shown (Settings > Panel > Search field).
+    pub search_always: bool,
+    /// The lists are chosen from a menu, not a tab row (Settings > Panel > Lists).
+    pub lists_in_menu: bool,
+    /// The context menu of a list tab while it is open ([`LIST_MENU`](crate::controller::LIST_MENU)).
+    pub list_menu: Option<Vec<ListMenuEntry>>,
+    /// The sort of the list the list menu is open on (its "Sort by" row is checked).
+    pub list_menu_sort: snipdeck_core::Sort,
+    /// The list the list menu is open on holds a colour (its "Copy as CSS variables" row is on).
+    pub list_menu_css: bool,
+    /// The shown list sorts itself and no search runs: moves are refused but offer manual order.
+    pub reorder_offer: bool,
+    /// "Pause hotkeys" is on (its menu row is checked).
+    pub hotkeys_paused: bool,
+    /// The Picker, while it is open.
+    pub picker: Option<PickerView>,
+    /// The template fill form, while it is open.
+    pub fill: Option<FillView>,
+    /// The Recent inbox (clock tab), while it is on in the settings.
+    pub recent: Option<crate::recent::RecentView>,
+    /// The first-run question "Keep a Recent list of what you copy?" is due: unanswered, and
+    /// the welcome tour is not running. Nothing is kept until the answer is Yes.
+    pub recent_question: bool,
+    /// The Recent limits in the settings, for the question's wording.
+    pub recent_max_entries: u32,
+    /// How many days Recent keeps an entry.
+    pub recent_days: u32,
+}
+
+/// What a row of the Move or Colour choice says, before wording.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ChooseLabel {
+    /// A list, by name.
+    List(String),
+    /// A colour label, or `None` for "No label".
+    Colour(Option<snipdeck_core::ItemLabel>),
+    /// A "Paste as..." choice.
+    Transform(snipdeck_core::template::transform::Transform),
+    /// A "Paste as..." choice of a colour item: the format and the colour written in it (the
+    /// window words the format; `Name` is translated there).
+    ColourFormat(snipdeck_colour::Format, String),
+}
+
+/// One row of the Move or Colour choice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChooseEntry {
+    /// The words.
+    pub label: ChooseLabel,
+    /// Every target already has it (the row is checked).
+    pub checked: bool,
+}
+
+/// The item menu's second level: where to move the targets, or which colour to give them.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChooseMenu {
+    /// The rows, in order.
+    pub entries: Vec<ChooseEntry>,
+}

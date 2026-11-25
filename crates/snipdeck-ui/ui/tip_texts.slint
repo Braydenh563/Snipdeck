@@ -1,0 +1,44 @@
+// The words of the Tips tab (Help > Tips), one entry per card, in the order of `snipdeck-app`'s
+// `tips::TIPS` (a test in `tests/help_window.rs` checks the lengths). The app builds the cards because Rust cannot
+// reach `@tr`. The pictures are drawn in `tip_art.slint` (one per card, by its index) and carry no words.
+export global TipTexts {
+    out property <[string]> titles: [
+        @tr("Open the Panel from anywhere"),
+        @tr("Find anything by typing"),
+        @tr("Keep favourites in reach"),
+        @tr("Paste several in order"),
+        @tr("Fill in the blanks"),
+        @tr("Grab text as you go"),
+        @tr("Symbols at your fingertips"),
+        @tr("Every command, one search away"),
+        @tr("Make it fit your screen"),
+        @tr("Keep secrets secret"),
+        @tr("Type a short code, get an item"),
+    ];
+    out property <[string]> first-lines: [
+        @tr("Press your Panel shortcut in any app to bring up your items."),
+        @tr("Start typing in the Panel or Main to filter every list at once."),
+        @tr("Pin the items you use most; they stay at the top of the Panel."),
+        @tr("Paste next pastes the next item each time you press it."),
+        @tr("Templates ask for names, dates and options before they paste."),
+        @tr("Quick capture saves what you copied as a new item."),
+        @tr("Emoji, kaomoji and icons live in the Panel’s Symbols tab."),
+        @tr("Press Ctrl+K in Main to find any action by name."),
+        @tr("Choose comfortable rows, compact rows or tiles."),
+        @tr("Mark an item Sensitive to hide it until you reveal it."),
+        @tr("Give an item a trigger, such as ;sig, under More options in its editor."),
+    ];
+    out property <[string]> second-lines: [
+        @tr("Pick one and it pastes where you were typing."),
+        @tr("Titles, text and labels all count."),
+        @tr("Unpin them the same way."),
+        @tr("Handy for forms you fill field by field."),
+        @tr("Add {} or {} to a snippet.", "{field:Name}", "{choice:Tone|warm|firm}"),
+        @tr("With Recent turned on, it keeps what you copy in other programs."),
+        @tr("Search them by name, in your language."),
+        @tr("The shortcut for each is shown beside it."),
+        @tr("Light, dark or follow Windows."),
+        @tr("A master password locks your sensitive items."),
+        @tr("Then type it in any app. Turn this on in Settings, under Typing."),
+    ];
+}

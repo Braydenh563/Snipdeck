@@ -1,0 +1,266 @@
+import { Space } from "../theme.slint";
+import { Tooltip } from "tooltip.slint";
+
+// The window's one tooltip (DESIGN.md §4). A control asks for it with `show` while it is hovered or holds keyboard
+// focus, and gives it back with `hide`; the window's `TipLayer` keeps the timing (500ms rest, at once when moving
+// from one control to another) and draws it. The layer is the window's last child, so nothing paints over a tooltip
+// and no container clips it. A global is one per window, so each window has its own.
+export global TipHost {
+    // What the layer shows, and the asking control's box in window coordinates.
+    out property <string> text;
+    out property <length> left;
+    out property <length> top;
+    out property <length> box-width;
+    out property <length> box-height;
+    // A control is asking (`show` and no `hide` yet), and who: each `show` takes a new id, so only the latest asker's
+    // `hide` gives the tooltip back.
+    out property <bool> wanted;
+    out property <int> owner;
+    // The layer has it on screen (after the rest). The layer sets it.
+    in-out property <bool> open;
+    // Liveness. Slint has no destruction hook, so a control an `if` removes cannot give its tooltip back. While a
+    // `TipSource`'s tooltip is wanted (`watched`), the layer bumps `ping` twice a second and the owner sets
+    // `answered`; an owner that does not answer is gone, and the tooltip goes with it. Window-level callers of
+    // `show` (always there) are not watched.
+    in-out property <int> ping;
+    in-out property <bool> answered;
+    in-out property <bool> watched;
+    // An open drop-down list (`SelectField`) holds tooltips off; it answers pings the same way, so a field removed
+    // while open does not hold them off for good.
+    in-out property <bool> held;
+    in-out property <bool> held-answered;
+
+    public function show(text: string, left: length, top: length, box-width: length, box-height: length) -> int {
+        self.owner += 1;
+        self.text = text;
+        self.left = left;
+        self.top = top;
+        self.box-width = box-width;
+        self.box-height = box-height;
+        self.wanted = true;
+        self.watched = false;
+        self.answered = true;
+        return self.owner;
+    }
+    public function hide(id: int) {
+        if (self.owner == id) {
+            self.wanted = false;
+        }
+    }
+    // Esc: closes a tooltip on screen, and says whether there was one (so that press does nothing else). The control
+    // keeps it closed until it asks again.
+    public function dismiss() -> bool {
+        let was = self.open;
+        self.wanted = false;
+        self.open = false;
+        return was;
+    }
+}
+
+// A control's side of `TipHost`: while `wanted` (hovered or focused), it asks for `text` under its box, and asks
+// again when the text changes. `close` gives it back at once (the control was used, so its name is not needed).
+export component TipSource {
+    in property <string> text;
+    in property <bool> wanted;
+    in property <length> left;
+    in property <length> top;
+    in property <length> box-width;
+    in property <length> box-height;
+    width: 0px;
+    height: 0px;
+    property <int> id: -1;
+    property <bool> asking: root.wanted && root.text != "";
+    changed asking => {
+        if (root.asking) {
+            root.id = TipHost.show(root.text, root.left, root.top, root.box-width, root.box-height);
+            TipHost.watched = true;
+        } else {
+            TipHost.hide(root.id);
+        }
+    }
+    changed text => {
+        if (root.asking && TipHost.owner == root.id && TipHost.wanted) {
+            root.id = TipHost.show(root.text, root.left, root.top, root.box-width, root.box-height);
+            TipHost.watched = true;
+        }
+    }
+    // Still here: answer the layer's ping (see `TipHost.ping`).
+    property <int> ping: TipHost.ping;
+    changed ping => {
+        if (root.asking && TipHost.owner == root.id) {
+            TipHost.answered = true;
+        }
+    }
+    public function close() {
+        TipHost.hide(root.id);
+    }
+}
+
+// Put this last in every `Window` whose controls have tooltips. It covers the window but takes no input. The tooltip
+// is centred under its control (4px gap), flips above when it would pass the bottom edge, and is shifted to stay 8px
+// inside the window. `suppressed` (a menu, dialog or the palette is open) or an open drop-down list keeps it off
+// screen. It fades in over 90ms.
+export component TipLayer inherits Rectangle {
+    in property <bool> suppressed: false;
+    // What is on screen: the tooltip's text, or "" (for tests and for the window to read).
+    out property <string> shown: TipHost.open && !root.off ? TipHost.text : "";
+    // The tooltip's box and where it goes: below its control when it fits there, else above, else beside it
+    // (a tall control in a short window, or a wrapped tooltip at a large text size); always inside the window.
+    property <length> room-below: root.height - (TipHost.top + TipHost.box-height) - Space.s1 - Space.s2;
+    property <length> room-above: TipHost.top - Space.s1 - Space.s2;
+    pure function beside(h: length) -> bool {
+        return h > max(root.room-below, root.room-above);
+    }
+    pure function place-x(w: length, h: length) -> length {
+        if (root.beside(h)) {
+            return max(Space.s2, TipHost.left + TipHost.box-width + Space.s1 + w > root.width - Space.s2
+                ? TipHost.left - Space.s1 - w
+                : TipHost.left + TipHost.box-width + Space.s1);
+        }
+        return max(Space.s2, min(TipHost.left + (TipHost.box-width - w) / 2, root.width - w - Space.s2));
+    }
+    pure function place-y(h: length) -> length {
+        if (root.beside(h)) {
+            return max(Space.s2, min(TipHost.top + (TipHost.box-height - h) / 2, root.height - h - Space.s2));
+        }
+        return (root.room-below >= h || root.room-below >= root.room-above)
+            ? TipHost.top + TipHost.box-height + Space.s1
+            : TipHost.top - Space.s1 - h;
+    }
+    accessible-role: AccessibleRole.none;
+
+    property <bool> off: root.suppressed || TipHost.held;
+    // DESIGN.md §4: a tooltip shows after a 500ms rest; for a quarter second after one closes, the next shows at once.
+    property <bool> warm: false;
+    property <bool> wanted: TipHost.wanted;
+    property <int> owner: TipHost.owner;
+    function ask() {
+        if (!TipHost.wanted || root.off) {
+            return;
+        }
+        warm-timer.running = false;
+        if (TipHost.open || root.warm) {
+            delay.running = false;
+            TipHost.open = true;
+        } else if (!delay.running) {
+            delay.running = true;
+        }
+    }
+    changed owner => { root.ask(); }
+    // WCAG 1.4.13 (hoverable): the tooltip stays while the pointer is on it. When the control gives it back
+    // the layer waits a moment for the pointer to cross the gap; if it is on the tooltip then, the tooltip
+    // stays until the pointer leaves it.
+    property <bool> over-tip: false;
+    property <bool> lingering: false;
+    function close-now() {
+        root.lingering = false;
+        leave-timer.running = false;
+        if (TipHost.open) {
+            TipHost.open = false;
+            root.warm = true;
+            warm-timer.running = true;
+        }
+    }
+    changed wanted => {
+        if (root.wanted) {
+            root.lingering = false;
+            leave-timer.running = false;
+            root.ask();
+        } else {
+            delay.running = false;
+            if (TipHost.open && !root.off) {
+                root.lingering = true;
+                leave-timer.running = true;
+            } else {
+                root.close-now();
+            }
+        }
+    }
+    changed over-tip => {
+        if (!root.over-tip && root.lingering) {
+            root.close-now();
+        }
+    }
+    leave-timer := Timer {
+        interval: 200ms;
+        running: false;
+        triggered => {
+            self.running = false;
+            if (!root.over-tip) {
+                root.close-now();
+            }
+        }
+    }
+    // A menu or dialog opening closes the tooltip; it does not come back when it closes. An open drop-down list only
+    // holds it off: the control under a resting pointer still wants it, and gets it once the hold lapses.
+    changed off => {
+        if (root.suppressed) {
+            TipHost.dismiss();
+        } else if (root.off) {
+            delay.running = false;
+            TipHost.open = false;
+        }
+    }
+    property <bool> held: TipHost.held;
+    changed held => {
+        if (!root.held) {
+            root.ask();
+        }
+    }
+    delay := Timer {
+        interval: 500ms;
+        running: false;
+        triggered => {
+            self.running = false;
+            TipHost.open = TipHost.wanted && !root.off;
+        }
+    }
+    warm-timer := Timer {
+        interval: 250ms;
+        running: false;
+        triggered => {
+            self.running = false;
+            root.warm = false;
+        }
+    }
+
+    alive := Timer {
+        interval: 500ms;
+        running: (TipHost.wanted && TipHost.watched) || TipHost.held;
+        triggered => {
+            if (TipHost.wanted && TipHost.watched && !TipHost.answered) {
+                TipHost.hide(TipHost.owner);
+            }
+            if (TipHost.held && !TipHost.held-answered) {
+                TipHost.held = false;
+            }
+            TipHost.answered = false;
+            TipHost.held-answered = false;
+            TipHost.ping += 1;
+        }
+    }
+
+    if root.shown != "": Rectangle {
+        width: t.preferred-width;
+        height: min(t.preferred-height, root.height - 2 * Space.s2);
+        x: root.place-x(self.width, self.height);
+        y: root.place-y(self.height);
+        t := Tooltip {
+            text: TipHost.text;
+            // Created closed and opened here, so the opacity animates (the 90ms fade-in): reading the opacity
+            // first makes the closed value (0) the animation's start.
+            init => {
+                if (self.opacity >= 0) {
+                    self.open = true;
+                }
+            }
+            limit-width: root.width - 2 * Space.s2;
+            width: parent.width;
+            height: parent.height;
+        }
+        // The pointer can rest on the tooltip (WCAG 1.4.13) without it going away.
+        TouchArea {
+            changed has-hover => { root.over-tip = self.has-hover; }
+        }
+    }
+}

@@ -9,6 +9,17 @@ pub const SETTINGS_FILE: &str = "settings.json";
 /// Where a settings file that could not be read as it stands is set aside.
 pub const BAD_FILE: &str = "settings.json.bad";
 
+/// The user's Documents folder, where exports go (not checked to exist).
+#[must_use]
+pub fn documents_folder() -> Option<PathBuf> {
+    let home = if cfg!(windows) {
+        std::env::var_os("USERPROFILE")
+    } else {
+        std::env::var_os("HOME")
+    }?;
+    Some(PathBuf::from(home).join("Documents"))
+}
+
 /// The data folder: `%LOCALAPPDATA%\Snipdeck` on Windows (the database must not roam),
 /// `$XDG_DATA_HOME/snipdeck` or `~/.local/share/snipdeck` elsewhere. `env` reads an
 /// environment variable; `windows` says which rule applies.
@@ -21,6 +32,19 @@ pub fn data_dir(env: &dyn Fn(&str) -> Option<String>, windows: bool) -> Option<P
     non_empty("XDG_DATA_HOME")
         .map(|base| Path::new(&base).join("snipdeck"))
         .or_else(|| non_empty("HOME").map(|home| Path::new(&home).join(".local/share/snipdeck")))
+}
+
+/// The file whose presence next to the program makes it portable.
+pub const PORTABLE_MARKER: &str = "portable";
+
+/// The portable data folder: `data` beside the program when a [`PORTABLE_MARKER`] file sits there
+/// (the unzipped portable build on a USB stick), so nothing is written to the machine.
+#[must_use]
+pub fn portable_dir(exe_dir: &Path) -> Option<PathBuf> {
+    exe_dir
+        .join(PORTABLE_MARKER)
+        .is_file()
+        .then(|| exe_dir.join("data"))
 }
 
 /// What reading the settings file found.
@@ -47,6 +71,25 @@ pub struct Loaded {
     pub settings: Settings,
     /// What was found.
     pub outcome: LoadOutcome,
+}
+
+impl LoadOutcome {
+    /// The toast that tells the user their settings did not load as written, if one is due:
+    /// a damaged file that was set aside, or one that could not be read (the defaults are in use
+    /// and nothing will be saved).
+    #[must_use]
+    pub fn toast(self) -> Option<crate::toast::Toast> {
+        use crate::toast::{Toast, ToastKind, ToastMessage};
+        let message = match self {
+            Self::Missing | Self::Read => return None,
+            Self::SetAside => ToastMessage::SettingsDamaged,
+            Self::Untouchable => ToastMessage::SettingsUnreadable,
+        };
+        Some(Toast {
+            kind: ToastKind::Danger,
+            message,
+        })
+    }
 }
 
 impl Loaded {
@@ -76,7 +119,19 @@ fn decode(bytes: &[u8]) -> String {
     }
 }
 
-/// Reads the settings from `folder`. A missing file gives the defaults, and a damaged one keeps
+/// The settings in `folder`, read without changing anything: a damaged file is not set aside
+/// (for diagnostics that may run beside a running app). Same values as [`read_settings`].
+#[must_use]
+pub fn peek_settings(folder: &Path) -> Settings {
+    match std::fs::read(folder.join(SETTINGS_FILE)) {
+        Ok(bytes) => Settings::from_json(&decode(&bytes)),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Settings::new_install(),
+        Err(_) => Settings::default(),
+    }
+}
+
+/// Reads the settings from `folder`. A missing file gives the new-install settings
+/// ([`Settings::new_install`]); an unreadable one gives the legacy defaults, and a damaged one keeps
 /// whatever parses ([`Settings::from_json`] never fails).
 ///
 /// A file that does not parse as it stands (not JSON, cut short, a field of the wrong type) is
@@ -91,7 +146,7 @@ pub fn read_settings(folder: &Path) -> Loaded {
         Ok(bytes) => bytes,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
             return Loaded {
-                settings: Settings::default(),
+                settings: Settings::new_install(),
                 outcome: LoadOutcome::Missing,
             };
         }
@@ -134,15 +189,69 @@ pub fn write_salvaged(folder: &Path, loaded: &Loaded) -> std::io::Result<()> {
     Ok(())
 }
 
-/// The settings from `folder`, without the outcome (for callers that never write them back).
+/// What the settings saver should take as "on disk now": the loaded settings, except when a
+/// damaged file was set aside and writing the salvaged copy failed. Then no file exists, so the
+/// baseline is the new-install settings a fresh launch would read, and the first change (or the first poll
+/// with the salvaged values in use) writes the file.
 #[must_use]
-pub fn load_settings(folder: &Path) -> Settings {
-    read_settings(folder).settings
+pub fn saver_baseline(loaded: &Loaded, salvage_written: bool) -> Settings {
+    if loaded.outcome == LoadOutcome::SetAside && !salvage_written {
+        Settings::new_install()
+    } else {
+        loaded.settings.clone()
+    }
+}
+
+/// Opens the library in `folder`; `backups` is where the user's backups are (for the notice). One that cannot be opened (damaged, empty beside backups, a
+/// failed migration) is kept in `snipdeck.damaged-<stamp>/` and a fresh one opens, with a Danger
+/// notice pointing at Settings > Rebuild from backup. Everything else (another Snipdeck holds
+/// the folder, a newer database, a full or read-only disk) is an error and nothing moves.
+///
+/// # Errors
+/// The store's error when the library cannot be opened and moving it aside is not safe.
+pub fn open_library_folder(
+    folder: &Path,
+    backups: &Path,
+    now: jiff::Timestamp,
+) -> Result<(snipdeck_store::Store, Option<crate::toast::Toast>), snipdeck_store::Error> {
+    let stamp = now
+        .to_zoned(jiff::tz::TimeZone::system())
+        .strftime("%Y%m%d-%H%M");
+    let stem = (0..100)
+        .map(|n| {
+            if n == 0 {
+                format!("snipdeck.damaged-{stamp}")
+            } else {
+                format!("snipdeck.damaged-{stamp}-{n}")
+            }
+        })
+        .find(|stem| !folder.join(stem).exists())
+        .unwrap_or_else(|| format!("snipdeck.damaged-{stamp}-x"));
+    let (store, kept) = snipdeck_store::Store::open_or_set_aside(folder, &stem)?;
+    let has_backup =
+        snipdeck_portable::backup::list_backups(backups).is_ok_and(|list| !list.is_empty());
+    let toast = kept.map(|folder| crate::toast::Toast {
+        kind: crate::toast::ToastKind::Danger,
+        message: crate::toast::ToastMessage::LibrarySetAside { folder, has_backup },
+    });
+    Ok((store, toast))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_portable_marker_beside_the_program_selects_its_data_folder() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        assert_eq!(portable_dir(dir.path()), None);
+        std::fs::write(dir.path().join(PORTABLE_MARKER), "").expect("marker");
+        assert_eq!(portable_dir(dir.path()), Some(dir.path().join("data")));
+        // A folder of that name is not the marker.
+        let other = tempfile::tempdir().expect("temp dir");
+        std::fs::create_dir(other.path().join(PORTABLE_MARKER)).expect("dir");
+        assert_eq!(portable_dir(other.path()), None);
+    }
 
     fn env<'a>(vars: &'a [(&'a str, &'a str)]) -> impl Fn(&str) -> Option<String> + 'a {
         move |name| {
@@ -150,6 +259,22 @@ mod tests {
                 .find(|(k, _)| *k == name)
                 .map(|(_, v)| (*v).to_owned())
         }
+    }
+
+    #[test]
+    fn a_damaged_or_unreadable_settings_file_earns_a_toast_and_a_good_one_does_not() {
+        use crate::toast::ToastMessage;
+        let message = |o: LoadOutcome| o.toast().map(|t| t.message);
+        assert_eq!(message(LoadOutcome::Missing), None);
+        assert_eq!(message(LoadOutcome::Read), None);
+        assert_eq!(
+            message(LoadOutcome::SetAside),
+            Some(ToastMessage::SettingsDamaged)
+        );
+        assert_eq!(
+            message(LoadOutcome::Untouchable),
+            Some(ToastMessage::SettingsUnreadable)
+        );
     }
 
     #[test]
@@ -180,15 +305,24 @@ mod tests {
     fn settings_load_tolerantly() {
         let temp = tempfile::tempdir().expect("tempdir");
         let dir = temp.path().to_path_buf();
-        assert_eq!(load_settings(&dir), Settings::default(), "no file");
+        assert_eq!(
+            read_settings(&dir).settings,
+            Settings::new_install(),
+            "no file"
+        );
         std::fs::write(dir.join(SETTINGS_FILE), "{ not json").expect("write");
-        assert_eq!(load_settings(&dir), Settings::default(), "garbage");
+        let damaged = read_settings(&dir).settings;
+        assert!(
+            !damaged.recent_history,
+            "a damaged file is an existing install"
+        );
+        assert_eq!(damaged.hotkeys.toggle_panel, "Ctrl+Alt+Space");
         std::fs::write(
             dir.join(SETTINGS_FILE),
             r#"{"panel_width": 400, "theme": 7}"#,
         )
         .expect("write");
-        let settings = load_settings(&dir);
+        let settings = read_settings(&dir).settings;
         assert_eq!(settings.panel_width, 400, "the good field is kept");
         assert_eq!(
             settings.theme,
@@ -198,12 +332,35 @@ mod tests {
     }
 
     #[test]
+    fn a_failed_salvage_write_starts_the_saver_from_the_defaults() {
+        let salvaged = Settings {
+            no_paste_apps: vec!["keepass.exe".to_owned()],
+            ..Settings::default()
+        };
+        let loaded = Loaded {
+            settings: salvaged.clone(),
+            outcome: LoadOutcome::SetAside,
+        };
+        assert_eq!(saver_baseline(&loaded, true), salvaged, "the file holds it");
+        assert_eq!(
+            saver_baseline(&loaded, false),
+            Settings::new_install(),
+            "no file: the saver must write the salvaged values"
+        );
+        let read = Loaded {
+            outcome: LoadOutcome::Read,
+            ..loaded
+        };
+        assert_eq!(saver_baseline(&read, false), salvaged);
+    }
+
+    #[test]
     fn a_damaged_file_is_set_aside_as_bad_and_what_parses_is_kept() {
         let temp = tempfile::tempdir().expect("tempdir");
         let dir = temp.path();
         let cut = r#"{"panel_width": 400, "no_paste_apps": ["keepass.exe", "bank"#;
         std::fs::write(dir.join(SETTINGS_FILE), cut).expect("write");
-        let settings = load_settings(dir);
+        let settings = read_settings(dir).settings;
         assert_eq!(
             settings.no_paste_apps,
             ["keepass.exe"],
@@ -217,7 +374,7 @@ mod tests {
 
         // A second damaged file replaces the first .bad.
         std::fs::write(dir.join(SETTINGS_FILE), "{ nope").expect("write");
-        let _ = load_settings(dir);
+        let _ = read_settings(dir).settings;
         assert_eq!(
             std::fs::read_to_string(dir.join(BAD_FILE)).expect("bad"),
             "{ nope"
@@ -284,12 +441,12 @@ mod tests {
         let temp = tempfile::tempdir().expect("tempdir");
         let dir = temp.path();
         std::fs::write(dir.join(SETTINGS_FILE), r#"{"theme": 7}"#).expect("write");
-        let _ = load_settings(dir);
+        let _ = read_settings(dir).settings;
         assert!(dir.join(BAD_FILE).exists());
 
         std::fs::remove_file(dir.join(BAD_FILE)).expect("remove");
         std::fs::write(dir.join(SETTINGS_FILE), r#"{"panel_width": 9999}"#).expect("write");
-        assert_eq!(load_settings(dir).panel_width, 480, "clamped");
+        assert_eq!(read_settings(dir).settings.panel_width, 480, "clamped");
         assert!(dir.join(SETTINGS_FILE).exists());
         assert!(!dir.join(BAD_FILE).exists());
     }
@@ -298,9 +455,9 @@ mod tests {
     fn a_good_or_missing_file_makes_no_bad_file() {
         let temp = tempfile::tempdir().expect("tempdir");
         let dir = temp.path();
-        let _ = load_settings(dir);
+        let _ = read_settings(dir).settings;
         std::fs::write(dir.join(SETTINGS_FILE), Settings::default().to_json()).expect("write");
-        let _ = load_settings(dir);
+        let _ = read_settings(dir).settings;
         assert!(!dir.join(BAD_FILE).exists());
     }
 
@@ -362,6 +519,22 @@ mod tests {
         assert_eq!(loaded.outcome, LoadOutcome::Untouchable);
         assert!(!loaded.may_save());
         assert_eq!(loaded.settings, Settings::default());
+        // Legacy values, not the new-install ones: a user who left Recent off stays off.
+        assert!(!loaded.settings.recent_history);
+        assert!(!loaded.settings.panel_hide_after_use);
+        assert_eq!(loaded.settings.hotkeys.toggle_panel, "Ctrl+Alt+Space");
+        assert_eq!(loaded.settings.hotkeys.paste_next, "Ctrl+Alt+V");
+    }
+
+    #[test]
+    fn only_a_missing_file_gets_the_new_install_settings() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let dir = temp.path();
+        let fresh = read_settings(dir).settings;
+        assert!(!fresh.recent_history && !fresh.recent_history_asked && fresh.panel_hide_after_use);
+        assert_eq!(fresh.hotkeys.toggle_panel, "Ctrl+Shift+Y");
+        std::fs::write(dir.join(SETTINGS_FILE), "{}").expect("write");
+        assert_eq!(read_settings(dir).settings, Settings::default());
     }
 
     #[test]
@@ -385,5 +558,64 @@ mod tests {
             std::fs::read_to_string(dir.join(SETTINGS_FILE)).expect("still there"),
             cut
         );
+    }
+    #[test]
+    fn a_library_that_cannot_be_opened_starts_fresh_with_a_danger_notice() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("snipdeck.db"), vec![7u8; 2048]).unwrap();
+        let now: jiff::Timestamp = "2026-11-16T10:00:00Z".parse().unwrap();
+        let (_store, toast) = open_library_folder(
+            dir.path(),
+            &snipdeck_portable::backup::backups_dir(dir.path()),
+            now,
+        )
+        .unwrap();
+        let toast = toast.expect("a notice");
+        assert_eq!(toast.kind, crate::toast::ToastKind::Danger);
+        let crate::toast::ToastMessage::LibrarySetAside { folder, has_backup } = &toast.message
+        else {
+            panic!("the set-aside notice");
+        };
+        assert!(folder.starts_with("snipdeck.damaged-"));
+        assert!(!has_backup, "no backup in this folder");
+        let kept: Vec<_> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .filter(|n| n.starts_with("snipdeck.damaged-"))
+            .collect();
+        assert_eq!(kept.len(), 1, "{kept:?}");
+        assert_eq!(
+            std::fs::read(dir.path().join(&kept[0]).join("snipdeck.db")).unwrap(),
+            vec![7u8; 2048]
+        );
+    }
+
+    #[test]
+    fn the_set_aside_notice_finds_a_backup_in_the_chosen_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        let chosen = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("snipdeck.db"), vec![7u8; 2048]).unwrap();
+        std::fs::write(
+            chosen.path().join("snipdeck-backup-20261115.snipdeck"),
+            b"x",
+        )
+        .unwrap();
+        let now: jiff::Timestamp = "2026-11-16T10:00:00Z".parse().unwrap();
+        let (_store, toast) = open_library_folder(dir.path(), chosen.path(), now).unwrap();
+        let crate::toast::ToastMessage::LibrarySetAside { has_backup, .. } =
+            toast.expect("a notice").message
+        else {
+            panic!("the set-aside notice");
+        };
+        assert!(has_backup, "the chosen folder holds a backup");
+    }
+
+    #[test]
+    fn a_library_held_by_another_snipdeck_is_not_moved() {
+        let dir = tempfile::tempdir().unwrap();
+        let _held = snipdeck_store::Store::open(dir.path()).unwrap();
+        let now: jiff::Timestamp = "2026-11-16T10:00:00Z".parse().unwrap();
+        assert!(open_library_folder(dir.path(), dir.path(), now).is_err());
+        assert!(dir.path().join("snipdeck.db").is_file());
     }
 }

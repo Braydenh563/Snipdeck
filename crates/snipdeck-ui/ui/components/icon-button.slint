@@ -1,13 +1,14 @@
-import { Theme, Radius, Space, Motion } from "../theme.slint";
+import { Theme, Radius, Space, Motion, SystemLook } from "../theme.slint";
 import { Icon } from "icon.slint";
 import { StateColor } from "state-color.slint";
+import { TipSource } from "tip-host.slint";
 
 export enum IconButtonVariant { ghost, subtle }
 export enum IconButtonSize { sm, md }
 
 // DESIGN.md §4 IconButton. 24 (sm, 16px glyph) or 28 (md, 20px glyph) square: both meet the 24px
-// hit target. `tooltip` is required: it names the action for sighted users (the host shows a
-// `Tooltip` while `has-hover` or `has-focus` is true) and is the accessible label. Focus ring on
+// hit target. `tooltip` is required: it names the action for sighted users (shown in the window's `TipLayer` while
+// `has-hover` or `has-focus` is true) and is the accessible label. Focus ring on
 // keyboard focus only, like Button.
 export component IconButton inherits Rectangle {
     in property <image> icon;
@@ -18,11 +19,45 @@ export component IconButton inherits Rectangle {
     in property <bool> enabled: true;
     // Toggle-style buttons (pin, preview) show an "on" state with a selected fill.
     in property <bool> active: false;
+    // `active` is a toggle (pin, preview): a screen reader says on or off.
+    in property <bool> toggle: false;
+    // The button opens a menu; `menu-open` says whether it is open now (read as expanded or collapsed).
+    in property <bool> has-menu: false;
+    in property <bool> menu-open: false;
+    // Grows with the Windows text size (`SystemLook.text-scale`), like text and Button do. Off by default so
+    // the panel and the galleries keep their sizes.
+    in property <bool> scaled: false;
+    // A side set by the host (a toolbar that gives every control one height); 0 keeps the size's own.
+    in property <length> side-override: 0px;
+    // Multiplies the glyph only (the Panel header grows its glyphs with its own 32px boxes at large text sizes).
+    in property <float> glyph-scale: 1.0;
+    // While hovered or focused, the button asks the window's `TipLayer` to show `tooltip` (DESIGN.md §4). Off by
+    // default: `tooltip` is also the accessible name, and the Panel asks for its tips itself (it anchors some elsewhere).
+    in property <bool> own-tooltip: false;
+    // The accessible name when it must differ from the tooltip (a tooltip that carries a shortcut or the toggle's
+    // current state), and a description for what the name leaves out (the shortcut).
+    in property <string> a11y-name;
+    in property <string> a11y-description;
     out property <bool> has-hover: touch.has-hover && root.enabled;
     out property <bool> has-focus: scope.has-focus;
+    // Each time this goes up the button takes the keyboard focus (the Panel hands it on after a row's delete).
+    in property <int> focus-request: 0;
     callback clicked();
+    changed focus-request => {
+        if (root.focus-request > 0) { scope.focus(); }
+    }
 
-    property <length> side: root.size == IconButtonSize.sm ? Space.hit-min : Space.hit;
+    property <float> k: root.scaled ? SystemLook.text-scale : 1.0;
+    property <length> side: root.side-override > 0px ? root.side-override : (root.size == IconButtonSize.sm ? Space.hit-min : Space.hit) * root.k;
+    // The window's tooltip layer draws it (`TipLayer`, last in the window), so it is never under a later sibling or clipped.
+    tip := TipSource {
+        text: root.tooltip;
+        wanted: root.own-tooltip && (root.has-hover || root.has-focus);
+        left: root.absolute-position.x;
+        top: root.absolute-position.y;
+        box-width: root.width;
+        box-height: root.height;
+    }
     property <bool> pressed: touch.pressed && root.enabled;
     property <bool> hovered: touch.has-hover && root.enabled;
 
@@ -32,21 +67,27 @@ export component IconButton inherits Rectangle {
         ? (root.pressed ? StateColor.deep() : root.hovered ? StateColor.pressed() : root.active ? Theme.bg-selected : Theme.bg-hover)
         : (root.pressed ? StateColor.pressed() : root.hovered ? Theme.bg-hover : root.active ? Theme.bg-selected : transparent);
     border-radius: Radius.md;
-    border-width: Theme.hc-border != transparent ? 1px : 0px;
-    border-color: Theme.hc-border;
+    // A toggled-on button is outlined in the accent (>= 3:1 against the header; its fill alone is 1.02:1).
+    border-width: Theme.hc-border != transparent || root.active ? 1px : 0px;
+    border-color: Theme.hc-border != transparent ? Theme.hc-border : Theme.accent;
     opacity: root.enabled ? 1.0 : 0.45;
     forward-focus: scope;
     accessible-role: button;
-    accessible-label: root.tooltip;
+    accessible-label: root.a11y-name != "" ? root.a11y-name : root.tooltip;
+    accessible-description: root.a11y-description;
     accessible-enabled: root.enabled;
+    accessible-checkable: root.toggle;
+    accessible-checked: root.toggle && root.active;
+    accessible-expandable: root.has-menu;
+    accessible-expanded: root.has-menu && root.menu-open;
     accessible-action-default => { if (root.enabled) { root.clicked(); } }
 
     animate background { duration: Motion.instant; easing: Motion.out; }
 
     Icon {
         source: root.icon;
-        size: root.size == IconButtonSize.sm ? 16px : 20px;
-        tint: root.hovered || root.pressed || root.active ? Theme.text-primary : Theme.text-secondary;
+        size: (root.size == IconButtonSize.sm ? 16px : 20px) * root.k * root.glyph-scale;
+        tint: root.active ? Theme.accent-text : root.hovered || root.pressed ? Theme.text-primary : Theme.text-secondary;
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
     }
@@ -65,7 +106,10 @@ export component IconButton inherits Rectangle {
 
     touch := TouchArea {
         enabled: root.enabled;
-        clicked => { root.clicked(); }
+        clicked => {
+            tip.close();
+            root.clicked();
+        }
     }
 
     scope := FocusScope {
@@ -73,6 +117,7 @@ export component IconButton inherits Rectangle {
         focus-on-click: false;
         key-pressed(event) => {
             if (event.text == " " || event.text == "\n") {
+                tip.close();
                 root.clicked();
                 return accept;
             }

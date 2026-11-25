@@ -8,6 +8,10 @@ use std::path::PathBuf;
 
 use snipdeck_store::crypto::CryptoError;
 
+/// What [`Error::LimitExceeded`] names when the archive as a whole, not one entry, is over its size
+/// limit. Callers tell that limit apart by it, so it is one constant and not a repeated string.
+pub const TOTAL_SIZE: &str = "total uncompressed size";
+
 /// Shorthand for results of portability calls.
 pub type Result<T, E = Error> = core::result::Result<T, E>;
 
@@ -56,6 +60,20 @@ pub enum Error {
         /// Which limit (`"entry count"`, `"uncompressed size"`, ...).
         what: &'static str,
         /// The limit, in the unit of `what`.
+        limit: u64,
+    },
+    /// An export or backup cannot hold an item: its attachment is over the entry limit of the
+    /// archive. Names the item, so the person can shrink or remove it. The total being over its
+    /// limit is not one item's fault and stays an [`Error::LimitExceeded`].
+    #[error(
+        "the item \"{title}\" does not fit in the archive: {what} is over the limit of {limit}"
+    )]
+    ItemTooLarge {
+        /// The item's title.
+        title: String,
+        /// Which limit (`"uncompressed entry size"`).
+        what: &'static str,
+        /// The limit, in bytes.
         limit: u64,
     },
     /// A required entry is missing from the archive.

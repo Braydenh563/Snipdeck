@@ -6,32 +6,33 @@
 //!   (usually none).
 //! - `restore` clears the record's flag and those of its ancestors, so restoring an item inside
 //!   a trashed list brings the list (and board) back. Records inside that were trashed on
-//!   their own stay in the trash. [`Store::restore_with`] also enforces a live-board limit
-//!   and reports what it revived.
+//!   their own stay in the trash. [`Store::restore_reporting`] also reports what it
+//!   revived.
 //! - `trashed` lists the records whose parent is not itself trashed: one entry per deletion
 //!   the user made.
 //! - `purge` permanently deletes records trashed before the cutoff; for a list or board that
 //!   includes everything inside it, whatever the inner records' own timestamps.
 
 use rusqlite::{Connection, OptionalExtension, params};
-use snipdeck_core::{BlobRef, BoardId, Feature, ItemId, ListId, Timestamp};
+use snipdeck_core::{BoardId, ItemId, ListId, Timestamp};
 
 use crate::batch::Ctx;
 use crate::codec::{
-    exists, from_nanos, id_bytes, id_from, nanos, not_found, require_board, require_item,
-    require_list,
+    blob_refs, exists, from_nanos, id_bytes, id_from, nanos, not_found, require_board,
+    require_item, require_list,
 };
 use crate::{Error, Result, TrashEntry, Trashable};
 
-/// One row per trash entry: kind (0 board, 1 list, 2 item), id, label, `deleted_at`.
+/// One row per trash entry: kind (0 board, 1 list, 2 item), id, label, `deleted_at`, preview
+/// (an item's own preview; empty for a list or board).
 const ENTRIES: &str = "
-    SELECT 0 AS kind, id, name AS label, deleted_at FROM boards WHERE deleted_at IS NOT NULL
+    SELECT 0 AS kind, id, name AS label, deleted_at, '' AS preview FROM boards WHERE deleted_at IS NOT NULL
     UNION ALL
-    SELECT 1, l.id, l.name, l.deleted_at
+    SELECT 1, l.id, l.name, l.deleted_at, ''
       FROM lists l JOIN boards b ON b.id = l.board_id
      WHERE l.deleted_at IS NOT NULL AND b.deleted_at IS NULL
     UNION ALL
-    SELECT 2, i.id, CASE WHEN i.title <> '' THEN i.title ELSE i.preview END, i.deleted_at
+    SELECT 2, i.id, CASE WHEN i.title <> '' THEN i.title ELSE i.preview END, i.deleted_at, i.preview
       FROM items i JOIN lists l ON l.id = i.list_id JOIN boards b ON b.id = l.board_id
      WHERE i.deleted_at IS NOT NULL AND l.deleted_at IS NULL AND b.deleted_at IS NULL";
 
@@ -67,10 +68,11 @@ pub(crate) fn trashed(conn: &Connection) -> Result<Vec<TrashEntry>> {
             r.get::<_, Vec<u8>>(1)?,
             r.get::<_, String>(2)?,
             r.get::<_, i64>(3)?,
+            r.get::<_, String>(4)?,
         ))
     })?;
     rows.map(|row| {
-        let (kind, id, label, deleted_at) = row?;
+        let (kind, id, label, deleted_at, preview) = row?;
         let target = match kind {
             0 => Trashable::Board(id_from::<BoardId>(&id)?),
             1 => Trashable::List(id_from::<ListId>(&id)?),
@@ -79,6 +81,7 @@ pub(crate) fn trashed(conn: &Connection) -> Result<Vec<TrashEntry>> {
         Ok(TrashEntry {
             target,
             label,
+            preview,
             deleted_at: from_nanos(deleted_at)?,
         })
     })
@@ -100,24 +103,21 @@ pub(crate) fn purge(cx: &mut Ctx<'_>, cutoff: Timestamp) -> Result<usize> {
     let doomed = "SELECT id FROM items WHERE deleted_at < ?1 OR list_id IN
                     (SELECT id FROM lists WHERE deleted_at < ?1 OR board_id IN
                       (SELECT id FROM boards WHERE deleted_at < ?1))";
-    let mut candidates = Vec::new();
-    {
-        let mut stmt = conn.prepare(&format!(
+    let candidates = blob_refs(
+        conn,
+        &format!(
             "SELECT blob_hash FROM item_formats WHERE blob_hash IS NOT NULL AND item_id IN ({doomed})
              UNION SELECT blob_hash FROM item_files WHERE blob_hash IS NOT NULL AND item_id IN ({doomed})"
-        ))?;
-        for hash in stmt.query_map([cutoff], |r| r.get::<_, Vec<u8>>(0))? {
-            let hash = <[u8; 32]>::try_from(hash?)
-                .map_err(|_| Error::Corrupt("a blob hash is not 32 bytes".to_owned()))?;
-            candidates.push(BlobRef::from_bytes(hash));
-        }
-    }
+        ),
+        [cutoff],
+    )?;
 
     // Foreign keys cascade from boards to lists to items to their content, and the
     // `items_fts_delete` trigger drops the search rows.
     conn.execute("DELETE FROM items WHERE deleted_at < ?1", [cutoff])?;
     conn.execute("DELETE FROM lists WHERE deleted_at < ?1", [cutoff])?;
     conn.execute("DELETE FROM boards WHERE deleted_at < ?1", [cutoff])?;
+    crate::groups::prune(conn)?;
     // Purged items may have held plaintext of sensitive items: after the commit, scrub their
     // blobs, then fold the WAL so their page images do not outlive them (review H1). Both are
     // best effort once the change is committed (review M4).
@@ -128,12 +128,72 @@ pub(crate) fn purge(cx: &mut Ctx<'_>, cutoff: Timestamp) -> Result<usize> {
     usize::try_from(entries).map_err(|_| Error::Corrupt("negative count".to_owned()))
 }
 
-/// [`Store::restore_with`](crate::Store::restore_with).
-pub(crate) fn restore_with(
-    cx: &mut Ctx<'_>,
-    target: Trashable,
-    max_live_boards: Option<usize>,
-) -> Result<Vec<Trashable>> {
+/// [`TrashRepo::purge_entry`](crate::TrashRepo::purge_entry).
+pub(crate) fn purge_entry(cx: &mut Ctx<'_>, target: Trashable) -> Result<()> {
+    let conn = cx.conn;
+    // The table, the id, the entry kind of `ENTRIES`, and the items that go with the record.
+    let (table, id, kind, doomed) = match target {
+        Trashable::Board(id) => (
+            "boards",
+            id_bytes(id),
+            0_i64,
+            "SELECT i.id FROM items i JOIN lists l ON l.id = i.list_id WHERE l.board_id = ?1",
+        ),
+        Trashable::List(id) => (
+            "lists",
+            id_bytes(id),
+            1,
+            "SELECT id FROM items WHERE list_id = ?1",
+        ),
+        Trashable::Item(id) => (
+            "items",
+            id_bytes(id),
+            2,
+            "SELECT id FROM items WHERE id = ?1",
+        ),
+    };
+    // Only what the Trash lists: a live record, or one inside a trashed parent, is not
+    // deletable here.
+    let listed: i64 = conn.query_row(
+        &format!("SELECT count(*) FROM ({ENTRIES}) WHERE kind = ?2 AND id = ?1"),
+        params![id, kind],
+        |r| r.get(0),
+    )?;
+    if listed == 0 {
+        return Err(match target {
+            Trashable::Board(id) => not_found(id),
+            Trashable::List(id) => not_found(id),
+            Trashable::Item(id) => not_found(id),
+        });
+    }
+    let candidates = blob_refs(
+        conn,
+        &format!(
+            "SELECT blob_hash FROM item_formats WHERE blob_hash IS NOT NULL AND item_id IN ({doomed})
+             UNION SELECT blob_hash FROM item_files WHERE blob_hash IS NOT NULL AND item_id IN ({doomed})"
+        ),
+        [&id],
+    )?;
+    // Foreign keys cascade down to the content; the `items_fts_delete` trigger drops the
+    // search rows.
+    conn.execute(&format!("DELETE FROM {table} WHERE id = ?1"), [&id])?;
+    crate::groups::prune(conn)?;
+    cx.post.release_scrubbed(candidates);
+    cx.post.checkpoint();
+    Ok(())
+}
+
+/// [`TrashRepo::is_stored`](crate::TrashRepo::is_stored).
+pub(crate) fn is_stored(conn: &rusqlite::Connection, target: Trashable) -> Result<bool> {
+    match target {
+        Trashable::Item(id) => exists(conn, "items", id_bytes(id)),
+        Trashable::List(id) => exists(conn, "lists", id_bytes(id)),
+        Trashable::Board(id) => exists(conn, "boards", id_bytes(id)),
+    }
+}
+
+/// [`Store::restore_reporting`](crate::Store::restore_reporting).
+pub(crate) fn restore_reporting(cx: &mut Ctx<'_>, target: Trashable) -> Result<Vec<Trashable>> {
     let tx = cx.conn;
     let mut revived = Vec::new();
     let board = match target {
@@ -170,16 +230,6 @@ pub(crate) fn restore_with(
         |r| r.get(0),
     )?;
     if board_trashed {
-        if let Some(max) = max_live_boards {
-            let live: i64 = tx.query_row(
-                "SELECT count(*) FROM boards WHERE deleted_at IS NULL",
-                [],
-                |r| r.get(0),
-            )?;
-            if usize::try_from(live).unwrap_or(usize::MAX) >= max {
-                return Err(snipdeck_core::Error::ProRequired(Feature::UnlimitedBoards).into());
-            }
-        }
         revived.push(Trashable::Board(board));
     }
     for record in &revived {
@@ -192,6 +242,9 @@ pub(crate) fn restore_with(
             &format!("UPDATE {table} SET deleted_at = NULL WHERE id = ?1"),
             [id],
         )?;
+        if let Trashable::Item(_) = record {
+            crate::groups::heal_restored(tx, id)?;
+        }
     }
     Ok(revived)
 }

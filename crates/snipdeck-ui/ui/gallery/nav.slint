@@ -1,0 +1,137 @@
+import { Theme, Space, Palette } from "../theme.slint";
+import { Menu, MenuEntry } from "../components/menu.slint";
+import { Chooser, ChoiceEntry } from "../components/chooser.slint";
+import { CommandPalette, PaletteRow } from "../components/command-palette.slint";
+import { Button } from "../components/button.slint";
+
+// Long lists for the list keys (UX-6): PageUp / PageDown and type-ahead. The same fruit in each, in alphabetical order.
+
+// A 27-row menu: a separator after "Lime" and the disabled "Damson" (type-ahead skips it).
+export component MenuNavGallery inherits Window {
+    in-out property <int> current: 0;
+    in-out property <int> activated-index: -1;
+    width: 320px;
+    height: 320px;
+    background: Theme.bg-app;
+    init => { menu.focus-menu(); }
+
+    menu := Menu {
+        x: Space.s4;
+        y: Space.s4;
+        width: 228px;
+        label: "Fruit";
+        current <=> root.current;
+        entries: [
+            { text: "Apple" }, { text: "Apricot" }, { text: "Banana" }, { text: "Blueberry" }, { text: "Cherry" },
+            { text: "Chestnut" }, { text: "Damson", disabled: true }, { text: "Elderberry" }, { text: "Fig" },
+            { text: "Grape" }, { text: "Guava" }, { text: "Honeydew" }, { text: "Kiwi" }, { text: "Lemon" },
+            { text: "Lime" }, { separator: true }, { text: "Mango" }, { text: "Nectarine" }, { text: "Orange" },
+            { text: "Papaya" }, { text: "Peach" }, { text: "Pear" }, { text: "Plum" }, { text: "Quince" },
+            { text: "Raspberry" }, { text: "Satsuma" }, { text: "Tangerine" },
+        ];
+        activated(i) => { root.activated-index = i; }
+    }
+}
+
+// A 20-row chooser (8 rows in view).
+export component ChooserNavGallery inherits Window {
+    in-out property <int> current: 0;
+    width: 320px;
+    height: 320px;
+    background: Theme.bg-app;
+    init => { chooser.focus-chooser(); }
+
+    chooser := Chooser {
+        x: Space.s4;
+        y: Space.s4;
+        label: "Lists";
+        current <=> root.current;
+        entries: [
+            { label: "Apple" }, { label: "Apricot" }, { label: "Banana" }, { label: "Blueberry" }, { label: "Cherry" },
+            { label: "Chestnut" }, { label: "Damson" }, { label: "Elderberry" }, { label: "Fig" }, { label: "Grape" },
+            { label: "Guava" }, { label: "Honeydew" }, { label: "Kiwi" }, { label: "Lemon" }, { label: "Lime" },
+            { label: "Mango" }, { label: "Nectarine" }, { label: "Orange" }, { label: "Papaya" }, { label: "Peach" },
+        ];
+    }
+}
+
+// A 30-command palette.
+export component PaletteNavGallery inherits Window {
+    in-out property <int> current: 0;
+    width: 480px;
+    height: 480px;
+    background: Theme.bg-app;
+    init => { palette.focus-field(); }
+
+    palette := CommandPalette {
+        title: "Commands";
+        placeholder: "Search";
+        current <=> root.current;
+        rows: [
+            { id: 0, label: "One" }, { id: 1, label: "Two" }, { id: 2, label: "Three" }, { id: 3, label: "Four" },
+            { id: 4, label: "Five" }, { id: 5, label: "Six" }, { id: 6, label: "Seven" }, { id: 7, label: "Eight" },
+            { id: 8, label: "Nine" }, { id: 9, label: "Ten" }, { id: 10, label: "Eleven" }, { id: 11, label: "Twelve" },
+            { id: 12, label: "Thirteen" }, { id: 13, label: "Fourteen" }, { id: 14, label: "Fifteen" },
+            { id: 15, label: "Sixteen" }, { id: 16, label: "Seventeen" }, { id: 17, label: "Eighteen" },
+            { id: 18, label: "Nineteen" }, { id: 19, label: "Twenty" }, { id: 20, label: "Twenty one" },
+            { id: 21, label: "Twenty two" }, { id: 22, label: "Twenty three" }, { id: 23, label: "Twenty four" },
+            { id: 24, label: "Twenty five" }, { id: 25, label: "Twenty six" }, { id: 26, label: "Twenty seven" },
+            { id: 27, label: "Twenty eight" }, { id: 28, label: "Twenty nine" }, { id: 29, label: "Thirty" },
+        ];
+    }
+}
+
+// A button that can be busy (UX-25): while `busy` it ignores clicks and keys but keeps the keyboard focus.
+export component BusyButtonGallery inherits Window {
+    in property <bool> busy: false;
+    in-out property <int> clicks: 0;
+    out property <bool> has-focus: button.has-focus;
+    width: 200px;
+    height: 80px;
+    background: Theme.bg-app;
+    init => { button.take-focus(); }
+
+    button := Button {
+        x: Space.s4;
+        y: Space.s4;
+        text: "Back up now";
+        loading: root.busy;
+        clicked => { root.clicks += 1; }
+    }
+}
+
+// A menu and a chooser whose rows the host sets: a list longer than any fixed scan (type-ahead has no row limit).
+export component LongMenuGallery inherits Window {
+    in-out property <int> current: 0;
+    in property <[MenuEntry]> entries;
+    width: 320px;
+    height: 320px;
+    background: Theme.bg-app;
+    init => { menu.focus-menu(); }
+
+    menu := Menu {
+        x: Space.s4;
+        y: Space.s4;
+        width: 228px;
+        label: "Rows";
+        current <=> root.current;
+        entries: root.entries;
+    }
+}
+
+export component LongChooserGallery inherits Window {
+    in-out property <int> current: 0;
+    in property <[ChoiceEntry]> entries;
+    width: 320px;
+    height: 320px;
+    background: Theme.bg-app;
+    init => { chooser.focus-chooser(); }
+
+    chooser := Chooser {
+        x: Space.s4;
+        y: Space.s4;
+        label: "Rows";
+        current <=> root.current;
+        entries: root.entries;
+    }
+}

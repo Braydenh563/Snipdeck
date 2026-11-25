@@ -29,8 +29,6 @@ In scope:
 - **Sensitive items and encryption** (`snipdeck-store`, [`docs/crypto.md`](docs/crypto.md)): plaintext of
   a sensitive item stored or logged where the design says it is not, key handling, authentication of
   envelopes.
-- **Licence verification** (`snipdeck-core`, [`docs/licensing.md`](docs/licensing.md)): accepting a key that
-  was not signed by the build's public key.
 - **The clipboard and paste path** (`snipdeck-platform`, `snipdeck-app`): content leaking to history
   features that should exclude it, pasting into a window other than the Target, handling of other
   programs' clipboard data.
@@ -39,10 +37,8 @@ In scope:
 Out of scope:
 
 - Anyone who can already run code as you, or read your user profile, can read your library. The data
-  folder is protected by your operating system account and, for sensitive items in the Pro tier, by
+  folder is protected by your operating system account and, for sensitive items, by
   encryption (below); that is the whole model.
-- Rebuilding Snipdeck without the licence check. The source is GPL-3.0-only, so this is allowed
-  ([ADR-0005](docs/adr/0005-licensing-and-pro.md)).
 - Findings that need a modified build, a debugger, or administrator rights on the same machine.
 - Features that do not exist yet (see the README status section).
 - Denial of service from a library you created yourself.
@@ -54,14 +50,12 @@ Out of scope:
 - **Storage:** SQLite with `secure_delete`, plus a blob folder; a single writer holds a lock file
   ([`docs/store.md`](docs/store.md)).
 - **Sensitive items:** masked in the UI and excluded from history; the clipboard is cleared after use (the
-  masking and clearing are specified in SPEC §5.7 and not all built yet). In the Pro tier, item payloads are encrypted with XChaCha20-Poly1305 under a
-  random data key, wrapped by the Windows account (DPAPI) and optionally sealed by a master password
-  (Argon2id). The envelope is bound to the item and format. Titles, tags and search text are not
+  masking and clearing are specified in SPEC §5.7 and not all built yet). Item payloads are encrypted with XChaCha20-Poly1305 under a
+  random data key, wrapped by the Windows account (DPAPI) and optionally sealed by a master password (Argon2id). The envelope is bound to the item and format. Titles, tags and search text are not
   encrypted.
 - **Untrusted input** (archives, importers) is read with hard size and count limits, never extracted to
   paths taken from the file, and checked before anything is written; imports are transactional. Hostile-input
   and property tests cover the parsers ([`docs/format.md`](docs/format.md)).
-- **Licence keys:** Ed25519 signatures verified offline.
 - **Memory safety:** Rust. `unsafe` is confined to the Windows platform layer, each block commented.
 
 Known limits, stated in [`docs/crypto.md`](docs/crypto.md): no recovery if the Windows key binding is lost;
@@ -71,3 +65,11 @@ SSDs do not overwrite (use BitLocker); a program running as you can read what yo
 Status: the crypto and parsers are covered by automated tests and written reviews
 ([`docs/reviews/`](docs/reviews/)). The Windows-specific parts (DPAPI, clipboard handling, paste) have
 not been tested on Windows, and nothing has had an external audit.
+
+## Single instance and the raise signal
+
+One process per Windows logon session: a named mutex `Local\Snipdeck-<app id>` decides which
+launch owns the tray icon and the hotkeys; a second launch sets a named event in the same `Local\`
+namespace and exits, and the first instance shows the Panel. `Local\` objects are per logon
+session, so another user on the same PC can neither see nor signal them. The event carries no data,
+so the worst a same-user process can do is show the Panel.

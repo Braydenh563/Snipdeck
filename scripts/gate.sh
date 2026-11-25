@@ -31,7 +31,7 @@ some_tests() {
   # Rust tests are inline (#[cfg(test)]) or in crates/*/tests/*.rs; run the owning crates.
   local crates="" f c
   for f in "$@"; do
-    c="$(echo "$f" | sed -n 's#^crates/\([^/]*\)/.*#\1#p')"
+    c="$(echo "$f" | sed -n 's#^\(crates\|tools\)/\([^/]*\)/.*#\2#p')"
     [ -n "$c" ] && case " $crates " in *" $c "*) ;; *) crates="$crates $c" ;; esac
   done
   local args=""; for c in $crates; do args="$args -p $c"; done
@@ -56,16 +56,26 @@ if [ "$MODE_STAGED" = 1 ]; then
     for d in node_modules .venv venv; do [ -e "$ROOT/$d" ] && ln -s "$ROOT/$d" "$TARGET/$d"; done
   fi
 fi
-step fast-checks bash -c "cd '$TARGET' && $(declare -f fast_checks); fast_checks"
+code_changed=1
+if [ "$MODE_CHANGED" = 1 ] && [ "$MODE_FULL" != 1 ]; then
+  b="${GATE_BASE:-$(git rev-parse --abbrev-ref '@{upstream}' 2>/dev/null || echo HEAD~1)}"
+  if ! { git diff --name-only "$b" 2>/dev/null; git diff --name-only; git ls-files -o --exclude-standard; } |
+      grep -qvE '\.(md|txt|png)$|^\.claude/|^docs/'; then
+    code_changed=0
+  fi
+fi
+[ "$code_changed" = 0 ] && skipped+=("fast-checks (only notes, docs or images changed)") || step fast-checks bash -c "cd '$TARGET' && $(declare -f fast_checks); fast_checks"
 
 if [ "$MODE_CHANGED" = 1 ]; then
   base="${GATE_BASE:-$(git rev-parse --abbrev-ref '@{upstream}' 2>/dev/null || echo HEAD~1)}"
   changed="$( { git diff --name-only "$base" 2>/dev/null; git diff --name-only; git ls-files -o --exclude-standard; } | sort -u)"
   picked=""
   for f in $changed; do
+    # Only code names a test: a note or doc stem ("now", "checklist") matches half the tree.
+    case "$f" in *.md|*.txt|*.png|.claude/*|docs/*) continue ;; esac
     stem="$(basename "${f%.*}")"
     case "$f" in */test_*|*_test.*|*.test.*|*.spec.*|tests/*) picked="$picked $f"; continue ;; esac
-    picked="$picked $(git grep -l -F -e "$stem" -- "${TEST_GLOB[@]}" 2>/dev/null | tr '\n' ' ')"
+    picked="$picked $(git grep -l -w -F -e "$stem" -- "${TEST_GLOB[@]}" 2>/dev/null | tr '\n' ' ')"
   done
   picked="$(echo $picked | tr ' ' '\n' | sort -u | grep -v '^$' | tr '\n' ' ')"
   echo "changed since $base -> tests: ${picked:-none}"
@@ -78,8 +88,11 @@ if [ "$MODE_CHANGED" = 1 ]; then
 fi
 [ "$MODE_FULL" = 1 ] && step full-suite bash -c "$(declare -f all_tests); all_tests"
 
-if [ -f scripts/codemap.py ]; then step codemap python3 scripts/codemap.py --check; fi
-if [ -f scripts/i18n.py ]; then step i18n python3 scripts/i18n.py check; fi
+# No tracked path component may start with "-": such a name breaks rm, cat and git add without "--" (PLATFORM-38).
+no_dash_names() { local bad; bad="$(git ls-files | grep -E '(^|/)-')"; [ -z "$bad" ] || { echo "tracked names starting with '-':"; echo "$bad"; return 1; }; }
+step dash-names no_dash_names
+# The non-cargo checks live in one file that CI runs too (the "scripts" job).
+step checks bash scripts/checks.sh
 echo "ran: ${ran[*]:-none}"
 echo "failed: ${failed[*]:-none}"
 echo "skipped: ${skipped[*]:-none}"

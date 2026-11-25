@@ -28,8 +28,22 @@ pub const VK_RWIN: u16 = 0x5C;
 pub const VK_V: u16 = 0x56;
 /// `VK_INSERT`.
 pub const VK_INSERT: u16 = 0x2D;
+/// `VK_BACK`.
+pub const VK_BACK: u16 = 0x08;
+/// `VK_TAB`.
+pub const VK_TAB: u16 = 0x09;
+/// `VK_RETURN`.
+pub const VK_RETURN: u16 = 0x0D;
+/// `VK_C`.
+pub const VK_C: u16 = 0x43;
+/// `VK_LEFT`.
+pub const VK_LEFT: u16 = 0x25;
 /// The unassigned virtual key (0xE8) used to mask a lone `Alt` / `Win` release.
 pub const VK_MASK: u16 = 0xE8;
+
+/// Marks key events Snipdeck injects itself (`dwExtraInfo`): the typing hook skips these and
+/// sees every other app's injected keys (remote desktop, on-screen keyboards, text-input tools).
+pub const OWN_INPUT_TAG: usize = 0x5344_4B31;
 
 /// A virtual key and whether `SendInput` needs `KEYEVENTF_EXTENDEDKEY` for it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -67,6 +81,12 @@ pub const fn key_to_vk(key: Key) -> VirtualKey {
         Key::Modifier(modifier) => modifier_variants(modifier)[0],
         Key::V => plain(VK_V),
         Key::Insert => extended(VK_INSERT),
+        // Unverified on Windows (Fable v1 sweep A5): the arrow keys are extended keys.
+        Key::Left => extended(VK_LEFT),
+        Key::Backspace => plain(VK_BACK),
+        Key::Tab => plain(VK_TAB),
+        Key::Enter => plain(VK_RETURN),
+        Key::C => plain(VK_C),
         Key::Mask => plain(VK_MASK),
     }
 }
@@ -127,6 +147,10 @@ pub const UIA_EDIT: i32 = 50004;
 pub const UIA_DOCUMENT: i32 = 50030;
 
 /// What UI Automation said about the focused element.
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "one field per UI Automation property"
+)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ElementFacts {
     /// `UIA_ControlTypePropertyId`.
@@ -139,6 +163,8 @@ pub struct ElementFacts {
     pub value_read_only: Option<bool>,
     /// The element supports `TextPattern`.
     pub has_text_pattern: bool,
+    /// `IsPassword`: a password box (typed-trigger expansion must not run in it).
+    pub password: bool,
 }
 
 /// Whether the focused element can take pasted text.
@@ -188,6 +214,75 @@ pub fn is_shell_surface_class(class: &str) -> bool {
     SHELL_CLASSES.iter().any(|c| c.eq_ignore_ascii_case(class))
 }
 
+/// `WS_DLGFRAME | WS_THICKFRAME`: a window that has either can be moved or sized by its frame.
+const FRAMED_STYLES: u32 = 0x0040_0000 | 0x0004_0000;
+/// `WS_EX_WINDOWEDGE | WS_EX_TOOLWINDOW`.
+const FRAMED_EX_STYLES: u32 = 0x0000_0100 | 0x0000_0080;
+
+/// Whether a window is full-screen on a monitor: it covers the whole of it and has no frame (a
+/// game, a video, a slide show, a browser after F11). `window` and `monitor` are
+/// `(left, top, right, bottom)` in physical pixels, `style` and `ex_style` the window's.
+///
+/// A maximised window covers the whole monitor too where the taskbar hides itself, but it
+/// keeps its frame styles, so it does not count.
+pub fn is_fullscreen_window(
+    window: (i32, i32, i32, i32),
+    monitor: (i32, i32, i32, i32),
+    style: u32,
+    ex_style: u32,
+) -> bool {
+    let covers = window.0 <= monitor.0
+        && window.1 <= monitor.1
+        && window.2 >= monitor.2
+        && window.3 >= monitor.3;
+    covers && style & FRAMED_STYLES == 0 && ex_style & FRAMED_EX_STYLES == 0
+}
+
+/// Window classes of the Alt+Tab switcher and Task View. Explorer shows one of them as the
+/// foreground window while the user picks a window, then destroys it: as a Target it would be
+/// gone by the time the user pastes, so Alt+Tab to the Panel would leave nothing to paste into.
+const SWITCHER_CLASSES: &[&str] = &[
+    "MultitaskingViewFrame",
+    "XamlExplorerHostIslandWindow",
+    "TaskSwitcherWnd",
+    "TaskSwitcherOverlayWnd",
+    "ForegroundStaging",
+];
+
+/// Whether a window of this class (case-insensitive) is the Alt+Tab switcher or Task View, which
+/// is neither a Target nor a reason to forget the Target.
+pub fn is_task_switcher_class(class: &str) -> bool {
+    SWITCHER_CLASSES
+        .iter()
+        .any(|c| c.eq_ignore_ascii_case(class))
+}
+
+/// What kind of window just became the foreground window, for the Target tracker.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ForegroundKind {
+    /// The Panel, a Snipdeck popup or any window of this process.
+    Own,
+    /// The Alt+Tab switcher or Task View.
+    Switcher,
+    /// The desktop or a taskbar surface.
+    Shell,
+    /// Any other application window.
+    Foreign,
+}
+
+/// The Target (a window handle value, 0 for none) after `hwnd` became the foreground window: the
+/// last foreign window the user was in. Snipdeck's own windows and the Alt+Tab switcher leave it
+/// alone, the desktop and taskbar clear it (keys injected there go nowhere useful), and any other
+/// window becomes it.
+#[must_use]
+pub const fn next_target(current: isize, hwnd: isize, kind: ForegroundKind) -> isize {
+    match kind {
+        ForegroundKind::Own | ForegroundKind::Switcher => current,
+        ForegroundKind::Shell => 0,
+        ForegroundKind::Foreign => hwnd,
+    }
+}
+
 /// `WS_EX_NOACTIVATE`.
 pub const WS_EX_NOACTIVATE: u32 = 0x0800_0000;
 /// `WS_EX_TOOLWINDOW`.
@@ -195,11 +290,83 @@ pub const WS_EX_TOOLWINDOW: u32 = 0x0000_0080;
 /// `WS_EX_APPWINDOW`.
 pub const WS_EX_APPWINDOW: u32 = 0x0004_0000;
 
-/// The extended style the panel must have: never activated by a click, no taskbar button, no
-/// Alt+Tab entry. winit adds `WS_EX_APPWINDOW` to top-level windows, which would override
-/// `WS_EX_TOOLWINDOW`, so it is stripped.
-pub const fn panel_ex_style(style: u32) -> u32 {
-    (style | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW) & !WS_EX_APPWINDOW
+/// The extended style the panel must have: never activated by a click. Without a taskbar
+/// button (`in_taskbar` false) it is also a tool window with no Alt+Tab entry, and
+/// `WS_EX_APPWINDOW` is stripped (winit adds it to top-level windows, and it would override
+/// `WS_EX_TOOLWINDOW`). With one it is an app window and not a tool window.
+pub const fn panel_ex_style(style: u32, in_taskbar: bool) -> u32 {
+    if in_taskbar {
+        (style | WS_EX_NOACTIVATE | WS_EX_APPWINDOW) & !WS_EX_TOOLWINDOW
+    } else {
+        (style | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW) & !WS_EX_APPWINDOW
+    }
+}
+
+/// One `SetWindowPos` z-order step of [`raise_steps`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ZStep {
+    /// `HWND_TOPMOST`: above every non-topmost window.
+    Topmost,
+    /// `HWND_NOTOPMOST`: leave the topmost band, staying at the top of the normal windows.
+    NotTopmost,
+}
+
+/// Whether the move or size loop a thread reports is the one on the Panel: the thread's other
+/// windows (Main, Settings) have loops of their own, which are not the Panel's resize.
+/// `in_loop` is `GUI_INMOVESIZE`, `loop_window` is `hwndMoveSize`, and `panel` is 0 until the
+/// Panel's window exists.
+#[must_use]
+pub const fn size_loop_on_panel(in_loop: bool, loop_window: isize, panel: isize) -> bool {
+    in_loop && panel != 0 && loop_window == panel
+}
+
+/// The z-order steps that bring a window to the front without activating it.
+///
+/// `ShowWindow` on a hidden non-activating window (the Panel) keeps the place the window had in
+/// the stack when it was hidden, which is behind whatever the user used since, and a process that
+/// is not in the foreground cannot just `SetForegroundWindow` its way to the top. Moving the
+/// window to the topmost band and back needs no activation. A window the user pinned on top
+/// (`was_topmost`) stays there: only the first step runs.
+#[must_use]
+pub const fn raise_steps(was_topmost: bool) -> &'static [ZStep] {
+    if was_topmost {
+        &[ZStep::Topmost]
+    } else {
+        &[ZStep::Topmost, ZStep::NotTopmost]
+    }
+}
+
+/// One step of bringing an ordinary (activatable) window to the foreground.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ActivateStep {
+    /// `ShowWindow(SW_RESTORE)`: un-minimise.
+    Restore,
+    /// `SetForegroundWindow`: activate and focus.
+    Foreground,
+    /// The z-order raise of [`raise_steps`], so the window at least sits above the other windows.
+    Raise,
+    /// `FlashWindowEx` on the taskbar button: the window is there, tell the user.
+    Flash,
+}
+
+/// The steps that bring `Main` and the other ordinary windows to the foreground: restore if
+/// minimised, then `SetForegroundWindow`. Runs inside the click that asked for it, while the
+/// process still holds the input that lets Windows accept the change; no synthetic key press
+/// (winit's `focus_window` injects an Alt tap, which can open the menu of the app in front).
+#[must_use]
+pub const fn activate_steps(minimized: bool) -> &'static [ActivateStep] {
+    if minimized {
+        &[ActivateStep::Restore, ActivateStep::Foreground]
+    } else {
+        &[ActivateStep::Foreground]
+    }
+}
+
+/// What to do when `SetForegroundWindow` was refused: the window goes above the others without
+/// the focus, and its taskbar button flashes.
+#[must_use]
+pub const fn activate_fallback() -> &'static [ActivateStep] {
+    &[ActivateStep::Raise, ActivateStep::Flash]
 }
 
 /// Which Rust type owns each window class name in this process.
@@ -225,9 +392,180 @@ impl ClassNames {
     }
 }
 
+/// Whether a `WM_ERASEBKGND` would paint over a frame the app has just presented (O52 follow-up).
+///
+/// winit answers `WM_PAINT` by sending `RedrawRequested`, in which Slint draws and presents a frame,
+/// and only then calls `DefWindowProcW`, whose `BeginPaint` sends `WM_ERASEBKGND` when Windows
+/// owes an erase. The class brush (the theme's window colour, near black in the dark theme) then
+/// fills the update region over the new frame, which stays until the next frame: a dark blink
+/// while the Panel is dragged. The window subclass asks this gate: inside a `WM_PAINT` of a window
+/// that has presented a frame during it, the erase is skipped; any other erase (before a first
+/// frame, outside a paint, or a paint winit buffered without a frame) still fills with the brush.
+#[derive(Debug, Default)]
+pub struct EraseGate {
+    /// The `WM_PAINT`s under way on this thread, innermost last: the window and whether a frame
+    /// was presented for it during the paint.
+    painting: Vec<(isize, bool)>,
+    /// The windows that have the subclass, so it is installed once each, not on every frame.
+    guarded: Vec<isize>,
+}
+
+impl EraseGate {
+    /// Whether `hwnd` still needs the subclass: `true` once, then `false` until it is
+    /// [`forget`](Self::forget)-ten (destroyed, or the install failed).
+    pub fn needs_guard(&mut self, hwnd: isize) -> bool {
+        if self.guarded.contains(&hwnd) {
+            return false;
+        }
+        self.guarded.push(hwnd);
+        true
+    }
+
+    /// `hwnd` lost its subclass (`WM_NCDESTROY`) or never got it: a handle Windows reuses for a
+    /// new window is guarded afresh.
+    pub fn forget(&mut self, hwnd: isize) {
+        self.guarded.retain(|&h| h != hwnd);
+        self.painting.retain(|p| p.0 != hwnd);
+    }
+
+    /// A `WM_PAINT` for `hwnd` starts.
+    pub fn paint_begin(&mut self, hwnd: isize) {
+        self.painting.push((hwnd, false));
+    }
+
+    /// A frame for `hwnd` is drawn and presented (`RedrawRequested`).
+    pub fn frame_presented(&mut self, hwnd: isize) {
+        if let Some(paint) = self.painting.iter_mut().rev().find(|p| p.0 == hwnd) {
+            paint.1 = true;
+        }
+    }
+
+    /// The `WM_PAINT` for `hwnd` that began last has been handled.
+    pub fn paint_end(&mut self, hwnd: isize) {
+        if let Some(at) = self.painting.iter().rposition(|p| p.0 == hwnd) {
+            self.painting.remove(at);
+        }
+    }
+
+    /// Whether the `WM_ERASEBKGND` `hwnd` is sent now should leave the window as it is.
+    #[must_use]
+    pub fn keep_frame(&self, hwnd: isize) -> bool {
+        self.painting
+            .iter()
+            .rev()
+            .find(|p| p.0 == hwnd)
+            .is_some_and(|p| p.1)
+    }
+}
+
+// ---- A second launch, and the end of the Windows session -----------------------------------------
+
+/// How long a second launch waits for the first instance to say it has taken the hand-over.
+pub const ACK_TIMEOUT_MS: u32 = 5_000;
+/// How long a second launch waits for the mailbox lock (another second launch may hold it for up to
+/// [`ACK_TIMEOUT_MS`]).
+pub const LOCK_TIMEOUT_MS: u32 = ACK_TIMEOUT_MS + 1_000;
+/// How many times a second launch starts over when the first instance exits under it (a Quit
+/// followed at once by a new start), before it reports a problem.
+pub const MAX_HANDOVER_ATTEMPTS: u8 = 3;
+/// How long the session-end handler waits for the UI thread to flush (Windows ends a process that
+/// is still working a few seconds after `WM_ENDSESSION`).
+pub const SESSION_FLUSH_WAIT_MS: u64 = 3_000;
+
+/// What a second launch saw while it waited for the first instance.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WaitEvent {
+    /// The first instance's UI thread took the request.
+    Acked,
+    /// The first instance's process ended while we waited (it was quitting).
+    FirstExited,
+    /// Nothing happened within [`ACK_TIMEOUT_MS`]: hung, suspended, or its loop is stuck.
+    TimedOut,
+    /// The first instance could not be signalled at all (for example it runs elevated).
+    NotReached,
+}
+
+/// What a second launch does after one hand-over attempt.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HandoverNext {
+    /// The request is with the first instance: exit quietly.
+    Done,
+    /// The first instance went away: try again from the start (we may become the first).
+    Retry,
+    /// Tell the user: nothing is going to answer.
+    Unresponsive,
+}
+
+/// The decision after attempt number `attempt` (from 0) ended in `event`.
+#[must_use]
+pub fn after_handover(attempt: u8, event: WaitEvent) -> HandoverNext {
+    match event {
+        WaitEvent::Acked => HandoverNext::Done,
+        WaitEvent::FirstExited if attempt + 1 < MAX_HANDOVER_ATTEMPTS => HandoverNext::Retry,
+        WaitEvent::FirstExited | WaitEvent::TimedOut | WaitEvent::NotReached => {
+            HandoverNext::Unresponsive
+        }
+    }
+}
+
+/// `WM_QUERYENDSESSION`: Windows asks whether the session may end.
+pub const WM_QUERYENDSESSION: u32 = 0x0011;
+/// `WM_ENDSESSION`: the answer is in, `wParam` says whether the session really ends.
+pub const WM_ENDSESSION: u32 = 0x0016;
+
+/// What the hidden window does with a session-end message.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SessionEnd {
+    /// `WM_QUERYENDSESSION`: agree (return TRUE); the flush waits for `WM_ENDSESSION`, because the
+    /// session may still be cancelled by another program.
+    Agree,
+    /// `WM_ENDSESSION` with `wParam` true: the process may be killed as soon as this returns.
+    /// Flush everything now.
+    FlushNow,
+    /// `WM_ENDSESSION` with `wParam` false: the shutdown was cancelled. Nothing to do.
+    Cancelled,
+}
+
+/// Which session-end step `msg` is, or `None` for any other message.
+#[must_use]
+pub fn session_end(msg: u32, wparam: usize) -> Option<SessionEnd> {
+    match msg {
+        WM_QUERYENDSESSION => Some(SessionEnd::Agree),
+        WM_ENDSESSION if wparam != 0 => Some(SessionEnd::FlushNow),
+        WM_ENDSESSION => Some(SessionEnd::Cancelled),
+        _ => None,
+    }
+}
+
+/// The name of a Windows exception code that ends a program (`winnt.h` / `ntstatus.h`), for the
+/// crash report written when the process dies without a panic. An unlisted code is "unknown
+/// exception": the report still carries the number.
+#[must_use]
+pub const fn exception_name(code: u32) -> &'static str {
+    match code {
+        0xC000_0005 => "access violation",
+        0xC000_001D => "illegal instruction",
+        0xC000_0094 => "integer divide by zero",
+        0xC000_0096 => "privileged instruction",
+        0xC000_008C => "array bounds exceeded",
+        0xC000_00FD => "stack overflow",
+        0xC000_0374 => "heap corruption",
+        0xC000_0409 => "fast fail (stack buffer overrun or abort)",
+        _ => "unknown exception",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_size_loop_counts_only_on_the_panel_window() {
+        assert!(size_loop_on_panel(true, 7, 7));
+        assert!(!size_loop_on_panel(true, 9, 7), "another window's loop");
+        assert!(!size_loop_on_panel(false, 7, 7), "no loop");
+        assert!(!size_loop_on_panel(true, 0, 0), "no Panel window yet");
+    }
 
     #[test]
     fn a_class_name_belongs_to_one_handler_type() {
@@ -257,7 +595,12 @@ mod tests {
     fn keys_map_to_the_documented_virtual_keys() {
         assert_eq!(key_to_vk(Key::V), plain(0x56));
         assert_eq!(key_to_vk(Key::Insert), extended(0x2D));
+        assert_eq!(key_to_vk(Key::Left), extended(0x25));
         assert_eq!(key_to_vk(Key::Mask), plain(0xE8));
+        assert_eq!(key_to_vk(Key::Backspace), plain(0x08));
+        assert_eq!(key_to_vk(Key::Tab), plain(0x09));
+        assert_eq!(key_to_vk(Key::Enter), plain(0x0D));
+        assert_eq!(key_to_vk(Key::C), plain(0x43));
         assert_eq!(key_to_vk(Key::Modifier(Modifier::Ctrl)), plain(0xA2));
         assert_eq!(key_to_vk(Key::Modifier(Modifier::Shift)), plain(0xA0));
         assert_eq!(key_to_vk(Key::Modifier(Modifier::Alt)), plain(0xA4));
@@ -374,6 +717,7 @@ mod tests {
             enabled: true,
             value_read_only: None,
             has_text_pattern: false,
+            password: false,
         }
     }
 
@@ -480,12 +824,251 @@ mod tests {
     }
 
     #[test]
+    fn a_window_is_full_screen_when_it_covers_its_monitor_and_has_no_frame() {
+        const POPUP: u32 = 0x8000_0000 | 0x1000_0000;
+        const OVERLAPPED_FRAME: u32 = 0x00C0_0000 | 0x0004_0000 | 0x1000_0000;
+        let monitor = (1920, 0, 4480, 1440);
+        // A game or a video: a borderless window over the whole monitor.
+        assert!(is_fullscreen_window(monitor, monitor, POPUP, 0));
+        // One that spans more than the monitor still covers it.
+        assert!(is_fullscreen_window((0, 0, 4480, 1440), monitor, POPUP, 0));
+        // Maximised where the taskbar hides: as large (and a frame larger), but framed.
+        assert!(!is_fullscreen_window(
+            (1912, -8, 4488, 1448),
+            monitor,
+            OVERLAPPED_FRAME,
+            0x0000_0100
+        ));
+        // Borderless but smaller, or on the monitor beside this one.
+        assert!(!is_fullscreen_window(
+            (1920, 0, 4480, 1400),
+            monitor,
+            POPUP,
+            0
+        ));
+        assert!(!is_fullscreen_window((0, 0, 1920, 1080), monitor, POPUP, 0));
+        // A tool window (an overlay, a widget bar) is not an app in front.
+        assert!(!is_fullscreen_window(monitor, monitor, POPUP, 0x0000_0080));
+    }
+
+    #[test]
+    fn the_alt_tab_switcher_is_not_a_target() {
+        for class in [
+            "MultitaskingViewFrame",
+            "multitaskingviewframe",
+            "XamlExplorerHostIslandWindow",
+            "TaskSwitcherWnd",
+            "TaskSwitcherOverlayWnd",
+            "ForegroundStaging",
+        ] {
+            assert!(is_task_switcher_class(class), "{class}");
+        }
+        for class in ["Notepad", "Shell_TrayWnd", "Chrome_WidgetWin_1", ""] {
+            assert!(!is_task_switcher_class(class), "{class}");
+        }
+    }
+
+    #[test]
+    fn alt_tabbing_to_the_panel_keeps_the_app_the_user_came_from_as_the_target() {
+        use ForegroundKind::{Foreign, Own, Shell, Switcher};
+        const OUTLOOK: isize = 0x10;
+        const SWITCHER: isize = 0x20;
+        const PANEL: isize = 0x30;
+        const BROWSER: isize = 0x40;
+        // Outlook in front; Alt+Tab opens the switcher (a foreground window of Explorer's),
+        // then the Panel is picked: Outlook stays the Target the whole way.
+        let mut target = next_target(0, OUTLOOK, Foreign);
+        assert_eq!(target, OUTLOOK);
+        target = next_target(target, SWITCHER, Switcher);
+        assert_eq!(target, OUTLOOK, "the switcher is no Target");
+        target = next_target(target, PANEL, Own);
+        assert_eq!(target, OUTLOOK, "the Panel is no Target");
+        // Alt+Tab on to another app: that one is the Target now.
+        target = next_target(target, SWITCHER, Switcher);
+        target = next_target(target, BROWSER, Foreign);
+        assert_eq!(target, BROWSER);
+        // A click on the desktop or taskbar means there is none.
+        assert_eq!(next_target(target, 0x50, Shell), 0);
+    }
+
+    #[test]
+    fn raising_the_panel_goes_through_the_topmost_band_unless_it_is_pinned_there() {
+        assert_eq!(raise_steps(false), [ZStep::Topmost, ZStep::NotTopmost]);
+        assert_eq!(
+            raise_steps(true),
+            [ZStep::Topmost],
+            "a pinned Panel stays on top"
+        );
+    }
+
+    #[test]
+    fn activating_a_window_restores_it_first_and_falls_back_to_raise_and_flash() {
+        assert_eq!(
+            activate_steps(true),
+            [ActivateStep::Restore, ActivateStep::Foreground]
+        );
+        assert_eq!(activate_steps(false), [ActivateStep::Foreground]);
+        assert_eq!(
+            activate_fallback(),
+            [ActivateStep::Raise, ActivateStep::Flash]
+        );
+    }
+
+    #[test]
     fn panel_style_is_noactivate_toolwindow_and_not_appwindow() {
-        let style = panel_ex_style(WS_EX_APPWINDOW | 0x1);
+        let style = panel_ex_style(WS_EX_APPWINDOW | 0x1, false);
         assert_ne!(style & WS_EX_NOACTIVATE, 0);
         assert_ne!(style & WS_EX_TOOLWINDOW, 0);
         assert_eq!(style & WS_EX_APPWINDOW, 0);
         assert_eq!(style & 0x1, 0x1, "other bits are kept");
-        assert_eq!(panel_ex_style(style), style, "idempotent");
+        assert_eq!(panel_ex_style(style, false), style, "idempotent");
+    }
+
+    #[test]
+    fn panel_style_with_taskbar_has_appwindow_and_no_toolwindow() {
+        let style = panel_ex_style(WS_EX_TOOLWINDOW | 0x1, true);
+        assert_ne!(
+            style & WS_EX_NOACTIVATE,
+            0,
+            "a click still never activates it"
+        );
+        assert_ne!(style & WS_EX_APPWINDOW, 0);
+        assert_eq!(style & WS_EX_TOOLWINDOW, 0);
+        assert_eq!(style & 0x1, 0x1, "other bits are kept");
+        assert_eq!(panel_ex_style(style, true), style, "idempotent");
+        // Turning it off again gives the tool window back.
+        assert_eq!(
+            panel_ex_style(style, false) & (WS_EX_TOOLWINDOW | WS_EX_APPWINDOW),
+            WS_EX_TOOLWINDOW
+        );
+    }
+
+    #[test]
+    fn an_erase_after_the_frame_of_the_same_paint_keeps_the_frame() {
+        let mut gate = EraseGate::default();
+        gate.paint_begin(7);
+        assert!(!gate.keep_frame(7), "no frame yet: the brush fills");
+        gate.frame_presented(7);
+        assert!(
+            gate.keep_frame(7),
+            "the frame is up: the brush would paint over it"
+        );
+        gate.paint_end(7);
+        assert!(
+            !gate.keep_frame(7),
+            "outside a paint the erase runs as usual"
+        );
+    }
+
+    #[test]
+    fn a_paint_without_a_frame_still_erases() {
+        // winit buffered the paint (busy callback): no frame, so the brush is better than stale pixels.
+        let mut gate = EraseGate::default();
+        gate.paint_begin(7);
+        gate.paint_end(7);
+        gate.paint_begin(7);
+        assert!(!gate.keep_frame(7));
+    }
+
+    #[test]
+    fn a_frame_for_one_window_does_not_skip_another_windows_erase() {
+        let mut gate = EraseGate::default();
+        gate.frame_presented(9);
+        gate.paint_begin(7);
+        gate.frame_presented(9);
+        assert!(!gate.keep_frame(7));
+        assert!(!gate.keep_frame(9), "9 is not painting");
+        gate.paint_begin(9);
+        gate.frame_presented(9);
+        assert!(gate.keep_frame(9));
+        assert!(!gate.keep_frame(7));
+        gate.paint_end(9);
+        gate.paint_end(7);
+        assert_eq!(gate.painting, []);
+    }
+
+    #[test]
+    fn a_window_is_guarded_once_until_it_is_forgotten() {
+        let mut gate = EraseGate::default();
+        assert!(gate.needs_guard(7));
+        assert!(!gate.needs_guard(7), "every later frame: no second install");
+        assert!(gate.needs_guard(9), "another window");
+        gate.paint_begin(7);
+        gate.forget(7);
+        assert!(!gate.keep_frame(7), "a destroyed window's paint is dropped");
+        assert!(gate.needs_guard(7), "a reused handle is a new window");
+        assert!(!gate.needs_guard(9));
+    }
+
+    #[test]
+    fn the_exceptions_that_end_a_program_have_names() {
+        assert_eq!(exception_name(0xC000_0005), "access violation");
+        assert_eq!(exception_name(0xC000_00FD), "stack overflow");
+        assert_eq!(
+            exception_name(0xC000_0409),
+            "fast fail (stack buffer overrun or abort)"
+        );
+        assert_eq!(exception_name(0x1234), "unknown exception");
+    }
+}
+
+#[cfg(test)]
+mod second_launch_tests {
+    use super::*;
+
+    #[test]
+    fn an_ack_ends_the_hand_over() {
+        assert_eq!(after_handover(0, WaitEvent::Acked), HandoverNext::Done);
+        assert_eq!(after_handover(2, WaitEvent::Acked), HandoverNext::Done);
+    }
+
+    #[test]
+    fn a_first_instance_that_exits_is_retried_a_few_times_then_reported() {
+        for attempt in 0..MAX_HANDOVER_ATTEMPTS - 1 {
+            assert_eq!(
+                after_handover(attempt, WaitEvent::FirstExited),
+                HandoverNext::Retry
+            );
+        }
+        assert_eq!(
+            after_handover(MAX_HANDOVER_ATTEMPTS - 1, WaitEvent::FirstExited),
+            HandoverNext::Unresponsive
+        );
+    }
+
+    #[test]
+    fn a_silent_or_unreachable_first_instance_is_reported_at_once() {
+        for event in [WaitEvent::TimedOut, WaitEvent::NotReached] {
+            assert_eq!(after_handover(0, event), HandoverNext::Unresponsive);
+        }
+    }
+
+    #[test]
+    fn the_lock_wait_outlasts_one_other_hand_over() {
+        const { assert!(LOCK_TIMEOUT_MS > ACK_TIMEOUT_MS) };
+    }
+
+    #[test]
+    fn only_a_real_session_end_flushes() {
+        assert_eq!(session_end(WM_QUERYENDSESSION, 0), Some(SessionEnd::Agree));
+        assert_eq!(
+            session_end(WM_QUERYENDSESSION, 1),
+            Some(SessionEnd::Agree),
+            "the query's wParam is a flag word, never a verdict"
+        );
+        assert_eq!(session_end(WM_ENDSESSION, 1), Some(SessionEnd::FlushNow));
+        assert_eq!(session_end(WM_ENDSESSION, 0), Some(SessionEnd::Cancelled));
+        assert_eq!(
+            session_end(0x0010, 1),
+            None,
+            "WM_CLOSE is not a session end"
+        );
+        assert_eq!(session_end(0x0002, 1), None);
+    }
+
+    #[test]
+    fn the_message_numbers_are_windows_own() {
+        assert_eq!(WM_QUERYENDSESSION, 0x11);
+        assert_eq!(WM_ENDSESSION, 0x16);
     }
 }

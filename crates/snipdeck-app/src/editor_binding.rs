@@ -1,0 +1,856 @@
+//! Binds the item editor window to the [`Controller`]: copies an [`ItemEditorView`] into the
+//! `ItemEditor` window and wires its callbacks to the `item_editor_*` methods. The same split as
+//! the Panel's [`binding`](crate::binding) and the Main window's
+//! [`main_binding`](crate::main_binding): the controller never touches a window.
+//!
+//! The window is made the first time an editor opens and reused, hidden between uses. It is
+//! drawn from the controller by the shared redraw (see `binding::redraw_all`), so the Panel's
+//! quick edit, the Main window's Edit and New, the Picker's Ctrl+E and Ctrl+N all open it the same
+//! way: by asking the controller. While it is open a timer asks the controller for a draft every
+//! [`crate::drafts::AUTOSAVE_EVERY`].
+//!
+//! The typed text stays in the window until Save, the draft tick or Discard asks for it; this
+//! file reads it through `read_input` and never logs it.
+
+use std::{
+    cell::{Cell, RefCell},
+    rc::{Rc, Weak},
+};
+
+use slint::{
+    CloseRequestResponse, ComponentHandle, Model, SharedPixelBuffer, SharedString,
+    winit_030::WinitWindowAccessor,
+};
+use snipdeck_core::{CaseMode, TriggerEnd, text_tools};
+use snipdeck_platform::{
+    file_dialog::PickKind,
+    pipeline::{Clipboard, Keyboard, Timing},
+};
+use snipdeck_ui as ui;
+
+use crate::{
+    binding::{index, model, redraw_all, register_redraw, to_i32},
+    controller::{Controller, HelpTopic, Library},
+    drafts::AUTOSAVE_EVERY,
+    host::ClipboardText,
+    item_editor::{self, EditorInput, EditorProblem, ItemEditorView, kind_at, kind_index},
+    main_binding::{create_window, set_look},
+    native_window, wording,
+};
+
+/// The editor's width, logical pixels (the window's preferred width in editors.slint).
+const EDITOR_WIDTH: f32 = 560.0;
+
+/// The index of `value` in `all` (0 when it is not there), for a choice list.
+fn position<T: PartialEq>(all: &[T], value: &T) -> i32 {
+    to_i32(all.iter().position(|v| v == value).unwrap_or(0))
+}
+
+/// Records `now` as the shown state of More options; true when it differs from the last one.
+fn more_changed(last: &Cell<bool>, now: bool) -> bool {
+    last.replace(now) != now
+}
+
+/// Sizes the shown window to its content again (More options opened or closed) and keeps it on
+/// the work area: it grows with the extra fields and shrinks back, never past the screen.
+fn refit(window: &ui::ItemEditor) {
+    crate::native_window::set_height_fitted(window.window(), window.get_fit_height());
+    crate::native_window::fit_when_settled(window);
+}
+
+struct EditorCore<S, C: Clipboard, K, T> {
+    controller: Rc<RefCell<Controller<S, C, K, T>>>,
+    window: RefCell<Option<ui::ItemEditor>>,
+    /// The editor whose fields the window holds.
+    seq: Cell<u64>,
+    /// The last "bring to front" the window acted on.
+    raise: Cell<u64>,
+    /// The tag chips the window shows now: its model is only replaced when they change, so a
+    /// keystroke does not reset an open tag list.
+    tags_shown: RefCell<Vec<(String, bool)>>,
+    /// Whether the window showed the extra fields (More options) at the last height fit.
+    more_shown: Cell<bool>,
+    /// Asks for a draft while an editor is open.
+    autosave: slint::Timer,
+    /// Redraws this window (registered with `binding::register_redraw`).
+    redraw: Rc<dyn Fn()>,
+}
+
+/// A bound item editor. Dropping it does not unbind the window; the window's callbacks keep the
+/// binding alive.
+pub struct EditorBinding<S, C: Clipboard, K, T> {
+    core: Rc<EditorCore<S, C, K, T>>,
+}
+
+impl<S, C: Clipboard, K, T> std::fmt::Debug for EditorBinding<S, C, K, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("EditorBinding").finish_non_exhaustive()
+    }
+}
+
+impl<S, C, K, T> EditorBinding<S, C, K, T>
+where
+    S: Library + 'static,
+    C: Clipboard + ClipboardText + 'static,
+    K: Keyboard + 'static,
+    T: Timing + 'static,
+{
+    /// The editor window, if one has been opened.
+    #[must_use]
+    pub fn window(&self) -> Option<ui::ItemEditor> {
+        self.core
+            .window
+            .borrow()
+            .as_ref()
+            .map(ComponentHandle::clone_strong)
+    }
+
+    /// Writes the draft of the open editor now, without waiting for the timer (the app is
+    /// quitting). Does nothing when no editor is open or the controller is busy.
+    pub fn flush_draft(&self) {
+        self.core.autosave_now();
+    }
+
+    /// Redraws the window from the controller.
+    pub fn redraw(&self) {
+        self.core.sync();
+    }
+}
+
+impl<S, C, K, T> Controller<S, C, K, T>
+where
+    S: Library + 'static,
+    C: Clipboard + ClipboardText + 'static,
+    K: Keyboard + 'static,
+    T: Timing + 'static,
+{
+    /// Shows the item editor whenever the controller has one open, and routes the window's
+    /// gestures to it. The window itself is made on the first use.
+    pub fn bind_item_editor(this: &Rc<RefCell<Self>>) -> EditorBinding<S, C, K, T> {
+        let core = Rc::new_cyclic(|weak: &Weak<EditorCore<S, C, K, T>>| {
+            let weak = weak.clone();
+            EditorCore {
+                controller: Rc::clone(this),
+                window: RefCell::new(None),
+                seq: Cell::new(0),
+                raise: Cell::new(0),
+                tags_shown: RefCell::new(Vec::new()),
+                more_shown: Cell::new(false),
+                autosave: slint::Timer::default(),
+                redraw: Rc::new(move || {
+                    if let Some(core) = weak.upgrade() {
+                        core.sync();
+                    }
+                }),
+            }
+        });
+        register_redraw(&core.redraw);
+        let weak = Rc::downgrade(&core);
+        this.borrow_mut().set_editor_text_source(Box::new(move || {
+            let core = weak.upgrade()?;
+            let window = core
+                .window
+                .borrow()
+                .as_ref()
+                .map(ComponentHandle::clone_strong)?;
+            Some(read_input(&window))
+        }));
+        EditorBinding { core }
+    }
+}
+
+impl<S, C, K, T> EditorCore<S, C, K, T>
+where
+    S: Library + 'static,
+    C: Clipboard + ClipboardText + 'static,
+    K: Keyboard + 'static,
+    T: Timing + 'static,
+{
+    /// Runs `f` on the controller, then redraws every window.
+    fn act<R>(self: &Rc<Self>, f: impl FnOnce(&mut Controller<S, C, K, T>) -> R) -> R {
+        let result = f(&mut self.controller.borrow_mut());
+        redraw_all();
+        result
+    }
+
+    /// The More options toggle changed the window's content: remember that and refit.
+    fn refit_toggled(&self, window: &ui::ItemEditor) {
+        more_changed(&self.more_shown, window.get_more_shown());
+        refit(window);
+    }
+
+    /// Shows, updates or hides the window to match the controller.
+    fn sync(self: &Rc<Self>) {
+        let view = self.controller.borrow().item_editor_view();
+        let Some(view) = view else {
+            self.autosave.stop();
+            if let Some(window) = self.window.borrow().as_ref() {
+                let _ = window.hide();
+            }
+            return;
+        };
+        let Some(window) = self.window_for_use() else {
+            return;
+        };
+        set_look(
+            &window,
+            view.high_contrast.as_ref(),
+            view.accent.as_ref(),
+            view.reduced_motion,
+        );
+        window.set_dark(view.dark);
+        let [choice, limits, escapes, transforms] = wording::template_help_texts(&window);
+        window.set_choice_help(choice.into());
+        window.set_limits_help(limits.into());
+        window.set_escapes_help(escapes.into());
+        window.set_transforms_help(transforms.into());
+        let fresh = view.seq != self.seq.get();
+        {
+            let mut shown = self.tags_shown.borrow_mut();
+            if fresh || *shown != view.tags {
+                set_tags(&window, &view.tags);
+                shown.clone_from(&view.tags);
+            }
+        }
+        apply_state(&window, &view);
+        if !fresh {
+            // A refusal under More options opens it without the toggle: fit the window to it.
+            if more_changed(&self.more_shown, window.get_more_shown()) {
+                refit(&window);
+            }
+            if view.raise != self.raise.get() {
+                self.raise.set(view.raise);
+                bring_to_front(&window);
+            }
+            return;
+        }
+        self.seq.set(view.seq);
+        self.raise.set(view.raise);
+        fill(&window, &view);
+        // Explicit width and height: the window does not exist yet, so its own size may read 0.
+        crate::native_window::size_before_show(
+            window.window(),
+            (EDITOR_WIDTH, window.get_fit_height()),
+        );
+        self.more_shown.set(window.get_more_shown());
+        crate::native_window::place_over_owner(window.window());
+        let _ = window.show();
+        crate::ownership::opened(crate::ownership::Win::ItemEditor);
+        crate::native_window::fit_when_settled(&window);
+        window.invoke_focus_title();
+        if view.restored {
+            window.invoke_mark_dirty();
+        }
+    }
+
+    /// Asks for a draft `AUTOSAVE_EVERY` after the first edit that is not yet saved: one shot,
+    /// so an idle editor runs no timer, and typing without a pause still saves every interval.
+    fn arm_autosave(self: &Rc<Self>) {
+        if self.autosave.running() {
+            return;
+        }
+        let weak = Rc::downgrade(self);
+        self.autosave
+            .start(slint::TimerMode::SingleShot, AUTOSAVE_EVERY, move || {
+                if let Some(core) = weak.upgrade() {
+                    core.autosave_now();
+                }
+            });
+    }
+
+    /// Hands the window's fields to the controller to keep as a draft.
+    fn autosave_now(&self) {
+        let Some(window) = self
+            .window
+            .borrow()
+            .as_ref()
+            .map(ComponentHandle::clone_strong)
+        else {
+            return;
+        };
+        let input = read_input(&window);
+        // Skipped when the controller is busy: the next edit asks again.
+        let changed = self
+            .controller
+            .try_borrow_mut()
+            .is_ok_and(|mut ctl| ctl.item_editor_autosave(&input));
+        if changed {
+            redraw_all();
+        }
+    }
+
+    /// The window, made on first use (`None` if the windowing system cannot).
+    fn window_for_use(self: &Rc<Self>) -> Option<ui::ItemEditor> {
+        if let Some(w) = self.window.borrow().as_ref() {
+            return Some(w.clone_strong());
+        }
+        let w = create_window(ui::ItemEditor::new).ok()?;
+        // The window's preferred size (editors.slint), cut to the screen before the first show.
+        crate::native_window::size_before_show(w.window(), (EDITOR_WIDTH, 700.0));
+        self.wire(&w);
+        wire_placeholder_chips(&w);
+        // Closes with the window it was opened from, keeping what was typed as its draft.
+        let (core, weak) = (Rc::downgrade(self), w.as_weak());
+        crate::ownership::register_closer(crate::ownership::Win::ItemEditor, move || {
+            if let (Some(core), Some(w)) = (core.upgrade(), weak.upgrade()) {
+                let input = read_input(&w);
+                core.act(|ctl| ctl.item_editor_park(&input));
+            }
+        });
+        *self.window.borrow_mut() = Some(w.clone_strong());
+        Some(w)
+    }
+
+    /// Labels, formatting and pasting inside the form: the callbacks that only reach the controller.
+    fn wire_content(self: &Rc<Self>, w: &ui::ItemEditor) {
+        let core = Rc::downgrade(self);
+        w.on_tag_toggled(move |i| {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            core.act(|ctl| ctl.item_editor_tag_toggled(index(i)));
+        });
+        let core = Rc::downgrade(self);
+        w.on_tag_added(move |name| {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            core.act(|ctl| ctl.item_editor_tag_added(name.as_str()));
+        });
+        let core = Rc::downgrade(self);
+        w.on_remove_formatting_requested(move || {
+            if let Some(core) = core.upgrade() {
+                core.act(Controller::item_editor_remove_formatting);
+            }
+        });
+        let core = Rc::downgrade(self);
+        let weak = w.as_weak();
+        w.on_preview_requested(move || {
+            let (Some(core), Some(w)) = (core.upgrade(), weak.upgrade()) else {
+                return;
+            };
+            core.show_preview(&w);
+        });
+        let weak = w.as_weak();
+        w.on_part_requested(move |target| {
+            if let Some(w) = weak.upgrade() {
+                show_part(&w, index(target));
+            }
+        });
+        let weak = w.as_weak();
+        w.on_content_edited(move || {
+            // A paste made the field longer than a part: cut it, so the next key press is cheap.
+            let Some(w) = weak.upgrade() else {
+                return;
+            };
+            if w.get_content().len() > 2 * item_editor::PART_BYTES {
+                show_part(&w, index(w.get_part_index()));
+            }
+        });
+        let core = Rc::downgrade(self);
+        w.on_private_copied(move |text, start, end| {
+            if let Some(core) = core.upgrade() {
+                core.act(|ctl| ctl.copy_private_selection(text.as_str(), start, end));
+            }
+        });
+        let core = Rc::downgrade(self);
+        w.on_private_cut(move |text, start, end| {
+            let rest = core.upgrade().and_then(|core| {
+                core.act(|ctl| ctl.cut_private_selection(text.as_str(), start, end))
+            });
+            slint::ModelRc::new(slint::VecModel::from(
+                rest.into_iter()
+                    .map(slint::SharedString::from)
+                    .collect::<Vec<_>>(),
+            ))
+        });
+        let core = Rc::downgrade(self);
+        let weak = w.as_weak();
+        w.on_save_anyway_requested(move || {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            if let Some(w) = weak.upgrade() {
+                let input = read_input(&w);
+                core.act(|ctl| ctl.item_editor_save_anyway(&input));
+            }
+        });
+        let core = Rc::downgrade(self);
+        w.on_open_duplicate_requested(move || {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            core.act(Controller::item_editor_open_duplicate);
+        });
+        let core = Rc::downgrade(self);
+        w.on_paste_requested(move || {
+            core.upgrade()
+                .is_some_and(|core| core.act(Controller::refuse_pasted_image))
+        });
+    }
+
+    /// The Trigger field and its two choices (when it fires, which letter case it takes).
+    fn wire_trigger(self: &Rc<Self>, w: &ui::ItemEditor) {
+        let core = Rc::downgrade(self);
+        let weak = w.as_weak();
+        w.on_trigger_edited(move |text| {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            core.controller
+                .borrow_mut()
+                .item_editor_set_trigger(text.as_str());
+            if let Some(w) = weak.upgrade() {
+                core.show_trigger_notes(&w);
+            }
+        });
+        let core = Rc::downgrade(self);
+        let weak = w.as_weak();
+        w.on_trigger_end_chosen(move |index| {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            if let Some(end) = usize::try_from(index)
+                .ok()
+                .and_then(|i| TriggerEnd::ALL.get(i).copied())
+            {
+                core.controller
+                    .borrow_mut()
+                    .item_editor_set_trigger_end(end);
+            }
+            if let Some(w) = weak.upgrade() {
+                w.set_trigger_end_index(index);
+                core.show_trigger_notes(&w);
+            }
+        });
+        let core = Rc::downgrade(self);
+        let weak = w.as_weak();
+        w.on_trigger_case_chosen(move |index| {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            if let Some(case) = usize::try_from(index)
+                .ok()
+                .and_then(|i| CaseMode::ALL.get(i).copied())
+            {
+                core.controller
+                    .borrow_mut()
+                    .item_editor_set_trigger_case(case);
+            }
+            if let Some(w) = weak.upgrade() {
+                w.set_trigger_case_index(index);
+                core.show_trigger_notes(&w);
+            }
+        });
+    }
+
+    fn wire(self: &Rc<Self>, w: &ui::ItemEditor) {
+        let core = Rc::downgrade(self);
+        let weak = w.as_weak();
+        w.on_save_requested(move || {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            crate::trace!("callback editor save-requested");
+            if let Some(w) = weak.upgrade() {
+                let input = read_input(&w);
+                let trigger = w.get_trigger();
+                core.act(|ctl| {
+                    ctl.item_editor_set_trigger(trigger.as_str());
+                    ctl.item_editor_save(&input);
+                });
+            }
+        });
+        let core = Rc::downgrade(self);
+        w.on_cancel_requested(move || {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            crate::trace!("callback editor cancel-requested");
+            core.act(Controller::item_editor_cancel);
+        });
+        let core = Rc::downgrade(self);
+        w.on_help_requested(move || {
+            if let Some(core) = core.upgrade() {
+                core.act(|ctl| ctl.main_open_help(HelpTopic::Guide));
+            }
+        });
+        let core = Rc::downgrade(self);
+        w.on_delete_requested(move || {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            crate::trace!("callback editor delete-requested");
+            core.act(Controller::item_editor_delete);
+        });
+        self.wire_content(w);
+        wire_text_tools(w);
+        let core = Rc::downgrade(self);
+        let weak = w.as_weak();
+        w.on_more_toggled(move |open| {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            if let Some(w) = weak.upgrade() {
+                core.refit_toggled(&w);
+            }
+            core.act(|ctl| ctl.set_editor_more_open(open));
+        });
+        self.wire_trigger(w);
+        let core = Rc::downgrade(self);
+        w.on_edited(move || {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            // Typing only clears a refusal; nothing else on screen changes.
+            core.controller.borrow_mut().item_editor_edited();
+            core.arm_autosave();
+            core.sync();
+        });
+        let core = Rc::downgrade(self);
+        let weak = w.as_weak();
+        w.on_browse_requested(move || {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            crate::trace!("callback editor browse-requested");
+            if let Some(w) = weak.upgrade() {
+                core.browse(&w);
+            }
+        });
+        // The window's own close button: leaves like Cancel, asking first when something changed.
+        let core = Rc::downgrade(self);
+        let weak = w.as_weak();
+        w.window().on_close_requested(move || {
+            let Some(core) = core.upgrade() else {
+                return CloseRequestResponse::HideWindow;
+            };
+            if let Some(w) = weak.upgrade()
+                && w.get_dirty()
+            {
+                // The window stays up asking; if the app dies there, the draft is current.
+                core.autosave_now();
+                w.set_discard_open(true);
+                return CloseRequestResponse::KeepWindowShown;
+            }
+            core.act(Controller::item_editor_cancel);
+            CloseRequestResponse::HideWindow
+        });
+    }
+
+    /// Preview was switched on: the card, the sample result and the link are built from the fields
+    /// as they are now (nothing is saved) and put into the window.
+    /// Shows what is wrong with the trigger as it stands, as it is typed (before Save).
+    fn show_trigger_notes(&self, w: &ui::ItemEditor) {
+        let (problem, note) = self.controller.borrow().item_editor_trigger_notes();
+        let text = |p: &Option<EditorProblem>| -> SharedString {
+            p.as_ref()
+                .map(|problem| wording::editor_problem_text(w, problem))
+                .unwrap_or_default()
+                .into()
+        };
+        w.set_trigger_error(text(&problem));
+        w.set_trigger_warning(text(&note));
+    }
+
+    fn show_preview(&self, w: &ui::ItemEditor) {
+        let input = read_input(w);
+        let new_id = w.get_preview_new_id();
+        let words = crate::item_preview::PreviewWords {
+            new_id: new_id.as_str(),
+        };
+        let controller = self.controller.borrow();
+        let card = controller.item_editor_preview(&input, words);
+        // The cards are drawn the way the user's own Panel and Main list draw them.
+        let look = controller.item_editor_preview_look();
+        w.set_preview_panel_layout(match look.panel_layout {
+            crate::settings::PanelLayout::List => ui::PanelLayout::List,
+            crate::settings::PanelLayout::Cards => ui::PanelLayout::Cards,
+            crate::settings::PanelLayout::Compact => ui::PanelLayout::Compact,
+        });
+        w.set_preview_main_view(crate::main_binding::ui_view(look.main_view));
+        w.set_preview_show_numbers(look.show_numbers);
+        drop(controller);
+        set_preview(w, card.as_ref());
+    }
+
+    /// Browse: the file dialog runs on a thread of its own with no borrow of the controller held
+    /// (timers and hotkeys keep running), then its answer comes back to the UI thread and goes
+    /// into the path field.
+    fn browse(self: &Rc<Self>, w: &ui::ItemEditor) {
+        let Some(picker) = self.controller.borrow().file_picker() else {
+            return;
+        };
+        let kind = if kind_at(index(w.get_kind_index())) == snipdeck_core::ItemKind::Image {
+            PickKind::Image
+        } else {
+            PickKind::Any
+        };
+        let this = Rc::clone(self);
+        let weak = w.as_weak();
+        let back =
+            crate::ui_thread::back_on_ui(move |answer: snipdeck_platform::file_dialog::Answer| {
+                let path = this.controller.borrow_mut().item_editor_picked(answer);
+                if let Some(path) = path
+                    && let Some(w) = weak.upgrade()
+                {
+                    w.set_source_path(path.into());
+                    w.invoke_mark_dirty();
+                }
+                redraw_all();
+            });
+        picker.pick(kind, native_window::handle_of(w.window()), Box::new(back));
+    }
+}
+
+/// The text tools change the whole text in the window (the controller sees it at the next save, as it sees typing);
+/// the counts and the line numbers are answers for the window's bindings.
+fn wire_text_tools(w: &ui::ItemEditor) {
+    w.on_match_count(|text, find, match_case| {
+        to_i32(text_tools::count_matches(
+            text.as_str(),
+            find.as_str(),
+            match_case,
+        ))
+    });
+    w.on_numbered(|text| text_tools::line_numbers(text.as_str()).into());
+    let weak = w.as_weak();
+    w.on_transform_requested(move |i| {
+        let Some(w) = weak.upgrade() else {
+            return;
+        };
+        if let Some(tool) = usize::try_from(i)
+            .ok()
+            .and_then(|i| text_tools::Transform::ALL.get(i))
+        {
+            let text = tool.apply(w.get_content().as_str());
+            w.set_content(text.into());
+        }
+    });
+    let weak = w.as_weak();
+    w.on_replace_all_requested(move |find, with, match_case| {
+        let Some(w) = weak.upgrade() else {
+            return;
+        };
+        let (text, _) = text_tools::replace_all(
+            w.get_content().as_str(),
+            find.as_str(),
+            with.as_str(),
+            match_case,
+        );
+        w.set_content(text.into());
+    });
+}
+
+/// A placeholder chip inserts its token at the caret, then the caret goes after it.
+fn wire_placeholder_chips(w: &ui::ItemEditor) {
+    let weak = w.as_weak();
+    w.on_placeholder_chosen(move |token, caret| {
+        let Some(w) = weak.upgrade() else {
+            return;
+        };
+        let (text, after) = crate::item_editor::insert_at_caret(
+            w.get_content().as_str(),
+            usize::try_from(caret).unwrap_or(0),
+            token.as_str(),
+        );
+        w.set_content(text.into());
+        w.invoke_place_caret(i32::try_from(after).unwrap_or(i32::MAX));
+    });
+}
+
+/// What the window's fields hold now.
+fn read_input(w: &ui::ItemEditor) -> EditorInput {
+    EditorInput {
+        kind: kind_at(index(w.get_kind_index())),
+        title: w.get_item_title().to_string(),
+        content: whole_text(w),
+        sensitive: w.get_sensitive(),
+        always_plain: w.get_always_plain(),
+        list_index: index(w.get_list_index()),
+        source_path: w.get_source_path().to_string(),
+        label: crate::binding::label_of(w.get_label_index()),
+    }
+}
+
+/// The whole text: the field is one part of it while the text spans several.
+fn whole_text(w: &ui::ItemEditor) -> String {
+    let parts = w.get_parts();
+    let shown = w.get_content();
+    if !w.get_content_large() || parts.row_count() <= 1 {
+        return shown.to_string();
+    }
+    let at = index(w.get_part_index());
+    let mut text =
+        String::with_capacity(parts.iter().map(|p| p.len()).sum::<usize>() + shown.len());
+    for (i, part) in parts.iter().enumerate() {
+        text.push_str(if i == at {
+            shown.as_str()
+        } else {
+            part.as_str()
+        });
+    }
+    text
+}
+
+/// Shows part `target` of the text (a part number of the parts as they are now). The field goes
+/// back into its place first, and is cut again if a paste made it longer than a part, which can
+/// move the later parts.
+fn show_part(w: &ui::ItemEditor, target: usize) {
+    let mut parts: Vec<String> = w.get_parts().iter().map(|p| p.to_string()).collect();
+    let at = index(w.get_part_index());
+    let shown = w.get_content().to_string();
+    let made = item_editor::replace_part(&mut parts, at, &shown);
+    let target = if target > at {
+        target + made - 1
+    } else {
+        target
+    };
+    set_parts(w, &parts, target);
+}
+
+/// Puts `parts` in the window with part `shown` in the field.
+fn set_parts(w: &ui::ItemEditor, parts: &[String], shown: usize) {
+    let shown = shown.min(parts.len().saturating_sub(1));
+    let bytes: usize = parts.iter().map(String::len).sum();
+    w.set_content_large(parts.len() > 1);
+    w.set_content_size(wording::size_text(w, u64::try_from(bytes).unwrap_or(u64::MAX)).into());
+    w.set_parts(model(parts.iter().map(|p| SharedString::from(p.as_str()))));
+    w.set_part_index(to_i32(shown));
+    w.set_content(parts.get(shown).map_or("", String::as_str).into());
+}
+
+/// The parts of the view that follow the controller on every redraw: problems, the tag chips,
+/// what the plan allows.
+fn apply_state(w: &ui::ItemEditor, view: &ItemEditorView) {
+    let text = |p: &Option<EditorProblem>| -> SharedString {
+        p.as_ref()
+            .map(|problem| wording::editor_problem_text(w, problem))
+            .unwrap_or_default()
+            .into()
+    };
+    w.set_title_max(to_i32(crate::item_editor::TITLE_MAX_CHARS));
+    w.set_title_error(text(&view.title_problem));
+    w.set_content_error(text(&view.content_problem));
+    w.set_source_error(text(&view.source_problem));
+    w.set_privacy_error(text(&view.privacy_problem));
+    w.set_trigger_error(text(&view.trigger_problem));
+    w.set_trigger_warning(text(&view.trigger_note));
+    w.set_duplicate_body(
+        view.duplicate
+            .as_ref()
+            .map(|d| wording::duplicate_text(w, d))
+            .unwrap_or_default()
+            .into(),
+    );
+    w.set_trigger_end_index(position(&TriggerEnd::ALL, &view.trigger_options.end));
+    w.set_trigger_case_index(position(&CaseMode::ALL, &view.trigger_options.case));
+    w.set_banner(text(&view.banner));
+    w.set_can_browse(view.can_browse);
+    w.set_restored(view.restored);
+    w.set_formatted(view.formatted);
+    w.set_saved_content(view.saved_text.as_str().into());
+}
+
+/// Puts the Preview's values into the window (empty ones when there is no card).
+fn set_preview(w: &ui::ItemEditor, card: Option<&crate::item_preview::CardPreview>) {
+    let text = |s: &str| SharedString::from(s);
+    let Some(card) = card else {
+        w.set_preview_title(SharedString::new());
+        w.set_preview_excerpt(SharedString::new());
+        w.set_preview_expanded(SharedString::new());
+        w.set_preview_link(SharedString::new());
+        w.set_preview_note(SharedString::new());
+        return;
+    };
+    w.set_preview_title(text(&card.title));
+    w.set_preview_excerpt(text(&card.excerpt));
+    w.set_preview_mask(text(crate::binding::MASKED_PREVIEW));
+    w.set_preview_expanded(text(card.expanded.as_deref().unwrap_or_default()));
+    w.set_preview_link(text(card.link.as_ref().map_or("", |l| l.host.as_str())));
+    w.set_preview_note(
+        card.problem
+            .as_ref()
+            .map(|p| wording::editor_problem_text(w, p))
+            .unwrap_or_default()
+            .into(),
+    );
+}
+
+/// Shows the tag chips and how many are ticked.
+fn set_tags(w: &ui::ItemEditor, tags: &[(String, bool)]) {
+    let entries = tags.iter().map(|(label, checked)| ui::ChoiceEntry {
+        label: label.as_str().into(),
+        count: 0,
+        color: slint::Color::default(),
+        icon: slint::Image::default(),
+        checked: *checked,
+    });
+    w.set_tags(model(entries));
+    w.set_tags_on(to_i32(tags.iter().filter(|(_, on)| *on).count()));
+}
+
+/// Puts the starting values of a freshly opened editor into the window.
+fn fill(w: &ui::ItemEditor, view: &ItemEditorView) {
+    let fields = &view.fields;
+    // Before the values that make or drop the path field.
+    w.invoke_clear_focus_requests();
+    w.set_is_new(view.is_new);
+    w.set_more_open(view.more_open);
+    w.set_kind_index(to_i32(kind_index(fields.kind)));
+    w.set_item_title(fields.title.as_str().into());
+    set_parts(w, &item_editor::split_parts(&fields.content), 0);
+    w.set_content_changed(false);
+    w.set_sensitive(fields.sensitive);
+    w.set_always_plain(fields.always_plain);
+    w.set_trigger(view.trigger.as_str().into());
+    w.set_source_path(fields.source_path.as_str().into());
+    w.set_list_names(model(
+        view.list_names
+            .iter()
+            .map(|n| SharedString::from(n.as_str())),
+    ));
+    w.set_list_index(to_i32(fields.list_index));
+    w.set_label_index(crate::binding::label_index(fields.label));
+    if let Some(a) = &view.attachment {
+        w.set_attachment_name(wording::attachment_name_text(w, a).into());
+        w.set_attachment_detail(wording::attachment_detail_text(w, a).into());
+        w.set_preview(a.preview.as_ref().map_or_else(slint::Image::default, |p| {
+            slint::Image::from_rgba8(SharedPixelBuffer::<slint::Rgba8Pixel>::clone_from_slice(
+                &p.rgba, p.width, p.height,
+            ))
+        }));
+    } else {
+        w.set_attachment_name(SharedString::new());
+        w.set_attachment_detail(SharedString::new());
+        w.set_preview(slint::Image::default());
+    }
+    w.set_discard_open(false);
+    w.set_tags_open(false);
+    w.invoke_reset_tools();
+    // A fresh editor opens on the form.
+    w.set_preview_on(false);
+    w.invoke_mark_clean();
+}
+
+/// Brings the shown window in front of the others and gives it the focus.
+fn bring_to_front(w: &ui::ItemEditor) {
+    let _ = w.show();
+    let _ = w
+        .window()
+        .with_winit_window(slint::winit_030::winit::window::Window::focus_window);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn more_options_opened_by_a_refusal_counts_as_a_change_once() {
+        let last = Cell::new(false);
+        assert!(!more_changed(&last, false), "nothing changed");
+        assert!(more_changed(&last, true), "a title error opened it");
+        assert!(!more_changed(&last, true), "the same state is not a change");
+        assert!(more_changed(&last, false), "closing is a change");
+    }
+}

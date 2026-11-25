@@ -4,7 +4,7 @@ import { Icon } from "icon.slint";
 
 // DESIGN.md §4 Keycap (single). One key cap in IBM Plex Mono. `active` is the brief pressed flash:
 // the host sets it for ~140ms when the key is used (quick-paste index, hotkey recorder).
-// Not interactive.
+// The outline is always `border.strong` (3:1 on the fill, shared-look spec decision 8). Not interactive.
 export component Keycap inherits Rectangle {
     in property <string> text;
     in property <bool> active: false;
@@ -20,7 +20,7 @@ export component Keycap inherits Rectangle {
     background: root.active ? Theme.accent-subtle : Theme.bg-sunken;
     border-radius: Radius.sm;
     border-width: 1px;
-    border-color: root.active ? Theme.accent : Theme.border-default;
+    border-color: root.active ? Theme.accent : Theme.border-strong;
     animate background, border-color { duration: Motion.instant; easing: Motion.out; }
 
     HorizontalLayout {
@@ -61,9 +61,22 @@ export component KeyCombo inherits Rectangle {
     row := HorizontalLayout {
         spacing: Space.s0-5;
         alignment: start;
-        for key in root.keys: Keycap {
-            text: key;
-            active: root.active;
+        // "|" between two caps is a divider: what follows is an alternative ("Up or Down"), not part of the chord.
+        for key in root.keys: HorizontalLayout {
+            padding-left: key == "|" ? Space.s1 : 0px;
+            padding-right: key == "|" ? Space.s1 : 0px;
+            if key == "|": Text {
+                text: @tr("or");
+                color: Theme.text-secondary;
+                font-family: Fonts.sans;
+                font-size: Type.xs;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+            if key != "|": Keycap {
+                text: key;
+                active: root.active;
+            }
         }
     }
 }

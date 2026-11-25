@@ -44,11 +44,11 @@ fn a_trashed_item_disappears_everywhere_and_comes_back_in_place() {
         Err(Error::NotFound { entity: "item", .. })
     ));
     assert!(matches!(s.formats(it[1].id), Err(Error::NotFound { .. })));
-    assert!(s.search("two", 10).unwrap().is_empty());
+    assert_eq!(found(&s, "two").len(), 0);
 
     s.restore(Trashable::Item(it[1].id)).unwrap();
     assert_eq!(titles(&s, l.id), ["one", "two", "three"]);
-    assert_eq!(s.search("two", 10).unwrap(), [it[1].id]);
+    assert_eq!(found(&s, "two"), [it[1].id]);
     assert_healthy(&s);
 }
 
@@ -93,14 +93,15 @@ fn trashing_a_list_hides_its_items_and_is_one_trash_entry() {
     let (mut s, b, l, it) = tree();
     s.trash(Trashable::Item(it[0].id), at(10)).unwrap(); // trashed earlier, on its own
     s.trash(Trashable::List(l.id), at(20)).unwrap();
-    assert!(s.lists(b.id).unwrap().is_empty());
-    assert!(s.all_items().unwrap().is_empty());
+    assert_eq!(s.lists(b.id).unwrap().len(), 0);
+    assert_eq!(s.all_items().unwrap().len(), 0);
     assert!(matches!(s.item(it[1].id), Err(Error::NotFound { .. })));
     assert_eq!(
         s.trashed().unwrap(),
         [TrashEntry {
             target: Trashable::List(l.id),
             label: "Replies".to_owned(),
+            preview: String::new(),
             deleted_at: at(20)
         }]
     );
@@ -116,6 +117,7 @@ fn trashing_a_list_hides_its_items_and_is_one_trash_entry() {
         [TrashEntry {
             target: Trashable::Item(it[0].id),
             label: "one".to_owned(),
+            preview: "one".to_owned(),
             deleted_at: at(10)
         }]
     );
@@ -125,7 +127,7 @@ fn trashing_a_list_hides_its_items_and_is_one_trash_entry() {
 fn trashing_a_board_hides_lists_and_items() {
     let (mut s, b, l, _) = tree();
     s.trash(Trashable::Board(b.id), at(5)).unwrap();
-    assert!(s.boards().unwrap().is_empty());
+    assert_eq!(s.boards().unwrap().len(), 0);
     assert!(matches!(
         s.lists(b.id),
         Err(Error::NotFound {
@@ -134,7 +136,7 @@ fn trashing_a_board_hides_lists_and_items() {
         })
     ));
     assert!(matches!(s.list(l.id), Err(Error::NotFound { .. })));
-    assert!(s.all_items().unwrap().is_empty());
+    assert_eq!(s.all_items().unwrap().len(), 0);
     assert_eq!(s.trashed().unwrap().len(), 1);
     s.restore(Trashable::Board(b.id)).unwrap();
     assert_eq!(board_names(&s), ["Work"]);
@@ -167,7 +169,7 @@ fn restoring_through_a_trashed_board_restores_the_whole_chain() {
     assert_eq!(board_names(&s), ["Work"]);
     assert_eq!(list_names(&s, b.id), ["Replies"]);
     assert_eq!(titles(&s, l.id).len(), 3);
-    assert!(s.trashed().unwrap().is_empty());
+    assert_eq!(s.trashed().unwrap().len(), 0);
 }
 
 #[test]
@@ -270,9 +272,9 @@ fn purge_deletes_only_what_was_trashed_before_the_cutoff() {
     let left: Vec<_> = s.trashed().unwrap().into_iter().map(|e| e.label).collect();
     assert_eq!(left, ["three", "two"]);
     assert_eq!(s.purge(at(1000)).unwrap(), 2);
-    assert!(s.trashed().unwrap().is_empty());
+    assert_eq!(s.trashed().unwrap().len(), 0);
     assert_eq!(s.purge(at(1000)).unwrap(), 0);
-    assert!(titles(&s, l.id).is_empty());
+    assert_eq!(titles(&s, l.id).len(), 0);
     assert_eq!(list_names(&s, b.id), ["Replies"]);
     assert_healthy(&s);
 }
@@ -285,13 +287,13 @@ fn purging_a_list_or_board_deletes_everything_inside_and_its_index_entries() {
     s.trash(Trashable::List(l.id), at(10)).unwrap();
     assert_eq!(s.purge(at(11)).unwrap(), 1);
     assert_eq!(s.all_items().unwrap().len(), 1);
-    assert!(s.search("one", 10).unwrap().is_empty());
-    assert_eq!(s.search("survivor", 10).unwrap().len(), 1);
+    assert_eq!(found(&s, "one").len(), 0);
+    assert_eq!(found(&s, "survivor").len(), 1);
 
     s.trash(Trashable::Board(b.id), at(20)).unwrap();
     assert_eq!(s.purge(at(21)).unwrap(), 1);
-    assert!(s.boards().unwrap().is_empty());
-    assert!(s.trashed().unwrap().is_empty());
+    assert_eq!(s.boards().unwrap().len(), 0);
+    assert_eq!(s.trashed().unwrap().len(), 0);
     assert_healthy(&s);
 }
 
@@ -346,6 +348,84 @@ fn purge_deletes_blob_files_that_nothing_else_uses() {
 }
 
 #[test]
+fn purge_entry_deletes_one_trashed_item_and_leaves_the_rest() {
+    let (mut s, _b, l, it) = tree();
+    s.trash(Trashable::Item(it[0].id), at(10)).unwrap();
+    s.trash(Trashable::Item(it[1].id), at(20)).unwrap();
+    s.purge_entry(Trashable::Item(it[0].id)).unwrap();
+    let left: Vec<_> = s.trashed().unwrap().into_iter().map(|e| e.label).collect();
+    assert_eq!(left, ["two"], "the other trash entry stays");
+    assert_eq!(found(&s, "one").len(), 0, "its search row is gone");
+    assert_eq!(titles(&s, l.id), ["three"]);
+    assert!(matches!(
+        s.restore(Trashable::Item(it[0].id)),
+        Err(Error::NotFound { .. })
+    ));
+    assert_healthy(&s);
+}
+
+#[test]
+fn purge_entry_takes_a_trashed_list_or_board_with_everything_inside() {
+    let (mut s, b, l, _) = tree();
+    let other = list(&mut s, b.id, "Other");
+    item(&mut s, other.id, "survivor", "survivor");
+    s.trash(Trashable::List(l.id), at(10)).unwrap();
+    s.purge_entry(Trashable::List(l.id)).unwrap();
+    assert_eq!(s.trashed().unwrap().len(), 0);
+    assert_eq!(s.all_items().unwrap().len(), 1);
+    assert_eq!(found(&s, "two").len(), 0);
+
+    s.trash(Trashable::Board(b.id), at(20)).unwrap();
+    s.purge_entry(Trashable::Board(b.id)).unwrap();
+    assert_eq!(s.boards().unwrap().len(), 0);
+    assert_eq!(s.trashed().unwrap().len(), 0);
+    assert_healthy(&s);
+}
+
+#[test]
+fn purge_entry_refuses_what_the_trash_does_not_list() {
+    let (mut s, _b, l, it) = tree();
+    // A live item.
+    assert!(matches!(
+        s.purge_entry(Trashable::Item(it[0].id)),
+        Err(Error::NotFound { .. })
+    ));
+    // An item inside a trashed list is part of the list's entry, not an entry.
+    s.trash(Trashable::List(l.id), at(10)).unwrap();
+    assert!(matches!(
+        s.purge_entry(Trashable::Item(it[1].id)),
+        Err(Error::NotFound { .. })
+    ));
+    assert_eq!(s.trashed().unwrap().len(), 1);
+    s.restore(Trashable::List(l.id)).unwrap();
+    assert_eq!(titles(&s, l.id).len(), 3, "nothing was deleted");
+}
+
+#[test]
+fn purge_entry_deletes_blob_files_that_nothing_else_uses() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut s = Store::open(dir.path()).unwrap();
+    let b = board(&mut s, "b");
+    let l = list(&mut s, b.id, "l");
+    let own = s.put(vec![2; INLINE_LIMIT + 1]).unwrap();
+    let gone = Item::new(l.id, "gone".to_owned(), ItemKind::Image, at(0));
+    s.insert_item(
+        &gone,
+        &Formats::new(vec![Format::Rtf(own.clone())]).unwrap(),
+        Placement::Last,
+    )
+    .unwrap();
+    s.trash(Trashable::Item(gone.id), at(5)).unwrap();
+    assert!(s.read(&own).is_ok(), "still there for the 30 days");
+    s.purge_entry(Trashable::Item(gone.id)).unwrap();
+    assert!(matches!(
+        s.read(&own),
+        Err(Error::NotFound { entity: "blob", .. })
+    ));
+    assert_healthy(&s);
+}
+
+#[test]
 fn purging_leaves_tags_alone() {
     use snipdeck_core::Tag;
     use snipdeck_store::TagRepo;
@@ -360,59 +440,30 @@ fn purging_leaves_tags_alone() {
     assert_healthy(&s);
 }
 
-/// Review M1: a Free user with 3 boards trashes one, creates another (2 live, so allowed) and
-/// restores the first: that must not give 4 live boards.
+/// There is no board limit: restoring a board with five others live gives six.
 #[test]
-fn restore_cannot_revive_a_board_past_the_callers_limit() {
-    use snipdeck_core::{Entitlements, Feature, Tier};
-    let free = Entitlements::new(Tier::Free);
-    let limit = Some(Entitlements::FREE_BOARD_LIMIT);
+fn restore_can_revive_a_board_past_five_live_boards() {
     let mut s = store();
     let a = board(&mut s, "A");
     let a_list = list(&mut s, a.id, "inbox");
     let a_item = item(&mut s, a_list.id, "note", "note");
-    board(&mut s, "B");
-    board(&mut s, "C");
-    s.trash(Trashable::Board(a.id), at(1)).unwrap();
-    assert!(free.can_create_board(s.boards().unwrap().len()));
-    board(&mut s, "D");
-
-    for target in [
-        Trashable::Board(a.id),
-        Trashable::List(a_list.id),
-        Trashable::Item(a_item.id),
-    ] {
-        let err = s.restore_with(target, limit).unwrap_err();
-        assert!(
-            matches!(
-                err,
-                Error::Core(snipdeck_core::Error::ProRequired(Feature::UnlimitedBoards))
-            ),
-            "{target:?}: {err:?}"
-        );
-        assert_eq!(
-            board_names(&s),
-            ["B", "C", "D"],
-            "{target:?}: nothing revived"
-        );
+    for name in ["B", "C", "D", "E", "F"] {
+        board(&mut s, name);
     }
-    assert_eq!(s.trashed().unwrap().len(), 1);
-
-    // Under the limit it works, and says what came back.
-    s.trash(Trashable::Board(s.boards().unwrap()[0].id), at(2))
-        .unwrap();
-    let revived = s.restore_with(Trashable::Item(a_item.id), limit).unwrap();
+    s.trash(Trashable::Board(a.id), at(1)).unwrap();
+    assert_eq!(board_names(&s), ["B", "C", "D", "E", "F"]);
+    let revived = s.restore_reporting(Trashable::Item(a_item.id)).unwrap();
     assert_eq!(revived, [Trashable::Board(a.id)]);
-    assert_eq!(board_names(&s), ["A", "C", "D"]);
+    assert_eq!(board_names(&s), ["A", "B", "C", "D", "E", "F"]);
 }
 
 #[test]
-fn restore_with_reports_every_record_it_brought_back() {
+fn restore_reporting_reports_every_record_it_brought_back() {
     let (mut s, b, l, it) = tree();
     s.trash(Trashable::Item(it[0].id), at(1)).unwrap();
     s.trash(Trashable::List(l.id), at(2)).unwrap();
     s.trash(Trashable::Board(b.id), at(3)).unwrap();
-    let revived = s.restore_with(Trashable::Item(it[0].id), None).unwrap();
+    let revived = s.restore_reporting(Trashable::Item(it[0].id)).unwrap();
     assert_eq!(
         revived,
         [
@@ -423,8 +474,57 @@ fn restore_with_reports_every_record_it_brought_back() {
     );
     // Restoring something live revives nothing.
     assert!(
-        s.restore_with(Trashable::Item(it[1].id), Some(0))
+        s.restore_reporting(Trashable::Item(it[1].id))
             .unwrap()
             .is_empty()
     );
+}
+
+#[test]
+fn a_record_is_stored_until_it_is_purged() {
+    let (mut s, b, l, it) = tree();
+    let item = Trashable::Item(it[0].id);
+    assert!(snipdeck_store::TrashRepo::is_stored(&s, item).unwrap());
+    s.trash(item, at(100)).unwrap();
+    assert!(
+        snipdeck_store::TrashRepo::is_stored(&s, item).unwrap(),
+        "the Trash still holds it"
+    );
+    s.purge_entry(item).unwrap();
+    assert!(!snipdeck_store::TrashRepo::is_stored(&s, item).unwrap());
+    s.trash(Trashable::List(l.id), at(200)).unwrap();
+    s.purge_entry(Trashable::List(l.id)).unwrap();
+    assert!(
+        !snipdeck_store::TrashRepo::is_stored(&s, Trashable::Item(it[1].id)).unwrap(),
+        "inside it"
+    );
+    assert!(!snipdeck_store::TrashRepo::is_stored(&s, Trashable::List(l.id)).unwrap());
+    assert!(snipdeck_store::TrashRepo::is_stored(&s, Trashable::Board(b.id)).unwrap());
+}
+
+#[test]
+fn a_trash_entry_carries_the_items_preview_so_the_trash_can_be_searched() {
+    let (mut s, _b, l, it) = tree();
+    let untitled = item(&mut s, l.id, "", "the quarterly figures");
+    s.trash(Trashable::Item(it[0].id), at(10)).unwrap();
+    s.trash(Trashable::Item(untitled.id), at(20)).unwrap();
+    let previews: Vec<(String, String)> = s
+        .trashed()
+        .unwrap()
+        .into_iter()
+        .map(|e| (e.label, e.preview))
+        .collect();
+    assert_eq!(
+        previews,
+        [
+            (
+                "the quarterly figures".to_owned(),
+                "the quarterly figures".to_owned()
+            ),
+            ("one".to_owned(), "one".to_owned()),
+        ]
+    );
+    s.trash(Trashable::List(l.id), at(30)).unwrap();
+    let list_entry = s.trashed().unwrap().remove(0);
+    assert_eq!(list_entry.preview, "", "a list has no preview");
 }

@@ -15,6 +15,8 @@ pub enum Source {
     Pinned(BoardId),
     /// The items of a list, in the order the Panel shows them.
     List(ListId),
+    /// The items the user marked for a paste stack, in the order they marked them.
+    Stack,
 }
 
 /// What a press should do.
@@ -72,6 +74,12 @@ impl PasteQueue {
             self.offered = None;
             self.next += 1;
         }
+    }
+
+    /// How many items of the current run have been pasted.
+    #[must_use]
+    pub fn position(&self) -> usize {
+        self.next
     }
 
     /// Forgets the run; the next press starts again from the first item.

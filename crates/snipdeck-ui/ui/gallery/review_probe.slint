@@ -40,3 +40,31 @@ export component ReviewProbe inherits Window {
         choice-index: 1;
     }
 }
+
+// An untitled sensitive item and an untitled ordinary one, for tests/stand_in_title_logic.rs: the sensitive
+// card carries the stand-in title "Sensitive item", the ordinary one stays untitled.
+export component StandInProbe inherits Window {
+    width: 360px;
+    height: 160px;
+    background: Theme.bg-app;
+
+    ItemCard {
+        x: 16px;
+        y: 16px;
+        width: 320px;
+        height: self.preferred-height;
+        variant: ItemCardVariant.compact;
+        kind: ItemKind.sensitive;
+        title: "";
+    }
+    ItemCard {
+        x: 16px;
+        y: 76px;
+        width: 320px;
+        height: self.preferred-height;
+        variant: ItemCardVariant.compact;
+        kind: ItemKind.text;
+        title: "";
+        preview: "plain words";
+    }
+}

@@ -4,8 +4,11 @@
 //! * [`export_to_writer`] / [`export_to_path`] write a library as a `.snipdeck` zip;
 //!   [`import_archive`] / [`import_archive_path`] read one. The format is specified in
 //!   `docs/format.md`.
-//! * [`import_folder`], [`import_ditto`] and [`import_copyq_json`] import other sources and
-//!   return the same [`ImportReport`].
+//! * [`import_folder`], [`import_ditto`], [`import_copyq_json`] and [`import_entries`] (a clipboard
+//!   history already read into [`HistoryEntry`] values) import other sources and
+//!   return the same [`ImportReport`]; so do the text-expander importers
+//!   [`import_espanso`], [`import_beeftext`], [`import_textexpander_csv`] and
+//!   [`import_phraseexpress_csv`].
 //! * [`backup`] writes one backup per local day and prunes old ones; restoring is an import.
 //!
 //! Everything works on any store implementing the repository traits (the [`Library`] bound),
@@ -24,8 +27,7 @@
 //!
 //! An [`Error`] means the input is unusable and the library is unchanged. A [`Warning`] in the
 //! [`ImportReport`] means the import went ahead but left something out or changed something:
-//! sensitive items that need a key, lossy text decoding, skipped files, the Free-tier board
-//! limit. The caller decides what to tell the user.
+//! sensitive items that need a key, lossy text decoding, skipped files. The caller decides what to tell the user.
 
 #![forbid(unsafe_code)]
 #![allow(
@@ -35,21 +37,35 @@
 
 mod archive;
 pub mod backup;
+mod check;
+mod decoded;
 mod dto;
 mod error;
 mod export;
+mod folder;
 mod import;
 mod importers;
 mod limits;
 mod plan;
 mod report;
 
-pub use error::{Error, Result};
-pub use export::{ExportOptions, ExportReport, SensitivePolicy, export_to_path, export_to_writer};
-pub use import::{
-    BoardLayout, ImportOptions, KeySource, MergeStrategy, import_archive, import_archive_path,
+pub use check::{ArchiveSummary, Depth, check_archive_path};
+pub use decoded::{Decoded, Known};
+pub use error::{Error, Result, TOTAL_SIZE};
+pub use export::{
+    ExportOptions, ExportReport, SensitivePolicy, SkippedItem, export_to_path, export_to_writer,
 };
-pub use importers::{MEMORY_BUDGET, import_copyq_json, import_ditto, import_folder};
-pub use limits::{Limits, TEXT_LIMIT};
+pub use folder::{FolderRisk, folder_risks};
+pub use import::{
+    BoardLayout, ImportOptions, KeySource, MergeStrategy, Triggers, decode_archive,
+    decode_archive_path, import_archive, import_archive_path,
+};
+pub use importers::{
+    HistoryEntry, MEMORY_BUDGET, decode_beeftext, decode_copyq_json, decode_ditto, decode_entries,
+    decode_espanso, decode_folder, decode_phraseexpress_csv, decode_textexpander_csv,
+    import_beeftext, import_copyq_json, import_ditto, import_entries, import_espanso,
+    import_folder, import_phraseexpress_csv, import_textexpander_csv,
+};
+pub use limits::{ENVELOPE_OVERHEAD_BYTES, Limits, TEXT_LIMIT};
 pub use plan::Library;
-pub use report::{ImportReport, MAX_WARNINGS, Warning};
+pub use report::{ImportReport, MAX_TRIGGERS_LISTED, MAX_WARNINGS, Note, Warning};

@@ -8,6 +8,7 @@
     clippy::expect_used,
     clippy::unwrap_used,
     clippy::panic,
+    clippy::print_stderr,
     reason = "test code: a failure is a failed test"
 )]
 
@@ -154,6 +155,39 @@ fn shift_alone_is_not_a_shortcut_and_shift_tab_leaves_the_recorder() {
     assert_eq!(ui.get_hk_cancels(), 1);
 }
 
+// UX-27: a key the recorder will not record says why, in the prompt, and the next good key clears it.
+fn the_hotkey_recorder_says_why_it_ignored_a_key() {
+    let ui = start(FormGallery::new);
+    let hk = find(&ui, "Open panel", AccessibleRole::Button);
+    hk.invoke_accessible_default_action();
+    assert_eq!(ui.get_hk_reason(), "", "nothing rejected yet");
+
+    press(ui.window(), "x");
+    assert_eq!(ui.get_hk_reason(), "Add Ctrl, Alt or Win to this key.", "no modifier");
+
+    press(ui.window(), &key(Key::F9));
+    assert_eq!(ui.get_hk_reason(), "Function keys need Ctrl, Alt or Win too.", "a bare function key");
+
+    chord(ui.window(), &[Key::Control, Key::Alt], &key(Key::CapsLock));
+    assert_eq!(ui.get_hk_reason(), "This key cannot be part of a shortcut.", "a key with no name");
+    assert!(ui.get_hk_recording(), "still listening");
+    assert_eq!(
+        hk.accessible_description().as_deref(),
+        Some("This key cannot be part of a shortcut."),
+        "announced to assistive technology"
+    );
+
+    chord(ui.window(), &[Key::Control, Key::Alt], "v");
+    assert_eq!(ui.get_hk_reason(), "", "a good combination clears it");
+    assert_eq!(ui.get_hk_recorded(), 1);
+
+    hk.invoke_accessible_default_action();
+    press(ui.window(), "x");
+    assert_ne!(ui.get_hk_reason(), "");
+    press(ui.window(), &key(Key::Escape));
+    assert_eq!(ui.get_hk_reason(), "", "Esc clears it");
+}
+
 // ---- 7. Dialog: Tab stays inside, closing reports so the host can restore focus ----------------------------
 
 fn tab_never_leaves_an_open_dialog() {
@@ -258,10 +292,13 @@ fn a_masked_secret_is_announced_with_how_to_reveal_it() {
 }
 
 // ---- 15. The 12-character title floor holds for CJK too ---------------------------------------------------------
+// Needs a Japanese font (`fc-list :lang=ja`). Without one the test prints "SKIPPED" to stderr and passes
+// vacuously; run `cargo test -- --nocapture` to see it.
 
-fn a_cjk_title_keeps_twelve_characters_next_to_a_list_label() {
+fn a_cjk_title_keeps_twelve_characters_next_to_a_list_label_needs_a_japanese_font() {
     use snipdeck_ui::DeckCjkProbe;
     if !has_cjk_font() {
+        eprintln!("SKIPPED: a_cjk_title_keeps_twelve_characters_next_to_a_list_label_needs_a_japanese_font: no Japanese font (fc-list :lang=ja)");
         return;
     }
     let ui = start(DeckCjkProbe::new);

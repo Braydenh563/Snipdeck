@@ -1,0 +1,548 @@
+//! The Symbols tab's half of the [`Controller`]: using a symbol (paste or copy), adding it to a
+//! list, copying or saving an icon, and the recents. Slint-free: the tab's callbacks call these
+//! and draw the toast each one raises.
+//!
+//! A symbol is not an item: it has no [`ItemId`](snipdeck_core::ItemId), is never counted in the
+//! store, and its text goes through the same clipboard pipeline a snippet uses
+//! ([`snipdeck_platform::pipeline::use_item`]) with the same refocus-and-wait as an item.
+
+use std::{
+    fs,
+    io::{self, Write},
+    path::{Path, PathBuf},
+    rc::Rc,
+};
+
+use snipdeck_core::{ItemKind, UseMode};
+use snipdeck_platform::{
+    file_dialog::{FilePicker, SaveKind},
+    payload::{Data, Payload},
+    pipeline::{self, Clipboard, Env, Keyboard, Timing},
+};
+use snipdeck_symbols::{Catalog, Kind, Recents, SymbolId};
+
+use super::{Controller, Effect, Library, PanelMenu, UseResult, failed};
+use crate::{
+    host::ClipboardText,
+    item_editor::Origin,
+    settings::{ICON_DARK_INK, ICON_PNG_SIZES},
+    toast::{self, Toast, ToastKind, ToastMessage},
+    usecase::UseError,
+};
+
+/// What "Save as..." writes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IconExport {
+    /// The SVG drawing, `currentColor` kept.
+    Svg,
+    /// A PNG of `px` x `px` pixels in the text colour.
+    Png {
+        /// Width and height in pixels (one of `settings::ICON_PNG_SIZES`).
+        px: u32,
+        /// The text colour of the theme in force, as `copy_icon_png` takes it.
+        rgba: [u8; 4],
+    },
+}
+
+/// One row of the context menu of a Symbols cell, in the order it is drawn.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SymbolMenuEntry {
+    /// Paste the symbol into the Target (an icon is copied as a picture instead).
+    Paste,
+    /// Copy the symbol.
+    Copy,
+    /// Save the symbol as an item in the list the Panel shows.
+    AddToList {
+        /// The name of that list; `None` when the Panel shows no list.
+        list: Option<String>,
+        /// Emoji and kaomoji can be added; an icon is not text (the row is greyed).
+        enabled: bool,
+    },
+    /// A line between groups.
+    Separator,
+    /// Icons only: the drawing's SVG text onto the clipboard.
+    CopySvg,
+    /// Icons only: the picture onto the clipboard.
+    CopyPng,
+    /// Icons only: save the SVG file (only where the machine has a file dialog).
+    SaveAsSvg,
+    /// Icons only: save a PNG file (only where the machine has a file dialog).
+    SaveAsPng,
+    /// Icons only: the PNG side in pixels now in force; choosing it steps to the next size.
+    PngSize(u32),
+    /// Icons only: whether PNGs are drawn in dark ink (true) or the theme's text colour; choosing
+    /// it flips that.
+    PngInk {
+        /// Dark ink, safe on a white document.
+        dark: bool,
+    },
+    /// An emoji with skin tones: paste it in tone `n` (0 the default yellow, 1 to 5 light to
+    /// dark) and keep that tone for the next ones.
+    Tone(u8),
+}
+
+/// What choosing a row of the symbol menu leaves for the host to do.
+#[derive(Debug)]
+pub enum SymbolChoice {
+    /// Done; these effects follow (the item use path's: close the Panel after a paste, say).
+    Done(Vec<Effect>),
+    /// "Save as...": run [`prepare_icon_save`](Controller::prepare_icon_save) for this icon,
+    /// ask the dialog with no borrow held, then `finish_icon_save`.
+    Save(SymbolId, IconExport),
+    /// Nothing was chosen (the row is not there, or greyed).
+    None,
+}
+
+/// How a "Save as..." ended.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SaveOutcome {
+    /// The file was written here.
+    Saved(PathBuf),
+    /// The user closed the dialog.
+    Cancelled,
+    /// The machine has no file dialog (the toast is not raised: the menu should not be offered).
+    Unavailable,
+    /// The dialog or the write failed (a toast says so); the symbol was not used.
+    Failed,
+}
+
+impl<S, C, K, T> Controller<S, C, K, T>
+where
+    S: Library,
+    C: Clipboard + ClipboardText,
+    K: Keyboard,
+    T: Timing,
+{
+    /// Uses an emoji or kaomoji: pastes it into the Target, or copies it (`mode` Copy, or no
+    /// Target), raises the usual toast and remembers the symbol. Icons have no text:
+    /// [`UseResult::Failed`], nothing written, no toast.
+    pub fn use_symbol(&mut self, id: &SymbolId, mode: UseMode) -> UseResult {
+        let tone = self.settings.symbol_tone;
+        self.use_symbol_toned(id, mode, tone)
+    }
+
+    /// The text of `id` in skin tone `tone` (0 the default yellow, 1 to 5 light to dark) when it
+    /// has tones; the plain text otherwise.
+    fn symbol_text(id: &SymbolId, tone: u8) -> Option<String> {
+        let catalog = Catalog::get();
+        let sym = catalog.get_symbol(id)?;
+        if (1..=5).contains(&tone)
+            && let Some(variants) = catalog.index_of(id).and_then(|i| catalog.tone_variants(i))
+        {
+            return variants.get(usize::from(tone) - 1).cloned();
+        }
+        sym.text.clone()
+    }
+
+    /// [`use_symbol`](Self::use_symbol) in an explicit skin tone.
+    pub fn use_symbol_toned(&mut self, id: &SymbolId, mode: UseMode, tone: u8) -> UseResult {
+        let Some(text) = Self::symbol_text(id, tone) else {
+            return UseResult::Failed;
+        };
+        let result = self.use_text(text, mode);
+        if matches!(result, UseResult::Done(_)) {
+            self.remember_symbol(id);
+        }
+        result
+    }
+
+    /// Pastes `text` into the Target, or copies it (`mode` Copy, or no Target), and raises the
+    /// usual toast. Shared by the Symbols and Colours tabs; remembering the use is the caller's.
+    pub(super) fn use_text(&mut self, text: String, mode: UseMode) -> UseResult {
+        let Some(payload) = Payload::new(vec![Data::Text(text)]) else {
+            return UseResult::Failed;
+        };
+        let route = self.model.route();
+        let pasted_into = self.model.target().map(|t| t.app.clone());
+        self.refocus_for_paste(mode, &route);
+        let mut env = Env {
+            clipboard: &mut self.services.clipboard,
+            keyboard: &mut self.services.keyboard,
+            timing: &mut self.services.timing,
+        };
+        match pipeline::use_item(&mut env, &payload, mode, &route) {
+            Ok(outcome) => {
+                self.note_activity();
+                self.show_toast(toast::after_use(outcome, &route, pasted_into.as_deref()));
+                UseResult::Done(outcome)
+            }
+            Err(error) => {
+                self.show_toast(toast::after_error(&UseError::Platform(error)));
+                UseResult::Failed
+            }
+        }
+    }
+
+    /// "Add to list": saves an emoji or kaomoji as a Text item at the end of the list `origin`
+    /// shows (the same path as the quick-add box, so its toast with Undo and Edit appears, and
+    /// "no list" says so). Returns whether an item was added. Icons are not text: they get the
+    /// "Icons can't be added to a list yet" toast and `false`.
+    pub fn add_symbol_to_list(&mut self, id: &SymbolId, origin: Origin) -> bool {
+        let tone = self.settings.symbol_tone;
+        let Some(text) = Self::symbol_text(id, tone) else {
+            if matches!(id, SymbolId::Icon(_)) {
+                self.show_toast(Toast {
+                    kind: ToastKind::Neutral,
+                    message: ToastMessage::IconNotAddable,
+                });
+            }
+            return false;
+        };
+        let added = self.quick_add(&text, Some(ItemKind::Text), false, origin);
+        if added {
+            self.remember_symbol(id);
+        }
+        added
+    }
+
+    /// A click or Enter on a symbol: `mode` pastes or copies an emoji or kaomoji; an icon is
+    /// copied as a picture in `ink` whichever the mode (it has no text).
+    pub fn activate_symbol(&mut self, id: &SymbolId, mode: UseMode, ink: [u8; 4]) -> UseResult {
+        if matches!(id, SymbolId::Icon(_)) {
+            if self.copy_icon_png(id, ink) {
+                UseResult::Done(snipdeck_core::UseOutcome::Copied)
+            } else {
+                UseResult::Failed
+            }
+        } else {
+            self.use_symbol(id, mode)
+        }
+    }
+
+    /// Right-click, the Menu key or Shift+F10 on a symbol: opens its context menu.
+    pub fn open_symbol_menu(&mut self, id: SymbolId) {
+        self.symbol_menu = Some(id);
+        self.menu = PanelMenu::Symbol;
+    }
+
+    /// Whether the symbol menu is the one open.
+    #[must_use]
+    pub fn symbol_menu_open(&self) -> bool {
+        self.menu == PanelMenu::Symbol && self.symbol_menu.is_some()
+    }
+
+    /// The rows of the symbol menu for `id`.
+    #[must_use]
+    pub fn symbol_menu_entries(&self, id: &SymbolId) -> Vec<SymbolMenuEntry> {
+        let icon = matches!(id, SymbolId::Icon(_));
+        let list = self
+            .model
+            .tabs()
+            .iter()
+            .find(|t| t.active)
+            .map(|t| t.name.clone());
+        let mut entries = vec![
+            SymbolMenuEntry::Paste,
+            SymbolMenuEntry::Copy,
+            SymbolMenuEntry::AddToList {
+                list,
+                enabled: !icon,
+            },
+        ];
+        if Catalog::get()
+            .index_of(id)
+            .is_some_and(|i| Catalog::get().tone_variants(i).is_some())
+        {
+            entries.push(SymbolMenuEntry::Separator);
+            entries.extend((0..=5).map(SymbolMenuEntry::Tone));
+        }
+        if icon {
+            entries.extend([
+                SymbolMenuEntry::Separator,
+                SymbolMenuEntry::CopySvg,
+                SymbolMenuEntry::CopyPng,
+            ]);
+            if self.file_picker().is_some() {
+                entries.extend([SymbolMenuEntry::SaveAsSvg, SymbolMenuEntry::SaveAsPng]);
+            }
+            entries.extend([
+                SymbolMenuEntry::PngSize(self.settings.symbol_icon_px),
+                SymbolMenuEntry::PngInk {
+                    dark: self.settings.symbol_icon_dark_ink,
+                },
+            ]);
+        }
+        entries
+    }
+
+    /// The open symbol menu's rows, for the view.
+    pub(super) fn symbol_menu_view(&self) -> Option<Vec<SymbolMenuEntry>> {
+        let id = self
+            .symbol_menu
+            .as_ref()
+            .filter(|_| self.menu == PanelMenu::Symbol)?;
+        Some(self.symbol_menu_entries(id))
+    }
+
+    /// The user chose row `index` of the symbol menu (`ink` is the theme's text colour, for a
+    /// picture). The menu closes first. "Save as" is handed back, not run: its dialog must run
+    /// with no borrow of the controller held.
+    pub fn choose_symbol_menu(&mut self, index: usize, ink: [u8; 4]) -> SymbolChoice {
+        let Some(id) = self.symbol_menu.take() else {
+            return SymbolChoice::None;
+        };
+        let entry = self.symbol_menu_entries(&id).get(index).cloned();
+        self.menu = PanelMenu::None;
+        let Some(entry) = entry else {
+            return SymbolChoice::None;
+        };
+        match entry {
+            SymbolMenuEntry::Paste | SymbolMenuEntry::Copy => {
+                let mode = if entry == SymbolMenuEntry::Paste {
+                    UseMode::Paste
+                } else {
+                    UseMode::Copy
+                };
+                let used = self.activate_symbol(&id, mode, ink);
+                SymbolChoice::Done(self.after_use(&used))
+            }
+            SymbolMenuEntry::AddToList { enabled: true, .. } => {
+                self.add_symbol_to_list(&id, Origin::Panel);
+                SymbolChoice::Done(Vec::new())
+            }
+            SymbolMenuEntry::CopySvg => {
+                self.copy_icon_svg(&id);
+                SymbolChoice::Done(Vec::new())
+            }
+            SymbolMenuEntry::CopyPng => {
+                self.copy_icon_png(&id, ink);
+                SymbolChoice::Done(Vec::new())
+            }
+            SymbolMenuEntry::SaveAsSvg => SymbolChoice::Save(id, IconExport::Svg),
+            SymbolMenuEntry::SaveAsPng => SymbolChoice::Save(
+                id,
+                IconExport::Png {
+                    px: self.settings.symbol_icon_px,
+                    rgba: self.icon_ink(ink),
+                },
+            ),
+            SymbolMenuEntry::PngSize(now) => {
+                let at = ICON_PNG_SIZES.iter().position(|s| *s == now).unwrap_or(0);
+                let next = ICON_PNG_SIZES[(at + 1) % ICON_PNG_SIZES.len()];
+                self.update_settings(|s| s.symbol_icon_px = next);
+                SymbolChoice::Done(Vec::new())
+            }
+            SymbolMenuEntry::PngInk { dark } => {
+                self.update_settings(|s| s.symbol_icon_dark_ink = !dark);
+                SymbolChoice::Done(Vec::new())
+            }
+            SymbolMenuEntry::Tone(tone) => {
+                self.update_settings(|s| s.symbol_tone = tone);
+                let used = self.use_symbol_toned(&id, UseMode::Paste, tone);
+                SymbolChoice::Done(self.after_use(&used))
+            }
+            SymbolMenuEntry::AddToList { enabled: false, .. } | SymbolMenuEntry::Separator => {
+                SymbolChoice::None
+            }
+        }
+    }
+
+    /// "Copy SVG": the icon's markup as text, `fill="currentColor"` kept. `false` for anything
+    /// that is not an icon, or when the clipboard is busy (a toast says so).
+    pub fn copy_icon_svg(&mut self, id: &SymbolId) -> bool {
+        let Some(svg) = Catalog::get().icon_svg(id) else {
+            return false;
+        };
+        self.copy_symbol_data(id, Data::Text(svg))
+    }
+
+    /// The ink a PNG of an icon is drawn in: the remembered choice, dark by default (safe on a
+    /// white document) or `theme`, the text colour of the theme in force.
+    fn icon_ink(&self, theme: [u8; 4]) -> [u8; 4] {
+        if self.settings.symbol_icon_dark_ink {
+            ICON_DARK_INK
+        } else {
+            theme
+        }
+    }
+
+    /// "Copy PNG": the icon as a picture of the remembered size and ink (`rgba` is the text colour
+    /// of the theme in force, used when the ink is "theme"), transparent behind. `false` for
+    /// anything that is not an icon, or when the clipboard is busy.
+    pub fn copy_icon_png(&mut self, id: &SymbolId, rgba: [u8; 4]) -> bool {
+        let (px, ink) = (self.settings.symbol_icon_px, self.icon_ink(rgba));
+        let Some(png) = Catalog::get().icon_png(id, px, ink) else {
+            return false;
+        };
+        self.copy_symbol_data(id, Data::Png(png))
+    }
+
+    /// First half of "Save as...": renders the file and finds the dialog. The caller then asks
+    /// `IconSave::ask` with the controller released (the Save dialog runs its own message loop,
+    /// during which timers and hotkeys reach the controller) and hands the answer to
+    /// [`finish_icon_save`](Self::finish_icon_save).
+    ///
+    /// # Errors
+    ///
+    /// `SaveOutcome::Unavailable` when the machine has no file dialog, `SaveOutcome::Failed`
+    /// when `id` is not an icon or cannot be rendered.
+    pub fn prepare_icon_save(
+        &self,
+        id: &SymbolId,
+        export: IconExport,
+    ) -> Result<IconSave, SaveOutcome> {
+        let SymbolId::Icon(name) = id else {
+            return Err(SaveOutcome::Failed);
+        };
+        let Some(picker) = self.file_picker() else {
+            return Err(SaveOutcome::Unavailable);
+        };
+        let catalog = Catalog::get();
+        let (kind, bytes) = match export {
+            IconExport::Svg => (SaveKind::Svg, catalog.icon_svg(id).map(String::into_bytes)),
+            IconExport::Png { px, rgba } => (SaveKind::Png, catalog.icon_png(id, px, rgba)),
+        };
+        let Some(bytes) = bytes else {
+            return Err(SaveOutcome::Failed);
+        };
+        Ok(IconSave {
+            id: id.clone(),
+            name: name.clone(),
+            kind,
+            bytes,
+            picker,
+        })
+    }
+
+    /// Second half of "Save as...": writes the file the dialog answered with (the kind's extension
+    /// appended unless the name already ends with it), toasts "Saved" and remembers the icon. A cancel writes nothing
+    /// and says nothing; a dialog or write error is logged and toasted.
+    pub fn finish_icon_save(
+        &mut self,
+        save: &IconSave,
+        answer: Result<Option<PathBuf>, snipdeck_platform::error::Error>,
+    ) -> SaveOutcome {
+        let path = match answer {
+            Ok(Some(path)) => without_clobbering(path, save.kind.extension()),
+            Ok(None) => return SaveOutcome::Cancelled,
+            Err(error) => {
+                crate::trace!("the Save dialog failed: {error}");
+                self.show_toast(failed());
+                return SaveOutcome::Failed;
+            }
+        };
+        if let Err(error) = write_new_file(&path, &save.bytes) {
+            crate::trace!("writing the saved icon failed: {error}");
+            self.show_toast(failed());
+            return SaveOutcome::Failed;
+        }
+        let file = path
+            .file_name()
+            .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
+        self.show_toast(Toast {
+            kind: ToastKind::Success,
+            message: ToastMessage::IconSaved { name: file },
+        });
+        self.remember_symbol(&save.id);
+        SaveOutcome::Saved(path)
+    }
+
+    /// The symbols used last, newest first (only one kind when given). Reads the saved list the
+    /// first time the Symbols tab asks, dropping ids the catalog no longer has.
+    #[must_use]
+    pub fn symbol_recents(&self, kind: Option<Kind>) -> Vec<SymbolId> {
+        if self.settings.symbols_recent.is_empty() {
+            return Vec::new();
+        }
+        Recents::from_saved(&self.settings.symbols_recent, Catalog::get()).list(kind)
+    }
+
+    fn copy_symbol_data(&mut self, id: &SymbolId, data: Data) -> bool {
+        let Some(payload) = Payload::new(vec![data]) else {
+            return false;
+        };
+        if let Err(error) = self.services.clipboard.write_persistent(&payload) {
+            self.show_toast(toast::after_error(&UseError::Platform(error)));
+            return false;
+        }
+        self.note_activity();
+        self.show_toast(Toast {
+            kind: ToastKind::Success,
+            message: ToastMessage::Copied,
+        });
+        self.remember_symbol(id);
+        true
+    }
+
+    /// Pushes `id` to the front of the saved recents, stamped by the injected clock, to be
+    /// written after the usual quiet time.
+    fn remember_symbol(&mut self, id: &SymbolId) {
+        let now = self.clock.now().as_millisecond();
+        let mut recents = Recents::from_saved(&self.settings.symbols_recent, Catalog::get());
+        recents.push(id.clone(), now);
+        let saved = recents.to_saved();
+        self.update_settings(|s| s.symbols_recent = saved);
+    }
+}
+
+/// An icon the user is saving: rendered, with the dialog that will ask where. Holds no borrow
+/// of the controller.
+pub struct IconSave {
+    id: SymbolId,
+    name: String,
+    kind: SaveKind,
+    bytes: Vec<u8>,
+    picker: Rc<dyn FilePicker>,
+}
+
+impl IconSave {
+    /// Shows the Save dialog (the icon's name filled in) without blocking and gives the answer
+    /// to `done`, from the dialog's thread (the caller hops back to the UI thread). `owner` is the
+    /// native window handle the dialog belongs to. Call it with no borrow of the controller held.
+    pub fn ask(&self, owner: Option<isize>, done: snipdeck_platform::file_dialog::Done) {
+        self.picker.save(self.kind, &self.name, owner, done);
+    }
+}
+
+/// `path` with `.ext` appended unless its name already ends with it (any case). A name the user
+/// accepted is never rewritten: "logo.v2" becomes "logo.v2.svg", "x.svg" stays.
+fn with_extension_if_missing(path: PathBuf, ext: &str) -> PathBuf {
+    let ends_with = path
+        .extension()
+        .is_some_and(|e| e.to_string_lossy().eq_ignore_ascii_case(ext));
+    if ends_with {
+        return path;
+    }
+    let mut name = path.into_os_string();
+    name.push(".");
+    name.push(ext);
+    PathBuf::from(name)
+}
+
+/// The path to save to: `path` with the extension added when it is missing. The dialog asked
+/// about overwriting the name the user typed, not this one, so if adding the extension lands on a
+/// file that exists, a free name ("logo.v2 (2).svg") is used instead: nothing is replaced unasked.
+fn without_clobbering(path: PathBuf, ext: &str) -> PathBuf {
+    let typed = path.clone();
+    let named = with_extension_if_missing(path, ext);
+    if named == typed || !named.exists() {
+        return named;
+    }
+    let stem = named
+        .file_stem()
+        .map_or_else(String::new, |s| s.to_string_lossy().into_owned());
+    (2..u32::MAX)
+        .map(|n| named.with_file_name(format!("{stem} ({n}).{ext}")))
+        .find(|candidate| !candidate.exists())
+        .unwrap_or(named)
+}
+
+/// Writes `bytes` to a temporary file next to `path`, then renames it over `path`: a failure
+/// leaves the old file (if any) whole.
+fn write_new_file(path: &Path, bytes: &[u8]) -> io::Result<()> {
+    let folder = path.parent().filter(|p| !p.as_os_str().is_empty());
+    let folder = folder.unwrap_or_else(|| Path::new("."));
+    let stem = path
+        .file_name()
+        .map_or_else(|| "icon".to_owned(), |n| n.to_string_lossy().into_owned());
+    let (mut file, temp) = crate::settings_store::create_temp(folder, &stem)?;
+    let written = file.write_all(bytes).and_then(|()| file.sync_all());
+    drop(file);
+    match written.and_then(|()| fs::rename(&temp, path)) {
+        Ok(()) => Ok(()),
+        Err(error) => {
+            let _ = fs::remove_file(&temp);
+            Err(error)
+        }
+    }
+}

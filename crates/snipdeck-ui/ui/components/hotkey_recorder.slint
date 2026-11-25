@@ -1,4 +1,4 @@
-import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
+import { Theme, Type, Radius, Space, Motion, Fonts, SystemLook } from "../theme.slint";
 import { Icons } from "../icons.slint";
 import { Icon } from "icon.slint";
 import { FieldError } from "text_field.slint";
@@ -36,7 +36,7 @@ component HotkeyChip inherits Rectangle {
 // format for the platform layer, not translated copy.
 global Combo {
     pure public function key-name(t: string) -> string {
-        if (t == " ") { return "Space"; }
+        if (t == " ") { return @tr("Space"); }
         if (t == "\n") { return "Enter"; }
         if (t == Key.Tab) { return "Tab"; }
         if (t == Key.Backspace) { return "Backspace"; }
@@ -75,6 +75,11 @@ global Combo {
         return shift && Combo.key-name(t) == t.to-uppercase() && t.to-uppercase() == t.to-lowercase();
     }
 
+    pure public function is-function-key(t: string) -> bool {
+        return t == Key.F1 || t == Key.F2 || t == Key.F3 || t == Key.F4 || t == Key.F5 || t == Key.F6
+            || t == Key.F7 || t == Key.F8 || t == Key.F9 || t == Key.F10 || t == Key.F11 || t == Key.F12;
+    }
+
     pure public function is-modifier-key(t: string) -> bool {
         return t == Key.Control || t == Key.ControlR || t == Key.Shift || t == Key.ShiftR
             || t == Key.Alt || t == Key.AltGr || t == Key.Meta || t == Key.MetaR;
@@ -109,6 +114,9 @@ export component HotkeyRecorder inherits VerticalLayout {
     out property <HotkeyState> state: root.recording ? HotkeyState.recording
         : root.conflict != "" ? HotkeyState.conflict : HotkeyState.idle;
     out property <bool> has-focus: scope.has-focus;
+    // Why the last key was not recorded ("Add Ctrl, Alt or Win to this key."); empty until a key is refused, and
+    // cleared by the next recorded key, Esc or a new recording. Shown in place of the prompt while recording.
+    out property <string> reject-reason: "";
 
     // A new combination, e.g. "Ctrl+Alt+V". Recording has stopped; the caller validates and stores it.
     callback recorded(combo: string);
@@ -120,12 +128,14 @@ export component HotkeyRecorder inherits VerticalLayout {
     public function begin-recording() {
         if (root.enabled && !root.recording) {
             root.recording = true;
+            root.reject-reason = "";
             scope.focus();
         }
     }
     public function cancel-recording() {
         if (root.recording) {
             root.recording = false;
+            root.reject-reason = "";
             root.cancelled();
         }
     }
@@ -140,7 +150,7 @@ export component HotkeyRecorder inherits VerticalLayout {
     accessible-role: button;
     accessible-label: root.label;
     accessible-value: root.value;
-    accessible-description: root.recording ? root.recording-text : root.conflict;
+    accessible-description: root.recording ? (root.reject-reason != "" ? root.reject-reason : root.recording-text) : root.conflict;
     accessible-enabled: root.enabled;
     accessible-action-default => { root.begin-recording(); }
 
@@ -177,8 +187,8 @@ export component HotkeyRecorder inherits VerticalLayout {
             }
             if root.recording: Text {
                 horizontal-stretch: 1;
-                text: root.recording-text;
-                color: Theme.accent-text;
+                text: root.reject-reason != "" ? root.reject-reason : root.recording-text;
+                color: root.reject-reason != "" ? Theme.danger-fg : Theme.accent-text;
                 font-family: Fonts.sans;
                 font-size: Type.base;
                 vertical-alignment: center;
@@ -205,8 +215,8 @@ export component HotkeyRecorder inherits VerticalLayout {
                 accessible-role: none;
             }
             if root.clear-visible: Rectangle {
-                width: Space.hit-min;
-                height: Space.hit-min;
+                width: Space.hit-min * SystemLook.text-scale;
+                height: Space.hit-min * SystemLook.text-scale;
                 y: (parent.height - self.height) / 2;
                 border-radius: Radius.sm;
                 background: clear-touch.pressed ? Theme.bg-sunken : clear-touch.has-hover ? Theme.bg-hover : transparent;
@@ -216,6 +226,7 @@ export component HotkeyRecorder inherits VerticalLayout {
 
                 Icon {
                     source: Icons.x;
+                    size: Space.s4 * SystemLook.text-scale;
                     tint: clear-touch.has-hover ? Theme.text-primary : Theme.text-secondary;
                     x: (parent.width - self.width) / 2;
                     y: (parent.height - self.height) / 2;
@@ -270,12 +281,15 @@ export component HotkeyRecorder inherits VerticalLayout {
                     if (event.text == Key.Tab || event.text == Key.Backtab) {
                         return reject;
                     }
+                    root.reject-reason = Combo.is-function-key(event.text) ? @tr("Function keys need Ctrl, Alt or Win too.") : @tr("Add Ctrl, Alt or Win to this key.");
                     return accept;
                 }
                 if (Combo.unrecordable(event.text, event.modifiers.shift)) {
+                    root.reject-reason = @tr("This key cannot be part of a shortcut.");
                     return accept;
                 }
                 root.recording = false;
+                root.reject-reason = "";
                 root.recorded((event.modifiers.control ? "Ctrl+" : "") + (event.modifiers.alt ? "Alt+" : "")
                     + (event.modifiers.shift ? "Shift+" : "") + (event.modifiers.meta ? "Win+" : "") + Combo.key-name(event.text));
                 return accept;

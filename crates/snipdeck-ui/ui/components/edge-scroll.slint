@@ -1,0 +1,20 @@
+// Drag auto-scroll for a list taller than its view. The host sets `dir` from where an item is dragged over the list
+// (-1: within the edge zone at the top, 1: at the bottom, 0: elsewhere or no drag); while the list can still scroll
+// that way, `scroll` is called with a fixed step on every tick. It never takes a drop, so every row, gap and tile
+// under the pointer stays a drop target, the ones in the edge zone included.
+export component EdgeScroll inherits Rectangle {
+    in property <int> dir;
+    in property <length> step: 10px;
+    in property <duration> tick: 16ms;
+    // Whether the list can scroll toward its top (`up`) or its bottom (`down`) from where it is.
+    in property <bool> up;
+    in property <bool> down;
+    // Move the list by this much (negative: toward its top).
+    callback scroll(delta: length);
+
+    Timer {
+        interval: root.tick;
+        running: (root.dir < 0 && root.up) || (root.dir > 0 && root.down);
+        triggered => { root.scroll(root.dir * root.step); }
+    }
+}

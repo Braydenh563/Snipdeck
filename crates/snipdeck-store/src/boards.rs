@@ -14,12 +14,14 @@ use crate::rank::{self, BOARDS, LISTS};
 struct BoardRow {
     id: Vec<u8>,
     name: String,
+    accent: Option<String>,
+    icon: Option<String>,
     created_at: i64,
     updated_at: i64,
 }
 
 impl BoardRow {
-    const COLUMNS: &'static str = "id, name, created_at, updated_at";
+    const COLUMNS: &'static str = "id, name, created_at, updated_at, accent, icon";
 
     fn read(row: &rusqlite::Row<'_>) -> rusqlite::Result<Self> {
         Ok(Self {
@@ -27,6 +29,8 @@ impl BoardRow {
             name: row.get(1)?,
             created_at: row.get(2)?,
             updated_at: row.get(3)?,
+            accent: row.get(4)?,
+            icon: row.get(5)?,
         })
     }
 
@@ -34,6 +38,8 @@ impl BoardRow {
         Ok(Board {
             id: id_from(&self.id)?,
             name: stored_name(&self.name)?,
+            accent: self.accent.as_deref().map(str::parse).transpose()?,
+            icon: self.icon.as_deref().map(str::parse).transpose()?,
             created_at: from_nanos(self.created_at)?,
             updated_at: from_nanos(self.updated_at)?,
         })
@@ -70,13 +76,16 @@ pub(crate) fn insert_board(cx: &mut Ctx<'_>, board: &Board, at: Placement<BoardI
     require_new(conn, "boards", board.id)?;
     let rank = rank::place(conn, BOARDS, None, raw_placement(at), None)?;
     conn.execute(
-        "INSERT INTO boards (id, name, rank, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+        "INSERT INTO boards (id, name, rank, created_at, updated_at, accent, icon)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
         params![
             id_bytes(board.id),
             board.name.as_str(),
             rank,
             created,
-            updated
+            updated,
+            board.accent.map(snipdeck_core::ListAccent::key),
+            board.icon.map(snipdeck_core::ListIcon::key),
         ],
     )?;
     Ok(())
@@ -87,8 +96,16 @@ pub(crate) fn update_board(cx: &mut Ctx<'_>, board: &Board) -> Result<()> {
     let conn = cx.conn;
     require_board(conn, board.id)?;
     conn.execute(
-        "UPDATE boards SET name = ?2, created_at = ?3, updated_at = ?4 WHERE id = ?1",
-        params![id_bytes(board.id), board.name.as_str(), created, updated],
+        "UPDATE boards SET name = ?2, created_at = ?3, updated_at = ?4, accent = ?5, icon = ?6
+         WHERE id = ?1",
+        params![
+            id_bytes(board.id),
+            board.name.as_str(),
+            created,
+            updated,
+            board.accent.map(snipdeck_core::ListAccent::key),
+            board.icon.map(snipdeck_core::ListIcon::key),
+        ],
     )?;
     Ok(())
 }
@@ -110,6 +127,7 @@ struct ListRow {
     board_id: Vec<u8>,
     name: String,
     accent: Option<String>,
+    icon: Option<String>,
     view: String,
     sort: String,
     created_at: i64,
@@ -118,7 +136,7 @@ struct ListRow {
 
 impl ListRow {
     const COLUMNS: &'static str =
-        "id, board_id, name, accent, list_view, list_sort, created_at, updated_at";
+        "id, board_id, name, accent, list_view, list_sort, created_at, updated_at, icon";
 
     fn read(row: &rusqlite::Row<'_>) -> rusqlite::Result<Self> {
         Ok(Self {
@@ -130,6 +148,7 @@ impl ListRow {
             sort: row.get(5)?,
             created_at: row.get(6)?,
             updated_at: row.get(7)?,
+            icon: row.get(8)?,
         })
     }
 
@@ -139,8 +158,9 @@ impl ListRow {
             board_id: id_from(&self.board_id)?,
             name: stored_name(&self.name)?,
             accent: self.accent.as_deref().map(str::parse).transpose()?,
+            icon: self.icon.as_deref().map(str::parse).transpose()?,
             view: self.view.parse()?,
-            sort: self.sort.parse()?,
+            sort: snipdeck_core::Sort::from_key(&self.sort)?,
             created_at: from_nanos(self.created_at)?,
             updated_at: from_nanos(self.updated_at)?,
         })
@@ -183,8 +203,8 @@ pub(crate) fn insert_list(cx: &mut Ctx<'_>, list: &List, at: Placement<ListId>) 
     let board = id_bytes(list.board_id);
     let rank = rank::place(conn, LISTS, Some(board), raw_placement(at), None)?;
     conn.execute(
-        "INSERT INTO lists (id, board_id, name, accent, list_view, list_sort, rank, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+        "INSERT INTO lists (id, board_id, name, accent, list_view, list_sort, rank, created_at, updated_at, icon)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
         params![
             id_bytes(list.id),
             board,
@@ -194,7 +214,8 @@ pub(crate) fn insert_list(cx: &mut Ctx<'_>, list: &List, at: Placement<ListId>) 
             list.sort.key(),
             rank,
             created,
-            updated
+            updated,
+            list.icon.map(snipdeck_core::ListIcon::key)
         ],
     )?;
     Ok(())
@@ -220,7 +241,7 @@ pub(crate) fn update_list(cx: &mut Ctx<'_>, list: &List) -> Result<()> {
     }
     conn.execute(
         "UPDATE lists SET name = ?2, accent = ?3, list_view = ?4, list_sort = ?5,
-                created_at = ?6, updated_at = ?7 WHERE id = ?1",
+                created_at = ?6, updated_at = ?7, icon = ?8 WHERE id = ?1",
         params![
             id,
             list.name.as_str(),
@@ -228,7 +249,8 @@ pub(crate) fn update_list(cx: &mut Ctx<'_>, list: &List) -> Result<()> {
             list.view.key(),
             list.sort.key(),
             created,
-            updated
+            updated,
+            list.icon.map(snipdeck_core::ListIcon::key)
         ],
     )?;
     Ok(())

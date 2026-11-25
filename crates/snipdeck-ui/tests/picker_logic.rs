@@ -12,7 +12,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use i_slint_backend_testing::{AccessibleRole, ElementHandle, ElementQuery, ElementRoot};
-use slint::{ComponentHandle, platform::Key};
+use slint::{ComponentHandle, Model, platform::Key};
 use snipdeck_ui::{PickerScope, PickerWindow};
 
 #[path = "support/mod.rs"]
@@ -45,12 +45,20 @@ fn start() -> (PickerWindow, Log) {
     }
     hook!(on_query_changed, |q| format!("query:{q}"));
     hook!(on_scope_changed, |s| format!("scope:{s:?}"));
+    hook!(on_tag_stepped, |d| format!("tag:{d}"));
     hook!(on_row_activated, |i| format!("use:{i}"));
     hook!(on_row_copied, |i| format!("copy:{i}"));
     hook!(on_quick_use, |n| format!("quick:{n}"));
     hook!(on_selection_moved, |d| format!("move:{d}"));
     hook!(on_edit_requested, |i| format!("edit:{i}"));
+    hook!(on_pin_requested, |i| format!("pin:{i}"));
+    hook!(on_duplicate_requested, |i| format!("duplicate:{i}"));
+    hook!(on_trash_requested, |i| format!("trash:{i}"));
     hook!(on_close_requested, || "close".to_string());
+    hook!(on_open_requested, || "open".to_string());
+    hook!(on_dismissed, || "dismissed".to_string());
+    hook!(on_reveal_requested, |i, on| format!("reveal:{i}:{on}"));
+    hook!(on_detail_toggled, || "detail".to_string());
     (ui, log)
 }
 
@@ -103,6 +111,27 @@ fn by_role(root: &impl ElementRoot, role: AccessibleRole) -> Vec<ElementHandle> 
         .collect()
 }
 
+/// A real left click at the middle of `element`: pointer down and up, as a mouse sends them, so any control that
+/// takes the keyboard focus on a click does so here.
+fn click(ui: &PickerWindow, element: &ElementHandle) {
+    let (p, s) = (element.absolute_position(), element.size());
+    let at = slint::LogicalPosition::new(p.x + s.width / 2.0, p.y + s.height / 2.0);
+    let button = slint::platform::PointerEventButton::Left;
+    ui.window()
+        .dispatch_event(slint::platform::WindowEvent::PointerMoved { position: at });
+    ui.window()
+        .dispatch_event(slint::platform::WindowEvent::PointerPressed {
+            position: at,
+            button,
+        });
+    ui.window()
+        .dispatch_event(slint::platform::WindowEvent::PointerReleased {
+            position: at,
+            button,
+        });
+    settle();
+}
+
 fn rows(ui: &PickerWindow) -> Vec<ElementHandle> {
     by_role(ui, AccessibleRole::ListItem)
 }
@@ -150,6 +179,37 @@ ui_tests! {
         press(ui.window(), &key(Key::Escape));
         assert_eq!(take(&log), ["close"], "Esc dismisses; it does not clear first");
         assert_eq!(ui.get_query(), "ab", "the host decides what a re-summon shows");
+    }
+
+    fn f3_asks_for_the_preview_and_the_pane_adds_its_height_when_the_controller_opens_it() {
+        let (ui, log) = start();
+        press(ui.window(), &key(Key::F3));
+        assert_eq!(take(&log), ["detail"]);
+        let closed = ui.get_content_height();
+        ui.set_detail_text("the whole text of the item".into());
+        ui.set_detail_open(true);
+        settle();
+        let open = ui.get_content_height();
+        assert!(open > closed + 40.0, "the pane has its own height: {closed} -> {open}");
+        ui.set_detail_open(false);
+        settle();
+        assert!((ui.get_content_height() - closed).abs() < 0.5, "and gives it back");
+    }
+
+    fn losing_the_keyboard_to_another_window_dismisses_without_the_escape_close() {
+        let (ui, log) = start();
+        // Start from a window that has no keyboard, then give it the keyboard as Windows does.
+        ui.window().dispatch_event(slint::platform::WindowEvent::WindowActiveChanged(false));
+        settle();
+        ui.window().dispatch_event(slint::platform::WindowEvent::WindowActiveChanged(true));
+        ui.invoke_focus_search();
+        settle();
+        assert!(ui.get_search_focused());
+        take(&log);
+        ui.window().dispatch_event(slint::platform::WindowEvent::WindowActiveChanged(false));
+        settle();
+        assert!(!ui.get_search_focused(), "an inactive window holds no keyboard focus");
+        assert_eq!(take(&log), ["dismissed"], "click-away must not ask for a refocusing close");
     }
 
     fn reset_gives_a_fresh_picker_for_the_next_summon() {
@@ -210,6 +270,18 @@ ui_tests! {
         assert_eq!(ui.get_selected_index(), 0);
     }
 
+    fn ctrl_home_and_ctrl_end_go_to_the_first_and_last_result_and_leave_the_search_caret_alone() {
+        let (ui, log) = start();
+        fixture::set_rows(&ui, fixture::numbered_rows(30));
+        settle();
+        chord(ui.window(), &[Key::Control], &key(Key::End));
+        assert_eq!(ui.get_selected_index(), 29);
+        assert_eq!(take(&log), ["move:29"]);
+        chord(ui.window(), &[Key::Control], &key(Key::Home));
+        assert_eq!(ui.get_selected_index(), 0);
+        assert_eq!(take(&log), ["move:-29"]);
+    }
+
     fn the_selected_row_is_exposed_as_selected_to_assistive_technology() {
         let (ui, _log) = start();
         press(ui.window(), &key(Key::DownArrow));
@@ -234,8 +306,55 @@ ui_tests! {
             .expect("Design spec row");
         assert_eq!(
             design.accessible_description().map(|d| d.to_string()).as_deref(),
-            Some("Work / Links")
+            Some("Work \u{b7} Links")
         );
+    }
+
+    fn row_height_is_36() {
+        let (ui, _log) = start();
+        let items = rows(&ui);
+        assert_eq!(items.len(), 7);
+        for row in &items {
+            assert!(
+                (row.size().height - 36.0).abs() < 0.5,
+                "{:?} is {} tall",
+                row.accessible_label(),
+                row.size().height
+            );
+        }
+    }
+
+    fn selected_row_shows_copy_and_edit() {
+        let (ui, _log) = start();
+        ui.set_selected_index(2);
+        settle();
+        let _ = rows(&ui);
+        for name in ["Copy", "Edit"] {
+            let buttons = all(&ui, name, AccessibleRole::Button);
+            assert_eq!(buttons.len(), 1, "one {name} action, on the selected row only");
+            let at = buttons[0].absolute_position();
+            let row = &rows(&ui)[2];
+            assert!(
+                at.y >= row.absolute_position().y && at.y + buttons[0].size().height <= row.absolute_position().y + row.size().height + 0.5,
+                "{name} sits inside the selected row"
+            );
+            assert!(buttons[0].size().width >= 32.0 - 0.5 && buttons[0].size().height >= 32.0 - 0.5, "32 hit box");
+        }
+        assert!(missing(&ui, "More", AccessibleRole::Button), "the Picker has no More");
+        assert!(missing(&ui, "Use", AccessibleRole::Button), "and no Use action: the row click and Enter use");
+    }
+
+    fn edit_action_requests_edit() {
+        let (ui, log) = start();
+        ui.set_selected_index(3);
+        settle();
+        let _ = rows(&ui);
+        take(&log);
+        find(&ui, "Edit", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["edit:3"], "the action asks for Ctrl+E's edit, not a use");
+        assert_eq!(ui.get_selected_index(), 3);
+        find(&ui, "Copy", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["copy:3"]);
     }
 
     fn enter_uses_the_selected_row_and_shift_enter_only_copies() {
@@ -258,19 +377,20 @@ ui_tests! {
         assert!(take(&log).is_empty(), "no callbacks fired");
     }
 
-    fn digits_use_the_nth_row_only_while_the_search_is_empty() {
+    fn alt_digits_use_the_nth_row_and_bare_digits_are_always_search_text() {
         let (ui, log) = start();
-        press(ui.window(), "3");
+        chord(ui.window(), &[Key::Alt], "3");
         assert_eq!(take(&log), ["quick:3"]);
         assert_eq!(ui.get_selected_index(), 2, "the used row becomes the selection");
-        assert_eq!(ui.get_query(), "", "the digit is not search text");
+        assert_eq!(ui.get_query(), "", "Alt+digit is not search text");
 
-        press(ui.window(), "9");
+        chord(ui.window(), &[Key::Alt], "9");
         assert!(take(&log).is_empty(), "seven rows: there is no ninth");
 
-        type_text(ui.window(), "a3");
-        assert_eq!(ui.get_query(), "a3", "with a query, digits are text");
-        assert_eq!(take(&log), ["query:a", "query:a3"]);
+        // A bare digit, even with an empty search, filters: typing "2024" must never paste row 2.
+        type_text(ui.window(), "2024");
+        assert_eq!(ui.get_query(), "2024", "digits are text");
+        assert_eq!(take(&log), ["query:2", "query:20", "query:202", "query:2024"]);
     }
 
     fn alt_digit_uses_the_nth_row_even_with_a_query() {
@@ -283,6 +403,29 @@ ui_tests! {
         assert_eq!(ui.get_selected_index(), 1);
     }
 
+    fn ctrl_p_ctrl_d_and_delete_ask_to_pin_duplicate_and_trash_the_selected_row() {
+        let (ui, log) = start();
+        press(ui.window(), &key(Key::DownArrow));
+        take(&log);
+        chord(ui.window(), &[Key::Control], "p");
+        chord(ui.window(), &[Key::Control], "d");
+        press(ui.window(), &key(Key::Delete));
+        assert_eq!(take(&log), ["pin:1", "duplicate:1", "trash:1"]);
+        assert_eq!(ui.get_query(), "", "the shortcuts are not search text");
+    }
+
+    fn delete_edits_the_search_text_instead_of_trashing_once_something_is_typed() {
+        let (ui, log) = start();
+        press(ui.window(), &key(Key::DownArrow));
+        type_text(ui.window(), "o");
+        take(&log);
+        press(ui.window(), &key(Key::Delete));
+        assert!(
+            !take(&log).iter().any(|l| l.starts_with("trash")),
+            "a search is being edited"
+        );
+    }
+
     fn ctrl_e_asks_to_edit_the_selected_row() {
         let (ui, log) = start();
         press(ui.window(), &key(Key::DownArrow));
@@ -290,6 +433,74 @@ ui_tests! {
         chord(ui.window(), &[Key::Control], "e");
         assert_eq!(take(&log), ["edit:1"]);
         assert_eq!(ui.get_query(), "", "the shortcut is not search text");
+    }
+
+    fn a_colour_row_offers_paste_as_by_keyboard_and_open_in_colours() {
+        let (ui, log) = start();
+        let colour = snipdeck_ui::PickerRow {
+            swatch: slint::Color::from_rgb_u8(0x3a, 0x7b, 0xd5),
+            has_swatch: true,
+            ..fixture::sample_rows().remove(3)
+        };
+        fixture::set_rows(&ui, vec![fixture::sample_rows().remove(0), colour]);
+        ui.set_colour_can_open(true);
+        {
+            let log = log.clone();
+            let weak = ui.as_weak();
+            ui.on_colour_choices_requested(move |row| {
+                log.borrow_mut().push(format!("choices:{row}"));
+                let entry = |label: &str| snipdeck_ui::ChoiceEntry {
+                    label: label.into(),
+                    count: -1,
+                    ..Default::default()
+                };
+                weak.unwrap().set_colour_choices(slint::ModelRc::new(slint::VecModel::from(
+                    vec![entry("HEX  #3a7bd5"), entry("RGB  rgb(58, 123, 213)")],
+                )));
+            });
+        }
+        {
+            let log = log.clone();
+            ui.on_colour_chosen(move |row, format, copy| {
+                log.borrow_mut().push(format!("chosen:{row}:{format}:{copy}"));
+            });
+        }
+        {
+            let log = log.clone();
+            ui.on_colour_open_requested(move |row| log.borrow_mut().push(format!("open:{row}")));
+        }
+        // A row that is no colour has no chooser and no Open in Colours. The Menu key there opens the
+        // search field's own Cut/Copy/Paste menu instead; Esc closes it and leaves the Picker open.
+        press(ui.window(), &key(Key::Menu));
+        chord(ui.window(), &[Key::Control], "o");
+        assert_eq!(take(&log).len(), 0);
+        press(ui.window(), &key(Key::Escape));
+        assert_eq!(take(&log).len(), 0, "Esc closed only the field's menu");
+
+        press(ui.window(), &key(Key::DownArrow));
+        take(&log);
+        chord(ui.window(), &[Key::Control], "o");
+        assert_eq!(take(&log), ["open:1"]);
+
+        // Menu opens the chooser; Down + Enter chooses the second format and pastes.
+        press(ui.window(), &key(Key::Menu));
+        assert_eq!(take(&log), ["choices:1"]);
+        press(ui.window(), &key(Key::DownArrow));
+        press(ui.window(), &key(Key::Return));
+        assert_eq!(take(&log), ["chosen:1:1:false"]);
+        assert!(take(&log).is_empty(), "the chooser closed and the Picker stays open");
+
+        // Shift+F10 opens it too; Shift+Enter copies; Esc backs out without using anything.
+        chord(ui.window(), &[Key::Shift], &key(Key::F10));
+        assert_eq!(take(&log), ["choices:1"]);
+        chord(ui.window(), &[Key::Shift], &key(Key::Return));
+        assert_eq!(take(&log), ["chosen:1:0:true"]);
+        press(ui.window(), &key(Key::Menu));
+        take(&log);
+        press(ui.window(), &key(Key::Escape));
+        assert!(take(&log).is_empty(), "Esc closes only the chooser");
+        press(ui.window(), &key(Key::Return));
+        assert_eq!(take(&log), ["use:1"], "the keyboard is back in the search");
     }
 
     fn a_click_on_a_row_uses_it() {
@@ -313,9 +524,9 @@ ui_tests! {
         ui.set_selected_index(25);
         let _ = rows(&ui);
         settle();
-        // Rows are 28px: row 25 ends at 26 * 28 = 728; the nine-row window shows 252 of it.
+        // Rows are 36px: row 25 ends at 26 * 36 = 936; the nine-row window shows 324 of it.
         assert!(
-            (ui.get_scroll_y() + (26.0 * 28.0 - 9.0 * 28.0)).abs() < 1.0,
+            (ui.get_scroll_y() + (26.0 * 36.0 - 9.0 * 36.0)).abs() < 1.0,
             "row 26 is the last visible one: {}",
             ui.get_scroll_y()
         );
@@ -327,26 +538,59 @@ ui_tests! {
 
     // ---- Scopes --------------------------------------------------------------------------------
 
-    fn tab_cycles_the_scope_all_board_pinned_and_back() {
+    fn tab_cycles_the_scope_all_board_list_pinned_recent_tag_and_back() {
         let (ui, log) = start();
         assert_eq!(ui.get_scope(), PickerScope::All);
         press(ui.window(), &key(Key::Tab));
         assert_eq!(ui.get_scope(), PickerScope::Board);
         press(ui.window(), &key(Key::Tab));
+        assert_eq!(ui.get_scope(), PickerScope::List);
+        press(ui.window(), &key(Key::Tab));
         assert_eq!(ui.get_scope(), PickerScope::Pinned);
         press(ui.window(), &key(Key::Tab));
+        assert_eq!(ui.get_scope(), PickerScope::Recent);
+        press(ui.window(), &key(Key::Tab));
+        assert_eq!(ui.get_scope(), PickerScope::Tag);
+        press(ui.window(), &key(Key::Tab));
         assert_eq!(ui.get_scope(), PickerScope::All, "wraps around");
-        assert_eq!(take(&log), ["scope:Board", "scope:Pinned", "scope:All"]);
+        assert_eq!(
+            take(&log),
+            [
+                "scope:Board",
+                "scope:List",
+                "scope:Pinned",
+                "scope:Recent",
+                "scope:Tag",
+                "scope:All"
+            ]
+        );
         assert!(ui.get_search_focused(), "focus never leaves the search");
     }
 
     fn shift_tab_goes_back_through_the_scopes() {
         let (ui, log) = start();
         chord(ui.window(), &[Key::Shift], &key(Key::Backtab));
-        assert_eq!(ui.get_scope(), PickerScope::Pinned);
+        assert_eq!(ui.get_scope(), PickerScope::Tag);
         chord(ui.window(), &[Key::Shift], &key(Key::Tab));
-        assert_eq!(ui.get_scope(), PickerScope::Board);
-        assert_eq!(take(&log), ["scope:Pinned", "scope:Board"]);
+        assert_eq!(ui.get_scope(), PickerScope::Recent);
+        assert_eq!(take(&log), ["scope:Tag", "scope:Recent"]);
+    }
+
+    fn ctrl_tab_steps_the_tag_only_in_the_tag_scope_and_the_chip_names_the_tag() {
+        let (ui, log) = start();
+        chord(ui.window(), &[Key::Control], &key(Key::Tab));
+        assert_eq!(take(&log), Vec::<String>::new(), "outside the Tag scope it does nothing");
+        assert_eq!(ui.get_scope(), PickerScope::All, "and it does not change the scope");
+        ui.set_scope(PickerScope::Tag);
+        ui.set_scope_tag("work".into());
+        settle();
+        chord(ui.window(), &[Key::Control], &key(Key::Tab));
+        chord(ui.window(), &[Key::Control, Key::Shift], &key(Key::Backtab));
+        assert_eq!(take(&log), ["tag:1", "tag:-1"]);
+        // The chip carries the tag's name; a second click on it steps on.
+        let chip = find(&ui, "#work", AccessibleRole::Button);
+        click(&ui, &chip);
+        assert_eq!(take(&log), ["tag:1"]);
     }
 
     fn changing_the_scope_returns_the_selection_to_the_first_row_and_keeps_the_query() {
@@ -375,20 +619,89 @@ ui_tests! {
         assert!(take(&log).is_empty(), "no callback fired");
     }
 
+    fn a_pointer_click_on_every_scope_chip_changes_the_scope_and_never_dismisses() {
+        let (ui, log) = start();
+        // The window has the keyboard, as it does when Windows activates it.
+        ui.window().dispatch_event(slint::platform::WindowEvent::WindowActiveChanged(true));
+        ui.invoke_focus_search();
+        settle();
+        take(&log);
+        for (label, scope) in [
+            ("This board", PickerScope::Board),
+            ("This list", PickerScope::List),
+            ("Pinned", PickerScope::Pinned),
+            ("Recent", PickerScope::Recent),
+            ("Tag", PickerScope::Tag),
+            ("All", PickerScope::All),
+        ] {
+            click(&ui, &find(&ui, label, AccessibleRole::Button));
+            assert_eq!(ui.get_scope(), scope, "{label}");
+            let seen = take(&log);
+            assert!(!seen.iter().any(|l| l == "dismissed"), "a click on {label} dismissed the Picker: {seen:?}");
+            assert!(ui.get_search_focused(), "the keyboard stays in the search after {label}");
+        }
+    }
+
+    fn a_pointer_click_on_a_row_uses_it_without_a_dismiss_first() {
+        let (ui, log) = start();
+        ui.window().dispatch_event(slint::platform::WindowEvent::WindowActiveChanged(true));
+        ui.invoke_focus_search();
+        settle();
+        take(&log);
+        let first = rows(&ui).into_iter().next().expect("a row");
+        click(&ui, &first);
+        assert_eq!(take(&log), ["use:0"], "the click uses the row and nothing dismissed the Picker before it");
+    }
+
+    fn the_list_chip_exists_and_a_cut_list_says_how_many_are_shown() {
+        let (ui, log) = start();
+        find(&ui, "This list", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert_eq!(take(&log), ["scope:List"]);
+        assert!(
+            missing(&ui, "Showing the first 50", AccessibleRole::Text),
+            "nothing was cut"
+        );
+        ui.set_result_limit(50);
+        settle();
+        find(&ui, "Showing the first 50", AccessibleRole::Text);
+    }
+
     // ---- States --------------------------------------------------------------------------------
+
+    fn an_empty_state_carries_the_one_action_that_fixes_it() {
+        let (ui, log) = start();
+        fixture::set_rows(&ui, Vec::new());
+        settle();
+        find(&ui, "Open Snipdeck", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["open"], "an empty library goes to the Panel");
+
+        // A search with no result in a narrow scope offers the wider one.
+        find(&ui, "This board", AccessibleRole::Button).invoke_accessible_default_action();
+        type_text(ui.window(), "zz");
+        settle();
+        take(&log);
+        find(&ui, "Search all boards", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert_eq!(take(&log), ["scope:All"]);
+        assert!(
+            missing(&ui, "Search all boards", AccessibleRole::Button),
+            "the widest scope has nothing wider to offer"
+        );
+    }
 
     fn an_empty_picker_teaches_and_a_search_with_no_results_says_so() {
         let (ui, log) = start();
         fixture::set_rows(&ui, Vec::new());
         settle();
-        assert!(!all(&ui, "No snippets yet", AccessibleRole::Text).is_empty());
-        assert!(rows(&ui).is_empty());
+        assert!(!all(&ui, "No items yet", AccessibleRole::Text).is_empty());
+        assert_eq!(rows(&ui).len(), 0);
 
         type_text(ui.window(), "zz");
         settle();
         assert!(!all(&ui, "No matches", AccessibleRole::Text).is_empty());
         assert!(!all(&ui, "Nothing matches “zz”.", AccessibleRole::Text).is_empty());
-        assert!(missing(&ui, "No snippets yet", AccessibleRole::Text));
+        assert!(missing(&ui, "No items yet", AccessibleRole::Text));
 
         take(&log);
         press(ui.window(), &key(Key::Tab));
@@ -403,11 +716,11 @@ ui_tests! {
         let seven = ui.get_content_height();
         fixture::set_rows(&ui, fixture::numbered_rows(3));
         settle();
-        assert!((seven - ui.get_content_height() - 4.0 * 28.0).abs() < 0.5, "four rows less");
+        assert!((seven - ui.get_content_height() - 4.0 * 36.0).abs() < 0.5, "four rows less");
         fixture::set_rows(&ui, fixture::numbered_rows(40));
         settle();
         let nine = ui.get_content_height();
-        assert!((nine - seven - 2.0 * 28.0).abs() < 0.5, "nine rows is the cap: {nine} vs {seven}");
+        assert!((nine - seven - 2.0 * 36.0).abs() < 0.5, "nine rows is the cap: {nine} vs {seven}");
         fixture::set_rows(&ui, Vec::new());
         settle();
         assert!(
@@ -421,14 +734,14 @@ ui_tests! {
 
     fn the_controls_have_roles_and_labels() {
         let (ui, _log) = start();
-        let search = find(&ui, "Search all snippets", AccessibleRole::TextInput);
-        assert_eq!(search.accessible_placeholder_text().map(|p| p.to_string()).as_deref(), Some("Search all snippets"));
+        let search = find(&ui, "Search all items", AccessibleRole::TextInput);
+        assert_eq!(search.accessible_placeholder_text().map(|p| p.to_string()).as_deref(), Some("Search all items"));
         assert!(
             ElementHandle::find_by_accessible_label(&ui, "Results").count() > 0,
             "the results list is labelled"
         );
         assert!(!all(&ui, "Search in", AccessibleRole::Groupbox).is_empty(), "the scopes are a labelled group");
-        for chip in ["All", "This board", "Pinned"] {
+        for chip in ["All", "This board", "Pinned", "Recent", "Tag"] {
             let c = find(&ui, chip, AccessibleRole::Button);
             assert_eq!(c.accessible_checkable(), Some(true), "{chip} reports a checked state");
         }
@@ -437,6 +750,9 @@ ui_tests! {
         assert!(!all(&ui, "Enter", AccessibleRole::Text).is_empty(), "and the key that does it");
         assert!(!all(&ui, "Shift Enter", AccessibleRole::Text).is_empty());
         assert!(!all(&ui, "Escape", AccessibleRole::Text).is_empty());
+        // Digits need Alt: the footer says so, and the number badges read as the key.
+        assert!(!all(&ui, "Alt 1 to 9", AccessibleRole::Text).is_empty(), "the footer names Alt+N");
+        assert!(!all(&ui, "Alt+1", AccessibleRole::Text).is_empty(), "the first badge reads as Alt+1");
     }
 
     fn the_footer_names_the_copy_route_when_there_is_no_target() {
@@ -456,6 +772,63 @@ ui_tests! {
             .expect("sensitive row");
         let label = secret.accessible_label().unwrap().to_string();
         assert!(!label.contains("hunter2"), "masked: {label}");
+    }
+
+    // UX-26: the Picker reveals a hidden item the way Main and the Panel do, while Space is held.
+    fn holding_space_on_a_hidden_row_asks_the_host_to_reveal_it_until_released() {
+        let (ui, log) = start();
+        let at = i32::try_from(
+            ui.get_rows()
+                .iter()
+                .position(|r| r.title == "Server password")
+                .expect("sensitive row"),
+        )
+        .unwrap();
+        while ui.get_selected_index() < at {
+            press(ui.window(), &key(Key::DownArrow));
+        }
+        take(&log);
+        ui.window().dispatch_event(slint::platform::WindowEvent::KeyPressed { text: " ".into() });
+        ui.window().dispatch_event(slint::platform::WindowEvent::KeyPressed { text: " ".into() });
+        assert_eq!(take(&log), [format!("reveal:{at}:true")], "key repeat asks once");
+        ui.window().dispatch_event(slint::platform::WindowEvent::KeyReleased { text: " ".into() });
+        settle();
+        assert_eq!(take(&log), [format!("reveal:{at}:false")]);
+    }
+
+    fn space_on_a_plain_row_or_in_a_search_stays_text() {
+        let (ui, log) = start();
+        take(&log);
+        press(ui.window(), " ");
+        assert!(!take(&log).iter().any(|l| l.starts_with("reveal")), "row 0 is not hidden");
+        type_text(ui.window(), "ab");
+        settle();
+        take(&log);
+        press(ui.window(), " ");
+        assert!(!take(&log).iter().any(|l| l.starts_with("reveal")), "with a query Space is text");
+    }
+
+    fn a_revealed_row_shows_its_text() {
+        let (ui, _log) = start();
+        let at = i32::try_from(
+            ui.get_rows()
+                .iter()
+                .position(|r| r.title == "Server password")
+                .expect("sensitive row"),
+        )
+        .unwrap();
+        let spoken = |ui: &PickerWindow| {
+            rows(ui)
+                .into_iter()
+                .map(|r| r.accessible_label().map(|l| l.to_string()).unwrap_or_default())
+                .filter(|l| l.starts_with("Server password"))
+                .collect::<Vec<_>>()
+                .join("|")
+        };
+        assert!(!spoken(&ui).contains("hunter2"));
+        ui.set_revealed_index(at);
+        settle();
+        assert!(spoken(&ui).contains("hunter2"), "{}", spoken(&ui));
     }
 
     fn every_target_is_at_least_24px_in_both_directions() {

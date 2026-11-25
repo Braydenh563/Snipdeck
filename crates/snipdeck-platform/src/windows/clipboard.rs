@@ -39,7 +39,8 @@
 //! rendering (as soon as ownership is lost, on `WM_DESTROYCLIPBOARD`), snapshots, decoded images,
 //! text read back, and `HGLOBAL`s that Windows refused. Not covered: the caller's
 //! [`crate::payload::Payload`] (the pipeline clones it; its owner drops it), memory handed to
-//! Windows, and pasted files on disk (see [`crate::win_formats::KEPT_PASTE_DIRS`]). Nothing here
+//! Windows, and pasted files on disk (a random folder per paste under `%TEMP%\\Snipdeck`; the previous one is kept for the
+//! clipboard that may point into it, older ones go at the next paste, all at the next start; deleted, not overwritten). Nothing here
 //! logs content. A private payload carries the markers on every write, kept copies included.
 //!
 //! # When a restore is allowed (sequence numbers)
@@ -72,7 +73,7 @@ use std::io::Write as _;
 use std::os::windows::ffi::OsStrExt as _;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU8, AtomicU64, Ordering, compiler_fence};
+use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU64, Ordering, compiler_fence};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::sync::{Arc, Weak};
 use std::thread::JoinHandle;
@@ -84,14 +85,14 @@ use windows::Win32::Foundation::{
 };
 use windows::Win32::System::DataExchange::{
     AddClipboardFormatListener, CloseClipboard, EmptyClipboard, EnumClipboardFormats,
-    GetClipboardData, GetClipboardOwner, GetClipboardSequenceNumber, OpenClipboard,
-    RegisterClipboardFormatW, RemoveClipboardFormatListener, SetClipboardData,
+    GetClipboardData, GetClipboardOwner, GetClipboardSequenceNumber, IsClipboardFormatAvailable,
+    OpenClipboard, RegisterClipboardFormatW, RemoveClipboardFormatListener, SetClipboardData,
 };
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::System::Memory::{
     GMEM_MOVEABLE, GMEM_ZEROINIT, GlobalAlloc, GlobalLock, GlobalSize, GlobalUnlock,
 };
-use windows::Win32::System::Ole::{CF_DIB, CF_HDROP, CF_UNICODETEXT};
+use windows::Win32::System::Ole::{CF_DIB, CF_DIBV5, CF_HDROP, CF_UNICODETEXT};
 use windows::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, HWND_MESSAGE, IsHungAppWindow,
     MSG, PM_NOREMOVE, PM_QS_SENDMESSAGE, PM_REMOVE, PeekMessageW, PostMessageW, PostQuitMessage,
@@ -101,10 +102,11 @@ use windows::Win32::UI::WindowsAndMessaging::{
 use windows::core::{HRESULT, PCWSTR, w};
 
 use crate::cf_html;
+use crate::clipboard_watch::{self, ChangeSink, ClipboardChange, WatchGate};
 use crate::error::Error as ServiceError;
 use crate::payload::{Data, FilePayload, Payload};
 use crate::pipeline::{Clipboard, Error};
-use crate::win_formats::{self, DROPEFFECT_COPY, MARKER_DWORD_ZERO, OwnerLedger, PASTE_DIR_PREFIX};
+use crate::win_formats::{self, DROPEFFECT_COPY, MARKER_DWORD_ZERO, OwnerLedger};
 
 /// How long a caller waits for the clipboard thread to answer. Generous because a snapshot makes
 /// other apps render their delayed formats (a large Excel range takes a while).
@@ -116,10 +118,16 @@ const SNAPSHOT_OPEN_BUDGET: Duration = Duration::from_millis(100);
 /// Longer: right after a render the Target may still hold the clipboard to read other formats.
 const RESTORE_OPEN_BUDGET: Duration = Duration::from_millis(250);
 const OPEN_RETRY_STEP: Duration = Duration::from_millis(5);
-/// The most a snapshot keeps; formats that would exceed it are left out of the restore.
+/// The most a snapshot keeps; formats that would exceed it are left out (the snapshot then
+/// reports itself incomplete and the paste is reported as not restored).
 pub const SNAPSHOT_LIMIT: usize = 64 * 1024 * 1024;
 /// The most text [`WinClipboard::read_text`] reads (bytes of UTF-16).
 const READ_TEXT_LIMIT: usize = 32 * 1024 * 1024;
+/// The most a picture or a file list read from the clipboard may take (bytes).
+const READ_IMAGE_LIMIT: usize = win_formats::DIB_DECODE_LIMIT;
+const READ_FILES_LIMIT: usize = 4 * 1024 * 1024;
+/// The biggest HTML or RTF flavour read for Recent (the policy keeps both only up to 1 MiB).
+const RICH_FLAVOUR_LIMIT: usize = 2 * 1024 * 1024;
 /// How long `Drop` waits for the thread to render outstanding formats and exit.
 const SHUTDOWN_WAIT: Duration = Duration::from_secs(2);
 /// Posted to the owner window when jobs are queued.
@@ -143,8 +151,14 @@ pub struct WinClipboard {
     rendered: Arc<AtomicU64>,
     /// The latest snapshot, while its holder keeps it: the fallback for a refused write.
     latest_snapshot: Weak<SnapshotData>,
+    /// The clipboard sequence number read on the clipboard thread right after the latest write.
+    written_sequence: Option<u32>,
     thread: Option<JoinHandle<()>>,
+    /// The background deletion of decrypted paste files, if one was started: the quit joins it.
+    forgetting: Option<JoinHandle<()>>,
     exited: Receiver<()>,
+    /// Whether Windows accepted the clipboard-change listener (without it Recent sees nothing).
+    listening: Arc<AtomicBool>,
 }
 
 impl std::fmt::Debug for WinClipboard {
@@ -167,12 +181,14 @@ struct SnapshotData {
     formats: Vec<(u32, Vec<u8>)>,
     /// `GetClipboardSequenceNumber` when the snapshot was taken.
     sequence: u32,
+    /// A format the clipboard offered is not in `formats` (too big, unreadable, or a metafile).
+    incomplete: bool,
 }
 
 impl Snapshot {
-    /// How many formats were captured.
-    pub fn format_count(&self) -> usize {
-        self.data.formats.len()
+    /// Whether a format the clipboard offered had to be left out.
+    pub fn is_incomplete(&self) -> bool {
+        self.data.incomplete
     }
 }
 
@@ -207,15 +223,19 @@ impl WinClipboard {
     /// [`ServiceError`] if the thread or the window cannot be created.
     pub fn new() -> Result<Self, ServiceError> {
         let formats = Formats::register();
+        // Folders left by an earlier run: the clipboard they were offered on is long stale.
+        remove_paste_files();
         let (jobs, job_queue) = mpsc::channel::<Job>();
         let (ready_tx, ready) = mpsc::channel();
         let (exited_tx, exited) = mpsc::channel();
         let rendered = Arc::new(AtomicU64::new(0));
         let thread_rendered = Arc::clone(&rendered);
+        let listening = Arc::new(AtomicBool::new(false));
+        let thread_listening = Arc::clone(&listening);
         let thread = std::thread::Builder::new()
             .name("snipdeck-clipboard".into())
             .spawn(move || {
-                owner_thread(thread_rendered, &job_queue, &ready_tx);
+                owner_thread(thread_rendered, &thread_listening, &job_queue, &ready_tx);
                 let _ = exited_tx.send(());
             })
             .map_err(|_| ServiceError::Unavailable("could not start the clipboard thread"))?;
@@ -226,8 +246,11 @@ impl WinClipboard {
                 jobs,
                 rendered,
                 latest_snapshot: Weak::new(),
+                written_sequence: None,
                 thread: Some(thread),
+                forgetting: None,
                 exited,
+                listening,
             }),
             Ok(Err(error)) => {
                 let _ = thread.join();
@@ -239,11 +262,114 @@ impl WinClipboard {
         }
     }
 
+    /// Whether the clipboard-change listener is installed. `false` means the Recent inbox can
+    /// record nothing, and the host should say so once.
+    #[must_use]
+    pub fn is_listening(&self) -> bool {
+        self.listening.load(Ordering::Acquire)
+    }
+
     /// The clipboard's text (`CF_UNICODETEXT`), for the `{clipboard}` template variable.
     ///
     /// `None` if there is no text or the clipboard stays busy. Writes nothing, so no markers.
     pub fn read_text(&mut self) -> Option<String> {
         self.call(read_text_job).ok().flatten()
+    }
+
+    /// The clipboard's text with its HTML (`CF_HTML`, fragment only) and RTF flavours, read
+    /// together in one open. The flavours are only read next to text. An empty result if the
+    /// clipboard holds no text or stays busy. Writes nothing.
+    pub fn read_rich(&mut self) -> clipboard_watch::RichClip {
+        let formats = self.formats;
+        self.call(move || read_rich_job(&formats))
+            .unwrap_or_default()
+    }
+
+    /// The picture on the clipboard as PNG bytes: the registered `PNG` format first, else
+    /// `CF_DIBV5`, else `CF_DIB` converted by [`win_formats::dib_to_png`]. `None` if there is no
+    /// picture, it is over the size limit, or the clipboard stays busy. Writes nothing.
+    pub fn read_png(&mut self) -> Option<Vec<u8>> {
+        let png_format = self.formats.png;
+        self.call(move || read_png_job(png_format)).ok().flatten()
+    }
+
+    /// The files on the clipboard (`CF_HDROP`, as copied in Explorer): no paths if there are
+    /// none or the clipboard stays busy, [`win_formats::ClipFiles::TooMany`] for a list over
+    /// the limit. Writes nothing.
+    pub fn read_files(&mut self) -> win_formats::ClipFiles {
+        self.call(read_files_job)
+            .unwrap_or(win_formats::ClipFiles::Files(Vec::new()))
+    }
+
+    /// Whether the clipboard holds a picture (`CF_DIB`, `CF_DIBV5` or `CF_BITMAP`). Reads
+    /// nothing, so it needs no open clipboard.
+    pub fn has_image(&mut self) -> bool {
+        use windows::Win32::System::DataExchange::IsClipboardFormatAvailable;
+        use windows::Win32::System::Ole::{CF_BITMAP, CF_DIB, CF_DIBV5};
+        [CF_DIB.0, CF_DIBV5.0, CF_BITMAP.0]
+            .into_iter()
+            .any(|format| {
+                // SAFETY: no preconditions.
+                unsafe { IsClipboardFormatAvailable(u32::from(format)) }.is_ok()
+            })
+    }
+
+    /// Reports every clipboard change to `sink` (on the clipboard thread) while `gate` is open.
+    /// While the gate is closed nothing is read. Replaces an earlier listener.
+    pub fn watch(&self, gate: WatchGate, sink: ChangeSink) {
+        let _ = self.call(move || {
+            with_owner(|owner| owner.watch = Some(Watch { gate, sink }));
+        });
+    }
+
+    /// Empties the clipboard if it holds exactly `text` as `CF_UNICODETEXT`. Whether it did.
+    pub fn clear_if_text(&mut self, text: &str) -> bool {
+        let expected = text.to_owned();
+        self.call(move || clear_if_text_job(&expected))
+            .unwrap_or(false)
+    }
+
+    /// The clipboard sequence number (`GetClipboardSequenceNumber`), which changes whenever the
+    /// contents do; `None` if the clipboard thread is not running.
+    pub fn sequence_number(&mut self) -> Option<u32> {
+        // SAFETY: no preconditions.
+        self.call(|| unsafe { GetClipboardSequenceNumber() }).ok()
+    }
+
+    /// Deletes the decrypted files that sensitive file pastes left in `%TEMP%\Snipdeck` (best
+    /// effort: a file another app still has open stays until the next start). Folders of
+    /// ordinary file items stay: the clipboard may still point to them. Called when the
+    /// clipboard clear is due, on lock and on quit.
+    pub fn forget_pasted_files(&mut self) {
+        // Deleting folders can take a while (a big file, a busy disk): not on the UI thread.
+        match std::thread::Builder::new()
+            .name("forget-paste-files".into())
+            .spawn(forget_sensitive_paste_files)
+        {
+            // Kept so the quit can wait for it: the process would end under the deletion.
+            Ok(handle) => {
+                if let Some(earlier) = self.forgetting.replace(handle) {
+                    let _ = earlier.join();
+                }
+            }
+            Err(_) => forget_sensitive_paste_files(),
+        }
+    }
+
+    /// [`forget_pasted_files`](Self::forget_pasted_files), returning once the files are gone (the
+    /// quit calls it, as the process would end under a background deletion).
+    pub fn forget_pasted_files_waiting(&mut self) {
+        if let Some(handle) = self.forgetting.take() {
+            let _ = handle.join();
+        }
+        forget_sensitive_paste_files();
+    }
+
+    /// Empties the clipboard, whatever formats it holds, if its sequence number is still
+    /// `sequence`. Whether it did.
+    pub fn clear_if_sequence(&mut self, sequence: u32) -> bool {
+        self.call(move || clear_if_sequence_job(sequence))
+            .unwrap_or(false)
     }
 
     fn call<R: Send + 'static>(
@@ -302,7 +428,21 @@ impl WinClipboard {
             .delayed
             .then(|| self.latest_snapshot.upgrade())
             .flatten();
-        self.call(move || write_job(entries, mode, formats, fallback))?
+        let (generation, sequence) = self.call(move || {
+            write_job(entries, mode, formats, fallback).map(|generation| {
+                // SAFETY: no preconditions. Read here, on the clipboard thread and straight
+                // after the write, so a later change by someone else is never mistaken for ours.
+                (generation, unsafe { GetClipboardSequenceNumber() })
+            })
+        })??;
+        self.written_sequence = Some(sequence);
+        Ok(generation)
+    }
+
+    /// The clipboard sequence number right after the latest write of this clipboard, or `None`
+    /// before any write.
+    pub fn written_sequence(&self) -> Option<u32> {
+        self.written_sequence
     }
 }
 
@@ -343,15 +483,39 @@ impl Clipboard for WinClipboard {
         self.write(payload, mode).map(|_| ())
     }
 
+    /// Whether `written` is the current write and this window still owns the clipboard.
+    fn write_confirmed(&mut self, written: &Written) -> bool {
+        let generation = written.generation;
+        self.call(move || {
+            let Some(hwnd) = owner_hwnd() else {
+                return false;
+            };
+            // SAFETY: no preconditions.
+            let owner = unsafe { GetClipboardOwner() }.ok();
+            owner == Some(hwnd)
+                && with_owner(|owner| owner.ledger.generation() == generation) == Some(true)
+        })
+        .unwrap_or(false)
+    }
+
     /// Whether anyone asked for a format of `written`. Any reader counts, not only the Target:
     /// see the limitation in the module documentation.
     fn render_requested(&mut self, written: &Written) -> bool {
         self.rendered.load(Ordering::Acquire) == written.generation
     }
 
+    fn is_complete(&self, snapshot: &Snapshot) -> bool {
+        !snapshot.is_incomplete()
+    }
+
     fn restore(&mut self, snapshot: Snapshot, written: Written) -> Result<bool, Error> {
         let formats = self.formats;
         self.call(move || restore_job(&snapshot, written, formats))?
+    }
+
+    fn restore_forced(&mut self, snapshot: Snapshot) -> Result<(), Error> {
+        let formats = self.formats;
+        self.call(move || restore_forced_job(&snapshot, formats))?
     }
 }
 
@@ -361,6 +525,8 @@ impl Drop for WinClipboard {
         // available after we exit) and WM_DESTROY, which ends the message loop.
         // SAFETY: as in `call`.
         let _ = unsafe { PostMessageW(Some(self.hwnd()), WM_CLOSE, WPARAM(0), LPARAM(0)) };
+        // The paste folders stay: a persistent CF_HDROP on the clipboard may point into one. The
+        // next start removes them (see `WinClipboard::new`).
         // A thread stuck in another app's render is left behind rather than hanging the caller.
         match self.exited.recv_timeout(SHUTDOWN_WAIT) {
             Ok(()) | Err(RecvTimeoutError::Disconnected) => {
@@ -395,8 +561,11 @@ struct Formats {
     html: u32,
     rtf: u32,
     png: u32,
+    /// `FileGroupDescriptorW`: virtual files (Outlook attachments), which Recent skips.
+    file_group: u32,
     drop_effect: u32,
     exclude_monitor: u32,
+    viewer_ignore: u32,
     history: u32,
     cloud: u32,
 }
@@ -411,15 +580,24 @@ impl Formats {
             html: register(w!("HTML Format")),
             rtf: register(w!("Rich Text Format")),
             png: register(w!("PNG")),
+            file_group: register(w!("FileGroupDescriptorW")),
             drop_effect: register(w!("Preferred DropEffect")),
             exclude_monitor: register(w!("ExcludeClipboardContentFromMonitorProcessing")),
+            viewer_ignore: register(w!("Clipboard Viewer Ignore")),
             history: register(w!("CanIncludeInClipboardHistory")),
             cloud: register(w!("CanUploadToCloudClipboard")),
         }
     }
 
-    fn markers(self) -> [u32; 3] {
-        [self.exclude_monitor, self.history, self.cloud]
+    /// The four "keep me out" markers, `Clipboard Viewer Ignore` included (older viewers and
+    /// managers read only that one).
+    fn markers(self) -> [u32; 4] {
+        [
+            self.exclude_monitor,
+            self.viewer_ignore,
+            self.history,
+            self.cloud,
+        ]
     }
 }
 
@@ -490,7 +668,7 @@ fn prepare(payload: &Payload, formats: &Formats) -> Result<Vec<Entry>, Error> {
                 );
             }
             Data::Files(files) if !files.is_empty() => {
-                let paths = write_paste_files(files)?;
+                let paths = write_paste_files(files, payload.is_private())?;
                 let hdrop = win_formats::drop_files(&paths)
                     .ok_or_else(|| Error::Clipboard("a pasted file path is invalid".into()))?;
                 add(&mut entries, u32::from(CF_HDROP.0), Source::Bytes(hdrop));
@@ -509,10 +687,34 @@ fn prepare(payload: &Payload, formats: &Formats) -> Result<Vec<Entry>, Error> {
     Ok(entries)
 }
 
-/// Writes `files` into a fresh `%TEMP%\Snipdeck\paste-<n>\` and returns their UTF-16 paths.
-/// Older paste folders are removed first, except the newest ones kept by
-/// [`win_formats::stale_paste_dirs`] (best effort: a file still open stays until a later paste).
-fn write_paste_files(files: &[FilePayload]) -> Result<Vec<Vec<u16>>, Error> {
+/// Where pasted files are written: `%USERPROFILE%\Snipdeck paste files` in a packaged (Store)
+/// build, `%TEMP%\Snipdeck` otherwise.
+///
+/// A packaged build writes new files under `AppData` (which holds `%TEMP%`) into a private
+/// per-package copy that other programs cannot see (Microsoft Learn, "Flexible virtualization"),
+/// so a path on the clipboard into it would not exist for Explorer or a mail client. Outside
+/// `AppData` the write is real. An unpackaged build has no such copy and keeps `%TEMP%`, as does
+/// a packaged one with no profile folder. UNVERIFIED on a Store build until it runs there
+/// (docs/packaging.md).
+fn paste_root() -> PathBuf {
+    paste_root_for(
+        super::package::is_packaged(),
+        std::env::var_os("USERPROFILE"),
+    )
+}
+
+fn paste_root_for(packaged: bool, profile: Option<std::ffi::OsString>) -> PathBuf {
+    profile.filter(|p| packaged && !p.is_empty()).map_or_else(
+        || std::env::temp_dir().join("Snipdeck"),
+        |profile| PathBuf::from(profile).join("Snipdeck paste files"),
+    )
+}
+
+/// Writes `files` into a fresh, randomly named `<paste_root>\paste-<random>\` and returns
+/// their UTF-16 paths. The previous folder is kept, because the clipboard (or a snapshot about to
+/// be restored) may still point into it; every older one is removed first (best effort: a file
+/// still open stays until a later paste or the next start, see [`remove_paste_files`]).
+fn write_paste_files(files: &[FilePayload], sensitive: bool) -> Result<Vec<Vec<u16>>, Error> {
     let io = |error: std::io::Error| {
         Error::Clipboard(format!(
             "could not write the pasted files ({})",
@@ -525,26 +727,20 @@ fn write_paste_files(files: &[FilePayload]) -> Result<Vec<Vec<u16>>, Error> {
     {
         return Err(Error::Clipboard("a pasted file name is invalid".into()));
     }
-    let root = std::env::temp_dir().join("Snipdeck");
+    let root = paste_root();
     fs::create_dir_all(&root).map_err(io)?;
-    let existing: Vec<u64> = fs::read_dir(&root)
-        .map_err(io)?
-        .flatten()
-        .filter_map(|entry| {
-            entry
-                .file_name()
-                .to_str()
-                .and_then(win_formats::paste_dir_number)
-        })
-        .collect();
-    for number in win_formats::stale_paste_dirs(&existing) {
-        let _ = fs::remove_dir_all(root.join(format!("{PASTE_DIR_PREFIX}{number}")));
+    let previous = win_formats::newest_paste_dir(&root);
+    win_formats::remove_paste_dirs(&root, previous.as_deref());
+    let dir = win_formats::claim_paste_dir(&root, win_formats::os_random).map_err(io)?;
+    if sensitive && let Ok(mut list) = SENSITIVE_PASTE_DIRS.lock() {
+        list.push((root.clone(), dir.clone()));
     }
-    let highest = existing.iter().copied().max().unwrap_or(0);
-    let dir = claim_paste_dir(&root, highest.saturating_add(1)).map_err(io)?;
     let mut paths = Vec::with_capacity(files.len());
-    for file in files {
-        let path = dir.join(&file.name);
+    // Two files of the same name (from different folders) must both paste.
+    let names =
+        win_formats::distinct_names(&files.iter().map(|f| f.name.as_str()).collect::<Vec<_>>());
+    for (file, name) in files.iter().zip(&names) {
+        let path = dir.join(name);
         let mut out = fs::OpenOptions::new()
             .write(true)
             .create_new(true)
@@ -556,22 +752,26 @@ fn write_paste_files(files: &[FilePayload]) -> Result<Vec<Vec<u16>>, Error> {
     Ok(paths)
 }
 
-fn claim_paste_dir(root: &std::path::Path, first: u64) -> std::io::Result<PathBuf> {
-    let mut number = first;
-    loop {
-        let dir = root.join(format!("{PASTE_DIR_PREFIX}{number}"));
-        match fs::create_dir(&dir) {
-            Ok(()) => return Ok(dir),
-            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
-                // Bounded: give up after 1000 taken names rather than loop forever.
-                if number - first >= 1000 {
-                    return Err(error);
-                }
-                number += 1;
-            }
-            Err(error) => return Err(error),
-        }
-    }
+/// The paste folders that hold a sensitive item's decrypted files; only these are deleted when
+/// the clipboard clear is due, so a plain file item the clipboard still points to keeps its files.
+static SENSITIVE_PASTE_DIRS: std::sync::Mutex<Vec<win_formats::ListedPasteDir>> =
+    std::sync::Mutex::new(Vec::new());
+
+/// Deletes the folders of sensitive pastes (see [`SENSITIVE_PASTE_DIRS`]).
+fn forget_sensitive_paste_files() {
+    let Ok(mut list) = SENSITIVE_PASTE_DIRS.lock() else {
+        return;
+    };
+    win_formats::remove_listed_paste_dirs(&mut list);
+}
+
+/// Removes every pasted-file folder at the next start (not on exit: a persistent `CF_HDROP` may
+/// still point into one), so decrypted bytes do not outlive the next run. Best effort; a file
+/// another app still has open stays.
+fn remove_paste_files() {
+    win_formats::remove_paste_dirs(&paste_root(), None);
+    // Folders an earlier version left in %TEMP%.
+    win_formats::remove_paste_dirs(&std::env::temp_dir().join("Snipdeck"), None);
 }
 
 /// Overwrites `bytes` with zeros in a way the optimiser may not remove.
@@ -594,6 +794,14 @@ struct Owner {
     ledger: OwnerLedger,
     /// Formats of the latest transient write still to render; empty once ownership is lost.
     delayed: Vec<Entry>,
+    /// The Recent inbox's listener, once installed with [`WinClipboard::watch`].
+    watch: Option<Watch>,
+}
+
+/// A listener for clipboard changes and the switch that turns it on.
+struct Watch {
+    gate: WatchGate,
+    sink: ChangeSink,
 }
 
 thread_local! {
@@ -611,6 +819,7 @@ fn with_owner<R>(f: impl FnOnce(&mut Owner) -> R) -> Option<R> {
 
 fn owner_thread(
     rendered: Arc<AtomicU64>,
+    listening: &AtomicBool,
     jobs: &Receiver<Job>,
     ready: &Sender<Result<usize, ServiceError>>,
 ) {
@@ -627,12 +836,14 @@ fn owner_thread(
             rendered,
             ledger: OwnerLedger::default(),
             delayed: Vec::new(),
+            watch: None,
         });
     });
     // Without the listener a render's possible bump on close goes unrecorded and the restore
     // after it is refused (the safe side), so a failure here is not fatal.
     // SAFETY: `hwnd` is the live window this thread just created.
-    let _ = unsafe { AddClipboardFormatListener(hwnd) };
+    let registered = unsafe { AddClipboardFormatListener(hwnd) }.is_ok();
+    listening.store(registered, Ordering::Release);
     let _ = ready.send(Ok(hwnd.0.expose_provenance()));
 
     let mut msg = MSG::default();
@@ -784,6 +995,7 @@ fn render_all_formats(hwnd: HWND) {
 
 /// `WM_CLIPBOARDUPDATE`: lets the ledger take a requester's bump on close as ours.
 fn clipboard_updated(hwnd: HWND) {
+    report_change(hwnd);
     if with_owner(|owner| owner.ledger.wants_update()) != Some(true) {
         return;
     }
@@ -792,6 +1004,124 @@ fn clipboard_updated(hwnd: HWND) {
     // SAFETY: no preconditions.
     let sequence = unsafe { GetClipboardSequenceNumber() };
     with_owner(|owner| owner.ledger.clipboard_updated(still_owner, sequence));
+}
+
+/// Hands the change to the Recent inbox's listener, if one is installed and switched on.
+fn report_change(hwnd: HWND) {
+    // Taken out for the call, so the listener runs with no borrow of the owner state held.
+    let Some(watch) = with_owner(|owner| owner.watch.take()).flatten() else {
+        return;
+    };
+    if watch.gate.is_open() {
+        (watch.sink)(observe_change(hwnd));
+    }
+    with_owner(|owner| {
+        if owner.watch.is_none() {
+            owner.watch = Some(watch);
+        }
+    });
+}
+
+/// Reads who changed the clipboard and what it holds, unless the source asked to be left out
+/// (`ExcludeClipboardContentFromMonitorProcessing`, `Clipboard Viewer Ignore`,
+/// `CanIncludeInClipboardHistory` = 0, all read with the clipboard open): then
+/// the text is never read. Our own writes are reported as `own` and not read either.
+fn observe_change(hwnd: HWND) -> ClipboardChange {
+    let formats = Formats::register();
+    // SAFETY: no preconditions.
+    let owner = unsafe { GetClipboardOwner() }.ok();
+    if owner == Some(hwnd) {
+        return ClipboardChange {
+            own: true,
+            ..ClipboardChange::default()
+        };
+    }
+    let mut change = ClipboardChange {
+        source_app: owner.and_then(super::target::window_exe_name),
+        ..ClipboardChange::default()
+    };
+    let Some(_open) = OpenGuard::open(hwnd, READ_OPEN_BUDGET) else {
+        return change;
+    };
+    // The markers are read with the clipboard open, and before any text is copied: a password
+    // manager can set them after a cheap check made before the open (which may retry for a
+    // while) and the content must not be taken in that gap. Nothing is read before this point.
+    if clipboard_watch::excluded_by_markers(read_markers(&formats)) {
+        change.excluded_format = true;
+        return change;
+    }
+    // SAFETY: no preconditions.
+    if unsafe { IsClipboardFormatAvailable(u32::from(CF_UNICODETEXT.0)) }.is_ok() {
+        // SAFETY: the clipboard is open by this thread; the handle stays owned by the system.
+        if let Ok(handle) = unsafe { GetClipboardData(u32::from(CF_UNICODETEXT.0)) }
+            && let Some(mut bytes) = read_global(HGLOBAL(handle.0), READ_TEXT_LIMIT)
+        {
+            change.text = Some(win_formats::from_unicode_text(&bytes));
+            wipe(&mut bytes);
+        }
+    }
+    // Only after the marker gate above, with the clipboard still open: the formatted flavours
+    // ride along with text; with no text, copied files come first (Explorer), then a picture.
+    // Virtual files (no real path to keep) are skipped, a picture next to them is not.
+    if change.text.is_some() {
+        let mut html = read_format(formats.html, RICH_FLAVOUR_LIMIT);
+        let mut rtf = read_format(formats.rtf, RICH_FLAVOUR_LIMIT);
+        (change.html, change.rtf) = clipboard_watch::rich_flavours(html.as_deref(), rtf.as_deref());
+        if let Some(rtf) = rtf.as_mut() {
+            wipe(rtf);
+        }
+        if let Some(html) = html.as_mut() {
+            wipe(html);
+        }
+    } else {
+        if !present(formats.file_group)
+            && let win_formats::ClipFiles::Files(paths) = read_files_open()
+        {
+            change.files = paths;
+        }
+        if change.files.is_empty() {
+            change.image = read_png_open(formats.png);
+        }
+    }
+    change
+}
+
+/// Whether a registered format is on the clipboard. A format id of 0 is not asked about.
+fn present(format: u32) -> bool {
+    // SAFETY: no preconditions.
+    format != 0 && unsafe { IsClipboardFormatAvailable(format) }.is_ok()
+}
+
+/// The bytes of one format of the open clipboard; `None` if absent or over `limit`.
+fn read_format(format: u32, limit: usize) -> Option<Vec<u8>> {
+    if !present(format) {
+        return None;
+    }
+    // SAFETY: the clipboard is open by this thread; the handle stays owned by the system.
+    let handle = unsafe { GetClipboardData(format) }.ok()?;
+    read_global(HGLOBAL(handle.0), limit)
+}
+
+/// Reads every "keep me out of history" marker. The clipboard must be open by this thread.
+fn read_markers(formats: &Formats) -> clipboard_watch::Markers {
+    let present = |format: u32| {
+        // SAFETY: no preconditions; a format id of 0 is not asked about.
+        format != 0 && unsafe { IsClipboardFormatAvailable(format) }.is_ok()
+    };
+    let can_include_in_history = if formats.history == 0 {
+        None
+    } else {
+        // SAFETY: the clipboard is open by this thread; the handle stays owned by the system.
+        unsafe { GetClipboardData(formats.history) }
+            .ok()
+            .and_then(|handle| read_global(HGLOBAL(handle.0), 16))
+            .and_then(|bytes| clipboard_watch::dword(&bytes))
+    };
+    clipboard_watch::Markers {
+        exclude_from_monitoring: present(formats.exclude_monitor),
+        viewer_ignore: present(formats.viewer_ignore),
+        can_include_in_history,
+    }
 }
 
 fn owner_hwnd() -> Option<HWND> {
@@ -837,7 +1167,7 @@ fn write_job(
     if placed == 0 {
         // Do not leave the clipboard empty: put the user's previous content back if we have it.
         if let Some(snapshot) = fallback {
-            put_back(&snapshot, formats);
+            let _ = put_back(&snapshot, formats);
         }
         drop(open);
         return Err(Error::Clipboard(
@@ -878,13 +1208,17 @@ fn snapshot_job() -> Result<Snapshot, Error> {
     }
     let open = OpenGuard::open(hwnd, SNAPSHOT_OPEN_BUDGET).ok_or_else(busy)?;
     let mut formats = Vec::new();
-    let mut total = 0usize;
+    let mut budget = win_formats::SnapshotBudget::new(SNAPSHOT_LIMIT);
     let mut format = 0;
     loop {
         // SAFETY: the clipboard is open by this thread.
         format = unsafe { EnumClipboardFormats(format) };
         if format == 0 {
             break;
+        }
+        if win_formats::is_unkeepable_format(format) {
+            budget.missed_softly();
+            continue;
         }
         if !win_formats::is_memory_format(format) {
             continue;
@@ -893,11 +1227,18 @@ fn snapshot_job() -> Result<Snapshot, Error> {
         // the window procedure runs inside this call; no state is borrowed here).
         // SAFETY: the clipboard is open by this thread; the handle stays owned by the system.
         let Ok(handle) = (unsafe { GetClipboardData(format) }) else {
+            budget.missed_softly();
             continue;
         };
-        if let Some(bytes) = read_global(HGLOBAL(handle.0), SNAPSHOT_LIMIT - total) {
-            total += bytes.len();
+        // SAFETY: as above; only the size of the live global block is read.
+        if unsafe { GlobalSize(HGLOBAL(handle.0)) } == 0 {
+            continue;
+        }
+        if let Some(bytes) = read_global(HGLOBAL(handle.0), budget.room()) {
+            budget.took(bytes.len());
             formats.push((format, bytes));
+        } else {
+            budget.missed();
         }
     }
     // After the renders above, which bump it; nobody else can change it while we hold it open.
@@ -905,7 +1246,11 @@ fn snapshot_job() -> Result<Snapshot, Error> {
     let sequence = unsafe { GetClipboardSequenceNumber() };
     drop(open);
     Ok(Snapshot {
-        data: Arc::new(SnapshotData { formats, sequence }),
+        data: Arc::new(SnapshotData {
+            formats,
+            sequence,
+            incomplete: budget.incomplete(),
+        }),
     })
 }
 
@@ -933,23 +1278,52 @@ fn restore_job(snapshot: &Snapshot, written: Written, formats: Formats) -> Resul
     unsafe { EmptyClipboard() }.map_err(|e| os_error("EmptyClipboard", &e))?;
     // The restore is a write of its own: the old Written no longer matches anything.
     with_owner(|owner| owner.ledger.begin_write());
-    put_back(&snapshot.data, formats);
+    let whole = put_back(&snapshot.data, formats);
     drop(open);
+    if !whole {
+        // Reported, so the paste says the earlier clipboard is not back (and a sensitive item
+        // that stayed is cleared like a copy). Unverified on Windows.
+        return Err(Error::Clipboard(
+            "a format of the earlier clipboard could not be put back".into(),
+        ));
+    }
     Ok(true)
 }
 
+/// Puts `snapshot` back although the clipboard changed since (the Target copied the selection at
+/// our request). Unverified on Windows.
+fn restore_forced_job(snapshot: &Snapshot, formats: Formats) -> Result<(), Error> {
+    let hwnd = owner_hwnd().ok_or_else(stopped)?;
+    let open = OpenGuard::open(hwnd, RESTORE_OPEN_BUDGET).ok_or_else(busy)?;
+    drain_clipboard_updates(hwnd);
+    // SAFETY: the clipboard is open by this thread with our window as the owner.
+    unsafe { EmptyClipboard() }.map_err(|e| os_error("EmptyClipboard", &e))?;
+    with_owner(|owner| owner.ledger.begin_write());
+    let whole = put_back(&snapshot.data, formats);
+    drop(open);
+    if whole {
+        Ok(())
+    } else {
+        Err(Error::Clipboard(
+            "a format of the earlier clipboard could not be put back".into(),
+        ))
+    }
+}
+
 /// Places `snapshot`'s formats now, with the markers (unless it is empty). The clipboard must be
-/// open by this thread and emptied.
-fn put_back(snapshot: &SnapshotData, formats: Formats) {
+/// open by this thread and emptied. `false` if any format failed to write.
+fn put_back(snapshot: &SnapshotData, formats: Formats) -> bool {
     let markers = formats.markers();
+    let mut whole = true;
     for (format, bytes) in &snapshot.formats {
         if !markers.contains(format) {
-            set_now(*format, bytes);
+            whole &= set_now(*format, bytes);
         }
     }
     if !snapshot.formats.is_empty() {
         set_markers(formats);
     }
+    whole
 }
 
 fn set_markers(formats: Formats) {
@@ -969,6 +1343,135 @@ fn read_text_job() -> Option<String> {
     let text = win_formats::from_unicode_text(&bytes);
     wipe(&mut bytes);
     Some(text)
+}
+
+fn read_rich_job(formats: &Formats) -> clipboard_watch::RichClip {
+    let Some(hwnd) = owner_hwnd() else {
+        return clipboard_watch::RichClip::default();
+    };
+    let Some(_open) = OpenGuard::open(hwnd, READ_OPEN_BUDGET) else {
+        return clipboard_watch::RichClip::default();
+    };
+    let mut clip = clipboard_watch::RichClip::default();
+    // The markers are read first: a password manager's copy is never read (UNVERIFIED on Windows).
+    if clipboard_watch::excluded_by_markers(read_markers(formats)) {
+        clip.excluded = true;
+        return clip;
+    }
+    // SAFETY: the clipboard is open by this thread; the handle stays owned by the system.
+    if let Ok(handle) = unsafe { GetClipboardData(u32::from(CF_UNICODETEXT.0)) }
+        && let Some(mut bytes) = read_global(HGLOBAL(handle.0), READ_TEXT_LIMIT)
+    {
+        clip.text = Some(win_formats::from_unicode_text(&bytes));
+        wipe(&mut bytes);
+    }
+    if clip.text.is_some() {
+        let mut html = read_format(formats.html, RICH_FLAVOUR_LIMIT);
+        let mut rtf = read_format(formats.rtf, RICH_FLAVOUR_LIMIT);
+        (clip.html, clip.rtf) = clipboard_watch::rich_flavours(html.as_deref(), rtf.as_deref());
+        for bytes in [html.as_mut(), rtf.as_mut()].into_iter().flatten() {
+            wipe(bytes);
+        }
+    }
+    clip
+}
+
+fn read_png_job(png_format: u32) -> Option<Vec<u8>> {
+    let hwnd = owner_hwnd()?;
+    let _open = OpenGuard::open(hwnd, READ_OPEN_BUDGET)?;
+    read_png_open(png_format)
+}
+
+/// [`read_png_job`] with the clipboard already open by this thread.
+fn read_png_open(png_format: u32) -> Option<Vec<u8>> {
+    let read = |format: u32| -> Option<Vec<u8>> {
+        // SAFETY: the clipboard is open by this thread; the handle stays owned by the system.
+        let handle = unsafe { GetClipboardData(format) }.ok()?;
+        read_global(HGLOBAL(handle.0), READ_IMAGE_LIMIT)
+    };
+    if png_format != 0
+        && let Some(png) = read(png_format)
+    {
+        return Some(png);
+    }
+    [CF_DIBV5.0, CF_DIB.0]
+        .into_iter()
+        .find_map(|format| read(u32::from(format)).and_then(|dib| win_formats::dib_to_png(&dib)))
+}
+
+fn read_files_job() -> win_formats::ClipFiles {
+    let none = || win_formats::ClipFiles::Files(Vec::new());
+    let Some(hwnd) = owner_hwnd() else {
+        return none();
+    };
+    let Some(_open) = OpenGuard::open(hwnd, READ_OPEN_BUDGET) else {
+        return none();
+    };
+    read_files_open()
+}
+
+/// [`read_files_job`] with the clipboard already open by this thread.
+fn read_files_open() -> win_formats::ClipFiles {
+    let none = || win_formats::ClipFiles::Files(Vec::new());
+    // SAFETY: the clipboard is open by this thread; the handle stays owned by the system.
+    let Ok(handle) = (unsafe { GetClipboardData(u32::from(CF_HDROP.0)) }) else {
+        return none();
+    };
+    // SAFETY: `handle` is a live global block while the clipboard is open.
+    if unsafe { GlobalSize(HGLOBAL(handle.0)) } > READ_FILES_LIMIT {
+        return win_formats::ClipFiles::TooMany;
+    }
+    read_global(HGLOBAL(handle.0), READ_FILES_LIMIT)
+        .map_or_else(none, |bytes| win_formats::clip_files(&bytes))
+}
+
+fn clear_if_text_job(expected: &str) -> bool {
+    let Some(hwnd) = owner_hwnd() else {
+        return false;
+    };
+    let Some(_open) = OpenGuard::open(hwnd, WRITE_OPEN_BUDGET) else {
+        return false;
+    };
+    // SAFETY: the clipboard is open by this thread; the handle stays owned by the system.
+    let Ok(handle) = (unsafe { GetClipboardData(u32::from(CF_UNICODETEXT.0)) }) else {
+        return false;
+    };
+    let Some(mut bytes) = read_global(HGLOBAL(handle.0), READ_TEXT_LIMIT) else {
+        return false;
+    };
+    let same = win_formats::from_unicode_text(&bytes) == expected;
+    wipe(&mut bytes);
+    if !same {
+        return false;
+    }
+    // SAFETY: the clipboard is open by this thread with our window as the owner.
+    if unsafe { EmptyClipboard() }.is_err() {
+        return false;
+    }
+    // The clear is a write of its own: an older Written no longer matches anything.
+    with_owner(|owner| owner.ledger.begin_write());
+    true
+}
+
+fn clear_if_sequence_job(sequence: u32) -> bool {
+    let Some(hwnd) = owner_hwnd() else {
+        return false;
+    };
+    let Some(_open) = OpenGuard::open(hwnd, WRITE_OPEN_BUDGET) else {
+        return false;
+    };
+    // Checked with the clipboard open, so nothing can change it between the check and the clear.
+    // SAFETY: no preconditions.
+    if unsafe { GetClipboardSequenceNumber() } != sequence {
+        return false;
+    }
+    // SAFETY: the clipboard is open by this thread with our window as the owner.
+    if unsafe { EmptyClipboard() }.is_err() {
+        return false;
+    }
+    // The clear is a write of its own: an older Written no longer matches anything.
+    with_owner(|owner| owner.ledger.begin_write());
+    true
 }
 
 /// Dispatches the `WM_CLIPBOARDUPDATE`s already queued for our window.
@@ -1134,6 +1637,18 @@ mod tests {
     //! These use the real clipboard, so they are ignored by default and serialised. Run on
     //! Windows with `cargo test -p snipdeck-platform -- --ignored clipboard`.
 
+    #[test]
+    fn paste_files_go_to_the_profile_only_when_packaged() {
+        let profile = || Some(std::ffi::OsString::from(r"C:\Users\a"));
+        assert_eq!(
+            super::paste_root_for(true, profile()),
+            std::path::PathBuf::from(r"C:\Users\a").join("Snipdeck paste files")
+        );
+        let temp = std::env::temp_dir().join("Snipdeck");
+        assert_eq!(super::paste_root_for(false, profile()), temp);
+        assert_eq!(super::paste_root_for(true, None), temp);
+    }
+
     use std::sync::{Mutex, PoisonError};
 
     use super::*;
@@ -1184,6 +1699,29 @@ mod tests {
         for marker in clipboard.formats.markers() {
             assert!(has_format(&clipboard, marker));
         }
+    }
+
+    /// PRIVACY-11. UNVERIFIED on Windows (needs the real clipboard).
+    #[test]
+    #[ignore = "uses the real Windows clipboard"]
+    fn a_private_copy_carries_the_viewer_ignore_marker() {
+        let _lock = CLIPBOARD.lock().unwrap_or_else(PoisonError::into_inner);
+        let mut clipboard = WinClipboard::new().unwrap();
+        assert!(
+            clipboard
+                .formats
+                .markers()
+                .contains(&clipboard.formats.viewer_ignore)
+        );
+        clipboard
+            .write_persistent(&text("secret").private())
+            .unwrap();
+        assert!(has_format(&clipboard, clipboard.formats.viewer_ignore));
+        let written = clipboard
+            .write_transient(&text("secret").private())
+            .unwrap();
+        let _ = written;
+        assert!(has_format(&clipboard, clipboard.formats.viewer_ignore));
     }
 
     #[test]
@@ -1237,7 +1775,7 @@ mod tests {
 
     #[test]
     #[ignore = "uses the real Windows clipboard"]
-    fn paste_folders_keep_the_previous_one_only() {
+    fn paste_folders_keep_the_previous_and_the_next_start_removes_them() {
         let _lock = CLIPBOARD.lock().unwrap_or_else(PoisonError::into_inner);
         let mut clipboard = WinClipboard::new().unwrap();
         let files = |name: &str| {
@@ -1250,19 +1788,25 @@ mod tests {
         for name in ["a.txt", "b.txt", "c.txt"] {
             clipboard.write_persistent(&files(name)).unwrap();
         }
-        let root = std::env::temp_dir().join("Snipdeck");
-        let mut numbers: Vec<u64> = fs::read_dir(&root)
+        let root = paste_root();
+        let ours: Vec<_> = fs::read_dir(&root)
             .unwrap()
             .flatten()
-            .filter_map(|e| {
+            .filter(|e| {
                 e.file_name()
                     .to_str()
-                    .and_then(win_formats::paste_dir_number)
+                    .is_some_and(win_formats::is_paste_dir_name)
             })
             .collect();
-        numbers.sort_unstable();
-        assert_eq!(numbers.len(), win_formats::KEPT_PASTE_DIRS);
-        let newest = root.join(format!("{PASTE_DIR_PREFIX}{}", numbers[1]));
-        assert!(newest.join("c.txt").is_file());
+        assert_eq!(ours.len(), 2, "the previous folder and the newest");
+        assert!(ours.iter().any(|e| e.path().join("c.txt").is_file()));
+        assert!(ours.iter().any(|e| e.path().join("b.txt").is_file()));
+        drop(clipboard);
+        assert!(
+            ours.iter().all(|e| e.path().exists()),
+            "a persistent CF_HDROP may still point into them on exit"
+        );
+        let _next_start = WinClipboard::new().unwrap();
+        assert!(ours.iter().all(|e| !e.path().exists()), "removed at start");
     }
 }

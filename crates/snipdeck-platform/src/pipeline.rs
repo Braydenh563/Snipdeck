@@ -21,6 +21,9 @@ pub const POLL_INTERVAL: Duration = Duration::from_millis(10);
 /// After the first request, time for the Target to read its remaining formats before restore.
 pub const SETTLE: Duration = Duration::from_millis(50);
 
+/// How often to check that our write is on the clipboard before the paste key goes out.
+pub const CONFIRM_ATTEMPTS: u32 = 10;
+
 /// The clipboard operations the pipeline needs.
 pub trait Clipboard {
     /// A copy of what was on the clipboard before the paste.
@@ -48,14 +51,30 @@ pub trait Clipboard {
     ///
     /// [`Error::Clipboard`] if the clipboard cannot be opened or written.
     fn write_persistent(&mut self, payload: &Payload) -> Result<(), Error>;
+    /// Whether `written` is the clipboard's content now: our write has completed and we still
+    /// own the clipboard. The paste key is sent only once this is true, so a Target that reads
+    /// early never gets the previous content.
+    fn write_confirmed(&mut self, written: &Self::Written) -> bool;
     /// Whether the Target has asked for the data written as `written`.
     fn render_requested(&mut self, written: &Self::Written) -> bool;
+    /// Whether `snapshot` holds everything that was on the clipboard. A snapshot that had to
+    /// leave a format out (one too big to keep, or a metafile) is not put back: that would
+    /// replace the user's clipboard with part of itself, unannounced.
+    fn is_complete(&self, snapshot: &Self::Snapshot) -> bool;
     /// Puts `snapshot` back unless the clipboard changed since `written`; `false` if it changed.
     ///
     /// # Errors
     ///
     /// [`Error::Clipboard`] if the clipboard cannot be opened or written.
     fn restore(&mut self, snapshot: Self::Snapshot, written: Self::Written) -> Result<bool, Error>;
+    /// Puts `snapshot` back whatever the clipboard holds now. Only for a copy this app asked the
+    /// Target to make (reading the selection), where the clipboard has changed on purpose.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Clipboard`] if the clipboard cannot be opened or written, or a format could not
+    /// be put back.
+    fn restore_forced(&mut self, snapshot: Self::Snapshot) -> Result<(), Error>;
 }
 
 /// Keyboard state and injection.
@@ -114,6 +133,22 @@ pub enum Error {
     /// Windows refused the injected input.
     #[error("key injection failed: {0}")]
     Input(String),
+    /// Windows accepted only part of the key events: the first `sent` of `of` went out.
+    #[error("Windows accepted {sent} of {of} key events")]
+    PartialInput {
+        /// How many events reached the window.
+        sent: usize,
+        /// How many were sent.
+        of: usize,
+    },
+    /// The use was called off before any key went out (the user typed on or switched window).
+    #[error("the use was called off")]
+    Superseded,
+    /// Called off like [`Error::Superseded`], but the item stayed on the clipboard: there was no
+    /// snapshot to put back, it was incomplete, or the restore failed. A sensitive item must
+    /// still be cleared later.
+    #[error("the use was called off and the item is still on the clipboard")]
+    SupersededLeft,
 }
 
 /// The platform services a use needs.
@@ -128,7 +163,8 @@ pub struct Env<'a, C, K, T> {
 
 /// Uses an item: pastes it into the Target, or copies it, as `mode` and `route` allow.
 ///
-/// Returns the outcome for the toast.
+/// Returns the outcome for the toast. Blocks until the paste is over; the app starts the paste
+/// with [`begin_item_erasing`] instead and polls the rest, so the UI thread never waits.
 ///
 /// # Errors
 ///
@@ -139,6 +175,117 @@ pub fn use_item<C: Clipboard, K: Keyboard, T: Timing>(
     mode: UseMode,
     route: &Route,
 ) -> Result<UseOutcome, Error> {
+    use_item_erasing(env, payload, mode, route, 0, &|| true)
+}
+
+/// [`use_item`] for a typed trigger: when the item is pasted, `erase` Backspaces go out in the
+/// same injection as the paste key, so they are sent only once the clipboard holds the item.
+/// A use that fails first (the clipboard is busy) erases nothing, and a copy erases nothing.
+///
+/// `proceed` is asked once more right before the keys go out (after the clipboard write was
+/// confirmed, which can take a while): if it says no, nothing is sent and the clipboard is put
+/// back.
+///
+/// # Errors
+///
+/// [`Error::Clipboard`] if not even a copy was possible; [`Error::Superseded`] if `proceed` said
+/// no.
+pub fn use_item_erasing<C: Clipboard, K: Keyboard, T: Timing>(
+    env: &mut Env<'_, C, K, T>,
+    payload: &Payload,
+    mode: UseMode,
+    route: &Route,
+    erase: usize,
+    proceed: &dyn Fn() -> bool,
+) -> Result<UseOutcome, Error> {
+    match begin_item_erasing(env, payload, mode, route, erase, proceed)? {
+        Began::Done(outcome) => Ok(outcome),
+        Began::Waiting(mut waiting) => loop {
+            if let Some(outcome) = waiting.poll(env.clipboard, env.timing) {
+                return Ok(outcome);
+            }
+            env.timing.sleep(POLL_INTERVAL);
+        },
+    }
+}
+
+/// A use that has put its keys out and is waiting, without blocking, for the Target to read the
+/// item: see [`Waiting::poll`].
+pub enum Began<C: Clipboard> {
+    /// Over: a copy, a paste that failed before its keys, or a paste whose keys could not be sent.
+    Done(UseOutcome),
+    /// The paste key is out. The clipboard still holds the item until [`Waiting::poll`] says
+    /// the paste is over.
+    Waiting(Waiting<C>),
+}
+
+/// The tail of a paste: the Target has been told to paste and the clipboard still holds the
+/// item. It is polled until the Target has asked for the data and had [`SETTLE`] to read it,
+/// then the user's clipboard is put back (SPEC §5.1a).
+pub struct Waiting<C: Clipboard> {
+    written: Option<C::Written>,
+    snapshot: Option<C::Snapshot>,
+    started: Duration,
+    requested: Option<Duration>,
+}
+
+impl<C: Clipboard> Waiting<C> {
+    /// One look, without waiting: `None` while the Target has not asked yet (up to
+    /// [`RENDER_WAIT_CAP`] after the keys went out) or is still reading; the outcome when the
+    /// paste is over. Call it about every [`POLL_INTERVAL`] until it answers.
+    pub fn poll<T: Timing>(&mut self, clipboard: &mut C, timing: &mut T) -> Option<UseOutcome> {
+        let now = timing.now();
+        let written = self.written.as_ref()?;
+        let requested = match self.requested {
+            Some(at) => at,
+            None if clipboard.render_requested(written) => {
+                self.requested = Some(now);
+                now
+            }
+            None if now.saturating_sub(self.started) >= RENDER_WAIT_CAP => {
+                // The Target never asked: nothing was pasted. The item stays on the clipboard
+                // from the transient write for the user to paste by hand (it is not rewritten:
+                // that would overwrite anything copied meanwhile and drop the privacy markers).
+                return Some(UseOutcome::CopiedInstead(PasteFailure::TargetUnavailable));
+            }
+            None => return None,
+        };
+        if now.saturating_sub(requested) < SETTLE {
+            return None;
+        }
+        let written = self.written.take()?;
+        let Some(snapshot) = self.snapshot.take() else {
+            return Some(UseOutcome::PastedNotRestored);
+        };
+        if !clipboard.is_complete(&snapshot) {
+            // The item stays on the clipboard, and the outcome says the previous clipboard is
+            // gone, instead of reporting a restore that put back only some of it.
+            return Some(UseOutcome::PastedNotRestored);
+        }
+        // `Ok(false)`: the user copied something newer, so our item is already gone. A restore
+        // that errs leaves our item on the clipboard: not worth failing the paste for, but it
+        // is reported.
+        Some(match clipboard.restore(snapshot, written) {
+            Ok(_) => UseOutcome::Pasted,
+            Err(_) => UseOutcome::PastedNotRestored,
+        })
+    }
+}
+
+/// [`use_item_erasing`] up to the paste key: everything that must happen before the Target is
+/// told to paste, and none of the waiting after it ([`Began::Waiting`]).
+///
+/// # Errors
+///
+/// As [`use_item_erasing`].
+pub fn begin_item_erasing<C: Clipboard, K: Keyboard, T: Timing>(
+    env: &mut Env<'_, C, K, T>,
+    payload: &Payload,
+    mode: UseMode,
+    route: &Route,
+    erase: usize,
+    proceed: &dyn Fn() -> bool,
+) -> Result<Began<C>, Error> {
     let payload = if mode == UseMode::PastePlain {
         payload.plain_text()
     } else {
@@ -147,13 +294,13 @@ pub fn use_item<C: Clipboard, K: Keyboard, T: Timing>(
     match (mode, route) {
         (UseMode::Copy, _) => {
             env.clipboard.write_persistent(&payload)?;
-            Ok(UseOutcome::Copied)
+            Ok(Began::Done(UseOutcome::Copied))
         }
         (_, Route::Copy(reason)) => {
             env.clipboard.write_persistent(&payload)?;
-            Ok(copy_outcome(reason))
+            Ok(Began::Done(copy_outcome(reason)))
         }
-        (_, Route::Paste { key }) => paste(env, &payload, *key),
+        (_, Route::Paste { key }) => paste_begin(env, &payload, *key, erase, proceed),
     }
 }
 
@@ -163,42 +310,66 @@ fn copy_outcome(reason: &CopyReason) -> UseOutcome {
         .map_or(UseOutcome::Copied, UseOutcome::CopiedInstead)
 }
 
-fn paste<C: Clipboard, K: Keyboard, T: Timing>(
+fn paste_begin<C: Clipboard, K: Keyboard, T: Timing>(
     env: &mut Env<'_, C, K, T>,
     payload: &Payload,
     key: PasteKey,
-) -> Result<UseOutcome, Error> {
-    // A failed snapshot only costs the restore; the paste itself still works.
+    erase: usize,
+    proceed: &dyn Fn() -> bool,
+) -> Result<Began<C>, Error> {
+    // A failed snapshot only costs the restore; the paste itself still works, but the outcome says
+    // the item was left on the clipboard so a sensitive item can still be cleared later.
     let snapshot = env.clipboard.snapshot().ok();
     let written = env.clipboard.write_transient(payload)?;
-
-    let events = paste_sequence(env.keyboard.held_modifiers(), key);
-    if env.keyboard.send(&events).is_err() {
-        // The item is still on the clipboard from the transient write. Writing it again would
-        // overwrite anything the user copied meanwhile and drop the privacy markers.
-        return Ok(UseOutcome::CopiedInstead(PasteFailure::TargetUnavailable));
-    }
-
-    let started = env.timing.now();
-    let mut requested = false;
-    while env.timing.now().saturating_sub(started) < RENDER_WAIT_CAP {
-        if env.clipboard.render_requested(&written) {
-            requested = true;
+    // No paste key until our write is confirmed to be the clipboard's content: a Ctrl+V that
+    // lands first would paste whatever was copied before (the item on top of the history).
+    let mut confirmed = false;
+    for _ in 0..CONFIRM_ATTEMPTS {
+        if env.clipboard.write_confirmed(&written) {
+            confirmed = true;
             break;
         }
         env.timing.sleep(POLL_INTERVAL);
     }
-    if !requested {
-        // The Target never asked: nothing was pasted. The item stays on the clipboard from the
-        // transient write for the user to paste by hand (see above for why it is not rewritten).
-        return Ok(UseOutcome::CopiedInstead(PasteFailure::TargetUnavailable));
+    if !confirmed {
+        return Err(Error::Clipboard(
+            "the clipboard did not take the item".into(),
+        ));
     }
-    env.timing.sleep(SETTLE);
-    if let Some(snapshot) = snapshot {
-        // A restore that fails or finds newer content is not worth failing the paste for.
-        let _ = env.clipboard.restore(snapshot, written);
+
+    if !proceed() {
+        // The user typed on or changed window while we waited: Backspaces now would erase the
+        // wrong text. Put the clipboard back and send nothing.
+        let put_back = match snapshot {
+            Some(snapshot) if env.clipboard.is_complete(&snapshot) => {
+                env.clipboard.restore(snapshot, written).is_ok()
+            }
+            _ => false,
+        };
+        return Err(if put_back {
+            Error::Superseded
+        } else {
+            Error::SupersededLeft
+        });
     }
-    Ok(UseOutcome::Pasted)
+    let mut events = crate::keys::backspaces(erase);
+    events.extend(paste_sequence(env.keyboard.held_modifiers(), key));
+    if let Err(error) = env.keyboard.send(&events) {
+        // The item is still on the clipboard from the transient write. Writing it again would
+        // overwrite anything the user copied meanwhile and drop the privacy markers.
+        // Part of the keys with Backspaces among them: say so, the code may be half erased.
+        let failure = match error {
+            Error::PartialInput { sent, .. } if erase > 0 && sent > 0 => PasteFailure::PartlySent,
+            _ => PasteFailure::TargetUnavailable,
+        };
+        return Ok(Began::Done(UseOutcome::CopiedInstead(failure)));
+    }
+    Ok(Began::Waiting(Waiting {
+        written: Some(written),
+        snapshot,
+        started: env.timing.now(),
+        requested: None,
+    }))
 }
 
 #[cfg(test)]
@@ -235,12 +406,20 @@ mod tests {
             }
         }
         fn run(&mut self, mode: UseMode, route: &Route) -> Result<UseOutcome, Error> {
+            self.run_erasing(mode, route, 0)
+        }
+        fn run_erasing(
+            &mut self,
+            mode: UseMode,
+            route: &Route,
+            erase: usize,
+        ) -> Result<UseOutcome, Error> {
             let mut env = Env {
                 clipboard: &mut self.clipboard,
                 keyboard: &mut self.keyboard,
                 timing: &mut self.timing,
             };
-            use_item(&mut env, &text_and_html(), mode, route)
+            use_item_erasing(&mut env, &text_and_html(), mode, route, erase, &|| true)
         }
     }
 
@@ -249,12 +428,211 @@ mod tests {
     };
 
     #[test]
+    fn erased_characters_go_out_with_the_paste_key_once_the_write_is_confirmed() {
+        let mut w = World::new();
+        assert_eq!(
+            w.run_erasing(UseMode::Paste, &PASTE, 3),
+            Ok(UseOutcome::Pasted)
+        );
+        assert_eq!(w.keyboard.sent.len(), 1, "one injection");
+        let sent = &w.keyboard.sent[0];
+        assert_eq!(&sent[..6], &crate::keys::backspaces(3)[..]);
+        assert!(sent.len() > 6, "the paste chord follows the Backspaces");
+    }
+
+    #[test]
+    fn a_use_called_off_before_the_keys_go_out_sends_nothing_and_restores_the_clipboard() {
+        let mut w = World::new();
+        let mut env = Env {
+            clipboard: &mut w.clipboard,
+            keyboard: &mut w.keyboard,
+            timing: &mut w.timing,
+        };
+        let out = use_item_erasing(
+            &mut env,
+            &text_and_html(),
+            UseMode::Paste,
+            &PASTE,
+            3,
+            &|| false,
+        );
+        assert_eq!(out, Err(Error::Superseded));
+        assert!(w.keyboard.sent.is_empty(), "no Backspace, no paste key");
+        assert_eq!(w.clipboard.log, ["snapshot", "transient:2", "restore"]);
+    }
+
+    fn called_off(w: &mut World) -> Result<UseOutcome, Error> {
+        let mut env = Env {
+            clipboard: &mut w.clipboard,
+            keyboard: &mut w.keyboard,
+            timing: &mut w.timing,
+        };
+        use_item_erasing(
+            &mut env,
+            &text_and_html(),
+            UseMode::Paste,
+            &PASTE,
+            0,
+            &|| false,
+        )
+    }
+
+    #[test]
+    fn a_use_called_off_with_the_item_left_on_the_clipboard_says_so() {
+        let mut no_snapshot = World::new();
+        no_snapshot.clipboard.fail_snapshot = true;
+        assert_eq!(called_off(&mut no_snapshot), Err(Error::SupersededLeft));
+        let mut incomplete = World::new();
+        incomplete.clipboard.incomplete_snapshot = true;
+        assert_eq!(called_off(&mut incomplete), Err(Error::SupersededLeft));
+        let mut failed = World::new();
+        failed.clipboard.restore_result = Some(Err(Error::Clipboard("busy".into())));
+        assert_eq!(called_off(&mut failed), Err(Error::SupersededLeft));
+        let mut newer = World::new();
+        newer.clipboard.restore_result = Some(Ok(false));
+        assert_eq!(
+            called_off(&mut newer),
+            Err(Error::Superseded),
+            "the user copied something newer: our item is gone"
+        );
+    }
+
+    #[test]
+    fn a_use_that_fails_before_the_paste_erases_nothing() {
+        let mut lost = World::new();
+        lost.clipboard.never_confirm = true;
+        assert!(matches!(
+            lost.run_erasing(UseMode::Paste, &PASTE, 3),
+            Err(Error::Clipboard(_))
+        ));
+        assert!(lost.keyboard.sent.is_empty(), "the typed code stays");
+        // A copy (no paste route) erases nothing either.
+        let mut copy = World::new();
+        let _ = copy.run_erasing(UseMode::Copy, &PASTE, 3);
+        assert!(copy.keyboard.sent.is_empty(), "a copy sends no keys");
+    }
+
+    #[test]
     fn paste_snapshots_writes_sends_waits_and_restores_in_order() {
         let mut w = World::new();
         assert_eq!(w.run(UseMode::Paste, &PASTE), Ok(UseOutcome::Pasted));
         assert_eq!(w.clipboard.log, ["snapshot", "transient:2", "restore"]);
         assert_eq!(w.keyboard.sent.len(), 1);
-        assert_eq!(w.timing.slept.last(), Some(&SETTLE));
+        let waited: Duration = w.timing.slept.iter().sum();
+        assert!(
+            waited >= SETTLE,
+            "the Target gets {SETTLE:?} to read before the restore"
+        );
+    }
+
+    /// The paste key is out and the clipboard still holds the item: what the app polls.
+    fn waiting(w: &mut World) -> Waiting<FakeClipboard> {
+        let mut env = Env {
+            clipboard: &mut w.clipboard,
+            keyboard: &mut w.keyboard,
+            timing: &mut w.timing,
+        };
+        match begin_item_erasing(
+            &mut env,
+            &text_and_html(),
+            UseMode::Paste,
+            &PASTE,
+            0,
+            &|| true,
+        ) {
+            Ok(Began::Waiting(waiting)) => waiting,
+            _ => panic!("the paste key should be out and the paste still waiting"),
+        }
+    }
+
+    #[test]
+    fn beginning_a_paste_sends_the_key_and_never_sleeps_through_the_wait() {
+        let mut w = World::new();
+        let _ = waiting(&mut w);
+        assert_eq!(w.keyboard.sent.len(), 1, "the paste key went out");
+        assert!(
+            w.timing.slept.is_empty(),
+            "no sleep before the key: {:?}",
+            w.timing.slept
+        );
+        assert_eq!(
+            w.clipboard.log,
+            ["snapshot", "transient:2"],
+            "not restored yet"
+        );
+    }
+
+    #[test]
+    fn polling_restores_only_after_the_target_asked_and_had_the_settle_time() {
+        let mut w = World::new();
+        w.clipboard.asks_after_polls = Some(1);
+        let mut tail = waiting(&mut w);
+        // Not asked yet (the first look counts a poll, the second answers yes).
+        assert_eq!(tail.poll(&mut w.clipboard, &mut w.timing), None);
+        // Asked at this look: the settle time starts now.
+        assert_eq!(tail.poll(&mut w.clipboard, &mut w.timing), None);
+        w.timing.now += Duration::from_millis(49);
+        assert_eq!(
+            tail.poll(&mut w.clipboard, &mut w.timing),
+            None,
+            "still reading"
+        );
+        assert_eq!(w.clipboard.log, ["snapshot", "transient:2"]);
+        w.timing.now += Duration::from_millis(1);
+        assert_eq!(
+            tail.poll(&mut w.clipboard, &mut w.timing),
+            Some(UseOutcome::Pasted)
+        );
+        assert_eq!(w.clipboard.log, ["snapshot", "transient:2", "restore"]);
+        assert!(w.timing.slept.is_empty(), "polling never sleeps");
+    }
+
+    #[test]
+    fn polling_gives_up_when_the_target_never_asks_and_leaves_the_item() {
+        let mut w = World::new();
+        w.clipboard.asks_after_polls = None;
+        let mut tail = waiting(&mut w);
+        assert_eq!(tail.poll(&mut w.clipboard, &mut w.timing), None);
+        w.timing.now += RENDER_WAIT_CAP;
+        assert_eq!(
+            tail.poll(&mut w.clipboard, &mut w.timing),
+            Some(UseOutcome::CopiedInstead(PasteFailure::TargetUnavailable))
+        );
+        assert_eq!(
+            w.clipboard.log,
+            ["snapshot", "transient:2"],
+            "the item stays for a hand paste"
+        );
+    }
+
+    #[test]
+    fn no_paste_key_goes_out_until_our_write_is_confirmed() {
+        // A write that takes a moment to land: the keys wait for it, then the paste is normal.
+        let mut slow = World::new();
+        slow.clipboard.unconfirmed_polls = 3;
+        assert_eq!(slow.run(UseMode::Paste, &PASTE), Ok(UseOutcome::Pasted));
+        assert_eq!(slow.keyboard.sent.len(), 1);
+        assert!(
+            slow.timing
+                .slept
+                .iter()
+                .filter(|d| **d == POLL_INTERVAL)
+                .count()
+                >= 3,
+            "waited for the write: {:?}",
+            slow.timing.slept
+        );
+
+        // A write that never lands: nothing is injected (the Target would paste the previous
+        // clipboard content) and the use fails.
+        let mut lost = World::new();
+        lost.clipboard.never_confirm = true;
+        assert!(matches!(
+            lost.run(UseMode::Paste, &PASTE),
+            Err(Error::Clipboard(_))
+        ));
+        assert!(lost.keyboard.sent.is_empty(), "no stale paste");
+        assert!(!lost.clipboard.log.iter().any(|l| l == "restore"));
     }
 
     #[test]
@@ -282,11 +660,45 @@ mod tests {
     }
 
     #[test]
-    fn a_failed_snapshot_still_pastes_but_does_not_restore() {
+    fn a_failed_snapshot_still_pastes_but_does_not_restore_and_says_so() {
         let mut w = World::new();
         w.clipboard.fail_snapshot = true;
-        assert_eq!(w.run(UseMode::Paste, &PASTE), Ok(UseOutcome::Pasted));
+        assert_eq!(
+            w.run(UseMode::Paste, &PASTE),
+            Ok(UseOutcome::PastedNotRestored)
+        );
         assert!(!w.clipboard.log.contains(&"restore".to_string()));
+    }
+
+    #[test]
+    fn a_snapshot_that_left_a_format_out_is_not_put_back_and_says_so() {
+        let mut w = World::new();
+        w.clipboard.incomplete_snapshot = true;
+        assert_eq!(
+            w.run(UseMode::Paste, &PASTE),
+            Ok(UseOutcome::PastedNotRestored)
+        );
+        assert!(
+            !w.clipboard.log.contains(&"restore".to_string()),
+            "a partial clipboard is never put back as if it were the whole"
+        );
+    }
+
+    #[test]
+    fn a_failed_restore_is_reported_as_not_restored() {
+        let mut w = World::new();
+        w.clipboard.restore_result = Some(Err(Error::Clipboard("busy".into())));
+        assert_eq!(
+            w.run(UseMode::Paste, &PASTE),
+            Ok(UseOutcome::PastedNotRestored)
+        );
+    }
+
+    #[test]
+    fn a_restore_that_finds_newer_content_is_a_plain_paste() {
+        let mut w = World::new();
+        w.clipboard.restore_result = Some(Ok(false));
+        assert_eq!(w.run(UseMode::Paste, &PASTE), Ok(UseOutcome::Pasted));
     }
 
     #[test]
@@ -301,11 +713,33 @@ mod tests {
     }
 
     #[test]
+    fn part_of_an_erase_reaching_the_target_is_reported_as_partly_sent() {
+        let mut w = World::new();
+        w.keyboard.accept_only = Some(2);
+        assert_eq!(
+            w.run_erasing(UseMode::Paste, &PASTE, 3),
+            Ok(UseOutcome::CopiedInstead(PasteFailure::PartlySent))
+        );
+        // No erase asked: nothing of the user's text can be gone.
+        assert_eq!(
+            w.run(UseMode::Paste, &PASTE),
+            Ok(UseOutcome::CopiedInstead(PasteFailure::TargetUnavailable))
+        );
+    }
+
+    #[test]
     fn a_refused_or_failed_restore_does_not_fail_the_paste() {
-        for result in [Ok(false), Err(Error::Clipboard("busy".into()))] {
+        // Refused (newer content): our item is gone, a plain paste. Failed: it may still be there.
+        for (result, outcome) in [
+            (Ok(false), UseOutcome::Pasted),
+            (
+                Err(Error::Clipboard("busy".into())),
+                UseOutcome::PastedNotRestored,
+            ),
+        ] {
             let mut w = World::new();
             w.clipboard.restore_result = Some(result);
-            assert_eq!(w.run(UseMode::Paste, &PASTE), Ok(UseOutcome::Pasted));
+            assert_eq!(w.run(UseMode::Paste, &PASTE), Ok(outcome));
             assert_eq!(w.clipboard.log, ["snapshot", "transient:2", "restore"]);
         }
     }

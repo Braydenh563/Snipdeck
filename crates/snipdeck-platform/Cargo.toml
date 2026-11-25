@@ -11,15 +11,23 @@ publish.workspace = true
 [dependencies]
 snipdeck-core.workspace = true
 png.workspace = true
+getrandom.workspace = true
 thiserror.workspace = true
+unicode-normalization.workspace = true
+unicode-segmentation.workspace = true
 zeroize.workspace = true
+blake3.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [features]
 # Exposes `testing`: fakes for the clipboard, keyboard and clock.
 testing = []
 
 [target.'cfg(windows)'.dependencies]
-windows.workspace = true
+# `Win32_Graphics_Dwm` (DwmFlush) and `Win32_Devices_Display` (HDR query) are for the eyedropper.
+windows = { workspace = true, features = ["Win32_Devices_Display", "Win32_Graphics_Dwm", "Wdk_System_SystemServices", "Win32_System_SystemInformation"] }
 
 [lints]
 workspace = true

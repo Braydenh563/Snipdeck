@@ -34,3 +34,64 @@ Design tokens, the Slint component library and the headless test harness. Spec: 
   `ElementHandle::find_by_accessible_label(..).filter(role)`; `invoke_accessible_default_action`, `single_click`).
   One process per test file, so never mix this with `Harness` in one file.
 - Time never comes from the real clock: `Harness::advance(Duration)` or `mock_elapsed_time`.
+
+## Windows (`ui/*.slint`)
+Each is an `export component ... inherits Window` with `@tr` strings, view structs, models and callbacks, like
+`panel.slint`. They take values as properties and report gestures as callbacks; none talks to the OS or the store.
+
+| File | Windows | Fixture / tests |
+|---|---|---|
+| `panel.slint` | `PanelWindow` | `tests/panel*.rs` |
+| `main_window.slint` | `MainWindow` (sidebar, toolbar, list/compact/tile, selection, bulk bar, menus, confirmations) | `tests/main_window.rs` (goldens, pixels, CJK), `tests/main_window_logic.rs`, `tests/support/main_fixture.rs` |
+| `editors.slint` | `ItemEditor`, `ListEditor`, `BoardEditor`, `TagManager` | `tests/editors.rs`, `tests/editors_logic.rs`, `tests/support/editor_fixture.rs` |
+| `settings.slint` | `SettingsPage` (applies every change at once) | same |
+| `gallery/forms.slint` | `FormControlsGallery` | same |
+
+- **Main window and the OS caption buttons (ADR-0008).** It keeps the system buttons. The toolbar leaves
+  `SystemLook.caption-inset` (default 138px = 3 x 46, set by the host from the real metrics, scaled for DPI) free at
+  the right, draws no close button, and starts a window drag (`drag-requested`) from its empty parts
+  (`title-double-clicked` maximises).
+- **Selection is the host's.** Slint has no loops, so the window only reports `select-requested(index, SelectMode)`,
+  `select-all-requested` and `clear-selection-requested`. `snipdeck_ui::selection::bind(&window, &rows)` is the Rust
+  implementation (anchor, Shift range, Ctrl toggle, `rows[i].selected`, `selected-count`); a host with its own
+  selection model writes the same two properties.
+- **Roving focus.** Sidebar and item area are one tab stop each (arrows move, `show-focus` draws the ring on the
+  cursor row); `ItemCard`, `SidebarItem` and `Swatch` take `keyboard-focusable: false` for this. Tab order is
+  sidebar, toolbar, item area.
+- **Responsive.** Below 720px wide the sidebar becomes a 48px icon rail (`SidebarItem.rail`); the width rule
+  runs from `changed width`, never bound to the width, so it cannot loop. Text size (`SystemLook.text-scale`) grows
+  rows, buttons, icons in the window (`IconButton.scaled`, Button glyphs), form controls and their widths. The 225%
+  goldens (`main-scale-light`, `item-editor-scale-light`, `settings-scale-light`) were read and show no clipped text;
+  still at 100% size at 225%: the switch track, the small close glyphs in chips, shortcut rows and the program list,
+  and the search glyph (shared with the panel, whose golden pins it).
+- **Hosts call `focus-title()` / `focus-name()`** after they set an editor's values: the field gets the focus with the
+  cursor after the text. (Setting the values first and focusing in `init` would leave the cursor at the start.)
+- **Dropdowns open in place.** `SelectField` grows the form instead of floating, so it needs no popup layer and
+  works in a small window. `Segmented`, `ColourPicker` (editors) and the shortcut rows are one tab stop each.
+- **Forms scroll to the focus.** Slint does not scroll a Flickable to the focused item. Controls in an editor call
+  `reveal-field` from `changed has-focus` (`FormScroll.reveal`); a new control must do the same.
+- **Dialogs have no focus trap beyond `Dialog`'s own.** Esc closes the topmost overlay first (a select, the tag list,
+  the confirmation) and only then the window; the editors guard their Esc handler for that.
+- **Editors validate in two steps.** What the window can check alone (empty content, empty name) shows inline and
+  blocks `save-requested`; what needs the store comes back as a `*-error` property after the callback.
+  Ctrl+Enter saves, Esc cancels (asks first when `dirty`). The host clears errors on `edited()`.
+- **Settings.** Switches and the stepper use two-way bindings (`checked <=> autostart`), so the host can put a value
+  back; segmented and select controls show only what the host last set (`theme-index`, `language-index`).
+  A shortcut that cannot be registered comes back in `hotkeys[i].conflict` (icon plus message, not colour alone).
+
+### CJK text
+`Fonts.sans` is IBM Plex Sans unless the host sets `Fonts.cjk-family` (default empty = no change); every text in the
+library follows it, `Fonts.mono` never changes. Plex has no CJK glyphs, so for `ja`, `zh` and `ko` the host picks a
+system family and sets it once at start and on language change:
+
+```rust
+let language = settings.language.as_str();
+let family = snipdeck_ui::fonts::cjk_font_family(language, |name| installed_families.contains(name));
+ui.global::<Fonts>().set_cjk_family(family.into());
+```
+
+`fonts::cjk_font_candidates` lists the families by language (Yu Gothic UI, Meiryo UI, Microsoft YaHei UI,
+Microsoft JhengHei UI, Malgun Gothic, then the Noto / IPA / WenQuanYi / PingFang equivalents). `installed_families` is
+the host's font query (fontique on Windows and Linux). With no match the string stays empty and the renderer's own
+fallback applies. Goldens never contain CJK: system fallback differs per machine, so CJK is measured instead
+(`tests/main_window.rs`: card pitch equals Latin, nothing leaks past the pane, the family setting reaches all text).

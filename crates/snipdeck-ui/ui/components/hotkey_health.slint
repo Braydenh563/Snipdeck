@@ -1,0 +1,53 @@
+import { Theme, Type, Space, Fonts } from "../theme.slint";
+import { Button, ButtonSize, ButtonVariant } from "button.slint";
+
+// What one global shortcut is doing, with the "press it now" Test button and, when the chord does not work, one-click
+// alternatives. `state`: 0 not set (shows nothing), 1 hotkeys paused, 2 could not be registered, 3 registered but not yet
+// proven, 4 waiting for the press, 5 the press was heard. The host owns the state; this only shows it.
+export component HotkeyHealthLine inherits VerticalLayout {
+    in property <int> state;
+    // Chords to offer instead (at most three); the host fills them while the shortcut fails or a new one was refused.
+    in property <[string]> alternatives;
+    // The shortcut's name, for the spoken labels.
+    in property <string> name;
+    callback test();
+    callback use-chord(chord: string);
+
+    spacing: Space.s1;
+
+    if root.state != 0: HorizontalLayout {
+        spacing: Space.s2;
+        alignment: start;
+        Text {
+            horizontal-stretch: 1;
+            min-width: 0px;
+            text: root.state == 1 ? @tr("Paused")
+                : root.state == 2 ? @tr("Not working")
+                : root.state == 3 ? @tr("Ready. Press Test to check it.")
+                : root.state == 4 ? @tr("Press the shortcut now")
+                : @tr("Heard it. This shortcut works.");
+            color: root.state == 5 ? Theme.success-fg : root.state == 2 ? Theme.danger-fg : Theme.text-secondary;
+            font-family: Fonts.sans;
+            font-size: Type.sm;
+            wrap: word-wrap;
+            vertical-alignment: center;
+            accessible-role: text;
+            accessible-label: root.name + ": " + self.text;
+        }
+        if root.state >= 3: Button {
+            size: ButtonSize.sm;
+            text: root.state == 4 ? @tr("Cancel") : @tr("Test");
+            a11y-label: root.state == 4 ? @tr("Cancel the test of {}", root.name) : @tr("Test {}", root.name);
+            clicked => { root.test(); }
+        }
+    }
+    if root.alternatives.length > 0: VerticalLayout {
+        spacing: Space.s1;
+        for chord in root.alternatives: Button {
+            size: ButtonSize.sm;
+            text: @tr("Use {}", chord);
+            a11y-label: @tr("Use {} for {}", chord, root.name);
+            clicked => { root.use-chord(chord); }
+        }
+    }
+}

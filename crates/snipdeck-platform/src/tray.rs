@@ -11,8 +11,8 @@
 //!
 //! The Win32 backend (`windows::tray::WinTray`) feeds raw callbacks into a [`TrayModel`] and
 //! draws the menu it returns; `testing::FakeTray` drives the same model, so a controller test
-//! exercises the real decisions. Menu labels are English for now (a native menu cannot use
-//! Slint's `@tr`; see `docs/HANDOVER.md`).
+//! exercises the real decisions. Menu labels are English until the app sets translated ones with
+//! [`Tray::set_labels`] (a native menu cannot use Slint's `@tr`; the words are the UI crate's `TrayTexts`).
 
 use crate::error::Error;
 
@@ -24,30 +24,55 @@ pub const TOOLTIP_CAPACITY: usize = 128;
 pub enum TrayEntry {
     /// Show the Panel.
     OpenPanel,
+    /// Open the Picker (the quick find-and-paste popup).
+    OpenPicker,
     /// Show the main window.
     OpenSnipdeck,
+    /// Open Help on its Tips tab.
+    Tips,
+    /// Open Settings (the way to the hotkey settings when a hotkey does not work).
+    Settings,
+    /// Open Help on its Troubleshoot tab.
+    Help,
+    /// Start a screenshot: the snipping overlay opens and the Panel steps aside.
+    TakeScreenshot,
     /// Switch the global hotkeys off or on (a check mark shows when they are off).
     PauseHotkeys,
+    /// Stop or resume collecting the Recent inbox (a check mark shows while it is paused). Only
+    /// in the menu while clipboard history is on.
+    PauseHistory,
     /// Exit Snipdeck.
     Quit,
 }
 
 impl TrayEntry {
     /// Every entry, in menu order.
-    pub const ALL: [Self; 4] = [
+    pub const ALL: [Self; 10] = [
         Self::OpenPanel,
+        Self::OpenPicker,
         Self::OpenSnipdeck,
+        Self::Settings,
+        Self::Help,
+        Self::Tips,
+        Self::TakeScreenshot,
         Self::PauseHotkeys,
+        Self::PauseHistory,
         Self::Quit,
     ];
 
-    /// The menu text.
+    /// The English menu text (what [`TrayLabels::default`] holds).
     #[must_use]
     pub const fn label(self) -> &'static str {
         match self {
             Self::OpenPanel => "Open Panel",
-            Self::OpenSnipdeck => "Open Snipdeck",
+            Self::OpenPicker => "Open Picker",
+            Self::OpenSnipdeck => "Open Main window",
+            Self::Tips => "Tips",
+            Self::Settings => "Settings…",
+            Self::Help => "Troubleshoot…",
+            Self::TakeScreenshot => "Take screenshot",
             Self::PauseHotkeys => "Pause hotkeys",
+            Self::PauseHistory => "Pause Recent",
             Self::Quit => "Quit",
         }
     }
@@ -60,6 +85,12 @@ impl TrayEntry {
             Self::OpenSnipdeck => 2,
             Self::PauseHotkeys => 3,
             Self::Quit => 4,
+            Self::PauseHistory => 5,
+            Self::TakeScreenshot => 6,
+            Self::OpenPicker => 7,
+            Self::Tips => 8,
+            Self::Settings => 9,
+            Self::Help => 10,
         }
     }
 
@@ -70,6 +101,73 @@ impl TrayEntry {
     }
 }
 
+/// The menu texts, in the user's language. [`Default`] is English; the app sets the translated
+/// words with [`Tray::set_labels`] (they come from the UI crate's `TrayTexts`, a native menu
+/// cannot use Slint's `@tr` itself).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TrayLabels {
+    /// [`TrayEntry::OpenPanel`].
+    pub open_panel: String,
+    /// [`TrayEntry::OpenPicker`].
+    pub open_picker: String,
+    /// [`TrayEntry::OpenSnipdeck`].
+    pub open_snipdeck: String,
+    /// [`TrayEntry::Tips`].
+    pub tips: String,
+    /// [`TrayEntry::Settings`].
+    pub settings: String,
+    /// [`TrayEntry::Help`].
+    pub help: String,
+    /// [`TrayEntry::TakeScreenshot`].
+    pub take_screenshot: String,
+    /// [`TrayEntry::PauseHotkeys`].
+    pub pause_hotkeys: String,
+    /// [`TrayEntry::PauseHistory`].
+    pub pause_history: String,
+    /// [`TrayEntry::Quit`].
+    pub quit: String,
+    /// The hover text while the hotkeys are paused (instead of the tooltip).
+    pub tooltip_paused: String,
+}
+
+impl Default for TrayLabels {
+    fn default() -> Self {
+        let english = |entry: TrayEntry| entry.label().to_owned();
+        Self {
+            open_panel: english(TrayEntry::OpenPanel),
+            open_picker: english(TrayEntry::OpenPicker),
+            open_snipdeck: english(TrayEntry::OpenSnipdeck),
+            tips: english(TrayEntry::Tips),
+            settings: english(TrayEntry::Settings),
+            help: english(TrayEntry::Help),
+            take_screenshot: english(TrayEntry::TakeScreenshot),
+            pause_hotkeys: english(TrayEntry::PauseHotkeys),
+            pause_history: english(TrayEntry::PauseHistory),
+            quit: english(TrayEntry::Quit),
+            tooltip_paused: "Snipdeck (hotkeys paused)".to_owned(),
+        }
+    }
+}
+
+impl TrayLabels {
+    /// The text of `entry`.
+    #[must_use]
+    pub fn of(&self, entry: TrayEntry) -> &str {
+        match entry {
+            TrayEntry::OpenPanel => &self.open_panel,
+            TrayEntry::OpenPicker => &self.open_picker,
+            TrayEntry::OpenSnipdeck => &self.open_snipdeck,
+            TrayEntry::Tips => &self.tips,
+            TrayEntry::Settings => &self.settings,
+            TrayEntry::Help => &self.help,
+            TrayEntry::TakeScreenshot => &self.take_screenshot,
+            TrayEntry::PauseHotkeys => &self.pause_hotkeys,
+            TrayEntry::PauseHistory => &self.pause_history,
+            TrayEntry::Quit => &self.quit,
+        }
+    }
+}
+
 /// What the tray tells the app (events arrive on the backend's thread).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TrayEvent {
@@ -77,27 +175,45 @@ pub enum TrayEvent {
     TogglePanel,
     /// "Open Panel".
     OpenPanel,
-    /// "Open Snipdeck".
+    /// "Open Picker".
+    OpenPicker,
+    /// "Open Main window", or a double click on the icon.
     OpenSnipdeck,
+    /// "Tips": Help on its Tips tab.
+    Tips,
+    /// "Settings…".
+    Settings,
+    /// "Help…": Help on its Troubleshoot tab.
+    Help,
+    /// "Take screenshot".
+    TakeScreenshot,
     /// "Pause hotkeys" was toggled; `true` = the hotkeys should now be off.
     HotkeysPaused(bool),
+    /// "Pause Recent" was toggled; `true` = collecting should now be paused.
+    HistoryPaused(bool),
     /// "Quit".
     Quit,
     /// The icon is now in the notification area (`true`) or no longer is (`false`): added, taken
     /// away by Explorer restarting, or added again after it. The app closes the Panel to the
     /// tray only while this is `true`. Sent once per change, not per attempt.
     IconPresent(bool),
+    /// Windows is ending the session (sign-out, shutdown, restart, an installer's Restart Manager):
+    /// `WM_ENDSESSION` with the end confirmed. Unlike every other event this one is delivered
+    /// **synchronously, on the tray thread, and the process may be killed as soon as the handler
+    /// returns**: the handler must finish saving first (it hands the flush to the UI thread and
+    /// waits, see `snipdeck_app::session_end`). Never sent for a click.
+    SessionEnding,
 }
 
 /// One line of the popup menu.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MenuLine {
     /// A command.
     Item {
         /// Which command.
         entry: TrayEntry,
         /// Its text.
-        label: &'static str,
+        label: String,
         /// Whether it shows a check mark.
         checked: bool,
     },
@@ -108,8 +224,13 @@ pub enum MenuLine {
 /// A raw gesture on the icon, after the callback code is decoded (see [`classify`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Gesture {
-    /// Left click, or Enter / Space on the focused icon.
+    /// Left click, or Space on the focused icon.
     Select,
+    /// Enter on the focused icon (`NIN_KEYSELECT`): acts at once (there is no double click to
+    /// wait for) and can arrive twice for one press (see `KeySelectDebounce`).
+    KeySelect,
+    /// Double click with the left button.
+    DoubleSelect,
     /// Right click, or the menu key / Shift+F10 on the focused icon.
     ContextMenu,
 }
@@ -129,6 +250,8 @@ pub enum Reaction {
 pub const NIN_SELECT: u32 = 0x0400;
 /// `NIN_KEYSELECT`.
 pub const NIN_KEYSELECT: u32 = 0x0401;
+/// `WM_LBUTTONDBLCLK`.
+pub const WM_LBUTTONDBLCLK: u32 = 0x0203;
 /// `WM_CONTEXTMENU`.
 pub const WM_CONTEXTMENU: u32 = 0x007B;
 
@@ -136,13 +259,62 @@ pub const WM_CONTEXTMENU: u32 = 0x007B;
 ///
 /// Only the select and context-menu notifications count. The raw mouse messages (`WM_LBUTTONUP`
 /// and friends) are ignored on purpose: version 4 sends them *and* `NIN_SELECT` for one click,
-/// and acting on both would toggle the Panel twice.
+/// and acting on both would toggle the Panel twice. `WM_LBUTTONDBLCLK` has no select twin, so it
+/// is the double click.
 #[must_use]
 pub const fn classify(code: u32) -> Option<Gesture> {
     match code {
-        NIN_SELECT | NIN_KEYSELECT => Some(Gesture::Select),
+        NIN_SELECT => Some(Gesture::Select),
+        NIN_KEYSELECT => Some(Gesture::KeySelect),
+        WM_LBUTTONDBLCLK => Some(Gesture::DoubleSelect),
         WM_CONTEXTMENU => Some(Gesture::ContextMenu),
         _ => None,
+    }
+}
+
+/// Holds a left click back until the system double-click time has passed without a second
+/// click, so a double click gives only [`TrayEvent::OpenSnipdeck`] and not a Panel toggle first.
+/// Time is whatever millisecond count the caller reads (an injected clock in the tests).
+///
+/// **Windows message order unverified:** this assumes `NIN_SELECT` for the first click arrives
+/// before `WM_LBUTTONDBLCLK` for the second (the shell sends the select on button-up and the
+/// double click on the second button-down); on a Windows machine, check that a double click
+/// opens only the Main window and a single click toggles after about the double-click time.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct ClickDeferral {
+    pending_since: Option<u64>,
+    /// Selects before this time are the tail of a double click and are ignored.
+    ignore_until: u64,
+}
+
+impl ClickDeferral {
+    /// A left click at `now_ms`: it is held, unless it comes right after a double click (a
+    /// select that follows `WM_LBUTTONDBLCLK` is that double click's release). Returns whether
+    /// it is held.
+    pub fn select(&mut self, now_ms: u64) -> bool {
+        if now_ms < self.ignore_until {
+            return false;
+        }
+        self.pending_since = Some(now_ms);
+        true
+    }
+
+    /// A double click at `now_ms`: the held click, if any, is dropped, and selects for the next
+    /// `wait_ms` are ignored. Returns whether a click was held.
+    pub fn double_select(&mut self, now_ms: u64, wait_ms: u64) -> bool {
+        self.ignore_until = now_ms.saturating_add(wait_ms);
+        self.pending_since.take().is_some()
+    }
+
+    /// True once, when a held click is `wait_ms` old or more; the click is then released.
+    pub fn release(&mut self, now_ms: u64, wait_ms: u64) -> bool {
+        match self.pending_since {
+            Some(since) if now_ms.saturating_sub(since) >= wait_ms => {
+                self.pending_since = None;
+                true
+            }
+            _ => false,
+        }
     }
 }
 
@@ -205,6 +377,29 @@ pub trait Tray {
     ///
     /// The backend is not running.
     fn set_hotkeys_paused(&mut self, paused: bool) -> Result<(), Error>;
+
+    /// Tells the tray whether clipboard history is on (`available`: "Pause Recent" is in the
+    /// menu) and whether it is paused (the entry is checked).
+    ///
+    /// # Errors
+    ///
+    /// The backend is not running.
+    fn set_history(&mut self, available: bool, paused: bool) -> Result<(), Error>;
+
+    /// Sets the menu texts; the next menu shown uses them.
+    ///
+    /// # Errors
+    ///
+    /// The backend is not running.
+    fn set_labels(&mut self, labels: TrayLabels) -> Result<(), Error>;
+
+    /// Whether a double click opens the Main window (the default). Turned off, a single click
+    /// acts at once instead of waiting out the double-click time.
+    ///
+    /// # Errors
+    ///
+    /// The backend is not running.
+    fn set_double_click_opens(&mut self, opens: bool) -> Result<(), Error>;
 }
 
 /// The state behind a tray icon and the decisions about it. Pure; see the module docs.
@@ -213,6 +408,18 @@ pub struct TrayModel {
     wanted: bool,
     tooltip: String,
     hotkeys_paused: bool,
+    history: History,
+    labels: TrayLabels,
+    double_click_opens: bool,
+}
+
+/// "Pause Recent" in the menu: not offered (clipboard history is off), offered, or offered and
+/// checked (collecting is paused).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum History {
+    Off,
+    Collecting,
+    Paused,
 }
 
 impl TrayModel {
@@ -223,7 +430,23 @@ impl TrayModel {
             wanted: false,
             tooltip: tooltip.to_owned(),
             hotkeys_paused: false,
+            history: History::Off,
+            labels: TrayLabels::default(),
+            double_click_opens: true,
         }
+    }
+
+    /// Whether a double click opens the Main window (the default). When it does not, a single
+    /// click acts at once instead of waiting out the double-click time, and a double click does
+    /// nothing of its own.
+    pub fn set_double_click_opens(&mut self, opens: bool) {
+        self.double_click_opens = opens;
+    }
+
+    /// Whether a left click must wait out the double-click time before it acts.
+    #[must_use]
+    pub const fn defers_select(&self) -> bool {
+        self.double_click_opens
     }
 
     /// The icon should be in the notification area.
@@ -236,7 +459,7 @@ impl TrayModel {
         self.wanted = false;
     }
 
-    /// Whether the icon should be in the notification area.
+    /// Whether the icon should be in the notification area (the retry timer stops when not).
     #[must_use]
     pub fn is_wanted(&self) -> bool {
         self.wanted
@@ -247,10 +470,14 @@ impl TrayModel {
         text.clone_into(&mut self.tooltip);
     }
 
-    /// The hover text as given.
+    /// The hover text as given, or the paused text while the hotkeys are paused.
     #[must_use]
     pub fn tooltip(&self) -> &str {
-        &self.tooltip
+        if self.hotkeys_paused {
+            &self.labels.tooltip_paused
+        } else {
+            &self.tooltip
+        }
     }
 
     /// The hover text as UTF-16 for the shell: at most [`TOOLTIP_CAPACITY`] - 1 units (no
@@ -258,7 +485,7 @@ impl TrayModel {
     #[must_use]
     pub fn tooltip_utf16(&self) -> Vec<u16> {
         let mut units = Vec::new();
-        for c in self.tooltip.chars() {
+        for c in self.tooltip().chars() {
             if units.len() + c.len_utf16() >= TOOLTIP_CAPACITY {
                 break;
             }
@@ -279,18 +506,52 @@ impl TrayModel {
         self.hotkeys_paused = paused;
     }
 
+    /// Whether "Pause Recent" is checked.
+    #[must_use]
+    pub fn history_paused(&self) -> bool {
+        self.history == History::Paused
+    }
+
+    /// Whether the menu offers "Pause Recent" (clipboard history is on).
+    #[must_use]
+    pub fn history_available(&self) -> bool {
+        self.history != History::Off
+    }
+
+    /// The app changed whether clipboard history exists (`available`) and whether it is paused.
+    /// The entry is shown only while it is available.
+    pub fn set_history(&mut self, available: bool, paused: bool) {
+        self.history = match (available, paused) {
+            (false, _) => History::Off,
+            (true, false) => History::Collecting,
+            (true, true) => History::Paused,
+        };
+    }
+
+    /// Replaces the menu texts.
+    pub fn set_labels(&mut self, labels: TrayLabels) {
+        self.labels = labels;
+    }
+
     /// The popup menu as it is now.
     #[must_use]
     pub fn menu(&self) -> Vec<MenuLine> {
         let mut lines = Vec::new();
         for entry in TrayEntry::ALL {
+            if entry == TrayEntry::PauseHistory && self.history == History::Off {
+                continue;
+            }
             if entry == TrayEntry::Quit {
                 lines.push(MenuLine::Separator);
             }
             lines.push(MenuLine::Item {
                 entry,
-                label: entry.label(),
-                checked: entry == TrayEntry::PauseHotkeys && self.hotkeys_paused,
+                label: self.labels.of(entry).to_owned(),
+                checked: match entry {
+                    TrayEntry::PauseHotkeys => self.hotkeys_paused,
+                    TrayEntry::PauseHistory => self.history == History::Paused,
+                    _ => false,
+                },
             });
         }
         lines
@@ -303,7 +564,9 @@ impl TrayModel {
             return None;
         }
         Some(match gesture {
-            Gesture::Select => Reaction::Event(TrayEvent::TogglePanel),
+            Gesture::Select | Gesture::KeySelect => Reaction::Event(TrayEvent::TogglePanel),
+            Gesture::DoubleSelect if !self.double_click_opens => return None,
+            Gesture::DoubleSelect => Reaction::Event(TrayEvent::OpenSnipdeck),
             Gesture::ContextMenu => Reaction::PopupMenu(self.menu()),
         })
     }
@@ -312,10 +575,20 @@ impl TrayModel {
     pub fn pick(&mut self, entry: TrayEntry) -> TrayEvent {
         match entry {
             TrayEntry::OpenPanel => TrayEvent::OpenPanel,
+            TrayEntry::OpenPicker => TrayEvent::OpenPicker,
             TrayEntry::OpenSnipdeck => TrayEvent::OpenSnipdeck,
+            TrayEntry::Tips => TrayEvent::Tips,
+            TrayEntry::Settings => TrayEvent::Settings,
+            TrayEntry::Help => TrayEvent::Help,
+            TrayEntry::TakeScreenshot => TrayEvent::TakeScreenshot,
             TrayEntry::PauseHotkeys => {
                 self.hotkeys_paused = !self.hotkeys_paused;
                 TrayEvent::HotkeysPaused(self.hotkeys_paused)
+            }
+            TrayEntry::PauseHistory => {
+                // The check mark follows the controller (`set_history`), not the click: the
+                // controller may decline, and then the menu must not claim otherwise.
+                TrayEvent::HistoryPaused(self.history != History::Paused)
             }
             TrayEntry::Quit => TrayEvent::Quit,
         }
@@ -342,8 +615,9 @@ mod tests {
     #[test]
     fn only_select_and_context_menu_codes_are_gestures() {
         assert_eq!(classify(NIN_SELECT), Some(Gesture::Select));
-        assert_eq!(classify(NIN_KEYSELECT), Some(Gesture::Select));
+        assert_eq!(classify(NIN_KEYSELECT), Some(Gesture::KeySelect));
         assert_eq!(classify(WM_CONTEXTMENU), Some(Gesture::ContextMenu));
+        assert_eq!(classify(WM_LBUTTONDBLCLK), Some(Gesture::DoubleSelect));
         // WM_LBUTTONUP, WM_RBUTTONUP, WM_MOUSEMOVE, NIN_POPUPOPEN: not acted on.
         for code in [0x0202, 0x0205, 0x0200, 0x0406, 0] {
             assert_eq!(classify(code), None, "{code:#x}");
@@ -369,6 +643,79 @@ mod tests {
     }
 
     #[test]
+    fn enter_on_the_icon_toggles_the_panel_like_a_click() {
+        let mut m = model();
+        assert_eq!(
+            m.gesture(Gesture::KeySelect),
+            Some(Reaction::Event(TrayEvent::TogglePanel))
+        );
+    }
+
+    #[test]
+    fn without_a_double_click_action_a_click_acts_at_once() {
+        let mut m = model();
+        assert!(m.defers_select(), "the default waits for a second click");
+        m.set_double_click_opens(false);
+        assert!(!m.defers_select());
+        assert_eq!(m.gesture(Gesture::DoubleSelect), None);
+        assert_eq!(
+            m.gesture(Gesture::Select),
+            Some(Reaction::Event(TrayEvent::TogglePanel))
+        );
+        m.set_double_click_opens(true);
+        assert_eq!(
+            m.gesture(Gesture::DoubleSelect),
+            Some(Reaction::Event(TrayEvent::OpenSnipdeck))
+        );
+    }
+
+    #[test]
+    fn a_single_click_acts_after_the_double_click_time_and_not_before() {
+        let mut d = ClickDeferral::default();
+        d.select(1_000);
+        assert!(!d.release(1_499, 500), "still waiting for a second click");
+        assert!(
+            d.release(1_500, 500),
+            "the time passed with no second click"
+        );
+        assert!(!d.release(2_000, 500), "released once");
+    }
+
+    #[test]
+    fn a_double_click_drops_the_held_click() {
+        let mut d = ClickDeferral::default();
+        d.select(1_000);
+        assert!(d.double_select(1_200, 500));
+        assert!(!d.release(5_000, 500), "the toggle never happens");
+        assert!(
+            !d.double_select(6_000, 500),
+            "nothing held, nothing dropped"
+        );
+    }
+
+    #[test]
+    fn a_select_after_the_double_click_is_ignored_for_the_double_click_time() {
+        let mut d = ClickDeferral::default();
+        d.select(1_000);
+        assert!(d.double_select(1_200, 500));
+        assert!(!d.select(1_250), "the release of the double click");
+        assert!(!d.release(5_000, 500), "so nothing toggles");
+        assert!(d.select(1_700), "a later click counts again");
+        assert!(d.release(2_200, 500));
+    }
+
+    #[test]
+    fn double_click_opens_the_main_window() {
+        let mut m = model();
+        assert_eq!(
+            m.gesture(Gesture::DoubleSelect),
+            Some(Reaction::Event(TrayEvent::OpenSnipdeck))
+        );
+        let mut hidden = TrayModel::new("Snipdeck");
+        assert_eq!(hidden.gesture(Gesture::DoubleSelect), None);
+    }
+
+    #[test]
     fn right_click_offers_the_menu_with_quit_after_a_separator() {
         let mut m = model();
         let Some(Reaction::PopupMenu(lines)) = m.gesture(Gesture::ContextMenu) else {
@@ -377,19 +724,160 @@ mod tests {
         let labels: Vec<_> = lines
             .iter()
             .map(|l| match l {
-                MenuLine::Item { label, .. } => *label,
+                MenuLine::Item { label, .. } => label.as_str(),
                 MenuLine::Separator => "-",
             })
             .collect();
         assert_eq!(
             labels,
-            ["Open Panel", "Open Snipdeck", "Pause hotkeys", "-", "Quit"]
+            [
+                "Open Panel",
+                "Open Picker",
+                "Open Main window",
+                "Settings…",
+                "Troubleshoot…",
+                "Tips",
+                "Take screenshot",
+                "Pause hotkeys",
+                "-",
+                "Quit"
+            ]
         );
         assert!(
             lines
                 .iter()
                 .all(|l| !matches!(l, MenuLine::Item { checked: true, .. }))
         );
+    }
+
+    fn menu_labels(m: &mut TrayModel) -> Vec<(String, bool)> {
+        let Some(Reaction::PopupMenu(lines)) = m.gesture(Gesture::ContextMenu) else {
+            panic!("a menu")
+        };
+        lines
+            .iter()
+            .filter_map(|l| match l {
+                MenuLine::Item { label, checked, .. } => Some((label.clone(), *checked)),
+                MenuLine::Separator => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn pause_history_is_in_the_menu_only_while_clipboard_history_is_on() {
+        let mut m = model();
+        assert!(!m.history_available());
+        assert!(menu_labels(&mut m).iter().all(|(l, _)| l != "Pause Recent"));
+        m.set_history(true, false);
+        let labels = menu_labels(&mut m);
+        let at = labels.iter().position(|(l, _)| l == "Pause Recent");
+        // Right after "Pause hotkeys", before "Quit".
+        assert_eq!(at, Some(8));
+        assert_eq!(labels.last().map(|(l, _)| l.as_str()), Some("Quit"));
+        assert!(labels.iter().all(|(_, checked)| !checked));
+        m.set_history(false, false);
+        assert!(menu_labels(&mut m).iter().all(|(l, _)| l != "Pause Recent"));
+    }
+
+    #[test]
+    fn picking_pause_history_asks_and_the_check_mark_follows_what_the_app_reports() {
+        let mut m = model();
+        m.set_history(true, false);
+        assert_eq!(
+            m.pick(TrayEntry::PauseHistory),
+            TrayEvent::HistoryPaused(true)
+        );
+        assert!(
+            !m.history_paused(),
+            "the click alone does not flip the mark"
+        );
+        m.set_history(true, true);
+        assert!(m.history_paused());
+        let labels = menu_labels(&mut m);
+        assert!(labels.contains(&("Pause Recent".to_owned(), true)));
+        // The hotkeys check mark is a separate one.
+        assert!(labels.contains(&("Pause hotkeys".to_owned(), false)));
+        assert_eq!(
+            m.pick(TrayEntry::PauseHistory),
+            TrayEvent::HistoryPaused(false)
+        );
+    }
+
+    #[test]
+    fn the_new_entry_has_its_own_command_id() {
+        assert_eq!(
+            TrayEntry::from_command_id(TrayEntry::PauseHistory.command_id()),
+            Some(TrayEntry::PauseHistory)
+        );
+        let mut ids: Vec<_> = TrayEntry::ALL.iter().map(|e| e.command_id()).collect();
+        ids.sort_unstable();
+        ids.dedup();
+        assert_eq!(ids.len(), TrayEntry::ALL.len());
+        assert!(!ids.contains(&0));
+    }
+
+    #[test]
+    fn the_tooltip_says_the_hotkeys_are_paused_while_they_are() {
+        let mut m = model();
+        let usual = m.tooltip().to_owned();
+        m.set_hotkeys_paused(true);
+        assert_eq!(m.tooltip(), "Snipdeck (hotkeys paused)");
+        assert_eq!(
+            String::from_utf16(&m.tooltip_utf16()).ok().as_deref(),
+            Some("Snipdeck (hotkeys paused)")
+        );
+        m.set_hotkeys_paused(false);
+        assert_eq!(m.tooltip(), usual);
+    }
+
+    #[test]
+    fn translated_labels_replace_the_english_ones_in_the_menu() {
+        let mut m = model();
+        m.set_labels(TrayLabels {
+            open_panel: "Panel öffnen".into(),
+            open_picker: "Picker öffnen".into(),
+            open_snipdeck: "Snipdeck öffnen".into(),
+            tips: "Tipps".into(),
+            settings: "Einstellungen…".into(),
+            help: "Hilfe…".into(),
+            take_screenshot: "Bildschirmfoto aufnehmen".into(),
+            pause_hotkeys: "Tastenkürzel pausieren".into(),
+            pause_history: "Verlauf pausieren".into(),
+            quit: "Beenden".into(),
+            tooltip_paused: "Snipdeck (Tastenkürzel pausiert)".into(),
+        });
+        let Some(Reaction::PopupMenu(lines)) = m.gesture(Gesture::ContextMenu) else {
+            panic!("a menu")
+        };
+        let labels: Vec<_> = lines
+            .iter()
+            .filter_map(|l| match l {
+                MenuLine::Item { label, .. } => Some(label.as_str()),
+                MenuLine::Separator => None,
+            })
+            .collect();
+        assert_eq!(
+            labels,
+            [
+                "Panel öffnen",
+                "Picker öffnen",
+                "Snipdeck öffnen",
+                "Einstellungen…",
+                "Hilfe…",
+                "Tipps",
+                "Bildschirmfoto aufnehmen",
+                "Tastenkürzel pausieren",
+                "Beenden"
+            ]
+        );
+    }
+
+    #[test]
+    fn the_default_labels_are_the_english_entry_names() {
+        let labels = TrayLabels::default();
+        for entry in TrayEntry::ALL {
+            assert_eq!(labels.of(entry), entry.label());
+        }
     }
 
     #[test]
@@ -422,7 +910,10 @@ mod tests {
     fn the_other_entries_map_to_their_events() {
         let mut m = model();
         assert_eq!(m.pick(TrayEntry::OpenPanel), TrayEvent::OpenPanel);
+        assert_eq!(m.pick(TrayEntry::OpenPicker), TrayEvent::OpenPicker);
         assert_eq!(m.pick(TrayEntry::OpenSnipdeck), TrayEvent::OpenSnipdeck);
+        assert_eq!(m.pick(TrayEntry::Tips), TrayEvent::Tips);
+        assert_eq!(m.pick(TrayEntry::TakeScreenshot), TrayEvent::TakeScreenshot);
         assert_eq!(m.pick(TrayEntry::Quit), TrayEvent::Quit);
     }
 

@@ -18,7 +18,7 @@ use std::io::Cursor;
 use common::*;
 use snipdeck_core::{FileEntry, Format, Formats, Item, ItemKind, Placement};
 use snipdeck_portable::{
-    BoardLayout, Error, ExportOptions, ImportOptions, KeySource, SensitivePolicy, Warning,
+    BoardLayout, Error, ExportOptions, ImportOptions, KeySource, Limits, SensitivePolicy, Warning,
     import_archive,
 };
 use snipdeck_store::crypto::DataKey;
@@ -151,7 +151,7 @@ fn encrypted_export_round_trips_with_the_key() {
         key: KeySource::Given(&key),
         ..keep()
     };
-    let report = import_archive(&mut fresh, Cursor::new(&bytes), "x", at(1), &opts).unwrap();
+    let report = import_archive(&mut fresh, Cursor::new(&bytes), "x", at(10_000), &opts).unwrap();
     assert_eq!(report.items_added, 3);
     assert!(!report.has_warnings(), "{:?}", report.warnings);
     assert_same(&snapshot(&fresh), &snapshot(&original));
@@ -310,6 +310,60 @@ fn encrypted_payloads_need_the_manifest_to_say_so() {
     let mut fresh = store();
     let err = import_archive(&mut fresh, Cursor::new(&edited), "x", at(1), &keep()).unwrap_err();
     assert!(matches!(err, Error::Malformed { .. }), "{err}");
+}
+
+#[test]
+fn many_items_pointing_at_one_big_encrypted_asset_hit_the_read_budget() {
+    let key = DataKey::generate().unwrap();
+    let mut s = store();
+    let b = board(&mut s, "B");
+    let l = list(&mut s, b.id, "L");
+    let big = "x".repeat(60_000);
+    for (title, secret) in [
+        ("one", big.as_str()),
+        ("two", "tiny-2"),
+        ("three", "tiny-3"),
+    ] {
+        let mut item = Item::new(l.id, title.to_owned(), ItemKind::Text, at(1));
+        item.sensitive = true;
+        s.insert_item(&item, &text_formats(secret), Placement::Last)
+            .unwrap();
+    }
+    let bytes = export_bytes(
+        &s,
+        &ExportOptions {
+            sensitive: SensitivePolicy::Encrypt(&key),
+            ..ExportOptions::default()
+        },
+    );
+    let pointed = edit_json(&bytes, "items.json", |doc| {
+        let items = &mut doc["boards"][0]["lists"][0]["items"];
+        let first = items[0]["formats"][0].clone();
+        items[1]["formats"][0] = first.clone();
+        items[2]["formats"][0] = first;
+    });
+    // The archive holds about 60 KB; reading the big asset three times costs about 180 KB.
+    let opts = ImportOptions {
+        key: KeySource::Given(&key),
+        limits: Limits {
+            max_total_bytes: 100_000,
+            ..Limits::default()
+        },
+        ..keep()
+    };
+    let mut fresh = store();
+    let err = import_archive(&mut fresh, Cursor::new(&pointed), "x", at(1), &opts).unwrap_err();
+    assert!(
+        matches!(
+            err,
+            Error::LimitExceeded {
+                what: "encrypted asset bytes read",
+                ..
+            }
+        ),
+        "{err:?}"
+    );
+    assert_eq!(fresh.all_items().unwrap().len(), 0);
 }
 
 #[test]
@@ -579,4 +633,207 @@ fn a_locked_library_with_encrypted_items_can_still_skip_duplicates() {
     let report = import_archive(&mut s, Cursor::new(&bytes), "x", at(1), &opts).unwrap();
     assert_eq!(report.items_added, 1, "{report:?}");
     assert_healthy(&s);
+}
+
+#[test]
+fn an_encrypted_payload_on_an_item_marked_not_sensitive_is_refused() {
+    let key = DataKey::generate().unwrap();
+    let bytes = export_bytes(
+        &library(),
+        &ExportOptions {
+            sensitive: SensitivePolicy::Encrypt(&key),
+            ..ExportOptions::default()
+        },
+    );
+    let crafted = edit_json(&bytes, "items.json", |doc| {
+        doc["boards"][0]["lists"][0]["items"][1]["sensitive"] = false.into();
+    });
+    for dry_run in [false, true] {
+        let mut fresh = store();
+        let before = snapshot(&fresh);
+        let opts = ImportOptions {
+            key: KeySource::Given(&key),
+            dry_run,
+            ..keep()
+        };
+        let err = import_archive(&mut fresh, Cursor::new(&crafted), "x", at(1), &opts).unwrap_err();
+        assert!(
+            matches!(err, Error::Malformed { .. }),
+            "dry_run {dry_run}: {err:?}"
+        );
+        assert!(err.to_string().contains("Bank PIN"), "{err}");
+        assert_same(&snapshot(&fresh), &before);
+    }
+}
+
+// ---- audit M4: the cap of an attachment leaves room for the envelope ----
+
+fn vault_with_file(len: usize) -> Store {
+    let mut s = store();
+    let b = board(&mut s, "B");
+    let l = list(&mut s, b.id, "L");
+    let mut secret = Item::new(l.id, "Passport scan".to_owned(), ItemKind::File, at(1));
+    secret.sensitive = true;
+    let file = FileEntry::new("p.bin", s.put(noise(len, 5)).unwrap()).unwrap();
+    s.insert_item(
+        &secret,
+        &Formats::new(vec![Format::Files(vec![file])]).unwrap(),
+        Placement::Last,
+    )
+    .unwrap();
+    s
+}
+
+fn small_entries() -> Limits {
+    Limits {
+        max_entry_bytes: 100_000,
+        ..Limits::default()
+    }
+}
+
+#[test]
+fn a_sensitive_file_of_the_largest_attachment_size_exports_encrypted() {
+    let key = DataKey::generate().unwrap();
+    let limits = small_entries();
+    let s = vault_with_file(usize::try_from(limits.max_attachment_bytes()).unwrap());
+    let mut out = Cursor::new(Vec::new());
+    snipdeck_portable::export_to_writer(
+        &s,
+        at(100),
+        &ExportOptions {
+            sensitive: SensitivePolicy::Encrypt(&key),
+            limits,
+            every_tag: false,
+        },
+        &mut out,
+    )
+    .expect("the envelope fits in the entry");
+}
+
+#[test]
+fn an_item_over_the_entry_limit_is_named_instead_of_failing_without_a_word() {
+    let key = DataKey::generate().unwrap();
+    let limits = small_entries();
+    let s = vault_with_file(usize::try_from(limits.max_entry_bytes).unwrap() + 1);
+    let mut out = Cursor::new(Vec::new());
+    // DATA-4: one item that does not fit no longer stops the export; it is left out and named.
+    let report = snipdeck_portable::export_to_writer(
+        &s,
+        at(100),
+        &ExportOptions {
+            sensitive: SensitivePolicy::Encrypt(&key),
+            limits,
+            every_tag: false,
+        },
+        &mut out,
+    )
+    .expect("the rest of the library is still written");
+    assert_eq!(report.items, 0);
+    assert_eq!(report.skipped.len(), 1, "{:?}", report.skipped);
+    assert_eq!(report.skipped[0].title, "Passport scan");
+    assert!(
+        report.skipped[0].reason.contains("limit"),
+        "{:?}",
+        report.skipped[0]
+    );
+}
+
+#[test]
+fn a_total_over_the_limit_is_reported_as_the_total_and_names_no_item() {
+    let limits = Limits {
+        max_entry_bytes: 100_000,
+        max_total_bytes: 150_000,
+        ..Limits::default()
+    };
+    let mut s = store();
+    let b = board(&mut s, "B");
+    let l = list(&mut s, b.id, "L");
+    for (n, title) in ["First file", "Second file"].into_iter().enumerate() {
+        let item = Item::new(l.id, title.to_owned(), ItemKind::File, at(1));
+        let file = FileEntry::new("f.bin", s.put(noise(80_000, n as u64 + 1)).unwrap()).unwrap();
+        s.insert_item(
+            &item,
+            &Formats::new(vec![Format::Files(vec![file])]).unwrap(),
+            Placement::Last,
+        )
+        .unwrap();
+    }
+    let mut out = Cursor::new(Vec::new());
+    let err = snipdeck_portable::export_to_writer(
+        &s,
+        at(100),
+        &ExportOptions {
+            limits,
+            ..ExportOptions::default()
+        },
+        &mut out,
+    )
+    .expect_err("the second file passes the total");
+    assert!(
+        matches!(
+            &err,
+            Error::LimitExceeded {
+                what: snipdeck_portable::TOTAL_SIZE,
+                limit: 150_000
+            }
+        ),
+        "{err:?}"
+    );
+}
+
+/// DATA-12: the writer holds itself to the reader's budget for decrypted sensitive content, so a
+/// backup it writes never fails to restore; what does not fit is named.
+#[test]
+fn sensitive_content_past_the_readers_budget_is_left_out_and_named() {
+    let key = DataKey::generate().unwrap();
+    let mut s = store();
+    let b = board(&mut s, "B");
+    let l = list(&mut s, b.id, "L");
+    for (n, title) in ["First scan", "Second scan"].into_iter().enumerate() {
+        let mut secret = Item::new(l.id, title.to_owned(), ItemKind::File, at(1));
+        secret.sensitive = true;
+        let file = FileEntry::new("p.bin", s.put(noise(60_000, n as u64)).unwrap()).unwrap();
+        s.insert_item(
+            &secret,
+            &Formats::new(vec![Format::Files(vec![file])]).unwrap(),
+            Placement::Last,
+        )
+        .unwrap();
+    }
+    let limits = Limits {
+        max_sensitive_bytes: 100_000,
+        ..Limits::default()
+    };
+    let mut out = Cursor::new(Vec::new());
+    let report = snipdeck_portable::export_to_writer(
+        &s,
+        at(100),
+        &ExportOptions {
+            sensitive: SensitivePolicy::Encrypt(&key),
+            limits,
+            every_tag: false,
+        },
+        &mut out,
+    )
+    .unwrap();
+    assert_eq!(report.sensitive_encrypted, 1);
+    assert_eq!(report.skipped.len(), 1, "{:?}", report.skipped);
+    assert_eq!(report.skipped[0].title, "Second scan");
+
+    // The same limits read it back.
+    let mut fresh = store();
+    let opts = ImportOptions {
+        key: KeySource::Given(&key),
+        limits,
+        ..ImportOptions::default()
+    };
+    let back = import_archive(
+        &mut fresh,
+        Cursor::new(out.into_inner()),
+        "x",
+        at(10_000),
+        &opts,
+    )
+    .unwrap();
+    assert_eq!(back.items_added, 1, "{:?}", back.warnings);
 }

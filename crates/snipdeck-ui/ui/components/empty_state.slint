@@ -1,29 +1,104 @@
-import { Theme, Type, Space, Fonts } from "../theme.slint";
+import { Theme, Type, Space, Fonts, Radius } from "../theme.slint";
 import { Icons } from "../icons.slint";
 import { Icon } from "icon.slint";
 import { Button, ButtonVariant } from "button.slint";
+import { KeyCombo } from "keycap.slint";
 
 export enum EmptyStateKind { list, board, search, inbox }
 
 // DESIGN.md §4 EmptyState: teaches how to fill an empty surface. A glyph for the kind of surface, a heading,
 // ONE sentence, and one primary action (ink Button). Every empty surface needs one (§7); without
 // `action-text` the button is left out (a search with no results has nothing to add).
+// One action of the group: the button fills the column; a shortcut shows as caps inside its right edge, and the
+// cell reserves the same room on the left so the label stays on the centre line.
+component EmptyAction inherits Rectangle {
+    in property <string> text;
+    in property <ButtonVariant> variant: ButtonVariant.secondary;
+    // The medium button's own height (28 px, taller with the Windows text size).
+    in property <length> h: max(28px, Type.line-base + Space.s2);
+    in property <[string]> keys;
+    in property <string> keys-label;
+    callback clicked();
+    preferred-width: btn.preferred-width + (root.keys.length > 0 ? 2 * (twin.min-width + Space.s2) : 0px);
+    min-width: self.preferred-width;
+    height: root.h;
+    // Measures the caps (the ones that show are in an `if`).
+    twin := KeyCombo {
+        visible: false;
+        keys: root.keys;
+    }
+    btn := Button {
+        x: 0px;
+        width: parent.width;
+        height: parent.height;
+        text: root.text;
+        variant: root.variant;
+        clicked => { root.clicked(); }
+    }
+    if root.keys.length > 0: KeyCombo {
+        keys: root.keys;
+        label: root.keys-label;
+        width: self.min-width;
+        x: parent.width - self.width - Space.s2;
+        y: (parent.height - self.height) / 2;
+    }
+}
+
 export component EmptyState inherits VerticalLayout {
     in property <EmptyStateKind> kind: EmptyStateKind.list;
     in property <string> heading;
     in property <string> body;
     in property <string> action-text;
+    // The key that does the same as a button, shown as caps beside it (["Ctrl", "N"]); `*-keys-label` is the
+    // spoken form ("Control N"). Beside, not under: a text line below the buttons reads as a second message.
+    in property <[string]> action-keys;
+    in property <string> action-keys-label;
+    in property <[string]> secondary-keys;
+    in property <string> secondary-keys-label;
+    // Panel v2 spec 2.7: a 40px glyph tile, a `type.md` heading, an outline button (36) and an optional ghost
+    // button under it; `caption` explains what the action will do.
+    in property <bool> quiet: false;
+    in property <string> caption;
+    in property <string> secondary-text;
+    // A second ghost button under the first (the Main window's empty deck: "Import…").
+    in property <string> tertiary-text;
+    // Whether the heading is a polite live region (a search that comes up empty is announced). Off where the host speaks it itself.
+    in property <bool> announce: true;
     callback action();
+    callback secondary();
+    callback tertiary();
 
-    padding: Space.s6;
-    spacing: Space.s3;
+    padding-left: Space.s6;
+    padding-right: Space.s6;
+    padding-top: Space.s6;
+    padding-bottom: root.quiet ? Space.s12 : Space.s6;
+    spacing: root.quiet ? Space.s2 : Space.s3;
     alignment: center;
 
-    HorizontalLayout {
+    if root.quiet: HorizontalLayout {
+        alignment: center;
+        Rectangle {
+            width: Space.s8 + Space.s2;
+            height: Space.s8 + Space.s2;
+            border-radius: Radius.lg;
+            background: Theme.bg-hover;
+            Icon {
+                source: root.kind == EmptyStateKind.list ? Icons.rows
+                    : root.kind == EmptyStateKind.board ? Icons.stack
+                    : root.kind == EmptyStateKind.search ? Icons.magnifying-glass
+                    : Icons.tray;
+                size: Space.s5;
+                tint: Theme.text-secondary;
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+            }
+        }
+    }
+    if !root.quiet: HorizontalLayout {
         alignment: center;
         Icon {
-            source: root.kind == EmptyStateKind.list ? Icons.stack
-                : root.kind == EmptyStateKind.board ? Icons.squares-four
+            source: root.kind == EmptyStateKind.list ? Icons.rows
+                : root.kind == EmptyStateKind.board ? Icons.stack
                 : root.kind == EmptyStateKind.search ? Icons.magnifying-glass
                 : Icons.tray;
             size: Space.s8;
@@ -31,10 +106,11 @@ export component EmptyState inherits VerticalLayout {
         }
     }
     Text {
+        accessible-live-region: root.announce ? AccessibleLiveness.polite : AccessibleLiveness.off;
         text: root.heading;
         color: Theme.text-primary;
         font-family: Fonts.sans;
-        font-size: Type.xl;
+        font-size: root.quiet ? Type.md : Type.xl;
         font-weight: Type.semibold;
         horizontal-alignment: center;
         wrap: word-wrap;
@@ -43,16 +119,62 @@ export component EmptyState inherits VerticalLayout {
         text: root.body;
         color: Theme.text-secondary;
         font-family: Fonts.sans;
-        font-size: Type.base;
+        font-size: root.quiet ? Type.sm : Type.base;
         horizontal-alignment: center;
         wrap: word-wrap;
     }
-    if root.action-text != "": HorizontalLayout {
+    // One centred group: the actions share one column and one width, so nothing sits off the centre line. A caption
+    // (the Panel's "Adds a text item to ...") explains the first action and sits between it and the rest.
+    if root.action-text != "" || root.secondary-text != "" || root.tertiary-text != "": HorizontalLayout {
         alignment: center;
-        Button {
-            text: root.action-text;
-            variant: ButtonVariant.primary;
-            clicked => { root.action(); }
+        VerticalLayout {
+            spacing: Space.s2;
+            if root.action-text != "": EmptyAction {
+                h: root.quiet ? Space.s8 + Space.s1 : max(28px, Type.line-base + Space.s2);
+                text: root.action-text;
+                variant: root.quiet ? ButtonVariant.secondary : ButtonVariant.primary;
+                keys: root.action-keys;
+                keys-label: root.action-keys-label;
+                clicked => { root.action(); }
+            }
+            if root.caption == "" && root.secondary-text != "": EmptyAction {
+                text: root.secondary-text;
+                variant: ButtonVariant.ghost;
+                keys: root.secondary-keys;
+                keys-label: root.secondary-keys-label;
+                clicked => { root.secondary(); }
+            }
+            if root.caption == "" && root.tertiary-text != "": EmptyAction {
+                text: root.tertiary-text;
+                variant: ButtonVariant.ghost;
+                clicked => { root.tertiary(); }
+            }
+        }
+    }
+    if root.caption != "": Text {
+        text: root.caption;
+        color: Theme.text-secondary;
+        font-family: Fonts.sans;
+        font-size: Type.sm;
+        horizontal-alignment: center;
+        wrap: word-wrap;
+    }
+    if root.caption != "" && (root.secondary-text != "" || root.tertiary-text != ""): HorizontalLayout {
+        alignment: center;
+        VerticalLayout {
+            spacing: Space.s2;
+            if root.secondary-text != "": EmptyAction {
+                text: root.secondary-text;
+                variant: ButtonVariant.ghost;
+                keys: root.secondary-keys;
+                keys-label: root.secondary-keys-label;
+                clicked => { root.secondary(); }
+            }
+            if root.tertiary-text != "": EmptyAction {
+                text: root.tertiary-text;
+                variant: ButtonVariant.ghost;
+                clicked => { root.tertiary(); }
+            }
         }
     }
 }
