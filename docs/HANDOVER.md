@@ -1,3 +1,16 @@
+## Start here (next session, written 2026-11-25)
+
+How to work with the owner and this repo, learned over the 1.0 sessions:
+
+- **PR #5 is the 1.0.0 release.** Branch `claude/compassionate-pascal-pod8ux`. Never merge, tag or release it until the owner says so.
+- **Queue:** the Inbox in `.claude/now.md`, which holds the owner's words verbatim with a plan each. Order: (1) M2 paste into Windows 11 Notepad fails (Alt KeyTips; works in OneNote); (2) floating-toast at start-up (stored geometry vs actual); (3) dropdowns on their own layer (PopupWindow, 4px gap, flip up, bulk Tag menu); (4) blank characters (font fallback) and scroll lag (measure first); (5) empty-state redesign (`docs/design/empty-state-redesign.html`); (6) Recent row overflow and blank titles, tab-strip arrow gap; then the rest of the Inbox: previews/expand, board and list management, editor Tab and autocomplete, template examples, bulk Pin label, click-behaviour settings, backups labels, double-click edge reset, list-colour drag line, wizard wording; release prep last (screenshots, hero, promo video).
+- **The owner** tests on Windows and sends screenshots. Each new request: record it verbatim in the Inbox, then answer in a few lines with a plan or the fix; plain words, no jargon. They prefer short answers. Mark Windows-only behaviour unverified until they run it.
+- **Usage:** they watch the weekly limit closely (stop line given in chat, last 98%). No needless CI, gate or clippy runs: one gate per push. Start fresh sessions at milestones; say when the context is past 150k.
+- **Build env:** `export CARGO_TARGET_DIR=/tmp/target-main CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_BUILD_JOBS=1 CARGO_INCREMENTAL=0`; cargo under `flock /tmp/target-panel/.audit.lock`; long runs in the background with a 2 h timeout. Gate: `scripts/gate.sh --changed`, push only on `failed: none`; never chain a push after the gate without checking its result. CI uses the newest stable Rust (1.100 as of Nov 24).
+- **Goldens:** a UI change breaks many. Loop `cargo test -p snipdeck-ui --no-fail-fast` once before the gate, view each diff in `target/screenshot-diff/`, bless only what you viewed.
+- **Agents:** at 94%+ weekly, one Sonnet agent, no Opus unless the owner asks; Fable only when the owner names it.
+- **Commits** end with the session's Co-Authored-By and Claude-Session lines; GitHub comments end with the Claude Code footer; never a model name in commits or code.
+
 ## Morning summary
 
 2026-11-23 (third update). Fixed and pushed (gate green): Main header row room for the focus ring (9a18360a), one
